@@ -64,6 +64,9 @@
   profile_data JSONB
 );
 
+### Anticipated Auth Scopes
+- Microsoft Graph: Calendars.Read, Calendars.ReadWrite, Mail.Read, User.Read, People.Read
+
 ## Tasks
 
 - [x] 1.0 Define System Architecture
@@ -76,13 +79,13 @@
   - [x] 1.7 Update `README.md` with build, local testing, unit testing, and deployment instructions
 
 - [ ] 2.0 Implement Authentication and Microsoft Graph API Integration
-  - [ ] 2.1 Set up Clerk for auth / accounts using the instructions in `tasks/clerk-install.md`
+  - [x] 2.1 Set up Clerk for auth / accounts using the instructions in `tasks/clerk-install.md`
   - [ ] 2.2 Set up NextAuth.js with Microsoft OAuth2 provider
   - [ ] 2.3 Implement token management for Microsoft Graph API
   - [ ] 2.4 Create API client for Microsoft Graph interactions
   - [ ] 2.5 Implement user profile and settings storage
   - [ ] 2.6 Set up security measures for token storage
-  - [ ] 2.7 Create user onboarding flow
+  - [ ] 2.7 Create user onboarding flow authorizing Microsoft Graph scopes (see above)
 
 - [ ] 3.0 Develop Calendar Analysis Service
   - [ ] 3.1 Set up FastAPI application structure
