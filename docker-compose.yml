@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+      args:
+        VARIANT: "3.11-bullseye"
+    volumes:
+      - .:/workspace:cached
+    command: sleep infinity
+    ports:
+      - "3000:3000" # For Next.js frontend
+      - "8000:8000" # For Python/FastAPI backend
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - PINECONE_API_KEY=${PINECONE_API_KEY}
+      - PINECONE_ENVIRONMENT=${PINECONE_ENVIRONMENT}
+      # Add other necessary environment variables for the app service
+
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-briefly}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    restart: unless-stopped
+
+volumes:
+  postgres_data: 

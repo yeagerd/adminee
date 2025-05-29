@@ -66,13 +66,14 @@
 
 ## Tasks
 
-- [ ] 1.0 Define System Architecture
-  - [ ] 1.1 Design database schema for PostgreSQL
-  - [ ] 1.2 Set up Pinecone vector database
-  - [ ] 1.3 Set up a dev container
-  - [ ] 1.4 Create Docker Compose setup for local development
-  - [ ] 1.5 Design service communication architecture
-  - [ ] 1.6 Set up deployment environment configuration
+- [x] 1.0 Define System Architecture
+  - [x] 1.1 Design database schema for PostgreSQL
+  - [x] 1.2 Set up Pinecone vector database
+  - [x] 1.3 Set up a dev container
+  - [x] 1.4 Create Docker Compose setup for local development
+  - [x] 1.5 Design service communication architecture
+  - [x] 1.6 Set up deployment environment configuration
+  - [x] 1.7 Update `README.md` with build, local testing, unit testing, and deployment instructions
 
 - [ ] 2.0 Implement Authentication and Microsoft Graph API Integration
   - [ ] 2.1 Set up Clerk for auth / accounts using the instructions in `tasks/clerk-install.md`

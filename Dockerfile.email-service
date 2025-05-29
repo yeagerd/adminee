@@ -1,0 +1,33 @@
+# Dockerfile for Email Service (Node.js)
+
+# Use an official Node.js runtime as a parent image
+# Consider using a specific LTS version, e.g., node:18-alpine or node:20-alpine
+FROM node:20-alpine
+
+# Set the working directory in the container
+WORKDIR /app/email-service
+
+# Copy package.json and package-lock.json (or yarn.lock) first
+# This leverages Docker layer caching for dependencies
+# Assuming the email service is in services/email-service/
+COPY services/email-service/package.json services/email-service/yarn.lock* ./ 
+# If using npm instead of yarn, it would be:
+# COPY services/email-service/package.json services/email-service/package-lock.json* ./
+
+# Install dependencies
+# If using yarn:
+RUN yarn install --frozen-lockfile --production
+# If using npm:
+# RUN npm ci --only=production
+
+# Copy the rest of the application code for the email service
+COPY services/email-service/ ./ 
+
+# Expose the port the app runs on (e.g., 8080 or 3001)
+EXPOSE 8080
+
+# Define the command to run the application
+# This assumes your entry point is index.js
+# CMD ["node", "index.js"]
+# For now, a placeholder command as index.js doesn't exist yet
+CMD ["node", "-e", "console.log('Email service placeholder. index.js with server logic needed. Listening on port 8080 (example).')"] 

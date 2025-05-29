@@ -1,0 +1,51 @@
+{
+    "name": "Briefly Dev Container (Docker Compose)",
+    "dockerComposeFile": "../docker-compose.yml",
+    "service": "app",
+    "workspaceFolder": "/workspace",
+    "features": {
+        "ghcr.io/devcontainers/features/node:1": {
+            "version": "20"
+        },
+        "ghcr.io/devcontainers/features/postgres:1": {
+            "version": "15",
+            "host": "db",
+            "serverPassword": "postgres"
+        }
+    },
+    "forwardPorts": [
+        3000,
+        8000,
+        5432
+    ],
+    "postCreateCommand": "sudo chown node /workspace/.yarn && poetry install --no-root && (cd services/frontend && yarn install)",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "ms-azuretools.vscode-docker",
+                "VisualStudioExptTeam.vscodeintellicode",
+                "Prisma.prisma",
+                "dbaeumer.vscode-eslint",
+                "esbenp.prettier-vscode",
+                "mhutchie.git-graph",
+                "eamodio.gitlens",
+                "GitHub.copilot"
+            ],
+            "settings": {
+                "terminal.integrated.shell.linux": "/bin/bash",
+                "python.defaultInterpreterPath": "/usr/local/bin/python",
+                "python.linting.pylintEnabled": true,
+                "python.linting.enabled": true,
+                "python.formatting.provider": "black",
+                "editor.formatOnSave": true,
+                "files.eol": "\n",
+                "docker.environment": {
+                    "DATABASE_URL": "${containerEnv:DATABASE_URL}"
+                }
+            }
+        }
+    },
+    "remoteUser": "vscode"
+} 
