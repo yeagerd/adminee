@@ -42,10 +42,6 @@ if __name__ == '__main__':
     # export PINECONE_API_KEY='YOUR_API_KEY'
     # export PINECONE_ENVIRONMENT='YOUR_ENVIRONMENT'
     
-    # This is a placeholder, actual key and environment should be set in .env
-    os.environ['PINECONE_API_KEY'] = 'YOUR_API_KEY_HERE' 
-    os.environ['PINECONE_ENVIRONMENT'] = 'YOUR_ENVIRONMENT_HERE'
-    
     client = PineconeClient()
     index_name = "my-test-index"
     dimension = 1536 # Example dimension, adjust as needed for your embeddings

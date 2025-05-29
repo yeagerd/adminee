@@ -38,7 +38,7 @@ Key components include:
         ```bash
         cp .env.example .env
         ```
-    -   Open `.env` and fill in the required values for `DATABASE_URL`, `PINECONE_API_KEY`, `PINECONE_ENVIRONMENT`, Microsoft OAuth credentials (`AZURE_AD_CLIENT_ID`, etc.), and `NEXTAUTH_SECRET`.
+    -   Open `.env` and fill in the required values for `DATABASE_URL`, `PINECONE_API_KEY`, `PINECONE_ENVIRONMENT`, Microsoft OAuth credentials (`AZURE_AD_CLIENT_ID`, etc.), and ``.
 
 3.  **Launch the Development Environment:**
 
@@ -137,10 +137,6 @@ Key components include:
 
 ## License
 
-(To be added: Specify project license, e.g., MIT, Apache 2.0)
+See `LICENSE`
 
 ---
-*Original create-next-app setup notes:*
-* Install nvm
-* Install node v18.18.2
-* create-next-app@latest
