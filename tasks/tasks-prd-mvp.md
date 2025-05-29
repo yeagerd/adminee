@@ -1,7 +1,7 @@
 ## Relevant Files
 
 ### Frontend (Next.js)
-- `app/api/auth/[...nextauth]/route.ts` - Microsoft OAuth2 authentication implementation
+- `app/api/auth/[...nextauth]/route.ts` - Microsoft OAuth2 authentication implementation // This will be handled by Clerk; NextAuth route might not be needed or will serve a different purpose.
 - `app/page.tsx` - Main dashboard page
 - `app/layout.tsx` - Application layout including authentication state
 - `app/components/Calendar/CalendarView.tsx` - Interactive calendar component for web app
@@ -80,9 +80,9 @@
 
 - [ ] 2.0 Implement Authentication and Microsoft Graph API Integration
   - [x] 2.1 Set up Clerk for auth / accounts using the instructions in `tasks/clerk-install.md`
-  - [ ] 2.2 Set up NextAuth.js with Microsoft OAuth2 provider
-  - [ ] 2.3 Implement token management for Microsoft Graph API
-  - [ ] 2.4 Create API client for Microsoft Graph interactions
+  - [x] 2.2 Configure Microsoft OAuth (as a social connection) in Clerk and request necessary Graph API scopes
+  - [x] 2.3 Implement token management for Microsoft Graph API (retrieving tokens via Clerk)
+  - [x] 2.4 Create API client for Microsoft Graph interactions
   - [ ] 2.5 Implement user profile and settings storage
   - [ ] 2.6 Set up security measures for token storage
   - [ ] 2.7 Create user onboarding flow authorizing Microsoft Graph scopes (see above)
