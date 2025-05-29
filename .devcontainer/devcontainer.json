@@ -18,7 +18,7 @@
         8000,
         5432
     ],
-    "postCreateCommand": "sudo chown node /workspace/.yarn && poetry install --no-root && (cd services/frontend && yarn install)",
+    "postCreateCommand": "sudo chown node /workspace/.yarn && npx prisma generate && poetry install --no-root && (cd services/frontend && yarn install)",
     "customizations": {
         "vscode": {
             "extensions": [

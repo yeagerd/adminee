@@ -83,7 +83,7 @@
   - [x] 2.2 Configure Microsoft OAuth (as a social connection) in Clerk and request necessary Graph API scopes
   - [x] 2.3 Implement token management for Microsoft Graph API (retrieving tokens via Clerk)
   - [x] 2.4 Create API client for Microsoft Graph interactions
-  - [ ] 2.5 Implement user profile and settings storage
+  - [x] 2.5 Implement user profile and settings storage
   - [ ] 2.6 Set up security measures for token storage
   - [ ] 2.7 Create user onboarding flow authorizing Microsoft Graph scopes (see above)
 
