@@ -105,8 +105,8 @@
   - [x] 3.6 Create API endpoints for calendar analysis
 
 - [ ] 4.0 Create Web Application User Interface for MVP Demo
-  - [ ] 4.1 Ensure frontend stack (Next.js, shad-cn, Tailwind CSS) is set up and ready.
-    - [ ] 4.1.1 Initialize shadcn/ui and configure Tailwind CSS
+  - [x] 4.1 Ensure frontend stack (Next.js, shad-cn, Tailwind CSS) is set up and ready.
+    - [x] 4.1.1 Initialize shadcn/ui and configure Tailwind CSS
   - [ ] 4.2 Define mock data structures for calendar events and tasks.
   - [ ] 4.3 Implement a mock data service/utility within the frontend to provide sample data.
   - [ ] 4.4 Design the top-level frontend architecture, navigation flow (login -> onboarding -> dashboard -> settings).
