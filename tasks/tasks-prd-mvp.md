@@ -100,39 +100,45 @@
   - [x] 3.1 Set up FastAPI application structure
   - [x] 3.2 Implement calendar event retrieval from Microsoft Graph // This is now complete due to 1.9
   - [x] 3.3 Create logic for conflict detection
-  - [ ] 3.4 Implement attendance analysis
-  - [ ] 3.5 Develop work hours conflict detection
-  - [ ] 3.6 Create API endpoints for calendar analysis
+  - [x] 3.4 Implement attendance analysis // Un-marking due to revised understanding -> Now complete with new logic
+  - [x] 3.5 Develop work hours conflict detection
+  - [x] 3.6 Create API endpoints for calendar analysis
 
-- [ ] 4.0 Implement RAG Pipeline for Meeting Context
-  - [ ] 4.1 Define `VectorStore` abstract base class/interface
-  - [ ] 4.2 Implement Pinecone `VectorStore` subclass for production
-  - [ ] 4.3 Implement ChromaDB `VectorStore` subclass for local testing/development
-  - [ ] 4.4 Set up LangChain environment (was 4.1)
-  - [ ] 4.5 Create document retrieval from emails and files (was 4.2)
-  - [ ] 4.6 Implement text chunking and processing (was 4.3)
-  - [ ] 4.7 Develop embedding generation using Sentence-Transformers (was 4.4)
-  - [ ] 4.8 Set up vector storage in Pinecone (was 4.5) // This might be partly covered by 4.2
-  - [ ] 4.9 Implement relevance matching for calendar events (was 4.6)
-  - [ ] 4.10 Create API for querying relevant meeting context (was 4.7)
+- [ ] 4.0 Create Web Application User Interface for MVP Demo
+  - [ ] 4.1 Ensure frontend stack (Next.js, shad-cn, Tailwind CSS) is set up and ready.
+    - [ ] 4.1.1 Initialize shadcn/ui and configure Tailwind CSS
+  - [ ] 4.2 Define mock data structures for calendar events and tasks.
+  - [ ] 4.3 Implement a mock data service/utility within the frontend to provide sample data.
+  - [ ] 4.4 Design the top-level frontend architecture, navigation flow (login -> onboarding -> dashboard -> settings).
+  - [ ] 4.5 Design and implement the main "Today" dashboard layout, incorporating:
+    - [ ] 4.5.1 Placeholder/Mock-driven interactive calendar view (showing today's schedule).
+    - [ ] 4.5.2 Placeholder/Mock-driven task list component (allowing basic CRUD operations on mock tasks).
+    - [ ] 4.5.3 Add a chat bar to talk to an LLM model of your choosing, similar to ChatGPT, Claude, or Gemini's homepages. For now, we're just building the FE, but for context, assume that we'll be making calls through our backend so we can add the system prompt, context, authorize the LLM calls, enable tools, take actions, etc.
+  - [ ] 4.6 Design and implement a basic settings page (e.g., for timezone, mock data toggles if applicable).  Consider also showing the timezone selector in the navigation pane so it's easy to modify for people who travel.
+  - [ ] 4.7 Create a streamlined user onboarding flow (focused on MVP essentials).
+  - [ ] 4.8 Basic mobile responsiveness for the MVP views.
 
-- [ ] 5.0 Develop Email Notification System
-  - [ ] 5.1 Design email templates for daily summaries
-  - [ ] 5.2 Create email templates for alerts
-  - [ ] 5.3 Implement email generation service
-  - [ ] 5.4 Set up scheduled email delivery for morning summaries
-  - [ ] 5.5 Create triggered email alerts for detected scenarios
-  - [ ] 5.6 Implement email tracking and analytics
+- [ ] 5.0 Implement RAG Pipeline for Meeting Context
+  - [ ] 5.1 Define `VectorStore` abstract base class/interface
+  - [ ] 5.2 Implement Pinecone `VectorStore` subclass for production
+  - [ ] 5.3 Implement ChromaDB `VectorStore` subclass for local testing/development
+  - [ ] 5.4 Set up LangChain environment
+  - [ ] 5.5 Create document retrieval from emails and files
+  - [ ] 5.6 Implement text chunking and processing
+  - [ ] 5.7 Develop embedding generation using Sentence-Transformers
+  - [ ] 5.8 Set up vector storage in Pinecone
+  - [ ] 5.9 Implement relevance matching for calendar events
+  - [ ] 5.10 Create API for querying relevant meeting context
 
-- [ ] 6. Create Web Application User Interface
-  - [ ] 6.1 Develop main dashboard layout
-  - [ ] 6.2 Create interactive calendar component
-  - [ ] 6.3 Implement meeting detail view
-  - [ ] 6.4 Design and implement settings page
-  - [ ] 6.5 Create user onboarding experience
-  - [ ] 6.6 Implement responsive design for mobile compatibility
+- [ ] 6.0 Develop Email Notification System
+  - [ ] 6.1 Design email templates for daily summaries
+  - [ ] 6.2 Create email templates for alerts
+  - [ ] 6.3 Implement email generation service
+  - [ ] 6.4 Set up scheduled email delivery for morning summaries
+  - [ ] 6.5 Create triggered email alerts for detected scenarios
+  - [ ] 6.6 Implement email tracking and analytics
 
-- [ ] 7. Implement Task Management for Meeting Preparation
+- [ ] 7.0 Implement Task Management for Meeting Preparation
   - [ ] 7.1 Create task data model and storage
   - [ ] 7.2 Develop task creation from meeting context
   - [ ] 7.3 Implement task UI components
@@ -140,7 +146,7 @@
   - [ ] 7.5 Implement task prioritization algorithm
   - [ ] 7.6 Develop meeting preparation recommendations
 
-- [ ] 8. Design and Implement Subscription System
+- [ ] 8.0 Design and Implement Subscription System
   - [ ] 8.1 Set up Stripe integration for payments
   - [ ] 8.2 Implement subscription tiers and features
   - [ ] 8.3 Create subscription management UI
@@ -148,7 +154,7 @@
   - [ ] 8.5 Implement usage tracking for tier limits
   - [ ] 8.6 Set up subscription analytics
 
-- [ ] 9. Testing and Quality Assurance
+- [ ] 9.0 Testing and Quality Assurance
   - [ ] 9.1 Create unit tests for all services
   - [ ] 9.2 Implement integration tests
   - [ ] 9.3 Set up end-to-end testing
