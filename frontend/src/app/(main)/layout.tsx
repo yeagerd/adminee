@@ -1,5 +1,6 @@
 import { PropsWithChildren } from 'react';
 import Link from 'next/link';
+import TimezoneSelector from '@/components/navigation/TimezoneSelector';
 // We'll need Clerk's UserButton and auth utilities later
 // import { UserButton, auth, currentUser } from '@clerk/nextjs';
 // import { redirect } from 'next/navigation';
@@ -26,6 +27,7 @@ export default async function MainAppLayout({ children }: PropsWithChildren) {
             <Link href="/settings" className="hover:text-gray-300">
               Settings
             </Link>
+            <TimezoneSelector />
             {/* <UserButton afterSignOutUrl="/" /> */}
             {/* {user && <span>Hello, {user.firstName || user.emailAddresses[0]?.emailAddress}</span>} */}
           </div>

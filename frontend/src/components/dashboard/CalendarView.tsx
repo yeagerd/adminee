@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { mockCalendarEvents, getEventsForDay } from '@/lib/mockData'; // Adjusted path
-import { CalendarEvent } from '@/lib/types'; // Adjusted path
+import { mockCalendarEvents, getEventsForDay } from '@/lib/mockData'; // Assuming mockData is in lib
+import { CalendarEvent } from '@/lib/types'; // Assuming types is in lib
 import { format, startOfDay, addDays, subDays } from 'date-fns';
 
 // Basic card component for displaying an event
@@ -10,7 +10,7 @@ const EventCard: React.FC<{ event: CalendarEvent }> = ({ event }) => (
   <div className={`p-2 mb-2 rounded shadow-sm border-l-4 ${event.color ? `border-${event.color}-500` : 'border-blue-500'} bg-white`}>
     <h3 className="font-semibold">{event.title}</h3>
     <p className="text-sm text-gray-600">
-      {format(new Date(event.startTime), 'p')} - {format(new Date(event.endTime), 'p')}
+      {event.startTime && format(new Date(event.startTime), 'p')} - {event.endTime && format(new Date(event.endTime), 'p')}
     </p>
     {event.location && <p className="text-xs text-gray-500">{event.location}</p>}
     {event.description && <p className="text-xs mt-1">{event.description}</p>}
@@ -59,4 +59,4 @@ const CalendarView: React.FC = () => {
   );
 };
 
-export default CalendarView; 
+export default CalendarView;
