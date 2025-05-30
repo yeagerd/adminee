@@ -69,7 +69,7 @@
 
 ## Tasks
 
-- [x] 1.0 Define System Architecture
+- [x] 1. Define System Architecture
   - [x] 1.1 Design database schema for PostgreSQL
   - [x] 1.2 Set up Pinecone vector database
   - [x] 1.3 Set up a dev container
@@ -78,7 +78,7 @@
   - [x] 1.6 Set up deployment environment configuration
   - [x] 1.7 Update `README.md` with build, local testing, unit testing, and deployment instructions
 
-- [x] 2.0 Implement Authentication and Microsoft Graph API Integration
+- [x] 2. Implement Authentication and Microsoft Graph API Integration
   - [x] 2.1 Set up Clerk for auth / accounts using the instructions in `tasks/clerk-install.md`
   - [x] 2.2 Configure Microsoft OAuth (as a social connection) in Clerk and request necessary Graph API scopes
   - [x] 2.3 Implement token management for Microsoft Graph API (retrieving tokens via Clerk)
@@ -87,7 +87,7 @@
   - [x] 2.6 Set up security measures for token storage
   - [x] 2.7 Create user onboarding flow authorizing Microsoft Graph scopes (see above)
 
-- [ ] 3.0 Develop Calendar Analysis Service
+- [ ] 3. Develop Calendar Analysis Service
   - [ ] 3.1 Set up FastAPI application structure
   - [ ] 3.2 Implement calendar event retrieval from Microsoft Graph
   - [ ] 3.3 Create logic for conflict detection
@@ -95,7 +95,7 @@
   - [ ] 3.5 Develop work hours conflict detection
   - [ ] 3.6 Create API endpoints for calendar analysis
 
-- [ ] 4.0 Implement RAG Pipeline for Meeting Context
+- [ ] 4. Implement RAG Pipeline for Meeting Context
   - [ ] 4.1 Set up LangChain environment
   - [ ] 4.2 Create document retrieval from emails and files
   - [ ] 4.3 Implement text chunking and processing
@@ -104,7 +104,7 @@
   - [ ] 4.6 Implement relevance matching for calendar events
   - [ ] 4.7 Create API for querying relevant meeting context
 
-- [ ] 5.0 Develop Email Notification System
+- [ ] 5. Develop Email Notification System
   - [ ] 5.1 Design email templates for daily summaries
   - [ ] 5.2 Create email templates for alerts
   - [ ] 5.3 Implement email generation service
@@ -112,7 +112,7 @@
   - [ ] 5.5 Create triggered email alerts for detected scenarios
   - [ ] 5.6 Implement email tracking and analytics
 
-- [ ] 6.0 Create Web Application User Interface
+- [ ] 6. Create Web Application User Interface
   - [ ] 6.1 Develop main dashboard layout
   - [ ] 6.2 Create interactive calendar component
   - [ ] 6.3 Implement meeting detail view
@@ -120,7 +120,7 @@
   - [ ] 6.5 Create user onboarding experience
   - [ ] 6.6 Implement responsive design for mobile compatibility
 
-- [ ] 7.0 Implement Task Management for Meeting Preparation
+- [ ] 7. Implement Task Management for Meeting Preparation
   - [ ] 7.1 Create task data model and storage
   - [ ] 7.2 Develop task creation from meeting context
   - [ ] 7.3 Implement task UI components
@@ -128,7 +128,7 @@
   - [ ] 7.5 Implement task prioritization algorithm
   - [ ] 7.6 Develop meeting preparation recommendations
 
-- [ ] 8.0 Design and Implement Subscription System
+- [ ] 8. Design and Implement Subscription System
   - [ ] 8.1 Set up Stripe integration for payments
   - [ ] 8.2 Implement subscription tiers and features
   - [ ] 8.3 Create subscription management UI
@@ -136,7 +136,7 @@
   - [ ] 8.5 Implement usage tracking for tier limits
   - [ ] 8.6 Set up subscription analytics
 
-- [ ] 9.0 Testing and Quality Assurance
+- [ ] 9. Testing and Quality Assurance
   - [ ] 9.1 Create unit tests for all services
   - [ ] 9.2 Implement integration tests
   - [ ] 9.3 Set up end-to-end testing
