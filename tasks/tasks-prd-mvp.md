@@ -108,7 +108,7 @@
   - [x] 4.1 Ensure frontend stack (Next.js, shad-cn, Tailwind CSS) is set up and ready.
     - [x] 4.1.1 Initialize shadcn/ui and configure Tailwind CSS
   - [x] 4.2 Define mock data structures for calendar events and tasks.
-  - [ ] 4.3 Implement a mock data service/utility within the frontend to provide sample data.
+  - [x] 4.3 Implement a mock data service/utility within the frontend to provide sample data.
   - [ ] 4.4 Design the top-level frontend architecture, navigation flow (login -> onboarding -> dashboard -> settings).
   - [ ] 4.5 Design and implement the main "Today" dashboard layout, incorporating:
     - [ ] 4.5.1 Placeholder/Mock-driven interactive calendar view (showing today's schedule).
