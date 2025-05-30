@@ -96,10 +96,10 @@
   - [x] 2.6 Set up security measures for token storage
   - [x] 2.7 Create user onboarding flow authorizing Microsoft Graph scopes (see above)
 
-- [ ] 3. Develop Calendar Analysis Service // Ensuring this is NOT [x]
+- [x] 3. Develop Calendar Analysis Service // Ensuring this is NOT [x]
   - [x] 3.1 Set up FastAPI application structure
   - [x] 3.2 Implement calendar event retrieval from Microsoft Graph // This is now complete due to 1.9
-  - [ ] 3.3 Create logic for conflict detection
+  - [x] 3.3 Create logic for conflict detection
   - [ ] 3.4 Implement attendance analysis
   - [ ] 3.5 Develop work hours conflict detection
   - [ ] 3.6 Create API endpoints for calendar analysis
