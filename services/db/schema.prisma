@@ -8,16 +8,21 @@ generator client {
 }
 
 model User {
-  id             String    @id @default(uuid())
-  userId         String?   @unique // From Clerk
+  id             String    @id @default(cuid())
+  clerkUserId    String?   @unique // Renamed from userId, explicitly for Clerk User ID
+  email          String?   @unique // Added for completeness, common field
+  name           String?   // Added for completeness, common field
   createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt // Added standard updatedAt
   profileData    Json?     // For Firebase-like flexibility
+  calendarProvider String?   // e.g., "microsoft", "google"
+  userSettings   Json?     // For { "timezone": "America/New_York", "morningEmailTime": "08:00" }
   calendarEvents CalendarEvent[]
   tasks          Task[]
 }
 
 model CalendarEvent {
-  id        String   @id @default(uuid())
+  id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id])
   startTime DateTime
@@ -28,7 +33,7 @@ model CalendarEvent {
 }
 
 model Task {
-  id              String   @id @default(uuid())
+  id              String   @id @default(cuid())
   userId          String
   user            User     @relation(fields: [userId], references: [id])
   calendarEventId String?

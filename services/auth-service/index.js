@@ -53,24 +53,24 @@ app.get('/calendars', authenticateMsGraphToken, async (req, res) => {
   }
 });
 
-// User profile and settings routes (uses Clerk User ID)
+// User profile and settings routes
 app.get('/users/profile', identifyUser, async (req, res) => {
   try {
     let user = await prisma.user.findUnique({
-      where: { userId: req.clerkUserId },
+      where: { clerkUserId: req.clerkUserId }, // Changed from userId to clerkUserId
     });
 
     if (!user) {
-      // Optionally, create a basic profile if one doesn't exist upon first access
-      // This depends on your desired user onboarding flow
+      // Create a user profile if one doesn't exist
       user = await prisma.user.create({
         data: {
-          userId: req.clerkUserId,
-          // Initialize profileData with empty object or default settings
-          profileData: {},
+          clerkUserId: req.clerkUserId,
+          email: req.body.email, // Optional: attempt to get email from Clerk user object if passed by gateway
+          userSettings: { timezone: 'UTC' }, // Default timezone
+          calendarProvider: null,
         }
       });
-      return res.status(201).json(user); // Return 201 for newly created resource
+      return res.status(201).json(user);
     }
     res.json(user);
   } catch (error) {
@@ -80,24 +80,61 @@ app.get('/users/profile', identifyUser, async (req, res) => {
 });
 
 app.put('/users/profile', identifyUser, async (req, res) => {
-  const { profileData } = req.body; // Expecting settings/profile data in a 'profileData' JSON object
+  const { email, name, calendarProvider, userSettings, profileData } = req.body;
 
-  if (typeof profileData !== 'object' || profileData === null) {
-    return res.status(400).json({ error: "'profileData' must be a JSON object in the request body." });
+  const dataToUpdate = {};
+  if (email !== undefined) dataToUpdate.email = email;
+  if (name !== undefined) dataToUpdate.name = name;
+  if (profileData !== undefined) dataToUpdate.profileData = profileData; // Keep support for generic profileData
+
+  if (calendarProvider !== undefined) {
+    if (calendarProvider === null || ["microsoft", "google"].includes(calendarProvider.toLowerCase())) {
+      dataToUpdate.calendarProvider = calendarProvider;
+    } else {
+      return res.status(400).json({ error: "Invalid calendarProvider. Allowed values: 'microsoft', 'google', or null." });
+    }
+  }
+
+  if (userSettings !== undefined) {
+    if (typeof userSettings !== 'object' || userSettings === null) {
+      return res.status(400).json({ error: "'userSettings' must be a JSON object." });
+    }
+    // Basic validation for timezone if provided - can be expanded
+    if (userSettings.timezone !== undefined) {
+      try {
+        // Check if it's a somewhat valid timezone string. Node's Intl doesn't validate IANA IDs directly.
+        // For robust validation, a library like moment-timezone or jstimezonedetect might be used, or keep it simple.
+        new Intl.DateTimeFormat(undefined, { timeZone: userSettings.timezone });
+      } catch (tzError) {
+        return res.status(400).json({ error: `Invalid timezone string: ${userSettings.timezone}` });
+      }
+    }
+    dataToUpdate.userSettings = userSettings;
+  }
+  
+  if (Object.keys(dataToUpdate).length === 0) {
+    return res.status(400).json({ error: "No valid fields provided for update." });
   }
 
   try {
     const updatedUser = await prisma.user.upsert({
-      where: { userId: req.clerkUserId },
-      update: { profileData: profileData }, // Overwrites existing profileData
+      where: { clerkUserId: req.clerkUserId }, // Changed from userId to clerkUserId
+      update: dataToUpdate,
       create: {
-        userId: req.clerkUserId,
-        profileData: profileData,
+        clerkUserId: req.clerkUserId,
+        email: email,
+        name: name,
+        calendarProvider: calendarProvider,
+        userSettings: userSettings,
+        profileData: profileData
       },
     });
     res.json(updatedUser);
   } catch (error) {
     console.error(`Failed to update user profile for ${req.clerkUserId}:`, error.message);
+    if (error.code === 'P2002') { // Unique constraint failed (e.g. email)
+        return res.status(409).json({ error: 'Failed to update profile. A user with the provided email may already exist.', field: error.meta?.target?.join(',') });
+    }
     res.status(500).json({ error: 'Failed to update user profile.', details: error.message });
   }
 });
