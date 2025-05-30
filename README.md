@@ -20,7 +20,7 @@ Key components include:
 
 ### Prerequisites
 
-- **Docker and Docker Compose:** Ensure Docker Desktop or Docker Engine with Compose plugin is installed. [Install Docker](https://docs.docker.com/get-docker/)
+- **Docker and Docker Compose:** Ensure Docker Desktop or Docker Engine with Compose plugin is installed. [Install Docker](https://docs.docker.com/get-docker/) or `brew install docker colima`
 - **VS Code Dev Containers Extension:** If using VS Code, install the "Dev Containers" extension by Microsoft (`ms-vscode-remote.remote-containers`).
 - **Node.js and npm/yarn:** For interacting with the frontend directly or managing global Node packages. `nvm` is recommended for managing Node versions. (Existing setup instruction: Install nvm, install node v18.18.2)
 - **Git:** For version control.
@@ -46,10 +46,16 @@ Key components include:
         1.  Open the cloned repository folder in VS Code.
         2.  When prompted, click "Reopen in Container". This will build and start the services defined in `docker-compose.yml` and configure your VS Code environment.
     *   **Using Docker Compose directly:**
+        If using `colima`, first run `colima start`
         ```bash
-        docker-compose up --build
+        docker compose up --build
         ```
         This will build the images and start all services. The main application (including frontend and proxied backend) will typically be available at `http://localhost:3000`.
+
+        You can then stop it with
+        ```bash
+        docker compose down
+        ```
 
 ### Running the Application
 

@@ -10,8 +10,8 @@ import {
 import "./globals.css"; // Assuming globals.css is in the same app directory
 
 export const metadata: Metadata = {
-  title: "Briefly",
-  description: "Briefly Application",
+  title: "Briefly - Powered by Clerk",
+  description: "Briefly Application with Clerk Authentication",
 };
 
 export default function RootLayout({

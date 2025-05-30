@@ -78,14 +78,14 @@
   - [x] 1.6 Set up deployment environment configuration
   - [x] 1.7 Update `README.md` with build, local testing, unit testing, and deployment instructions
 
-- [ ] 2.0 Implement Authentication and Microsoft Graph API Integration
+- [x] 2.0 Implement Authentication and Microsoft Graph API Integration
   - [x] 2.1 Set up Clerk for auth / accounts using the instructions in `tasks/clerk-install.md`
   - [x] 2.2 Configure Microsoft OAuth (as a social connection) in Clerk and request necessary Graph API scopes
   - [x] 2.3 Implement token management for Microsoft Graph API (retrieving tokens via Clerk)
   - [x] 2.4 Create API client for Microsoft Graph interactions
   - [x] 2.5 Implement user profile and settings storage
-  - [ ] 2.6 Set up security measures for token storage
-  - [ ] 2.7 Create user onboarding flow authorizing Microsoft Graph scopes (see above)
+  - [x] 2.6 Set up security measures for token storage
+  - [x] 2.7 Create user onboarding flow authorizing Microsoft Graph scopes (see above)
 
 - [ ] 3.0 Develop Calendar Analysis Service
   - [ ] 3.1 Set up FastAPI application structure
