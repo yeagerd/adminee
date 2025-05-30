@@ -102,3 +102,13 @@ flowchart TD
     Frontend --> ClerkAuth
     APIGateway --> ClerkAuth
 ``` 
+
+## 7. Security Considerations for Token Handling
+
+- **Clerk Manages Primary OAuth Tokens:** Clerk securely stores the long-lived OAuth refresh tokens obtained from providers like Microsoft. Our application does not store these.
+- **Short-Lived Access Tokens:** Microsoft Graph access tokens retrieved via Clerk are short-lived and fetched on-demand by backend services (e.g., via `/services/frontend/app/api/get-ms-token/route.ts`).
+- **No Application-Side Storage of Access Tokens:** These short-lived access tokens are not persistently stored in our application's database.
+- **HTTPS Everywhere:** All communication involving tokens (frontend to backend, backend to backend, backend to external APIs) must be over HTTPS in production.
+- **Backend-Only Handling:** Sensitive access tokens (like Microsoft Graph tokens) must remain on the backend and not be exposed to the client-side browser.
+- **Avoid Logging Tokens:** Ensure access tokens are not inadvertently logged in production. Log errors and non-sensitive metadata only.
+- **Principle of Least Privilege:** OAuth scopes requested should be strictly limited to what the application requires for its functionality. 
