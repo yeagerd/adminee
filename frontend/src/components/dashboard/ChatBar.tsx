@@ -1,76 +1,174 @@
-'use client';
+"use client"
 
-import React, { useState, KeyboardEvent } from 'react';
+import type React from "react"
 
-interface Message {
-  id: string;
-  text: string;
-  sender: 'user' | 'bot';
+import { useState, useRef, useEffect } from "react"
+import { Send, Bot, User, Loader2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+
+type Message = {
+  id: number
+  content: string
+  sender: "user" | "ai"
+  timestamp: Date
 }
 
-const ChatBar: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [inputText, setInputText] = useState('');
+// Sample initial messages
+const initialMessages: Message[] = [
+  {
+    id: 1,
+    content:
+      "Hello! I'm your calendar assistant. I can help you manage your schedule, draft emails, add tasks, and more. How can I help you today?",
+    sender: "ai",
+    timestamp: new Date(2023, 0, 1, 12, 0, 0), // Static date for consistent rendering
+  },
+]
+
+export default function ChatInterface() {
+  const [messages, setMessages] = useState<Message[]>(initialMessages)
+  const [input, setInput] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [isClient, setIsClient] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Set isClient to true after hydration
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  // Sample AI responses
+  const aiResponses = [
+    "I've added 'Review quarterly report' to your task list for today.",
+    "Your next meeting is at 2:00 PM with the marketing team in Conference Room B.",
+    "I've drafted an email to the client about the project delay. Would you like to review it?",
+    "I've rescheduled your 3:00 PM meeting to tomorrow at 10:00 AM and notified all participants.",
+    "Based on your calendar, you have 2 hours of free time this afternoon between 1:00 PM and 3:00 PM.",
+  ]
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
 
   const handleSendMessage = () => {
-    if (inputText.trim() === '') return;
+    if (input.trim()) {
+      // Add user message
+      const userMessage: Message = {
+        id: messages.length + 1,
+        content: input.trim(),
+        sender: "user",
+        timestamp: new Date(),
+      }
+      setMessages([...messages, userMessage])
+      setInput("")
+      setIsLoading(true)
 
-    const newUserMessage: Message = {
-      id: `msg-${Date.now()}`,
-      text: inputText,
-      sender: 'user',
-    };
-
-    setMessages(prevMessages => [...prevMessages, newUserMessage]);
-    setInputText('');
-
-    // Simulate a bot response for MVP frontend demonstration
-    setTimeout(() => {
-      const botResponse: Message = {
-        id: `msg-${Date.now() + 1}`,
-        text: `Echo: "${newUserMessage.text}" (This is a mock bot response)`, // Simple echo
-        sender: 'bot',
-      };
-      setMessages(prevMessages => [...prevMessages, botResponse]);
-    }, 500);
-  };
-
-  const handleKeyPress = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault(); // Prevent new line on enter
-      handleSendMessage();
+      // Simulate AI response
+      setTimeout(() => {
+        const randomResponse = aiResponses[Math.floor(Math.random() * aiResponses.length)]
+        const aiMessage: Message = {
+          id: messages.length + 2,
+          content: randomResponse,
+          sender: "ai",
+          timestamp: new Date(),
+        }
+        setMessages((prev) => [...prev, aiMessage])
+        setIsLoading(false)
+      }, 1500)
     }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault()
+      handleSendMessage()
+    }
+  }
+
+  // Format timestamp consistently
+  const formatTime = (date: Date) => {
+    if (!isClient) {
+      return "12:00 PM"; // Static time for server-side rendering
+    }
+    return date.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   return (
-    <div className="flex flex-col h-[300px] bg-white p-4 rounded-lg shadow">
-      <h3 className="text-lg font-semibold mb-2">Chat with AI Assistant</h3>
-      <div className="flex-grow overflow-y-auto mb-3 p-2 border rounded bg-gray-50">
-        {messages.length === 0 && <p className="text-gray-400 italic text-center">No messages yet...</p>}
-        {messages.map(msg => (
-          <div key={msg.id} className={`mb-2 p-2 rounded-md max-w-[80%] ${msg.sender === 'user' ? 'bg-blue-500 text-white self-end ml-auto' : 'bg-gray-200 text-gray-800 self-start mr-auto'}`}>
-            {msg.text}
-          </div>
-        ))}
-      </div>
-      <div className="flex">
-        <input
-          type="text"
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="Type your message..."
-          className="flex-grow p-2 border rounded-l focus:outline-none focus:ring-2 focus:ring-blue-500"
+    <div className="flex flex-col h-[300px]">
+      <ScrollArea className="flex-1 p-4">
+        <div className="space-y-4">
+          {messages.map((message) => (
+            <div key={message.id} className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}>
+              <div className={`flex gap-3 max-w-[80%] ${message.sender === "user" ? "flex-row-reverse" : ""}`}>
+                <Avatar className="h-8 w-8">
+                  {message.sender === "ai" ? (
+                    <>
+                      <AvatarImage src="/placeholder.svg?height=32&width=32" />
+                      <AvatarFallback className="bg-teal-100 text-teal-600">
+                        <Bot className="h-4 w-4" />
+                      </AvatarFallback>
+                    </>
+                  ) : (
+                    <>
+                      <AvatarImage src="/placeholder.svg?height=32&width=32" />
+                      <AvatarFallback className="bg-gray-100">
+                        <User className="h-4 w-4" />
+                      </AvatarFallback>
+                    </>
+                  )}
+                </Avatar>
+                <div
+                  className={`rounded-lg p-3 ${
+                    message.sender === "user" ? "bg-teal-600 text-white" : "bg-gray-100 text-gray-800"
+                  }`}
+                >
+                  <p>{message.content}</p>
+                  <p className="text-xs opacity-70 mt-1">
+                    {formatTime(message.timestamp)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="flex gap-3 max-w-[80%]">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-teal-100 text-teal-600">
+                    <Bot className="h-4 w-4" />
+                  </AvatarFallback>
+                </Avatar>
+                <div className="rounded-lg p-3 bg-gray-100 text-gray-800">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                </div>
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+      </ScrollArea>
+
+      <div className="p-3 border-t flex gap-2">
+        <Input
+          placeholder="Ask me anything about your schedule..."
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          className="flex-1"
         />
-        <button
-          onClick={handleSendMessage}
-          className="px-4 py-2 bg-blue-500 text-white rounded-r hover:bg-blue-600 focus:outline-none"
-        >
-          Send
-        </button>
+        <Button onClick={handleSendMessage} disabled={isLoading || !input.trim()}>
+          <Send className="h-4 w-4" />
+        </Button>
       </div>
     </div>
-  );
-};
-
-export default ChatBar; 
+  )
+}

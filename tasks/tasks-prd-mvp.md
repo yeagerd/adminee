@@ -109,11 +109,12 @@
     - [x] 4.1.1 Initialize shadcn/ui and configure Tailwind CSS
   - [x] 4.2 Define mock data structures for calendar events and tasks.
   - [x] 4.3 Implement a mock data service/utility within the frontend to provide sample data.
-  - [ ] 4.4 Design the top-level frontend architecture, navigation flow (login -> onboarding -> dashboard -> settings).
+  - [x] 4.4 Design the top-level frontend architecture, navigation flow (login -> onboarding -> dashboard -> settings). // Revisit: Middleware not fully functional
+  - [x] 4.4.1 Fix `frontend/src/middleware.ts` to correctly handle authentication, protect routes, and redirect to `/dashboard` or `/onboarding` as per design. Investigate and resolve Clerk auth() typing issues.
   - [ ] 4.5 Design and implement the main "Today" dashboard layout, incorporating:
-    - [ ] 4.5.1 Placeholder/Mock-driven interactive calendar view (showing today's schedule).
-    - [ ] 4.5.2 Placeholder/Mock-driven task list component (allowing basic CRUD operations on mock tasks).
-    - [ ] 4.5.3 Add a chat bar to talk to an LLM model of your choosing, similar to ChatGPT, Claude, or Gemini's homepages. For now, we're just building the FE, but for context, assume that we'll be making calls through our backend so we can add the system prompt, context, authorize the LLM calls, enable tools, take actions, etc.
+    - [ ] 4.5.1 Include the Placeholder/Mock-driven interactive calendar view (showing today's schedule).
+    - [ ] 4.5.2 Include the Placeholder/Mock-driven task list component (allowing basic CRUD operations on mock tasks).
+    - [ ] 4.5.3 Include the chat bar to talk to an LLM model of your choosing, similar to ChatGPT, Claude, or Gemini's homepages. For now, we're just building the FE, but for context, assume that we'll be making calls through our backend so we can add the system prompt, context, authorize the LLM calls, enable tools, take actions, etc.
   - [ ] 4.6 Design and implement a basic settings page (e.g., for timezone, mock data toggles if applicable).  Consider also showing the timezone selector in the navigation pane so it's easy to modify for people who travel.
   - [ ] 4.7 Create a streamlined user onboarding flow (focused on MVP essentials).
   - [ ] 4.8 Basic mobile responsiveness for the MVP views.
