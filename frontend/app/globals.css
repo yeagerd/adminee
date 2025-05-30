@@ -2,26 +2,11 @@
 
 @custom-variant dark (&:is(.dark *));
 
-@tailwind base;
-@tailwind components;
+@import "tailwindcss/preflight";
 @tailwind utilities;
 
 /* Existing content will be removed to prevent conflicts during shadcn init */
 /* We can re-add custom global styles after shadcn is initialized */
-
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-}
-
-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-  background-color: #f0f0f0;
-  border-bottom: 1px solid #ddd;
-}
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
