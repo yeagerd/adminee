@@ -1,7 +1,7 @@
-from fastapi import FastAPI, HTTPException, Depends, Query
+from fastapi import FastAPI, HTTPException, Depends, Query, Body
 from fastapi.security import OAuth2PasswordBearer
 from typing import Optional, List, Type # Added Type for provider class type hint
-from .models import CalendarEventResponse
+from .models import CalendarEventResponse, CalendarEvent, ConflictDetectionResult, EventAttendanceDetail, UserWorkHours, WorkHoursConflictResult
 # Removed: from .services.graph_client import get_calendar_events
 from .providers.base import CalendarProvider
 from .providers.microsoft_graph import MicrosoftGraphProvider
@@ -13,9 +13,14 @@ from .exceptions import (
     GraphAPIRateLimitError, # We might need more generic versions for ProviderError
     GraphAPIClientError,
     GraphAPIServerError,
-    GraphAPIDecodingError
+    GraphAPIDecodingError,
+    GraphAPIError,
+    ProviderAuthError,
+    ProviderNotFoundError
 )
-from datetime import datetime
+from datetime import datetime, date, timedelta, time
+import pytz
+from pydantic import BaseModel # Added BaseModel import
 
 app = FastAPI()
 
@@ -126,3 +131,125 @@ async def root():
     return {"message": "Calendar Service is running"}
 
 # Placeholder for future Pydantic models and CRUD operations 
+
+def get_calendar_provider(provider_type: str, token: Optional[str] = None) -> CalendarProvider:
+    provider_class = PROVIDER_MAP.get(provider_type.lower())
+    if not provider_class:
+        raise ProviderNotFoundError(f"Calendar provider '{provider_type}' not found.")
+    if not token and provider_class.requires_auth(): # Check if token is needed
+        raise ProviderAuthError(f"Authentication token required for {provider_type} but not provided.")
+    return provider_class(graph_token=token) # Pass token if it exists
+
+@app.post("/events/", response_model=List[CalendarEvent])
+async def get_events_from_provider(
+    provider_type: str = Query(..., description="The type of calendar provider (e.g., 'microsoft_graph')"),
+    token: Optional[str] = Query(None, description="OAuth token for the provider"),
+    user_timezone: Optional[str] = Query("UTC", description="User's local IANA timezone. Defaults to UTC. Event times will be returned in this timezone if provider supports it, or converted."),
+    start_datetime_str: Optional[str] = Query(None, description="Start datetime in ISO format (YYYY-MM-DDTHH:MM:SS). Defaults to start of today in user_timezone."),
+    end_datetime_str: Optional[str] = Query(None, description="End datetime in ISO format (YYYY-MM-DDTHH:MM:SS). Defaults to end of today in user_timezone.")
+):
+    try:
+        provider = get_calendar_provider(provider_type, token)
+    except ProviderNotFoundError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except ProviderAuthError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+    try:
+        tz = pytz.timezone(user_timezone)
+    except pytz.exceptions.UnknownTimeZoneError:
+        raise HTTPException(status_code=400, detail=f"Invalid timezone: {user_timezone}")
+
+    now_user_tz = datetime.now(tz)
+
+    if start_datetime_str:
+        try:
+            start_dt_naive = datetime.fromisoformat(start_datetime_str)
+            start_dt = tz.localize(start_dt_naive, is_dst=None) # Assume naive input is in user_timezone
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid start_datetime format. Use YYYY-MM-DDTHH:MM:SS.")
+    else:
+        start_dt = now_user_tz.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    if end_datetime_str:
+        try:
+            end_dt_naive = datetime.fromisoformat(end_datetime_str)
+            end_dt = tz.localize(end_dt_naive, is_dst=None) # Assume naive input is in user_timezone
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid end_datetime format. Use YYYY-MM-DDTHH:MM:SS.")
+    else:
+        end_dt = now_user_tz.replace(hour=23, minute=59, second=59, microsecond=999999)
+    
+    if start_dt >= end_dt:
+        raise HTTPException(status_code=400, detail="End datetime must be after start datetime.")
+
+    try:
+        # Providers expect naive datetime objects representing the user's local time window
+        events = await provider.get_events(start_dt.replace(tzinfo=None), end_dt.replace(tzinfo=None), user_timezone)
+        return events
+    except InvalidInputError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except GraphAPIError as e: # Catching specific provider errors
+        raise HTTPException(status_code=e.status_code if hasattr(e, 'status_code') else 500, detail=str(e))
+    except Exception as e:
+        # Generic error catch for unexpected issues with the provider call
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve events from provider: {str(e)}")
+
+# --- Analysis Endpoints ---
+
+class EventListPayload(BaseModel):
+    events: List[CalendarEvent]
+
+class SingleEventPayload(BaseModel):
+    event: CalendarEvent
+
+class WorkHoursAnalysisPayload(BaseModel):
+    events: List[CalendarEvent]
+    work_hours: UserWorkHours
+    user_timezone: str # Removed Query, this will be part of the JSON body
+
+@app.post("/analyze/event-conflicts/", response_model=ConflictDetectionResult)
+async def analyze_event_conflicts_endpoint(payload: EventListPayload = Body(...)):
+    if not payload.events:
+        # Or return a result with 0 checked_event_count
+        return ConflictDetectionResult(conflicts=[], checked_event_count=0, conflict_pair_count=0)
+    try:
+        result = detect_event_conflicts(payload.events)
+        return result
+    except Exception as e:
+        # Log the exception details for debugging
+        print(f"Error in /analyze/event-conflicts: {e}")
+        raise HTTPException(status_code=500, detail=f"Error during conflict analysis: {str(e)}")
+
+@app.post("/analyze/event-attendee-status/", response_model=EventAttendanceDetail)
+async def analyze_event_attendee_status_endpoint(payload: SingleEventPayload = Body(...)):
+    try:
+        result = analyze_event_attendee_status(payload.event)
+        return result
+    except Exception as e:
+        print(f"Error in /analyze/event-attendee-status: {e}")
+        raise HTTPException(status_code=500, detail=f"Error during attendance analysis: {str(e)}")
+
+@app.post("/analyze/work-hours-conflicts/", response_model=WorkHoursConflictResult)
+async def analyze_work_hours_conflicts_endpoint(payload: WorkHoursAnalysisPayload = Body(...)):
+    if not payload.events:
+        return WorkHoursConflictResult(conflicts=[], checked_event_count=0)
+    try:
+        # Validate timezone from payload
+        try:
+            pytz.timezone(payload.user_timezone)
+        except pytz.exceptions.UnknownTimeZoneError:
+            raise HTTPException(status_code=400, detail=f"Invalid user_timezone in payload: {payload.user_timezone}")
+        
+        result = detect_work_hours_conflicts(payload.events, payload.work_hours, payload.user_timezone)
+        return result
+    except ValueError as e: # Catch specific errors like UnknownTimeZoneError from analyzer
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        print(f"Error in /analyze/work-hours-conflicts: {e}")
+        raise HTTPException(status_code=500, detail=f"Error during work hours conflict analysis: {str(e)}")
+
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"} 
