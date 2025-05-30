@@ -7,22 +7,30 @@ export interface Attendee {
 export interface CalendarEvent {
   id: string;
   title: string;
-  startTime: string; // ISO date-time string
-  endTime: string;   // ISO date-time string
-  description?: string;
-  location?: string;
-  attendees?: Attendee[];
-  color?: string; // e.g., hex code or Tailwind CSS color class name
+  startTime: Date;
+  endTime: Date;
   isAllDay?: boolean;
+  location?: string;
+  description?: string;
+  attendees?: string[]; // emails or names
+  color?: string; // Optional: for UI theming
 }
 
 export interface Task {
   id: string;
   title: string;
+  description?: string;
+  dueDate?: Date;
   completed: boolean;
-  dueDate?: string; // ISO date-time string
-  priority?: 'high' | 'medium' | 'low';
-  notes?: string;
-  source?: string; // e.g., 'user', 'ai', 'meeting:EVENT_ID'
-  relatedEventId?: string; // ID of a calendar event this task is related to
+  priority?: 'low' | 'medium' | 'high';
+  relatedEventId?: string; // Optional: link task to a calendar event
+  source?: string; // Add source property
+  notes?: string; // Add notes property
+}
+
+export interface UserSettings {
+  timezone: string;
+  showWeekends: boolean;
+  defaultView: 'day' | 'week' | 'month';
+  // Add other user-specific settings here
 } 

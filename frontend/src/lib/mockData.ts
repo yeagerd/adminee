@@ -1,24 +1,24 @@
-import type { CalendarEvent, Task, Attendee } from './types';
+import { CalendarEvent, Task, UserSettings, Attendee } from './types';
 
-// Helper to generate ISO strings for today at a specific time
-const todayAt = (hours: number, minutes: number = 0): string => {
+// Helper to generate Date objects for today at a specific time
+const todayAt = (hours: number, minutes: number = 0): Date => {
   const d = new Date();
   d.setHours(hours, minutes, 0, 0);
-  return d.toISOString();
+  return d;
 };
 
-const tomorrowAt = (hours: number, minutes: number = 0): string => {
+const tomorrowAt = (hours: number, minutes: number = 0): Date => {
   const d = new Date();
   d.setDate(d.getDate() + 1);
   d.setHours(hours, minutes, 0, 0);
-  return d.toISOString();
+  return d;
 }
 
-const yesterdayAt = (hours: number, minutes: number = 0): string => {
+const yesterdayAt = (hours: number, minutes: number = 0): Date => {
   const d = new Date();
   d.setDate(d.getDate() - 1);
   d.setHours(hours, minutes, 0, 0);
-  return d.toISOString();
+  return d;
 }
 
 export const mockAttendees: Attendee[] = [
@@ -35,7 +35,7 @@ export const mockCalendarEvents: CalendarEvent[] = [
     startTime: todayAt(9, 0),
     endTime: todayAt(9, 30),
     location: 'Virtual (Zoom)',
-    attendees: [mockAttendees[0], mockAttendees[1]],
+    attendees: [mockAttendees[0].name, mockAttendees[1].name],
     color: 'bg-blue-500',
   },
   {
@@ -44,7 +44,7 @@ export const mockCalendarEvents: CalendarEvent[] = [
     startTime: todayAt(11, 0),
     endTime: todayAt(12, 30),
     description: 'Detailed discussion about an upcoming project. Bring your thinking caps!',
-    attendees: mockAttendees,
+    attendees: mockAttendees.map(a => a.name),
     color: 'bg-green-500',
   },
   {
@@ -53,7 +53,7 @@ export const mockCalendarEvents: CalendarEvent[] = [
     startTime: todayAt(13, 0),
     endTime: todayAt(14, 0),
     location: 'The Fancy Restaurant downtown',
-    attendees: [mockAttendees[0]],
+    attendees: [mockAttendees[0].name],
     color: 'bg-purple-500',
   },
   {
@@ -61,14 +61,14 @@ export const mockCalendarEvents: CalendarEvent[] = [
     title: 'Team Retrospective',
     startTime: todayAt(15, 0),
     endTime: todayAt(16, 30),
-    attendees: mockAttendees.slice(0,3),
+    attendees: mockAttendees.slice(0,3).map(a => a.name),
     color: 'bg-yellow-500',
   },
   {
     id: 'event-5',
     title: 'All-Day Conference',
     startTime: todayAt(0,0),
-    endTime: tomorrowAt(0,0), // Spans to next day for all-day calc
+    endTime: tomorrowAt(0,0),
     isAllDay: true,
     location: 'Convention Center Hall A',
     color: 'bg-red-500',
@@ -134,7 +134,23 @@ export const mockTasks: Task[] = [
     id: 'task-6',
     title: 'Submit expense report for last month',
     completed: false,
-    dueDate: todayAt(23,59), // End of today
+    dueDate: todayAt(23,59),
     priority: 'low',
   },
-]; 
+];
+
+export const mockUserSettings: UserSettings = {
+  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  showWeekends: true,
+  defaultView: 'week',
+};
+
+// Utility function to get events for a specific day
+export const getEventsForDay = (date: Date): CalendarEvent[] => {
+  return mockCalendarEvents.filter(event => {
+    const eventDate = new Date(event.startTime);
+    return eventDate.getFullYear() === date.getFullYear() &&
+           eventDate.getMonth() === date.getMonth() &&
+           eventDate.getDate() === date.getDate();
+  });
+};
