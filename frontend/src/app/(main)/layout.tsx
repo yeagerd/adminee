@@ -4,6 +4,7 @@ import TimezoneSelector from '@/components/navigation/TimezoneSelector';
 // We'll need Clerk's UserButton and auth utilities later
 // import { UserButton, auth, currentUser } from '@clerk/nextjs';
 // import { redirect } from 'next/navigation';
+import '../globals.css'
 
 export default async function MainAppLayout({ children }: PropsWithChildren) {
   // const { userId } = auth();
