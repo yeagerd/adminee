@@ -1,1 +1,5 @@
-pinecone-client 
+pinecone-client
+fastapi
+uvicorn[standard]
+httpx
+pytz 
