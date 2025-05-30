@@ -1,5 +1,5 @@
 import { SignedIn, SignedOut } from "@clerk/nextjs";
-import OnboardingStatus from "../components/OnboardingStatus"; // Adjusted path
+import OnboardingStatus from "../components/components/OnboardingStatus"; // Adjusted path
 
 export const dynamic = 'force-dynamic';
 
