@@ -2,6 +2,15 @@ import { Sailboat, Plus, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
+import {
+  ClerkProvider,
+  SignInButton,
+  SignUpButton,
+  SignedIn,
+  SignedOut,
+  UserButton,
+} from '@clerk/nextjs'
+
 export default function Navbar() {
   return (
     <header className="bg-white border-b">
@@ -11,13 +20,13 @@ export default function Navbar() {
           <h1 className="text-xl font-semibold">Briefly</h1>
         </div>
         <div className="flex items-center gap-4">
-          <Avatar>
-            {/* <AvatarImage src="/placeholder.svg?height=40&width=40" alt="User" /> */}
-            <AvatarImage className="bg-gray-100">
-              <User className="h-4 w-4" />
-            </AvatarImage>
-            <AvatarFallback>JD</AvatarFallback>
-          </Avatar>
+            <SignedOut>
+              <SignInButton />
+              <SignUpButton />
+            </SignedOut>
+            <SignedIn>
+              <UserButton />
+            </SignedIn>
         </div>
       </div>
     </header>
