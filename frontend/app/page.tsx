@@ -1,21 +1,28 @@
-import { Calendar, Clock, CheckCircle2, MessageSquare, Plus, Sailboat } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import ChatInterface from "@/components/chat-interface"
-import ScheduleList from "@/components/schedule-list"
-import TaskList from "@/components/task-list"
-import Navbar from "@/components/navigation/navbar"
+import {
+  Calendar,
+  Clock,
+  CheckCircle2,
+  MessageSquare,
+  Plus,
+  Sailboat,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import ChatInterface from "@/components/chat-interface";
+import ScheduleList from "@/components/schedule-list";
+import TaskList from "@/components/task-list";
+import Navbar from "@/components/navbar";
 
 export default function Home() {
   // Get current date
-  const today = new Date()
+  const today = new Date();
   const formattedDate = today.toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",
     year: "numeric",
-  })
+  });
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -33,9 +40,15 @@ export default function Home() {
           {/* Schedule Section */}
           <Card className="lg:col-span-2">
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-medium flex items-center gap-2">
-                <Clock className="h-5 w-5 text-teal-600" />
-                Today's Schedule
+              <CardTitle className="text-lg font-medium flex items-center gap-2 justify-between">
+                <span className="flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-teal-600" />
+                  Today's Schedule
+                </span>
+                <Button variant="outline" size="sm">
+                  <Plus className="h-4 w-4 mr-1" />
+                  New Event
+                </Button>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -73,5 +86,5 @@ export default function Home() {
         </div>
       </div>
     </main>
-  )
+  );
 }
