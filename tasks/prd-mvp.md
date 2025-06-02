@@ -87,6 +87,12 @@ The core experience revolves around proactive communication and seamless integra
 
 ### 5.6 Web Application
 - **Calendar View:** Interactive calendar with meeting details
+  - Basics like meeting name, time, and location, and possibly a indicator if the meeting was organized by an internal or external person, and if there are external attendees.
+  - A clear indication if the user is the organizer (probably the presenter), so they can be aware about preparation they may need to do, including possibly sending an email or creating a TODO.
+  - A clear indication of who is and is not attending, possibly with separate lists for internal and external (the app may use email domains to figure this out).  
+  - Possibly some visibility into a list of people who haven't responded to the meeting invite, and a way to draft an email to inquire - eg. Inline “✉ Nudge” button beside unanswered invitees.
+  - Possibly some concept like gmail labels, for quick visibility?
+  - A link to notes, which the app might find via RAG on their Drive or OneNote, and which the user could remove and/or replace and/or create new
 - **Task Dashboard:** Meeting-specific task management
 - **Account Management:** User settings and subscription management
 - **Meeting Insights:** AI-generated meeting summaries and action items
