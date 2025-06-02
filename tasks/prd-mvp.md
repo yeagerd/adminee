@@ -55,6 +55,8 @@ The core experience revolves around proactive communication and seamless integra
 - **Topic Analysis:** Surface the main topic or agenda of each meeting
 - **Pending Invitations:** Highlight unaccepted meeting invitations requiring action
 - **Lunch Break Detection:** Alert when no lunch break is scheduled
+- **Internal vs. External** Based on whether the organizer has the same email domain
+- **Role detection** Identify if Presenting, Organizing, or Attending or Not Attending
 
 ### 5.2 Email Notifications System
 - **Daily Morning Email:** Comprehensive overview of the day's meetings
