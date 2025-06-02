@@ -38,8 +38,8 @@ interface Attendee {
 interface EventItemProps {
   id: string
   title: string
-  startTime: string
-  endTime: string
+  startTime: Date
+  endTime: Date
   location?: string
   isUserOrganizer: boolean
   organizerName: string
@@ -68,6 +68,15 @@ export function CalendarEventItem({
 }: EventItemProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [showAttendees, setShowAttendees] = useState(false)
+
+  // Date/time logic
+  const now = new Date()
+  let borderClass = "border-primary"
+  if (endTime < now) {
+    borderClass = "border-secondary"
+  } else if (startTime < now && now < endTime) {
+    borderClass = "border-[#800020]" // burgundy-red
+  }
 
   const internalAttendees = attendees.filter((a) => a.isInternal)
   const externalAttendees = attendees.filter((a) => !a.isInternal)
@@ -98,14 +107,14 @@ export function CalendarEventItem({
 
   return (
     <TooltipProvider>
-      <Card className="w-full border-l-4 border-primary hover:shadow-md transition-shadow">
+      <Card className={`w-full border-l-4 ${borderClass} hover:shadow-md transition-shadow`}>
         <CardHeader
-          className="pb-2 pt-3" // Adjust padding to reduce space between cell contents and border
-          onClick={() => setIsExpanded(!isExpanded)} // Toggle expand/collapse on click
+          className="pb-2 pt-3"
+          onClick={() => setIsExpanded(!isExpanded)}
         >
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-3"> {/* Increased spacing between title and time/location rows */}
+              <div className="flex items-center gap-2 mb-3">
                 <h3 className="font-semibold text-sm truncate">{title}</h3>
                 {isUserOrganizer && (
                   <Tooltip>
@@ -136,7 +145,7 @@ export function CalendarEventItem({
                 <div className="flex items-center gap-1">
                   <Clock className="h-3 w-3" />
                   <span>
-                    {startTime} - {endTime}
+                    {startTime.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} - {endTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </span>
                 </div>
                 {location && (
@@ -170,15 +179,6 @@ export function CalendarEventItem({
           <CollapsibleContent>
             <CardContent className="pt-0">
               <div className="space-y-4">
-                {/* Attendee Summary */}
-                <div className="flex items-center justify-between">
-                  {noResponseAttendees.length > 0 && (
-                    <Button variant="outline" size="sm" className="text-xs">
-                      <Mail className="h-3 w-3 mr-1" />
-                      Follow up ({noResponseAttendees.length})
-                    </Button>
-                  )}
-                </div>
 
                 {/* Attendees List - Always Show */}
                 <Collapsible open={true} onOpenChange={setShowAttendees}>
@@ -227,6 +227,16 @@ export function CalendarEventItem({
                           </div>
                         </div>
                       )}
+
+                      {/* Attendee Summary */}
+                      <div className="flex items-center justify-between">
+                      {noResponseAttendees.length > 0 && (
+                          <Button variant="outline" size="sm" className="text-xs">
+                          <Mail className="h-3 w-3 mr-1" />
+                          Follow up ({noResponseAttendees.length})
+                          </Button>
+                      )}
+                      </div>
                     </div>
                   </CollapsibleContent>
                 </Collapsible>
@@ -301,8 +311,8 @@ export function CalendarEventItem({
 export const sampleEvent1 = {
   id: "1",
   title: "Project Kickoff Meeting",
-  startTime: "2:00 PM",
-  endTime: "3:30 PM",
+  startTime: new Date("2025-06-02T14:00:00"),
+  endTime: new Date("2025-06-02T15:30:00"),
   location: "Conference Room A / Teams",
   isUserOrganizer: true,
   organizerName: "You",
@@ -352,8 +362,8 @@ export const sampleEvent1 = {
 export const sampleEvent2 = {
   id: "2",
   title: "Team Standup",
-  startTime: "3:30 PM",
-  endTime: "4:00 PM",
+  startTime: new Date("2025-06-02T15:30:00"),
+  endTime: new Date("2025-06-02T16:00:00"),
   location: "Zoom Meeting",
   isUserOrganizer: true,
   organizerName: "You",
@@ -389,8 +399,8 @@ export const sampleEvent2 = {
 export const sampleEvent3 = {
   id: "3",
   title: "Project Update",
-  startTime: "2:00 PM",
-  endTime: "3:30 PM",
+  startTime: new Date("2025-06-02T17:00:00"),
+  endTime: new Date("2025-06-02T17:30:00"),
   location: "Conference Room A / Teams",
   isUserOrganizer: false,
   organizerName: "Emma Davis",
