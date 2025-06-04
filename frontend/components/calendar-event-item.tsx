@@ -129,9 +129,12 @@ export function CalendarEventItem({
                   </Tooltip>
                 )}
                 {!isUserOrganizer && organizerIsInternal && (
-                  <Badge variant="secondary" className="text-xs">
-                    <Building2 className="h-3 w-3 mr-1" /> Internal Organizer
-                  </Badge>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Building2 className="h-4 w-4 text-primary" />
+                    </TooltipTrigger>
+                    <TooltipContent>Internal Organizer</TooltipContent>
+                  </Tooltip>
                 )}
                 {!isUserOrganizer && !organizerIsInternal && (
                   <Tooltip>
@@ -151,23 +154,23 @@ export function CalendarEventItem({
                 )}
               </div>
 
-              <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2">
-                <div className="flex items-center gap-1">
+              {/* Make time/location row a flex row to use full width */}
+              <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2 w-full">
+                <div className="flex items-center gap-1 min-w-0">
                   <Clock className="h-3 w-3" />
-                  <span>
-                    {startTime.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} - {endTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </span>
+                  <span className="truncate">{startTime.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} - {endTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                 </div>
                 {location && (
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 min-w-0 flex-1">
                     <MapPin className="h-3 w-3" />
-                    <span className="truncate max-w-64">{location}</span>
+                    <span className="truncate">{location}</span>
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="flex items-center gap-1 ml-2">
+            {/* Right-side: attendee count and expand button */}
+            <div className="flex items-center gap-1 ml-2 flex-shrink-0">
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Users className="h-3 w-3" />
                 <span>
@@ -447,11 +450,62 @@ export const sampleEvent3 = {
   ],
 }
 
+// Example usage with sample data
+export const sampleEvent4 = {
+  id: "3",
+  title: "Quarterly Business Review",
+  startTime: new Date("2025-06-02T09:00:00"),
+  endTime: new Date("2025-06-02T10:00:00"),
+  location: "Conference Room C / Teams",
+  isUserOrganizer: false,
+  organizerName: "Emma Davis",
+  organizerIsInternal: true,
+  hasExternalAttendees: false,
+  attendees: [
+    {
+      id: "1",
+      name: "Sarah Johnson",
+      email: "sarah.johnson@company.com",
+      status: "accepted" as const,
+      isInternal: true,
+    },
+    {
+      id: "2",
+      name: "Mike Chen",
+      email: "mike.chen@company.com",
+      status: "tentative" as const,
+      isInternal: true,
+    },
+    {
+      id: "3",
+      name: "Alex Rivera",
+      email: "alex@clientcompany.com",
+      status: "no-response" as const,
+      isInternal: false,
+    },
+    {
+      id: "4",
+      name: "Emma Davis",
+      email: "emma@partner.com",
+      status: "declined" as const,
+      isInternal: false,
+    },
+  ],
+  notesFound: [
+    {
+      title: "Q4 Strategy Draft",
+      source: "Drive" as const,
+      lastModified: "2 days ago",
+    },
+  ],
+}
+
 export const sampleEvents = [
-    sampleEvent1,
-    sampleEvent2,
-    sampleEvent3,
-    ]
+  sampleEvent1,
+  sampleEvent2,
+  sampleEvent3,
+  sampleEvent4,
+].sort((a, b) => a.startTime.getTime() - b.startTime.getTime())
 
 // Demo component showing the event item
 function Demo() {
