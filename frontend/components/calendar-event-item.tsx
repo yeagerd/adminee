@@ -24,6 +24,8 @@ import {
   CheckCircle2,
   XCircle,
   Clock3,
+  MessageCircleQuestion,
+  MailQuestion,
 } from "lucide-react"
 
 interface Attendee {
@@ -52,6 +54,8 @@ interface EventItemProps {
     lastModified: string
   }[]
 }
+
+const attendanceIconSize = "h-4 w-4"
 
 export function CalendarEventItem({
   id,
@@ -87,13 +91,13 @@ export function CalendarEventItem({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "accepted":
-        return <CheckCircle2 className="h-3 w-3 text-green-500" />
+        return <CheckCircle2 className={`${attendanceIconSize} text-green-500 text`} />
       case "declined":
-        return <XCircle className="h-3 w-3 text-red-500" />
+        return <XCircle className={`${attendanceIconSize} text-red-500 text`} />
       case "tentative":
-        return <Clock3 className="h-3 w-3 text-yellow-500" />
+        return <MailQuestion className={`${attendanceIconSize} text-yellow-500 text`} />
       default:
-        return <AlertCircle className="h-3 w-3 text-gray-400" />
+        return <AlertCircle className={`${attendanceIconSize} text-gray-400 text`} />
     }
   }
 
@@ -187,19 +191,15 @@ export function CalendarEventItem({
                       {/* Internal Attendees */}
                       {internalAttendees.length > 0 && (
                         <div>
-                          <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
-                            <Building2 className="h-3 w-3" />
+                          <h4 className="text-xs font-medium text-muted-foreground gap-2 mb-2 flex items-center gap-1">
+                            <Building2 className={attendanceIconSize} />
                             Internal ({internalAttendees.length})
                           </h4>
                           <div className="grid grid-cols-1 gap-1">
                             {internalAttendees.map((attendee) => (
                               <div key={attendee.id} className="flex items-center gap-2 text-xs">
-                                <Avatar className="h-5 w-5">
-                                  <AvatarImage src={attendee.avatar || "/placeholder.svg"} />
-                                  <AvatarFallback className="text-xs">{getInitials(attendee.name)}</AvatarFallback>
-                                </Avatar>
-                                <span className="flex-1 truncate">{attendee.name}</span>
                                 {getStatusIcon(attendee.status)}
+                                <span className="flex-1 truncate">{attendee.name}</span>
                               </div>
                             ))}
                           </div>
@@ -209,19 +209,15 @@ export function CalendarEventItem({
                       {/* External Attendees */}
                       {externalAttendees.length > 0 && (
                         <div>
-                          <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
-                            <Globe className="h-3 w-3" />
+                          <h4 className="text-xs font-medium text-muted-foreground gap-2 mb-2 flex items-center gap-1">
+                            <Globe className={attendanceIconSize} />
                             External ({externalAttendees.length})
                           </h4>
                           <div className="grid grid-cols-1 gap-1">
                             {externalAttendees.map((attendee) => (
                               <div key={attendee.id} className="flex items-center gap-2 text-xs">
-                                <Avatar className="h-5 w-5">
-                                  <AvatarImage src={attendee.avatar || "/placeholder.svg"} />
-                                  <AvatarFallback className="text-xs">{getInitials(attendee.name)}</AvatarFallback>
-                                </Avatar>
-                                <span className="flex-1 truncate">{attendee.name}</span>
                                 {getStatusIcon(attendee.status)}
+                                <span className="flex-1 truncate">{attendee.name}</span>
                               </div>
                             ))}
                           </div>
