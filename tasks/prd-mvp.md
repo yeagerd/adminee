@@ -11,20 +11,19 @@ Calendar Intelligence is a smart assistant that helps users manage their profess
 - Team managers and executives who need to stay organized
 
 ### 1.3 Key Value Propositions
-- Morning email summaries of the day's calendar
-- Real-time alerts for important calendar scenarios
-- Meeting preparation assistance with task management
-- AI-powered insights about meetings and attendees
-- Seamless integration with existing calendar systems
+- Provides clear schedule visibility, quickly enabling preparation prioritization
+- Assists with meeting (re)scheduling via AI email drafting
+- Expedites meeting preparation, eg. document discovery, drafting emails to request information
+- Meets users where they're at though direct integration with Google and Microsoft
 
 ## 2. Goals
-
-- Provide users with a daily morning email summary of their calendar events for the day
+- At a high level, strive to deliver the value of an administrative assistant
+- Provide clear schedule visibility for the day, highlighting things needing attention
 - Alert users to important calendar scenarios that require attention
 - Help users prepare for meetings by identifying required tasks and resources
 - Reduce time spent managing calendars and meeting preparation
 - Enable users to interact with their calendar data through natural language
-- Offer a seamless onboarding experience with Microsoft account integration
+- Offer a seamless onboarding experience with Google and Microsoft account integration
 - Generate subscription revenue through a freemium model
 
 ## 3. Core User Experience
