@@ -122,7 +122,7 @@ export function CalendarEventItem({
                 <h3 className="font-semibold text-sm truncate">{title}</h3>
                 {isUserOrganizer && (
                   <Tooltip>
-                    <TooltipTrigger>
+                    <TooltipTrigger asChild>
                       <Crown className="h-4 w-4 text-amber-500" />
                     </TooltipTrigger>
                     <TooltipContent>You're the organizer</TooltipContent>
@@ -134,14 +134,20 @@ export function CalendarEventItem({
                   </Badge>
                 )}
                 {!isUserOrganizer && !organizerIsInternal && (
-                  <Badge variant="outline" className="text-xs">
-                    <Globe className="h-3 w-3 mr-1" /> External Organizer
-                  </Badge>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Globe className="h-4 w-4 text-amber-500" />
+                    </TooltipTrigger>
+                    <TooltipContent>External Organizer</TooltipContent>
+                  </Tooltip>
                 )}
                 {organizerIsInternal && hasExternalAttendees && (
-                  <Badge variant="outline" className="text-xs">
-                    <Globe className="h-3 w-3 mr-1" /> External Attendees
-                  </Badge>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Globe className="h-4 w-4 text-black" />
+                    </TooltipTrigger>
+                    <TooltipContent>External Attendees</TooltipContent>
+                  </Tooltip>
                 )}
               </div>
 
