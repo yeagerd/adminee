@@ -30,15 +30,15 @@ export default function Home() {
       <Navbar />
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto px-4 py-6 w-full max-w-7xl">
         {/* Date Display */}
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-gray-800">{formattedDate}</h2>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="flex flex-col gap-6 w-full lg:flex-row">
           {/* Schedule Section */}
-          <Card className="lg:col-span-2">
+          <Card className="flex-1 min-w-0 w-full">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg font-medium flex items-center gap-2 justify-between">
                 <span className="flex items-center gap-2">
@@ -57,7 +57,7 @@ export default function Home() {
           </Card>
 
           {/* Tasks Section */}
-          <Card>
+          <Card className="flex-1 min-w-0 w-full">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg font-medium flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5 text-teal-600" />
