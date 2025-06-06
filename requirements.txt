@@ -1,7 +1,7 @@
 alembic
 fastapi
 httpx
-git+https://github.com/BerriAI/litellm.git
+litellm
 ormar
 pinecone-client
 pydantic
