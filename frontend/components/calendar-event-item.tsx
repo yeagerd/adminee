@@ -41,7 +41,6 @@ interface EventItemProps {
   endTime: Date
   location?: string
   isUserOrganizer: boolean
-  organizerName: string
   organizerIsInternal: boolean
   attendees: Attendee[]
   hasExternalAttendees: boolean
@@ -55,13 +54,11 @@ interface EventItemProps {
 const attendanceIconSize = "h-4 w-4"
 
 export function CalendarEventItem({
-  id,
   title,
   startTime,
   endTime,
   location,
   isUserOrganizer,
-  organizerName,
   organizerIsInternal,
   attendees,
   hasExternalAttendees,
@@ -82,7 +79,6 @@ export function CalendarEventItem({
   const externalAttendees = attendees.filter((a) => !a.isInternal)
   const noResponseAttendees = attendees.filter((a) => a.status === "no-response")
   const acceptedCount = attendees.filter((a) => a.status === "accepted").length
-  const declinedCount = attendees.filter((a) => a.status === "declined").length
 
   const getStatusIcon = (status: string) => {
     switch (status) {
