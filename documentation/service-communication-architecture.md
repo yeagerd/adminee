@@ -8,7 +8,7 @@ This document outlines the communication patterns between the various components
 -   These Next.js API routes act as an **API Gateway/Proxy**:
     -   They receive requests from the frontend.
     -   They handle authentication/authorization (using NextAuth.js/Clerk session information).
-    -   They forward requests to the appropriate backend microservices (`calendar-service`, `email-service`, `auth-service`).
+    -   They forward requests to the appropriate backend microservices (`office-service`, `chat-service`, `user-service`).
 -   **Communication Protocol:** HTTPS (JSON for data exchange).
 -   **Benefits:**
     -   Simplifies frontend logic (single backend endpoint).
@@ -17,26 +17,25 @@ This document outlines the communication patterns between the various components
 
 ## 2. Inter-Service Communication (Backend Microservices)
 
--   Backend microservices (`services/calendar-service/`, `services/email-service/`, `services/auth-service/`) communicate with each other via direct **HTTP/REST API calls**.
--   **Service Discovery:** Docker Compose internal DNS (e.g., `calendar-service` calls `auth-service` at `http://auth-service:<port>`).
+-   Backend microservices (`services/office-service/`, `services/email-service/`, `services/user-service/`) communicate with each other via direct **HTTP/REST API calls**.
+-   **Service Discovery:** Docker Compose internal DNS (e.g., `office-service` calls `user-service` at `http://user-service:<port>`).
 -   All services expose well-defined RESTful APIs for internal communication.
 -   **Communication Protocol:** HTTP (JSON for data exchange).
--   **Example:** `calendar-service` might fetch user details from `auth-service`.
+-   **Example:** `office-service` might fetch user details from `user-service`.
 
 ## 3. Service to Database Communication
 
 -   Backend services requiring persistent storage connect directly to the **PostgreSQL database** (the `db` service in `docker-compose.yml`).
--   **Node.js services** (`email-service`, `auth-service`) use Prisma as their ORM.
--   **Python services** (`calendar-service`) will use a suitable Python ORM (e.g., SQLAlchemy) or a direct database driver (e.g., `psycopg2`).
+-   **Python services** (`user-service`, `chat-service`, `office-service`) will use a suitable Python ORM (e.g., SQLAlchemy) or a direct database driver (e.g., `psycopg2`).
 -   **Communication Protocol:** TCP/IP (SQL).
 
 ## 4. Service to External Services
 
 -   **Pinecone Vector Database:**
-    -   The `calendar-service` (RAG pipeline) and `services/vector-db/indexing_service.py` communicate directly with Pinecone.
+    -   The `office-service` (RAG pipeline) and `services/vector-db/indexing_service.py` communicate directly with Pinecone.
     -   **Protocol:** HTTPS (Pinecone SDK).
 -   **Microsoft Graph API:**
-    -   The `auth-service` and potentially `calendar-service` interact with Microsoft Graph API.
+    -   The `user-service` and potentially `office-service` interact with Microsoft Graph API.
     -   **Protocol:** HTTPS (Microsoft Graph SDK / REST API).
     -   Secure token management is critical.
 -   **Clerk Authentication:**
@@ -114,38 +113,38 @@ flowchart TD
 
 ## 8. User Configuration and Settings Management
 
--   The **`auth-service`** is the central authority for managing user-specific configurations and preferences.
--   **Storage:** These settings are stored in the `User` model within the PostgreSQL database, managed by `auth-service` using Prisma.
-    -   `calendarProvider`: Stores the user's primary connected calendar service (e.g., "microsoft", "google"). This helps other services, like `calendar-service`, know which provider-specific logic to use.
+-   The **`user-service`** is the central authority for managing user-specific configurations and preferences.
+-   **Storage:** These settings are stored in the `User` model within the PostgreSQL database, managed by `user-service` using Prisma.
+    -   `calendarProvider`: Stores the user's primary connected calendar service (e.g., "microsoft", "google"). This helps other services, like `office-service`, know which provider-specific logic to use.
     -   `userSettings`: A JSONB field storing various user preferences, including:
-        -   `timezone`: The user's preferred IANA timezone ID (e.g., "America/New_York"). This is crucial for `calendar-service` to fetch events for the user's actual local day and for `email-service` to schedule notifications appropriately.
+        -   `timezone`: The user's preferred IANA timezone ID (e.g., "America/New_York"). This is crucial for `office-service` to fetch events for the user's actual local day and for `email-service` to schedule notifications appropriately.
         -   `morningEmailTime`: The user's preferred time to receive daily summary emails (e.g., "08:00" in their local timezone).
         -   Other future preferences as needed.
--   **API Access:** `auth-service` will provide secure API endpoints (e.g., extending `GET /users/profile` and `PUT /users/profile`) for:
+-   **API Access:** `user-service` will provide secure API endpoints (e.g., extending `GET /users/profile` and `PUT /users/profile`) for:
     -   The frontend to allow users to view and update their settings.
-    -   Other backend services (like `calendar-service` and `email-service`) to fetch these settings when processing user-specific tasks. Services will typically use the Clerk User ID (passed from the API Gateway) to identify the user when querying `auth-service`.
+    -   Other backend services (like `office-service` and `email-service`) to fetch these settings when processing user-specific tasks. Services will typically use the Clerk User ID (passed from the API Gateway) to identify the user when querying `user-service`.
 
-## 9. Multi-Calendar Provider Support (`calendar-service`)
+## 9. Multi-Calendar Provider Support (`office-service`)
 
-To support various calendar providers (e.g., Microsoft Outlook, Google Calendar), the `calendar-service` will implement an abstraction layer:
+To support various calendar providers (e.g., Microsoft Outlook, Google Calendar), the `office-service` will implement an abstraction layer:
 
 -   **Provider Interface:** An abstract base class (ABC) or interface (e.g., `CalendarProvider`) will define a common set of operations, such as `get_events(token, start_datetime, end_datetime, user_timezone)`.
 -   **Concrete Implementations:** Specific classes will implement this interface for each supported provider:
     -   `MicrosoftGraphProvider`: Handles interactions with the Microsoft Graph API.
     -   `GoogleCalendarProvider` (Future): Handles interactions with the Google Calendar API.
--   **Dispatch Logic:** When `calendar-service` receives a request (e.g., to fetch events):
+-   **Dispatch Logic:** When `office-service` receives a request (e.g., to fetch events):
     1.  **Token & Configuration Retrieval:** The access token for the specific calendar provider is expected to be passed in the request (typically sourced from Clerk by the frontend/API gateway).
-    2.  The `calendar-service` API will accept `provider_type: str` (e.g., "microsoft", "google") and `user_timezone: str` as parameters. 
-        -   *(Long-term evolution: `provider_type` and `user_timezone` could be fetched from `auth-service` by `calendar-service` itself, using the authenticated user's ID. For initial implementation, passing them as parameters is simpler.)*
+    2.  The `office-service` API will accept `provider_type: str` (e.g., "microsoft", "google") and `user_timezone: str` as parameters. 
+        -   *(Long-term evolution: `provider_type` and `user_timezone` could be fetched from `user-service` by `office-service` itself, using the authenticated user's ID. For initial implementation, passing them as parameters is simpler.)*
     3.  It instantiates the appropriate provider implementation (e.g., `MicrosoftGraphProvider`) based on the `provider_type`.
     4.  It calls the method (e.g., `get_events`) on the instantiated provider, passing the token, date/time parameters, and the `user_timezone`.
--   **Benefits:** This approach decouples the core logic of `calendar-service` from the specifics of each calendar API, making it easier to add new providers or update existing ones.
+-   **Benefits:** This approach decouples the core logic of `office-service` from the specifics of each calendar API, making it easier to add new providers or update existing ones.
 
 ## 10. Cloud-Hosted PostgreSQL (e.g., Neon, AWS RDS)
 
 Our application is designed to work with standard PostgreSQL databases. Switching to a cloud-hosted PostgreSQL provider like Neon, Supabase, or AWS RDS is primarily a configuration change.
 
--   **`DATABASE_URL` Environment Variable:** All services that connect to PostgreSQL (e.g., `auth-service`, `calendar-service`, `email-service`) are configured via the `DATABASE_URL` environment variable.
+-   **`DATABASE_URL` Environment Variable:** All services that connect to PostgreSQL (e.g., `user-service`, `office-service`, `email-service`) are configured via the `DATABASE_URL` environment variable.
     -   Prisma (used in Node.js services) natively supports this.
     -   Python services will also be configured to use this standard environment variable.
 -   **Local Development:** In `docker-compose.yml`, the `db` service provides a local PostgreSQL instance, and the `DATABASE_URL` for other services points to this (e.g., `postgresql://user:password@db:5432/mydatabase`).
