@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible"
 import { Separator } from "@/components/ui/separator"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   Clock,
@@ -23,8 +22,6 @@ import {
   AlertCircle,
   CheckCircle2,
   XCircle,
-  Clock3,
-  MessageCircleQuestion,
   MailQuestion,
 } from "lucide-react"
 
@@ -44,7 +41,6 @@ interface EventItemProps {
   endTime: Date
   location?: string
   isUserOrganizer: boolean
-  organizerName: string
   organizerIsInternal: boolean
   attendees: Attendee[]
   hasExternalAttendees: boolean
@@ -58,20 +54,17 @@ interface EventItemProps {
 const attendanceIconSize = "h-4 w-4"
 
 export function CalendarEventItem({
-  id,
   title,
   startTime,
   endTime,
   location,
   isUserOrganizer,
-  organizerName,
   organizerIsInternal,
   attendees,
   hasExternalAttendees,
   notesFound = [],
 }: EventItemProps) {
   const [isExpanded, setIsExpanded] = useState(false)
-  const [showAttendees, setShowAttendees] = useState(false)
 
   // Date/time logic
   const now = new Date()
@@ -86,7 +79,6 @@ export function CalendarEventItem({
   const externalAttendees = attendees.filter((a) => !a.isInternal)
   const noResponseAttendees = attendees.filter((a) => a.status === "no-response")
   const acceptedCount = attendees.filter((a) => a.status === "accepted").length
-  const declinedCount = attendees.filter((a) => a.status === "declined").length
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -99,14 +91,6 @@ export function CalendarEventItem({
       default:
         return <AlertCircle className={`${attendanceIconSize} text-gray-400 text`} />
     }
-  }
-
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
   }
 
   return (
@@ -194,7 +178,7 @@ export function CalendarEventItem({
               <div className="space-y-4">
 
                 {/* Attendees List - Always Show */}
-                <Collapsible open={true} onOpenChange={setShowAttendees}>
+                <Collapsible open={true} onOpenChange={() => {}}>
                   <CollapsibleContent>
                     <div className="grid grid-cols-2 gap-4">
                       {/* Internal Attendees */}
@@ -452,7 +436,7 @@ export const sampleEvent3 = {
 
 // Example usage with sample data
 export const sampleEvent4 = {
-  id: "3",
+  id: "4",
   title: "Quarterly Business Review",
   startTime: new Date("2025-06-02T09:00:00"),
   endTime: new Date("2025-06-02T10:00:00"),
@@ -506,13 +490,3 @@ export const sampleEvents = [
   sampleEvent3,
   sampleEvent4,
 ].sort((a, b) => a.startTime.getTime() - b.startTime.getTime())
-
-// Demo component showing the event item
-function Demo() {
-  return (
-    <div className="p-6 max-w-md mx-auto bg-gray-50 min-h-screen">
-      <h2 className="text-lg font-semibold mb-4">Today's Events</h2>
-      <CalendarEventItem {...sampleEvent1} />
-    </div>
-  )
-}
