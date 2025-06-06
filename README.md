@@ -137,6 +137,24 @@ Key components include:
 
 -   *(Specific deployment scripts and platform guides will be added as the target deployment environment is finalized.)*
 
+## Code Quality and Linting (tox)
+
+-   We use [tox](https://tox.readthedocs.io/) to automate code formatting, linting, and type checking for all Python backend services under `services/`.
+-   Tox will run [black](https://black.readthedocs.io/), [isort](https://pycqa.github.io/isort/), [ruff](https://docs.astral.sh/ruff/), and [mypy](https://mypy-lang.org/) on all Python code in the `services/` directory.
+
+#### To run all checks:
+
+```bash
+# From the project root
+tox
+```
+
+-   This will run formatting checks, linting, and type checking for all Python services.
+-   You can also run a specific environment, e.g.:
+    -   `tox -e format` (run black and isort checks)
+    -   `tox -e lint` (run ruff linter)
+    -   `tox -e typecheck` (run mypy type checks)
+
 ## Contributing
 
 (To be added: Guidelines for contributing, code style, pull request process, etc.)
