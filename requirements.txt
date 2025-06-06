@@ -1,5 +1,11 @@
-pinecone-client
+alembic
 fastapi
-uvicorn[standard]
 httpx
-pytz 
+langchain
+pinecone-client
+pydantic
+pytest
+python-dotenv
+pytz
+sqlalchemy
+uvicorn[standard]

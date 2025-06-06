@@ -1,38 +1,23 @@
 # Dockerfile for chat Service (Python/FastAPI)
 
 # Use an official Python runtime as a parent image
-FROM python:3.11-slim-bullseye
-
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+FROM python:3.11-slim
 
 # Set work directory
-WORKDIR /app/chat-service
-
-# Install system dependencies (if any)
-# RUN apt-get update && apt-get install -y --no-install-recommends \
-#    package-name \
-#    && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
 
 # Install Python dependencies
 # First, copy only the requirements file to leverage Docker cache
-COPY requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
-
-# If the chat service has its own requirements, create and use that:
-# COPY services/chat-service/requirements.txt /tmp/chat-requirements.txt
-# RUN pip install --no-cache-dir -r /tmp/chat-requirements.txt
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application code for the chat service
 # Assuming the chat service code is in services/chat-service/
-COPY services/chat-service/ /app/chat-service/
+COPY services/chat-service/ ./services/chat-service/
 
 # Expose the port the app runs on (e.g., 8000 for FastAPI)
 EXPOSE 8000
 
 # Define the command to run the application
 # This assumes your FastAPI app is in main.py and the app object is named "app"
-# CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-# For now, a placeholder command as main.py doesn't exist yet
-CMD ["python", "-c", "print('chat service placeholder. main.py with FastAPI app (uvicorn main:app --host 0.0.0.0 --port 8000) needed.')"] 
+CMD ["uvicorn", "services.chat-service.main:app", "--host", "0.0.0.0", "--port", "8000"]
