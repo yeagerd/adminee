@@ -25,10 +25,13 @@
 
 ## Tasks
 
-- [ ] 1. Set up chat-service project structure and dependencies
-  - [ ] 1.1 Create the `services/chat-service/` directory and initial files.
-  - [ ] 1.2 Pip install FastAPI/Flask, LangChain, SQLAlchemy, and other dependencies.
-  - [ ] 1.3 Add needed API keys to `.env.example`
+- [x] 1. Set up chat-service project structure and dependencies
+  - [x] 1.1 Create the `services/chat-service/` directory and initial files.
+  - [x] 1.2 Pip install FastAPI/Flask, LangChain, SQLAlchemy, and other dependencies.
+  - [x] 1.3 Add needed API keys to `.env.example`
+  - [x] 1.4 Add `Dockerfile` for containerization.
+  - [x] 1.5 Add `requirements.txt` for dependencies.
+  - [x] 1.6 Add `.env.example` for environment variables.
 
 - [ ] 2. Implement API endpoints for chat, thread management, and feedback
   - [ ] 2.1 Implement `/chat` POST endpoint for chat interaction.
