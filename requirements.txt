@@ -1,13 +1,13 @@
 alembic
 fastapi
 httpx
-llmlite[openai]
+git+https://github.com/BerriAI/litellm.git
+ormar
 pinecone-client
 pydantic
 pytest
 python-dotenv
 pytz
 requests
-sqlalchemy
 tox
 uvicorn[standard]
