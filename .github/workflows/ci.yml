@@ -76,6 +76,10 @@ jobs:
       working-directory: ./frontend
       run: npm run build
 
+    - name: Copy .env.example to .env
+      working-directory: ./frontend
+      run: cp .env.example .env
+
   docker-build:
     name: Docker Build Test
     runs-on: ubuntu-latest
