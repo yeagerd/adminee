@@ -1,5 +1,5 @@
 import pytest
-from ..llm_tools import CalendarTool
+from services.chat_service.llm_tools import CalendarTool
 import requests
 
 class MockResponse:
