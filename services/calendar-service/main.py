@@ -1,34 +1,28 @@
-from fastapi import FastAPI, HTTPException, Depends, Query, Body
-from fastapi.security import OAuth2PasswordBearer
-from typing import Optional, List, Type  # Added Type for provider class type hint
-from .models import (
-    CalendarEventResponse,
-    CalendarEvent,
-    ConflictDetectionResult,
-    EventAttendanceDetail,
-    UserWorkHours,
-    WorkHoursConflictResult,
-)
+from datetime import date, datetime, time, timedelta
+from typing import (List, Optional,  # Added Type for provider class type hint
+                    Type)
 
+import pytz
+from fastapi import Body, Depends, FastAPI, HTTPException, Query
+from fastapi.security import OAuth2PasswordBearer
+from pydantic import BaseModel  # Added BaseModel import
+
+from .exceptions import \
+    GraphAPIAuthError  # These GraphAPI... errors are specific to MS Graph.
+from .exceptions import \
+    GraphAPIRateLimitError  # We might need more generic versions for ProviderError
+from .exceptions import \
+    GraphClientError  # This might become ProviderError later if we generalize exceptions
+from .exceptions import (GraphAPIClientError, GraphAPIDecodingError,
+                         GraphAPIError, GraphAPIServerError, InvalidInputError,
+                         ProviderAuthError, ProviderNotFoundError)
+from .models import (CalendarEvent, CalendarEventResponse,
+                     ConflictDetectionResult, EventAttendanceDetail,
+                     UserWorkHours, WorkHoursConflictResult)
 # Removed: from .services.graph_client import get_calendar_events
 from .providers.base import CalendarProvider
-from .providers.microsoft_graph import MicrosoftGraphProvider
 from .providers.google_calendar import GoogleCalendarProvider  # Placeholder
-from .exceptions import (
-    GraphClientError,  # This might become ProviderError later if we generalize exceptions
-    InvalidInputError,
-    GraphAPIAuthError,  # These GraphAPI... errors are specific to MS Graph.
-    GraphAPIRateLimitError,  # We might need more generic versions for ProviderError
-    GraphAPIClientError,
-    GraphAPIServerError,
-    GraphAPIDecodingError,
-    GraphAPIError,
-    ProviderAuthError,
-    ProviderNotFoundError,
-)
-from datetime import datetime, date, timedelta, time
-import pytz
-from pydantic import BaseModel  # Added BaseModel import
+from .providers.microsoft_graph import MicrosoftGraphProvider
 
 app = FastAPI()
 

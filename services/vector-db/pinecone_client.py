@@ -1,4 +1,5 @@
 import os
+
 from pinecone import Pinecone, ServerlessSpec
 
 # TODO: Add error handling and logging

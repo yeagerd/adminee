@@ -1,13 +1,11 @@
 from datetime import datetime
-from typing import (
-    List,
-)  # Keep for consistency, though CalendarEventResponse handles list internally
+from typing import \
+    List  # Keep for consistency, though CalendarEventResponse handles list internally
 
-from .base import CalendarProvider
+from ..exceptions import \
+    InvalidInputError  # Potentially other provider-specific exceptions later
 from ..models import CalendarEventResponse
-from ..exceptions import (
-    InvalidInputError,
-)  # Potentially other provider-specific exceptions later
+from .base import CalendarProvider
 
 
 class GoogleCalendarProvider(CalendarProvider):

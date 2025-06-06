@@ -1,22 +1,17 @@
-import httpx
-import pytz
 import json
 from datetime import datetime
-from typing import (
-    List,
-)  # Keep List if CalendarEventResponse uses it, though not directly here
+from typing import \
+    List  # Keep List if CalendarEventResponse uses it, though not directly here
 
-from .base import CalendarProvider
+import httpx
+import pytz
+
+from ..exceptions import (GraphAPIAuthError, GraphAPIClientError,
+                          GraphAPIDecodingError, GraphAPIRateLimitError,
+                          GraphAPIServerError, GraphClientError,
+                          InvalidInputError)
 from ..models import CalendarEventResponse
-from ..exceptions import (
-    GraphClientError,
-    InvalidInputError,
-    GraphAPIAuthError,
-    GraphAPIRateLimitError,
-    GraphAPIClientError,
-    GraphAPIServerError,
-    GraphAPIDecodingError,
-)
+from .base import CalendarProvider
 
 GRAPH_API_ENDPOINT = "https://graph.microsoft.com/v1.0"  # Specific to Microsoft Graph
 

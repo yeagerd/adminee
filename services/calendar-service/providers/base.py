@@ -1,12 +1,11 @@
 from abc import ABC, abstractmethod
-from typing import List
 from datetime import datetime
-from ..models import (
-    CalendarEventResponse,
-)  # Assuming models.py is in the parent directory of providers/
-from ..exceptions import (
-    GraphClientError,
-)  # Or a more generic ProviderError if we want to broaden
+from typing import List
+
+from ..exceptions import \
+    GraphClientError  # Or a more generic ProviderError if we want to broaden
+from ..models import \
+    CalendarEventResponse  # Assuming models.py is in the parent directory of providers/
 
 
 class CalendarProvider(ABC):
