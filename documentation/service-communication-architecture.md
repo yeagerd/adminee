@@ -26,7 +26,7 @@ This document outlines the communication patterns between the various components
 ## 3. Service to Database Communication
 
 -   Backend services requiring persistent storage connect directly to the **PostgreSQL database** (the `db` service in `docker-compose.yml`).
--   **Python services** (`user-service`, `chat-service`, `office-service`) will use a suitable Python ORM (e.g., SQLAlchemy) or a direct database driver (e.g., `psycopg2`).
+-   **Python services** (`user-service`, `chat-service`, `office-service`) will use [Ormar](https://collerek.github.io/ormar/) as the ORM for all database models and operations, and [Alembic](https://alembic.sqlalchemy.org/) for schema migrations and management.
 -   **Communication Protocol:** TCP/IP (SQL).
 
 ## 4. Service to External Services
@@ -154,4 +154,4 @@ Our application is designed to work with standard PostgreSQL databases. Switchin
     -   The `DATABASE_URL` for your deployed application services would then be updated to point to the connection string provided by your cloud PostgreSQL provider.
     -   This connection string typically includes the username, password, host, port, and database name for the cloud-hosted instance.
 -   **No Code Changes Required:** Due to the abstraction provided by `DATABASE_URL` and standard database connectors/ORMs, no code changes are generally needed in the application services to switch from a local Dockerized PostgreSQL to a cloud-hosted one.
--   **SSL/TLS:** Ensure that the `DATABASE_URL` includes appropriate parameters for SSL/TLS connections if required by your cloud provider (e.g., `?sslmode=require`). Prisma and most database drivers support this. 
+-   **SSL/TLS:** Ensure that the `DATABASE_URL` includes appropriate parameters for SSL/TLS connections if required by your cloud provider (e.g., `?sslmode=require`). Prisma and most database drivers support this.

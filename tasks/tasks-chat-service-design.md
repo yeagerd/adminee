@@ -20,6 +20,8 @@
 
 ### Notes
 
+- Use [Ormar](https://collerek.github.io/ormar/) as the ORM for all database models and operations.
+- Use [Alembic](https://alembic.sqlalchemy.org/) for schema migrations and management.
 - Unit tests should typically be placed alongside the code files they are testing (e.g., `main.py` and `test_main.py` in the same directory).
 - Use `pytest` or `tox` to run tests. Running without a path executes all tests found by the test runner configuration.
 
@@ -33,21 +35,21 @@
   - [x] 1.5 Add `requirements.txt` for dependencies.
   - [x] 1.6 Add `.env.example` for environment variables.
 
-- [ ] 2. Implement API endpoints for chat, thread management, and feedback
-  - [ ] 2.1 Implement `/chat` POST endpoint for chat interaction.
-  - [ ] 2.2 Implement `/threads` GET endpoint to list threads for a user.
-  - [ ] 2.3 Implement `/threads/{thread_id}/history` GET endpoint for thread history.
-  - [ ] 2.4 Implement `/feedback` POST endpoint for thumbs up/down feedback.
-  - [ ] 2.5 Add request validation and response schemas using Pydantic.
+- [x] 2. Implement API endpoints for chat, thread management, and feedback
+  - [x] 2.1 Implement `/chat` POST endpoint for chat interaction.
+  - [x] 2.2 Implement `/threads` GET endpoint to list threads for a user.
+  - [x] 2.3 Implement `/threads/{thread_id}/history` GET endpoint for thread history.
+  - [x] 2.4 Implement `/feedback` POST endpoint for thumbs up/down feedback.
+  - [x] 2.5 Add request validation and response schemas using Pydantic.
 
 - [ ] 3. Implement LangChain integration
-  - [ ] 3.1 Implement calendar tool
-    - [ ] 3.1.1 Define a LangChain tool for retrieving calendar events from office-service via REST API.
-    - [ ] 3.1.2 Support parameters: user token, date range, user timezone, provider type.
-    - [ ] 3.1.3 Handle authentication by forwarding the user token.
-    - [ ] 3.1.4 Parse and validate office-service API responses; handle errors and timeouts.
-    - [ ] 3.1.5 Return results in a format suitable for LLM context and tool command schema.
-    - [ ] 3.1.6 Add unit tests for calendar tool, including error cases and edge cases.
+  - [x] 3.1 Implement calendar tool
+    - [x] 3.1.1 Define a LangChain tool for retrieving calendar events from office-service via REST API.
+    - [x] 3.1.2 Support parameters: user token, date range, user timezone, provider type.
+    - [x] 3.1.3 Handle authentication by forwarding the user token.
+    - [x] 3.1.4 Parse and validate office-service API responses; handle errors and timeouts.
+    - [x] 3.1.5 Return results in a format suitable for LLM context and tool command schema.
+    - [x] 3.1.6 Add unit tests for calendar tool, including error cases and edge cases.
   - [ ] 3.2 Implement email tool
     - [ ] 3.2.1 Define a LangChain tool for retrieving emails from office-service via REST API.
     - [ ] 3.2.2 Support parameters: user token, date range, filters (e.g., unread, folder).

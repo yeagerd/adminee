@@ -93,10 +93,14 @@ The `chat-service` is a backend microservice responsible for providing conversat
 
 ---
 
+## 5. ORM and Schema Management
+
+- Use [Ormar](https://collerek.github.io/ormar/) as the ORM for all database models and operations.
+- Use [Alembic](https://alembic.sqlalchemy.org/) for schema migrations and management.
 
 ---
 
-## 5. Data Models (MVP)
+## 6. Data Models (MVP)
 
 For the MVP, the following PostgreSQL tables are required:
 - **threads**: `id` (PK), `user_id`, `title`, `created_at`, `updated_at`
@@ -108,7 +112,7 @@ These schemas can be iterated on, but are sufficient for MVP chat, history, feed
 
 ---
 
-## 6. Tool Command Schema (MVP)
+## 7. Tool Command Schema (MVP)
 
 Tool commands returned to the frontend will use a standardized JSON format:
 ```json
@@ -125,7 +129,7 @@ Tool commands returned to the frontend will use a standardized JSON format:
 
 ---
 
-## 7. Error Handling (MVP)
+## 8. Error Handling (MVP)
 
 - All API endpoints return errors in a consistent JSON format:
 ```json
@@ -142,7 +146,7 @@ Tool commands returned to the frontend will use a standardized JSON format:
 
 ---
 
-## 8. Authentication/Authorization (MVP)
+## 9. Authentication/Authorization (MVP)
 
 - All endpoints require a valid user token (e.g., Clerk JWT) passed via the API proxy in the `Authorization` header.
 - The service validates the token using Clerk's backend SDK or via a shared secret/public key.
@@ -151,7 +155,7 @@ Tool commands returned to the frontend will use a standardized JSON format:
 
 ---
 
-## 9. LLM Provider Abstraction (MVP)
+## 10. LLM Provider Abstraction (MVP)
 
 - For MVP, a single LLM provider/model (e.g., OpenAI GPT-4) is used, configured via environment variables.
 - The codebase is structured to allow easy addition of other providers/models (e.g., via a provider registry or factory pattern).
@@ -159,7 +163,7 @@ Tool commands returned to the frontend will use a standardized JSON format:
 
 ---
 
-## 10. Testing & Observability (MVP)
+## 11. Testing & Observability (MVP)
 
 - **Testing:**
     - Unit tests for API endpoints, history manager, and tool integrations.
@@ -172,7 +176,7 @@ Tool commands returned to the frontend will use a standardized JSON format:
 
 ---
 
-## 11. Areas of Concern / Open Questions
+## 12. Areas of Concern / Open Questions
 - **Concurrency:** Ensure thread safety and data consistency when handling simultaneous requests to the same thread (e.g., locking, race conditions in message and draft management).
 - **Rate Limiting:** Implement per-user rate limiting to prevent abuse of LLM resources and API endpoints.
 - **Error Handling:** Maintain robust error reporting and logging for failed tool calls, LLM errors, and integration failures with `office-service`.
@@ -187,7 +191,7 @@ Tool commands returned to the frontend will use a standardized JSON format:
 
 ---
 
-## 12. Future Enhancements
+## 13. Future Enhancements
 - **Advanced Feedback:** Support for freeform feedback, message-level ratings, or reporting issues.
 - **Asynchronous Tool Execution:** For long-running tool actions, support async workflows.
 - **Rich Context Sources:** Integrate additional context sources (e.g., CRM, external docs).
@@ -197,7 +201,7 @@ Tool commands returned to the frontend will use a standardized JSON format:
 
 ---
 
-## 13. References
+## 14. References
 - [OpenHands Context Condensation](https://www.all-hands.dev/blog/openhands-context-condensensation-for-more-efficient-ai-agents)
 - [LangChain Documentation](https://python.langchain.com/)
 
