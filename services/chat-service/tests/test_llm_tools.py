@@ -1,5 +1,5 @@
 import pytest
-from services.chat_service.langchain_tools import CalendarTool
+from ..llm_tools import CalendarTool
 import requests
 
 class MockResponse:
@@ -17,7 +17,7 @@ def test_calendar_tool_success(monkeypatch):
         return MockResponse({"events": [{"id": "1", "title": "Meeting"}]}, 200)
     monkeypatch.setattr(requests, "get", mock_get)
     tool = CalendarTool("http://office-service")
-    result = tool._run("token123", start_date="2025-06-05", end_date="2025-06-06", user_timezone="UTC", provider_type="google")
+    result = tool("token123", start_date="2025-06-05", end_date="2025-06-06", user_timezone="UTC", provider_type="google")
     assert "events" in result
     assert result["events"][0]["title"] == "Meeting"
 
@@ -26,7 +26,7 @@ def test_calendar_tool_malformed_response(monkeypatch):
         return MockResponse({"bad": "data"}, 200)
     monkeypatch.setattr(requests, "get", mock_get)
     tool = CalendarTool("http://office-service")
-    result = tool._run("token123")
+    result = tool("token123")
     assert "error" in result
     assert "Malformed" in result["error"]
 
@@ -35,7 +35,7 @@ def test_calendar_tool_timeout(monkeypatch):
         raise requests.Timeout()
     monkeypatch.setattr(requests, "get", mock_get)
     tool = CalendarTool("http://office-service")
-    result = tool._run("token123")
+    result = tool("token123")
     assert "error" in result
     assert "timed out" in result["error"]
 
@@ -44,7 +44,7 @@ def test_calendar_tool_http_error(monkeypatch):
         return MockResponse({}, 500)
     monkeypatch.setattr(requests, "get", mock_get)
     tool = CalendarTool("http://office-service")
-    result = tool._run("token123")
+    result = tool("token123")
     assert "error" in result
     assert "HTTP error" in result["error"]
 
@@ -53,6 +53,6 @@ def test_calendar_tool_unexpected_error(monkeypatch):
         raise Exception("boom")
     monkeypatch.setattr(requests, "get", mock_get)
     tool = CalendarTool("http://office-service")
-    result = tool._run("token123")
+    result = tool("token123")
     assert "error" in result
     assert "Unexpected error" in result["error"]

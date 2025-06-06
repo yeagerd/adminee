@@ -135,6 +135,25 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
+# Python virtual environments
+env/
+venv/
+.venv/
+.env/
+# Python bytecode
+__pycache__/
+*.py[cod]
+# Python distribution packages
+*.egg-info/
+# Python cache files
+*.pyc
+# Python coverage files
+.coverage
+# Python build directories
+build/
+dist/
+# Python packaging files
+
 # MacOS
 .DS_Store
 

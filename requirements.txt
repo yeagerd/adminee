@@ -1,11 +1,13 @@
 alembic
 fastapi
 httpx
-langchain
+llmlite[openai]
 pinecone-client
 pydantic
 pytest
 python-dotenv
 pytz
+requests
 sqlalchemy
+tox
 uvicorn[standard]
