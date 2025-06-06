@@ -1,0 +1,18 @@
+{  "extends": [    "next",    "next/core-web-vitals",    "plugin:@typescript-eslint/recommended",    "plugin:react/recommended"
+  ],
+  "plugins": [
+    "@typescript-eslint",
+    "react"
+  ],
+  "env": {
+    "browser": true,
+    "es2021": true
+  },
+  "rules": {
+    "react/react-in-jsx-scope": "off",
+    // Ignore prop-types rule since TypeScript is used
+    "react/prop-types": "off",
+    // Optionally ignore unescaped entities if you prefer
+    "react/no-unescaped-entities": "off"
+  }
+}
