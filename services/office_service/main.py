@@ -1,8 +1,8 @@
-from datetime import date, datetime, time, timedelta
+from datetime import datetime
 from typing import List, Optional, Type  # Added Type for provider class type hint
 
 import pytz
-from fastapi import Body, Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel  # Added BaseModel import
 
@@ -27,10 +27,6 @@ from .exceptions import (
 from .models import (
     CalendarEvent,
     CalendarEventResponse,
-    ConflictDetectionResult,
-    EventAttendanceDetail,
-    UserWorkHours,
-    WorkHoursConflictResult,
 )
 
 # Removed: from .services.graph_client import get_calendar_events

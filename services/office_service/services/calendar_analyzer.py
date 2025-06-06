@@ -1,4 +1,4 @@
-from datetime import datetime, timezone  # Import timezone for UTC awareness if needed
+from datetime import datetime  # Import timezone for UTC awareness if needed
 from typing import List, Optional
 
 import pytz  # For timezone handling
@@ -6,13 +6,11 @@ import pytz  # For timezone handling
 from ..models import WorkDay  # Added new models
 from ..models import (
     AnalyzedAttendee,
-    Attendee,
     AttendeeStatusEnum,
     CalendarEvent,
     ConflictDetectionResult,
     ConflictingEventPair,
     EventAttendanceDetail,
-    Organizer,
     UserWorkHours,
     WorkHoursConflictInfo,
     WorkHoursConflictResult,
@@ -202,7 +200,7 @@ def detect_work_hours_conflicts(
         try:
             event_start_user_tz = event.start.dateTime.astimezone(user_tz)
             event_end_user_tz = event.end.dateTime.astimezone(user_tz)
-        except ValueError as e:
+        except ValueError:
             # This can happen if event.start.dateTime is naive.
             # Providers should give timezone-aware datetimes. If not, we might need a default assumption.
             # Based on previous work, MS Graph provider gives tz-aware if Prefer: outlook.timezone is used.
