@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible"
 import { Separator } from "@/components/ui/separator"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   Clock,
@@ -23,8 +22,6 @@ import {
   AlertCircle,
   CheckCircle2,
   XCircle,
-  Clock3,
-  MessageCircleQuestion,
   MailQuestion,
 } from "lucide-react"
 
@@ -71,7 +68,6 @@ export function CalendarEventItem({
   notesFound = [],
 }: EventItemProps) {
   const [isExpanded, setIsExpanded] = useState(false)
-  const [showAttendees, setShowAttendees] = useState(false)
 
   // Date/time logic
   const now = new Date()
@@ -99,14 +95,6 @@ export function CalendarEventItem({
       default:
         return <AlertCircle className={`${attendanceIconSize} text-gray-400 text`} />
     }
-  }
-
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
   }
 
   return (
@@ -194,7 +182,7 @@ export function CalendarEventItem({
               <div className="space-y-4">
 
                 {/* Attendees List - Always Show */}
-                <Collapsible open={true} onOpenChange={setShowAttendees}>
+                <Collapsible open={true} onOpenChange={() => {}}>
                   <CollapsibleContent>
                     <div className="grid grid-cols-2 gap-4">
                       {/* Internal Attendees */}
@@ -506,13 +494,3 @@ export const sampleEvents = [
   sampleEvent3,
   sampleEvent4,
 ].sort((a, b) => a.startTime.getTime() - b.startTime.getTime())
-
-// Demo component showing the event item
-function Demo() {
-  return (
-    <div className="p-6 max-w-md mx-auto bg-gray-50 min-h-screen">
-      <h2 className="text-lg font-semibold mb-4">Today's Events</h2>
-      <CalendarEventItem {...sampleEvent1} />
-    </div>
-  )
-}

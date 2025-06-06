@@ -1,9 +1,5 @@
-import { Sailboat, Plus, User } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-
+import { Sailboat } from "lucide-react";
 import {
-  ClerkProvider,
   SignInButton,
   SignUpButton,
   SignedIn,

@@ -1,14 +1,11 @@
 import {
-  Calendar,
   Clock,
   CheckCircle2,
   MessageSquare,
   Plus,
-  Sailboat,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ChatInterface from "@/components/chat-interface";
 import ScheduleList from "@/components/schedule-list";
 import TaskList from "@/components/task-list";
