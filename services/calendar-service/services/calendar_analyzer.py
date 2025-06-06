@@ -1,15 +1,22 @@
-from datetime import (datetime,  # Import timezone for UTC awareness if needed
-                      timezone)
+from datetime import datetime, timezone  # Import timezone for UTC awareness if needed
 from typing import List, Optional
 
 import pytz  # For timezone handling
 
 from ..models import WorkDay  # Added new models
-from ..models import (AnalyzedAttendee, Attendee, AttendeeStatusEnum,
-                      CalendarEvent, ConflictDetectionResult,
-                      ConflictingEventPair, EventAttendanceDetail, Organizer,
-                      UserWorkHours, WorkHoursConflictInfo,
-                      WorkHoursConflictResult)
+from ..models import (
+    AnalyzedAttendee,
+    Attendee,
+    AttendeeStatusEnum,
+    CalendarEvent,
+    ConflictDetectionResult,
+    ConflictingEventPair,
+    EventAttendanceDetail,
+    Organizer,
+    UserWorkHours,
+    WorkHoursConflictInfo,
+    WorkHoursConflictResult,
+)
 
 
 def detect_event_conflicts(events: List[CalendarEvent]) -> ConflictDetectionResult:
