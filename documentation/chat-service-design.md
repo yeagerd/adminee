@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `chat-service` is a backend microservice responsible for providing conversational AI capabilities to the Briefly application. It exposes an API for chat interactions, manages conversation threads, integrates with other services (such as `office-service`), and tracks LLM usage and user feedback. The service is built using Python and leverages LangChain for LLM orchestration and tool integration.
+The `chat-service` is a backend microservice responsible for providing conversational AI capabilities to the Briefly application. It exposes an API for chat interactions, manages conversation threads, integrates with other services (such as `office-service`), and tracks LLM usage and user feedback. The service is built using Python and leverages LiteLLM for LLM orchestration and tool integration.
 
 ---
 
@@ -39,8 +39,8 @@ The `chat-service` is a backend microservice responsible for providing conversat
 
 ## 2. Core Modules
 
-### 2.1. LangChain Integration
-- Uses LangChain to orchestrate LLM calls and tool usage.
+### 2.1. LiteLLM Integration
+- Uses LiteLLM to orchestrate LLM calls and tool usage.
 - Defines custom tools for:
     - **Data Retrieval:**
         - Get calendar, email, notes, and documents from `office-service` via HTTP API.
@@ -203,6 +203,6 @@ Tool commands returned to the frontend will use a standardized JSON format:
 
 ## 14. References
 - [OpenHands Context Condensation](https://www.all-hands.dev/blog/openhands-context-condensensation-for-more-efficient-ai-agents)
-- [LangChain Documentation](https://python.langchain.com/)
+- [LiteLLM Documentation](https://python.LiteLLM.com/)
 
 *This document is a living specification and should be updated as the service evolves.*

@@ -44,7 +44,7 @@
 - Clerk is used for user auth and management
 - PostgreSQL is used for structured data storage
 - Pinecone vector database is used for RAG embeddings
-- LangChain and Sentence-Transformers are used for the RAG pipeline
+- LiteLLM and Sentence-Transformers are used for the RAG pipeline
 
 
 ### Data models
@@ -115,7 +115,7 @@
   - [ ] 5.1 Define `VectorStore` abstract base class/interface
   - [ ] 5.2 Implement Pinecone `VectorStore` subclass for production
   - [ ] 5.3 Implement ChromaDB `VectorStore` subclass for local testing/development
-  - [ ] 5.4 Set up LangChain environment
+  - [ ] 5.4 Set up LiteLLM environment
   - [ ] 5.5 Create document retrieval from emails and files
   - [ ] 5.6 Implement text chunking and processing
   - [ ] 5.7 Develop embedding generation using Sentence-Transformers
