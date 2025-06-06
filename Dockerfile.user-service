@@ -1,16 +1,16 @@
-# Dockerfile for Auth Service (Node.js)
+# Dockerfile for User Service (Node.js)
 
 # Use an official Node.js runtime as a parent image
 FROM node:20-alpine
 
 # Set the working directory in the container
-WORKDIR /app/auth-service
+WORKDIR /app/user-service
 
 # Copy package.json and package-lock.json (or yarn.lock) first
-# Assuming the auth service is in services/auth-service/
-COPY services/auth-service/package.json services/auth-service/yarn.lock* ./ 
+# Assuming the user service is in services/user-service/
+COPY services/user-service/package.json services/user-service/yarn.lock* ./ 
 # If using npm instead of yarn, it would be:
-# COPY services/auth-service/package.json services/auth-service/package-lock.json* ./
+# COPY services/user-service/package.json services/user-service/package-lock.json* ./
 
 # Install dependencies
 # If using yarn:
@@ -18,8 +18,8 @@ RUN yarn install --frozen-lockfile --production
 # If using npm:
 # RUN npm ci --only=production
 
-# Copy the rest of the application code for the auth service
-COPY services/auth-service/ ./ 
+# Copy the rest of the application code for the user service
+COPY services/user-service/ ./ 
 
 # Expose the port the app runs on (e.g., 8081 or 3002)
 EXPOSE 8081
@@ -28,4 +28,4 @@ EXPOSE 8081
 # This assumes your entry point is index.js
 # CMD ["node", "index.js"]
 # For now, a placeholder command as index.js doesn't exist yet
-CMD ["node", "-e", "console.log('Auth service placeholder. index.js with server logic needed. Listening on port 8081 (example).')"] 
+CMD ["node", "-e", "console.log('User service placeholder. index.js with server logic needed. Listening on port 8081 (example).')"] 

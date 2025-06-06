@@ -203,52 +203,6 @@ class EventListPayload(BaseModel):
 class SingleEventPayload(BaseModel):
     event: CalendarEvent
 
-class WorkHoursAnalysisPayload(BaseModel):
-    events: List[CalendarEvent]
-    work_hours: UserWorkHours
-    user_timezone: str # Removed Query, this will be part of the JSON body
-
-@app.post("/analyze/event-conflicts/", response_model=ConflictDetectionResult)
-async def analyze_event_conflicts_endpoint(payload: EventListPayload = Body(...)):
-    if not payload.events:
-        # Or return a result with 0 checked_event_count
-        return ConflictDetectionResult(conflicts=[], checked_event_count=0, conflict_pair_count=0)
-    try:
-        result = detect_event_conflicts(payload.events)
-        return result
-    except Exception as e:
-        # Log the exception details for debugging
-        print(f"Error in /analyze/event-conflicts: {e}")
-        raise HTTPException(status_code=500, detail=f"Error during conflict analysis: {str(e)}")
-
-@app.post("/analyze/event-attendee-status/", response_model=EventAttendanceDetail)
-async def analyze_event_attendee_status_endpoint(payload: SingleEventPayload = Body(...)):
-    try:
-        result = analyze_event_attendee_status(payload.event)
-        return result
-    except Exception as e:
-        print(f"Error in /analyze/event-attendee-status: {e}")
-        raise HTTPException(status_code=500, detail=f"Error during attendance analysis: {str(e)}")
-
-@app.post("/analyze/work-hours-conflicts/", response_model=WorkHoursConflictResult)
-async def analyze_work_hours_conflicts_endpoint(payload: WorkHoursAnalysisPayload = Body(...)):
-    if not payload.events:
-        return WorkHoursConflictResult(conflicts=[], checked_event_count=0)
-    try:
-        # Validate timezone from payload
-        try:
-            pytz.timezone(payload.user_timezone)
-        except pytz.exceptions.UnknownTimeZoneError:
-            raise HTTPException(status_code=400, detail=f"Invalid user_timezone in payload: {payload.user_timezone}")
-        
-        result = detect_work_hours_conflicts(payload.events, payload.work_hours, payload.user_timezone)
-        return result
-    except ValueError as e: # Catch specific errors like UnknownTimeZoneError from analyzer
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        print(f"Error in /analyze/work-hours-conflicts: {e}")
-        raise HTTPException(status_code=500, detail=f"Error during work hours conflict analysis: {str(e)}")
-
 # Health check endpoint
 @app.get("/health")
 async def health_check():
