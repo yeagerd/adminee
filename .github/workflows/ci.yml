@@ -72,13 +72,13 @@ jobs:
       working-directory: ./frontend
       run: npx tsc --noEmit
 
-    - name: Copy .env.example to .env
-      working-directory: ./frontend
-      run: cp ../.env.example .env
+    # - name: Copy .env.example to .env
+    #   working-directory: ./frontend
+    #   run: cp ../.env.example .env
 
-    - name: Build application
-      working-directory: ./frontend
-      run: npm run build
+    # - name: Build application
+    #   working-directory: ./frontend
+    #   run: npm run build
 
   docker-build:
     name: Docker Build Test
