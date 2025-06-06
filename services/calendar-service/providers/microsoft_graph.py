@@ -1,15 +1,21 @@
 import json
 from datetime import datetime
-from typing import \
-    List  # Keep List if CalendarEventResponse uses it, though not directly here
+from typing import (
+    List,
+)  # Keep List if CalendarEventResponse uses it, though not directly here
 
 import httpx
 import pytz
 
-from ..exceptions import (GraphAPIAuthError, GraphAPIClientError,
-                          GraphAPIDecodingError, GraphAPIRateLimitError,
-                          GraphAPIServerError, GraphClientError,
-                          InvalidInputError)
+from ..exceptions import (
+    GraphAPIAuthError,
+    GraphAPIClientError,
+    GraphAPIDecodingError,
+    GraphAPIRateLimitError,
+    GraphAPIServerError,
+    GraphClientError,
+    InvalidInputError,
+)
 from ..models import CalendarEventResponse
 from .base import CalendarProvider
 
