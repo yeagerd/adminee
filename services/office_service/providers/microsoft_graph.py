@@ -1,8 +1,5 @@
 import json
 from datetime import datetime
-from typing import (
-    List,
-)  # Keep List if CalendarEventResponse uses it, though not directly here
 
 import httpx
 import pytz

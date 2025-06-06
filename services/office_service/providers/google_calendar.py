@@ -1,7 +1,4 @@
 from datetime import datetime
-from typing import (
-    List,
-)  # Keep for consistency, though CalendarEventResponse handles list internally
 
 from ..exceptions import (
     InvalidInputError,
