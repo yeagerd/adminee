@@ -10,9 +10,9 @@ Key components include:
 - **Frontend:** Next.js application (`app/`)
 - **API Gateway:** Next.js API routes (`app/api/proxy/`)
 - **Backend Services:**
-    - `services/calendar-service/` (Python/FastAPI)
-    - `services/email-service/` (Node.js)
-    - `services/auth-service/` (Node.js)
+    - `services/office-service/` (Python/FastAPI)
+    - `services/chat-service/` (Python/FastAPI)
+    - `services/auth-service/` (Node.js) (or maybe Python)
 - **Database:** PostgreSQL
 - **Vector Database:** Pinecone
 
@@ -73,11 +73,11 @@ Key components include:
     # yarn test
     ```
 -   **Backend Service Testing:**
-    -   Each service in `services/` should have its own test suite within a `tests/` subdirectory (e.g., `services/calendar-service/tests/`).
+    -   Each service in `services/` should have its own test suite within a `tests/` subdirectory (e.g., `services/office-service/tests/`).
     -   To run tests for a specific service, you might execute commands within its container or set up test scripts.
         ```bash
-        # Example: Run tests for calendar-service (assuming a Makefile or test runner)
-        # docker-compose exec app python -m pytest services/calendar-service/tests
+        # Example: Run tests for office-service (assuming a Makefile or test runner)
+        # docker-compose exec app python -m pytest services/office-service/tests
         ```
 -   **API Testing:** Use tools like Postman, Insomnia, or `curl` to test API endpoints exposed by the Next.js proxy and individual backend services.
 
@@ -91,24 +91,24 @@ Key components include:
     This typically creates an optimized build in a `.next` directory.
 
 -   **Backend Services (Docker Images):**
-    -   The individual Dockerfiles (`Dockerfile.calendar-service`, `Dockerfile.email-service`, `Dockerfile.auth-service`) are used to build production-ready images for each service.
+    -   The individual Dockerfiles (`Dockerfile.office-service`, `Dockerfile.chat-service`, `Dockerfile.user-service`) are used to build production-ready images for each service.
     -   Example build command for the calendar service:
         ```bash
-        docker build -t briefly/calendar-service:latest -f Dockerfile.calendar-service .
+        docker build -t briefly/office-service:latest -f Dockerfile.office-service .
         ```
     -   These images can then be pushed to a container registry (e.g., Docker Hub, AWS ECR, GCP Artifact Registry).
 
 ## Unit Testing
 
--   Unit tests are co-located with the services or in dedicated test directories (e.g., `services/calendar-service/tests/`).
--   **Running Python Unit Tests (e.g., for `calendar-service` with pytest):**
+-   Unit tests are co-located with the services or in dedicated test directories (e.g., `services/office-service/tests/`).
+-   **Running Python Unit Tests (e.g., for `office-service` with pytest):**
     ```bash
     # Ensure you are in the dev container or have the Python environment activated
-    # pytest services/calendar-service/
+    # pytest services/office-service/
     ```
     Or via Docker Compose if tests need service dependencies:
     ```bash
-    docker-compose exec app pytest services/calendar-service/
+    docker-compose exec app pytest services/office-service/
     ```
 -   **Running Node.js Unit Tests (e.g., for `email-service` with Jest/Mocha):**
     ```bash
@@ -126,7 +126,7 @@ Key components include:
 -   **General Strategy:** Deploy backend services as containers (e.g., to Kubernetes, AWS ECS, Google Cloud Run). Deploy the Next.js frontend to a platform optimized for Node.js/React applications (e.g., Vercel, Netlify, or also as a container).
 
 -   **Steps (Conceptual):**
-    1.  **Build Docker Images:** Use the service-specific Dockerfiles to build images for `calendar-service`, `email-service`, and `auth-service`.
+    1.  **Build Docker Images:** Use the service-specific Dockerfiles to build images for `office-service`, `chat-service`, and `user-service`.
     2.  **Push Images to Registry:** Push the built images to a container registry.
     3.  **Configure Environment Variables:** Set up environment variables (from `.env` content) in the deployment environment for each service (e.g., database connection strings, API keys).
     4.  **Deploy Database:** Provision a managed PostgreSQL instance (e.g., AWS RDS, Google Cloud SQL) or deploy PostgreSQL as a container (with persistent storage).

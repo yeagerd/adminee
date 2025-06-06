@@ -10,18 +10,9 @@
 - `app/api/proxy/[...service].ts` - API proxy routes to backend services
 
 ### Backend Services
-- `services/calendar-service/` - Python FastAPI service for calendar analysis
-  - `main.py` - FastAPI application entry point
-  - `models.py` - Pydantic models for API
-  - `services/calendar_analyzer.py` - Calendar analysis logic
-  - `services/rag_pipeline.py` - RAG implementation for meeting context
-- `services/email-service/` - Node.js service for email generation and delivery
-  - `index.js` - Service entry point
-  - `templates/` - Email templates
-  - `generators/` - Email content generators
+- `services/office-service/` - Python FastAPI service for calendar analysis
+- `services/chat-service/` - Node.js service for email generation and delivery
 - `services/auth-service/` - Authentication service with Microsoft Graph integration
-  - `index.js` - Service entry point
-  - `microsoft-graph.js` - Microsoft Graph API client
 
 ### Database
 - `services/db/migrations/` - PostgreSQL database migrations
@@ -40,15 +31,16 @@
 
 ### Infrastructure
 - `docker-compose.yml` - Local development environment
-- `Dockerfile.calendar-service` - Dockerfile for calendar analysis service
-- `Dockerfile.email-service` - Dockerfile for email service
+- `Dockerfile.office-service` - Dockerfile for calendar analysis service
+- `Dockerfile.chat-service` - Dockerfile for chat service
+- `Dockerfile.user-service` - Dockerfile for user service
 - `package.json` - Project dependencies for Node.js services
 - `requirements.txt` - Python dependencies
 - `.env.example` - Example environment variables
 
 ### Notes
 
-- Each service has its own test directory (e.g., `services/calendar-service/tests/`)
+- Each service has its own test directory (e.g., `services/office-service/tests/`)
 - Clerk is used for user auth and management
 - PostgreSQL is used for structured data storage
 - Pinecone vector database is used for RAG embeddings
