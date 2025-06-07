@@ -1,11 +1,13 @@
 """Custom exceptions for the Calendar Service."""
 
+from typing import Dict, Any, Optional
+
 
 class GraphClientError(Exception):
     """Base class for errors originating from the Microsoft Graph client."""
 
     def __init__(
-        self, message: str, status_code: int = None, graph_error_details: dict = None
+        self, message: str, status_code: Optional[int] = None, graph_error_details: Optional[Dict[Any, Any]] = None
     ):
         super().__init__(message)
         self.status_code = status_code
@@ -44,5 +46,23 @@ class GraphAPIServerError(GraphClientError):
 
 class GraphAPIDecodingError(GraphClientError):
     """Raised when there's an issue decoding the JSON response from Microsoft Graph."""
+
+    pass
+
+
+class GraphAPIError(GraphClientError):
+    """General Graph API error."""
+
+    pass
+
+
+class ProviderAuthError(Exception):
+    """Raised when there's an authentication error with a provider."""
+
+    pass
+
+
+class ProviderNotFoundError(Exception):
+    """Raised when a requested provider is not found."""
 
     pass

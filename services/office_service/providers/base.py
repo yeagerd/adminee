@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 
-from ..models import (
+from ..models import (  # Assuming models.py is in the parent directory of providers/
     CalendarEventResponse,
-)  # Assuming models.py is in the parent directory of providers/
+)
 
 
 class CalendarProvider(ABC):
