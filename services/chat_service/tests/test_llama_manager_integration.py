@@ -1,49 +1,75 @@
-import pytest
 import asyncio
+from collections import namedtuple
 from unittest.mock import AsyncMock, patch
-from services.chat_service.llama_manager import ChatAgentManager
-from services.chat_service.history_manager import append_message, get_thread_history, create_thread, database, metadata
-from services.chat_service.context_module import select_relevant_messages
+
+import pytest
 import sqlalchemy
 from llama_index.core.llms.function_calling import FunctionCallingLLM
-from collections import namedtuple
+
+from services.chat_service.context_module import select_relevant_messages
+from services.chat_service.history_manager import (
+    append_message,
+    create_thread,
+    database,
+    get_thread_history,
+    metadata,
+)
+from services.chat_service.llama_manager import ChatAgentManager
+
 
 class DummyFunctionCallingLLM(FunctionCallingLLM):
     @property
     def metadata(self):
-        Meta = namedtuple('Meta', ['is_function_calling_model'])
+        Meta = namedtuple("Meta", ["is_function_calling_model"])
         return Meta(is_function_calling_model=True)
+
     async def achat(self, *args, **kwargs):
-        user_input = kwargs.get('user_input', '')
+        user_input = kwargs.get("user_input", "")
+
         class Message:
             def __init__(self, content):
                 self.content = content
+
         # Defensive: if llama-index passes user_input as positional arg
         if not user_input and args:
             user_input = args[0]
+
         class Response:
             message = Message(f"Echo: {user_input}")
             response = message  # always a Message object
+
         return Response()
+
     async def acomplete(self, *args, **kwargs):
         raise NotImplementedError()
+
     async def astream_chat(self, *args, **kwargs):
         raise NotImplementedError()
+
     async def astream_complete(self, *args, **kwargs):
         raise NotImplementedError()
+
     def chat(self, *args, **kwargs):
         raise NotImplementedError()
+
     def complete(self, *args, **kwargs):
         raise NotImplementedError()
+
     def stream_chat(self, *args, **kwargs):
         raise NotImplementedError()
+
     def stream_complete(self, *args, **kwargs):
         raise NotImplementedError()
+
     def _prepare_chat_with_tools(self, *args, **kwargs):
         return {}
-    def get_tool_calls_from_response(self, response, error_on_no_tool_call=True, **kwargs):
+
+    def get_tool_calls_from_response(
+        self, response, error_on_no_tool_call=True, **kwargs
+    ):
         # For this test, no tool calls are expected, so just return an empty list
         return []
+
 
 @pytest.mark.asyncio
 async def test_llama_manager_integration(tmp_path):
@@ -60,7 +86,10 @@ async def test_llama_manager_integration(tmp_path):
     await append_message(thread_id, "assistant", "Hi! How can I help you?")
 
     # Patch context_module.select_relevant_messages to just return all messages
-    with patch("services.chat_service.context_module.select_relevant_messages", side_effect=lambda msgs, user_input, max_tokens: msgs):
+    with patch(
+        "services.chat_service.context_module.select_relevant_messages",
+        side_effect=lambda msgs, user_input, max_tokens: msgs,
+    ):
         # Patch LLM with dummy
         @pytest.mark.asyncio
         async def test_llama_manager_empty_thread_history(tmp_path):
@@ -73,7 +102,10 @@ async def test_llama_manager_integration(tmp_path):
             thread = await create_thread(user_id=user_id, title="Empty Thread")
             thread_id = thread.id
 
-            with patch("services.chat_service.context_module.select_relevant_messages", side_effect=lambda msgs, user_input, max_tokens: msgs):
+            with patch(
+                "services.chat_service.context_module.select_relevant_messages",
+                side_effect=lambda msgs, user_input, max_tokens: msgs,
+            ):
                 agent = ChatAgentManager(
                     llm=DummyFunctionCallingLLM(),
                     thread_id=thread_id,
@@ -101,7 +133,10 @@ async def test_llama_manager_integration(tmp_path):
             thread = await create_thread(user_id=user_id, title="Order Test Thread")
             thread_id = thread.id
 
-            with patch("services.chat_service.context_module.select_relevant_messages", side_effect=lambda msgs, user_input, max_tokens: msgs):
+            with patch(
+                "services.chat_service.context_module.select_relevant_messages",
+                side_effect=lambda msgs, user_input, max_tokens: msgs,
+            ):
                 agent = ChatAgentManager(
                     llm=DummyFunctionCallingLLM(),
                     thread_id=thread_id,
@@ -132,7 +167,10 @@ async def test_llama_manager_integration(tmp_path):
             thread = await create_thread(user_id=user_id, title="Unicode Thread")
             thread_id = thread.id
 
-            with patch("services.chat_service.context_module.select_relevant_messages", side_effect=lambda msgs, user_input, max_tokens: msgs):
+            with patch(
+                "services.chat_service.context_module.select_relevant_messages",
+                side_effect=lambda msgs, user_input, max_tokens: msgs,
+            ):
                 agent = ChatAgentManager(
                     llm=DummyFunctionCallingLLM(),
                     thread_id=thread_id,
@@ -160,7 +198,10 @@ async def test_llama_manager_integration(tmp_path):
             thread = await create_thread(user_id=user_id, title="History Limit Thread")
             thread_id = thread.id
 
-            with patch("services.chat_service.context_module.select_relevant_messages", side_effect=lambda msgs, user_input, max_tokens: msgs):
+            with patch(
+                "services.chat_service.context_module.select_relevant_messages",
+                side_effect=lambda msgs, user_input, max_tokens: msgs,
+            ):
                 agent = ChatAgentManager(
                     llm=DummyFunctionCallingLLM(),
                     thread_id=thread_id,

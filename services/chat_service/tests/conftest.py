@@ -1,7 +1,10 @@
-import pytest
 import asyncio
-from services.chat_service.history_manager import database, metadata
+
+import pytest
 import sqlalchemy
+
+from services.chat_service.history_manager import database, metadata
+
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_database():

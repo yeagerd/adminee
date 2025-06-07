@@ -1,23 +1,31 @@
-import pytest
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 from services.chat_service.llama_manager import ChatAgentManager
+
 
 @pytest.fixture
 def mock_llm():
     return MagicMock(name="llm")
 
+
 @pytest.fixture
 def mock_tools():
     def tool_fn():
         pass
+
     return [tool_fn]
+
 
 @pytest.fixture
 def mock_subagents():
     def subagent_fn():
         pass
+
     return [subagent_fn]
+
 
 @pytest.fixture
 def manager(mock_llm, mock_tools, mock_subagents):
@@ -30,17 +38,28 @@ def manager(mock_llm, mock_tools, mock_subagents):
         subagents=mock_subagents,
     )
 
+
 @pytest.mark.asyncio
 @patch("services.chat_service.llama_manager.history_manager")
 @patch("services.chat_service.llama_manager.context_module")
-async def test_get_memory_selects_relevant_messages(mock_context, mock_history, manager):
+async def test_get_memory_selects_relevant_messages(
+    mock_context, mock_history, manager
+):
     # Setup
     fake_messages = [
-        MagicMock(model_dump=MagicMock(return_value={"user_id": "user42", "content": "hi"})),
-        MagicMock(model_dump=MagicMock(return_value={"user_id": "assistant", "content": "hello"})),
+        MagicMock(
+            model_dump=MagicMock(return_value={"user_id": "user42", "content": "hi"})
+        ),
+        MagicMock(
+            model_dump=MagicMock(
+                return_value={"user_id": "assistant", "content": "hello"}
+            )
+        ),
     ]
     mock_history.get_thread_history = AsyncMock(return_value=fake_messages)
-    mock_context.select_relevant_messages.return_value = [{"user_id": "user42", "content": "hi"}]
+    mock_context.select_relevant_messages.return_value = [
+        {"user_id": "user42", "content": "hi"}
+    ]
 
     # Run
     result = await manager.get_memory("hi")
@@ -50,6 +69,7 @@ async def test_get_memory_selects_relevant_messages(mock_context, mock_history, 
     mock_context.select_relevant_messages.assert_called_once()
     assert result == [{"user_id": "user42", "content": "hi"}]
 
+
 @pytest.mark.asyncio
 @patch("services.chat_service.llama_manager.FunctionTool")
 @patch("services.chat_service.llama_manager.ChatMemoryBuffer")
@@ -57,7 +77,14 @@ async def test_get_memory_selects_relevant_messages(mock_context, mock_history, 
 @patch("services.chat_service.llama_manager.history_manager")
 @patch("services.chat_service.llama_manager.context_module")
 async def test_build_agent_constructs_agent(
-    mock_context, mock_history, mock_agent, mock_memory, mock_tool, manager, mock_tools, mock_subagents
+    mock_context,
+    mock_history,
+    mock_agent,
+    mock_memory,
+    mock_tool,
+    manager,
+    mock_tools,
+    mock_subagents,
 ):
     # Setup
     fake_messages = [
@@ -87,6 +114,7 @@ async def test_build_agent_constructs_agent(
     assert chat_history[0].content == "hi"
     assert chat_history[1].role == "assistant"
     assert chat_history[1].content == "hello"
+
 
 @pytest.mark.asyncio
 @patch("services.chat_service.llama_manager.FunctionTool")
@@ -119,6 +147,7 @@ async def test_chat_calls_agent_and_appends_history(
     mock_history.append_message.assert_any_await(123, "assistant", "agent reply")
     assert result == "agent reply"
 
+
 @pytest.mark.asyncio
 @patch("services.chat_service.llama_manager.FunctionTool")
 @patch("services.chat_service.llama_manager.ChatMemoryBuffer")
@@ -130,7 +159,9 @@ async def test_chat_builds_agent_if_none(
 ):
     # Setup
     # No agent yet
-    mock_agent.from_tools.return_value = MagicMock(achat=AsyncMock(return_value=MagicMock(response="foo")))
+    mock_agent.from_tools.return_value = MagicMock(
+        achat=AsyncMock(return_value=MagicMock(response="foo"))
+    )
     mock_history.append_message = AsyncMock()
     mock_history.get_thread_history = AsyncMock(return_value=[])
     mock_context.select_relevant_messages.return_value = []
@@ -143,8 +174,11 @@ async def test_chat_builds_agent_if_none(
     # Assert
     assert result == "foo"
     assert manager.agent is not None
-    mock_history.append_message.assert_any_await(manager.thread_id, manager.user_id, "test input")
+    mock_history.append_message.assert_any_await(
+        manager.thread_id, manager.user_id, "test input"
+    )
     mock_history.append_message.assert_any_await(manager.thread_id, "assistant", "foo")
+
 
 def test_init_defaults():
     manager = ChatAgentManager(llm="llm", thread_id=1, user_id="u")
