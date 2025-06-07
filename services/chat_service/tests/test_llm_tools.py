@@ -1,5 +1,6 @@
-from services.chat_service.llm_tools import CalendarTool
 import requests
+
+from services.chat_service.llm_tools import CalendarTool
 
 
 class MockResponse:

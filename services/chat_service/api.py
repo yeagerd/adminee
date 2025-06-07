@@ -1,19 +1,21 @@
+from typing import List
+
 from fastapi import APIRouter, HTTPException
+
 from .models import (
     ChatRequest,
     ChatResponse,
-    Thread,
-    Message,
     FeedbackRequest,
     FeedbackResponse,
+    Message,
+    Thread,
 )
-from typing import List
 
 router = APIRouter()
 
 # In-memory storage for demonstration (replace with DB integration)
-THREADS = {}
-MESSAGES = {}
+THREADS: dict[str, Thread] = {}
+MESSAGES: dict[str, list[Message]] = {}
 FEEDBACKS = []
 
 

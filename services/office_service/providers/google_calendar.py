@@ -1,8 +1,8 @@
 from datetime import datetime
 
-from ..exceptions import (
+from ..exceptions import (  # Potentially other provider-specific exceptions later
     InvalidInputError,
-)  # Potentially other provider-specific exceptions later
+)
 from ..models import CalendarEventResponse
 from .base import CalendarProvider
 

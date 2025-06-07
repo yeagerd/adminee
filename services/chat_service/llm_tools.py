@@ -1,5 +1,6 @@
-import requests
 from typing import Any, Dict, Optional
+
+import requests
 
 
 class CalendarTool:
