@@ -42,7 +42,7 @@
   - [x] 2.4 Implement `/feedback` POST endpoint for thumbs up/down feedback.
   - [x] 2.5 Add request validation and response schemas using Pydantic.
 
-- [ ] 3. Implement LiteLLM integration
+- [x] 3. Implement LiteLLM integration
   - [x] 3.1 Implement calendar tool
     - [x] 3.1.1 Define a LiteLLM tool for retrieving calendar events from office-service via REST API.
     - [x] 3.1.2 Support parameters: user token, date range, user timezone, provider type.
@@ -71,44 +71,44 @@
     - [x] 3.4.4 Parse and validate office-service API responses; handle errors and timeouts.
     - [x] 3.4.5 Return results in a format suitable for LLM context and tool command schema.
     - [x] 3.4.6 Add unit tests for documents tool, including error and edge cases.
-  - [ ] 3.5 Implement create draft email tool
-    - [ ] 3.5.1 Define a LiteLLM tool for creating or updating the active draft email for a thread (no office-service call).
-    - [ ] 3.5.2 Support parameters: thread id, email content (to, subject, body, etc.).
-    - [ ] 3.5.3 Store the draft in the history manager or a dedicated draft store, ensuring only one active draft per thread.
-    - [ ] 3.5.4 On chat response, return the current active draft (if any) in the response payload.
-    - [ ] 3.5.5 Add unit tests for create draft email tool, including edge cases (e.g., draft already exists, update draft).
-  - [ ] 3.6 Implement delete draft email tool
-    - [ ] 3.6.1 Define a LiteLLM tool for deleting the active draft email for a thread (no office-service call).
-    - [ ] 3.6.2 Support parameters: thread id.
-    - [ ] 3.6.3 Remove the draft from the history manager or draft store.
-    - [ ] 3.6.4 On chat response, ensure the draft is no longer present in the response payload.
-    - [ ] 3.6.5 Add unit tests for delete draft email tool, including edge cases (e.g., no draft exists).
-  - [ ] 3.7 Implement create draft calendar event tool
-    - [ ] 3.7.1 Define a LiteLLM tool for creating or updating the active draft calendar event for a thread (no office-service call).
-    - [ ] 3.7.2 Support parameters: thread id, event details (title, time, attendees, etc.).
-    - [ ] 3.7.3 Store the draft in the history manager or a dedicated draft store, ensuring only one active draft per thread.
-    - [ ] 3.7.4 On chat response, return the current active draft (if any) in the response payload.
-    - [ ] 3.7.5 Add unit tests for create draft calendar event tool, including edge cases (e.g., draft already exists, update draft).
-  - [ ] 3.8 Implement delete draft calendar event tool
-    - [ ] 3.8.1 Define a LiteLLM tool for deleting the active draft calendar event for a thread (no office-service call).
-    - [ ] 3.8.2 Support parameters: thread id.
-    - [ ] 3.8.3 Remove the draft from the history manager or draft store.
-    - [ ] 3.8.4 On chat response, ensure the draft is no longer present in the response payload.
-    - [ ] 3.8.5 Add unit tests for delete draft calendar event tool, including edge cases (e.g., no draft exists).
-  - [ ] 3.9 Implement create draft calendar change tool
-    - [ ] 3.9.1 Define a LiteLLM tool for creating or updating the active draft calendar change for a thread (no office-service call).
-    - [ ] 3.9.2 Support parameters: thread id, change details.
-    - [ ] 3.9.3 Store the draft in the history manager or a dedicated draft store, ensuring only one active draft per thread.
-    - [ ] 3.9.4 On chat response, return the current active draft (if any) in the response payload.
-    - [ ] 3.9.5 Add unit tests for create draft calendar change tool, including edge cases (e.g., draft already exists, update draft).
-  - [ ] 3.10 Implement delete draft calendar change tool
-    - [ ] 3.10.1 Define a LiteLLM tool for deleting the active draft calendar change for a thread (no office-service call).
-    - [ ] 3.10.2 Support parameters: thread id.
-    - [ ] 3.10.3 Remove the draft from the history manager or draft store.
-    - [ ] 3.10.4 On chat response, ensure the draft is no longer present in the response payload.
-    - [ ] 3.10.5 Add unit tests for delete draft calendar change tool, including edge cases (e.g., no draft exists).
-  - [ ] 3.11 Integrate all tools with LiteLLM agent and ensure correct registration and invocation.
-  - [ ] 3.12 Add integration tests for LiteLLM agent with all tools and tool command schema.
+  - [x] 3.5 Implement create draft email tool
+    - [x] 3.5.1 Define a LiteLLM tool for creating or updating the active draft email for a thread (no office-service call).
+    - [x] 3.5.2 Support parameters: thread id, email content (to, subject, body, etc.).
+    - [x] 3.5.3 Store the draft in the history manager or a dedicated draft store, ensuring only one active draft per thread.
+    - [x] 3.5.4 On chat response, return the current active draft (if any) in the response payload.
+    - [x] 3.5.5 Add unit tests for create draft email tool, including edge cases (e.g., draft already exists, update draft).
+  - [x] 3.6 Implement delete draft email tool
+    - [x] 3.6.1 Define a LiteLLM tool for deleting the active draft email for a thread (no office-service call).
+    - [x] 3.6.2 Support parameters: thread id.
+    - [x] 3.6.3 Remove the draft from the history manager or draft store.
+    - [x] 3.6.4 On chat response, ensure the draft is no longer present in the response payload.
+    - [x] 3.6.5 Add unit tests for delete draft email tool, including edge cases (e.g., no draft exists).
+  - [x] 3.7 Implement create draft calendar event tool
+    - [x] 3.7.1 Define a LiteLLM tool for creating or updating the active draft calendar event for a thread (no office-service call).
+    - [x] 3.7.2 Support parameters: thread id, event details (title, time, attendees, etc.).
+    - [x] 3.7.3 Store the draft in the history manager or a dedicated draft store, ensuring only one active draft per thread.
+    - [x] 3.7.4 On chat response, return the current active draft (if any) in the response payload.
+    - [x] 3.7.5 Add unit tests for create draft calendar event tool, including edge cases (e.g., draft already exists, update draft).
+  - [x] 3.8 Implement delete draft calendar event tool
+    - [x] 3.8.1 Define a LiteLLM tool for deleting the active draft calendar event for a thread (no office-service call).
+    - [x] 3.8.2 Support parameters: thread id.
+    - [x] 3.8.3 Remove the draft from the history manager or draft store.
+    - [x] 3.8.4 On chat response, ensure the draft is no longer present in the response payload.
+    - [x] 3.8.5 Add unit tests for delete draft calendar event tool, including edge cases (e.g., no draft exists).
+  - [x] 3.9 Implement create draft calendar change tool
+    - [x] 3.9.1 Define a LiteLLM tool for creating or updating the active draft calendar change for a thread (no office-service call).
+    - [x] 3.9.2 Support parameters: thread id, change details.
+    - [x] 3.9.3 Store the draft in the history manager or a dedicated draft store, ensuring only one active draft per thread.
+    - [x] 3.9.4 On chat response, return the current active draft (if any) in the response payload.
+    - [x] 3.9.5 Add unit tests for create draft calendar change tool, including edge cases (e.g., draft already exists, update draft).
+  - [x] 3.10 Implement delete draft calendar change tool
+    - [x] 3.10.1 Define a LiteLLM tool for deleting the active draft calendar change for a thread (no office-service call).
+    - [x] 3.10.2 Support parameters: thread id.
+    - [x] 3.10.3 Remove the draft from the history manager or draft store.
+    - [x] 3.10.4 On chat response, ensure the draft is no longer present in the response payload.
+    - [x] 3.10.5 Add unit tests for delete draft calendar change tool, including edge cases (e.g., no draft exists).
+  - [x] 3.11 Integrate all tools with LiteLLM agent and ensure correct registration and invocation.
+  - [x] 3.12 Add integration tests for LiteLLM agent with all tools and tool command schema.
 
 - [ ] 4. Implement history manager
   - [ ] 4.1 Define database schema for history manager
