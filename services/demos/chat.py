@@ -15,14 +15,17 @@ Type any other text to send as a message to the active thread (or create a new t
 
 import sys
 import os
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 import requests
 import argparse
 from services.chat_service.models import ChatResponse
 
+
 def print_help():
     print(__doc__)
+
 
 def actor(message):
     """
@@ -30,10 +33,22 @@ def actor(message):
     """
     return "briefly" if message.llm_generated else message.user_id
 
+
 def main():
-    parser = argparse.ArgumentParser(description=__doc__, epilog=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('--chat-url', type=str, default="http://localhost:8000", help="Base URL for the chat service API (default: http://localhost:8000)")
-    parser.add_argument('--user-id', type=str, default="user", help="User ID for chat (default: user)")
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        epilog=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--chat-url",
+        type=str,
+        default="http://localhost:8000",
+        help="Base URL for the chat service API (default: http://localhost:8000)",
+    )
+    parser.add_argument(
+        "--user-id", type=str, default="user", help="User ID for chat (default: user)"
+    )
     args = parser.parse_args()
 
     chat_url = args.chat_url.rstrip("/")
@@ -67,7 +82,9 @@ def main():
                     print("No threads found.")
                 else:
                     for t in threads:
-                        print(f"{t['thread_id']}\t(created: {t['created_at']}, updated: {t['updated_at']})")
+                        print(
+                            f"{t['thread_id']}\t(created: {t['created_at']}, updated: {t['updated_at']})"
+                        )
             except requests.RequestException as e:
                 print(f"Error listing threads: {e}")
         elif cmd == "new":
@@ -125,6 +142,7 @@ def main():
                 print(f"Error sending message: {e}")
 
     sys.exit(0)
+
 
 if __name__ == "__main__":
     main()
