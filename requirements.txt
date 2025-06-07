@@ -10,4 +10,6 @@ python-dotenv
 pytz
 requests
 tox
+types-requests
+types-pytz
 uvicorn[standard]

@@ -126,13 +126,13 @@ class WorkDay(BaseModel):
 
 class UserWorkHours(BaseModel):
     # Using 0 for Monday, 6 for Sunday, aligning with datetime.weekday()
-    monday: WorkDay = Field(default_factory=WorkDay)  # Default to non-working day
-    tuesday: WorkDay = Field(default_factory=WorkDay)
-    wednesday: WorkDay = Field(default_factory=WorkDay)
-    thursday: WorkDay = Field(default_factory=WorkDay)
-    friday: WorkDay = Field(default_factory=WorkDay)
-    saturday: WorkDay = Field(default_factory=WorkDay)
-    sunday: WorkDay = Field(default_factory=WorkDay)
+    monday: WorkDay = Field(default_factory=lambda: WorkDay(start_time=None, end_time=None, is_working_day=False))
+    tuesday: WorkDay = Field(default_factory=lambda: WorkDay(start_time=None, end_time=None, is_working_day=False))
+    wednesday: WorkDay = Field(default_factory=lambda: WorkDay(start_time=None, end_time=None, is_working_day=False))
+    thursday: WorkDay = Field(default_factory=lambda: WorkDay(start_time=None, end_time=None, is_working_day=False))
+    friday: WorkDay = Field(default_factory=lambda: WorkDay(start_time=None, end_time=None, is_working_day=False))
+    saturday: WorkDay = Field(default_factory=lambda: WorkDay(start_time=None, end_time=None, is_working_day=False))
+    sunday: WorkDay = Field(default_factory=lambda: WorkDay(start_time=None, end_time=None, is_working_day=False))
     # Timezone is crucial and must be provided alongside events which are in specific timezones
     # It will be used to interpret the start_time/end_time strings correctly.
     # The events themselves already have timezone info in their start/end DateTimeTimeZone objects.
