@@ -4,11 +4,11 @@ Stores per user, per-thread conversation history using ConversationTokenBufferMe
 Provides generate_response to handle ChatRequest and produce ChatResponse.
 """
 
+import logging
 import uuid
 from datetime import datetime
 from typing import Dict
 
-import logging
 import tiktoken
 from langchain.memory import ConversationTokenBufferMemory
 from langchain.schema import AIMessage, HumanMessage
@@ -27,7 +27,7 @@ _thread_metadata: Dict[str, Dict[str, str]] = {}
 logger = logging.getLogger("chat_service.llm_router")
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
-formatter = logging.Formatter('[%(asctime)s] %(levelname)s %(name)s: %(message)s')
+formatter = logging.Formatter("[%(asctime)s] %(levelname)s %(name)s: %(message)s")
 handler.setFormatter(formatter)
 if not logger.hasHandlers():
     logger.addHandler(handler)
@@ -37,8 +37,10 @@ def _tiktoken_length_function(text: str, model_name: str = "gpt-4.1-nano") -> in
     try:
         enc = tiktoken.encoding_for_model(model_name)
     except Exception:
-        print(f"Warning: Model {model_name} not found in tiktoken. "
-              "Using cl100k_base encoding.")
+        print(
+            f"Warning: Model {model_name} not found in tiktoken. "
+            "Using cl100k_base encoding."
+        )
         enc = tiktoken.get_encoding("cl100k_base")
     return len(enc.encode(text))
 
@@ -61,7 +63,9 @@ class LiteLLMLangChainWrapper(BaseChatModel):
             elif isinstance(msg, AIMessage):
                 litellm_messages.append({"role": "assistant", "content": msg.content})
         # Log input messages to LLM, one per line
-        input_log = "\n".join([f"{m['role']}: {m['content']}" for m in litellm_messages])
+        input_log = "\n".join(
+            [f"{m['role']}: {m['content']}" for m in litellm_messages]
+        )
         logger.info(f"LLM input messages:\n{input_log}")
         # Log input token count
         input_text = "\n".join([m["content"] for m in litellm_messages])
@@ -96,7 +100,9 @@ _litellm_wrapper = LiteLLMLangChainWrapper(_litellm, model="gpt-4.1-nano")
 
 class LoggingConversationTokenBufferMemory(ConversationTokenBufferMemory):
     def _summarize(self, *args, **kwargs):
-        logger.info("ConversationTokenBufferMemory: Summarizing history due to token limit.")
+        logger.info(
+            "ConversationTokenBufferMemory: Summarizing history due to token limit."
+        )
         return super()._summarize(*args, **kwargs)
 
 
@@ -115,7 +121,7 @@ def generate_response(request: ChatRequest) -> ChatResponse:
             memory_key="history",
             human_prefix="Human",
             ai_prefix="AI",
-            max_token_limit=256, #2048,  # or your preferred limit
+            max_token_limit=256,  # 2048,  # or your preferred limit
             token_counter=lambda text: _tiktoken_length_function(
                 text, model_name="gpt-4.1-nano"
             ),
@@ -130,7 +136,9 @@ def generate_response(request: ChatRequest) -> ChatResponse:
     ai_message = _litellm_wrapper._generate(history)
     content = ai_message.content
     if not content or not content.strip():
-        logger.warning(f"LLM returned empty content for user {user_id} in thread {thread_id}. Full AIMessage: {ai_message}")
+        logger.warning(
+            f"LLM returned empty content for user {user_id} in thread {thread_id}. Full AIMessage: {ai_message}"
+        )
         content = "Sorry, I couldn't generate a response."
     # Save AI response to memory as a reply to the last user message
     memory.chat_memory.add_ai_message(content)
