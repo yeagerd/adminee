@@ -3,6 +3,7 @@ fastapi
 httpx
 langchain
 litellm
+llama-index
 ormar
 pinecone-client
 pydantic

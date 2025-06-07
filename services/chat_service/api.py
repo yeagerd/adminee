@@ -3,7 +3,7 @@ from typing import List
 from fastapi import APIRouter, HTTPException
 from langchain.schema import AIMessage
 
-from .llm_router import _get_memory_store, _get_thread_metadata, generate_response
+from .langchain_router import _get_memory_store, _get_thread_metadata, generate_response
 from .models import (
     ChatRequest,
     ChatResponse,
