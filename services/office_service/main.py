@@ -126,7 +126,7 @@ async def list_calendar_events(
     if start_dt_obj is None or end_dt_obj is None:
         raise HTTPException(
             status_code=400,
-            detail="Both start_date and end_date must be provided or defaulted."
+            detail="Both start_date and end_date must be provided or defaulted.",
         )
     if start_dt_obj >= end_dt_obj:  # This check is now for non-None dates
         raise HTTPException(
