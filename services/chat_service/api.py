@@ -1,79 +1,101 @@
-from typing import List
-
 from fastapi import APIRouter, HTTPException
-from langchain.schema import AIMessage
-
-from .langchain_router import _get_memory_store, _get_thread_metadata, generate_response
-from .models import (
-    ChatRequest,
-    ChatResponse,
-    FeedbackRequest,
-    FeedbackResponse,
-    Message,
-    Thread,
-)
+from typing import List
+from .models import ChatRequest, ChatResponse, FeedbackRequest, FeedbackResponse, Message, Thread
+from services.chat_service.llama_manager import ChatAgentManager
+from services.chat_service.llm_tools import CalendarTool, EmailTool  # Example tools
+import asyncio
 
 router = APIRouter()
 
 # In-memory feedback storage
 FEEDBACKS: List[FeedbackRequest] = []
 
+# Example: instantiate tools (in real use, inject config/env)
+calendar_tool = CalendarTool(office_service_url="http://localhost:8001")
+email_tool = EmailTool(office_service_url="http://localhost:8001")
+
 
 @router.post("/chat", response_model=ChatResponse)
 def chat_endpoint(request: ChatRequest) -> ChatResponse:
     """
-    Chat endpoint using LLM router with memory.
+    Chat endpoint using llama_manager ChatAgentManager.
     """
-    return generate_response(request)
+    # NOTE: FastAPI sync endpoint, so run async agent in event loop
+    thread_id = int(request.thread_id) if request.thread_id else 1  # fallback for demo
+    user_id = request.user_id
+    user_input = request.message
+    # TODO: Replace with real LiteLLM instance
+    llm = None
+    agent = ChatAgentManager(
+        llm=llm,
+        thread_id=thread_id,
+        user_id=user_id,
+        tools=[calendar_tool],
+        subagents=[email_tool],
+    )
+    reply = asyncio.get_event_loop().run_until_complete(agent.chat(user_input))
+    # Fetch updated history for response
+    messages = asyncio.get_event_loop().run_until_complete(
+        agent.get_memory(user_input)
+    )
+    # Format for API response
+    chat_messages = [
+        Message(
+            message_id=str(i + 1),
+            thread_id=str(thread_id),
+            user_id=m.get("user_id", user_id),
+            llm_generated=(m.get("user_id") != user_id),
+            content=m["content"],
+            created_at=m.get("created_at", ""),
+        )
+        for i, m in enumerate(messages)
+    ]
+    return ChatResponse(thread_id=str(thread_id), messages=chat_messages, draft=None)
 
 
 @router.get("/threads", response_model=List[Thread])
 def list_threads(user_id: str) -> List[Thread]:
     """
-    List threads for a given user using metadata store.
+    List threads for a given user using history_manager.
     """
-    threads: List[Thread] = []
-    metadata = _get_thread_metadata()
-    for key, meta in metadata.items():
-        uid, tid = key.split(":", 1)
-        if uid == user_id:
-            threads.append(
-                Thread(
-                    thread_id=tid,
-                    user_id=uid,
-                    created_at=meta["created_at"],
-                    updated_at=meta["updated_at"],
-                )
-            )
-    return threads
+    import asyncio
+    from services.chat_service import history_manager
+
+    threads = asyncio.get_event_loop().run_until_complete(history_manager.list_threads(user_id))
+    return [
+        Thread(
+            thread_id=str(t.id),
+            user_id=t.user_id,
+            created_at=str(t.created_at),
+            updated_at=str(t.updated_at),
+        ) for t in threads
+    ]
 
 
 @router.get("/threads/{thread_id}/history", response_model=ChatResponse)
 def thread_history(thread_id: str) -> ChatResponse:
     """
-    Get chat history for a given thread using memory store.
+    Get chat history for a given thread using history_manager.
     """
-    metadata = _get_thread_metadata()
-    store = _get_memory_store()
-    key = next((k for k in store.keys() if k.endswith(f":{thread_id}")), None)
-    if not key:
-        raise HTTPException(status_code=404, detail="Thread not found")
-    user_id = key.split(":", 1)[0]
-    memory = store[key]
-    messages: List[Message] = []
-    for idx, msg in enumerate(memory.chat_memory.messages):
-        llm_generated = isinstance(msg, AIMessage)
-        messages.append(
-            Message(
-                message_id=str(idx + 1),
-                thread_id=thread_id,
-                user_id=user_id,
-                llm_generated=llm_generated,
-                content=msg.content,
-                created_at=metadata[key]["updated_at"],
-            )
+    import asyncio
+    from services.chat_service import history_manager
+    from services.chat_service.models import Message
+
+    messages = asyncio.get_event_loop().run_until_complete(
+        history_manager.get_thread_history(int(thread_id), limit=100)
+    )
+    chat_messages = [
+        Message(
+            message_id=str(i + 1),
+            thread_id=str(thread_id),
+            user_id=m.user_id,
+            llm_generated=(m.user_id != messages[0].user_id if messages else False),
+            content=m.content,
+            created_at=str(m.created_at),
         )
-    return ChatResponse(thread_id=thread_id, messages=messages, draft=None)
+        for i, m in enumerate(reversed(messages))
+    ]
+    return ChatResponse(thread_id=str(thread_id), messages=chat_messages, draft=None)
 
 
 @router.post("/feedback", response_model=FeedbackResponse)

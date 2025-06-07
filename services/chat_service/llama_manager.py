@@ -4,74 +4,73 @@ Planning agent for chat_service using LiteLLM and llama-index.
 Implements agent loop, tool/subagent registration, and token-constrained memory.
 """
 
+from llama_index.core.agent.function_calling.base import FunctionCallingAgent
+from llama_index.core.tools import FunctionTool
+from llama_index.core.memory.chat_memory_buffer import ChatMemoryBuffer
+from llama_index.core.base.llms.types import ChatMessage
 from typing import Any, Callable, Dict, List, Optional
+from services.chat_service import context_module, history_manager
 
 
-class SubAgent:
-    def __init__(self, name: str, run: Callable):
-        self.name = name
-        self.run = run
-
-    def __call__(self, *args, **kwargs):
-        return self.run(*args, **kwargs)
-
-
-class Tool:
-    def __init__(self, name: str, func: Callable):
-        self.name = name
-        self.func = func
-
-    def __call__(self, *args, **kwargs):
-        return self.func(*args, **kwargs)
-
-
-class PlanningAgent:
+class ChatAgentManager:
     def __init__(
         self,
-        model: Any,
-        memory: Any,
-        tools: Optional[List[Tool]] = None,
-        subagents: Optional[List[SubAgent]] = None,
+        llm: Any,  # LiteLLM instance, must be compatible with llama-index LLM interface
+        thread_id: int,
+        user_id: str,
+        max_tokens: int = 2048,
+        tools: Optional[List[Callable]] = None,
+        subagents: Optional[List[Callable]] = None,
     ):
-        self.model = model
-        self.memory = memory
-        self.tools = {tool.name: tool for tool in (tools or [])}
-        self.subagents = {agent.name: agent for agent in (subagents or [])}
-        self.state: dict = {}
+        self.llm = llm
+        self.thread_id = thread_id
+        self.user_id = user_id
+        self.max_tokens = max_tokens
+        self.tools = tools or []
+        self.subagents = subagents or []
+        self.agent = None
+        self.memory = None
 
-    def register_tool(self, tool: Tool):
-        self.tools[tool.name] = tool
+    async def get_memory(self, user_input: str = "") -> List[Dict[str, Any]]:
+        messages = await history_manager.get_thread_history(self.thread_id, limit=100)
+        msg_dicts = [m.model_dump() if hasattr(m, "model_dump") else dict(m) for m in messages]
+        selected = context_module.select_relevant_messages(
+            msg_dicts, user_input=user_input, max_tokens=self.max_tokens
+        )
+        return selected
 
-    def register_subagent(self, agent: SubAgent):
-        self.subagents[agent.name] = agent
+    async def build_agent(self, user_input: str = ""):
+        # Wrap tools and subagents as FunctionTool
+        all_tools = []
+        for t in self.tools + self.subagents:
+            all_tools.append(FunctionTool.from_defaults(fn=t))
+        # Prepare memory buffer from context
+        memory_msgs = await self.get_memory(user_input)
+        chat_history = [
+            ChatMessage(role="user" if m.get("user_id") == self.user_id else "assistant", content=m["content"])
+            for m in memory_msgs
+        ]
+        self.memory = ChatMemoryBuffer.from_defaults(chat_history=chat_history)
+        self.agent = FunctionCallingAgent.from_tools(
+            tools=all_tools,
+            llm=self.llm,
+            memory=self.memory,
+            max_function_calls=5,
+        )
 
-    def plan(self, goal: str, context: Dict[str, Any]) -> Dict[str, Any]:
-        # Placeholder: integrate llama-index for planning and reasoning
-        # For now, just call a tool or subagent if goal matches
-        if goal in self.tools:
-            result = self.tools[goal](context)
-            return {"result": result, "steps": [f"Tool {goal} called"]}
-        elif goal in self.subagents:
-            result = self.subagents[goal](context)
-            return {"result": result, "steps": [f"Subagent {goal} called"]}
-        else:
-            return {"error": "No tool or subagent found for goal", "steps": []}
+    async def chat(self, user_input: str) -> str:
+        if self.agent is None:
+            await self.build_agent(user_input)
+        # Run the agent with the user input
+        response = await self.agent.achat(user_input)
+        # Persist user message
+        await history_manager.append_message(self.thread_id, self.user_id, user_input)
+        # Persist agent response
+        await history_manager.append_message(self.thread_id, "assistant", response.response)
+        return response.response
 
-    def agent_loop(
-        self, goal: str, context: Dict[str, Any], max_steps: int = 5
-    ) -> Dict[str, Any]:
-        steps = []
-        for _ in range(max_steps):
-            plan_result = self.plan(goal, context)
-            steps.append(plan_result)
-            if "result" in plan_result:
-                break
-        return {"final_result": steps[-1], "all_steps": steps}
-
-    def update_memory(self, new_info: Any):
-        # Placeholder: integrate with context module for summarization
-        self.memory.append(new_info)
-
-    def get_memory(self):
-        # Placeholder: token-constrained memory
-        return self.memory
+# Example usage (async context):
+# manager = ChatAgentManager(llm=your_litellm, thread_id=1, user_id="user1", tools=[calendar_tool], subagents=[email_tool])
+# await manager.build_agent(user_input="What's on my calendar?")
+# reply = await manager.chat("What's on my calendar?")
+# print(reply)

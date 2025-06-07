@@ -100,7 +100,7 @@ async def create_or_update_draft(
     draft = await Draft.objects.filter(thread=thread_id, type=draft_type).get_or_none()
     if draft:
         draft.content = content
-        draft.updated_at = datetime.datetime.utcnow()
+        draft.updated_at = datetime.datetime.now(datetime.UTC)
         await draft.update()
         return draft
     thread = await Thread.objects.get(id=thread_id)

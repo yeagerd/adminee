@@ -152,42 +152,42 @@
   - [x] 6.4 Integrate history manager with API endpoints for chat and thread management.
   - [x] 6.5 Add unit tests for all history manager operations, including edge cases (e.g., concurrent draft updates, missing threads).
 
-- [ ] 7. Implement context module
-  - [ ] 7.1 Define context condensation strategy based on OpenHands Context Condensation
-  - [ ] 7.2 Implement `context_module.py` to:
-    - [ ] 7.2.1 Select relevant messages and data from thread history and external sources.
-    - [ ] 7.2.2 Summarize or condense long histories to fit a requested token size for a specified llm model, using tiktoken.
-    - [ ] 7.2.3 Support dynamic context selection based on user input and thread state.
-  - [ ] 7.3 Integrate context module with chat endpoint and LiteLLM agent.
-  - [ ] 7.4 Add unit tests for context selection, condensation, and edge cases (e.g., very long threads).
+- [x] 7. Implement context module
+  - [x] 7.1 Define context condensation strategy based on OpenHands Context Condensation
+  - [x] 7.2 Implement `context_module.py` to:
+    - [x] 7.2.1 Select relevant messages and data from thread history and external sources.
+    - [x] 7.2.2 Summarize or condense long histories to fit a requested token size for a specified llm model, using tiktoken.
+    - [x] 7.2.3 Support dynamic context selection based on user input and thread state.
+  - [x] 7.3 Integrate context module with llama_manager agents and history_manager.
+  - [x] 7.4 Add unit tests for context selection, condensation, and edge cases (e.g., very long threads).
 
 - [ ] 8. Implement LLM usage tracking
   - [ ] 8.1 Define database schema/model for LLM usage tracking (fields: user_id, thread_id, message_id, provider, model, input_tokens, output_tokens, created_at).
   - [ ] 8.2 Implement `llm_usage.py` to:
     - [ ] 8.2.1 Record usage for each LLM invocation (batch input, new input, output tokens, provider, model, user, timestamp).
     - [ ] 8.2.2 Provide functions to query usage by user, thread, or time period.
-  - [ ] 8.3 Integrate usage tracking with chat endpoint and LiteLLM calls.
-  - [ ] 8.4 Add unit tests for usage tracking and reporting.
+  - [ ] Integrate usage tracking with chat endpoint and LiteLLM calls.
+  - [ ] Add unit tests for usage tracking and reporting.
 
 - [ ] 9. Implement feedback module
   - [ ] 9.1 Define database schema/model for feedback (fields: user_id, thread_id, message_id, feedback, created_at).
   - [ ] 9.2 Implement `feedback.py` to:
     - [ ] 9.2.1 Store thumbs up/down feedback for a given response.
     - [ ] 9.2.2 Provide functions to retrieve feedback for analytics or review.
-  - [ ] 9.3 Integrate feedback module with feedback API endpoint.
-  - [ ] 9.4 Add unit tests for feedback storage, retrieval, and edge cases (e.g., duplicate feedback, missing message).
+  - [ ] Integrate feedback module with feedback API endpoint.
+  - [ ] Add unit tests for feedback storage, retrieval, and edge cases (e.g., duplicate feedback, missing message).
 
 - [ ] 10. Integrate with office-service and handle authentication/authorization
   - [ ] 10.1 Implement HTTP client logic to call office-service endpoints from LiteLLM tools.
   - [ ] 10.2 Forward user tokens to office-service for authorization.
   - [ ] 10.3 Handle and propagate errors from office-service.
-  - [ ] 10.4 Add integration tests for office-service interactions.
+  - [ ] Add integration tests for office-service interactions.
 
 - [ ] 11. Implement error handling, testing, and observability
   - [ ] 11.1 Implement consistent error response schema and error handling middleware.
   - [ ] 11.2 Add logging for requests, errors, and LLM/tool invocations.
   - [ ] 11.3 Add metrics for LLM usage (input/output tokens, latency).
-  - [ ] 11.4 Write unit tests for all modules and API endpoints.
-  - [ ] 11.5 Write integration tests for end-to-end chat flows.
-  - [ ] 11.6 Ensure log structure supports future integration with observability tools.
+  - [ ] Write unit tests for all modules and API endpoints.
+  - [ ] Write integration tests for end-to-end chat flows.
+  - [ ] Ensure log structure supports future integration with observability tools.
 
