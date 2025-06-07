@@ -1,8 +1,9 @@
-from datetime import datetime
-from typing import Dict, List
+from typing import List
 
 from fastapi import APIRouter, HTTPException
+from langchain.schema import AIMessage
 
+from .llm_router import _get_memory_store, _get_thread_metadata, generate_response
 from .models import (
     ChatRequest,
     ChatResponse,
@@ -14,75 +15,71 @@ from .models import (
 
 router = APIRouter()
 
-# In-memory storage for demonstration (replace with DB integration)
-THREADS: Dict[str, Thread] = {}
-MESSAGES: Dict[str, List[Message]] = {}
+# In-memory feedback storage
 FEEDBACKS: List[FeedbackRequest] = []
 
 
 @router.post("/chat", response_model=ChatResponse)
-def chat_endpoint(request: ChatRequest):
-    # Dummy logic: create thread if not exists, append message
-    thread_id = request.thread_id or f"thread_{len(THREADS)+1}"
-    if thread_id not in THREADS:
-        THREADS[thread_id] = Thread(
-            thread_id=thread_id,
-            user_id=request.user_id,
-            created_at="2025-06-05T00:00:00Z",
-            updated_at="2025-06-05T00:00:00Z",
-        )
-        MESSAGES[thread_id] = []
-    msg = Message(
-        message_id=f"msg_{len(MESSAGES[thread_id])+1}",
-        thread_id=thread_id,
-        user_id=request.user_id,
-        llm_generated=False,
-        content=request.message,
-        created_at="2025-06-05T00:00:00Z",
-    )
-    MESSAGES[thread_id].append(msg)
-
-    # Placeholder LLM response
-    response_messages = [
-        Message(
-            message_id=f"llm_msg_{len(MESSAGES[thread_id]) + 1}",
-            thread_id=thread_id,
-            user_id=request.user_id,
-            llm_generated=True,
-            content="This is a dummy response from the LLM.",
-            created_at=datetime.now().isoformat(),
-        )
-    ]
-    for response_msg in response_messages:
-        MESSAGES[thread_id].append(response_msg)
-
-    # Dummy response
-    return ChatResponse(
-        thread_id=thread_id,
-        messages=response_messages,  # Now returns List[Message]
-        draft=None,
-    )
+def chat_endpoint(request: ChatRequest) -> ChatResponse:
+    """
+    Chat endpoint using LLM router with memory.
+    """
+    return generate_response(request)
 
 
 @router.get("/threads", response_model=List[Thread])
-def list_threads(user_id: str):
-    return [t for t in THREADS.values() if t.user_id == user_id]
+def list_threads(user_id: str) -> List[Thread]:
+    """
+    List threads for a given user using metadata store.
+    """
+    threads: List[Thread] = []
+    metadata = _get_thread_metadata()
+    for key, meta in metadata.items():
+        uid, tid = key.split(":", 1)
+        if uid == user_id:
+            threads.append(
+                Thread(
+                    thread_id=tid,
+                    user_id=uid,
+                    created_at=meta["created_at"],
+                    updated_at=meta["updated_at"],
+                )
+            )
+    return threads
 
 
 @router.get("/threads/{thread_id}/history", response_model=ChatResponse)
-def thread_history(thread_id: str):
-    if thread_id not in MESSAGES:
+def thread_history(thread_id: str) -> ChatResponse:
+    """
+    Get chat history for a given thread using memory store.
+    """
+    metadata = _get_thread_metadata()
+    store = _get_memory_store()
+    key = next((k for k in store.keys() if k.endswith(f":{thread_id}")), None)
+    if not key:
         raise HTTPException(status_code=404, detail="Thread not found")
-
-    # Dummy response
-    return ChatResponse(
-        thread_id=thread_id,
-        messages=MESSAGES[thread_id],
-        draft=None,
-    )
+    user_id = key.split(":", 1)[0]
+    memory = store[key]
+    messages: List[Message] = []
+    for idx, msg in enumerate(memory.chat_memory.messages):
+        llm_generated = isinstance(msg, AIMessage)
+        messages.append(
+            Message(
+                message_id=str(idx + 1),
+                thread_id=thread_id,
+                user_id=user_id,
+                llm_generated=llm_generated,
+                content=msg.content,
+                created_at=metadata[key]["updated_at"],
+            )
+        )
+    return ChatResponse(thread_id=thread_id, messages=messages, draft=None)
 
 
 @router.post("/feedback", response_model=FeedbackResponse)
-def feedback_endpoint(request: FeedbackRequest):
+def feedback_endpoint(request: FeedbackRequest) -> FeedbackResponse:
+    """
+    Receive user feedback for a message.
+    """
     FEEDBACKS.append(request)
     return FeedbackResponse(status="success")
