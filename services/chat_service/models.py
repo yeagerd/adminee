@@ -11,7 +11,7 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     thread_id: str
-    messages: List[dict]  # Should be refined to a Message model
+    messages: List["Message"]
     draft: Optional[dict] = None  # Placeholder for draft email/calendar event
 
 
@@ -26,6 +26,7 @@ class Message(BaseModel):
     message_id: str
     thread_id: str
     user_id: str
+    llm_generated: bool = False
     content: str
     created_at: str
 
