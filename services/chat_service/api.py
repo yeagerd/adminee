@@ -14,8 +14,8 @@ from .models import (
 router = APIRouter()
 
 # In-memory storage for demonstration (replace with DB integration)
-THREADS = {}
-MESSAGES = {}
+THREADS: dict[str, Thread] = {}
+MESSAGES: dict[str, list[Message]] = {}
 FEEDBACKS = []
 
 
