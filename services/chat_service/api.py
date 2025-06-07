@@ -1,9 +1,19 @@
-from fastapi import APIRouter, HTTPException
+import asyncio
 from typing import List
-from .models import ChatRequest, ChatResponse, FeedbackRequest, FeedbackResponse, Message, Thread
+
+from fastapi import APIRouter, HTTPException
+
 from services.chat_service.llama_manager import ChatAgentManager
 from services.chat_service.llm_tools import CalendarTool, EmailTool  # Example tools
-import asyncio
+
+from .models import (
+    ChatRequest,
+    ChatResponse,
+    FeedbackRequest,
+    FeedbackResponse,
+    Message,
+    Thread,
+)
 
 router = APIRouter()
 
@@ -35,9 +45,7 @@ def chat_endpoint(request: ChatRequest) -> ChatResponse:
     )
     reply = asyncio.get_event_loop().run_until_complete(agent.chat(user_input))
     # Fetch updated history for response
-    messages = asyncio.get_event_loop().run_until_complete(
-        agent.get_memory(user_input)
-    )
+    messages = asyncio.get_event_loop().run_until_complete(agent.get_memory(user_input))
     # Format for API response
     chat_messages = [
         Message(
@@ -59,16 +67,20 @@ def list_threads(user_id: str) -> List[Thread]:
     List threads for a given user using history_manager.
     """
     import asyncio
+
     from services.chat_service import history_manager
 
-    threads = asyncio.get_event_loop().run_until_complete(history_manager.list_threads(user_id))
+    threads = asyncio.get_event_loop().run_until_complete(
+        history_manager.list_threads(user_id)
+    )
     return [
         Thread(
             thread_id=str(t.id),
             user_id=t.user_id,
             created_at=str(t.created_at),
             updated_at=str(t.updated_at),
-        ) for t in threads
+        )
+        for t in threads
     ]
 
 
@@ -78,6 +90,7 @@ def thread_history(thread_id: str) -> ChatResponse:
     Get chat history for a given thread using history_manager.
     """
     import asyncio
+
     from services.chat_service import history_manager
     from services.chat_service.models import Message
 

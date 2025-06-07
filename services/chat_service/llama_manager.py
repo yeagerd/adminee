@@ -4,11 +4,13 @@ Planning agent for chat_service using LiteLLM and llama-index.
 Implements agent loop, tool/subagent registration, and token-constrained memory.
 """
 
-from llama_index.core.agent.function_calling.base import FunctionCallingAgent
-from llama_index.core.tools import FunctionTool
-from llama_index.core.memory.chat_memory_buffer import ChatMemoryBuffer
-from llama_index.core.base.llms.types import ChatMessage
 from typing import Any, Callable, Dict, List, Optional
+
+from llama_index.core.agent.function_calling.base import FunctionCallingAgent
+from llama_index.core.base.llms.types import ChatMessage
+from llama_index.core.memory.chat_memory_buffer import ChatMemoryBuffer
+from llama_index.core.tools import FunctionTool
+
 from services.chat_service import context_module, history_manager
 
 
@@ -33,7 +35,9 @@ class ChatAgentManager:
 
     async def get_memory(self, user_input: str = "") -> List[Dict[str, Any]]:
         messages = await history_manager.get_thread_history(self.thread_id, limit=100)
-        msg_dicts = [m.model_dump() if hasattr(m, "model_dump") else dict(m) for m in messages]
+        msg_dicts = [
+            m.model_dump() if hasattr(m, "model_dump") else dict(m) for m in messages
+        ]
         selected = context_module.select_relevant_messages(
             msg_dicts, user_input=user_input, max_tokens=self.max_tokens
         )
@@ -47,7 +51,10 @@ class ChatAgentManager:
         # Prepare memory buffer from context
         memory_msgs = await self.get_memory(user_input)
         chat_history = [
-            ChatMessage(role="user" if m.get("user_id") == self.user_id else "assistant", content=m["content"])
+            ChatMessage(
+                role="user" if m.get("user_id") == self.user_id else "assistant",
+                content=m["content"],
+            )
             for m in memory_msgs
         ]
         self.memory = ChatMemoryBuffer.from_defaults(chat_history=chat_history)
@@ -66,8 +73,11 @@ class ChatAgentManager:
         # Persist user message
         await history_manager.append_message(self.thread_id, self.user_id, user_input)
         # Persist agent response
-        await history_manager.append_message(self.thread_id, "assistant", response.response)
+        await history_manager.append_message(
+            self.thread_id, "assistant", response.response
+        )
         return response.response
+
 
 # Example usage (async context):
 # manager = ChatAgentManager(llm=your_litellm, thread_id=1, user_id="user1", tools=[calendar_tool], subagents=[email_tool])
