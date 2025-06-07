@@ -1,13 +1,16 @@
 """Custom exceptions for the Calendar Service."""
 
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 
 class GraphClientError(Exception):
     """Base class for errors originating from the Microsoft Graph client."""
 
     def __init__(
-        self, message: str, status_code: Optional[int] = None, graph_error_details: Optional[Dict[Any, Any]] = None
+        self,
+        message: str,
+        status_code: Optional[int] = None,
+        graph_error_details: Optional[Dict[Any, Any]] = None,
     ):
         super().__init__(message)
         self.status_code = status_code
