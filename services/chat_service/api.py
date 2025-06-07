@@ -1,13 +1,15 @@
+from typing import List
+
 from fastapi import APIRouter, HTTPException
+
 from .models import (
     ChatRequest,
     ChatResponse,
-    Thread,
-    Message,
     FeedbackRequest,
     FeedbackResponse,
+    Message,
+    Thread,
 )
-from typing import List
 
 router = APIRouter()
 
