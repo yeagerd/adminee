@@ -13,13 +13,15 @@ Type any other text to send as a message to the active thread (or create a new t
 
 """
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-import requests
 import argparse
+
+import requests
+
 from services.chat_service.models import ChatResponse
 
 

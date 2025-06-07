@@ -1,7 +1,7 @@
+from datetime import datetime
 from typing import Dict, List
 
 from fastapi import APIRouter, HTTPException
-from datetime import datetime
 
 from .models import (
     ChatRequest,
