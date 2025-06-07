@@ -50,27 +50,27 @@
     - [x] 3.1.4 Parse and validate office-service API responses; handle errors and timeouts.
     - [x] 3.1.5 Return results in a format suitable for LLM context and tool command schema.
     - [x] 3.1.6 Add unit tests for calendar tool, including error cases and edge cases.
-  - [ ] 3.2 Implement email tool
-    - [ ] 3.2.1 Define a LiteLLM tool for retrieving emails from office-service via REST API.
-    - [ ] 3.2.2 Support parameters: user token, date range, filters (e.g., unread, folder).
-    - [ ] 3.2.3 Forward user token for authentication.
-    - [ ] 3.2.4 Parse and validate office-service API responses; handle errors and timeouts.
-    - [ ] 3.2.5 Return results in a format suitable for LLM context and tool command schema.
-    - [ ] 3.2.6 Add unit tests for email tool, including error and edge cases.
-  - [ ] 3.3 Implement notes tool
-    - [ ] 3.3.1 Define a LiteLLM tool for retrieving notes from office-service via REST API.
-    - [ ] 3.3.2 Support parameters: user token, filters (e.g., notebook, tags).
-    - [ ] 3.3.3 Forward user token for authentication.
-    - [ ] 3.3.4 Parse and validate office-service API responses; handle errors and timeouts.
-    - [ ] 3.3.5 Return results in a format suitable for LLM context and tool command schema.
-    - [ ] 3.3.6 Add unit tests for notes tool, including error and edge cases.
-  - [ ] 3.4 Implement documents tool
-    - [ ] 3.4.1 Define a LiteLLM tool for retrieving documents from office-service via REST API.
-    - [ ] 3.4.2 Support parameters: user token, filters (e.g., document type, date).
-    - [ ] 3.4.3 Forward user token for authentication.
-    - [ ] 3.4.4 Parse and validate office-service API responses; handle errors and timeouts.
-    - [ ] 3.4.5 Return results in a format suitable for LLM context and tool command schema.
-    - [ ] 3.4.6 Add unit tests for documents tool, including error and edge cases.
+  - [x] 3.2 Implement email tool
+    - [x] 3.2.1 Define a LiteLLM tool for retrieving emails from office-service via REST API.
+    - [x] 3.2.2 Support parameters: user token, date range, filters (e.g., unread, folder).
+    - [x] 3.2.3 Forward user token for authentication.
+    - [x] 3.2.4 Parse and validate office-service API responses; handle errors and timeouts.
+    - [x] 3.2.5 Return results in a format suitable for LLM context and tool command schema.
+    - [x] 3.2.6 Add unit tests for email tool, including error and edge cases.
+  - [x] 3.3 Implement notes tool
+    - [x] 3.3.1 Define a LiteLLM tool for retrieving notes from office-service via REST API.
+    - [x] 3.3.2 Support parameters: user token, filters (e.g., notebook, tags).
+    - [x] 3.3.3 Forward user token for authentication.
+    - [x] 3.3.4 Parse and validate office-service API responses; handle errors and timeouts.
+    - [x] 3.3.5 Return results in a format suitable for LLM context and tool command schema.
+    - [x] 3.3.6 Add unit tests for notes tool, including error and edge cases.
+  - [x] 3.4 Implement documents tool
+    - [x] 3.4.1 Define a LiteLLM tool for retrieving documents from office-service via REST API.
+    - [x] 3.4.2 Support parameters: user token, filters (e.g., document type, date).
+    - [x] 3.4.3 Forward user token for authentication.
+    - [x] 3.4.4 Parse and validate office-service API responses; handle errors and timeouts.
+    - [x] 3.4.5 Return results in a format suitable for LLM context and tool command schema.
+    - [x] 3.4.6 Add unit tests for documents tool, including error and edge cases.
   - [ ] 3.5 Implement create draft email tool
     - [ ] 3.5.1 Define a LiteLLM tool for creating or updating the active draft email for a thread (no office-service call).
     - [ ] 3.5.2 Support parameters: thread id, email content (to, subject, body, etc.).

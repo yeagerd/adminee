@@ -6,28 +6,19 @@ from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel  # Added BaseModel import
 
-from .exceptions import (
+from .exceptions import (  # These GraphAPI... errors are specific to MS Graph.; We might need more generic versions for ProviderError; This might become ProviderError later if we generalize exceptions
     GraphAPIAuthError,
-)  # These GraphAPI... errors are specific to MS Graph.
-from .exceptions import (
-    GraphAPIRateLimitError,
-)  # We might need more generic versions for ProviderError
-from .exceptions import (
-    GraphClientError,
-)  # This might become ProviderError later if we generalize exceptions
-from .exceptions import (
     GraphAPIClientError,
     GraphAPIDecodingError,
     GraphAPIError,
+    GraphAPIRateLimitError,
     GraphAPIServerError,
+    GraphClientError,
     InvalidInputError,
     ProviderAuthError,
     ProviderNotFoundError,
 )
-from .models import (
-    CalendarEvent,
-    CalendarEventResponse,
-)
+from .models import CalendarEvent, CalendarEventResponse
 
 # Removed: from .services.graph_client import get_calendar_events
 from .providers.base import CalendarProvider
