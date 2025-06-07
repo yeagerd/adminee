@@ -1,6 +1,7 @@
 alembic
 fastapi
 httpx
+langchain
 litellm
 ormar
 pinecone-client
