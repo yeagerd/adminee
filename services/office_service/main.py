@@ -6,28 +6,19 @@ from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel  # Added BaseModel import
 
-from .exceptions import (
+from .exceptions import (  # These GraphAPI... errors are specific to MS Graph.; We might need more generic versions for ProviderError; This might become ProviderError later if we generalize exceptions
     GraphAPIAuthError,
-)  # These GraphAPI... errors are specific to MS Graph.
-from .exceptions import (
-    GraphAPIRateLimitError,
-)  # We might need more generic versions for ProviderError
-from .exceptions import (
-    GraphClientError,
-)  # This might become ProviderError later if we generalize exceptions
-from .exceptions import (
     GraphAPIClientError,
     GraphAPIDecodingError,
     GraphAPIError,
+    GraphAPIRateLimitError,
     GraphAPIServerError,
+    GraphClientError,
     InvalidInputError,
     ProviderAuthError,
     ProviderNotFoundError,
 )
-from .models import (
-    CalendarEvent,
-    CalendarEventResponse,
-)
+from .models import CalendarEvent, CalendarEventResponse
 
 # Removed: from .services.graph_client import get_calendar_events
 from .providers.base import CalendarProvider
@@ -132,7 +123,12 @@ async def list_calendar_events(
 
     # At this point, start_dt_obj and end_dt_obj are either both set (to today, or from params) or an error was raised.
     # The provider's get_events expects non-optional datetime for start/end.
-    if start_dt_obj >= end_dt_obj:  # This check is now implicitly for non-None dates
+    if start_dt_obj is None or end_dt_obj is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Both start_date and end_date must be provided or defaulted."
+        )
+    if start_dt_obj >= end_dt_obj:  # This check is now for non-None dates
         raise HTTPException(
             status_code=400,
             detail="If both dates are provided, end_date must be after start_date.",
@@ -217,11 +213,15 @@ def get_calendar_provider(
     provider_class = PROVIDER_MAP.get(provider_type.lower())
     if not provider_class:
         raise ProviderNotFoundError(f"Calendar provider '{provider_type}' not found.")
-    if not token and provider_class.requires_auth():  # Check if token is needed
-        raise ProviderAuthError(
-            f"Authentication token required for {provider_type} but not provided."
-        )
-    return provider_class(graph_token=token)  # Pass token if it exists
+    # Check if provider_class has requires_auth attribute and call it if present
+    requires_auth = getattr(provider_class, "requires_auth", None)
+    if callable(requires_auth) and requires_auth():
+        if not token:
+            raise ProviderAuthError(
+                f"Authentication token required for {provider_type} but not provided."
+            )
+    # Instantiate provider without unexpected keyword arguments
+    return provider_class()
 
 
 @app.post("/events/", response_model=List[CalendarEvent])
@@ -251,6 +251,10 @@ async def get_events_from_provider(
         raise HTTPException(status_code=401, detail=str(e))
 
     try:
+        if user_timezone is None:
+            raise HTTPException(
+                status_code=400, detail="User timezone must be provided."
+            )
         tz = pytz.timezone(user_timezone)
     except pytz.exceptions.UnknownTimeZoneError:
         raise HTTPException(
@@ -295,14 +299,17 @@ async def get_events_from_provider(
     try:
         # Providers expect naive datetime objects representing the user's local time window
         events = await provider.get_events(
-            start_dt.replace(tzinfo=None), end_dt.replace(tzinfo=None), user_timezone
+            token=token or "",
+            user_timezone=user_timezone,
+            start_datetime=start_dt.replace(tzinfo=None),
+            end_datetime=end_dt.replace(tzinfo=None),
         )
         return events
     except InvalidInputError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except GraphAPIError as e:  # Catching specific provider errors
         raise HTTPException(
-            status_code=e.status_code if hasattr(e, "status_code") else 500,
+            status_code=e.status_code if e.status_code is not None else 500,
             detail=str(e),
         )
     except Exception as e:
