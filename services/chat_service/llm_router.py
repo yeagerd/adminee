@@ -11,7 +11,7 @@ from typing import Dict
 import tiktoken
 from langchain.memory import ConversationTokenBufferMemory
 from langchain.schema import AIMessage, HumanMessage
-from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.language_models.base import BaseLanguageModel
 from litellm import LiteLLM
 from pydantic import PrivateAttr
 
@@ -24,51 +24,51 @@ _memory_store: Dict[str, ConversationTokenBufferMemory] = {}
 _thread_metadata: Dict[str, Dict[str, str]] = {}
 
 
-class LiteLLMLangChainWrapper(BaseChatModel):
-    _litellm_client: LiteLLM = PrivateAttr()
-    _model: str = PrivateAttr()
+def _tiktoken_length_function(text: str, model_name: str = "gpt-4.1-nano") -> int:
+    try:
+        enc = tiktoken.encoding_for_model(model_name)
+    except Exception:
+        print(f"Warning: Model {model_name} not found in tiktoken. "
+              "Using cl100k_base encoding.")
+        enc = tiktoken.get_encoding("cl100k_base")
+    return len(enc.encode(text))
 
-    def __init__(self, litellm_client, model="gpt-4.1-nano", **kwargs):
-        super().__init__(**kwargs)
-        self._litellm_client = litellm_client
-        self._model = model
 
+class DummyLLM(BaseLanguageModel):
     @property
-    def _llm_type(self) -> str:
-        return "litellm"
+    def _llm_type(self):
+        return "dummy"
 
-    def _generate(self, messages, stop=None, **kwargs):
-        litellm_messages = []
-        for msg in messages:
-            if isinstance(msg, HumanMessage):
-                litellm_messages.append({"role": "user", "content": msg.content})
-            elif isinstance(msg, AIMessage):
-                litellm_messages.append({"role": "assistant", "content": msg.content})
-        resp = self._litellm_client.chat.completions.create(
-            messages=litellm_messages, model=self._model, stream=False
-        )
-        content = None
-        if hasattr(resp, "choices"):
-            choice = resp.choices[0]
-            content = getattr(choice.message, "content", None)
-        if content is None and hasattr(resp, "text"):
-            content = resp.text
-        if content is None:
-            content = str(resp)
-        return AIMessage(content=content)
+    def _generate(self, *args, **kwargs):
+        raise NotImplementedError("DummyLLM does not generate responses.")
+
+    def predict(self, *args, **kwargs):
+        raise NotImplementedError("DummyLLM does not predict.")
+
+    async def apredict(self, *args, **kwargs):
+        raise NotImplementedError("DummyLLM does not predict asynchronously.")
+
+    def predict_messages(self, *args, **kwargs):
+        raise NotImplementedError("DummyLLM does not predict messages.")
+
+    async def apredict_messages(self, *args, **kwargs):
+        raise NotImplementedError("DummyLLM does not predict messages asynchronously.")
+
+    def generate_prompt(self, *args, **kwargs):
+        raise NotImplementedError("DummyLLM does not generate prompts.")
+
+    async def agenerate_prompt(self, *args, **kwargs):
+        raise NotImplementedError("DummyLLM does not generate prompts asynchronously.")
+
+    def invoke(self, *args, **kwargs):
+        raise NotImplementedError("DummyLLM does not invoke.")
 
     def get_token_ids(self, text: str) -> list[int]:
-        enc = tiktoken.get_encoding("cl100k_base")
-        return enc.encode(text)
+        # Prevents LangChain from requiring transformers
+        return []
 
 
-_litellm_wrapper = LiteLLMLangChainWrapper(_litellm, model="gpt-4.1-nano")
-
-
-def _tiktoken_length_function(text: str, model_name: str = "gpt-4.1-nano") -> int:
-    # Use tiktoken to count tokens for OpenAI-compatible models
-    enc = tiktoken.get_encoding("cl100k_base")
-    return len(enc.encode(text))
+_dummy_llm = DummyLLM()
 
 
 def generate_response(request: ChatRequest) -> ChatResponse:
@@ -82,7 +82,7 @@ def generate_response(request: ChatRequest) -> ChatResponse:
     # Initialize memory and metadata if new conversation
     if key not in _memory_store:
         _memory_store[key] = ConversationTokenBufferMemory(
-            llm=_litellm_wrapper,
+            llm=_dummy_llm,  # Use dummy LLM to satisfy validation
             memory_key="history",
             human_prefix="Human",
             ai_prefix="AI",
