@@ -1,4 +1,5 @@
 from typing import Any, Dict, Optional
+
 import requests
 from llama_index.core.tools import FunctionTool
 from llama_index.core.tools.types import ToolOutput
@@ -330,7 +331,10 @@ def delete_draft_calendar_change(thread_id: str) -> Dict[str, Any]:
 
 # --- Tool Registry ---
 
-def make_tools(office_service_url: str = "http://localhost:8001") -> Dict[str, FunctionTool]:
+
+def make_tools(
+    office_service_url: str = "http://localhost:8001",
+) -> Dict[str, FunctionTool]:
     # Each FunctionTool is partially applied with the office_service_url if needed
     from functools import partial
 
