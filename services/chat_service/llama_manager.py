@@ -8,7 +8,6 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
-from dotenv import load_dotenv
 from llama_index.core.agent.function_calling.base import FunctionCallingAgent
 from llama_index.core.base.llms.types import ChatMessage
 from llama_index.core.memory.chat_memory_buffer import ChatMemoryBuffer
@@ -17,44 +16,39 @@ from llama_index.core.tools.types import BaseTool
 
 from services.chat_service import context_module, history_manager
 
-load_dotenv()
+from .llm_manager import llm_manager
 
 logger = logging.getLogger(__name__)
 
 
-class FakeLLM:
-    """A fake LLM for testing and offline mode."""
-
-    async def achat(self, query):
-        logger.info(f"FakeLLM received query: {query}")
-
-        class Response:
-            response = f"ack: {query}"
-
-        return Response()
+from .llm_manager import FakeLLM
 
 
 class ChatAgentManager:
     def __init__(
         self,
-        llm: Any,  # LiteLLM instance, must be compatible with llama-index LLM interface
         thread_id: int,
         user_id: str,
         max_tokens: int = 2048,
         tools: Optional[List[Callable]] = None,
         subagents: Optional[List[Callable]] = None,
+        llm_model: Optional[str] = None,
+        llm_provider: Optional[str] = None,
+        llm_kwargs: Optional[Dict[str, Any]] = None,
     ):
-        self._using_fake_llm = llm is None
+        self.llm_model = llm_model
+        self.llm_provider = llm_provider
+        self.llm_kwargs = llm_kwargs or {}
 
-        # If llm is None, always use FakeLLM
-        if self._using_fake_llm:
-            logger.warning(
-                "llm=None was explicitly passed. Using FakeLLM in offline mode."
-            )
-            self.llm = FakeLLM()
-        else:
-            self.llm = llm
-            logger.info("Using provided LLM instance")
+        # Initialize LLM instance
+        self.llm = llm_manager.get_llm(
+            model=llm_model, provider=llm_provider, **self.llm_kwargs
+        )
+
+        logger.info(
+            f"Initialized ChatAgentManager with model={llm_model or 'default'}, "
+            f"provider={llm_provider or 'default'}"
+        )
 
         self.thread_id = thread_id
         self.user_id = user_id
@@ -66,7 +60,7 @@ class ChatAgentManager:
         logger.info(
             f"ChatAgentManager initialized for user_id={self.user_id}, thread_id={self.thread_id}, "
             f"max_tokens={self.max_tokens}, tools={len(self.tools)}, subagents={len(self.subagents)}, "
-            f"using_fake_llm={self._using_fake_llm}"
+            f"model={self.llm_model or 'default'}, provider={self.llm_provider or 'default'}"
         )
 
     async def get_memory(self, user_input: str = "") -> List[Dict[str, Any]]:
@@ -79,12 +73,25 @@ class ChatAgentManager:
         msg_dicts = [
             m.model_dump() if hasattr(m, "model_dump") else dict(m) for m in messages
         ]
-        selected = context_module.select_relevant_messages(
-            msg_dicts,
-            user_input=user_input,
-            max_tokens=self.max_tokens,
-            model=os.environ.get("LLM_MODEL", ""),
+
+        # Get model from instance or environment
+        model = getattr(self, "llm_model", None) or os.environ.get(
+            "LLM_MODEL", "gpt-3.5-turbo"
         )
+
+        # Pass LLM kwargs if available
+        llm_kwargs = getattr(self, "llm_kwargs", {})
+
+        # Use dynamic context selection which can use LLM for better context selection
+        selected = await context_module.dynamic_context_selection(
+            messages=msg_dicts,
+            user_input=user_input,
+            thread_state=None,  # Can be enhanced with thread state in the future
+            max_tokens=self.max_tokens,
+            model=model,
+            **llm_kwargs,
+        )
+
         logger.debug(f"Selected {len(selected)} relevant messages for memory context")
         return selected
 
@@ -149,8 +156,12 @@ class ChatAgentManager:
         await history_manager.append_message(self.thread_id, self.user_id, user_input)
 
         # Handle fake LLM mode
-        if self._using_fake_llm or isinstance(self.llm, FakeLLM):
-            response = f"ack: {user_input}"
+        if isinstance(self.llm, FakeLLM):
+            # If we're using FakeLLM, just return a simple response
+            response_obj = await self.llm.achat(
+                [{"role": "user", "content": user_input}]
+            )
+            response = response_obj.content
             await history_manager.append_message(self.thread_id, "assistant", response)
             logger.info(f"FakeLLM response: {response}")
             return response
