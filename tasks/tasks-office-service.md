@@ -101,13 +101,13 @@ Before committing:
 [x] 7.2 [Implement the GET /health endpoint as specified in Section 9.2, including checks for the database and Redis connections.]
 [x] 7.3 [Implement the GET /health/integrations/{user_id} endpoint. For the MVP, this can simply attempt to fetch a token for both 'google' and 'microsoft' for the given user and report success or failure.]
 
-[ ] 8. Implement Unified READ Endpoints (MVP)
-[ ] 8.1 [Create an api/email.py router.]
-[ ] 8.2 [Implement GET /email/messages. It should use the APIClientFactory to get clients for each provider, make parallel API calls, use the DataNormalizer to unify the results, and aggregate them.]
-[ ] 8.3 [Integrate the CacheManager into the GET /email/messages endpoint to cache the final aggregated response.]
-[ ] 8.4 [Create an api/calendar.py router and implement GET /calendar/events following the same pattern as the email endpoint (fetch, normalize, aggregate, cache).]
-[ ] 8.5 [Create an api/files.py router and implement GET /files following the same pattern.]
-[ ] 8.6 [Implement the detail endpoint GET /email/messages/{message_id}. This will require logic to determine the correct provider from the message_id to make the API call.]
+[x] 8. Implement Unified READ Endpoints (MVP)
+[x] 8.1 [Create an api/email.py router.]
+[x] 8.2 [Implement GET /email/messages. It should use the APIClientFactory to get clients for each provider, make parallel API calls, use the DataNormalizer to unify the results, and aggregate them.]
+[x] 8.3 [Integrate the CacheManager into the GET /email/messages endpoint to cache the final aggregated response.]
+[x] 8.4 [Create an api/calendar.py router and implement GET /calendar/events following the same pattern as the email endpoint (fetch, normalize, aggregate, cache).]
+[x] 8.5 [Create an api/files.py router and implement GET /files following the same pattern.]
+[x] 8.6 [Implement the detail endpoint GET /email/messages/{message_id}. This will require logic to determine the correct provider from the message_id to make the API call.]
 
 [ ] 9. Implement Unified WRITE Endpoints (MVP)
 [ ] 9.1 [Implement POST /email/send in the email router. For the MVP, this can be a simple pass-through that determines the provider and makes the API call. The actual queuing can be stubbed or logged for now.]
@@ -126,6 +126,36 @@ Before committing:
 [ ] 11.3 [Write integration tests for the GET /health endpoint.]
 [ ] 11.4 [Add docstrings to all public functions and classes you've created.]
 [ ] 11.5 [Update the README.md file with instructions on how to set up the development environment, run the service, and run tests.]
+## Relevant Files
+
+### Core Infrastructure
+- `services/office_service/app/main.py` - FastAPI application with all routers
+- `services/office_service/core/config.py` - Environment configuration using Pydantic BaseSettings
+- `services/office_service/core/database.py` - Database connection and Ormar configuration
+- `services/office_service/alembic/` - Database migration files and configuration
+
+### Data Models
+- `services/office_service/models/__init__.py` - Ormar database models (ApiCall, CacheEntry, RateLimitBucket)
+- `services/office_service/schemas/__init__.py` - Pydantic schemas for unified API responses (EmailMessage, CalendarEvent, DriveFile, ApiResponse)
+
+### Core Modules
+- `services/office_service/core/token_manager.py` - Token retrieval from User Management Service with caching
+- `services/office_service/core/api_client_factory.py` - Factory for creating provider-specific API clients
+- `services/office_service/core/clients/base.py` - Base API client with logging and error handling
+- `services/office_service/core/clients/google.py` - Google API client for Gmail, Calendar, Drive
+- `services/office_service/core/clients/microsoft.py` - Microsoft Graph API client for Outlook, Calendar, OneDrive
+- `services/office_service/core/normalizer.py` - Data normalization functions for unified response format
+- `services/office_service/core/cache_manager.py` - Redis caching with TTL and key generation
+
+### API Endpoints
+- `services/office_service/api/health.py` - Health check and diagnostics endpoints
+- `services/office_service/api/email.py` - Unified email endpoints (GET /email/messages, GET /email/messages/{id})
+- `services/office_service/api/calendar.py` - Unified calendar endpoints (GET /calendar/events, GET /calendar/events/{id})
+- `services/office_service/api/files.py` - Unified files endpoints (GET /files/, GET /files/search, GET /files/{id})
+
+### Dependencies
+- `requirements.txt` - Python package dependencies including FastAPI, Redis, httpx, Ormar
+
 Next Steps (After MVP)
 
 Once you've completed the tasks above, we'll move on to Phase 2, which includes:
