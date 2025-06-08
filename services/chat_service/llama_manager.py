@@ -27,7 +27,7 @@ import logging
 from typing import Any, Callable, Dict, List, Optional
 
 # Import modules that tests expect to find here for backward compatibility
-from .chat_agent import ModernChatAgent
+from .chat_agent import ChatAgent
 
 logger = logging.getLogger(__name__)
 
@@ -66,8 +66,8 @@ class ChatAgentManager:
         self.subagents = subagents or []
 
         # Registry of active agents
-        self.active_agents: Dict[str, ModernChatAgent] = {}
-        self.main_agent: Optional[ModernChatAgent] = None
+        self.active_agents: Dict[str, ChatAgent] = {}
+        self.main_agent: Optional[ChatAgent] = None
 
         # Tool distribution strategy
         self.tool_distribution = self._analyze_tools()
@@ -99,11 +99,11 @@ class ChatAgentManager:
         logger.debug(f"Tool distribution strategy: {distribution}")
         return distribution
 
-    async def _create_main_agent(self) -> ModernChatAgent:
+    async def _create_main_agent(self) -> ChatAgent:
         """Create the main chat agent with assigned tools."""
         if self.main_agent is None:
             main_tools = self.tool_distribution["main_agent"]
-            self.main_agent = ModernChatAgent(
+            self.main_agent = ChatAgent(
                 thread_id=self.thread_id,
                 user_id=self.user_id,
                 max_tokens=self.max_tokens,
@@ -120,7 +120,7 @@ class ChatAgentManager:
 
         return self.main_agent
 
-    async def _create_subagents(self) -> Dict[str, ModernChatAgent]:
+    async def _create_subagents(self) -> Dict[str, ChatAgent]:
         """Create specialized sub-agents for specific tasks."""
         subagents = {}
 
@@ -132,7 +132,7 @@ class ChatAgentManager:
                     agent_name, []
                 )
 
-                subagent = ModernChatAgent(
+                subagent = ChatAgent(
                     thread_id=self.thread_id,
                     user_id=self.user_id,
                     max_tokens=self.max_tokens,

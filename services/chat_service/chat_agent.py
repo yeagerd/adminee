@@ -38,7 +38,7 @@ from .llm_manager import FakeLLM, llm_manager
 logger = logging.getLogger(__name__)
 
 
-class ModernChatAgent:
+class ChatAgent:
     """
     Modern chat agent with explicit llama-index memory blocks.
 
@@ -419,9 +419,9 @@ def create_chat_agent(
     llm_provider: Optional[str] = None,
     llm_kwargs: Optional[Dict[str, Any]] = None,
     **kwargs,
-) -> ModernChatAgent:
+) -> ChatAgent:
     """Factory function to create a modern chat agent."""
-    return ModernChatAgent(
+    return ChatAgent(
         thread_id=thread_id,
         user_id=user_id,
         max_tokens=max_tokens,
