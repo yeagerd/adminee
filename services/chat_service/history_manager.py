@@ -68,6 +68,15 @@ class Draft(ormar.Model):
     updated_at: datetime.datetime = ormar.DateTime(default=datetime.datetime.utcnow)
 
 
+# Ensure tables are created on import
+def init_db():
+    engine = sqlalchemy.create_engine("sqlite:///memory")
+    metadata.create_all(engine)
+
+
+init_db()
+
+
 # Utility functions for thread, message, and draft management
 async def create_thread(user_id: str, title: Optional[str] = None) -> Thread:
     return await Thread.objects.create(user_id=user_id, title=title)

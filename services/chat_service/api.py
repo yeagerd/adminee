@@ -4,6 +4,7 @@ from typing import List
 from fastapi import APIRouter
 
 from services.chat_service.llama_manager import ChatAgentManager
+from services.chat_service.models import Message as PydanticMessage
 
 from .models import (
     ChatRequest,
@@ -12,7 +13,6 @@ from .models import (
     FeedbackResponse,
     Thread,
 )
-from services.chat_service.models import Message as PydanticMessage
 
 router = APIRouter()
 
@@ -39,8 +39,6 @@ def chat_endpoint(request: ChatRequest) -> ChatResponse:
         subagents=[],
     )
     # Actually run the chat to append messages
-    import asyncio
-
     asyncio.run(agent.chat(user_input))
     # Fetch messages as ORM objects
     orm_messages = asyncio.run(agent.get_memory(user_input))
@@ -49,18 +47,31 @@ def chat_endpoint(request: ChatRequest) -> ChatResponse:
     for m in orm_messages:
         # If already a dict, convert fields
         if isinstance(m, dict):
-            pydantic_messages.append(PydanticMessage(
-                message_id=str(m.get("id") or m.get("message_id")),
-                thread_id=str(m.get("thread_id") or m.get("thread", {}).get("id") or request.thread_id or 1),
-                user_id=m.get("user_id"),
-                llm_generated=(m.get("user_id") != request.user_id),
-                content=m.get("content"),
-                created_at=str(m.get("created_at")),
-            ))
+            pydantic_messages.append(
+                PydanticMessage(
+                    message_id=str(m.get("id") or m.get("message_id")),
+                    thread_id=str(
+                        m.get("thread_id")
+                        or m.get("thread", {}).get("id")
+                        or request.thread_id
+                        or 1
+                    ),
+                    user_id=(
+                        str(m.get("user_id")) if m.get("user_id") is not None else ""
+                    ),
+                    llm_generated=(m.get("user_id") != request.user_id),
+                    content=(
+                        str(m.get("content")) if m.get("content") is not None else ""
+                    ),
+                    created_at=str(m.get("created_at")),
+                )
+            )
         else:
             # fallback: assume already a Pydantic Message
             pydantic_messages.append(m)
-    return ChatResponse(thread_id=str(agent.thread_id), messages=pydantic_messages, draft=None)
+    return ChatResponse(
+        thread_id=str(agent.thread_id), messages=pydantic_messages, draft=None
+    )
 
 
 @router.get("/threads", response_model=List[Thread])
@@ -68,8 +79,6 @@ def list_threads(user_id: str) -> List[Thread]:
     """
     List threads for a given user using history_manager.
     """
-    import asyncio
-
     from services.chat_service import history_manager
 
     threads = asyncio.run(history_manager.list_threads(user_id))
@@ -89,19 +98,19 @@ def thread_history(thread_id: str) -> ChatResponse:
     """
     Get chat history for a given thread using history_manager.
     """
-    import asyncio
-
     from services.chat_service import history_manager
     from services.chat_service.models import Message
 
-    messages = asyncio.run(history_manager.get_thread_history(int(thread_id), limit=100))
+    messages = asyncio.run(
+        history_manager.get_thread_history(int(thread_id), limit=100)
+    )
     chat_messages = [
         Message(
             message_id=str(i + 1),
             thread_id=str(thread_id),
-            user_id=m.user_id,
+            user_id=str(m.user_id) if m.user_id is not None else "",
             llm_generated=(m.user_id != messages[0].user_id if messages else False),
-            content=m.content,
+            content=str(m.content) if m.content is not None else "",
             created_at=str(m.created_at),
         )
         for i, m in enumerate(reversed(messages))
