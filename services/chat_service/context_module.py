@@ -12,8 +12,12 @@ import tiktoken
 # - Summarize or condense long histories to fit a requested token size for a specified llm model
 # - Support dynamic context selection based on user input and thread state
 
+# add a python logger and log when condense_history happens (before num messages, before tokens, after num messages, after tokens). Also, temporarily, log the llm summary
 
-def count_tokens(text: str, model: str = "gpt-3.5-turbo") -> int:
+
+def count_tokens(text: str, model: str) -> int:
+    if not model:
+        model = "gpt-4.1-nano"
     enc = tiktoken.encoding_for_model(model)
     return len(enc.encode(text))
 
@@ -22,7 +26,7 @@ def select_relevant_messages(
     messages: List[Dict[str, Any]],
     user_input: str,
     max_tokens: int,
-    model: str = "gpt-3.5-turbo",
+    model: str,
 ) -> List[Dict[str, Any]]:
     # Naive: select most recent messages that fit in max_tokens
     selected: List[Dict[str, Any]] = []
@@ -37,7 +41,7 @@ def select_relevant_messages(
 
 
 def condense_history(
-    messages: List[Dict[str, Any]], max_tokens: int, model: str = "gpt-3.5-turbo"
+    messages: List[Dict[str, Any]], max_tokens: int, model: str
 ) -> str:
     # Naive: concatenate and truncate
     result = ""
@@ -57,7 +61,7 @@ def dynamic_context_selection(
     user_input: str,
     thread_state: Optional[Dict[str, Any]],
     max_tokens: int,
-    model: str = "gpt-3.5-turbo",
+    model: str,
 ) -> List[Dict[str, Any]]:
     # Placeholder: could use thread_state to bias selection
     return select_relevant_messages(messages, user_input, max_tokens, model)
