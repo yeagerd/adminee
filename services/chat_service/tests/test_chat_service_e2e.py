@@ -1,19 +1,27 @@
-import os
-
-# Set shared in-memory SQLite DB before any app/model import
-os.environ["DATABASE_URL"] = "sqlite:///file::memory:?cache=shared"
-
-
 import pytest
 from fastapi.testclient import TestClient
 
+from services.chat_service import history_manager
 from services.chat_service.main import app
+
+
+async def setup_test_database():
+    """Initialize the test database with tables."""
+    await history_manager.database.connect()
+    engine = history_manager.sqlalchemy.create_engine(history_manager.DATABASE_URL)
+    history_manager.metadata.create_all(engine)
 
 
 @pytest.fixture(autouse=True)
 def fake_llm_env(monkeypatch):
+    # Set shared in-memory SQLite DB for tests
+    monkeypatch.setenv("DATABASE_URL", "sqlite:///file::memory:?cache=shared")
     # Simulate no OpenAI API key for tests
     monkeypatch.setenv("OPENAI_API_KEY", "")
+    # Initialize test database synchronously
+    import asyncio
+
+    asyncio.run(setup_test_database())
     yield
 
 
@@ -25,13 +33,15 @@ def test_end_to_end_chat_flow():
     resp = client.get("/threads", params={"user_id": user_id})
     assert resp.status_code == 200
 
-    # Start a chat (should create a new thread and echo response)
+    # Start a chat (should create a new thread and return response)
     msg = "Hello, world!"
     resp = client.post("/chat", json={"user_id": user_id, "message": msg})
     assert resp.status_code == 200
     data = resp.json()
     assert "thread_id" in data
-    assert data["messages"][-1]["content"].startswith("ack:")
+    assert "messages" in data
+    assert len(data["messages"]) > 0
+    assert "[FAKE LLM RESPONSE]" in data["messages"][-1]["content"]
 
     thread_id = data["thread_id"]
 
@@ -43,7 +53,7 @@ def test_end_to_end_chat_flow():
     assert resp.status_code == 200
     data2 = resp.json()
     assert data2["thread_id"] == thread_id
-    assert data2["messages"][-1]["content"].startswith("ack:")
+    assert "[FAKE LLM RESPONSE]" in data2["messages"][-1]["content"]
 
     # List threads (should contain the thread we just used)
     resp = client.get("/threads", params={"user_id": user_id})
