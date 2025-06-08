@@ -2,14 +2,14 @@
 
 - `services/chat-service/main.py` - Main entrypoint for the chat-service API (FastAPI or Flask app).
 - `services/chat-service/history_manager.py` - Manages thread and message history in the database.
-- `services/chat-service/context_module.py` - Implements context condensation and context selection logic.
+- `services/chat-service/chat_agent.py` - Implements modern chat agents with llama-index memory blocks.
 - `services/chat-service/llm_tools.py` - Custom LiteLLM tools for office-service integration.
 - `services/chat-service/llm_usage.py` - Tracks and records LLM usage per invocation.
 - `services/chat-service/feedback.py` - Handles feedback API and storage.
 - `services/chat-service/models.py` - SQLAlchemy or Pydantic models for threads, messages, feedback, and usage.
 - `services/chat-service/tests/test_main.py` - API endpoint tests.
 - `services/chat-service/tests/test_history_manager.py` - Unit tests for history manager.
-- `services/chat-service/tests/test_context_module.py` - Unit tests for context module.
+- `services/chat_service/tests/test_chat_agent.py` - Unit tests for modern chat agents with memory blocks.
 - `services/chat-service/tests/test_llm_tools.py` - Unit tests for LiteLLM tool integration.
 - `services/chat-service/tests/test_llm_usage.py` - Unit tests for LLM usage tracking.
 - `services/chat-service/tests/test_feedback.py` - Unit tests for feedback API.
@@ -152,14 +152,15 @@
   - [x] 6.4 Integrate history manager with API endpoints for chat and thread management.
   - [x] 6.5 Add unit tests for all history manager operations, including edge cases (e.g., concurrent draft updates, missing threads).
 
-- [x] 7. Implement context module
-  - [x] 7.1 Define context condensation strategy based on OpenHands Context Condensation
-  - [x] 7.2 Implement `context_module.py` to:
-    - [x] 7.2.1 Select relevant messages and data from thread history and external sources.
-    - [x] 7.2.2 Summarize or condense long histories to fit a requested token size for a specified llm model, using tiktoken.
-    - [x] 7.2.3 Support dynamic context selection based on user input and thread state.
-  - [x] 7.3 Integrate context module with llama_manager agents and history_manager.
-  - [x] 7.4 Add unit tests for context selection, condensation, and edge cases (e.g., very long threads).
+- [x] 7. Implement modern memory system with llama-index
+  - [x] 7.1 Replaced context_module.py with llama-index memory blocks for better memory management
+  - [x] 7.2 Implement `chat_agent.py` with modern memory blocks:
+    - [x] 7.2.1 StaticMemoryBlock for persistent system information
+    - [x] 7.2.2 FactExtractionMemoryBlock for extracting facts from conversations  
+    - [x] 7.2.3 VectorMemoryBlock for semantic search over conversation history
+    - [x] 7.2.4 ChatBufferMemoryBlock for recent conversation context
+  - [x] 7.3 Integrate memory blocks with ChatAgentManager orchestration layer.
+  - [x] 7.4 Add unit tests for memory blocks, agent creation, and memory management.
 
 - [ ] 8. Implement LLM usage tracking
   - [ ] 8.1 Define database schema/model for LLM usage tracking (fields: user_id, thread_id, message_id, provider, model, input_tokens, output_tokens, created_at).
