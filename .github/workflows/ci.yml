@@ -36,11 +36,8 @@ jobs:
         pip install -r requirements.txt
         pip install tox tox-gh-actions
 
-    - name: Run tox (default envs)
-      run: tox
-
-    - name: Run tox (coverage)
-      run: tox -e cov
+    - name: Run tox (envlist + coverage)
+      run: tox -e format,lint,typecheck,test,cov -p auto
 
     - name: Upload coverage reports
       uses: codecov/codecov-action@v3
