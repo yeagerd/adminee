@@ -9,12 +9,14 @@ import asyncio
 import logging
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from fastapi import APIRouter, HTTPException, Path, Query
 
 from services.office_service.core.api_client_factory import APIClientFactory
 from services.office_service.core.cache_manager import cache_manager, generate_cache_key
+from services.office_service.core.clients.google import GoogleAPIClient
+from services.office_service.core.clients.microsoft import MicrosoftAPIClient
 from services.office_service.core.normalizer import normalize_google_calendar_event
 from services.office_service.models import Provider
 from services.office_service.schemas import (
@@ -74,7 +76,7 @@ async def get_calendar_events(
         ApiResponse with aggregated calendar events
     """
     request_id = str(uuid.uuid4())
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
 
     logger.info(
         f"[{request_id}] Calendar events request: user_id={user_id}, providers={providers}, limit={limit}"
@@ -155,7 +157,7 @@ async def get_calendar_events(
                 end_dt,
                 calendar_ids,
                 q,
-                time_zone,
+                time_zone or "UTC",  # Ensure time_zone is never None
             )
             tasks.append(task)
 
@@ -163,7 +165,7 @@ async def get_calendar_events(
         provider_results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Process results
-        aggregated_events = []
+        aggregated_events: List[CalendarEvent] = []
         provider_errors = {}
         providers_used = []
 
@@ -173,13 +175,20 @@ async def get_calendar_events(
             if isinstance(result, Exception):
                 logger.error(f"[{request_id}] Provider {provider} failed: {result}")
                 provider_errors[provider] = str(result)
-            elif result:
-                events, provider_name = result
-                aggregated_events.extend(events)
-                providers_used.append(provider_name)
-                logger.info(
-                    f"[{request_id}] Provider {provider} returned {len(events)} events"
-                )
+            elif result is not None and not isinstance(result, BaseException):
+                try:
+                    # Type narrowing: result should be tuple[List[CalendarEvent], str]
+                    events, provider_name = result
+                    aggregated_events.extend(events)
+                    providers_used.append(provider_name)
+                    logger.info(
+                        f"[{request_id}] Provider {provider} returned {len(events)} events"
+                    )
+                except (TypeError, ValueError) as e:
+                    logger.error(
+                        f"[{request_id}] Invalid result format from {provider}: {e}"
+                    )
+                    provider_errors[provider] = f"Invalid result format: {e}"
 
         # Sort events by start time
         aggregated_events.sort(key=lambda event: event.start_time)
@@ -190,7 +199,7 @@ async def get_calendar_events(
 
         # Build response
         response_data = {
-            "events": [event.dict() for event in aggregated_events],
+            "events": [event.model_dump() for event in aggregated_events],
             "total_count": len(aggregated_events),
             "providers_used": providers_used,
             "provider_errors": provider_errors if provider_errors else None,
@@ -211,7 +220,7 @@ async def get_calendar_events(
         await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=600)
 
         # Calculate response time
-        end_time = datetime.utcnow()
+        end_time = datetime.now(timezone.utc)
         response_time_ms = int((end_time - start_time).total_seconds() * 1000)
 
         logger.info(
@@ -254,7 +263,7 @@ async def get_calendar_event(
         ApiResponse with the specific calendar event
     """
     request_id = str(uuid.uuid4())
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
 
     logger.info(
         f"[{request_id}] Calendar event detail request: event_id={event_id}, user_id={user_id}"
@@ -286,7 +295,7 @@ async def get_calendar_event(
 
         # Build response
         response_data = {
-            "event": event.dict(),
+            "event": event.model_dump(),
             "provider": provider,
             "request_metadata": {"user_id": user_id, "event_id": event_id},
         }
@@ -295,7 +304,7 @@ async def get_calendar_event(
         await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=1800)
 
         # Calculate response time
-        end_time = datetime.utcnow()
+        end_time = datetime.now(timezone.utc)
         response_time_ms = int((end_time - start_time).total_seconds() * 1000)
 
         logger.info(
@@ -348,20 +357,12 @@ async def fetch_provider_events(
     try:
         # Get API client for provider
         client = await api_client_factory.create_client(user_id, provider)
+        if client is None:
+            raise ValueError(f"Failed to create API client for provider {provider}")
 
         # Build provider-specific parameters
         if provider == "google":
-            params = {
-                "maxResults": limit,
-                "timeMin": start_dt.isoformat(),
-                "timeMax": end_dt.isoformat(),
-                "singleEvents": True,
-                "orderBy": "startTime",
-            }
-            if q:
-                params["q"] = q
-            if time_zone:
-                params["timeZone"] = time_zone
+            google_client = cast(GoogleAPIClient, client)
 
             # Handle calendar IDs for Google
             calendars_to_query = calendar_ids or ["primary"]
@@ -370,8 +371,12 @@ async def fetch_provider_events(
             for calendar_id in calendars_to_query:
                 try:
                     # Fetch events from specific calendar
-                    events_response = await client.get_calendar_events(
-                        calendar_id, **params
+                    events_response = await google_client.get_events(
+                        calendar_id=calendar_id,
+                        time_min=start_dt.isoformat(),
+                        time_max=end_dt.isoformat(),
+                        max_results=limit,
+                        page_token=None,
                     )
                     events = events_response.get("items", [])
 
@@ -396,16 +401,20 @@ async def fetch_provider_events(
             normalized_events = all_events[:limit]  # Apply limit after aggregation
 
         elif provider == "microsoft":
-            params = {
-                "$top": limit,
-                "$orderby": "start/dateTime asc",
-                "$filter": f"start/dateTime ge '{start_dt.isoformat()}' and end/dateTime le '{end_dt.isoformat()}'",
-            }
-            if q:
-                params["$search"] = f'"{q}"'
+            microsoft_client = cast(MicrosoftAPIClient, client)
+
+            # Build filter for time range
+            time_filter = f"start/dateTime ge '{start_dt.isoformat()}' and end/dateTime le '{end_dt.isoformat()}'"
 
             # Fetch events from Outlook
-            events_response = await client.get_calendar_events(**params)
+            events_response = await microsoft_client.get_events(
+                calendar_id=None,  # Use primary calendar
+                start_time=start_dt.isoformat(),
+                end_time=end_dt.isoformat(),
+                top=limit,
+                skip=0,
+                order_by="start/dateTime asc",
+            )
             events = events_response.get("value", [])
 
             # Normalize events
@@ -462,10 +471,17 @@ async def fetch_single_event(
     try:
         # Get API client for provider
         client = await api_client_factory.create_client(user_id, provider)
+        if client is None:
+            raise ValueError(f"Failed to create API client for provider {provider}")
 
         if provider == "google":
-            # Fetch event from Google Calendar
-            event = await client.get_calendar_event("primary", original_event_id)
+            google_client = cast(GoogleAPIClient, client)
+            # For now, we'll need to implement get_event method or use a workaround
+            # Fetch event from Google Calendar by making a direct API call
+            response = await google_client.get(
+                f"/calendar/v3/calendars/primary/events/{original_event_id}"
+            )
+            event = response.json()
 
             # Get user account info (simplified)
             account_email = f"{user_id}@gmail.com"  # Placeholder
@@ -477,8 +493,10 @@ async def fetch_single_event(
             )
 
         elif provider == "microsoft":
-            # Fetch event from Microsoft Calendar
-            event = await client.get_calendar_event(original_event_id)
+            microsoft_client = cast(MicrosoftAPIClient, client)
+            # Fetch event from Microsoft Calendar by making a direct API call
+            response = await microsoft_client.get(f"/me/events/{original_event_id}")
+            event = response.json()
 
             # Get user account info (simplified)
             account_email = f"{user_id}@outlook.com"  # Placeholder

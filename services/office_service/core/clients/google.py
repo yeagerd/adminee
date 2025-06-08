@@ -54,7 +54,7 @@ class GoogleAPIClient(BaseAPIClient):
         Returns:
             Dictionary containing messages list and pagination info
         """
-        params = {"maxResults": max_results}
+        params: Dict[str, Any] = {"maxResults": max_results}
         if page_token:
             params["pageToken"] = page_token
         if query:
@@ -129,7 +129,7 @@ class GoogleAPIClient(BaseAPIClient):
         Returns:
             Dictionary containing events list and pagination info
         """
-        params = {
+        params: Dict[str, Any] = {
             "maxResults": max_results,
             "singleEvents": True,
             "orderBy": "startTime",
@@ -194,7 +194,7 @@ class GoogleAPIClient(BaseAPIClient):
         Returns:
             Dictionary containing files list and pagination info
         """
-        params = {"pageSize": page_size}
+        params: Dict[str, Any] = {"pageSize": page_size}
         if page_token:
             params["pageToken"] = page_token
         if query:

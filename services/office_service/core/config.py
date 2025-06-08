@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     model_config = ConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        extra="ignore"  # Allow extra fields from .env file
+        extra="ignore",  # Allow extra fields from .env file
     )
 
 
