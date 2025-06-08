@@ -69,12 +69,12 @@ Before committing:
 [x] 2.3 [Define the generic API response models (ApiResponse, PaginatedResponse) from Section 5.2.]
 [x] 2.4 [Define the standardized ApiError model from Section 7.1.]
 
-[ ] 3. Core Module: Token Manager
-[ ] 3.1 [Create a core/token_manager.py module.]
-[ ] 3.2 [Implement the TokenManager class with the async get_user_token method as shown in Section 3.1.]
-[ ] 3.3 [Integrate an httpx.AsyncClient into the TokenManager to make requests to the USER_MANAGEMENT_SERVICE_URL.]
-[ ] 3.4 [Add robust error handling and logging for cases where token retrieval fails.]
-[ ] 3.5 [Implement a simple in-memory cache (e.g., using a dictionary with TTL) within the TokenManager to reduce calls for the same token within a short period (as mentioned in Section 2.1).]
+[x] 3. Core Module: Token Manager
+[x] 3.1 [Create a core/token_manager.py module.]
+[x] 3.2 [Implement the TokenManager class with the async get_user_token method as shown in Section 3.1.]
+[x] 3.3 [Integrate an httpx.AsyncClient into the TokenManager to make requests to the USER_MANAGEMENT_SERVICE_URL.]
+[x] 3.4 [Add robust error handling and logging for cases where token retrieval fails.]
+[x] 3.5 [Implement a simple in-memory cache (e.g., using a dictionary with TTL) within the TokenManager to reduce calls for the same token within a short period (as mentioned in Section 2.1).]
 
 [ ] 4. Core Module: API Client Factory
 [ ] 4.1 [Create a core/clients/ directory for provider-specific clients.]
