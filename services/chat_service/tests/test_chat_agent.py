@@ -2,7 +2,7 @@
 Tests for the new ModernChatAgent implementation.
 """
 
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -207,3 +207,142 @@ async def test_backward_compatibility_imports():
     assert hasattr(manager, "main_agent")
     assert hasattr(manager, "tools")
     assert hasattr(manager, "subagents")
+
+
+@pytest.mark.asyncio
+async def test_chat_with_agent():
+    """Test chatting with the agent."""
+    with (
+        patch("services.chat_service.chat_agent.history_manager") as mock_history_manager,
+    ):
+        mock_history_manager.get_thread_history.return_value = []
+        mock_history_manager.append_message = AsyncMock()
+        mock_history_manager.Thread = MagicMock()
+        mock_history_manager.Thread.objects = MagicMock()
+        mock_history_manager.Thread.objects.get = AsyncMock(
+            return_value=MagicMock(id=202)
+        )
+
+        agent = ChatAgent(
+            thread_id=202,
+            user_id="test_user5",
+            enable_fact_extraction=False,  # Disable to avoid mocking complexity
+            enable_vector_memory=False,
+        )
+
+        # Build agent first
+        await agent.build_agent()
+
+        # Mock the agent's achat method directly
+        mock_response = MagicMock()
+        mock_response.response = "Test response"
+        agent.agent.achat = AsyncMock(return_value=mock_response)
+
+        response = await agent.chat("Hello, how are you?")
+
+        assert response == "Test response"
+        agent.agent.achat.assert_called_once_with("Hello, how are you?")
+
+
+@pytest.mark.asyncio
+async def test_graceful_fallback_on_memory_errors():
+    """Test that the agent gracefully handles memory block creation errors."""
+    with (
+        patch("services.chat_service.chat_agent.llm_manager") as mock_llm_manager,
+        patch(
+            "services.chat_service.chat_agent.history_manager"
+        ) as mock_history_manager,
+        patch(
+            "services.chat_service.chat_agent.VectorMemoryBlock"
+        ) as mock_vector_block,
+    ):
+
+        mock_llm = MagicMock()
+        mock_llm_manager.return_value = mock_llm
+        mock_history_manager.get_conversation_history = AsyncMock(return_value=[])
+
+        # Make VectorMemoryBlock raise an exception
+        mock_vector_block.side_effect = Exception("Vector store error")
+
+        agent = ChatAgent(
+            thread_id=303,
+            user_id="test_user6",
+            enable_fact_extraction=False,
+            enable_vector_memory=True,
+        )
+
+        # Should not raise an exception
+        await agent.build_agent("test input")
+
+        # Should still have some memory blocks (static + fact extraction)
+        assert agent.memory is not None
+        assert len(agent.memory.memory_blocks) >= 1
+
+
+@pytest.mark.asyncio
+async def test_memory_blocks_priority_order():
+    """Test that memory blocks are created with correct priority order."""
+    with patch("services.chat_service.chat_agent.history_manager") as mock_history_manager:
+
+        mock_history_manager.get_thread_history.return_value = []
+
+        agent = ChatAgent(
+            thread_id=404,
+            user_id="test_user7",
+            enable_fact_extraction=True,
+            enable_vector_memory=True,
+        )
+
+        # Create storage context and memory blocks manually for testing
+        agent.storage_context = agent._create_storage_context()
+        memory_blocks = agent._create_memory_blocks()
+
+        # Check that memory blocks have correct priorities
+        priorities = [block.priority for block in memory_blocks]
+        assert 0 in priorities  # StaticMemoryBlock should always be priority 0
+
+        # Check that we have at least the static block
+        assert len(memory_blocks) >= 1
+
+
+@pytest.mark.asyncio
+async def test_agent_with_tools():
+    """Test agent creation with custom tools."""
+    with (
+        patch("services.chat_service.chat_agent.llm_manager") as mock_llm_manager,
+        patch(
+            "services.chat_service.chat_agent.history_manager"
+        ) as mock_history_manager,
+        patch(
+            "services.chat_service.chat_agent.FunctionCallingAgent"
+        ) as mock_agent_class,
+    ):
+
+        # Create a mock LLM that's compatible with FunctionCallingLLM
+        mock_llm = MagicMock()
+        mock_llm.metadata = MagicMock()
+        mock_llm.metadata.is_function_calling_model = True
+        mock_llm_manager.return_value = mock_llm
+        mock_history_manager.get_conversation_history = AsyncMock(return_value=[])
+
+        # Mock the agent creation
+        mock_agent_instance = MagicMock()
+        mock_agent_class.from_tools.return_value = mock_agent_instance
+
+        def dummy_tool():
+            """A dummy tool for testing."""
+            return "tool result"
+
+        agent = ChatAgent(
+            thread_id=505,
+            user_id="test_user8",
+            tools=[dummy_tool],
+            enable_fact_extraction=True,
+            enable_vector_memory=True,
+        )
+
+        await agent.build_agent("test input")
+
+        # Check that tools were set
+        assert agent.tools is not None
+        assert len(agent.tools) == 1
