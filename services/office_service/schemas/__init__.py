@@ -1,12 +1,16 @@
-from pydantic import BaseModel, EmailStr
-from typing import List, Optional, Dict, Any, Union
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, EmailStr
+
 from services.office_service.models import Provider
+
 
 # Unified Email Models
 class EmailAddress(BaseModel):
     email: EmailStr
     name: Optional[str] = None
+
 
 class EmailMessage(BaseModel):
     id: str
@@ -28,7 +32,8 @@ class EmailMessage(BaseModel):
     provider_message_id: str
     account_email: EmailStr  # Which account this message belongs to
     account_name: Optional[str] = None  # Display name for the account
-    
+
+
 class EmailThread(BaseModel):
     id: str
     subject: Optional[str] = None
@@ -37,6 +42,7 @@ class EmailThread(BaseModel):
     last_message_date: datetime
     is_read: bool = False
     providers: List[Provider]
+
 
 # Unified Calendar Models
 class CalendarEvent(BaseModel):
@@ -61,6 +67,7 @@ class CalendarEvent(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+
 class Calendar(BaseModel):
     id: str
     name: str
@@ -74,6 +81,7 @@ class Calendar(BaseModel):
     account_email: EmailStr  # Which account this calendar belongs to
     account_name: Optional[str] = None  # Display name for the account
 
+
 class FreeBusyInfo(BaseModel):
     calendar_id: str
     busy_times: List[Dict[str, datetime]]  # [{"start": datetime, "end": datetime}]
@@ -81,6 +89,7 @@ class FreeBusyInfo(BaseModel):
     provider: Provider
     account_email: EmailStr  # Which account this calendar belongs to
     calendar_name: str  # Name of the specific calendar
+
 
 # Unified File Models
 class DriveFile(BaseModel):
@@ -101,6 +110,7 @@ class DriveFile(BaseModel):
     account_email: EmailStr  # Which account this file belongs to
     account_name: Optional[str] = None  # Display name for the account
 
+
 # API Response Models
 class ApiResponse(BaseModel):
     success: bool
@@ -110,11 +120,13 @@ class ApiResponse(BaseModel):
     provider_used: Optional[Provider] = None
     request_id: str
 
+
 class PaginatedResponse(BaseModel):
     items: List[Any]
     total_count: Optional[int] = None
     next_page_token: Optional[str] = None
     has_more: bool = False
+
 
 # Error Models
 class ApiError(BaseModel):
