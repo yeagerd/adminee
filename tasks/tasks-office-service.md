@@ -76,12 +76,12 @@ Before committing:
 [x] 3.4 [Add robust error handling and logging for cases where token retrieval fails.]
 [x] 3.5 [Implement a simple in-memory cache (e.g., using a dictionary with TTL) within the TokenManager to reduce calls for the same token within a short period (as mentioned in Section 2.1).]
 
-[ ] 4. Core Module: API Client Factory
-[ ] 4.1 [Create a core/clients/ directory for provider-specific clients.]
-[ ] 4.2 [Implement a base API client class that includes an httpx.AsyncClient and basic request/response logging.]
-[ ] 4.3 [Create a GoogleAPIClient that inherits from the base client. It should be initialized with a user's access token.]
-[ ] 4.4 [Create a MicrosoftAPIClient that inherits from the base client, also initialized with a user's access token.]
-[ ] 4.5 [Implement an APIClientFactory in core/api_client_factory.py that takes a user_id and provider and uses the TokenManager to fetch a token and return an initialized provider-specific API client.]
+[x] 4. Core Module: API Client Factory
+[x] 4.1 [Create a core/clients/ directory for provider-specific clients.]
+[x] 4.2 [Implement a base API client class that includes an httpx.AsyncClient and basic request/response logging.]
+[x] 4.3 [Create a GoogleAPIClient that inherits from the base client. It should be initialized with a user's access token.]
+[x] 4.4 [Create a MicrosoftAPIClient that inherits from the base client, also initialized with a user's access token.]
+[x] 4.5 [Implement an APIClientFactory in core/api_client_factory.py that takes a user_id and provider and uses the TokenManager to fetch a token and return an initialized provider-specific API client.]
 
 [ ] 5. Core Module: Data Normalizer
 [ ] 5.1 [Create a core/normalizer.py module.]
