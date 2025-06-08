@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException
 
@@ -24,20 +24,33 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
     """
     Chat endpoint using llama_manager ChatAgentManager.
     """
+    from typing import cast
+
     from services.chat_service import history_manager
 
     user_id = request.user_id
     thread_id = request.thread_id
     user_input = request.message
 
+    # Create or get thread
+    thread: Optional[history_manager.Thread]
     if not thread_id:
         # Always create a new thread if no thread_id is provided
         thread = await history_manager.create_thread(user_id=user_id)
     else:
         # Fetch the existing thread
-        thread = await history_manager.get_thread(thread_id=thread_id)
-        if thread is None:
-            raise HTTPException(status_code=404, detail="Thread not found")
+        try:
+            thread_id_int = int(thread_id)
+            thread = await history_manager.get_thread(thread_id=thread_id_int)
+            if thread is None:
+                raise HTTPException(status_code=404, detail="Thread not found")
+        except (ValueError, TypeError) as e:
+            raise HTTPException(
+                status_code=400, detail="Invalid thread_id format. Must be an integer."
+            ) from e
+
+    # At this point, thread is guaranteed to be not None
+    thread = cast(history_manager.Thread, thread)
 
     # TODO: Replace with real LiteLLM instance
     llm = None

@@ -10,8 +10,8 @@ import databases
 import ormar
 import sqlalchemy
 
-# Read DATABASE_URL from environment, default to in-memory if not set
-DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///memory")
+# Read DATABASE_URL from environment, default to file-based SQLite
+DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./chat_service.db")
 database = databases.Database(DATABASE_URL)
 metadata = sqlalchemy.MetaData()
 
@@ -27,8 +27,12 @@ class Thread(ormar.Model):
     )
     id: int = ormar.Integer(primary_key=True)
     user_id: str = ormar.String(max_length=128, index=True)
-    created_at: datetime.datetime = ormar.DateTime(default=datetime.datetime.utcnow)
-    updated_at: datetime.datetime = ormar.DateTime(default=datetime.datetime.utcnow)
+    created_at: datetime.datetime = ormar.DateTime(
+        default=lambda: datetime.datetime.now(datetime.timezone.utc)
+    )
+    updated_at: datetime.datetime = ormar.DateTime(
+        default=lambda: datetime.datetime.now(datetime.timezone.utc)
+    )
     title: Optional[str] = ormar.String(max_length=256, nullable=True)
 
 
@@ -45,8 +49,12 @@ class Message(ormar.Model):
     thread: Thread = ormar.ForeignKey(Thread, related_name="messages")
     user_id: str = ormar.String(max_length=128, index=True)
     content: str = ormar.Text()
-    created_at: datetime.datetime = ormar.DateTime(default=datetime.datetime.utcnow)
-    updated_at: datetime.datetime = ormar.DateTime(default=datetime.datetime.utcnow)
+    created_at: datetime.datetime = ormar.DateTime(
+        default=lambda: datetime.datetime.now(datetime.timezone.utc)
+    )
+    updated_at: datetime.datetime = ormar.DateTime(
+        default=lambda: datetime.datetime.now(datetime.timezone.utc)
+    )
 
 
 class Draft(ormar.Model):
@@ -66,8 +74,12 @@ class Draft(ormar.Model):
         max_length=64, index=True
     )  # e.g., 'email', 'calendar_event', 'calendar_change'
     content: str = ormar.Text()
-    created_at: datetime.datetime = ormar.DateTime(default=datetime.datetime.utcnow)
-    updated_at: datetime.datetime = ormar.DateTime(default=datetime.datetime.utcnow)
+    created_at: datetime.datetime = ormar.DateTime(
+        default=lambda: datetime.datetime.now(datetime.timezone.utc)
+    )
+    updated_at: datetime.datetime = ormar.DateTime(
+        default=lambda: datetime.datetime.now(datetime.timezone.utc)
+    )
 
 
 # Ensure tables are created on import
