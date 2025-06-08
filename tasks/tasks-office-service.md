@@ -128,9 +128,9 @@ Before committing:
 [x] 8.4 [Create an api/calendar.py router and implement GET /calendar/events following the same pattern as the email endpoint (fetch, normalize, aggregate, cache).]
 [x] 8.5 [Create an api/files.py router and implement GET /files following the same pattern.]
 [x] 8.6 [Implement the detail endpoint GET /email/messages/{message_id}. This will require logic to determine the correct provider from the message_id to make the API call.]
-[ ] 8.7 [Write unit tests for unified READ endpoints with mocked API clients.]
-[ ] 8.8 [Run ./fix to fix lint issues.]
-[ ] 8.9 [Run tox and fix any errors.]
+[x] 8.7 [Write unit tests for unified READ endpoints with mocked API clients.]
+[x] 8.8 [Run ./fix to fix lint issues.]
+[x] 8.9 [Run tox and fix any errors.]
 
 [ ] 9. Implement Unified WRITE Endpoints (MVP)
 [ ] 9.1 [Implement POST /email/send in the email router. For the MVP, this can be a simple pass-through that determines the provider and makes the API call. The actual queuing can be stubbed or logged for now.]

@@ -1,4 +1,5 @@
-from pydantic import BaseSettings
+from pydantic import ConfigDict
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -27,9 +28,11 @@ class Settings(BaseSettings):
     DEFAULT_CACHE_TTL_SECONDS: int = 900  # 15 minutes default
     CACHE_ENABLED: bool = True
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = ConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore"  # Allow extra fields from .env file
+    )
 
 
 # Global settings instance
