@@ -8,13 +8,15 @@ with unified data models, caching, and parallel API calls for optimal performanc
 import asyncio
 import logging
 import uuid
-from datetime import datetime
-from typing import List, Optional
+from datetime import datetime, timezone
+from typing import List, Optional, cast
 
 from fastapi import APIRouter, HTTPException, Path, Query
 
 from services.office_service.core.api_client_factory import APIClientFactory
 from services.office_service.core.cache_manager import cache_manager, generate_cache_key
+from services.office_service.core.clients.google import GoogleAPIClient
+from services.office_service.core.clients.microsoft import MicrosoftAPIClient
 from services.office_service.core.normalizer import (
     normalize_google_email,
     normalize_microsoft_email,
@@ -74,7 +76,7 @@ async def get_email_messages(
         ApiResponse with aggregated email messages
     """
     request_id = str(uuid.uuid4())
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
 
     logger.info(
         f"[{request_id}] Email messages request: user_id={user_id}, providers={providers}, limit={limit}"
@@ -134,7 +136,7 @@ async def get_email_messages(
         provider_results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Process results
-        aggregated_messages = []
+        aggregated_messages: List[EmailMessage] = []
         provider_errors = {}
         providers_used = []
 
@@ -144,13 +146,20 @@ async def get_email_messages(
             if isinstance(result, Exception):
                 logger.error(f"[{request_id}] Provider {provider} failed: {result}")
                 provider_errors[provider] = str(result)
-            elif result:
-                messages, provider_name = result
-                aggregated_messages.extend(messages)
-                providers_used.append(provider_name)
-                logger.info(
-                    f"[{request_id}] Provider {provider} returned {len(messages)} messages"
-                )
+            elif result is not None and not isinstance(result, BaseException):
+                try:
+                    # Type narrowing: result should be tuple[List[EmailMessage], str]
+                    messages, provider_name = result
+                    aggregated_messages.extend(messages)
+                    providers_used.append(provider_name)
+                    logger.info(
+                        f"[{request_id}] Provider {provider} returned {len(messages)} messages"
+                    )
+                except (TypeError, ValueError) as e:
+                    logger.error(
+                        f"[{request_id}] Invalid result format from {provider}: {e}"
+                    )
+                    provider_errors[provider] = f"Invalid result format: {e}"
 
         # Sort messages by date (newest first)
         aggregated_messages.sort(key=lambda msg: msg.date, reverse=True)
@@ -161,7 +170,7 @@ async def get_email_messages(
 
         # Build response
         response_data = {
-            "messages": [msg.dict() for msg in aggregated_messages],
+            "messages": [msg.model_dump() for msg in aggregated_messages],
             "total_count": len(aggregated_messages),
             "providers_used": providers_used,
             "provider_errors": provider_errors if provider_errors else None,
@@ -178,7 +187,7 @@ async def get_email_messages(
         await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=900)
 
         # Calculate response time
-        end_time = datetime.utcnow()
+        end_time = datetime.now(timezone.utc)
         response_time_ms = int((end_time - start_time).total_seconds() * 1000)
 
         logger.info(
@@ -225,7 +234,7 @@ async def get_email_message(
         ApiResponse with the specific email message
     """
     request_id = str(uuid.uuid4())
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
 
     logger.info(
         f"[{request_id}] Email message detail request: message_id={message_id}, user_id={user_id}"
@@ -261,7 +270,7 @@ async def get_email_message(
 
         # Build response
         response_data = {
-            "message": message.dict(),
+            "message": message.model_dump(),
             "provider": provider,
             "request_metadata": {
                 "user_id": user_id,
@@ -274,7 +283,7 @@ async def get_email_message(
         await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=3600)
 
         # Calculate response time
-        end_time = datetime.utcnow()
+        end_time = datetime.now(timezone.utc)
         response_time_ms = int((end_time - start_time).total_seconds() * 1000)
 
         logger.info(
@@ -327,17 +336,16 @@ async def fetch_provider_emails(
     try:
         # Get API client for provider
         client = await api_client_factory.create_client(user_id, provider)
+        if client is None:
+            raise ValueError(f"Failed to create API client for provider {provider}")
 
         # Build provider-specific parameters
         if provider == "google":
-            params = {"maxResults": limit, "labelIds": labels or ["INBOX"], "q": q}
-            if page_token:
-                params["pageToken"] = page_token
-            if include_body:
-                params["format"] = "full"
-
+            google_client = cast(GoogleAPIClient, client)
             # Fetch messages from Gmail
-            messages_response = await client.get_messages(**params)
+            messages_response = await google_client.get_messages(
+                max_results=limit, page_token=page_token, query=q
+            )
             messages = messages_response.get("messages", [])
 
             # Normalize messages
@@ -345,7 +353,7 @@ async def fetch_provider_emails(
             for msg_summary in messages:
                 # Fetch full message if we only got summaries
                 if include_body or "payload" not in msg_summary:
-                    full_message = await client.get_message(msg_summary["id"])
+                    full_message = await google_client.get_message(msg_summary["id"])
                 else:
                     full_message = msg_summary
 
@@ -359,20 +367,32 @@ async def fetch_provider_emails(
                 normalized_messages.append(normalized_msg)
 
         elif provider == "microsoft":
-            params = {"$top": limit, "$orderby": "receivedDateTime desc"}
-            if q:
-                params["$search"] = f'"{q}"'
+            microsoft_client = cast(MicrosoftAPIClient, client)
+
+            # Build filter for labels (categories in Microsoft)
+            filter_expr = None
             if labels:
-                # Microsoft uses categories instead of labels
                 category_filter = " or ".join(
                     [f"categories/any(c:c eq '{label}')" for label in labels]
                 )
-                params["$filter"] = category_filter
+                filter_expr = category_filter
+
+            # Convert page_token to skip value
+            skip_value = 0
             if page_token:
-                params["$skip"] = page_token  # Microsoft uses skip for pagination
+                try:
+                    skip_value = int(page_token)
+                except (ValueError, TypeError):
+                    skip_value = 0
 
             # Fetch messages from Outlook
-            messages_response = await client.get_messages(**params)
+            messages_response = await microsoft_client.get_messages(
+                top=limit,
+                skip=skip_value,
+                filter=filter_expr,
+                search=q,
+                order_by="receivedDateTime desc",
+            )
             messages = messages_response.get("value", [])
 
             # Normalize messages
@@ -423,10 +443,13 @@ async def fetch_single_message(
     try:
         # Get API client for provider
         client = await api_client_factory.create_client(user_id, provider)
+        if client is None:
+            raise ValueError(f"Failed to create API client for provider {provider}")
 
         if provider == "google":
+            google_client = cast(GoogleAPIClient, client)
             # Fetch message from Gmail
-            message = await client.get_message(
+            message = await google_client.get_message(
                 original_message_id, format="full" if include_body else "metadata"
             )
 
@@ -437,8 +460,9 @@ async def fetch_single_message(
             return normalize_google_email(message, account_email, account_name)
 
         elif provider == "microsoft":
+            microsoft_client = cast(MicrosoftAPIClient, client)
             # Fetch message from Outlook
-            message = await client.get_message(original_message_id)
+            message = await microsoft_client.get_message(original_message_id)
 
             # Get user account info (simplified)
             account_email = f"{user_id}@outlook.com"  # Placeholder

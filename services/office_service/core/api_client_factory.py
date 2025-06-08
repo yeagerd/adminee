@@ -87,6 +87,7 @@ class APIClientFactory:
                     return None
 
                 # Create provider-specific client
+                client: BaseAPIClient
                 if provider == Provider.GOOGLE:
                     client = GoogleAPIClient(token_data.access_token, user_id)
                 elif provider == Provider.MICROSOFT:

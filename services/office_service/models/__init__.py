@@ -14,10 +14,7 @@ metadata = sqlalchemy.MetaData()
 
 
 # Base OrmarConfig for all models
-base_ormar_config = ormar.OrmarConfig(
-    database=database,
-    metadata=metadata
-)
+base_ormar_config = ormar.OrmarConfig(database=database, metadata=metadata)
 
 
 class Provider(str, Enum):
@@ -34,9 +31,7 @@ class ApiCallStatus(str, Enum):
 
 # API Call Tracking
 class ApiCall(ormar.Model):
-    ormar_config = base_ormar_config.copy(
-        tablename="api_calls"
-    )
+    ormar_config = base_ormar_config.copy(tablename="api_calls")
 
     id: int = ormar.Integer(primary_key=True)
     user_id: str = ormar.String(max_length=255, index=True)
@@ -46,14 +41,14 @@ class ApiCall(ormar.Model):
     status: ApiCallStatus = ormar.Enum(enum_class=ApiCallStatus)
     response_time_ms: Optional[int] = ormar.Integer(nullable=True)
     error_message: Optional[str] = ormar.Text(nullable=True)
-    created_at: datetime = ormar.DateTime(default=lambda: datetime.now(timezone.utc), index=True)
+    created_at: datetime = ormar.DateTime(
+        default=lambda: datetime.now(timezone.utc), index=True
+    )
 
 
 # Cache Entries
 class CacheEntry(ormar.Model):
-    ormar_config = base_ormar_config.copy(
-        tablename="cache_entries"
-    )
+    ormar_config = base_ormar_config.copy(tablename="cache_entries")
 
     id: int = ormar.Integer(primary_key=True)
     cache_key: str = ormar.String(max_length=500, unique=True, index=True)
@@ -68,9 +63,7 @@ class CacheEntry(ormar.Model):
 
 # Rate Limiting
 class RateLimitBucket(ormar.Model):
-    ormar_config = base_ormar_config.copy(
-        tablename="rate_limit_buckets"
-    )
+    ormar_config = base_ormar_config.copy(tablename="rate_limit_buckets")
 
     id: int = ormar.Integer(primary_key=True)
     user_id: str = ormar.String(max_length=255, index=True)

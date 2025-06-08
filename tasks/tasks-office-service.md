@@ -62,8 +62,8 @@ Before committing:
 [x] 1.6 [Define the Ormar models (ApiCall, CacheEntry, RateLimitBucket) in a models/ directory as specified in Section 5.1.]
 [x] 1.7 [Configure the database connection using the DATABASE_URL and initialize Alembic for database migrations.]
 [x] 1.8 [Generate and apply the initial Alembic migration to create the tables for the models defined in step 1.6.]
-[ ] 1.9 [Run ./fix to fix lint issues.]
-[ ] 1.10 [Run tox and fix any errors.]
+[x] 1.9 [Run ./fix to fix lint issues.]
+[x] 1.10 [Run tox and fix any errors.]
 
 [x] 2. Core Module: Pydantic & Error Models
 [x] 2.1 [Create a schemas/ directory to hold all Pydantic models for API responses.]
@@ -184,7 +184,7 @@ Before committing:
 - `services/office_service/api/files.py` - Unified files endpoints (GET /files/, GET /files/search, GET /files/{id})
 
 ### Dependencies
-- `requirements.txt` - Python package dependencies including FastAPI, Redis, httpx, Ormar
+- `requirements.txt` - Python package dependencies including FastAPI, Redis, httpx, Ormar 0.20.2, Pydantic 2.x
 
 Next Steps (After MVP)
 

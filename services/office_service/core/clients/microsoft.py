@@ -58,7 +58,7 @@ class MicrosoftAPIClient(BaseAPIClient):
         Returns:
             Dictionary containing messages list and pagination info
         """
-        params = {"$top": top, "$skip": skip}
+        params: Dict[str, Any] = {"$top": top, "$skip": skip}
         if filter:
             params["$filter"] = filter
         if search:
@@ -149,7 +149,7 @@ class MicrosoftAPIClient(BaseAPIClient):
             f"/me/calendars/{calendar_id}/events" if calendar_id else "/me/events"
         )
 
-        params = {"$top": top, "$skip": skip}
+        params: Dict[str, Any] = {"$top": top, "$skip": skip}
         if order_by:
             params["$orderby"] = order_by
         else:
@@ -226,7 +226,7 @@ class MicrosoftAPIClient(BaseAPIClient):
         Returns:
             Dictionary containing items list and pagination info
         """
-        params = {"$top": top, "$skip": skip}
+        params: Dict[str, Any] = {"$top": top, "$skip": skip}
         if filter:
             params["$filter"] = filter
         if search:
