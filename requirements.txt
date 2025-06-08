@@ -8,10 +8,11 @@ litellm
 llama-index
 llama-index-embeddings-openai
 llama-index-llms-litellm
-ormar
+ormar>=0.20.2
 pinecone-client
 psycopg2-binary
-pydantic
+pydantic>=2.0,<2.9.0
+pydantic-settings
 pytest
 pytest-asyncio
 python-dotenv
