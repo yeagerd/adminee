@@ -4,6 +4,7 @@ httpx
 langchain
 litellm
 llama-index
+llama-index-embeddings-openai
 ormar
 pinecone-client
 pydantic

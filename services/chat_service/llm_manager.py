@@ -16,6 +16,101 @@ from llama_index.llms.litellm import LiteLLM as LlamaLiteLLM
 # Configure logging
 logger = logging.getLogger(__name__)
 
+
+class LoggingLiteLLM(LlamaLiteLLM):
+    """A wrapper around LlamaLiteLLM that logs all prompts and responses."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._prompt_logger = logging.getLogger(f"{__name__}.prompts")
+
+    def _log_messages(self, messages, method_name: str):
+        """Log the messages being sent to the LLM."""
+        self._prompt_logger.info(f"=== {method_name.upper()} LLM CALL ===")
+        self._prompt_logger.info(f"Model: {getattr(self, 'model', 'unknown')}")
+        self._prompt_logger.info(
+            f"Number of messages: {len(messages) if messages else 0}"
+        )
+
+        if messages:
+            for i, msg in enumerate(messages):
+                if hasattr(msg, "role") and hasattr(msg, "content"):
+                    # ChatMessage object
+                    role = (
+                        str(msg.role).upper()
+                        if hasattr(msg.role, "__str__")
+                        else str(msg.role)
+                    )
+                    content = msg.content
+                elif isinstance(msg, dict):
+                    # Dictionary format
+                    role = msg.get("role", "unknown").upper()
+                    content = msg.get("content", "")
+                else:
+                    # String or other format
+                    role = "UNKNOWN"
+                    content = str(msg)
+
+                self._prompt_logger.info(f"Message {i+1} [{role}]: {content}")
+
+        self._prompt_logger.info("=== END LLM CALL ===")
+
+    def _log_response(self, response, method_name: str):
+        """Log the response from the LLM."""
+        self._prompt_logger.info(f"=== {method_name.upper()} LLM RESPONSE ===")
+        if hasattr(response, "content"):
+            self._prompt_logger.info(f"Response content: {response.content}")
+        elif hasattr(response, "response"):
+            self._prompt_logger.info(f"Response: {response.response}")
+        else:
+            self._prompt_logger.info(f"Raw response: {response}")
+        self._prompt_logger.info("=== END LLM RESPONSE ===")
+
+    def chat(self, messages, **kwargs):
+        """Override chat to add logging."""
+        self._log_messages(messages, "chat")
+        response = super().chat(messages, **kwargs)
+        self._log_response(response, "chat")
+        return response
+
+    async def achat(self, messages, **kwargs):
+        """Override async chat to add logging."""
+        self._log_messages(messages, "achat")
+        response = await super().achat(messages, **kwargs)
+        self._log_response(response, "achat")
+        return response
+
+    def complete(self, prompt, **kwargs):
+        """Override complete to add logging."""
+        self._prompt_logger.info("=== COMPLETE LLM CALL ===")
+        self._prompt_logger.info(f"Model: {getattr(self, 'model', 'unknown')}")
+        self._prompt_logger.info(f"Prompt: {prompt}")
+        self._prompt_logger.info("=== END LLM CALL ===")
+
+        response = super().complete(prompt, **kwargs)
+
+        self._prompt_logger.info("=== COMPLETE LLM RESPONSE ===")
+        self._prompt_logger.info(f"Response: {response}")
+        self._prompt_logger.info("=== END LLM RESPONSE ===")
+
+        return response
+
+    async def acomplete(self, prompt, **kwargs):
+        """Override async complete to add logging."""
+        self._prompt_logger.info("=== ACOMPLETE LLM CALL ===")
+        self._prompt_logger.info(f"Model: {getattr(self, 'model', 'unknown')}")
+        self._prompt_logger.info(f"Prompt: {prompt}")
+        self._prompt_logger.info("=== END LLM CALL ===")
+
+        response = await super().acomplete(prompt, **kwargs)
+
+        self._prompt_logger.info("=== ACOMPLETE LLM RESPONSE ===")
+        self._prompt_logger.info(f"Response: {response}")
+        self._prompt_logger.info("=== END LLM RESPONSE ===")
+
+        return response
+
+
 # Load environment variables from .env file if it exists
 load_dotenv(override=True)  # override=True ensures existing env vars take precedence
 
@@ -218,8 +313,8 @@ class LLMManager:
         if "language" not in llm_kwargs:
             llm_kwargs["language"] = "en"
 
-        # Return a LiteLLM instance with language settings
-        return LlamaLiteLLM(model=model, **llm_kwargs)
+        # Return a LoggingLiteLLM instance with language settings for prompt logging
+        return LoggingLiteLLM(model=model, **llm_kwargs)
 
     def get_model_info(self, model: Optional[str] = None) -> Dict[str, Any]:
         """

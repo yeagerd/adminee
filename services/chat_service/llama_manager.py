@@ -1,27 +1,48 @@
 # llama_manager.py
 """
-Planning agent for chat_service using LiteLLM and llama-index.
-Implements agent loop, tool/subagent registration, and token-constrained memory.
+Chat agent orchestration layer for chat_service using LiteLLM and llama-index.
+Coordinates multiple agents, tool distribution, and sub-agent management.
+
+This layer is responsible for:
+- Creating and managing chat agents with modern memory blocks
+- Distributing tools between main agent and sub-agents
+- Orchestrating multi-agent workflows
+- Managing agent lifecycles and coordination
+
+The actual agent implementation with modern memory blocks is in chat_agent.py:
+- StaticMemoryBlock: For persistent system information
+- FactExtractionMemoryBlock: For extracting facts from conversations
+- VectorMemoryBlock: For semantic search over conversation history
+
+TL;DR: Common Memory Block Combinations
+
+Static + Summary + Buffer – use cases needing system prompts, summary, and recent history.
+Static + FactExtraction + ChatBuffer – long-term facts + short-term dialogue.
+Static + FactExtraction + VectorMemory – combine fact-tracking with semantic retrieval.
+VectorMemory Alone – typical RAG pattern.
+Static Only – constant system instructions or persona background.
 """
 
 import logging
-import os
 from typing import Any, Callable, Dict, List, Optional
 
-from llama_index.core.agent import ReActAgent
-from llama_index.core.agent.function_calling import FunctionCallingAgent
-from llama_index.core.base.llms.types import ChatMessage
-from llama_index.core.memory import Memory
-from llama_index.core.tools import FunctionTool
-
-from services.chat_service import context_module, history_manager
-
-from .llm_manager import FakeLLM, llm_manager
+# Import modules that tests expect to find here for backward compatibility
+from .chat_agent import ModernChatAgent
 
 logger = logging.getLogger(__name__)
 
 
 class ChatAgentManager:
+    """
+    Orchestration layer for managing chat agents, tools, and sub-agents.
+
+    This class coordinates:
+    - Main chat agent with modern memory blocks (via ModernChatAgent)
+    - Sub-agents for specialized tasks
+    - Tool distribution between agents
+    - Multi-agent workflow coordination
+    """
+
     def __init__(
         self,
         thread_id: int,
@@ -33,237 +54,214 @@ class ChatAgentManager:
         llm_provider: Optional[str] = None,
         llm_kwargs: Optional[Dict[str, Any]] = None,
     ):
+        self.thread_id = thread_id
+        self.user_id = user_id
+        self.max_tokens = max_tokens
         self.llm_model = llm_model
         self.llm_provider = llm_provider
         self.llm_kwargs = llm_kwargs or {}
 
-        # Initialize LLM instance
-        self.llm = llm_manager.get_llm(
-            model=llm_model, provider=llm_provider, **self.llm_kwargs
-        )
-
-        logger.info(
-            f"Initialized ChatAgentManager with model={llm_model or 'default'}, "
-            f"provider={llm_provider or 'default'}"
-        )
-
-        self.thread_id = thread_id
-        self.user_id = user_id
-        self.max_tokens = max_tokens
+        # Store tools and subagents for orchestration
         self.tools = tools or []
         self.subagents = subagents or []
-        self.agent: Optional[FunctionCallingAgent] = None
-        self.memory: Optional[Memory] = None
+
+        # Registry of active agents
+        self.active_agents: Dict[str, ModernChatAgent] = {}
+        self.main_agent: Optional[ModernChatAgent] = None
+
+        # Tool distribution strategy
+        self.tool_distribution = self._analyze_tools()
+
         logger.info(
-            f"ChatAgentManager initialized for user_id={self.user_id}, thread_id={self.thread_id}, "
-            f"max_tokens={self.max_tokens}, tools={len(self.tools)}, subagents={len(self.subagents)}, "
-            f"model={self.llm_model or 'default'}, provider={self.llm_provider or 'default'}"
+            f"ChatAgentManager initialized for orchestration - "
+            f"user_id={self.user_id}, thread_id={self.thread_id}, "
+            f"tools_count={len(self.tools)}, subagents_count={len(self.subagents)}"
         )
 
-    async def get_memory(self, user_input: str = "") -> List[Dict[str, Any]]:
-        logger.debug(
-            f"Retrieving memory for thread_id={self.thread_id} with user_input='{user_input}'"
-        )
-        messages = await history_manager.get_thread_history(self.thread_id, limit=100)
-        # Reverse to chronological order (oldest to newest)
-        messages = list(reversed(messages))
-        msg_dicts = [
-            m.model_dump() if hasattr(m, "model_dump") else dict(m) for m in messages
-        ]
-
-        # Get model from instance or environment
-        model = getattr(self, "llm_model", None) or os.environ.get(
-            "LLM_MODEL", "gpt-3.5-turbo"
-        )
-
-        # Pass LLM kwargs if available
-        llm_kwargs = getattr(self, "llm_kwargs", {})
-
-        # Use dynamic context selection which can use LLM for better context selection
-        selected = await context_module.dynamic_context_selection(
-            messages=msg_dicts,
-            user_input=user_input,
-            thread_state=None,  # Can be enhanced with thread state in the future
-            max_tokens=self.max_tokens,
-            model=model or "gpt-3.5-turbo",  # Default model if none provided
-            **llm_kwargs,
-        )
-
-        logger.debug(f"Selected {len(selected)} relevant messages for memory context")
-        return selected
-
-    async def build_agent(self, user_input: str) -> None:
-        """Build or rebuild the agent with the latest context and tools."""
-        # Get relevant context and chat history
-        # get_memory already includes the thread history
-        memory_msgs = await self.get_memory(user_input)
-
-        # Convert messages to llama-index format
-        from llama_index.core.base.llms.types import MessageRole
-
-        chat_history = [
-            ChatMessage(
-                role=(
-                    MessageRole.USER
-                    if m.get("user_id") == self.user_id
-                    else MessageRole.ASSISTANT
-                ),
-                content=m["content"],
-            )
-            for m in memory_msgs
-        ]
-
-        # Log the initial chat history being used for the agent
-        logger.info("Initial chat history for agent:")
-        for msg in chat_history:
-            logger.info(f"{msg.role.upper()}: {msg.content}")
-
-        # Create memory
-        self.memory = Memory.from_defaults(chat_history=chat_history)
-
-        # Build tools list
-        all_tools = []
-
-        # Log agent configuration
-        logger.info(
-            f"Building agent with model: {self.llm.model if hasattr(self.llm, 'model') else 'unknown'}"
-        )
-
-        # Validate and register tools
-        if self.tools:
-            for tool in self.tools:
-                if tool is None:
-                    logger.warning("Skipping None tool in tools list")
-                    continue
-                try:
-                    tool_instance = FunctionTool.from_defaults(fn=tool)
-                    all_tools.append(tool_instance)
-                    logger.debug(f"Registered tool: {tool_instance.metadata.name}")
-                except Exception as e:
-                    logger.error(f"Failed to register tool {tool}: {str(e)}")
-
-        # Validate and register subagents
-        if self.subagents:
-            for agent in self.subagents:
-                if agent is None:
-                    logger.warning("Skipping None agent in subagents list")
-                    continue
-                try:
-                    agent_instance = FunctionTool.from_defaults(fn=agent)
-                    all_tools.append(agent_instance)
-                    logger.debug(f"Registered subagent: {agent_instance.metadata.name}")
-                except Exception as e:
-                    logger.error(f"Failed to register subagent {agent}: {str(e)}")
-
-        logger.info(f"Using {'FunctionCallingAgent' if all_tools else 'ReActAgent'}")
-
-        if all_tools:
-            # If we have tools, use FunctionCallingAgent
-            self.agent = FunctionCallingAgent.from_tools(
-                tools=all_tools,
-                llm=self.llm,
-                memory=self.memory,
-                max_function_calls=5,
-            )
-            logger.info(
-                f"Built FunctionCallingAgent with {len(all_tools)} tools and {len(chat_history)} messages of chat history"
-            )
-        else:
-            # If no tools, use ReActAgent
-            self.agent = ReActAgent.from_tools(
-                tools=[], llm=self.llm, memory=self.memory, verbose=True
-            )
-            logger.info(
-                f"Built ReActAgent with {len(chat_history)} chat history messages (no tools configured)"
-            )
-
-    async def chat(self, user_input: str) -> str:
-        """Process a chat message from the user and return the assistant's response.
-
-        Args:
-            user_input: The message from the user
+    def _analyze_tools(self) -> Dict[str, Any]:
+        """
+        Analyze tools and determine distribution strategy between main agent and sub-agents.
 
         Returns:
-            The assistant's response
-
-        Raises:
-            ValueError: If no LLM is available and not in fake mode
-            Exception: Any exception raised by the LLM
+            Dict mapping agent types to their assigned tools
         """
-        logger.info(
-            f"Chat called for thread_id={self.thread_id}, user_id={self.user_id} with input: {user_input}"
-        )
+        distribution: Dict[str, Any] = {"main_agent": [], "specialized_agents": {}}
 
-        # Ensure thread exists and get thread object
-        from ormar.exceptions import NoMatch
+        # For now, assign all tools to main agent
+        # Future: implement sophisticated tool routing based on tool metadata
+        distribution["main_agent"] = self.tools.copy()
 
-        try:
-            thread = await history_manager.Thread.objects.get(id=self.thread_id)
-        except NoMatch:
-            logger.warning(
-                f"Thread id={self.thread_id} not found. Creating new thread for user_id={self.user_id}"
+        # Future: analyze subagents and distribute tools accordingly
+        for i, subagent in enumerate(self.subagents):
+            agent_name = f"subagent_{i}"
+            distribution["specialized_agents"][agent_name] = []
+
+        logger.debug(f"Tool distribution strategy: {distribution}")
+        return distribution
+
+    async def _create_main_agent(self) -> ModernChatAgent:
+        """Create the main chat agent with assigned tools."""
+        if self.main_agent is None:
+            main_tools = self.tool_distribution["main_agent"]
+            self.main_agent = ModernChatAgent(
+                thread_id=self.thread_id,
+                user_id=self.user_id,
+                max_tokens=self.max_tokens,
+                tools=main_tools,
+                llm_model=self.llm_model,
+                llm_provider=self.llm_provider,
+                llm_kwargs=self.llm_kwargs,
+                # Enable modern memory features by default
+                enable_fact_extraction=True,
+                enable_vector_memory=True,
             )
-            thread = await history_manager.create_thread(self.user_id)
-            self.thread_id = thread.id
+            self.active_agents["main"] = self.main_agent
+            logger.info("Main agent created with modern memory blocks")
 
-        # Handle fake LLM mode first to avoid duplicate database entries
-        if isinstance(self.llm, FakeLLM):
-            # If we're using FakeLLM, just return a simple response
-            response_obj = await self.llm.achat(
-                [{"role": "user", "content": user_input}]
-            )
-            response = response_obj.content
-            await history_manager.append_message(self.thread_id, "assistant", response)
-            logger.info(f"FakeLLM response: {response}")
-            return response
+        return self.main_agent
 
-        # Validate LLM is available
-        if self.llm is None:
-            error_msg = "No LLM instance provided and not in fake mode"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
+    async def _create_subagents(self) -> Dict[str, ModernChatAgent]:
+        """Create specialized sub-agents for specific tasks."""
+        subagents = {}
 
-        # Initialize agent if needed
-        if self.agent is None:
-            logger.debug("Agent not built yet. Building agent...")
+        for i, subagent_config in enumerate(self.subagents):
+            agent_name = f"subagent_{i}"
+            if agent_name not in self.active_agents:
+                # Create specialized agent with specific tools
+                specialized_tools = self.tool_distribution["specialized_agents"].get(
+                    agent_name, []
+                )
+
+                subagent = ModernChatAgent(
+                    thread_id=self.thread_id,
+                    user_id=self.user_id,
+                    max_tokens=self.max_tokens,
+                    tools=specialized_tools,
+                    llm_model=self.llm_model,
+                    llm_provider=self.llm_provider,
+                    llm_kwargs=self.llm_kwargs,
+                    # Sub-agents might have different memory configurations
+                    enable_fact_extraction=False,  # Only main agent extracts facts
+                    enable_vector_memory=True,  # But they can search history
+                )
+
+                self.active_agents[agent_name] = subagent
+                subagents[agent_name] = subagent
+                logger.info(f"Created {agent_name} with {len(specialized_tools)} tools")
+
+        return subagents
+
+    async def _route_query(self, user_input: str) -> str:
+        """
+        Determine which agent should handle the query.
+
+        Future: implement sophisticated routing based on:
+        - Query intent classification
+        - Tool requirements analysis
+        - Agent specialization matching
+
+        For now: route everything to main agent
+        """
+        return "main"
+
+    # Public API methods
+    @property
+    def llm(self):
+        """Access to the main agent's LLM."""
+        if self.main_agent:
+            return self.main_agent.llm
+        return None
+
+    @property
+    def agent(self):
+        """Access to the main agent."""
+        return self.main_agent
+
+    @property
+    def memory(self):
+        """Access to the main agent's memory."""
+        if self.main_agent:
+            return self.main_agent.memory
+        return None
+
+    async def get_memory(self, user_input: str = "") -> List[Dict[str, Any]]:
+        """
+        Get memory information from the orchestration layer.
+        Aggregates memory from all active agents.
+        """
+        memory_info = []
+
+        # Ensure main agent exists
+        await self._create_main_agent()
+
+        # Get main agent memory
+        if self.main_agent:
+            main_memory = await self.main_agent.get_memory_info()
+            memory_info.append({"agent": "main", "memory": main_memory})
+
+        # Get sub-agent memories
+        for agent_name, agent in self.active_agents.items():
+            if agent_name != "main":
+                agent_memory = await agent.get_memory_info()
+                memory_info.append({"agent": agent_name, "memory": agent_memory})
+
+        return memory_info
+
+    async def build_agent(self, user_input: str = "") -> None:
+        """Build or rebuild the orchestrated agent system."""
+        logger.info("Building orchestrated agent system...")
+
+        # Create main agent
+        await self._create_main_agent()
+        await self.main_agent.build_agent(user_input)
+
+        # Create sub-agents
+        await self._create_subagents()
+
+        # Build all sub-agents
+        for agent_name, agent in self.active_agents.items():
+            if agent_name != "main":
+                await agent.build_agent(user_input)
+
+        logger.info(f"Agent system built with {len(self.active_agents)} active agents")
+
+    async def chat(self, user_input: str) -> str:
+        """
+        Process a chat message through the orchestrated agent system.
+
+        This method:
+        1. Routes the query to the appropriate agent
+        2. Coordinates between agents if needed
+        3. Returns the final response
+        """
+        # Ensure agents are built
+        if not self.active_agents:
             await self.build_agent(user_input)
 
-        # Persist user message to database for real LLM
-        # Do this after building the agent, otherwise it's added twice
-        await history_manager.append_message(self.thread_id, self.user_id, user_input)
+        # Route query to appropriate agent
+        target_agent = await self._route_query(user_input)
 
-        # Process with real LLM
-        try:
-            # Log the full input being sent to the LLM
-            if self.agent and hasattr(self.agent, "chat_history"):
-                logger.info("Full chat history being sent to LLM:")
-                for msg in self.agent.chat_history:
-                    logger.info(f"{msg.role.upper()}: {msg.content}")
-
-            logger.info(f"Processing user input: {user_input}")
-
-            # Process with the agent - the message will be added to memory automatically
-            response = await self.agent.achat(user_input)  # type: ignore[union-attr]
-            response_text = (
-                str(response.response)
-                if hasattr(response, "response")
-                else str(response)
-            )
-            logger.info(f"Agent response: {response_text}")
-
-            # Persist the assistant's response
-            await history_manager.append_message(
-                self.thread_id, "assistant", response_text
-            )
-            return response_text
-
-        except Exception as e:
-            logger.error(f"Error during agent.achat: {e}", exc_info=True)
-            raise
+        # For now, always use main agent
+        # Future: implement cross-agent coordination
+        if target_agent == "main" and self.main_agent:
+            response = await self.main_agent.chat(user_input)
+            logger.info(f"Main agent handled query, response length: {len(response)}")
+            return response
+        else:
+            # Fallback to main agent
+            if self.main_agent:
+                return await self.main_agent.chat(user_input)
+            else:
+                return "Error: No active agents available"
 
 
-# Example usage (async context):
-# manager = ChatAgentManager(llm=your_litellm, thread_id=1, user_id="user1", tools=[calendar_tool], subagents=[email_tool])
-# await manager.build_agent(user_input="What's on my calendar?")
+# Example usage:
+# manager = ChatAgentManager(
+#     thread_id=1,
+#     user_id="user1",
+#     tools=[calendar_tool, email_tool],
+#     subagents=[specialized_agent_config]
+# )
+# await manager.build_agent()
 # reply = await manager.chat("What's on my calendar?")
 # print(reply)
