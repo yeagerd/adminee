@@ -213,7 +213,9 @@ async def test_backward_compatibility_imports():
 async def test_chat_with_agent():
     """Test chatting with the agent."""
     with (
-        patch("services.chat_service.chat_agent.history_manager") as mock_history_manager,
+        patch(
+            "services.chat_service.chat_agent.history_manager"
+        ) as mock_history_manager,
     ):
         mock_history_manager.get_thread_history.return_value = []
         mock_history_manager.append_message = AsyncMock()
@@ -282,7 +284,9 @@ async def test_graceful_fallback_on_memory_errors():
 @pytest.mark.asyncio
 async def test_memory_blocks_priority_order():
     """Test that memory blocks are created with correct priority order."""
-    with patch("services.chat_service.chat_agent.history_manager") as mock_history_manager:
+    with patch(
+        "services.chat_service.chat_agent.history_manager"
+    ) as mock_history_manager:
 
         mock_history_manager.get_thread_history.return_value = []
 
