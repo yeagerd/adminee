@@ -3,13 +3,15 @@ History manager for chat_service: manages threads, messages, and drafts using Or
 """
 
 import datetime
+import os
 from typing import List, Optional
 
 import databases
 import ormar
 import sqlalchemy
 
-DATABASE_URL = "sqlite:///memory"
+# Read DATABASE_URL from environment, default to in-memory if not set
+DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///memory")
 database = databases.Database(DATABASE_URL)
 metadata = sqlalchemy.MetaData()
 
@@ -70,7 +72,7 @@ class Draft(ormar.Model):
 
 # Ensure tables are created on import
 def init_db():
-    engine = sqlalchemy.create_engine("sqlite:///memory")
+    engine = sqlalchemy.create_engine(DATABASE_URL)
     metadata.create_all(engine)
 
 
@@ -128,3 +130,7 @@ async def get_draft(thread_id: int, draft_type: str) -> Optional[Draft]:
 
 async def list_drafts(thread_id: int) -> List[Draft]:
     return await Draft.objects.filter(thread=thread_id).all()
+
+
+async def get_thread(thread_id: int) -> Optional[Thread]:
+    return await Thread.objects.get_or_none(id=thread_id)

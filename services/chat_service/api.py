@@ -1,7 +1,6 @@
-import asyncio
 from typing import List
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from services.chat_service.llama_manager import ChatAgentManager
 from services.chat_service.models import Message as PydanticMessage
@@ -21,27 +20,38 @@ FEEDBACKS: List[FeedbackRequest] = []
 
 
 @router.post("/chat", response_model=ChatResponse)
-def chat_endpoint(request: ChatRequest) -> ChatResponse:
+async def chat_endpoint(request: ChatRequest) -> ChatResponse:
     """
     Chat endpoint using llama_manager ChatAgentManager.
     """
-    # NOTE: FastAPI sync endpoint, so run async agent in event loop
-    thread_id = int(request.thread_id) if request.thread_id else 1  # fallback for demo
+    from services.chat_service import history_manager
+
     user_id = request.user_id
+    thread_id = request.thread_id
     user_input = request.message
+
+    if not thread_id:
+        # Always create a new thread if no thread_id is provided
+        thread = await history_manager.create_thread(user_id=user_id)
+    else:
+        # Fetch the existing thread
+        thread = await history_manager.get_thread(thread_id=thread_id)
+        if thread is None:
+            raise HTTPException(status_code=404, detail="Thread not found")
+
     # TODO: Replace with real LiteLLM instance
     llm = None
     agent = ChatAgentManager(
         llm=llm,
-        thread_id=thread_id,
+        thread_id=thread.id,
         user_id=user_id,
         tools=[],
         subagents=[],
     )
     # Actually run the chat to append messages
-    asyncio.run(agent.chat(user_input))
+    await agent.chat(user_input)
     # Fetch messages as ORM objects
-    orm_messages = asyncio.run(agent.get_memory(user_input))
+    orm_messages = await agent.get_memory(user_input)
     # Convert to Pydantic Message models
     pydantic_messages = []
     for m in orm_messages:
@@ -75,13 +85,13 @@ def chat_endpoint(request: ChatRequest) -> ChatResponse:
 
 
 @router.get("/threads", response_model=List[Thread])
-def list_threads(user_id: str) -> List[Thread]:
+async def list_threads(user_id: str) -> List[Thread]:
     """
     List threads for a given user using history_manager.
     """
     from services.chat_service import history_manager
 
-    threads = asyncio.run(history_manager.list_threads(user_id))
+    threads = await history_manager.list_threads(user_id)
     return [
         Thread(
             thread_id=str(t.id),
@@ -94,16 +104,14 @@ def list_threads(user_id: str) -> List[Thread]:
 
 
 @router.get("/threads/{thread_id}/history", response_model=ChatResponse)
-def thread_history(thread_id: str) -> ChatResponse:
+async def thread_history(thread_id: str) -> ChatResponse:
     """
     Get chat history for a given thread using history_manager.
     """
     from services.chat_service import history_manager
     from services.chat_service.models import Message
 
-    messages = asyncio.run(
-        history_manager.get_thread_history(int(thread_id), limit=100)
-    )
+    messages = await history_manager.get_thread_history(int(thread_id), limit=100)
     chat_messages = [
         Message(
             message_id=str(i + 1),

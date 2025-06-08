@@ -4,13 +4,11 @@ Planning agent for chat_service using LiteLLM and llama-index.
 Implements agent loop, tool/subagent registration, and token-constrained memory.
 """
 
-import os
 import logging
+import os
 from typing import Any, Callable, Dict, List, Optional
 
 from dotenv import load_dotenv
-load_dotenv()
-
 from llama_index.core.agent.function_calling.base import FunctionCallingAgent
 from llama_index.core.base.llms.types import ChatMessage
 from llama_index.core.memory.chat_memory_buffer import ChatMemoryBuffer
@@ -18,6 +16,8 @@ from llama_index.core.tools import FunctionTool
 from llama_index.core.tools.types import BaseTool
 
 from services.chat_service import context_module, history_manager
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
