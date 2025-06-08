@@ -1,3 +1,4 @@
+import os
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException
@@ -52,14 +53,15 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
     # At this point, thread is guaranteed to be not None
     thread = cast(history_manager.Thread, thread)
 
-    # TODO: Replace with real LiteLLM instance
-    llm = None
+    # Initialize the agent with LLM from LLMManager
     agent = ChatAgentManager(
-        llm=llm,
         thread_id=thread.id,
         user_id=user_id,
         tools=[],
         subagents=[],
+        # These will use environment variables if not specified
+        llm_model=os.getenv("LLM_MODEL"),
+        llm_provider=os.getenv("LLM_PROVIDER"),
     )
     # Actually run the chat to append messages
     await agent.chat(user_input)

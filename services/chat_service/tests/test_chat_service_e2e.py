@@ -25,13 +25,15 @@ def test_end_to_end_chat_flow():
     resp = client.get("/threads", params={"user_id": user_id})
     assert resp.status_code == 200
 
-    # Start a chat (should create a new thread and echo response)
+    # Start a chat (should create a new thread and return response)
     msg = "Hello, world!"
     resp = client.post("/chat", json={"user_id": user_id, "message": msg})
     assert resp.status_code == 200
     data = resp.json()
     assert "thread_id" in data
-    assert data["messages"][-1]["content"].startswith("ack:")
+    assert "messages" in data
+    assert len(data["messages"]) > 0
+    assert "[FAKE LLM RESPONSE]" in data["messages"][-1]["content"]
 
     thread_id = data["thread_id"]
 
@@ -43,7 +45,7 @@ def test_end_to_end_chat_flow():
     assert resp.status_code == 200
     data2 = resp.json()
     assert data2["thread_id"] == thread_id
-    assert data2["messages"][-1]["content"].startswith("ack:")
+    assert "[FAKE LLM RESPONSE]" in data2["messages"][-1]["content"]
 
     # List threads (should contain the thread we just used)
     resp = client.get("/threads", params={"user_id": user_id})
