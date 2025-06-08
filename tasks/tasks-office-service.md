@@ -37,63 +37,96 @@ When working with task lists, the AI must:
 5. Before starting work, check which sub‑task is next.
 6. After implementing a sub‑task, update this file.
 
+## Relevant Files
+*   `services/office_service/requirements.txt`: Lists Python dependencies for the office service.
+*   `services/office_service/.env`: Environment variables for the office service.
+*   `services/office_service/app/main.py`: Main FastAPI application file, includes Redis & TokenManager lifespan, and API routers.
+*   `services/office_service/core/config.py`: Pydantic settings management.
+*   `services/office_service/models/models.py`: Ormar database models.
+*   `services/office_service/alembic/`: Directory for Alembic migrations.
+*   `services/office_service/alembic/env.py`: Alembic environment configuration.
+*   `services/office_service/alembic/versions/61f963009495_initial_migration_create_office_service_tables.py`: Initial database migration script. (Note: The hash prefix will vary)
+*   `services/office_service/app/__init__.py`: Makes 'app' a Python package.
+*   `services/office_service/core/__init__.py`: Makes 'core' a Python package, exports Settings, TokenManager, APIClientFactory, client classes, normalizers, and cache functions.
+*   `services/office_service/core/dependencies.py`: Provides FastAPI dependency injectors for core services like TokenManager and APIClientFactory.
+*   `services/office_service/models/__init__.py`: Makes 'models' a Python package.
+*   `services/office_service/schemas/__init__.py`: Makes Pydantic models easily importable from the schemas package.
+*   `services/office_service/schemas/common_schemas.py`: Defines common Pydantic models, including generic ApiResponse and PaginatedResponse.
+*   `services/office_service/schemas/error_schemas.py`: Defines the Pydantic model for standardized API error responses.
+*   `services/office_service/api/__init__.py`: Makes the 'api' directory a package.
+*   `services/office_service/api/health.py`: Implements health check and integration status endpoints.
+*   `services/office_service/api/email.py`: Implements API endpoints for unified email operations (list messages, get message detail).
+*   `services/office_service/api/calendar.py`: Implements API endpoints for unified calendar operations (list events).
+*   `services/office_service/api/files.py`: Implements API endpoints for unified file operations (list files).
+*   `services/office_service/tests/__init__.py`: Makes 'tests' a Python package.
+*   `services/office_service/core/token_manager.py`: Implements the TokenManager class for fetching and caching user OAuth tokens from the User Management Service.
+*   `services/office_service/core/clients/`: Directory for provider-specific API client implementations.
+*   `services/office_service/core/clients/__init__.py`: Makes API client classes importable.
+*   `services/office_service/core/clients/base.py`: Defines the BaseAPIClient class with common HTTP request logic.
+*   `services/office_service/core/clients/google.py`: Implements GoogleAPIClient for interacting with Google services.
+*   `services/office_service/core/clients/microsoft.py`: Implements MicrosoftAPIClient for interacting with Microsoft services.
+*   `services/office_service/core/api_client_factory.py`: Implements APIClientFactory for creating provider-specific API clients.
+*   `services/office_service/core/normalizer.py`: Implements data normalization functions to convert provider-specific API responses (Google, Microsoft) into unified Pydantic models.
+*   `services/office_service/core/cache_manager.py`: Implements Redis cache connection, key generation, and get/set/delete operations.
+*   `services/office_service/tests/core/test_cache_manager.py`: Contains unit tests for the cache key generation logic.
+
 ## Tasks
-[ ] 1. Project Scaffolding & Core Dependencies
+[x] 1. Project Scaffolding & Core Dependencies
 
-[ ] 1.1 Create a folder for the service in services/office_service.
-[ ] 1.2 [Install core dependencies: fastapi, uvicorn, pydantic, ormar, alembic, psycopg2-binary, python-dotenv, httpx.]
-[ ] 1.3 [Set up the basic project structure with folders for app, core, models, tests, etc.]
-[ ] 1.4 [Create a basic FastAPI application instance in app/main.py with a "Hello World" root endpoint.]
-[ ] 1.5 [Implement environment variable loading using Pydantic's BaseSettings to manage configuration from the .env file as specified in Section 9.1.]
-[ ] 1.6 [Define the Ormar models (ApiCall, CacheEntry, RateLimitBucket) in a models/ directory as specified in Section 5.1.]
-[ ] 1.7 [Configure the database connection using the DATABASE_URL and initialize Alembic for database migrations.]
-[ ] 1.8 [Generate and apply the initial Alembic migration to create the tables for the models defined in step 1.6.]
+[x] 1.1 Create a folder for the service in services/office_service.
+[x] 1.2 [Install core dependencies: fastapi, uvicorn, pydantic, ormar, alembic, psycopg2-binary, python-dotenv, httpx.] (requirements.txt created)
+[x] 1.3 [Set up the basic project structure with folders for app, core, models, tests, etc.]
+[x] 1.4 [Create a basic FastAPI application instance in app/main.py with a "Hello World" root endpoint.]
+[x] 1.5 [Implement environment variable loading using Pydantic's BaseSettings to manage configuration from the .env file as specified in Section 9.1.]
+[x] 1.6 [Define the Ormar models (ApiCall, CacheEntry, RateLimitBucket) in a models/ directory as specified in Section 5.1.]
+[x] 1.7 [Configure the database connection using the DATABASE_URL and initialize Alembic for database migrations.]
+[ ] 1.8 [Generate and apply the initial Alembic migration to create the tables for the models defined in step 1.6.] (Generated, not applied yet)
 
-[ ] 2. Core Module: Pydantic & Error Models
-[ ] 2.1 [Create a schemas/ directory to hold all Pydantic models for API responses.]
-[ ] 2.2 [Define the unified Pydantic models for Email (EmailAddress, EmailMessage), Calendar (CalendarEvent, Calendar), and Files (DriveFile) from Section 5.2.]
-[ ] 2.3 [Define the generic API response models (ApiResponse, PaginatedResponse) from Section 5.2.]
-[ ] 2.4 [Define the standardized ApiError model from Section 7.1.]
+[x] 2. Core Module: Pydantic & Error Models
+[x] 2.1 [Create a schemas/ directory to hold all Pydantic models for API responses.]
+[x] 2.2 [Define the unified Pydantic models for Email (EmailAddress, EmailMessage), Calendar (CalendarEvent, Calendar), and Files (DriveFile) from Section 5.2.]
+[x] 2.3 [Define the generic API response models (ApiResponse, PaginatedResponse) from Section 5.2.]
+[x] 2.4 [Define the standardized ApiError model from Section 7.1.]
 
-[ ] 3. Core Module: Token Manager
-[ ] 3.1 [Create a core/token_manager.py module.]
-[ ] 3.2 [Implement the TokenManager class with the async get_user_token method as shown in Section 3.1.]
-[ ] 3.3 [Integrate an httpx.AsyncClient into the TokenManager to make requests to the USER_MANAGEMENT_SERVICE_URL.]
-[ ] 3.4 [Add robust error handling and logging for cases where token retrieval fails.]
-[ ] 3.5 [Implement a simple in-memory cache (e.g., using a dictionary with TTL) within the TokenManager to reduce calls for the same token within a short period (as mentioned in Section 2.1).]
+[x] 3. Core Module: Token Manager
+[x] 3.1 [Create a core/token_manager.py module.]
+[x] 3.2 [Implement the TokenManager class with the async get_user_token method as shown in Section 3.1.]
+[x] 3.3 [Integrate an httpx.AsyncClient into the TokenManager to make requests to the USER_MANAGEMENT_SERVICE_URL.]
+[x] 3.4 [Add robust error handling and logging for cases where token retrieval fails.]
+[x] 3.5 [Implement a simple in-memory cache (e.g., using a dictionary with TTL) within the TokenManager to reduce calls for the same token within a short period (as mentioned in Section 2.1).]
 
-[ ] 4. Core Module: API Client Factory
-[ ] 4.1 [Create a core/clients/ directory for provider-specific clients.]
-[ ] 4.2 [Implement a base API client class that includes an httpx.AsyncClient and basic request/response logging.]
-[ ] 4.3 [Create a GoogleAPIClient that inherits from the base client. It should be initialized with a user's access token.]
-[ ] 4.4 [Create a MicrosoftAPIClient that inherits from the base client, also initialized with a user's access token.]
-[ ] 4.5 [Implement an APIClientFactory in core/api_client_factory.py that takes a user_id and provider and uses the TokenManager to fetch a token and return an initialized provider-specific API client.]
+[x] 4. Core Module: API Client Factory
+[x] 4.1 [Create a core/clients/ directory for provider-specific clients.]
+[x] 4.2 [Implement a base API client class that includes an httpx.AsyncClient and basic request/response logging.]
+[x] 4.3 [Create a GoogleAPIClient that inherits from the base client. It should be initialized with a user's access token.]
+[x] 4.4 [Create a MicrosoftAPIClient that inherits from the base client, also initialized with a user's access token.]
+[x] 4.5 [Implement an APIClientFactory in core/api_client_factory.py that takes a user_id and provider and uses the TokenManager to fetch a token and return an initialized provider-specific API client.]
 
-[ ] 5. Core Module: Data Normalizer
-[ ] 5.1 [Create a core/normalizer.py module.]
-[ ] 5.2 [Implement a function normalize_google_email that takes a raw JSON response from the Gmail API and converts it into the unified EmailMessage Pydantic model.]
-[ ] 5.3 [Implement a function normalize_microsoft_email that takes a raw JSON response from the Microsoft Graph API and converts it into the unified EmailMessage Pydantic model.]
-[ ] 5.4 [Implement initial normalization functions for Google Calendar events and Google Drive files, converting them to CalendarEvent and DriveFile models respectively.]
+[x] 5. Core Module: Data Normalizer
+[x] 5.1 [Create a core/normalizer.py module.]
+[x] 5.2 [Implement a function normalize_google_email that takes a raw JSON response from the Gmail API and converts it into the unified EmailMessage Pydantic model.]
+[x] 5.3 [Implement a function normalize_microsoft_email that takes a raw JSON response from the Microsoft Graph API and converts it into the unified EmailMessage Pydantic model.]
+[x] 5.4 [Implement initial normalization functions for Google Calendar events and Google Drive files, converting them to CalendarEvent and DriveFile models respectively.]
 
-[ ] 6. Core Module: Basic Caching (Redis)
-[ ] 6.1 [Add the redis-py library to the project dependencies.]
-[ ] 6.2 [Create a core/cache_manager.py module that establishes a connection to Redis using the REDIS_URL.]
-[ ] 6.3 [Implement the generate_cache_key utility function as specified in Section 6.2.]
-[ ] 6.4 [Create simple get_from_cache and set_to_cache functions in the CacheManager that interact with Redis.]
-[ ] 6.5 [Write unit tests for the generate_cache_key function to ensure it is deterministic.]
+[x] 6. Core Module: Basic Caching (Redis)
+[x] 6.1 [Add the redis-py library to the project dependencies.] (Covered by requirements.txt, `redis` added)
+[x] 6.2 [Create a core/cache_manager.py module that establishes a connection to Redis using the REDIS_URL.]
+[x] 6.3 [Implement the generate_cache_key utility function as specified in Section 6.2.]
+[x] 6.4 [Create simple get_from_cache and set_to_cache functions in the CacheManager that interact with Redis.]
+[x] 6.5 [Write unit tests for the generate_cache_key function to ensure it is deterministic.]
 
-[ ] 7. Implement Health and Diagnostics Endpoints
-[ ] 7.1 [Create an api/health.py router.]
-[ ] 7.2 [Implement the GET /health endpoint as specified in Section 9.2, including checks for the database and Redis connections.]
-[ ] 7.3 [Implement the GET /health/integrations/{user_id} endpoint. For the MVP, this can simply attempt to fetch a token for both 'google' and 'microsoft' for the given user and report success or failure.]
+[x] 7. Implement Health and Diagnostics Endpoints
+[x] 7.1 [Create an api/health.py router.]
+[x] 7.2 [Implement the GET /health endpoint as specified in Section 9.2, including checks for the database and Redis connections.]
+[x] 7.3 [Implement the GET /health/integrations/{user_id} endpoint. For the MVP, this can simply attempt to fetch a token for both 'google' and 'microsoft' for the given user and report success or failure.]
 
-[ ] 8. Implement Unified READ Endpoints (MVP)
-[ ] 8.1 [Create an api/email.py router.]
-[ ] 8.2 [Implement GET /email/messages. It should use the APIClientFactory to get clients for each provider, make parallel API calls, use the DataNormalizer to unify the results, and aggregate them.]
-[ ] 8.3 [Integrate the CacheManager into the GET /email/messages endpoint to cache the final aggregated response.]
-[ ] 8.4 [Create an api/calendar.py router and implement GET /calendar/events following the same pattern as the email endpoint (fetch, normalize, aggregate, cache).]
-[ ] 8.5 [Create an api/files.py router and implement GET /files following the same pattern.]
-[ ] 8.6 [Implement the detail endpoint GET /email/messages/{message_id}. This will require logic to determine the correct provider from the message_id to make the API call.]
+[x] 8. Implement Unified READ Endpoints (MVP)
+[x] 8.1 [Create an api/email.py router.]
+[x] 8.2 [Implement GET /email/messages. It should use the APIClientFactory to get clients for each provider, make parallel API calls, use the DataNormalizer to unify the results, and aggregate them.]
+[x] 8.3 [Integrate the CacheManager into the GET /email/messages endpoint to cache the final aggregated response.]
+[x] 8.4 [Create an api/calendar.py router and implement GET /calendar/events following the same pattern as the email endpoint (fetch, normalize, aggregate, cache).]
+[x] 8.5 [Create an api/files.py router and implement GET /files following the same pattern.]
+[x] 8.6 [Implement the detail endpoint GET /email/messages/{message_id}. This will require logic to determine the correct provider from the message_id to make the API call.]
 
 [ ] 9. Implement Unified WRITE Endpoints (MVP)
 [ ] 9.1 [Implement POST /email/send in the email router. For the MVP, this can be a simple pass-through that determines the provider and makes the API call. The actual queuing can be stubbed or logged for now.]
