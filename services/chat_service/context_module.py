@@ -16,9 +16,10 @@ import tiktoken
 
 
 def count_tokens(text: str, model: str) -> int:
-    if not model:
-        model = "gpt-4.1-nano"
-    enc = tiktoken.encoding_for_model(model)
+    try:
+        enc = tiktoken.encoding_for_model(model)
+    except:
+        enc = tiktoken.get_encoding("cl100k_base")  # Fallback to a common encoding
     return len(enc.encode(text))
 
 
