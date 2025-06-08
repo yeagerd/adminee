@@ -1,3 +1,9 @@
+import os
+
+# Set shared in-memory SQLite DB before any app/model import
+os.environ["DATABASE_URL"] = "sqlite:///file::memory:?cache=shared"
+
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -67,17 +73,29 @@ def test_end_to_end_chat_flow():
     assert resp.json()["status"] == "success"
 
 
-def test_chat_service_missing_table(monkeypatch):
-    import sqlalchemy
-
-    # Drop the threads table if it exists
-    engine = sqlalchemy.create_engine("sqlite:///memory")
-    with engine.connect() as conn:
-        conn.execute(sqlalchemy.text("DROP TABLE IF EXISTS threads"))
-
-    # Now try the chat flow, expecting an OperationalError
+def test_multiple_blank_thread_creates_distinct_threads():
     client = TestClient(app)
-    user_id = "testuser"
-    with pytest.raises(Exception) as excinfo:
-        client.post("/chat", json={"user_id": user_id, "message": "test"})
-    assert "no such table: threads" in str(excinfo.value)
+    user_id = "testuser_multi"
+
+    # Send first message with blank thread_id
+    resp1 = client.post("/chat", json={"user_id": user_id, "message": "First message"})
+    assert resp1.status_code == 200
+    data1 = resp1.json()
+    thread_id1 = data1["thread_id"]
+
+    # Send second message with blank thread_id
+    resp2 = client.post("/chat", json={"user_id": user_id, "message": "Second message"})
+    assert resp2.status_code == 200
+    data2 = resp2.json()
+    thread_id2 = data2["thread_id"]
+
+    # The thread IDs should be different
+    assert thread_id1 != thread_id2
+
+    # List threads and verify both thread IDs are present
+    resp = client.get("/threads", params={"user_id": user_id})
+    assert resp.status_code == 200
+    threads = resp.json()
+    thread_ids = {t["thread_id"] for t in threads}
+    assert thread_id1 in thread_ids
+    assert thread_id2 in thread_ids
