@@ -177,6 +177,11 @@ class ChatAgentManager:
         """Access to the main agent."""
         return self.main_agent
 
+    @agent.setter
+    def agent(self, value):
+        """Set the main agent."""
+        self.main_agent = value
+
     @property
     def memory(self):
         """Access to the main agent's memory."""
@@ -212,8 +217,8 @@ class ChatAgentManager:
         logger.info("Building orchestrated agent system...")
 
         # Create main agent
-        await self._create_main_agent()
-        await self.main_agent.build_agent(user_input)
+        main_agent = await self._create_main_agent()
+        await main_agent.build_agent(user_input)
 
         # Create sub-agents
         await self._create_subagents()
