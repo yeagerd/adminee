@@ -8,7 +8,8 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
-from llama_index.core.agent.function_calling.base import FunctionCallingAgent
+from llama_index.core.agent.function_calling import FunctionCallingAgent
+from llama_index.core.agent import ReActAgent
 from llama_index.core.base.llms.types import ChatMessage
 from llama_index.core.memory.chat_memory_buffer import ChatMemoryBuffer
 from llama_index.core.tools import FunctionTool
@@ -95,33 +96,60 @@ class ChatAgentManager:
         logger.debug(f"Selected {len(selected)} relevant messages for memory context")
         return selected
 
-    async def build_agent(self, user_input: str = ""):
-        logger.info(
-            f"Building agent for thread_id={self.thread_id} with user_input='{user_input}'"
-        )
-        # Wrap tools and subagents as FunctionTool
-        all_tools: List[BaseTool] = []
-        for t in self.tools + self.subagents:
-            all_tools.append(FunctionTool.from_defaults(fn=t))
-        # Prepare memory buffer from context
-        memory_msgs = await self.get_memory(user_input)
+    async def build_agent(self, user_input: str) -> None:
+        """Build or rebuild the agent with the latest context and tools."""
+        # Get relevant context and chat history
+        context_messages = await self.get_memory(user_input)
+        chat_history = await history_manager.get_thread_history(self.thread_id, limit=100)
+        # Reverse to chronological order (oldest to newest)
+        chat_history = list(reversed(chat_history))
+        msg_dicts = [
+            m.model_dump() if hasattr(m, "model_dump") else dict(m) for m in chat_history
+        ]
+
+        # Combine context and chat history
+        memory_msgs = context_messages + msg_dicts
+        
+        # Convert messages to llama-index format
+        from llama_index.core.base.llms.types import MessageRole
         chat_history = [
             ChatMessage(
-                role="user" if m.get("user_id") == self.user_id else "assistant",
+                role=MessageRole.USER if m.get("user_id") == self.user_id else MessageRole.ASSISTANT,
                 content=m["content"],
             )
             for m in memory_msgs
         ]
+        
+        # Create memory
         self.memory = ChatMemoryBuffer.from_defaults(chat_history=chat_history)
-        self.agent = FunctionCallingAgent.from_tools(
-            tools=all_tools,
-            llm=self.llm,
-            memory=self.memory,
-            max_function_calls=5,
-        )
-        logger.info(
-            f"Agent built with {len(all_tools)} tools and {len(chat_history)} chat history messages"
-        )
+        
+        # Build tools list
+        all_tools = []
+        if self.tools:
+            all_tools.extend([FunctionTool.from_defaults(fn=tool) for tool in self.tools])
+        if self.subagents:
+            all_tools.extend([FunctionTool.from_defaults(fn=agent) for agent in self.subagents])
+        
+        if all_tools:
+            # If we have tools, use FunctionCallingAgent
+            self.agent = FunctionCallingAgent.from_tools(
+                tools=all_tools,
+                llm=self.llm,
+                memory=self.memory,
+                max_function_calls=5,
+            )
+            logger.info(f"Built FunctionCallingAgent with {len(all_tools)} tools and {len(chat_history)} messages of chat history")
+        else:
+            # If no tools, use ReActAgent
+            self.agent = ReActAgent.from_tools(
+                tools=[],
+                llm=self.llm,
+                memory=self.memory,
+                verbose=True
+            )
+            logger.info(
+                f"Built ReActAgent with {len(chat_history)} chat history messages (no tools configured)"
+            )
 
     async def chat(self, user_input: str) -> str:
         """Process a chat message from the user and return the assistant's response.
