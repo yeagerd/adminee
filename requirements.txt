@@ -3,10 +3,12 @@ fastapi
 httpx
 langchain
 litellm
+llama-index
 ormar
 pinecone-client
 pydantic
 pytest
+pytest-asyncio
 python-dotenv
 pytz
 requests
