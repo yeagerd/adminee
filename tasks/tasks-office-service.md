@@ -96,10 +96,10 @@ Before committing:
 [x] 6.4 [Create simple get_from_cache and set_to_cache functions in the CacheManager that interact with Redis.]
 [x] 6.5 [Write unit tests for the generate_cache_key function to ensure it is deterministic.]
 
-[ ] 7. Implement Health and Diagnostics Endpoints
-[ ] 7.1 [Create an api/health.py router.]
-[ ] 7.2 [Implement the GET /health endpoint as specified in Section 9.2, including checks for the database and Redis connections.]
-[ ] 7.3 [Implement the GET /health/integrations/{user_id} endpoint. For the MVP, this can simply attempt to fetch a token for both 'google' and 'microsoft' for the given user and report success or failure.]
+[x] 7. Implement Health and Diagnostics Endpoints
+[x] 7.1 [Create an api/health.py router.]
+[x] 7.2 [Implement the GET /health endpoint as specified in Section 9.2, including checks for the database and Redis connections.]
+[x] 7.3 [Implement the GET /health/integrations/{user_id} endpoint. For the MVP, this can simply attempt to fetch a token for both 'google' and 'microsoft' for the given user and report success or failure.]
 
 [ ] 8. Implement Unified READ Endpoints (MVP)
 [ ] 8.1 [Create an api/email.py router.]

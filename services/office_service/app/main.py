@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from services.office_service.core.config import settings
+from services.office_service.api.health import router as health_router
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -8,12 +9,10 @@ app = FastAPI(
     debug=settings.DEBUG
 )
 
+# Include routers
+app.include_router(health_router)
+
 @app.get("/")
 async def read_root():
     """Hello World root endpoint"""
-    return {"message": "Hello World", "service": "Office Service"}
-
-@app.get("/health")
-async def health_check():
-    """Basic health check endpoint"""
-    return {"status": "healthy", "service": "office-service"} 
+    return {"message": "Hello World", "service": "Office Service"} 
