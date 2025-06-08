@@ -5,6 +5,7 @@ Implements agent loop, tool/subagent registration, and token-constrained memory.
 """
 
 from typing import Any, Callable, Dict, List, Optional
+import os
 
 from llama_index.core.agent.function_calling.base import FunctionCallingAgent
 from llama_index.core.base.llms.types import ChatMessage
@@ -13,6 +14,14 @@ from llama_index.core.tools import FunctionTool
 from llama_index.core.tools.types import BaseTool
 
 from services.chat_service import context_module, history_manager
+
+
+class FakeLLM:
+    """A fake LLM for testing and offline mode."""
+    async def achat(self, query):
+        class Response:
+            response = f"ack: {query}"
+        return Response()
 
 
 class ChatAgentManager:
@@ -25,6 +34,11 @@ class ChatAgentManager:
         tools: Optional[List[Callable]] = None,
         subagents: Optional[List[Callable]] = None,
     ):
+        # Use FakeLLM if no API key is set or if explicitly requested
+        if llm is None:
+            api_key = os.environ.get("OPENAI_API_KEY", "")
+            if not api_key or api_key == "sk-test" or api_key.endswith("example"):
+                llm = FakeLLM()
         self.llm = llm
         self.thread_id = thread_id
         self.user_id = user_id
@@ -36,6 +50,8 @@ class ChatAgentManager:
 
     async def get_memory(self, user_input: str = "") -> List[Dict[str, Any]]:
         messages = await history_manager.get_thread_history(self.thread_id, limit=100)
+        # Reverse to chronological order (oldest to newest)
+        messages = list(reversed(messages))
         msg_dicts = [
             m.model_dump() if hasattr(m, "model_dump") else dict(m) for m in messages
         ]
@@ -67,6 +83,24 @@ class ChatAgentManager:
         )
 
     async def chat(self, user_input: str) -> str:
+        # If using FakeLLM, bypass FunctionCallingAgent and just append fake messages
+        if isinstance(self.llm, FakeLLM):
+            from services.chat_service import history_manager
+            from ormar.exceptions import NoMatch
+            # Ensure thread exists
+            try:
+                thread = await history_manager.Thread.objects.get(id=self.thread_id)
+            except NoMatch:
+                thread = await history_manager.create_thread(self.user_id)
+                self.thread_id = thread.id
+            # Persist user message
+            await history_manager.append_message(self.thread_id, self.user_id, user_input)
+            # Persist agent response
+            fake_response = f"ack: {user_input}"
+            await history_manager.append_message(
+                self.thread_id, "assistant", fake_response
+            )
+            return fake_response
         if self.agent is None:
             await self.build_agent(user_input)
         # Run the agent with the user input
