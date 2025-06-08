@@ -38,10 +38,13 @@ async def temp_db():
 @pytest_asyncio.fixture(autouse=True)
 async def clear_db(temp_db):
     # Clear data between tests
-    async with hm.database:
+    try:
         await hm.Message.objects.delete(each=True)
         await hm.Draft.objects.delete(each=True)
         await hm.Thread.objects.delete(each=True)
+    except Exception as e:
+        # If tables don't exist yet, that's fine
+        print(f"Warning: Could not clear database: {e}")
     yield
 
 

@@ -1,0 +1,16 @@
+---
+description: 
+globs: services/**/*.py
+alwaysApply: false
+---
+General instructions for working in Python in this repo:
+
+Setup:
+* Activate the virtual environment: `source venv/bin/activate`
+* Run all Python commands from the repository root.
+
+Before committing:
+* Run `pytest` and fix all test failures.
+* Run `mypy services/` and resolve all type errors.
+* Fix lint issues using `./fix`
+* Run `tox` to validate the full test matrix and environment compatibility.

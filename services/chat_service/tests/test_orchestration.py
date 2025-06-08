@@ -213,7 +213,7 @@ async def test_end_to_end_orchestration(mock_history, orchestration_tools):
     )
 
     # Mock the chat method on the main agent that will be created
-    with patch("services.chat_service.chat_agent.ModernChatAgent.chat") as mock_chat:
+    with patch("services.chat_service.chat_agent.ChatAgent.chat") as mock_chat:
         mock_chat.return_value = "Orchestrated response"
 
         # This should build the system and process the query

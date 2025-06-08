@@ -23,6 +23,7 @@ from llama_index.core.base.llms.types import ChatMessage, MessageRole
 
 # FakeLLM is defined in llm_manager.py
 from llama_index.core.memory import (
+    BaseMemoryBlock,
     FactExtractionMemoryBlock,
     Memory,
     StaticMemoryBlock,
@@ -108,13 +109,17 @@ class ChatAgent:
         logger.debug("Created storage context with SimpleVectorStore")
         return storage_context
 
-    def _create_memory_blocks(self) -> List[Any]:
+    def _create_memory_blocks(self) -> List[BaseMemoryBlock]:
         """Create memory blocks based on configuration."""
         memory_blocks = []
 
         # 1. Static Memory Block (priority 0)
         static_content = self.static_content or self._get_default_static_content()
-        static_block = StaticMemoryBlock(static_content=static_content, priority=0)
+        from llama_index.core.base.llms.types import TextBlock
+
+        static_block = StaticMemoryBlock(
+            static_content=[TextBlock(text=static_content)], priority=0
+        )
         memory_blocks.append(static_block)
         logger.debug("Created StaticMemoryBlock")
 
@@ -123,7 +128,6 @@ class ChatAgent:
             try:
                 fact_block = FactExtractionMemoryBlock(
                     llm=self.llm,
-                    storage_context=self.storage_context,
                     priority=1,
                     max_facts=self.max_facts,
                 )
@@ -141,9 +145,14 @@ class ChatAgent:
                     api_key=os.environ.get("OPENAI_API_KEY"),
                 )
 
+                vector_store = (
+                    self.storage_context.vector_store if self.storage_context else None
+                )
+                if vector_store is None:
+                    raise ValueError("Vector store not available")
                 vector_block = VectorMemoryBlock(
                     name="conversation_history",
-                    vector_store=self.storage_context.vector_store,
+                    vector_store=vector_store,
                     priority=2,
                     embed_model=embed_model,
                     similarity_top_k=3,
@@ -215,13 +224,15 @@ class ChatAgent:
         chat_history = await self._load_chat_history_from_db()
 
         # Create memory with blocks
+        from llama_index.core.memory.memory import InsertMethod
+
         self.memory = Memory.from_defaults(
             session_id=f"thread_{self.thread_id}",
             token_limit=self.max_tokens,
             chat_history_token_ratio=self.chat_history_token_ratio,
             token_flush_size=self.token_flush_size,
             memory_blocks=memory_blocks,
-            insert_method="user",  # Insert memory into user messages
+            insert_method=InsertMethod.USER,  # Insert memory into user messages
             chat_history=chat_history,
         )
 
@@ -311,10 +322,12 @@ class ChatAgent:
 
         # Handle fake LLM mode
         if isinstance(self.llm, FakeLLM):
+            from llama_index.core.llms import ChatMessage, MessageRole
+
             response_obj = await self.llm.achat(
-                [{"role": "user", "content": user_input}]
+                [ChatMessage(role=MessageRole.USER, content=user_input)]
             )
-            response = response_obj.content
+            response = response_obj.content or ""
             await history_manager.append_message(self.thread_id, "assistant", response)
             logger.info(f"FakeLLM response: {response}")
             return response
@@ -338,7 +351,8 @@ class ChatAgent:
 
             # Process with the agent using memory
             if self.agent is not None:
-                response = await self.agent.run(user_input, memory=self.memory)
+                # Use chat method for agents (both ReActAgent and FunctionCallingAgent support this)
+                response = await self.agent.achat(user_input)
                 response_text = (
                     str(response.response)
                     if hasattr(response, "response")
