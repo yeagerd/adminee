@@ -211,7 +211,7 @@ async def test_backward_compatibility_imports():
 
 @pytest.mark.asyncio
 async def test_chat_with_agent():
-    """Test chatting with the agent."""
+    """Test chatting with the agent using FakeLLM."""
     with (
         patch(
             "services.chat_service.chat_agent.history_manager"
@@ -235,15 +235,14 @@ async def test_chat_with_agent():
         # Build agent first
         await agent.build_agent()
 
-        # Mock the agent's achat method directly
-        mock_response = MagicMock()
-        mock_response.response = "Test response"
-        agent.agent.achat = AsyncMock(return_value=mock_response)
+        user_input = "Hello, how are you?"
+        response = await agent.chat(user_input)
 
-        response = await agent.chat("Hello, how are you?")
-
-        assert response == "Test response"
-        agent.agent.achat.assert_called_once_with("Hello, how are you?")
+        # With FakeLLM, we expect the fake response format
+        assert "[FAKE LLM RESPONSE]" in response
+        assert user_input in response
+        # Verify the message was stored
+        mock_history_manager.append_message.assert_called()
 
 
 @pytest.mark.asyncio

@@ -144,6 +144,8 @@ class FakeLLM(FunctionCallingLLM):
                 self.model_name = "fake-llm"
                 self.is_chat_model = True
                 self.is_function_calling_model = True
+                self.context_window = 4096  # Default context window for fake LLM
+                self.num_output = 512  # Default max output tokens
 
         return SimpleMetadata()
 
