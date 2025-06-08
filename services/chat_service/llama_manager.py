@@ -4,8 +4,8 @@ Planning agent for chat_service using LiteLLM and llama-index.
 Implements agent loop, tool/subagent registration, and token-constrained memory.
 """
 
-from typing import Any, Callable, Dict, List, Optional
 import os
+from typing import Any, Callable, Dict, List, Optional
 
 from llama_index.core.agent.function_calling.base import FunctionCallingAgent
 from llama_index.core.base.llms.types import ChatMessage
@@ -18,9 +18,11 @@ from services.chat_service import context_module, history_manager
 
 class FakeLLM:
     """A fake LLM for testing and offline mode."""
+
     async def achat(self, query):
         class Response:
             response = f"ack: {query}"
+
         return Response()
 
 
@@ -85,8 +87,8 @@ class ChatAgentManager:
     async def chat(self, user_input: str) -> str:
         # If using FakeLLM, bypass FunctionCallingAgent and just append fake messages
         if isinstance(self.llm, FakeLLM):
-            from services.chat_service import history_manager
             from ormar.exceptions import NoMatch
+
             # Ensure thread exists
             try:
                 thread = await history_manager.Thread.objects.get(id=self.thread_id)
@@ -94,7 +96,9 @@ class ChatAgentManager:
                 thread = await history_manager.create_thread(self.user_id)
                 self.thread_id = thread.id
             # Persist user message
-            await history_manager.append_message(self.thread_id, self.user_id, user_input)
+            await history_manager.append_message(
+                self.thread_id, self.user_id, user_input
+            )
             # Persist agent response
             fake_response = f"ack: {user_input}"
             await history_manager.append_message(

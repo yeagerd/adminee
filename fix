@@ -1,0 +1,3 @@
+black services
+isort services
+ruff check services --fix
