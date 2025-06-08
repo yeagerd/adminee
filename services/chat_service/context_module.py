@@ -25,7 +25,7 @@ def select_relevant_messages(
     model: str = "gpt-3.5-turbo",
 ) -> List[Dict[str, Any]]:
     # Naive: select most recent messages that fit in max_tokens
-    selected = []
+    selected: List[Dict[str, Any]] = []
     total_tokens = count_tokens(user_input, model)
     for msg in reversed(messages):
         msg_tokens = count_tokens(msg.get("content", ""), model)

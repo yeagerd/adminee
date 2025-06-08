@@ -1,5 +1,3 @@
-import pytest
-
 from services.chat_service import context_module as cm
 
 MESSAGES = [{"content": f"Message {i}"} for i in range(10)]
