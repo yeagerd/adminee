@@ -1,51 +1,9 @@
 # flake8: noqa: E402
 pytest_plugins = ["pytest_asyncio"]
 
-import os
-import tempfile
-
 import pytest
-import pytest_asyncio
 
 from services.chat_service import history_manager as hm
-
-
-@pytest_asyncio.fixture(scope="module")
-async def temp_db():
-    # Create a temporary file for the database
-    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
-        db_path = tmp.name
-
-    # Set the DATABASE_URL to use the temporary file
-    os.environ["DATABASE_URL"] = f"sqlite:///{db_path}"
-
-    # Reinitialize the database with the new URL
-    hm.database = hm.databases.Database(hm.DATABASE_URL)
-
-    # Create tables and connect
-    engine = hm.sqlalchemy.create_engine(hm.DATABASE_URL)
-    hm.metadata.create_all(engine)
-    await hm.database.connect()
-
-    yield db_path
-
-    # Cleanup
-    await hm.database.disconnect()
-    hm.metadata.drop_all(engine)
-    os.unlink(db_path)
-
-
-@pytest_asyncio.fixture(autouse=True)
-async def clear_db(temp_db):
-    # Clear data between tests
-    try:
-        await hm.Message.objects.delete(each=True)
-        await hm.Draft.objects.delete(each=True)
-        await hm.Thread.objects.delete(each=True)
-    except Exception as e:
-        # If tables don't exist yet, that's fine
-        print(f"Warning: Could not clear database: {e}")
-    yield
 
 
 @pytest.mark.asyncio
