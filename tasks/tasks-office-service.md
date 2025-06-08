@@ -83,18 +83,18 @@ Before committing:
 [x] 4.4 [Create a MicrosoftAPIClient that inherits from the base client, also initialized with a user's access token.]
 [x] 4.5 [Implement an APIClientFactory in core/api_client_factory.py that takes a user_id and provider and uses the TokenManager to fetch a token and return an initialized provider-specific API client.]
 
-[ ] 5. Core Module: Data Normalizer
-[ ] 5.1 [Create a core/normalizer.py module.]
-[ ] 5.2 [Implement a function normalize_google_email that takes a raw JSON response from the Gmail API and converts it into the unified EmailMessage Pydantic model.]
-[ ] 5.3 [Implement a function normalize_microsoft_email that takes a raw JSON response from the Microsoft Graph API and converts it into the unified EmailMessage Pydantic model.]
-[ ] 5.4 [Implement initial normalization functions for Google Calendar events and Google Drive files, converting them to CalendarEvent and DriveFile models respectively.]
+[x] 5. Core Module: Data Normalizer
+[x] 5.1 [Create a core/normalizer.py module.]
+[x] 5.2 [Implement a function normalize_google_email that takes a raw JSON response from the Gmail API and converts it into the unified EmailMessage Pydantic model.]
+[x] 5.3 [Implement a function normalize_microsoft_email that takes a raw JSON response from the Microsoft Graph API and converts it into the unified EmailMessage Pydantic model.]
+[x] 5.4 [Implement initial normalization functions for Google Calendar events and Google Drive files, converting them to CalendarEvent and DriveFile models respectively.]
 
-[ ] 6. Core Module: Basic Caching (Redis)
-[ ] 6.1 [Add the redis-py library to the project dependencies.]
-[ ] 6.2 [Create a core/cache_manager.py module that establishes a connection to Redis using the REDIS_URL.]
-[ ] 6.3 [Implement the generate_cache_key utility function as specified in Section 6.2.]
-[ ] 6.4 [Create simple get_from_cache and set_to_cache functions in the CacheManager that interact with Redis.]
-[ ] 6.5 [Write unit tests for the generate_cache_key function to ensure it is deterministic.]
+[x] 6. Core Module: Basic Caching (Redis)
+[x] 6.1 [Add the redis-py library to the project dependencies.]
+[x] 6.2 [Create a core/cache_manager.py module that establishes a connection to Redis using the REDIS_URL.]
+[x] 6.3 [Implement the generate_cache_key utility function as specified in Section 6.2.]
+[x] 6.4 [Create simple get_from_cache and set_to_cache functions in the CacheManager that interact with Redis.]
+[x] 6.5 [Write unit tests for the generate_cache_key function to ensure it is deterministic.]
 
 [ ] 7. Implement Health and Diagnostics Endpoints
 [ ] 7.1 [Create an api/health.py router.]
