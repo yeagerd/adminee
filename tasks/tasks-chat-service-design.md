@@ -110,61 +110,84 @@
   - [x] 3.11 Integrate all tools with LiteLLM agent and ensure correct registration and invocation.
   - [x] 3.12 Add integration tests for LiteLLM agent with all tools and tool command schema.
 
-- [ ] 4. Implement history manager
-  - [ ] 4.1 Define database schema for history manager
-    - [ ] 4.1.1 Define ORM models (e.g., SQLAlchemy) for `threads`, `messages`, and `drafts` tables.
-    - [ ] 4.1.2 Ensure `drafts` table enforces one active draft per thread per type (unique constraint).
-    - [ ] 4.1.3 Add fields for efficient retrieval (e.g., indexes on user_id, thread_id, updated_at).
-    - [ ] 4.1.4 Add migration scripts or initial schema (e.g., Alembic, Prisma, or raw SQL).
-  - [ ] 4.2 Implement thread and message storage/retrieval
-    - [ ] 4.2.1 Implement functions to create, update, and list threads for a user.
-    - [ ] 4.2.2 Implement functions to append and retrieve messages for a thread.
-    - [ ] 4.2.3 Implement efficient history queries (e.g., pagination, ordering).
-  - [ ] 4.3 Implement draft storage/retrieval
-    - [ ] 4.3.1 Implement functions to create, update, and delete drafts for a thread and type.
-    - [ ] 4.3.2 Ensure only one active draft per thread per type is allowed.
-    - [ ] 4.3.3 Integrate draft logic with LiteLLM tools for create/delete/update.
-    - [ ] 4.3.4 Ensure drafts are returned with chat responses as needed.
-  - [ ] 4.4 Integrate history manager with API endpoints for chat and thread management.
-  - [ ] 4.5 Add unit tests for all history manager operations, including edge cases (e.g., concurrent draft updates, missing threads).
+- [x] 5. Implement chat_service `llama_manager.py`
+  - [x] 5.1 Define the planning agent class using LiteLLM and llama-index
+    - [x] 5.1.1 Set up agent initialization with configuration for model, memory, and tool registry.
+    - [x] 5.1.2 Integrate llama-index for agent planning, reasoning, and tool selection.
+    - [x] 5.1.3 Implement agent loop: plan, select tool/subagent, execute, update state, repeat until complete.
+  - [x] 5.2 Register subagents and API-based tools
+    - [x] 5.2.1 Define subagent interface and registration mechanism.
+    - [x] 5.2.2 Register all LiteLLM tools (calendar, email, notes, documents, draft tools, etc.) as callable tools.
+    - [x] 5.2.3 Register subagents as tools for hierarchical planning.
+  - [x] 5.3 Implement token-constrained memory for each agent
+    - [x] 5.3.1 Integrate with context module for memory condensation and summarization (future implementation).
+    - [x] 5.3.2 Ensure agent memory fits within model token limits, using LLM-based summarization as needed.
+    - [x] 5.3.3 Store and retrieve agent memory state between planning steps.
+  - [x] 5.4 Implement agent loop control and completion criteria
+    - [x] 5.4.1 Define stopping conditions (e.g., goal reached, max steps, explicit completion).
+    - [x] 5.4.2 Handle tool/subagent failures and retries.
+    - [x] 5.4.3 Return final result, intermediate steps, and memory state.
+  - [x] 5.5 Add integration tests for planning agent
+    - [x] 5.5.1 Test agent loop with mock tools and subagents.
+    - [x] 5.5.2 Test token-constrained memory and summarization integration.
+    - [x] 5.5.3 Test hierarchical planning with subagent/tool invocation.
+    - [x] 5.5.4 Test error handling and edge cases (e.g., tool failure, memory overflow).
 
-- [ ] 5. Implement context module
-  - [ ] 5.1 Define context condensation strategy based on OpenHands Context Condensation (see design doc).
-  - [ ] 5.2 Implement `context_module.py` to:
-    - [ ] 5.2.1 Select relevant messages and data from thread history and external sources.
-    - [ ] 5.2.2 Summarize or condense long histories to fit LLM context window.
-    - [ ] 5.2.3 Support dynamic context selection based on user input and thread state.
-    - [ ] 5.2.4 Provide API for chat flow to request context for a given thread/user.
-  - [ ] 5.3 Integrate context module with chat endpoint and LiteLLM agent.
-  - [ ] 5.4 Add unit tests for context selection, condensation, and edge cases (e.g., very long threads).
+- [x] 6. Implement chat_service `history_manager.py`
+  - [x] 6.1 Define database schema for history manager
+    - [x] 6.1.1 Define ORM models (using Ormar) for `threads`, `messages`, and `drafts` tables.
+    - [x] 6.1.2 Ensure `drafts` table enforces one active draft per thread per type (unique constraint).
+    - [x] 6.1.3 Add fields for efficient retrieval (e.g., indexes on user_id, thread_id, updated_at).
+    - [x] 6.1.4 Add migration scripts or initial schema (e.g., Alembic).
+  - [x] 6.2 Implement thread and message storage/retrieval
+    - [x] 6.2.0 Setup Ormar using sqllite in memory
+    - [x] 6.2.1 Implement functions to create, update, and list threads for a user.
+    - [x] 6.2.2 Implement functions to append and retrieve messages for a thread.
+    - [x] 6.2.3 Implement efficient history queries (e.g., pagination, ordering).
+  - [x] 6.3 Implement draft storage/retrieval
+    - [x] 6.3.1 Implement functions to create, update, and delete drafts for a thread and type.
+    - [x] 6.3.2 Ensure only one active draft per thread per type is allowed.
+    - [x] 6.3.3 Integrate draft logic with LiteLLM tools for create/delete/update.
+    - [x] 6.3.4 Ensure drafts are returned with chat responses as needed.
+  - [x] 6.4 Integrate history manager with API endpoints for chat and thread management.
+  - [x] 6.5 Add unit tests for all history manager operations, including edge cases (e.g., concurrent draft updates, missing threads).
 
-- [ ] 6. Implement LLM usage tracking
-  - [ ] 6.1 Define database schema/model for LLM usage tracking (fields: user_id, thread_id, message_id, provider, model, input_tokens, output_tokens, created_at).
-  - [ ] 6.2 Implement `llm_usage.py` to:
-    - [ ] 6.2.1 Record usage for each LLM invocation (batch input, new input, output tokens, provider, model, user, timestamp).
-    - [ ] 6.2.2 Provide functions to query usage by user, thread, or time period.
-  - [ ] 6.3 Integrate usage tracking with chat endpoint and LiteLLM calls.
-  - [ ] 6.4 Add unit tests for usage tracking and reporting.
+- [x] 7. Implement context module
+  - [x] 7.1 Define context condensation strategy based on OpenHands Context Condensation
+  - [x] 7.2 Implement `context_module.py` to:
+    - [x] 7.2.1 Select relevant messages and data from thread history and external sources.
+    - [x] 7.2.2 Summarize or condense long histories to fit a requested token size for a specified llm model, using tiktoken.
+    - [x] 7.2.3 Support dynamic context selection based on user input and thread state.
+  - [x] 7.3 Integrate context module with llama_manager agents and history_manager.
+  - [x] 7.4 Add unit tests for context selection, condensation, and edge cases (e.g., very long threads).
 
-- [ ] 7. Implement feedback module
-  - [ ] 7.1 Define database schema/model for feedback (fields: user_id, thread_id, message_id, feedback, created_at).
-  - [ ] 7.2 Implement `feedback.py` to:
-    - [ ] 7.2.1 Store thumbs up/down feedback for a given response.
-    - [ ] 7.2.2 Provide functions to retrieve feedback for analytics or review.
-  - [ ] 7.3 Integrate feedback module with feedback API endpoint.
-  - [ ] 7.4 Add unit tests for feedback storage, retrieval, and edge cases (e.g., duplicate feedback, missing message).
+- [ ] 8. Implement LLM usage tracking
+  - [ ] 8.1 Define database schema/model for LLM usage tracking (fields: user_id, thread_id, message_id, provider, model, input_tokens, output_tokens, created_at).
+  - [ ] 8.2 Implement `llm_usage.py` to:
+    - [ ] 8.2.1 Record usage for each LLM invocation (batch input, new input, output tokens, provider, model, user, timestamp).
+    - [ ] 8.2.2 Provide functions to query usage by user, thread, or time period.
+  - [ ] Integrate usage tracking with chat endpoint and LiteLLM calls.
+  - [ ] Add unit tests for usage tracking and reporting.
 
-- [ ] 8. Integrate with office-service and handle authentication/authorization
-  - [ ] 8.1 Implement HTTP client logic to call office-service endpoints from LiteLLM tools.
-  - [ ] 8.2 Forward user tokens to office-service for authorization.
-  - [ ] 8.3 Handle and propagate errors from office-service.
-  - [ ] 8.4 Add integration tests for office-service interactions.
+- [ ] 9. Implement feedback module
+  - [ ] 9.1 Define database schema/model for feedback (fields: user_id, thread_id, message_id, feedback, created_at).
+  - [ ] 9.2 Implement `feedback.py` to:
+    - [ ] 9.2.1 Store thumbs up/down feedback for a given response.
+    - [ ] 9.2.2 Provide functions to retrieve feedback for analytics or review.
+  - [ ] Integrate feedback module with feedback API endpoint.
+  - [ ] Add unit tests for feedback storage, retrieval, and edge cases (e.g., duplicate feedback, missing message).
 
-- [ ] 9. Implement error handling, testing, and observability
-  - [ ] 9.1 Implement consistent error response schema and error handling middleware.
-  - [ ] 9.2 Add logging for requests, errors, and LLM/tool invocations.
-  - [ ] 9.3 Add metrics for LLM usage (input/output tokens, latency).
-  - [ ] 9.4 Write unit tests for all modules and API endpoints.
-  - [ ] 9.5 Write integration tests for end-to-end chat flows.
-  - [ ] 9.6 Ensure log structure supports future integration with observability tools.
+- [ ] 10. Integrate with office-service and handle authentication/authorization
+  - [ ] 10.1 Implement HTTP client logic to call office-service endpoints from LiteLLM tools.
+  - [ ] 10.2 Forward user tokens to office-service for authorization.
+  - [ ] 10.3 Handle and propagate errors from office-service.
+  - [ ] Add integration tests for office-service interactions.
+
+- [ ] 11. Implement error handling, testing, and observability
+  - [ ] 11.1 Implement consistent error response schema and error handling middleware.
+  - [ ] 11.2 Add logging for requests, errors, and LLM/tool invocations.
+  - [ ] 11.3 Add metrics for LLM usage (input/output tokens, latency).
+  - [ ] Write unit tests for all modules and API endpoints.
+  - [ ] Write integration tests for end-to-end chat flows.
+  - [ ] Ensure log structure supports future integration with observability tools.
 
