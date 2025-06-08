@@ -134,7 +134,9 @@ async def test_build_agent_constructs_agent(
     mock_memory.from_defaults.assert_called_once()
     args, kwargs = mock_memory.from_defaults.call_args
     chat_history = kwargs.get("chat_history") or args[0]
+    # Check user and assistant messages
     assert chat_history[0].role == "user"
+    assert chat_history[0].content == "hi"
     assert chat_history[1].role == "assistant"
     assert chat_history[1].content == "hello"
 
