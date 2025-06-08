@@ -124,12 +124,17 @@ async def test_build_agent_constructs_agent(
 async def test_chat_calls_agent_and_appends_history(
     mock_context, mock_history, mock_agent, mock_memory, mock_tool, manager
 ):
+    # Setup mock thread
+    mock_thread = MagicMock()
+    mock_thread.id = 123
+    mock_history.Thread.objects.get = AsyncMock(return_value=mock_thread)
+
     # Patch async methods with AsyncMock
     mock_history.append_message = AsyncMock()
     mock_history.get_thread_history = AsyncMock(return_value=[])
+    mock_history.create_thread = AsyncMock(return_value=mock_thread)
 
-    # Setup
-    # Simulate agent already built
+    # Setup agent
     fake_agent = MagicMock()
     fake_response = MagicMock(response="agent reply")
     fake_agent.achat = AsyncMock(return_value=fake_response)
@@ -156,16 +161,26 @@ async def test_chat_calls_agent_and_appends_history(
 async def test_chat_builds_agent_if_none(
     mock_context, mock_history, mock_agent, mock_memory, mock_tool, manager
 ):
-    # Setup
-    # No agent yet
-    mock_agent.from_tools.return_value = MagicMock(
-        achat=AsyncMock(return_value=MagicMock(response="foo"))
-    )
+    # Setup mock thread
+    mock_thread = MagicMock()
+    mock_thread.id = 123
+    mock_history.Thread.objects.get = AsyncMock(return_value=mock_thread)
+    mock_history.create_thread = AsyncMock(return_value=mock_thread)
+
+    # Setup agent
+    fake_agent = MagicMock()
+    fake_agent.achat = AsyncMock(return_value=MagicMock(response="foo"))
+    mock_agent.from_tools.return_value = fake_agent
+
+    # Setup other mocks
     mock_history.append_message = AsyncMock()
     mock_history.get_thread_history = AsyncMock(return_value=[])
     mock_context.select_relevant_messages.return_value = []
     mock_tool.from_defaults.side_effect = lambda fn: f"tool-{fn.__name__}"
     mock_memory.from_defaults.return_value = "memory"
+
+    # Clear any existing agent
+    manager.agent = None
 
     # Run
     result = await manager.chat("test input")
@@ -173,10 +188,8 @@ async def test_chat_builds_agent_if_none(
     # Assert
     assert result == "foo"
     assert manager.agent is not None
-    mock_history.append_message.assert_any_await(
-        manager.thread_id, manager.user_id, "test input"
-    )
-    mock_history.append_message.assert_any_await(manager.thread_id, "assistant", "foo")
+    mock_history.append_message.assert_any_await(123, manager.user_id, "test input")
+    mock_history.append_message.assert_any_await(123, "assistant", "foo")
 
 
 def test_init_defaults():
