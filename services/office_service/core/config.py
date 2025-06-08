@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     DEFAULT_RATE_LIMIT: int = 1000  # requests per hour
     
     # Cache Configuration
-    CACHE_TTL_SECONDS: int = 900  # 15 minutes default
+    DEFAULT_CACHE_TTL_SECONDS: int = 900  # 15 minutes default
     CACHE_ENABLED: bool = True
     
     class Config:
