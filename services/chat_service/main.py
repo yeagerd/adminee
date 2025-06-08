@@ -1,3 +1,5 @@
+import logging
+import sys
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
@@ -6,6 +8,15 @@ from fastapi.responses import JSONResponse
 
 from . import history_manager
 from .api import router
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
+)
+logger = logging.getLogger(__name__)
+logger.info("Logging is configured")
 
 
 @asynccontextmanager
