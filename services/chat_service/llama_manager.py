@@ -10,6 +10,7 @@ from llama_index.core.agent.function_calling.base import FunctionCallingAgent
 from llama_index.core.base.llms.types import ChatMessage
 from llama_index.core.memory.chat_memory_buffer import ChatMemoryBuffer
 from llama_index.core.tools import FunctionTool
+from llama_index.core.tools.types import BaseTool
 
 from services.chat_service import context_module, history_manager
 
@@ -30,8 +31,8 @@ class ChatAgentManager:
         self.max_tokens = max_tokens
         self.tools = tools or []
         self.subagents = subagents or []
-        self.agent = None
-        self.memory = None
+        self.agent: Optional[FunctionCallingAgent] = None
+        self.memory: Optional[ChatMemoryBuffer] = None
 
     async def get_memory(self, user_input: str = "") -> List[Dict[str, Any]]:
         messages = await history_manager.get_thread_history(self.thread_id, limit=100)
@@ -45,7 +46,7 @@ class ChatAgentManager:
 
     async def build_agent(self, user_input: str = ""):
         # Wrap tools and subagents as FunctionTool
-        all_tools = []
+        all_tools: List[BaseTool] = []
         for t in self.tools + self.subagents:
             all_tools.append(FunctionTool.from_defaults(fn=t))
         # Prepare memory buffer from context
@@ -69,7 +70,7 @@ class ChatAgentManager:
         if self.agent is None:
             await self.build_agent(user_input)
         # Run the agent with the user input
-        response = await self.agent.achat(user_input)
+        response = await self.agent.achat(user_input)  # type: ignore[union-attr]
         # Persist user message
         await history_manager.append_message(self.thread_id, self.user_id, user_input)
         # Persist agent response

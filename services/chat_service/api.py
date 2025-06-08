@@ -1,17 +1,15 @@
 import asyncio
 from typing import List
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from services.chat_service.llama_manager import ChatAgentManager
-from services.chat_service.llm_tools import CalendarTool, EmailTool  # Example tools
 
 from .models import (
     ChatRequest,
     ChatResponse,
     FeedbackRequest,
     FeedbackResponse,
-    Message,
     Thread,
 )
 
@@ -19,10 +17,6 @@ router = APIRouter()
 
 # In-memory feedback storage
 FEEDBACKS: List[FeedbackRequest] = []
-
-# Example: instantiate tools (in real use, inject config/env)
-calendar_tool = CalendarTool(office_service_url="http://localhost:8001")
-email_tool = EmailTool(office_service_url="http://localhost:8001")
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -40,25 +34,13 @@ def chat_endpoint(request: ChatRequest) -> ChatResponse:
         llm=llm,
         thread_id=thread_id,
         user_id=user_id,
-        tools=[calendar_tool],
-        subagents=[email_tool],
+        tools=[],
+        subagents=[],
     )
-    reply = asyncio.get_event_loop().run_until_complete(agent.chat(user_input))
+    # reply = asyncio.get_event_loop().run_until_complete(agent.chat(user_input))
     # Fetch updated history for response
     messages = asyncio.get_event_loop().run_until_complete(agent.get_memory(user_input))
-    # Format for API response
-    chat_messages = [
-        Message(
-            message_id=str(i + 1),
-            thread_id=str(thread_id),
-            user_id=m.get("user_id", user_id),
-            llm_generated=(m.get("user_id") != user_id),
-            content=m["content"],
-            created_at=m.get("created_at", ""),
-        )
-        for i, m in enumerate(messages)
-    ]
-    return ChatResponse(thread_id=str(thread_id), messages=chat_messages, draft=None)
+    return ChatResponse(messages=messages)
 
 
 @router.get("/threads", response_model=List[Thread])
