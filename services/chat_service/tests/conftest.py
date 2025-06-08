@@ -2,10 +2,52 @@ import os
 import tempfile
 
 import databases
+import pytest
 import pytest_asyncio
 import sqlalchemy
 
 from services.chat_service import history_manager as hm
+
+
+@pytest.fixture(autouse=True)
+def force_fake_llm_globally(monkeypatch):
+    """
+    Global fixture to force the use of FakeLLM by clearing all LLM provider API keys.
+
+    This ensures that ALL tests use FakeLLM instead of making real API calls,
+    which makes tests faster, more reliable, and prevents accidental charges.
+    """
+    # Store original values for potential restoration (though tests shouldn't need real LLMs)
+    original_keys = {}
+
+    # List of common LLM provider API key environment variables
+    llm_api_keys = [
+        "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "CLAUDE_API_KEY",
+        "GROQ_API_KEY",
+        "GEMINI_API_KEY",
+        "GOOGLE_API_KEY",
+        "COHERE_API_KEY",
+        "HUGGINGFACE_API_KEY",
+        "TOGETHER_API_KEY",
+        "REPLICATE_API_TOKEN",
+        "MISTRAL_API_KEY",
+        "PERPLEXITY_API_KEY",
+        "AI21_API_KEY",
+        "PALM_API_KEY",
+        "BEDROCK_ACCESS_KEY_ID",
+        "BEDROCK_SECRET_ACCESS_KEY",
+    ]
+
+    # Clear all LLM API keys to force FakeLLM usage
+    for key in llm_api_keys:
+        original_keys[key] = os.environ.get(key)
+        monkeypatch.setenv(key, "")
+
+    yield
+
+    # Note: monkeypatch automatically restores original values on teardown
 
 
 @pytest_asyncio.fixture(scope="session")
