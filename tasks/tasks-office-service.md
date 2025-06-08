@@ -62,12 +62,17 @@ Before committing:
 [x] 1.6 [Define the Ormar models (ApiCall, CacheEntry, RateLimitBucket) in a models/ directory as specified in Section 5.1.]
 [x] 1.7 [Configure the database connection using the DATABASE_URL and initialize Alembic for database migrations.]
 [x] 1.8 [Generate and apply the initial Alembic migration to create the tables for the models defined in step 1.6.]
+[ ] 1.9 [Run ./fix to fix lint issues.]
+[ ] 1.10 [Run tox and fix any errors.]
 
 [x] 2. Core Module: Pydantic & Error Models
 [x] 2.1 [Create a schemas/ directory to hold all Pydantic models for API responses.]
 [x] 2.2 [Define the unified Pydantic models for Email (EmailAddress, EmailMessage), Calendar (CalendarEvent, Calendar), and Files (DriveFile) from Section 5.2.]
 [x] 2.3 [Define the generic API response models (ApiResponse, PaginatedResponse) from Section 5.2.]
 [x] 2.4 [Define the standardized ApiError model from Section 7.1.]
+[ ] 2.5 [Write unit tests for new code where it makes sense.]
+[ ] 2.6 [Run ./fix to fix lint issues.]
+[ ] 2.7 [Run tox and fix any errors.]
 
 [x] 3. Core Module: Token Manager
 [x] 3.1 [Create a core/token_manager.py module.]
@@ -75,6 +80,9 @@ Before committing:
 [x] 3.3 [Integrate an httpx.AsyncClient into the TokenManager to make requests to the USER_MANAGEMENT_SERVICE_URL.]
 [x] 3.4 [Add robust error handling and logging for cases where token retrieval fails.]
 [x] 3.5 [Implement a simple in-memory cache (e.g., using a dictionary with TTL) within the TokenManager to reduce calls for the same token within a short period (as mentioned in Section 2.1).]
+[ ] 3.6 [Write unit tests for TokenManager including cache behavior and error handling.]
+[ ] 3.7 [Run ./fix to fix lint issues.]
+[ ] 3.8 [Run tox and fix any errors.]
 
 [x] 4. Core Module: API Client Factory
 [x] 4.1 [Create a core/clients/ directory for provider-specific clients.]
@@ -82,12 +90,18 @@ Before committing:
 [x] 4.3 [Create a GoogleAPIClient that inherits from the base client. It should be initialized with a user's access token.]
 [x] 4.4 [Create a MicrosoftAPIClient that inherits from the base client, also initialized with a user's access token.]
 [x] 4.5 [Implement an APIClientFactory in core/api_client_factory.py that takes a user_id and provider and uses the TokenManager to fetch a token and return an initialized provider-specific API client.]
+[ ] 4.6 [Write unit tests for API clients and factory with mocked HTTP responses.]
+[ ] 4.7 [Run ./fix to fix lint issues.]
+[ ] 4.8 [Run tox and fix any errors.]
 
 [x] 5. Core Module: Data Normalizer
 [x] 5.1 [Create a core/normalizer.py module.]
 [x] 5.2 [Implement a function normalize_google_email that takes a raw JSON response from the Gmail API and converts it into the unified EmailMessage Pydantic model.]
 [x] 5.3 [Implement a function normalize_microsoft_email that takes a raw JSON response from the Microsoft Graph API and converts it into the unified EmailMessage Pydantic model.]
 [x] 5.4 [Implement initial normalization functions for Google Calendar events and Google Drive files, converting them to CalendarEvent and DriveFile models respectively.]
+[x] 5.5 [Write unit tests for normalizer functions using mock API response data.]
+[ ] 5.6 [Run ./fix to fix lint issues.]
+[ ] 5.7 [Run tox and fix any errors.]
 
 [x] 6. Core Module: Basic Caching (Redis)
 [x] 6.1 [Add the redis-py library to the project dependencies.]
@@ -95,11 +109,17 @@ Before committing:
 [x] 6.3 [Implement the generate_cache_key utility function as specified in Section 6.2.]
 [x] 6.4 [Create simple get_from_cache and set_to_cache functions in the CacheManager that interact with Redis.]
 [x] 6.5 [Write unit tests for the generate_cache_key function to ensure it is deterministic.]
+[x] 6.6 [Write unit tests for cache manager with mocked Redis operations.]
+[ ] 6.7 [Run ./fix to fix lint issues.]
+[ ] 6.8 [Run tox and fix any errors.]
 
 [x] 7. Implement Health and Diagnostics Endpoints
 [x] 7.1 [Create an api/health.py router.]
 [x] 7.2 [Implement the GET /health endpoint as specified in Section 9.2, including checks for the database and Redis connections.]
 [x] 7.3 [Implement the GET /health/integrations/{user_id} endpoint. For the MVP, this can simply attempt to fetch a token for both 'google' and 'microsoft' for the given user and report success or failure.]
+[ ] 7.4 [Write unit tests for health endpoints with mocked dependencies.]
+[ ] 7.5 [Run ./fix to fix lint issues.]
+[ ] 7.6 [Run tox and fix any errors.]
 
 [x] 8. Implement Unified READ Endpoints (MVP)
 [x] 8.1 [Create an api/email.py router.]
@@ -108,24 +128,34 @@ Before committing:
 [x] 8.4 [Create an api/calendar.py router and implement GET /calendar/events following the same pattern as the email endpoint (fetch, normalize, aggregate, cache).]
 [x] 8.5 [Create an api/files.py router and implement GET /files following the same pattern.]
 [x] 8.6 [Implement the detail endpoint GET /email/messages/{message_id}. This will require logic to determine the correct provider from the message_id to make the API call.]
+[ ] 8.7 [Write unit tests for unified READ endpoints with mocked API clients.]
+[ ] 8.8 [Run ./fix to fix lint issues.]
+[ ] 8.9 [Run tox and fix any errors.]
 
 [ ] 9. Implement Unified WRITE Endpoints (MVP)
 [ ] 9.1 [Implement POST /email/send in the email router. For the MVP, this can be a simple pass-through that determines the provider and makes the API call. The actual queuing can be stubbed or logged for now.]
 [ ] 9.2 [Implement POST /calendar/events. This endpoint will need to take unified CalendarEvent data, "de-normalize" it into the provider-specific format, and use the correct API client to create the event.]
 [ ] 9.3 [Implement DELETE /calendar/events/{event_id}. This will require logic to find the original provider and use its API to delete the event.]
+[ ] 9.4 [Write unit tests for unified write endpoints with mocked API clients.]
+[ ] 9.5 [Run ./fix to fix lint issues.]
+[ ] 9.6 [Run tox and fix any errors.]
 
 [ ] 10. Implement Basic Error Handling & Logging
 [ ] 10.1 [Configure structured logging for the application (e.g., using the standard logging library with a JSON formatter).]
 [ ] 10.2 [Create a global exception handler in app/main.py using the @app.exception_handler decorator.]
 [ ] 10.3 [The handler should catch a custom ProviderAPIError, log the full error, and return a standardized 500-level ApiError response to the client.]
 [ ] 10.4 [Modify the API clients to catch httpx exceptions and raise the custom ProviderAPIError to be handled by the global handler.]
+[ ] 10.5 [Write unit tests for error handling and logging functionality.]
+[ ] 10.6 [Run ./fix to fix lint issues.]
+[ ] 10.7 [Run tox and fix any errors.]
 
 [ ] 11. Testing and Documentation
 [ ] 11.1 [Create a tests/ directory with pytest.]
-[ ] 11.2 [Write unit tests for the DataNormalizer functions using the mock data examples from Section 10.3.]
-[ ] 11.3 [Write integration tests for the GET /health endpoint.]
+[ ] 11.2 [Write integration tests for all API endpoints.]
 [ ] 11.4 [Add docstrings to all public functions and classes you've created.]
 [ ] 11.5 [Update the README.md file with instructions on how to set up the development environment, run the service, and run tests.]
+[ ] 11.6 [Run ./fix to fix lint issues.]
+[ ] 11.7 [Run tox and fix any errors.]
 ## Relevant Files
 
 ### Core Infrastructure
