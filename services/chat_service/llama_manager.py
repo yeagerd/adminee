@@ -5,7 +5,11 @@ Implements agent loop, tool/subagent registration, and token-constrained memory.
 """
 
 import os
+import logging
 from typing import Any, Callable, Dict, List, Optional
+
+from dotenv import load_dotenv
+load_dotenv()
 
 from llama_index.core.agent.function_calling.base import FunctionCallingAgent
 from llama_index.core.base.llms.types import ChatMessage
@@ -15,11 +19,15 @@ from llama_index.core.tools.types import BaseTool
 
 from services.chat_service import context_module, history_manager
 
+logger = logging.getLogger(__name__)
+
 
 class FakeLLM:
     """A fake LLM for testing and offline mode."""
 
     async def achat(self, query):
+        logger.info(f"FakeLLM received query: {query}")
+
         class Response:
             response = f"ack: {query}"
 
@@ -40,6 +48,9 @@ class ChatAgentManager:
         if llm is None:
             api_key = os.environ.get("OPENAI_API_KEY", "")
             if not api_key or api_key == "sk-test" or api_key.endswith("example"):
+                logger.warning(
+                    "No valid OpenAI API key found. Using FakeLLM for offline mode."
+                )
                 llm = FakeLLM()
         self.llm = llm
         self.thread_id = thread_id
@@ -49,8 +60,15 @@ class ChatAgentManager:
         self.subagents = subagents or []
         self.agent: Optional[FunctionCallingAgent] = None
         self.memory: Optional[ChatMemoryBuffer] = None
+        logger.info(
+            f"ChatAgentManager initialized for user_id={self.user_id}, thread_id={self.thread_id}, "
+            f"max_tokens={self.max_tokens}, tools={len(self.tools)}, subagents={len(self.subagents)}"
+        )
 
     async def get_memory(self, user_input: str = "") -> List[Dict[str, Any]]:
+        logger.debug(
+            f"Retrieving memory for thread_id={self.thread_id} with user_input='{user_input}'"
+        )
         messages = await history_manager.get_thread_history(self.thread_id, limit=100)
         # Reverse to chronological order (oldest to newest)
         messages = list(reversed(messages))
@@ -60,9 +78,13 @@ class ChatAgentManager:
         selected = context_module.select_relevant_messages(
             msg_dicts, user_input=user_input, max_tokens=self.max_tokens
         )
+        logger.debug(f"Selected {len(selected)} relevant messages for memory context")
         return selected
 
     async def build_agent(self, user_input: str = ""):
+        logger.info(
+            f"Building agent for thread_id={self.thread_id} with user_input='{user_input}'"
+        )
         # Wrap tools and subagents as FunctionTool
         all_tools: List[BaseTool] = []
         for t in self.tools + self.subagents:
@@ -83,8 +105,14 @@ class ChatAgentManager:
             memory=self.memory,
             max_function_calls=5,
         )
+        logger.info(
+            f"Agent built with {len(all_tools)} tools and {len(chat_history)} chat history messages"
+        )
 
     async def chat(self, user_input: str) -> str:
+        logger.info(
+            f"Chat called for thread_id={self.thread_id}, user_id={self.user_id} with input: {user_input}"
+        )
         # If using FakeLLM, bypass FunctionCallingAgent and just append fake messages
         if isinstance(self.llm, FakeLLM):
             from ormar.exceptions import NoMatch
@@ -93,6 +121,9 @@ class ChatAgentManager:
             try:
                 thread = await history_manager.Thread.objects.get(id=self.thread_id)
             except NoMatch:
+                logger.warning(
+                    f"Thread id={self.thread_id} not found. Creating new thread for user_id={self.user_id}"
+                )
                 thread = await history_manager.create_thread(self.user_id)
                 self.thread_id = thread.id
             # Persist user message
@@ -104,17 +135,25 @@ class ChatAgentManager:
             await history_manager.append_message(
                 self.thread_id, "assistant", fake_response
             )
+            logger.info(f"FakeLLM response persisted for thread_id={self.thread_id}")
             return fake_response
         if self.agent is None:
+            logger.debug("Agent not built yet. Building agent...")
             await self.build_agent(user_input)
         # Run the agent with the user input
-        response = await self.agent.achat(user_input)  # type: ignore[union-attr]
+        try:
+            response = await self.agent.achat(user_input)  # type: ignore[union-attr]
+            logger.info(f"Agent response: {response.response}")
+        except Exception as e:
+            logger.error(f"Error during agent.achat: {e}", exc_info=True)
+            raise
         # Persist user message
         await history_manager.append_message(self.thread_id, self.user_id, user_input)
         # Persist agent response
         await history_manager.append_message(
             self.thread_id, "assistant", response.response
         )
+        logger.info(f"Agent response persisted for thread_id={self.thread_id}")
         return response.response
 
 
