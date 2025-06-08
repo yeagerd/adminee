@@ -63,37 +63,20 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
         llm_model=os.getenv("LLM_MODEL"),
         llm_provider=os.getenv("LLM_PROVIDER"),
     )
-    # Actually run the chat to append messages
-    await agent.chat(user_input)
-    # Fetch messages as ORM objects
-    orm_messages = await agent.get_memory(user_input)
-    # Convert to Pydantic Message models
-    pydantic_messages = []
-    for m in orm_messages:
-        # If already a dict, convert fields
-        if isinstance(m, dict):
-            pydantic_messages.append(
-                PydanticMessage(
-                    message_id=str(m.get("id") or m.get("message_id")),
-                    thread_id=str(
-                        m.get("thread_id")
-                        or m.get("thread", {}).get("id")
-                        or request.thread_id
-                        or 1
-                    ),
-                    user_id=(
-                        str(m.get("user_id")) if m.get("user_id") is not None else ""
-                    ),
-                    llm_generated=(m.get("user_id") != request.user_id),
-                    content=(
-                        str(m.get("content")) if m.get("content") is not None else ""
-                    ),
-                    created_at=str(m.get("created_at")),
-                )
-            )
-        else:
-            # fallback: assume already a Pydantic Message
-            pydantic_messages.append(m)
+    # Actually run the chat and get the agent's response
+    agent_response = await agent.chat(user_input)
+
+    # Return just the agent's response as a single message
+    pydantic_messages = [
+        PydanticMessage(
+            message_id="1",  # Simple counter since we're not fetching from DB
+            thread_id=str(thread.id),
+            user_id="assistant",  # Mark as assistant response
+            llm_generated=True,
+            content=agent_response,
+            created_at="",  # Not needed for this simple response
+        )
+    ]
     return ChatResponse(
         thread_id=str(agent.thread_id), messages=pydantic_messages, draft=None
     )
