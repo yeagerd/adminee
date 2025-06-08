@@ -1,0 +1,468 @@
+"""
+Unified email endpoints for the Office Service.
+
+Provides endpoints for reading email messages across Google and Microsoft providers,
+with unified data models, caching, and parallel API calls for optimal performance.
+"""
+
+import logging
+import asyncio
+from datetime import datetime
+from typing import List, Optional, Dict, Any
+import uuid
+
+from fastapi import APIRouter, HTTPException, Query, Path
+from fastapi.responses import JSONResponse
+
+from services.office_service.core.config import settings
+from services.office_service.core.api_client_factory import APIClientFactory
+from services.office_service.core.normalizer import normalize_google_email, normalize_microsoft_email
+from services.office_service.core.cache_manager import cache_manager, generate_cache_key
+from services.office_service.schemas import EmailMessage, ApiResponse, PaginatedResponse
+from services.office_service.models import Provider
+
+logger = logging.getLogger(__name__)
+
+# Create router
+router = APIRouter(prefix="/email", tags=["email"])
+
+# Initialize dependencies
+api_client_factory = APIClientFactory()
+
+
+@router.get("/messages", response_model=ApiResponse)
+async def get_email_messages(
+    user_id: str = Query(..., description="ID of the user to fetch emails for"),
+    providers: Optional[List[str]] = Query(None, description="Providers to fetch from (google, microsoft). If not specified, fetches from all available providers"),
+    limit: int = Query(50, ge=1, le=200, description="Maximum number of messages to return per provider"),
+    include_body: bool = Query(False, description="Whether to include message body content"),
+    labels: Optional[List[str]] = Query(None, description="Filter by labels (inbox, sent, etc.)"),
+    q: Optional[str] = Query(None, description="Search query to filter messages"),
+    page_token: Optional[str] = Query(None, description="Pagination token for next page")
+):
+    """
+    Get unified email messages from multiple providers.
+    
+    Fetches email messages from Google Gmail and Microsoft Outlook APIs,
+    normalizes them to a unified format, and returns aggregated results.
+    Responses are cached for improved performance.
+    
+    Args:
+        user_id: ID of the user to fetch emails for
+        providers: List of providers to query (defaults to all available)
+        limit: Maximum messages per provider
+        include_body: Whether to include full message bodies
+        labels: Filter by message labels/categories
+        q: Search query string
+        page_token: Pagination token
+        
+    Returns:
+        ApiResponse with aggregated email messages
+    """
+    request_id = str(uuid.uuid4())
+    start_time = datetime.utcnow()
+    
+    logger.info(f"[{request_id}] Email messages request: user_id={user_id}, providers={providers}, limit={limit}")
+    
+    try:
+        # Default to all providers if not specified
+        if not providers:
+            providers = ["google", "microsoft"]
+        
+        # Validate providers
+        valid_providers = []
+        for provider in providers:
+            if provider.lower() in ["google", "microsoft"]:
+                valid_providers.append(provider.lower())
+            else:
+                logger.warning(f"[{request_id}] Invalid provider: {provider}")
+        
+        if not valid_providers:
+            raise HTTPException(status_code=400, detail="No valid providers specified")
+        
+        # Build cache key
+        cache_params = {
+            "providers": valid_providers,
+            "limit": limit,
+            "include_body": include_body,
+            "labels": labels or [],
+            "q": q or "",
+            "page_token": page_token or ""
+        }
+        cache_key = generate_cache_key(user_id, "unified", "messages", cache_params)
+        
+        # Check cache first
+        cached_result = await cache_manager.get_from_cache(cache_key)
+        if cached_result:
+            logger.info(f"[{request_id}] Cache hit for email messages")
+            return ApiResponse(
+                success=True,
+                data=cached_result,
+                cache_hit=True,
+                request_id=request_id
+            )
+        
+        # Fetch from providers in parallel
+        tasks = []
+        for provider in valid_providers:
+            task = fetch_provider_emails(
+                request_id, user_id, provider, limit, include_body, labels, q, page_token
+            )
+            tasks.append(task)
+        
+        # Execute parallel requests
+        provider_results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Process results
+        aggregated_messages = []
+        provider_errors = {}
+        providers_used = []
+        
+        for i, result in enumerate(provider_results):
+            provider = valid_providers[i]
+            
+            if isinstance(result, Exception):
+                logger.error(f"[{request_id}] Provider {provider} failed: {result}")
+                provider_errors[provider] = str(result)
+            elif result:
+                messages, provider_name = result
+                aggregated_messages.extend(messages)
+                providers_used.append(provider_name)
+                logger.info(f"[{request_id}] Provider {provider} returned {len(messages)} messages")
+        
+        # Sort messages by date (newest first)
+        aggregated_messages.sort(key=lambda msg: msg.date, reverse=True)
+        
+        # Apply global limit if we have results from multiple providers
+        if len(providers_used) > 1:
+            aggregated_messages = aggregated_messages[:limit * 2]  # Allow some overlap
+        
+        # Build response
+        response_data = {
+            "messages": [msg.dict() for msg in aggregated_messages],
+            "total_count": len(aggregated_messages),
+            "providers_used": providers_used,
+            "provider_errors": provider_errors if provider_errors else None,
+            "has_more": len(aggregated_messages) >= limit,  # Simple heuristic
+            "request_metadata": {
+                "user_id": user_id,
+                "providers_requested": valid_providers,
+                "limit": limit,
+                "include_body": include_body
+            }
+        }
+        
+        # Cache the result for 15 minutes
+        await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=900)
+        
+        # Calculate response time
+        end_time = datetime.utcnow()
+        response_time_ms = int((end_time - start_time).total_seconds() * 1000)
+        
+        logger.info(f"[{request_id}] Email messages request completed in {response_time_ms}ms")
+        
+        return ApiResponse(
+            success=True,
+            data=response_data,
+            cache_hit=False,
+            provider_used=providers_used[0] if len(providers_used) == 1 else None,
+            request_id=request_id
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[{request_id}] Email messages request failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch email messages: {str(e)}")
+
+
+@router.get("/messages/{message_id}", response_model=ApiResponse)
+async def get_email_message(
+    message_id: str = Path(..., description="Message ID (format: provider_originalId)"),
+    user_id: str = Query(..., description="ID of the user who owns the message"),
+    include_body: bool = Query(True, description="Whether to include message body content")
+):
+    """
+    Get a specific email message by ID.
+    
+    The message_id should be in the format "provider_originalId" (e.g., "gmail_abc123" or "outlook_xyz789").
+    This endpoint determines the correct provider from the message ID and fetches the full message details.
+    
+    Args:
+        message_id: Message ID with provider prefix
+        user_id: ID of the user who owns the message
+        include_body: Whether to include full message body
+        
+    Returns:
+        ApiResponse with the specific email message
+    """
+    request_id = str(uuid.uuid4())
+    start_time = datetime.utcnow()
+    
+    logger.info(f"[{request_id}] Email message detail request: message_id={message_id}, user_id={user_id}")
+    
+    try:
+        # Parse provider from message_id
+        provider, original_message_id = parse_message_id(message_id)
+        
+        # Build cache key
+        cache_params = {
+            "message_id": message_id,
+            "include_body": include_body
+        }
+        cache_key = generate_cache_key(user_id, provider, "message_detail", cache_params)
+        
+        # Check cache first
+        cached_result = await cache_manager.get_from_cache(cache_key)
+        if cached_result:
+            logger.info(f"[{request_id}] Cache hit for message detail")
+            return ApiResponse(
+                success=True,
+                data=cached_result,
+                cache_hit=True,
+                request_id=request_id
+            )
+        
+        # Fetch from the specific provider
+        message = await fetch_single_message(
+            request_id, user_id, provider, original_message_id, include_body
+        )
+        
+        if not message:
+            raise HTTPException(status_code=404, detail=f"Message {message_id} not found")
+        
+        # Build response
+        response_data = {
+            "message": message.dict(),
+            "provider": provider,
+            "request_metadata": {
+                "user_id": user_id,
+                "message_id": message_id,
+                "include_body": include_body
+            }
+        }
+        
+        # Cache the result for 1 hour (messages don't change often)
+        await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=3600)
+        
+        # Calculate response time
+        end_time = datetime.utcnow()
+        response_time_ms = int((end_time - start_time).total_seconds() * 1000)
+        
+        logger.info(f"[{request_id}] Message detail request completed in {response_time_ms}ms")
+        
+        return ApiResponse(
+            success=True,
+            data=response_data,
+            cache_hit=False,
+            provider_used=provider,
+            request_id=request_id
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[{request_id}] Message detail request failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch message: {str(e)}")
+
+
+async def fetch_provider_emails(
+    request_id: str,
+    user_id: str,
+    provider: str,
+    limit: int,
+    include_body: bool,
+    labels: Optional[List[str]],
+    q: Optional[str],
+    page_token: Optional[str]
+) -> tuple[List[EmailMessage], str]:
+    """
+    Fetch emails from a specific provider.
+    
+    Args:
+        request_id: Request tracking ID
+        user_id: User ID
+        provider: Provider name (google, microsoft)
+        limit: Maximum number of messages
+        include_body: Whether to include message bodies
+        labels: Label filters
+        q: Search query
+        page_token: Pagination token
+        
+    Returns:
+        Tuple of (messages list, provider name)
+    """
+    try:
+        # Get API client for provider
+        client = await api_client_factory.create_client(user_id, provider)
+        
+        # Build provider-specific parameters
+        if provider == "google":
+            params = {
+                "maxResults": limit,
+                "labelIds": labels or ["INBOX"],
+                "q": q
+            }
+            if page_token:
+                params["pageToken"] = page_token
+            if include_body:
+                params["format"] = "full"
+            
+            # Fetch messages from Gmail
+            messages_response = await client.get_messages(**params)
+            messages = messages_response.get("messages", [])
+            
+            # Normalize messages
+            normalized_messages = []
+            for msg_summary in messages:
+                # Fetch full message if we only got summaries
+                if include_body or "payload" not in msg_summary:
+                    full_message = await client.get_message(msg_summary["id"])
+                else:
+                    full_message = msg_summary
+                
+                # Get user account info (simplified - in real implementation would cache this)
+                account_email = f"{user_id}@gmail.com"  # Placeholder
+                account_name = f"Gmail Account ({user_id})"  # Placeholder
+                
+                normalized_msg = normalize_google_email(
+                    full_message, account_email, account_name
+                )
+                normalized_messages.append(normalized_msg)
+            
+        elif provider == "microsoft":
+            params = {
+                "$top": limit,
+                "$orderby": "receivedDateTime desc"
+            }
+            if q:
+                params["$search"] = f'"{q}"'
+            if labels:
+                # Microsoft uses categories instead of labels
+                category_filter = " or ".join([f"categories/any(c:c eq '{label}')" for label in labels])
+                params["$filter"] = category_filter
+            if page_token:
+                params["$skip"] = page_token  # Microsoft uses skip for pagination
+            
+            # Fetch messages from Outlook
+            messages_response = await client.get_messages(**params)
+            messages = messages_response.get("value", [])
+            
+            # Normalize messages
+            normalized_messages = []
+            for msg in messages:
+                # Get user account info (simplified - in real implementation would cache this)
+                account_email = f"{user_id}@outlook.com"  # Placeholder
+                account_name = f"Outlook Account ({user_id})"  # Placeholder
+                
+                normalized_msg = normalize_microsoft_email(
+                    msg, account_email, account_name
+                )
+                normalized_messages.append(normalized_msg)
+        
+        else:
+            raise ValueError(f"Unsupported provider: {provider}")
+        
+        logger.info(f"[{request_id}] Successfully fetched {len(normalized_messages)} messages from {provider}")
+        return normalized_messages, provider
+        
+    except Exception as e:
+        logger.error(f"[{request_id}] Failed to fetch emails from {provider}: {e}")
+        raise
+
+
+async def fetch_single_message(
+    request_id: str,
+    user_id: str,
+    provider: str,
+    original_message_id: str,
+    include_body: bool
+) -> Optional[EmailMessage]:
+    """
+    Fetch a single email message from a specific provider.
+    
+    Args:
+        request_id: Request tracking ID
+        user_id: User ID
+        provider: Provider name
+        original_message_id: Original provider message ID
+        include_body: Whether to include message body
+        
+    Returns:
+        EmailMessage or None if not found
+    """
+    try:
+        # Get API client for provider
+        client = await api_client_factory.create_client(user_id, provider)
+        
+        if provider == "google":
+            # Fetch message from Gmail
+            message = await client.get_message(
+                original_message_id, 
+                format="full" if include_body else "metadata"
+            )
+            
+            # Get user account info (simplified)
+            account_email = f"{user_id}@gmail.com"  # Placeholder
+            account_name = f"Gmail Account ({user_id})"  # Placeholder
+            
+            return normalize_google_email(message, account_email, account_name)
+            
+        elif provider == "microsoft":
+            # Fetch message from Outlook
+            message = await client.get_message(original_message_id)
+            
+            # Get user account info (simplified)
+            account_email = f"{user_id}@outlook.com"  # Placeholder
+            account_name = f"Outlook Account ({user_id})"  # Placeholder
+            
+            return normalize_microsoft_email(message, account_email, account_name)
+        
+        else:
+            raise ValueError(f"Unsupported provider: {provider}")
+            
+    except Exception as e:
+        logger.error(f"[{request_id}] Failed to fetch message {original_message_id} from {provider}: {e}")
+        return None
+
+
+def parse_message_id(message_id: str) -> tuple[str, str]:
+    """
+    Parse a unified message ID to extract provider and original ID.
+    
+    Args:
+        message_id: Unified message ID (format: "provider_originalId")
+        
+    Returns:
+        Tuple of (provider, original_message_id)
+        
+    Raises:
+        HTTPException: If message ID format is invalid
+    """
+    try:
+        if "_" not in message_id:
+            raise ValueError("Invalid message ID format")
+        
+        parts = message_id.split("_", 1)
+        provider_prefix = parts[0].lower()
+        original_id = parts[1]
+        
+        # Map provider prefixes to standard names
+        provider_map = {
+            "gmail": "google",
+            "google": "google",
+            "outlook": "microsoft",
+            "microsoft": "microsoft"
+        }
+        
+        provider = provider_map.get(provider_prefix)
+        if not provider:
+            raise ValueError(f"Unknown provider prefix: {provider_prefix}")
+        
+        return provider, original_id
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid message ID format: {message_id}. Expected format: 'provider_originalId'"
+        )
