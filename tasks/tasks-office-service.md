@@ -63,11 +63,11 @@ Before committing:
 [x] 1.7 [Configure the database connection using the DATABASE_URL and initialize Alembic for database migrations.]
 [x] 1.8 [Generate and apply the initial Alembic migration to create the tables for the models defined in step 1.6.]
 
-[ ] 2. Core Module: Pydantic & Error Models
-[ ] 2.1 [Create a schemas/ directory to hold all Pydantic models for API responses.]
-[ ] 2.2 [Define the unified Pydantic models for Email (EmailAddress, EmailMessage), Calendar (CalendarEvent, Calendar), and Files (DriveFile) from Section 5.2.]
-[ ] 2.3 [Define the generic API response models (ApiResponse, PaginatedResponse) from Section 5.2.]
-[ ] 2.4 [Define the standardized ApiError model from Section 7.1.]
+[x] 2. Core Module: Pydantic & Error Models
+[x] 2.1 [Create a schemas/ directory to hold all Pydantic models for API responses.]
+[x] 2.2 [Define the unified Pydantic models for Email (EmailAddress, EmailMessage), Calendar (CalendarEvent, Calendar), and Files (DriveFile) from Section 5.2.]
+[x] 2.3 [Define the generic API response models (ApiResponse, PaginatedResponse) from Section 5.2.]
+[x] 2.4 [Define the standardized ApiError model from Section 7.1.]
 
 [ ] 3. Core Module: Token Manager
 [ ] 3.1 [Create a core/token_manager.py module.]

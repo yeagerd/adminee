@@ -1,5 +1,6 @@
 alembic
 databases
+email-validator
 fastapi
 httpx
 langchain
