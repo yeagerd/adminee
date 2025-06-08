@@ -22,11 +22,9 @@ load_dotenv(override=True)  # override=True ensures existing env vars take prece
 
 class FakeLLM(FunctionCallingLLM):
     """A fake LLM for testing and offline mode that's compatible with LlamaIndex and supports function calling."""
-    
-    model_config = {
-        "arbitrary_types_allowed": True
-    }
-    
+
+    model_config = {"arbitrary_types_allowed": True}
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._llm = LlamaLiteLLM(model="fake-model", **kwargs)
@@ -36,27 +34,28 @@ class FakeLLM(FunctionCallingLLM):
             "is_function_calling_model": True,
         }
         logger.warning("Using FakeLLM - no actual LLM calls are being made")
-    
+
     @property
     def llm(self):
         return self._llm
-        
+
     @property
     def metadata(self):
         """Return LLM metadata."""
+
         # Create a simple object with the required attributes
         class SimpleMetadata:
             def __init__(self):
                 self.model_name = "fake-llm"
                 self.is_chat_model = True
                 self.is_function_calling_model = True
-                
+
         return SimpleMetadata()
 
     def _chat(self, messages, **kwargs):
         """Fake chat method that just echoes back the last user message."""
         from llama_index.core.llms import ChatMessage, MessageRole
-        
+
         # Handle case where messages is a list of dicts or ChatMessage objects
         user_messages = []
         for msg in messages:
@@ -65,12 +64,16 @@ class FakeLLM(FunctionCallingLLM):
                     user_messages.append(msg)
             elif hasattr(msg, "role") and msg.role == "user":
                 user_messages.append(msg)
-        
+
         last_user_message = ""
         if user_messages:
             last_msg = user_messages[-1]
-            last_user_message = last_msg.get("content", "") if isinstance(last_msg, dict) else last_msg.content
-        
+            last_user_message = (
+                last_msg.get("content", "")
+                if isinstance(last_msg, dict)
+                else last_msg.content
+            )
+
         response_text = f"[FAKE LLM RESPONSE] You said: {last_user_message}"
         return ChatMessage(
             role=MessageRole.ASSISTANT,
@@ -89,15 +92,15 @@ class FakeLLM(FunctionCallingLLM):
     def _stream_complete(self, prompt, **kwargs):
         """Fake stream complete method."""
         yield self._complete(prompt, **kwargs)
-        
+
     def _prepare_chat_with_tools(self, *args, **kwargs):
         """Prepare chat with tools (no-op for fake LLM)."""
         return {}
-        
+
     def chat_with_tools(self, *args, **kwargs):
         """Fake chat with tools method."""
         return self._chat(*args, **kwargs)
-        
+
     async def achat_with_tools(self, *args, **kwargs):
         """Fake async chat with tools method."""
         return await self._chat(*args, **kwargs)

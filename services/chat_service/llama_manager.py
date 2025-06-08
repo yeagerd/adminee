@@ -8,21 +8,17 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
-from llama_index.core.agent.function_calling import FunctionCallingAgent
 from llama_index.core.agent import ReActAgent
+from llama_index.core.agent.function_calling import FunctionCallingAgent
 from llama_index.core.base.llms.types import ChatMessage
 from llama_index.core.memory.chat_memory_buffer import ChatMemoryBuffer
 from llama_index.core.tools import FunctionTool
-from llama_index.core.tools.types import BaseTool
 
 from services.chat_service import context_module, history_manager
 
-from .llm_manager import llm_manager
+from .llm_manager import FakeLLM, llm_manager
 
 logger = logging.getLogger(__name__)
-
-
-from .llm_manager import FakeLLM
 
 
 class ChatAgentManager:
@@ -89,7 +85,7 @@ class ChatAgentManager:
             user_input=user_input,
             thread_state=None,  # Can be enhanced with thread state in the future
             max_tokens=self.max_tokens,
-            model=model,
+            model=model or "gpt-3.5-turbo",  # Default model if none provided
             **llm_kwargs,
         )
 
@@ -100,36 +96,48 @@ class ChatAgentManager:
         """Build or rebuild the agent with the latest context and tools."""
         # Get relevant context and chat history
         context_messages = await self.get_memory(user_input)
-        chat_history = await history_manager.get_thread_history(self.thread_id, limit=100)
+        chat_history = await history_manager.get_thread_history(
+            self.thread_id, limit=100
+        )
         # Reverse to chronological order (oldest to newest)
         chat_history = list(reversed(chat_history))
         msg_dicts = [
-            m.model_dump() if hasattr(m, "model_dump") else dict(m) for m in chat_history
+            m.model_dump() if hasattr(m, "model_dump") else dict(m)
+            for m in chat_history
         ]
 
         # Combine context and chat history
         memory_msgs = context_messages + msg_dicts
-        
+
         # Convert messages to llama-index format
         from llama_index.core.base.llms.types import MessageRole
+
         chat_history = [
             ChatMessage(
-                role=MessageRole.USER if m.get("user_id") == self.user_id else MessageRole.ASSISTANT,
+                role=(
+                    MessageRole.USER
+                    if m.get("user_id") == self.user_id
+                    else MessageRole.ASSISTANT
+                ),
                 content=m["content"],
             )
             for m in memory_msgs
         ]
-        
+
         # Create memory
         self.memory = ChatMemoryBuffer.from_defaults(chat_history=chat_history)
-        
+
         # Build tools list
         all_tools = []
         if self.tools:
-            all_tools.extend([FunctionTool.from_defaults(fn=tool) for tool in self.tools])
+            all_tools.extend(
+                [FunctionTool.from_defaults(fn=tool) for tool in self.tools]
+            )
         if self.subagents:
-            all_tools.extend([FunctionTool.from_defaults(fn=agent) for agent in self.subagents])
-        
+            all_tools.extend(
+                [FunctionTool.from_defaults(fn=agent) for agent in self.subagents]
+            )
+
         if all_tools:
             # If we have tools, use FunctionCallingAgent
             self.agent = FunctionCallingAgent.from_tools(
@@ -138,14 +146,13 @@ class ChatAgentManager:
                 memory=self.memory,
                 max_function_calls=5,
             )
-            logger.info(f"Built FunctionCallingAgent with {len(all_tools)} tools and {len(chat_history)} messages of chat history")
+            logger.info(
+                f"Built FunctionCallingAgent with {len(all_tools)} tools and {len(chat_history)} messages of chat history"
+            )
         else:
             # If no tools, use ReActAgent
             self.agent = ReActAgent.from_tools(
-                tools=[],
-                llm=self.llm,
-                memory=self.memory,
-                verbose=True
+                tools=[], llm=self.llm, memory=self.memory, verbose=True
             )
             logger.info(
                 f"Built ReActAgent with {len(chat_history)} chat history messages (no tools configured)"

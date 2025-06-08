@@ -1,11 +1,7 @@
-import asyncio
-import json
 from unittest import mock
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from llama_index.core.llms import ChatMessage
-from llama_index.core.tools import FunctionTool
 
 from services.chat_service.llama_manager import ChatAgentManager
 
@@ -105,32 +101,35 @@ async def test_build_agent_constructs_agent(
         {"user_id": "user42", "content": "hi"},
         {"user_id": "assistant", "content": "hello"},
     ]
-    
+
     # Mock history manager
     mock_history.get_thread_history = AsyncMock(return_value=[])
-    
+
     # Mock context module
     async def mock_dynamic_selection(*args, **kwargs):
         return fake_messages
+
     mock_context.dynamic_context_selection = mock_dynamic_selection
-    
+
     # Mock tools and memory
     mock_tool.from_defaults.side_effect = lambda fn: f"tool-{fn.__name__}"
     mock_memory.from_defaults.return_value = "memory"
-    
+
     # Mock agent
     mock_agent_instance = AsyncMock()
     mock_agent_cls.from_tools.return_value = mock_agent_instance
-    
+
     # Run
     await manager.build_agent("hi")
-    
+
     # Assert FunctionCallingAgent was used with tools
     mock_agent_cls.from_tools.assert_called_once()
     assert manager.agent == mock_agent_instance
     mock_memory.from_defaults.assert_called_once()
     # Should wrap all tools and subagents
-    assert len(mock_tool.from_defaults.mock_calls) == len(mock_tools) + len(mock_subagents)
+    assert len(mock_tool.from_defaults.mock_calls) == len(mock_tools) + len(
+        mock_subagents
+    )
     mock_agent_cls.from_tools.assert_called_once()
     mock_memory.from_defaults.assert_called_once()
     args, kwargs = mock_memory.from_defaults.call_args
@@ -148,7 +147,13 @@ async def test_build_agent_constructs_agent(
 @patch("services.chat_service.llama_manager.context_module")
 @patch("services.chat_service.llama_manager.llm_manager.get_llm")
 async def test_chat_calls_agent_and_appends_history(
-    mock_get_llm, mock_context, mock_history, mock_agent, mock_memory, mock_tool, manager
+    mock_get_llm,
+    mock_context,
+    mock_history,
+    mock_agent,
+    mock_memory,
+    mock_tool,
+    manager,
 ):
     # Setup mock thread
     mock_thread = MagicMock()
@@ -159,7 +164,7 @@ async def test_chat_calls_agent_and_appends_history(
     mock_history.append_message = AsyncMock()
     mock_history.get_thread_history = AsyncMock(return_value=[])
     mock_history.create_thread = AsyncMock(return_value=mock_thread)
-    
+
     # Mock the LLM
     mock_llm = AsyncMock()
     mock_llm.achat.return_value = "[FAKE LLM RESPONSE] You said: hello world"
@@ -167,7 +172,9 @@ async def test_chat_calls_agent_and_appends_history(
 
     # Setup agent
     fake_agent = MagicMock()
-    fake_agent.achat = AsyncMock(return_value="[FAKE LLM RESPONSE] You said: hello world")
+    fake_agent.achat = AsyncMock(
+        return_value="[FAKE LLM RESPONSE] You said: hello world"
+    )
     manager.agent = fake_agent
     manager.user_id = "user42"
     manager.thread_id = 123
@@ -178,7 +185,9 @@ async def test_chat_calls_agent_and_appends_history(
     # Assert
     assert result == "[FAKE LLM RESPONSE] You said: hello world"
     mock_history.append_message.assert_any_call(123, "user42", "hello world")
-    mock_history.append_message.assert_any_call(123, "assistant", "[FAKE LLM RESPONSE] You said: hello world")
+    mock_history.append_message.assert_any_call(
+        123, "assistant", "[FAKE LLM RESPONSE] You said: hello world"
+    )
 
 
 @pytest.mark.asyncio
@@ -192,11 +201,12 @@ async def test_chat_builds_agent_if_none(
     manager.agent = None
     manager.tools = []
     manager.subagents = []
-    
+
     # Create a proper FakeLLM instance
     from services.chat_service.llm_manager import FakeLLM
+
     fake_llm = FakeLLM()
-    
+
     # Mock the LLM manager to return our fake LLM
     mock_get_llm.return_value = fake_llm
 
@@ -217,14 +227,15 @@ async def test_chat_builds_agent_if_none(
     # Mock context module
     async def mock_dynamic_selection(*args, **kwargs):
         return []
+
     mock_context.dynamic_context_selection = mock_dynamic_selection
 
     # Test
     result = await manager.chat("test input")
-    
+
     # Verify the response is as expected from FakeLLM
     assert "test input" in result
-    
+
     # In FakeLLM case, we don't actually build an agent
     # Just verify the message was appended to history
     mock_history.append_message.assert_any_call(123, "assistant", mock.ANY)

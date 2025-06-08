@@ -23,8 +23,9 @@ logger = logging.getLogger(__name__)
 def count_tokens(text: str, model: str) -> int:
     try:
         enc = tiktoken.encoding_for_model(model)
-    except:
-        enc = tiktoken.get_encoding("cl100k_base")  # Fallback to a common encoding
+    except (KeyError, ValueError):
+        # Fallback to a common encoding if model not found or invalid
+        enc = tiktoken.get_encoding("cl100k_base")
     return len(enc.encode(text))
 
 
