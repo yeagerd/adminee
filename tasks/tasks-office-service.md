@@ -37,17 +37,31 @@ When working with task lists, the AI must:
 5. Before starting work, check which sub‑task is next.
 6. After implementing a sub‑task, update this file.
 
-## Tasks
-[ ] 1. Project Scaffolding & Core Dependencies
+##
+General instructions for working in Python in this repo:
 
-[ ] 1.1 Create a folder for the service in services/office_service.
-[ ] 1.2 [Install core dependencies: fastapi, uvicorn, pydantic, ormar, alembic, psycopg2-binary, python-dotenv, httpx.]
-[ ] 1.3 [Set up the basic project structure with folders for app, core, models, tests, etc.]
-[ ] 1.4 [Create a basic FastAPI application instance in app/main.py with a "Hello World" root endpoint.]
-[ ] 1.5 [Implement environment variable loading using Pydantic's BaseSettings to manage configuration from the .env file as specified in Section 9.1.]
-[ ] 1.6 [Define the Ormar models (ApiCall, CacheEntry, RateLimitBucket) in a models/ directory as specified in Section 5.1.]
-[ ] 1.7 [Configure the database connection using the DATABASE_URL and initialize Alembic for database migrations.]
-[ ] 1.8 [Generate and apply the initial Alembic migration to create the tables for the models defined in step 1.6.]
+Setup:
+* Activate the virtual environment: `source venv/bin/activate`
+* Run all Python commands from the repository root.
+
+Before committing:
+* Run `pytest` and fix all test failures.
+* Run `mypy services/` and resolve all type errors.
+* Fix lint issues using `./fix`
+* Run `tox` to validate the full test matrix and environment compatibility.
+
+
+## Tasks
+[x] 1. Project Scaffolding & Core Dependencies
+
+[x] 1.1 Create a folder for the service in services/office_service.
+[x] 1.2 [Install core dependencies: fastapi, uvicorn, pydantic, ormar, alembic, psycopg2-binary, python-dotenv, httpx.]
+[x] 1.3 [Set up the basic project structure with folders for app, core, models, tests, etc.]
+[x] 1.4 [Create a basic FastAPI application instance in app/main.py with a "Hello World" root endpoint.]
+[x] 1.5 [Implement environment variable loading using Pydantic's BaseSettings to manage configuration from the .env file as specified in Section 9.1.]
+[x] 1.6 [Define the Ormar models (ApiCall, CacheEntry, RateLimitBucket) in a models/ directory as specified in Section 5.1.]
+[x] 1.7 [Configure the database connection using the DATABASE_URL and initialize Alembic for database migrations.]
+[x] 1.8 [Generate and apply the initial Alembic migration to create the tables for the models defined in step 1.6.]
 
 [ ] 2. Core Module: Pydantic & Error Models
 [ ] 2.1 [Create a schemas/ directory to hold all Pydantic models for API responses.]

@@ -1,4 +1,5 @@
 alembic
+databases
 fastapi
 httpx
 langchain
@@ -8,12 +9,15 @@ llama-index-embeddings-openai
 llama-index-llms-litellm
 ormar
 pinecone-client
+psycopg2-binary
 pydantic
 pytest
 pytest-asyncio
 python-dotenv
 pytz
+redis
 requests
+sqlalchemy
 tox
 types-requests
 types-pytz
