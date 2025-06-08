@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from services.chat_service.chat_agent import ModernChatAgent, create_chat_agent
+from services.chat_service.chat_agent import ChatAgent, create_chat_agent
 
 
 @pytest.fixture
@@ -22,7 +22,7 @@ def mock_tools():
 async def test_modern_chat_agent_creation():
     """Test that ModernChatAgent can be created with various configurations."""
     # Test basic creation
-    agent = ModernChatAgent(
+    agent = ChatAgent(
         thread_id=1,
         user_id="test_user",
         enable_fact_extraction=False,
@@ -54,7 +54,7 @@ async def test_create_chat_agent_factory():
 @pytest.mark.asyncio
 async def test_memory_blocks_creation():
     """Test that memory blocks are created correctly."""
-    agent = ModernChatAgent(
+    agent = ChatAgent(
         thread_id=3,
         user_id="memory_user",
         static_content="Custom system prompt",
@@ -86,7 +86,7 @@ async def test_memory_blocks_creation():
 @pytest.mark.asyncio
 async def test_memory_blocks_creation_minimal():
     """Test memory blocks creation with minimal configuration."""
-    agent = ModernChatAgent(
+    agent = ChatAgent(
         thread_id=4,
         user_id="minimal_user",
         enable_fact_extraction=False,
@@ -110,7 +110,7 @@ async def test_build_agent_with_mocked_db(mock_history):
     # Mock database calls
     mock_history.get_thread_history.return_value = []
 
-    agent = ModernChatAgent(
+    agent = ChatAgent(
         thread_id=5,
         user_id="build_user",
         enable_fact_extraction=False,
@@ -134,7 +134,7 @@ async def test_get_memory_info(mock_history):
     """Test getting memory information."""
     mock_history.get_thread_history.return_value = []
 
-    agent = ModernChatAgent(
+    agent = ChatAgent(
         thread_id=6,
         user_id="info_user",
         enable_fact_extraction=False,
@@ -156,7 +156,7 @@ async def test_get_memory_info(mock_history):
 @pytest.mark.asyncio
 async def test_default_static_content():
     """Test that default static content is generated correctly."""
-    agent = ModernChatAgent(
+    agent = ChatAgent(
         thread_id=7,
         user_id="content_user",
         enable_fact_extraction=False,
@@ -177,7 +177,7 @@ async def test_tools_registration():
         """Test tool function."""
         return "test result"
 
-    agent = ModernChatAgent(
+    agent = ChatAgent(
         thread_id=8,
         user_id="tools_user",
         tools=[test_tool],
