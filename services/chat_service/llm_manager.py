@@ -213,8 +213,13 @@ class LLMManager:
         if "/" not in model and provider:
             model = f"{provider}/{model}"
 
-        # Return a LiteLLM instance
-        return LlamaLiteLLM(model=model, **kwargs)
+        # Some models support language parameters
+        llm_kwargs = kwargs.copy()
+        if "language" not in llm_kwargs:
+            llm_kwargs["language"] = "en"
+
+        # Return a LiteLLM instance with language settings
+        return LlamaLiteLLM(model=model, **llm_kwargs)
 
     def get_model_info(self, model: Optional[str] = None) -> Dict[str, Any]:
         """

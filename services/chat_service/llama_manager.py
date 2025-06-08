@@ -11,7 +11,7 @@ from typing import Any, Callable, Dict, List, Optional
 from llama_index.core.agent import ReActAgent
 from llama_index.core.agent.function_calling import FunctionCallingAgent
 from llama_index.core.base.llms.types import ChatMessage
-from llama_index.core.memory.chat_memory_buffer import ChatMemoryBuffer
+from llama_index.core.memory import Memory
 from llama_index.core.tools import FunctionTool
 
 from services.chat_service import context_module, history_manager
@@ -53,7 +53,7 @@ class ChatAgentManager:
         self.tools = tools or []
         self.subagents = subagents or []
         self.agent: Optional[FunctionCallingAgent] = None
-        self.memory: Optional[ChatMemoryBuffer] = None
+        self.memory: Optional[Memory] = None
         logger.info(
             f"ChatAgentManager initialized for user_id={self.user_id}, thread_id={self.thread_id}, "
             f"max_tokens={self.max_tokens}, tools={len(self.tools)}, subagents={len(self.subagents)}, "
@@ -124,11 +124,20 @@ class ChatAgentManager:
             for m in memory_msgs
         ]
 
-        # Create memory
-        self.memory = ChatMemoryBuffer.from_defaults(chat_history=chat_history)
+        # Log the initial chat history being used for the agent
+        logger.info("Initial chat history for agent:")
+        for msg in chat_history:
+            logger.info(f"{msg.role.upper()}: {msg.content}")
 
+        # Create memory
+        self.memory = Memory.from_defaults(chat_history=chat_history)
+        
         # Build tools list
         all_tools = []
+        
+        # Log agent configuration
+        logger.info(f"Building agent with model: {self.llm.model if hasattr(self.llm, 'model') else 'unknown'}")
+        logger.info(f"Using {'FunctionCallingAgent' if all_tools else 'ReActAgent'}")
         if self.tools:
             all_tools.extend(
                 [FunctionTool.from_defaults(fn=tool) for tool in self.tools]
@@ -187,10 +196,7 @@ class ChatAgentManager:
             thread = await history_manager.create_thread(self.user_id)
             self.thread_id = thread.id
 
-        # Persist user message
-        await history_manager.append_message(self.thread_id, self.user_id, user_input)
-
-        # Handle fake LLM mode
+        # Handle fake LLM mode first to avoid duplicate database entries
         if isinstance(self.llm, FakeLLM):
             # If we're using FakeLLM, just return a simple response
             response_obj = await self.llm.achat(
@@ -212,8 +218,21 @@ class ChatAgentManager:
             logger.debug("Agent not built yet. Building agent...")
             await self.build_agent(user_input)
 
+        # Persist user message to database for real LLM
+        # Do this after building the agent, otherwise it's added twice
+        await history_manager.append_message(self.thread_id, self.user_id, user_input)
+
         # Process with real LLM
         try:
+            # Log the full input being sent to the LLM
+            if hasattr(self.agent, 'chat_history'):
+                logger.info("Full chat history being sent to LLM:")
+                for msg in self.agent.chat_history:
+                    logger.info(f"{msg.role.upper()}: {msg.content}")
+            
+            logger.info(f"Processing user input: {user_input}")
+            
+            # Process with the agent - the message will be added to memory automatically
             response = await self.agent.achat(user_input)  # type: ignore[union-attr]
             response_text = (
                 str(response.response)
