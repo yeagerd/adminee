@@ -95,19 +95,8 @@ class ChatAgentManager:
     async def build_agent(self, user_input: str) -> None:
         """Build or rebuild the agent with the latest context and tools."""
         # Get relevant context and chat history
-        context_messages = await self.get_memory(user_input)
-        chat_history = await history_manager.get_thread_history(
-            self.thread_id, limit=100
-        )
-        # Reverse to chronological order (oldest to newest)
-        chat_history = list(reversed(chat_history))
-        msg_dicts = [
-            m.model_dump() if hasattr(m, "model_dump") else dict(m)
-            for m in chat_history
-        ]
-
-        # Combine context and chat history
-        memory_msgs = context_messages + msg_dicts
+        # get_memory already includes the thread history
+        memory_msgs = await self.get_memory(user_input)
 
         # Convert messages to llama-index format
         from llama_index.core.base.llms.types import MessageRole
@@ -131,21 +120,42 @@ class ChatAgentManager:
 
         # Create memory
         self.memory = Memory.from_defaults(chat_history=chat_history)
-        
+
         # Build tools list
         all_tools = []
-        
+
         # Log agent configuration
-        logger.info(f"Building agent with model: {self.llm.model if hasattr(self.llm, 'model') else 'unknown'}")
-        logger.info(f"Using {'FunctionCallingAgent' if all_tools else 'ReActAgent'}")
+        logger.info(
+            f"Building agent with model: {self.llm.model if hasattr(self.llm, 'model') else 'unknown'}"
+        )
+
+        # Validate and register tools
         if self.tools:
-            all_tools.extend(
-                [FunctionTool.from_defaults(fn=tool) for tool in self.tools]
-            )
+            for tool in self.tools:
+                if tool is None:
+                    logger.warning("Skipping None tool in tools list")
+                    continue
+                try:
+                    tool_instance = FunctionTool.from_defaults(fn=tool)
+                    all_tools.append(tool_instance)
+                    logger.debug(f"Registered tool: {tool_instance.metadata.name}")
+                except Exception as e:
+                    logger.error(f"Failed to register tool {tool}: {str(e)}")
+
+        # Validate and register subagents
         if self.subagents:
-            all_tools.extend(
-                [FunctionTool.from_defaults(fn=agent) for agent in self.subagents]
-            )
+            for agent in self.subagents:
+                if agent is None:
+                    logger.warning("Skipping None agent in subagents list")
+                    continue
+                try:
+                    agent_instance = FunctionTool.from_defaults(fn=agent)
+                    all_tools.append(agent_instance)
+                    logger.debug(f"Registered subagent: {agent_instance.metadata.name}")
+                except Exception as e:
+                    logger.error(f"Failed to register subagent {agent}: {str(e)}")
+
+        logger.info(f"Using {'FunctionCallingAgent' if all_tools else 'ReActAgent'}")
 
         if all_tools:
             # If we have tools, use FunctionCallingAgent
@@ -225,13 +235,13 @@ class ChatAgentManager:
         # Process with real LLM
         try:
             # Log the full input being sent to the LLM
-            if hasattr(self.agent, 'chat_history'):
+            if self.agent and hasattr(self.agent, "chat_history"):
                 logger.info("Full chat history being sent to LLM:")
                 for msg in self.agent.chat_history:
                     logger.info(f"{msg.role.upper()}: {msg.content}")
-            
+
             logger.info(f"Processing user input: {user_input}")
-            
+
             # Process with the agent - the message will be added to memory automatically
             response = await self.agent.achat(user_input)  # type: ignore[union-attr]
             response_text = (
