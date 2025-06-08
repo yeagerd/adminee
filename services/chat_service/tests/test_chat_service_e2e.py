@@ -1,9 +1,5 @@
 import os
 
-# Set shared in-memory SQLite DB before any app/model import
-os.environ["DATABASE_URL"] = "sqlite:///file::memory:?cache=shared"
-
-
 import pytest
 from fastapi.testclient import TestClient
 
@@ -20,6 +16,8 @@ async def setup_test_database():
 
 @pytest.fixture(autouse=True)
 def fake_llm_env(monkeypatch):
+    # Set shared in-memory SQLite DB for tests
+    monkeypatch.setenv("DATABASE_URL", "sqlite:///file::memory:?cache=shared")
     # Simulate no OpenAI API key for tests
     monkeypatch.setenv("OPENAI_API_KEY", "")
     # Initialize test database synchronously
