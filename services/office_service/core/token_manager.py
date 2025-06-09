@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 import httpx
 from pydantic import BaseModel
 
-from services.office_service.core.config import settings
+from core.config import settings
 
 # Configure logging
 logger = logging.getLogger(__name__)

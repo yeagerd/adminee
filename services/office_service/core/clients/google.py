@@ -1,6 +1,6 @@
 from typing import Any, Dict, Optional
 
-from services.office_service.models import Provider
+from models import Provider
 
 from .base import BaseAPIClient
 
