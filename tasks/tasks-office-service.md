@@ -48,7 +48,7 @@ Before committing:
 * Run `pytest` and fix all test failures.
 * Run `mypy services/` and resolve all type errors.
 * Fix lint issues using `./fix`
-* Run `tox` to validate the full test matrix and environment compatibility.
+* Run ``tox -p auto`` to validate the full test matrix and environment compatibility.
 
 
 ## Tasks
@@ -63,16 +63,16 @@ Before committing:
 [x] 1.7 [Configure the database connection using the DATABASE_URL and initialize Alembic for database migrations.]
 [x] 1.8 [Generate and apply the initial Alembic migration to create the tables for the models defined in step 1.6.]
 [x] 1.9 [Run ./fix to fix lint issues.]
-[x] 1.10 [Run tox and fix any errors.]
+[x] 1.10 [Run `tox -p auto` and fix any errors.]
 
-[ ] 2. Core Module: Pydantic & Error Models
+[x] 2. Core Module: Pydantic & Error Models
 [x] 2.1 [Create a schemas/ directory to hold all Pydantic models for API responses.]
 [x] 2.2 [Define the unified Pydantic models for Email (EmailAddress, EmailMessage), Calendar (CalendarEvent, Calendar), and Files (DriveFile) from Section 5.2.]
 [x] 2.3 [Define the generic API response models (ApiResponse, PaginatedResponse) from Section 5.2.]
 [x] 2.4 [Define the standardized ApiError model from Section 7.1.]
-[ ] 2.5 [Write unit tests for new code where it makes sense.]
-[ ] 2.6 [Run ./fix to fix lint issues.]
-[ ] 2.7 [Run tox and fix any errors.]
+[x] 2.5 [Write unit tests for new code where it makes sense.]
+[x] 2.6 [Run ./fix to fix lint issues.]
+[x] 2.7 [Run `tox -p auto` and fix any errors.]
 
 [ ] 3. Core Module: Token Manager
 [x] 3.1 [Create a core/token_manager.py module.]
@@ -82,7 +82,7 @@ Before committing:
 [x] 3.5 [Implement a simple in-memory cache (e.g., using a dictionary with TTL) within the TokenManager to reduce calls for the same token within a short period (as mentioned in Section 2.1).]
 [ ] 3.6 [Write unit tests for TokenManager including cache behavior and error handling.]
 [ ] 3.7 [Run ./fix to fix lint issues.]
-[ ] 3.8 [Run tox and fix any errors.]
+[ ] 3.8 [Run `tox -p auto` and fix any errors.]
 
 [ ] 4. Core Module: API Client Factory
 [x] 4.1 [Create a core/clients/ directory for provider-specific clients.]
@@ -92,7 +92,7 @@ Before committing:
 [x] 4.5 [Implement an APIClientFactory in core/api_client_factory.py that takes a user_id and provider and uses the TokenManager to fetch a token and return an initialized provider-specific API client.]
 [ ] 4.6 [Write unit tests for API clients and factory with mocked HTTP responses.]
 [ ] 4.7 [Run ./fix to fix lint issues.]
-[ ] 4.8 [Run tox and fix any errors.]
+[ ] 4.8 [Run `tox -p auto` and fix any errors.]
 
 [ ] 5. Core Module: Data Normalizer
 [x] 5.1 [Create a core/normalizer.py module.]
@@ -101,7 +101,7 @@ Before committing:
 [x] 5.4 [Implement initial normalization functions for Google Calendar events and Google Drive files, converting them to CalendarEvent and DriveFile models respectively.]
 [x] 5.5 [Write unit tests for normalizer functions using mock API response data.]
 [ ] 5.6 [Run ./fix to fix lint issues.]
-[ ] 5.7 [Run tox and fix any errors.]
+[ ] 5.7 [Run `tox -p auto` and fix any errors.]
 
 [ ] 6. Core Module: Basic Caching (Redis)
 [x] 6.1 [Add the redis-py library to the project dependencies.]
@@ -111,7 +111,7 @@ Before committing:
 [x] 6.5 [Write unit tests for the generate_cache_key function to ensure it is deterministic.]
 [x] 6.6 [Write unit tests for cache manager with mocked Redis operations.]
 [ ] 6.7 [Run ./fix to fix lint issues.]
-[ ] 6.8 [Run tox and fix any errors.]
+[ ] 6.8 [Run `tox -p auto` and fix any errors.]
 
 [x] 7. Implement Health and Diagnostics Endpoints
 [x] 7.1 [Create an api/health.py router.]
@@ -119,7 +119,7 @@ Before committing:
 [x] 7.3 [Implement the GET /health/integrations/{user_id} endpoint. For the MVP, this can simply attempt to fetch a token for both 'google' and 'microsoft' for the given user and report success or failure.]
 [ ] 7.4 [Write unit tests for health endpoints with mocked dependencies.]
 [ ] 7.5 [Run ./fix to fix lint issues.]
-[ ] 7.6 [Run tox and fix any errors.]
+[ ] 7.6 [Run `tox -p auto` and fix any errors.]
 
 [x] 8. Implement Unified READ Endpoints (MVP)
 [x] 8.1 [Create an api/email.py router.]
@@ -130,7 +130,7 @@ Before committing:
 [x] 8.6 [Implement the detail endpoint GET /email/messages/{message_id}. This will require logic to determine the correct provider from the message_id to make the API call.]
 [x] 8.7 [Write unit tests for unified READ endpoints with mocked API clients.]
 [x] 8.8 [Run ./fix to fix lint issues.]
-[x] 8.9 [Run tox and fix any errors.]
+[x] 8.9 [Run `tox -p auto` and fix any errors.]
 
 [ ] 9. Implement Unified WRITE Endpoints (MVP)
 [ ] 9.1 [Implement POST /email/send in the email router. For the MVP, this can be a simple pass-through that determines the provider and makes the API call. The actual queuing can be stubbed or logged for now.]
@@ -138,7 +138,7 @@ Before committing:
 [ ] 9.3 [Implement DELETE /calendar/events/{event_id}. This will require logic to find the original provider and use its API to delete the event.]
 [ ] 9.4 [Write unit tests for unified write endpoints with mocked API clients.]
 [ ] 9.5 [Run ./fix to fix lint issues.]
-[ ] 9.6 [Run tox and fix any errors.]
+[ ] 9.6 [Run `tox -p auto` and fix any errors.]
 
 [ ] 10. Implement Basic Error Handling & Logging
 [ ] 10.1 [Configure structured logging for the application (e.g., using the standard logging library with a JSON formatter).]
@@ -147,7 +147,7 @@ Before committing:
 [ ] 10.4 [Modify the API clients to catch httpx exceptions and raise the custom ProviderAPIError to be handled by the global handler.]
 [ ] 10.5 [Write unit tests for error handling and logging functionality.]
 [ ] 10.6 [Run ./fix to fix lint issues.]
-[ ] 10.7 [Run tox and fix any errors.]
+[ ] 10.7 [Run `tox -p auto` and fix any errors.]
 
 [ ] 11. Testing and Documentation
 [ ] 11.1 [Create a tests/ directory with pytest.]
@@ -155,7 +155,7 @@ Before committing:
 [ ] 11.4 [Add docstrings to all public functions and classes you've created.]
 [ ] 11.5 [Update the README.md file with instructions on how to set up the development environment, run the service, and run tests.]
 [ ] 11.6 [Run ./fix to fix lint issues.]
-[ ] 11.7 [Run tox and fix any errors.]
+[ ] 11.7 [Run `tox -p auto` and fix any errors.]
 ## Relevant Files
 
 ### Core Infrastructure
@@ -185,6 +185,10 @@ Before committing:
 
 ### Dependencies
 - `requirements.txt` - Python package dependencies including FastAPI, Redis, httpx, Ormar 0.20.2, Pydantic 2.x
+
+### Tests
+- `services/office_service/tests/test_schemas.py` - Unit tests for Pydantic schema models (validation, serialization)
+- `services/office_service/tests/test_api_email.py` - Unit tests for email API endpoints
 
 Next Steps (After MVP)
 
