@@ -95,6 +95,22 @@ class Calendar(BaseModel):
     account_name: Optional[str] = None  # Display name for the account
 
 
+class CreateCalendarEventRequest(BaseModel):
+    """Request model for creating calendar events."""
+    
+    title: str
+    description: Optional[str] = None
+    start_time: datetime
+    end_time: datetime
+    all_day: bool = False
+    location: Optional[str] = None
+    attendees: Optional[List[EmailAddress]] = None
+    calendar_id: Optional[str] = None  # If not specified, uses primary calendar
+    provider: Optional[str] = None  # If not specified, uses user's default preference
+    visibility: Optional[str] = "default"  # default, public, private
+    status: Optional[str] = "confirmed"  # confirmed, tentative, cancelled
+
+
 class FreeBusyInfo(BaseModel):
     calendar_id: str
     busy_times: List[Dict[str, datetime]]  # [{"start": datetime, "end": datetime}]
