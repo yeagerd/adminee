@@ -149,13 +149,13 @@ Before committing:
 [x] 10.6 [Run ./fix to fix lint issues.]
 [x] 10.7 [Run `tox -p auto` and fix any errors.]
 
-[ ] 11. Testing and Documentation
-[ ] 11.1 [Create a tests/ directory with pytest.]
-[ ] 11.2 [Write integration tests for all API endpoints.]
-[ ] 11.4 [Add docstrings to all public functions and classes you've created.]
-[ ] 11.5 [Update the README.md file with instructions on how to set up the development environment, run the service, and run tests.]
-[ ] 11.6 [Run ./fix to fix lint issues.]
-[ ] 11.7 [Run `tox -p auto` and fix any errors.]
+[x] 11. Testing and Documentation
+[x] 11.1 [Create a tests/ directory with pytest.]
+[x] 11.2 [Write integration tests for all API endpoints.]
+[x] 11.4 [Add docstrings to all public functions and classes you've created.]
+[x] 11.5 [Update the README.md file with instructions on how to set up the development environment, run the service, and run tests.]
+[x] 11.6 [Run ./fix to fix lint issues.]
+[x] 11.7 [Run `tox -p auto` and fix any errors.]
 ## Relevant Files
 
 ### Core Infrastructure
@@ -192,6 +192,7 @@ Before committing:
 - `services/office_service/tests/test_api_clients.py` - Unit tests for API clients and factory (mocked HTTP responses, error handling)
 - `services/office_service/tests/test_api_email.py` - Unit tests for email API endpoints
 - `services/office_service/tests/test_error_handling.py` - Unit tests for error handling and logging functionality (global exception handlers, API client error handling)
+- `services/office_service/tests/test_integration.py` - Integration tests for all API endpoints (health, email, calendar, files) with full request/response cycle testing
 
 Next Steps (After MVP)
 

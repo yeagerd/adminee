@@ -1,3 +1,11 @@
+"""
+Token Management module for the Office Service.
+
+This module handles secure retrieval and caching of OAuth tokens from the User
+Management Service. It provides thread-safe in-memory caching with TTL to reduce
+API calls and improve performance while maintaining security best practices.
+"""
+
 import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
