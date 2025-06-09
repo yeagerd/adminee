@@ -4,7 +4,7 @@ Settings and configuration for User Management Service.
 Uses Pydantic Settings to manage environment variables and configuration.
 """
 
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
@@ -24,6 +24,16 @@ class Settings(BaseSettings):
     host: str = Field(default="0.0.0.0", description="Host to bind to")
     port: int = Field(default=8001, description="Port to bind to")
     debug: bool = Field(default=False, description="Debug mode")
+    environment: str = Field(
+        default="development",
+        description="Environment (development, staging, production)",
+    )
+
+    # CORS Configuration
+    cors_origins: List[str] = Field(
+        default=["http://localhost:3000", "http://localhost:3001"],
+        description="Allowed CORS origins",
+    )
 
     # Security Configuration
     service_api_key: str = Field(

@@ -49,6 +49,11 @@ def configure_logging() -> None:
     )
 
 
+def setup_logging() -> None:
+    """Setup logging configuration (alias for configure_logging)."""
+    configure_logging()
+
+
 def get_logger(name: str = None) -> structlog.BoundLogger:
     """Get a configured structlog logger."""
     return structlog.get_logger(name)
