@@ -12,7 +12,7 @@ import sys
 from datetime import datetime
 from typing import Any, Dict
 
-from services.office_service.core.config import settings
+from core.config import settings
 
 
 class JSONFormatter(logging.Formatter):

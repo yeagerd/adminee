@@ -10,13 +10,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from services.office_service.core.api_client_factory import APIClientFactory
-from services.office_service.core.clients.base import BaseAPIClient
-from services.office_service.core.clients.google import GoogleAPIClient
-from services.office_service.core.clients.microsoft import MicrosoftAPIClient
-from services.office_service.core.exceptions import ProviderAPIError
-from services.office_service.core.token_manager import TokenData
-from services.office_service.models import Provider
+from core.api_client_factory import APIClientFactory
+from core.clients.base import BaseAPIClient
+from core.clients.google import GoogleAPIClient
+from core.clients.microsoft import MicrosoftAPIClient
+from core.exceptions import ProviderAPIError
+from core.token_manager import TokenData
+from models import Provider
 
 
 class MockAPIClient(BaseAPIClient):
@@ -143,6 +143,8 @@ class TestBaseAPIClient:
             ) as mock_request:
                 mock_response = MagicMock()
                 mock_response.status_code = 404
+                mock_response.text = "Not Found"
+                mock_response.headers = {}
                 mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
                     "Not Found", request=MagicMock(), response=mock_response
                 )
@@ -477,7 +479,7 @@ class TestAPIClientFactory:
     async def test_create_google_client_success(self, mock_token_data):
         """Test successful Google client creation."""
         with patch(
-            "services.office_service.core.api_client_factory.TokenManager"
+            "core.api_client_factory.TokenManager"
         ) as MockTokenManager:
             mock_token_manager = AsyncMock()
             mock_token_manager.__aenter__.return_value = mock_token_manager
@@ -499,7 +501,7 @@ class TestAPIClientFactory:
         mock_token_data.provider = "microsoft"
 
         with patch(
-            "services.office_service.core.api_client_factory.TokenManager"
+            "core.api_client_factory.TokenManager"
         ) as MockTokenManager:
             mock_token_manager = AsyncMock()
             mock_token_manager.__aenter__.return_value = mock_token_manager
@@ -519,7 +521,7 @@ class TestAPIClientFactory:
     async def test_create_client_with_enum_provider(self, mock_token_data):
         """Test client creation with Provider enum."""
         with patch(
-            "services.office_service.core.api_client_factory.TokenManager"
+            "core.api_client_factory.TokenManager"
         ) as MockTokenManager:
             mock_token_manager = AsyncMock()
             mock_token_manager.__aenter__.return_value = mock_token_manager
@@ -544,7 +546,7 @@ class TestAPIClientFactory:
     async def test_create_client_no_token(self):
         """Test client creation when no token is available."""
         with patch(
-            "services.office_service.core.api_client_factory.TokenManager"
+            "core.api_client_factory.TokenManager"
         ) as MockTokenManager:
             mock_token_manager = AsyncMock()
             mock_token_manager.__aenter__.return_value = mock_token_manager
@@ -562,7 +564,7 @@ class TestAPIClientFactory:
         custom_scopes = ["https://www.googleapis.com/auth/gmail.readonly"]
 
         with patch(
-            "services.office_service.core.api_client_factory.TokenManager"
+            "core.api_client_factory.TokenManager"
         ) as MockTokenManager:
             mock_token_manager = AsyncMock()
             mock_token_manager.__aenter__.return_value = mock_token_manager
@@ -582,7 +584,7 @@ class TestAPIClientFactory:
     async def test_convenience_methods(self, mock_token_data):
         """Test convenience methods for specific providers."""
         with patch(
-            "services.office_service.core.api_client_factory.TokenManager"
+            "core.api_client_factory.TokenManager"
         ) as MockTokenManager:
             mock_token_manager = AsyncMock()
             mock_token_manager.__aenter__.return_value = mock_token_manager
@@ -604,7 +606,7 @@ class TestAPIClientFactory:
     async def test_create_all_clients(self, mock_token_data):
         """Test creating clients for all providers."""
         with patch(
-            "services.office_service.core.api_client_factory.TokenManager"
+            "core.api_client_factory.TokenManager"
         ) as MockTokenManager:
             mock_token_manager = AsyncMock()
             mock_token_manager.__aenter__.return_value = mock_token_manager

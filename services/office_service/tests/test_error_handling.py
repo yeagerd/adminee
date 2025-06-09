@@ -6,18 +6,18 @@ import pytest
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
-from services.office_service.app.main import (
+from app.main import (
     office_service_error_handler,
     provider_api_error_handler,
     rate_limit_error_handler,
 )
-from services.office_service.core.clients.google import GoogleAPIClient
-from services.office_service.core.exceptions import (
+from core.clients.google import GoogleAPIClient
+from core.exceptions import (
     OfficeServiceError,
     ProviderAPIError,
     RateLimitError,
 )
-from services.office_service.models import Provider
+from models import Provider
 
 
 class TestGlobalExceptionHandlers:
@@ -46,7 +46,7 @@ class TestGlobalExceptionHandlers:
             details={"endpoint": "/gmail/v1/users/me/messages"},
         )
 
-        with patch("services.office_service.app.main.logger") as mock_logger:
+        with patch("app.main.logger") as mock_logger:
             # Call the handler
             response = await provider_api_error_handler(mock_request, error)
 
@@ -79,7 +79,7 @@ class TestGlobalExceptionHandlers:
             details={"user_id": "test-user", "limit_type": "hourly"},
         )
 
-        with patch("services.office_service.app.main.logger") as mock_logger:
+        with patch("app.main.logger") as mock_logger:
             response = await rate_limit_error_handler(mock_request, error)
 
         # Verify response
@@ -114,7 +114,7 @@ class TestGlobalExceptionHandlers:
             details={"config_key": "REDIS_URL", "issue": "missing"},
         )
 
-        with patch("services.office_service.app.main.logger") as mock_logger:
+        with patch("app.main.logger") as mock_logger:
             response = await office_service_error_handler(mock_request, error)
 
         # Verify response
@@ -278,7 +278,7 @@ class TestLoggingIntegration:
             mock_client.request.return_value = mock_response
 
             with patch(
-                "services.office_service.core.clients.base.logger"
+                "core.clients.base.logger"
             ) as mock_logger:
                 async with google_client:
                     await google_client.get("/test/endpoint")
@@ -316,7 +316,7 @@ class TestLoggingIntegration:
             )
 
             with patch(
-                "services.office_service.core.clients.base.logger"
+                "core.clients.base.logger"
             ) as mock_logger:
                 async with google_client:
                     with pytest.raises(ProviderAPIError):

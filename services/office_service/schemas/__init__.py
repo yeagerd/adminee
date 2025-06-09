@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, EmailStr
 
-from services.office_service.models import Provider
+from models import Provider
 
 
 # Unified Email Models

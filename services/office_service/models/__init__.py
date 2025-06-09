@@ -6,7 +6,7 @@ import databases
 import ormar
 import sqlalchemy
 
-from services.office_service.core.config import settings
+from core.config import settings
 
 # Database setup
 database = databases.Database(settings.DATABASE_URL)
