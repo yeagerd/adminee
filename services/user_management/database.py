@@ -14,12 +14,8 @@ from .settings import settings
 database = databases.Database(settings.database_url)
 metadata = sqlalchemy.MetaData()
 
-
-class BaseMeta(ormar.ModelMeta):
-    """Base metadata class for all Ormar models."""
-
-    metadata = metadata
-    database = database
+# Base OrmarConfig for all models
+base_ormar_config = ormar.OrmarConfig(database=database, metadata=metadata)
 
 
 # Database lifecycle management
