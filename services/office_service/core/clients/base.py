@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional
 
 import httpx
 
+from services.office_service.core.exceptions import ProviderAPIError
 from services.office_service.models import ApiCall, ApiCallStatus, Provider
 
 # Configure logging
@@ -203,7 +204,17 @@ class BaseAPIClient(ABC):
                 response_time_ms=response_time_ms,
                 error_message=error_msg,
             )
-            raise
+
+            raise ProviderAPIError(
+                message=f"Request timeout: {error_msg}",
+                provider=self.provider,
+                details={
+                    "endpoint": endpoint,
+                    "method": method.upper(),
+                    "timeout_ms": response_time_ms,
+                    "request_id": request_id,
+                },
+            )
 
         except httpx.HTTPStatusError as e:
             response_time_ms = int((time.time() - start_time) * 1000)
@@ -228,11 +239,34 @@ class BaseAPIClient(ABC):
                 response_time_ms=response_time_ms,
                 error_message=error_msg,
             )
-            raise
 
-        except Exception as e:
+            # Extract retry-after header for rate limiting
+            retry_after = None
+            if e.response.status_code == 429:
+                retry_after_header = e.response.headers.get("Retry-After")
+                if retry_after_header:
+                    try:
+                        retry_after = int(retry_after_header)
+                    except ValueError:
+                        pass
+
+            raise ProviderAPIError(
+                message=f"HTTP error: {error_msg}",
+                provider=self.provider,
+                status_code=e.response.status_code,
+                response_body=e.response.text,
+                retry_after=retry_after,
+                details={
+                    "endpoint": endpoint,
+                    "method": method.upper(),
+                    "request_id": request_id,
+                    "response_headers": dict(e.response.headers),
+                },
+            )
+
+        except httpx.RequestError as e:
             response_time_ms = int((time.time() - start_time) * 1000)
-            error_msg = f"Unexpected error: {str(e)}"
+            error_msg = f"Request error: {str(e)}"
 
             logger.error(
                 f"Request error: {error_msg} | "
@@ -247,7 +281,46 @@ class BaseAPIClient(ABC):
                 response_time_ms=response_time_ms,
                 error_message=error_msg,
             )
-            raise
+
+            raise ProviderAPIError(
+                message=f"Request failed: {error_msg}",
+                provider=self.provider,
+                details={
+                    "endpoint": endpoint,
+                    "method": method.upper(),
+                    "request_id": request_id,
+                    "error_type": type(e).__name__,
+                },
+            )
+
+        except Exception as e:
+            response_time_ms = int((time.time() - start_time) * 1000)
+            error_msg = f"Unexpected error: {str(e)}"
+
+            logger.error(
+                f"Unexpected error: {error_msg} | "
+                f"Request-ID: {request_id} | "
+                f"User: {self.user_id} | Provider: {self.provider}"
+            )
+
+            await self._log_api_call(
+                method=method,
+                endpoint=endpoint,
+                status=ApiCallStatus.ERROR,
+                response_time_ms=response_time_ms,
+                error_message=error_msg,
+            )
+
+            raise ProviderAPIError(
+                message=f"Unexpected error: {error_msg}",
+                provider=self.provider,
+                details={
+                    "endpoint": endpoint,
+                    "method": method.upper(),
+                    "request_id": request_id,
+                    "error_type": type(e).__name__,
+                },
+            )
 
     # Convenience methods for common HTTP verbs
     async def get(

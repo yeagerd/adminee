@@ -14,6 +14,7 @@ from services.office_service.core.api_client_factory import APIClientFactory
 from services.office_service.core.clients.base import BaseAPIClient
 from services.office_service.core.clients.google import GoogleAPIClient
 from services.office_service.core.clients.microsoft import MicrosoftAPIClient
+from services.office_service.core.exceptions import ProviderAPIError
 from services.office_service.core.token_manager import TokenData
 from services.office_service.models import Provider
 
@@ -147,8 +148,13 @@ class TestBaseAPIClient:
                 )
                 mock_request.return_value = mock_response
 
-                with pytest.raises(httpx.HTTPStatusError):
+                with pytest.raises(ProviderAPIError) as exc_info:
                     await mock_client.get("/nonexistent")
+
+                # Verify the ProviderAPIError contains the expected details
+                error = exc_info.value
+                assert error.provider == Provider.GOOGLE
+                assert error.status_code == 404
 
     @pytest.mark.asyncio
     async def test_timeout_handling(self, mock_client):
@@ -159,8 +165,13 @@ class TestBaseAPIClient:
             ) as mock_request:
                 mock_request.side_effect = httpx.TimeoutException("Request timeout")
 
-                with pytest.raises(httpx.TimeoutException):
+                with pytest.raises(ProviderAPIError) as exc_info:
                     await mock_client.get("/slow-endpoint")
+
+                # Verify the ProviderAPIError contains the expected details
+                error = exc_info.value
+                assert error.provider == Provider.GOOGLE
+                assert "timeout" in error.message.lower()
 
     @pytest.mark.asyncio
     async def test_network_error_handling(self, mock_client):
@@ -171,8 +182,16 @@ class TestBaseAPIClient:
             ) as mock_request:
                 mock_request.side_effect = httpx.NetworkError("Connection failed")
 
-                with pytest.raises(httpx.NetworkError):
+                with pytest.raises(ProviderAPIError) as exc_info:
                     await mock_client.get("/unreachable")
+
+                # Verify the ProviderAPIError contains the expected details
+                error = exc_info.value
+                assert error.provider == Provider.GOOGLE
+                assert (
+                    "network" in error.message.lower()
+                    or "connection" in error.message.lower()
+                )
 
     @pytest.mark.asyncio
     async def test_client_without_context_manager(self, mock_client):

@@ -132,7 +132,7 @@ Before committing:
 [x] 8.8 [Run ./fix to fix lint issues.]
 [x] 8.9 [Run `tox -p auto` and fix any errors.]
 
-[ ] 9. Implement Unified WRITE Endpoints (MVP)
+[x] 9. Implement Unified WRITE Endpoints (MVP)
 [x] 9.1 [Implement POST /email/send in the email router. For the MVP, this can be a simple pass-through that determines the provider and makes the API call. The actual queuing can be stubbed or logged for now.]
 [x] 9.2 [Implement POST /calendar/events. This endpoint will need to take unified CalendarEvent data, "de-normalize" it into the provider-specific format, and use the correct API client to create the event.]
 [x] 9.3 [Implement DELETE /calendar/events/{event_id}. This will require logic to find the original provider and use its API to delete the event.]
@@ -141,9 +141,9 @@ Before committing:
 [x] 9.6 [Run `tox -p auto` and fix any errors.]
 
 [ ] 10. Implement Basic Error Handling & Logging
-[ ] 10.1 [Configure structured logging for the application (e.g., using the standard logging library with a JSON formatter).]
-[ ] 10.2 [Create a global exception handler in app/main.py using the @app.exception_handler decorator.]
-[ ] 10.3 [The handler should catch a custom ProviderAPIError, log the full error, and return a standardized 500-level ApiError response to the client.]
+[x] 10.1 [Configure structured logging for the application (e.g., using the standard logging library with a JSON formatter).]
+[x] 10.2 [Create a global exception handler in app/main.py using the @app.exception_handler decorator.]
+[x] 10.3 [The handler should catch a custom ProviderAPIError, log the full error, and return a standardized 500-level ApiError response to the client.]
 [ ] 10.4 [Modify the API clients to catch httpx exceptions and raise the custom ProviderAPIError to be handled by the global handler.]
 [ ] 10.5 [Write unit tests for error handling and logging functionality.]
 [ ] 10.6 [Run ./fix to fix lint issues.]
