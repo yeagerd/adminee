@@ -46,7 +46,7 @@ class EmailThread(BaseModel):
 
 class SendEmailRequest(BaseModel):
     """Request model for sending emails."""
-    
+
     to: List[EmailAddress]
     subject: str
     body: str
@@ -97,7 +97,7 @@ class Calendar(BaseModel):
 
 class CreateCalendarEventRequest(BaseModel):
     """Request model for creating calendar events."""
-    
+
     title: str
     description: Optional[str] = None
     start_time: datetime
