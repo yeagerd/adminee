@@ -15,6 +15,7 @@ pydantic>=2.0,<2.9.0
 pydantic-settings
 pytest
 pytest-asyncio
+fakeredis
 python-dotenv
 pytz
 redis
