@@ -13,13 +13,13 @@ from typing import Any, Dict, List, Optional, cast
 
 from fastapi import APIRouter, HTTPException, Path, Query
 
-from services.office_service.core.api_client_factory import APIClientFactory
-from services.office_service.core.cache_manager import cache_manager, generate_cache_key
-from services.office_service.core.clients.google import GoogleAPIClient
-from services.office_service.core.clients.microsoft import MicrosoftAPIClient
-from services.office_service.core.normalizer import normalize_google_calendar_event
-from services.office_service.models import Provider
-from services.office_service.schemas import (
+from core.api_client_factory import APIClientFactory
+from core.cache_manager import cache_manager, generate_cache_key
+from core.clients.google import GoogleAPIClient
+from core.clients.microsoft import MicrosoftAPIClient
+from core.normalizer import normalize_google_calendar_event
+from models import Provider
+from schemas import (
     ApiResponse,
     CalendarEvent,
     CreateCalendarEventRequest,
@@ -753,90 +753,92 @@ async def fetch_provider_events(
         if client is None:
             raise ValueError(f"Failed to create API client for provider {provider}")
 
-        # Build provider-specific parameters
-        if provider == "google":
-            google_client = cast(GoogleAPIClient, client)
+        # Use client as async context manager
+        async with client:
+            # Build provider-specific parameters
+            if provider == "google":
+                google_client = cast(GoogleAPIClient, client)
 
-            # Handle calendar IDs for Google
-            calendars_to_query = calendar_ids or ["primary"]
-            all_events = []
+                # Handle calendar IDs for Google
+                calendars_to_query = calendar_ids or ["primary"]
+                all_events = []
 
-            for calendar_id in calendars_to_query:
-                try:
-                    # Fetch events from specific calendar
-                    events_response = await google_client.get_events(
-                        calendar_id=calendar_id,
-                        time_min=start_dt.isoformat(),
-                        time_max=end_dt.isoformat(),
-                        max_results=limit,
-                        page_token=None,
-                    )
-                    events = events_response.get("items", [])
-
-                    # Normalize events
-                    for event_data in events:
-                        # Get calendar info (simplified)
-                        calendar_name = f"Calendar {calendar_id}"
-                        account_email = f"{user_id}@gmail.com"  # Placeholder
-                        account_name = f"Google Account ({user_id})"  # Placeholder
-
-                        normalized_event = normalize_google_calendar_event(
-                            event_data, account_email, account_name, calendar_name
+                for calendar_id in calendars_to_query:
+                    try:
+                        # Fetch events from specific calendar
+                        events_response = await google_client.get_events(
+                            calendar_id=calendar_id,
+                            time_min=start_dt.isoformat(),
+                            time_max=end_dt.isoformat(),
+                            max_results=limit,
+                            page_token=None,
                         )
-                        all_events.append(normalized_event)
+                        events = events_response.get("items", [])
 
-                except Exception as calendar_error:
-                    logger.warning(
-                        f"[{request_id}] Failed to fetch from Google calendar {calendar_id}: {calendar_error}"
+                        # Normalize events
+                        for event_data in events:
+                            # Get calendar info (simplified)
+                            calendar_name = f"Calendar {calendar_id}"
+                            account_email = f"{user_id}@gmail.com"  # Placeholder
+                            account_name = f"Google Account ({user_id})"  # Placeholder
+
+                            normalized_event = normalize_google_calendar_event(
+                                event_data, account_email, account_name, calendar_name
+                            )
+                            all_events.append(normalized_event)
+
+                    except Exception as calendar_error:
+                        logger.warning(
+                            f"[{request_id}] Failed to fetch from Google calendar {calendar_id}: {calendar_error}"
+                        )
+                        continue
+
+                normalized_events = all_events[:limit]  # Apply limit after aggregation
+
+            elif provider == "microsoft":
+                microsoft_client = cast(MicrosoftAPIClient, client)
+
+                # Fetch events from Outlook
+                events_response = await microsoft_client.get_events(
+                    calendar_id=None,  # Use primary calendar
+                    start_time=start_dt.isoformat(),
+                    end_time=end_dt.isoformat(),
+                    top=limit,
+                    skip=0,
+                    order_by="start/dateTime asc",
+                )
+                events = events_response.get("value", [])
+
+                # Normalize events
+                normalized_events = []
+                for event_data in events:
+                    # Get user account info (simplified)
+                    account_email = f"{user_id}@outlook.com"  # Placeholder
+                    account_name = f"Microsoft Account ({user_id})"  # Placeholder
+                    calendar_name = "Default Calendar"  # Placeholder
+
+                    # Convert Microsoft event to Google format for normalization
+                    google_format_event = convert_microsoft_event_to_google_format(
+                        event_data
                     )
-                    continue
 
-            normalized_events = all_events[:limit]  # Apply limit after aggregation
+                    normalized_event = normalize_google_calendar_event(
+                        google_format_event, account_email, account_name, calendar_name
+                    )
+                    # Update provider to Microsoft
+                    normalized_event.provider = Provider.MICROSOFT
+                    normalized_event.id = f"microsoft_{event_data['id']}"
+                    normalized_event.provider_event_id = event_data["id"]
 
-        elif provider == "microsoft":
-            microsoft_client = cast(MicrosoftAPIClient, client)
+                    normalized_events.append(normalized_event)
 
-            # Fetch events from Outlook
-            events_response = await microsoft_client.get_events(
-                calendar_id=None,  # Use primary calendar
-                start_time=start_dt.isoformat(),
-                end_time=end_dt.isoformat(),
-                top=limit,
-                skip=0,
-                order_by="start/dateTime asc",
+            else:
+                raise ValueError(f"Unsupported provider: {provider}")
+
+            logger.info(
+                f"[{request_id}] Successfully fetched {len(normalized_events)} events from {provider}"
             )
-            events = events_response.get("value", [])
-
-            # Normalize events
-            normalized_events = []
-            for event_data in events:
-                # Get user account info (simplified)
-                account_email = f"{user_id}@outlook.com"  # Placeholder
-                account_name = f"Microsoft Account ({user_id})"  # Placeholder
-                calendar_name = "Default Calendar"  # Placeholder
-
-                # Convert Microsoft event to Google format for normalization
-                google_format_event = convert_microsoft_event_to_google_format(
-                    event_data
-                )
-
-                normalized_event = normalize_google_calendar_event(
-                    google_format_event, account_email, account_name, calendar_name
-                )
-                # Update provider to Microsoft
-                normalized_event.provider = Provider.MICROSOFT
-                normalized_event.id = f"microsoft_{event_data['id']}"
-                normalized_event.provider_event_id = event_data["id"]
-
-                normalized_events.append(normalized_event)
-
-        else:
-            raise ValueError(f"Unsupported provider: {provider}")
-
-        logger.info(
-            f"[{request_id}] Successfully fetched {len(normalized_events)} events from {provider}"
-        )
-        return normalized_events, provider
+            return normalized_events, provider
 
     except Exception as e:
         logger.error(f"[{request_id}] Failed to fetch events from {provider}: {e}")
@@ -864,50 +866,52 @@ async def fetch_single_event(
         if client is None:
             raise ValueError(f"Failed to create API client for provider {provider}")
 
-        if provider == "google":
-            google_client = cast(GoogleAPIClient, client)
-            # For now, we'll need to implement get_event method or use a workaround
-            # Fetch event from Google Calendar by making a direct API call
-            response = await google_client.get(
-                f"/calendar/v3/calendars/primary/events/{original_event_id}"
-            )
-            event = response.json()
+        # Use client as async context manager
+        async with client:
+            if provider == "google":
+                google_client = cast(GoogleAPIClient, client)
+                # For now, we'll need to implement get_event method or use a workaround
+                # Fetch event from Google Calendar by making a direct API call
+                response = await google_client.get(
+                    f"/calendar/v3/calendars/primary/events/{original_event_id}"
+                )
+                event = response.json()
 
-            # Get user account info (simplified)
-            account_email = f"{user_id}@gmail.com"  # Placeholder
-            account_name = f"Google Account ({user_id})"  # Placeholder
-            calendar_name = "Primary Calendar"  # Placeholder
+                # Get user account info (simplified)
+                account_email = f"{user_id}@gmail.com"  # Placeholder
+                account_name = f"Google Account ({user_id})"  # Placeholder
+                calendar_name = "Primary Calendar"  # Placeholder
 
-            return normalize_google_calendar_event(
-                event, account_email, account_name, calendar_name
-            )
+                return normalize_google_calendar_event(
+                    event, account_email, account_name, calendar_name
+                )
 
-        elif provider == "microsoft":
-            microsoft_client = cast(MicrosoftAPIClient, client)
-            # Fetch event from Microsoft Calendar by making a direct API call
-            response = await microsoft_client.get(f"/me/events/{original_event_id}")
-            event = response.json()
+            elif provider == "microsoft":
+                microsoft_client = cast(MicrosoftAPIClient, client)
+                # Fetch event from Microsoft Calendar by making a direct API call
+                response = await microsoft_client.get(f"/me/events/{original_event_id}")
+                event = response.json()
 
-            # Get user account info (simplified)
-            account_email = f"{user_id}@outlook.com"  # Placeholder
-            account_name = f"Microsoft Account ({user_id})"  # Placeholder
-            calendar_name = "Default Calendar"  # Placeholder
+                # Get user account info (simplified)
+                account_email = f"{user_id}@outlook.com"  # Placeholder
+                account_name = f"Microsoft Account ({user_id})"  # Placeholder
+                calendar_name = "Default Calendar"  # Placeholder
 
-            # Convert Microsoft event to Google format for normalization
-            google_format_event = convert_microsoft_event_to_google_format(event)
+                # Convert Microsoft event to Google format for normalization
+                google_format_event = convert_microsoft_event_to_google_format(event)
 
-            normalized_event = normalize_google_calendar_event(
-                google_format_event, account_email, account_name, calendar_name
-            )
-            # Update provider to Microsoft
-            normalized_event.provider = Provider.MICROSOFT
-            normalized_event.id = f"microsoft_{event['id']}"
-            normalized_event.provider_event_id = event["id"]
+                normalized_event = normalize_google_calendar_event(
+                    google_format_event, account_email, account_name, calendar_name
+                )
+                # Update provider to Microsoft
+                normalized_event.provider = Provider.MICROSOFT
+                normalized_event.id = f"microsoft_{event['id']}"
+                normalized_event.provider_event_id = event["id"]
 
-            return normalized_event
+                return normalized_event
 
-        else:
-            raise ValueError(f"Unsupported provider: {provider}")
+            else:
+                raise ValueError(f"Unsupported provider: {provider}")
 
     except Exception as e:
         logger.error(

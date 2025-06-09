@@ -5,20 +5,20 @@ import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from services.office_service.api.calendar import router as calendar_router
-from services.office_service.api.email import router as email_router
-from services.office_service.api.files import router as files_router
-from services.office_service.api.health import router as health_router
-from services.office_service.core.config import settings
-from services.office_service.core.exceptions import (
+from api.calendar import router as calendar_router
+from api.email import router as email_router
+from api.files import router as files_router
+from api.health import router as health_router
+from core.config import settings
+from core.exceptions import (
     OfficeServiceError,
     ProviderAPIError,
     RateLimitError,
     TokenError,
     ValidationError,
 )
-from services.office_service.core.logging_config import setup_logging
-from services.office_service.schemas import ApiError
+from core.logging_config import setup_logging
+from schemas import ApiError
 
 # Initialize logging
 setup_logging()

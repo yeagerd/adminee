@@ -10,6 +10,12 @@ from unittest.mock import MagicMock, patch
 
 import fakeredis.aioredis
 import pytest
+import sys
+import os
+
+# Add the parent directory to sys.path to enable relative imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from app.main import app
 from core.token_manager import TokenData
 from fastapi.testclient import TestClient
@@ -325,7 +331,7 @@ def mock_http_responses(
     def create_response(response_data, status_code=200):
         mock_response = MagicMock()
         mock_response.status_code = status_code
-        mock_response.json = lambda: response_data
+        mock_response.json.return_value = response_data  # Use return_value instead of lambda
         mock_response.raise_for_status = lambda: None
         return mock_response
 
@@ -444,15 +450,20 @@ def integration_test_setup(
     async def mock_microsoft_get_drive_items(**kwargs):
         return mock_microsoft_drive_response
 
+    # Create an async version of the token mock
+    async def async_mock_successful_tokens(user_id, provider, scopes=None):
+        return mock_successful_tokens(user_id, provider, scopes)
+
     with (
         patch(
             "core.token_manager.TokenManager.get_user_token",
-            side_effect=mock_successful_tokens,
+            side_effect=async_mock_successful_tokens,
         ),
         patch("core.cache_manager.cache_manager.get_from_cache", return_value=None),
         patch("core.cache_manager.cache_manager.set_to_cache", return_value=True),
         patch("httpx.AsyncClient.request", side_effect=mock_http_responses),
-        patch("core.clients.base.BaseAPIClient.__aenter__", return_value=None),
+        patch("core.clients.base.BaseAPIClient.__aenter__", side_effect=lambda self: self),
+        patch("core.clients.base.BaseAPIClient.__aexit__", return_value=None),
         patch("core.clients.google.GoogleAPIClient.get_messages", side_effect=mock_google_get_messages),
         patch("core.clients.microsoft.MicrosoftAPIClient.get_messages", side_effect=mock_microsoft_get_messages),
         patch("core.clients.google.GoogleAPIClient.get_message", side_effect=mock_google_get_message),

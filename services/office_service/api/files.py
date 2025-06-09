@@ -12,9 +12,9 @@ from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Path, Query
 
-from services.office_service.core.api_client_factory import APIClientFactory
-from services.office_service.core.cache_manager import cache_manager, generate_cache_key
-from services.office_service.schemas import ApiResponse
+from core.api_client_factory import APIClientFactory
+from core.cache_manager import cache_manager, generate_cache_key
+from schemas import ApiResponse
 
 logger = logging.getLogger(__name__)
 
