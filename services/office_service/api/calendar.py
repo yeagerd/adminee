@@ -781,10 +781,14 @@ async def fetch_provider_events(
                             # Handle case where user_id is already an email address
                             if "@" in user_id:
                                 account_email = user_id
-                                account_name = f"Google Account ({user_id.split('@')[0]})"
+                                account_name = (
+                                    f"Google Account ({user_id.split('@')[0]})"
+                                )
                             else:
                                 account_email = f"{user_id}@gmail.com"  # Placeholder
-                                account_name = f"Google Account ({user_id})"  # Placeholder
+                                account_name = (
+                                    f"Google Account ({user_id})"  # Placeholder
+                                )
 
                             normalized_event = normalize_google_calendar_event(
                                 event_data, account_email, account_name, calendar_name

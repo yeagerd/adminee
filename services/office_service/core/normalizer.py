@@ -381,13 +381,15 @@ def normalize_microsoft_drive_file(
         # Extract basic file info
         file_id = raw_data.get("id")
         if not file_id:
-            raise ValueError("Missing required field 'id' in Microsoft OneDrive response")
+            raise ValueError(
+                "Missing required field 'id' in Microsoft OneDrive response"
+            )
 
         name = raw_data.get("name", "")
-        
+
         # Microsoft stores size as an integer directly
         size = raw_data.get("size")
-        
+
         # Parse timestamps
         created_time = _parse_iso_datetime(raw_data.get("createdDateTime"))
         modified_time = _parse_iso_datetime(raw_data.get("lastModifiedDateTime"))
@@ -396,7 +398,7 @@ def normalize_microsoft_drive_file(
         web_view_link = raw_data.get("webUrl")
         download_link = raw_data.get("@microsoft.graph.downloadUrl")
         thumbnail_link = None
-        
+
         # Extract thumbnail from thumbnails array if available
         thumbnails = raw_data.get("thumbnails", [])
         if thumbnails and len(thumbnails) > 0:
@@ -409,7 +411,7 @@ def normalize_microsoft_drive_file(
         # Get MIME type - Microsoft stores it in file.mimeType
         file_data = raw_data.get("file", {})
         mime_type = file_data.get("mimeType", "")
-        
+
         # If it's a folder, use the standard folder MIME type
         if is_folder:
             mime_type = "application/vnd.microsoft.onedrive.folder"
