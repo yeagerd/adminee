@@ -393,6 +393,10 @@ def mock_http_responses(
                     "user_id": user_id
                 })
 
+        # Handle individual message requests specifically
+        if "/messages/msg-1" in url and "gmail" in url:
+            return create_response(mock_google_email_response["messages"][0])
+
         for pattern, response in response_map.items():
             if pattern in url:
                 return response
