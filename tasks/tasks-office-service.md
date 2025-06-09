@@ -140,14 +140,14 @@ Before committing:
 [x] 9.5 [Run ./fix to fix lint issues.]
 [x] 9.6 [Run `tox -p auto` and fix any errors.]
 
-[ ] 10. Implement Basic Error Handling & Logging
+[x] 10. Implement Basic Error Handling & Logging
 [x] 10.1 [Configure structured logging for the application (e.g., using the standard logging library with a JSON formatter).]
 [x] 10.2 [Create a global exception handler in app/main.py using the @app.exception_handler decorator.]
 [x] 10.3 [The handler should catch a custom ProviderAPIError, log the full error, and return a standardized 500-level ApiError response to the client.]
-[ ] 10.4 [Modify the API clients to catch httpx exceptions and raise the custom ProviderAPIError to be handled by the global handler.]
-[ ] 10.5 [Write unit tests for error handling and logging functionality.]
-[ ] 10.6 [Run ./fix to fix lint issues.]
-[ ] 10.7 [Run `tox -p auto` and fix any errors.]
+[x] 10.4 [Modify the API clients to catch httpx exceptions and raise the custom ProviderAPIError to be handled by the global handler.]
+[x] 10.5 [Write unit tests for error handling and logging functionality.]
+[x] 10.6 [Run ./fix to fix lint issues.]
+[x] 10.7 [Run `tox -p auto` and fix any errors.]
 
 [ ] 11. Testing and Documentation
 [ ] 11.1 [Create a tests/ directory with pytest.]
@@ -191,6 +191,7 @@ Before committing:
 - `services/office_service/tests/test_token_manager.py` - Unit tests for TokenManager (caching, error handling, HTTP client integration)
 - `services/office_service/tests/test_api_clients.py` - Unit tests for API clients and factory (mocked HTTP responses, error handling)
 - `services/office_service/tests/test_api_email.py` - Unit tests for email API endpoints
+- `services/office_service/tests/test_error_handling.py` - Unit tests for error handling and logging functionality (global exception handlers, API client error handling)
 
 Next Steps (After MVP)
 
