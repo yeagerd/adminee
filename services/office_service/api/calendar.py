@@ -22,6 +22,7 @@ from services.office_service.models import Provider
 from services.office_service.schemas import (
     ApiResponse,
     CalendarEvent,
+    CreateCalendarEventRequest,
 )
 
 logger = logging.getLogger(__name__)
@@ -324,6 +325,385 @@ async def get_calendar_event(
     except Exception as e:
         logger.error(f"[{request_id}] Event detail request failed: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch event: {str(e)}")
+
+
+@router.post("/events", response_model=ApiResponse)
+async def create_calendar_event(
+    event_data: CreateCalendarEventRequest,
+    user_id: str = Query(..., description="ID of the user creating the event"),
+):
+    """
+    Create a calendar event in a specific provider.
+
+    This endpoint takes unified CalendarEvent data, "de-normalizes" it into the 
+    provider-specific format, and uses the correct API client to create the event.
+
+    Args:
+        event_data: Event content and configuration
+        user_id: ID of the user creating the event
+
+    Returns:
+        ApiResponse with created event details
+    """
+    request_id = str(uuid.uuid4())
+    start_time = datetime.now(timezone.utc)
+
+    logger.info(
+        f"[{request_id}] Create calendar event request: user_id={user_id}, "
+        f"title='{event_data.title}', provider={event_data.provider}"
+    )
+
+    try:
+        # Determine provider (default to google if not specified)
+        provider = event_data.provider or "google"
+        
+        # Validate provider
+        if provider.lower() not in ["google", "microsoft"]:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid provider: {provider}. Must be 'google' or 'microsoft'"
+            )
+
+        provider = provider.lower()
+
+        # Get API client for provider
+        client = await api_client_factory.create_client(user_id, provider)
+        if client is None:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Failed to create API client for provider {provider}. "
+                       "User may not have connected this provider."
+            )
+
+        # Create event based on provider
+        created_event_data = None
+        
+        async with client:
+            if provider == "google":
+                google_client = cast(GoogleAPIClient, client)
+                created_event_data = await create_google_event(
+                    request_id, google_client, event_data
+                )
+            elif provider == "microsoft":
+                microsoft_client = cast(MicrosoftAPIClient, client)
+                created_event_data = await create_microsoft_event(
+                    request_id, microsoft_client, event_data
+                )
+
+        # Build response
+        response_data = {
+            "event_id": created_event_data.get("id") if created_event_data else None,
+            "provider": provider,
+            "status": "created",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "request_metadata": {
+                "user_id": user_id,
+                "title": event_data.title,
+                "start_time": event_data.start_time.isoformat(),
+                "end_time": event_data.end_time.isoformat(),
+                "provider": provider,
+            },
+        }
+
+        # Calculate response time
+        end_time = datetime.now(timezone.utc)
+        response_time_ms = int((end_time - start_time).total_seconds() * 1000)
+
+        logger.info(
+            f"[{request_id}] Calendar event created successfully in {response_time_ms}ms via {provider}"
+        )
+
+        return ApiResponse(
+            success=True,
+            data=response_data,
+            cache_hit=False,
+            provider_used=Provider.GOOGLE if provider == "google" else Provider.MICROSOFT,
+            request_id=request_id,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[{request_id}] Create calendar event request failed: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to create calendar event: {str(e)}"
+        )
+
+
+async def create_google_event(
+    request_id: str, 
+    client: GoogleAPIClient, 
+    event_data: CreateCalendarEventRequest
+) -> Dict[str, Any]:
+    """
+    Create a calendar event via Google Calendar API.
+
+    Args:
+        request_id: Request tracking ID
+        client: Google API client
+        event_data: Event content and configuration
+
+    Returns:
+        Dictionary containing created event details
+    """
+    try:
+        # Build Google Calendar event data
+        calendar_id = event_data.calendar_id or "primary"
+        
+        # Convert attendees to Google format
+        attendees = []
+        if event_data.attendees:
+            attendees = [
+                {"email": attendee.email, "displayName": attendee.name or attendee.email}
+                for attendee in event_data.attendees
+            ]
+
+        # Build event data in Google Calendar format
+        google_event_data = {
+            "summary": event_data.title,
+            "description": event_data.description or "",
+            "location": event_data.location or "",
+            "start": {
+                "dateTime": event_data.start_time.isoformat(),
+                "timeZone": "UTC",
+            },
+            "end": {
+                "dateTime": event_data.end_time.isoformat(),
+                "timeZone": "UTC",
+            },
+            "attendees": attendees,
+            "visibility": event_data.visibility or "default",
+            "status": event_data.status or "confirmed",
+        }
+
+        # Handle all-day events
+        if event_data.all_day:
+            start_date = event_data.start_time.date().isoformat()
+            end_date = event_data.end_time.date().isoformat()
+            google_event_data["start"] = {"date": start_date}
+            google_event_data["end"] = {"date": end_date}
+
+        # Create the event
+        result = await client.create_event(calendar_id, google_event_data)
+            
+        logger.info(f"[{request_id}] Google Calendar event created successfully: {result.get('id')}")
+        return result
+
+    except Exception as e:
+        logger.error(f"[{request_id}] Failed to create Google Calendar event: {e}")
+        raise
+
+
+async def create_microsoft_event(
+    request_id: str, 
+    client: MicrosoftAPIClient, 
+    event_data: CreateCalendarEventRequest
+) -> Dict[str, Any]:
+    """
+    Create a calendar event via Microsoft Graph API.
+
+    Args:
+        request_id: Request tracking ID
+        client: Microsoft API client
+        event_data: Event content and configuration
+
+    Returns:
+        Dictionary containing created event details
+    """
+    try:
+        # Convert attendees to Microsoft format
+        attendees = []
+        if event_data.attendees:
+            attendees = [
+                {
+                    "emailAddress": {
+                        "address": attendee.email,
+                        "name": attendee.name or attendee.email
+                    },
+                    "type": "required"
+                }
+                for attendee in event_data.attendees
+            ]
+
+        # Build event data in Microsoft Graph format
+        microsoft_event_data = {
+            "subject": event_data.title,
+            "body": {
+                "contentType": "Text",
+                "content": event_data.description or "",
+            },
+            "start": {
+                "dateTime": event_data.start_time.isoformat(),
+                "timeZone": "UTC",
+            },
+            "end": {
+                "dateTime": event_data.end_time.isoformat(),
+                "timeZone": "UTC",
+            },
+            "location": {
+                "displayName": event_data.location or "",
+            },
+            "attendees": attendees,
+            "showAs": "busy",  # Default availability
+            "sensitivity": "normal",  # Default sensitivity
+        }
+
+        # Handle all-day events
+        if event_data.all_day:
+            microsoft_event_data["isAllDay"] = True
+
+        # Map visibility to Microsoft sensitivity
+        if event_data.visibility == "private":
+            microsoft_event_data["sensitivity"] = "private"
+        elif event_data.visibility == "public":
+            microsoft_event_data["sensitivity"] = "normal"
+
+        # Create the event
+        result = await client.create_event(microsoft_event_data, event_data.calendar_id)
+            
+        logger.info(f"[{request_id}] Microsoft Calendar event created successfully: {result.get('id')}")
+        return result
+
+    except Exception as e:
+        logger.error(f"[{request_id}] Failed to create Microsoft Calendar event: {e}")
+        raise
+
+
+@router.delete("/events/{event_id}", response_model=ApiResponse)
+async def delete_calendar_event(
+    event_id: str = Path(..., description="Event ID (format: provider_originalId)"),
+    user_id: str = Query(..., description="ID of the user who owns the event"),
+):
+    """
+    Delete a calendar event by ID.
+
+    This endpoint requires logic to find the original provider from the event ID
+    and use its API to delete the event.
+
+    Args:
+        event_id: Event ID with provider prefix (e.g., "google_abc123")
+        user_id: ID of the user who owns the event
+
+    Returns:
+        ApiResponse confirming deletion
+    """
+    request_id = str(uuid.uuid4())
+    start_time = datetime.now(timezone.utc)
+
+    logger.info(
+        f"[{request_id}] Delete calendar event request: event_id={event_id}, user_id={user_id}"
+    )
+
+    try:
+        # Parse provider from event_id
+        provider, original_event_id = parse_event_id(event_id)
+
+        # Get API client for provider
+        client = await api_client_factory.create_client(user_id, provider)
+        if client is None:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Failed to create API client for provider {provider}. "
+                       "User may not have connected this provider."
+            )
+
+        # Delete event based on provider
+        async with client:
+            if provider == "google":
+                google_client = cast(GoogleAPIClient, client)
+                await delete_google_event(request_id, google_client, original_event_id)
+            elif provider == "microsoft":
+                microsoft_client = cast(MicrosoftAPIClient, client)
+                await delete_microsoft_event(request_id, microsoft_client, original_event_id)
+
+        # Build response
+        response_data = {
+            "event_id": event_id,
+            "provider": provider,
+            "status": "deleted",
+            "deleted_at": datetime.now(timezone.utc).isoformat(),
+            "request_metadata": {
+                "user_id": user_id,
+                "event_id": event_id,
+                "provider": provider,
+            },
+        }
+
+        # Calculate response time
+        end_time = datetime.now(timezone.utc)
+        response_time_ms = int((end_time - start_time).total_seconds() * 1000)
+
+        logger.info(
+            f"[{request_id}] Calendar event deleted successfully in {response_time_ms}ms via {provider}"
+        )
+
+        return ApiResponse(
+            success=True,
+            data=response_data,
+            cache_hit=False,
+            provider_used=Provider.GOOGLE if provider == "google" else Provider.MICROSOFT,
+            request_id=request_id,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[{request_id}] Delete calendar event request failed: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete calendar event: {str(e)}"
+        )
+
+
+async def delete_google_event(
+    request_id: str, 
+    client: GoogleAPIClient, 
+    event_id: str,
+    calendar_id: str = "primary"
+) -> None:
+    """
+    Delete a calendar event via Google Calendar API.
+
+    Args:
+        request_id: Request tracking ID
+        client: Google API client
+        event_id: Google Calendar event ID
+        calendar_id: Calendar ID (defaults to primary)
+    """
+    try:
+        # Delete the event
+        await client.delete_event(calendar_id, event_id)
+            
+        logger.info(f"[{request_id}] Google Calendar event deleted successfully: {event_id}")
+
+    except Exception as e:
+        logger.error(f"[{request_id}] Failed to delete Google Calendar event: {e}")
+        raise
+
+
+async def delete_microsoft_event(
+    request_id: str, 
+    client: MicrosoftAPIClient, 
+    event_id: str,
+    calendar_id: Optional[str] = None
+) -> None:
+    """
+    Delete a calendar event via Microsoft Graph API.
+
+    Args:
+        request_id: Request tracking ID
+        client: Microsoft API client
+        event_id: Microsoft Graph event ID
+        calendar_id: Calendar ID (optional, uses primary if not specified)
+    """
+    try:
+        # Delete the event
+        await client.delete_event(event_id, calendar_id)
+            
+        logger.info(f"[{request_id}] Microsoft Calendar event deleted successfully: {event_id}")
+
+    except Exception as e:
+        logger.error(f"[{request_id}] Failed to delete Microsoft Calendar event: {e}")
+        raise
 
 
 async def fetch_provider_events(
