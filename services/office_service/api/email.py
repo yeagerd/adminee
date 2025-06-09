@@ -21,8 +21,8 @@ from services.office_service.core.normalizer import (
     normalize_google_email,
     normalize_microsoft_email,
 )
-from services.office_service.schemas import ApiResponse, EmailMessage, SendEmailRequest
 from services.office_service.models import Provider
+from services.office_service.schemas import ApiResponse, EmailMessage, SendEmailRequest
 
 logger = logging.getLogger(__name__)
 
@@ -316,8 +316,8 @@ async def send_email(
     """
     Send an email through a specific provider.
 
-    For the MVP, this is a simple pass-through that determines the provider 
-    and makes the API call. In a production system, this would typically 
+    For the MVP, this is a simple pass-through that determines the provider
+    and makes the API call. In a production system, this would typically
     queue the email for asynchronous processing.
 
     Args:
@@ -338,12 +338,12 @@ async def send_email(
     try:
         # Determine provider (default to google if not specified)
         provider = email_data.provider or "google"
-        
+
         # Validate provider
         if provider.lower() not in ["google", "microsoft"]:
             raise HTTPException(
-                status_code=400, 
-                detail=f"Invalid provider: {provider}. Must be 'google' or 'microsoft'"
+                status_code=400,
+                detail=f"Invalid provider: {provider}. Must be 'google' or 'microsoft'",
             )
 
         provider = provider.lower()
@@ -354,12 +354,12 @@ async def send_email(
             raise HTTPException(
                 status_code=503,
                 detail=f"Failed to create API client for provider {provider}. "
-                       "User may not have connected this provider."
+                "User may not have connected this provider.",
             )
 
         # Send email based on provider
         sent_message_data = None
-        
+
         async with client:
             if provider == "google":
                 google_client = cast(GoogleAPIClient, client)
@@ -398,7 +398,9 @@ async def send_email(
             success=True,
             data=response_data,
             cache_hit=False,
-            provider_used=Provider.GOOGLE if provider == "google" else Provider.MICROSOFT,
+            provider_used=(
+                Provider.GOOGLE if provider == "google" else Provider.MICROSOFT
+            ),
             request_id=request_id,
         )
 
@@ -406,15 +408,11 @@ async def send_email(
         raise
     except Exception as e:
         logger.error(f"[{request_id}] Send email request failed: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to send email: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
 
 
 async def send_gmail_message(
-    request_id: str, 
-    client: GoogleAPIClient, 
-    email_data: SendEmailRequest
+    request_id: str, client: GoogleAPIClient, email_data: SendEmailRequest
 ) -> Dict[str, Any]:
     """
     Send an email via Gmail API.
@@ -431,11 +429,13 @@ async def send_gmail_message(
         # Build Gmail message data
         # For simplicity in MVP, we'll create a basic message structure
         # In production, this would handle HTML formatting, attachments, etc.
-        
+
         # Convert to Gmail API format
         to_addresses = [addr.email for addr in email_data.to]
         cc_addresses = [addr.email for addr in email_data.cc] if email_data.cc else []
-        bcc_addresses = [addr.email for addr in email_data.bcc] if email_data.bcc else []
+        bcc_addresses = (
+            [addr.email for addr in email_data.bcc] if email_data.bcc else []
+        )
 
         # Build basic email content (simplified for MVP)
         message_content = {
@@ -450,8 +450,10 @@ async def send_gmail_message(
 
         # Send the message
         result = await client.send_message(message_content)
-            
-        logger.info(f"[{request_id}] Gmail message sent successfully: {result.get('id')}")
+
+        logger.info(
+            f"[{request_id}] Gmail message sent successfully: {result.get('id')}"
+        )
         return result
 
     except Exception as e:
@@ -460,9 +462,7 @@ async def send_gmail_message(
 
 
 async def send_outlook_message(
-    request_id: str, 
-    client: MicrosoftAPIClient, 
-    email_data: SendEmailRequest
+    request_id: str, client: MicrosoftAPIClient, email_data: SendEmailRequest
 ) -> Dict[str, Any]:
     """
     Send an email via Microsoft Graph API.
@@ -481,18 +481,28 @@ async def send_outlook_message(
             {"emailAddress": {"address": addr.email, "name": addr.name or addr.email}}
             for addr in email_data.to
         ]
-        
+
         cc_recipients = []
         if email_data.cc:
             cc_recipients = [
-                {"emailAddress": {"address": addr.email, "name": addr.name or addr.email}}
+                {
+                    "emailAddress": {
+                        "address": addr.email,
+                        "name": addr.name or addr.email,
+                    }
+                }
                 for addr in email_data.cc
             ]
-            
+
         bcc_recipients = []
         if email_data.bcc:
             bcc_recipients = [
-                {"emailAddress": {"address": addr.email, "name": addr.name or addr.email}}
+                {
+                    "emailAddress": {
+                        "address": addr.email,
+                        "name": addr.name or addr.email,
+                    }
+                }
                 for addr in email_data.bcc
             ]
 
@@ -513,18 +523,17 @@ async def send_outlook_message(
         if email_data.importance:
             importance_map = {"low": "low", "normal": "normal", "high": "high"}
             if email_data.importance.lower() in importance_map:
-                message_data["message"]["importance"] = importance_map[email_data.importance.lower()]
+                message_data["message"]["importance"] = importance_map[
+                    email_data.importance.lower()
+                ]
 
         # Send the message
         await client.send_message(message_data)
-            
+
         # Microsoft Graph sendMail doesn't return the sent message details
         # We'll return a simple confirmation
-        result = {
-            "id": f"outlook_sent_{request_id}",
-            "status": "sent"
-        }
-        
+        result = {"id": f"outlook_sent_{request_id}", "status": "sent"}
+
         logger.info(f"[{request_id}] Outlook message sent successfully")
         return result
 
@@ -542,21 +551,21 @@ def _build_gmail_raw_message(
 ) -> str:
     """
     Build a raw Gmail message in RFC 2822 format.
-    
+
     This is a simplified implementation for the MVP.
     In production, you'd use a proper email library like email.mime.
     """
     import base64
     from email.mime.text import MIMEText
-    
+
     # Create MIMEText message
     msg = MIMEText(body)
-    msg['To'] = ', '.join(to_addresses)
+    msg["To"] = ", ".join(to_addresses)
     if cc_addresses:
-        msg['Cc'] = ', '.join(cc_addresses)
+        msg["Cc"] = ", ".join(cc_addresses)
     if bcc_addresses:
-        msg['Bcc'] = ', '.join(bcc_addresses)
-    msg['Subject'] = subject
+        msg["Bcc"] = ", ".join(bcc_addresses)
+    msg["Subject"] = subject
 
     # Encode to base64 for Gmail API
     raw_message = base64.urlsafe_b64encode(msg.as_bytes()).decode()

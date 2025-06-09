@@ -335,7 +335,7 @@ async def create_calendar_event(
     """
     Create a calendar event in a specific provider.
 
-    This endpoint takes unified CalendarEvent data, "de-normalizes" it into the 
+    This endpoint takes unified CalendarEvent data, "de-normalizes" it into the
     provider-specific format, and uses the correct API client to create the event.
 
     Args:
@@ -356,12 +356,12 @@ async def create_calendar_event(
     try:
         # Determine provider (default to google if not specified)
         provider = event_data.provider or "google"
-        
+
         # Validate provider
         if provider.lower() not in ["google", "microsoft"]:
             raise HTTPException(
-                status_code=400, 
-                detail=f"Invalid provider: {provider}. Must be 'google' or 'microsoft'"
+                status_code=400,
+                detail=f"Invalid provider: {provider}. Must be 'google' or 'microsoft'",
             )
 
         provider = provider.lower()
@@ -372,12 +372,12 @@ async def create_calendar_event(
             raise HTTPException(
                 status_code=503,
                 detail=f"Failed to create API client for provider {provider}. "
-                       "User may not have connected this provider."
+                "User may not have connected this provider.",
             )
 
         # Create event based on provider
         created_event_data = None
-        
+
         async with client:
             if provider == "google":
                 google_client = cast(GoogleAPIClient, client)
@@ -417,7 +417,9 @@ async def create_calendar_event(
             success=True,
             data=response_data,
             cache_hit=False,
-            provider_used=Provider.GOOGLE if provider == "google" else Provider.MICROSOFT,
+            provider_used=(
+                Provider.GOOGLE if provider == "google" else Provider.MICROSOFT
+            ),
             request_id=request_id,
         )
 
@@ -431,9 +433,7 @@ async def create_calendar_event(
 
 
 async def create_google_event(
-    request_id: str, 
-    client: GoogleAPIClient, 
-    event_data: CreateCalendarEventRequest
+    request_id: str, client: GoogleAPIClient, event_data: CreateCalendarEventRequest
 ) -> Dict[str, Any]:
     """
     Create a calendar event via Google Calendar API.
@@ -449,12 +449,15 @@ async def create_google_event(
     try:
         # Build Google Calendar event data
         calendar_id = event_data.calendar_id or "primary"
-        
+
         # Convert attendees to Google format
         attendees = []
         if event_data.attendees:
             attendees = [
-                {"email": attendee.email, "displayName": attendee.name or attendee.email}
+                {
+                    "email": attendee.email,
+                    "displayName": attendee.name or attendee.email,
+                }
                 for attendee in event_data.attendees
             ]
 
@@ -485,8 +488,10 @@ async def create_google_event(
 
         # Create the event
         result = await client.create_event(calendar_id, google_event_data)
-            
-        logger.info(f"[{request_id}] Google Calendar event created successfully: {result.get('id')}")
+
+        logger.info(
+            f"[{request_id}] Google Calendar event created successfully: {result.get('id')}"
+        )
         return result
 
     except Exception as e:
@@ -495,9 +500,7 @@ async def create_google_event(
 
 
 async def create_microsoft_event(
-    request_id: str, 
-    client: MicrosoftAPIClient, 
-    event_data: CreateCalendarEventRequest
+    request_id: str, client: MicrosoftAPIClient, event_data: CreateCalendarEventRequest
 ) -> Dict[str, Any]:
     """
     Create a calendar event via Microsoft Graph API.
@@ -512,21 +515,21 @@ async def create_microsoft_event(
     """
     try:
         # Convert attendees to Microsoft format
-        attendees = []
+        attendees: List[Dict[str, Any]] = []
         if event_data.attendees:
             attendees = [
                 {
                     "emailAddress": {
                         "address": attendee.email,
-                        "name": attendee.name or attendee.email
+                        "name": attendee.name or attendee.email,
                     },
-                    "type": "required"
+                    "type": "required",
                 }
                 for attendee in event_data.attendees
             ]
 
         # Build event data in Microsoft Graph format
-        microsoft_event_data = {
+        microsoft_event_data: Dict[str, Any] = {
             "subject": event_data.title,
             "body": {
                 "contentType": "Text",
@@ -560,8 +563,10 @@ async def create_microsoft_event(
 
         # Create the event
         result = await client.create_event(microsoft_event_data, event_data.calendar_id)
-            
-        logger.info(f"[{request_id}] Microsoft Calendar event created successfully: {result.get('id')}")
+
+        logger.info(
+            f"[{request_id}] Microsoft Calendar event created successfully: {result.get('id')}"
+        )
         return result
 
     except Exception as e:
@@ -604,7 +609,7 @@ async def delete_calendar_event(
             raise HTTPException(
                 status_code=503,
                 detail=f"Failed to create API client for provider {provider}. "
-                       "User may not have connected this provider."
+                "User may not have connected this provider.",
             )
 
         # Delete event based on provider
@@ -614,7 +619,9 @@ async def delete_calendar_event(
                 await delete_google_event(request_id, google_client, original_event_id)
             elif provider == "microsoft":
                 microsoft_client = cast(MicrosoftAPIClient, client)
-                await delete_microsoft_event(request_id, microsoft_client, original_event_id)
+                await delete_microsoft_event(
+                    request_id, microsoft_client, original_event_id
+                )
 
         # Build response
         response_data = {
@@ -641,7 +648,9 @@ async def delete_calendar_event(
             success=True,
             data=response_data,
             cache_hit=False,
-            provider_used=Provider.GOOGLE if provider == "google" else Provider.MICROSOFT,
+            provider_used=(
+                Provider.GOOGLE if provider == "google" else Provider.MICROSOFT
+            ),
             request_id=request_id,
         )
 
@@ -655,10 +664,10 @@ async def delete_calendar_event(
 
 
 async def delete_google_event(
-    request_id: str, 
-    client: GoogleAPIClient, 
+    request_id: str,
+    client: GoogleAPIClient,
     event_id: str,
-    calendar_id: str = "primary"
+    calendar_id: str = "primary",
 ) -> None:
     """
     Delete a calendar event via Google Calendar API.
@@ -672,8 +681,10 @@ async def delete_google_event(
     try:
         # Delete the event
         await client.delete_event(calendar_id, event_id)
-            
-        logger.info(f"[{request_id}] Google Calendar event deleted successfully: {event_id}")
+
+        logger.info(
+            f"[{request_id}] Google Calendar event deleted successfully: {event_id}"
+        )
 
     except Exception as e:
         logger.error(f"[{request_id}] Failed to delete Google Calendar event: {e}")
@@ -681,10 +692,10 @@ async def delete_google_event(
 
 
 async def delete_microsoft_event(
-    request_id: str, 
-    client: MicrosoftAPIClient, 
+    request_id: str,
+    client: MicrosoftAPIClient,
     event_id: str,
-    calendar_id: Optional[str] = None
+    calendar_id: Optional[str] = None,
 ) -> None:
     """
     Delete a calendar event via Microsoft Graph API.
@@ -698,8 +709,10 @@ async def delete_microsoft_event(
     try:
         # Delete the event
         await client.delete_event(event_id, calendar_id)
-            
-        logger.info(f"[{request_id}] Microsoft Calendar event deleted successfully: {event_id}")
+
+        logger.info(
+            f"[{request_id}] Microsoft Calendar event deleted successfully: {event_id}"
+        )
 
     except Exception as e:
         logger.error(f"[{request_id}] Failed to delete Microsoft Calendar event: {e}")

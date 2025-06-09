@@ -229,20 +229,22 @@ class TestSendEmailEndpoint:
         """Test successful email sending via Google."""
         # Create a mock client that properly handles async context manager
         mock_google_client = AsyncMock()
-        
+
         # Mock the async context manager methods
         async def mock_aenter(self):
             return mock_google_client
-        
+
         async def mock_aexit(self, exc_type, exc_val, exc_tb):
             return None
-            
+
         mock_google_client.__aenter__ = mock_aenter
         mock_google_client.__aexit__ = mock_aexit
-        
+
         # Mock the send_message method
-        mock_google_client.send_message = AsyncMock(return_value={"id": "gmail_sent_123"})
-        
+        mock_google_client.send_message = AsyncMock(
+            return_value={"id": "gmail_sent_123"}
+        )
+
         # Configure the factory to return our mock client
         mock_create_client.return_value = mock_google_client
 
@@ -273,23 +275,23 @@ class TestSendEmailEndpoint:
         """Test successful email sending via Microsoft."""
         # Modify request to use Microsoft
         send_email_request.provider = "microsoft"
-        
+
         # Create a mock client that properly handles async context manager
         mock_microsoft_client = AsyncMock()
-        
+
         # Mock the async context manager methods
         async def mock_aenter(self):
             return mock_microsoft_client
-        
+
         async def mock_aexit(self, exc_type, exc_val, exc_tb):
             return None
-            
+
         mock_microsoft_client.__aenter__ = mock_aenter
         mock_microsoft_client.__aexit__ = mock_aexit
-        
+
         # Mock the send_message method (Microsoft returns None)
         mock_microsoft_client.send_message = AsyncMock(return_value=None)
-        
+
         # Configure the factory to return our mock client
         mock_create_client.return_value = mock_microsoft_client
 
@@ -411,20 +413,22 @@ class TestSendEmailEndpoint:
         """Test sending email with all optional fields."""
         # Create a mock client that properly handles async context manager
         mock_google_client = AsyncMock()
-        
+
         # Mock the async context manager methods
         async def mock_aenter(self):
             return mock_google_client
-        
+
         async def mock_aexit(self, exc_type, exc_val, exc_tb):
             return None
-            
+
         mock_google_client.__aenter__ = mock_aenter
         mock_google_client.__aexit__ = mock_aexit
-        
+
         # Mock the send_message method
-        mock_google_client.send_message = AsyncMock(return_value={"id": "gmail_sent_789"})
-        
+        mock_google_client.send_message = AsyncMock(
+            return_value={"id": "gmail_sent_789"}
+        )
+
         # Configure the factory to return our mock client
         mock_create_client.return_value = mock_google_client
 
@@ -453,7 +457,7 @@ class TestSendEmailEndpoint:
 
         # Verify the client send_message was called
         mock_google_client.send_message.assert_called_once()
-        
+
         # Verify API client was created
         mock_create_client.assert_called_once_with("test_user", "google")
 
