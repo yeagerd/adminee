@@ -604,81 +604,83 @@ async def fetch_provider_emails(
         if client is None:
             raise ValueError(f"Failed to create API client for provider {provider}")
 
-        # Build provider-specific parameters
-        if provider == "google":
-            google_client = cast(GoogleAPIClient, client)
-            # Fetch messages from Gmail
-            messages_response = await google_client.get_messages(
-                max_results=limit, page_token=page_token, query=q
+        # Use client as async context manager
+        async with client:
+            # Build provider-specific parameters
+            if provider == "google":
+                google_client = cast(GoogleAPIClient, client)
+                # Fetch messages from Gmail
+                messages_response = await google_client.get_messages(
+                    max_results=limit, page_token=page_token, query=q
+                )
+                messages = messages_response.get("messages", [])
+
+                # Normalize messages
+                normalized_messages = []
+                for msg_summary in messages:
+                    # Fetch full message if we only got summaries
+                    if include_body or "payload" not in msg_summary:
+                        full_message = await google_client.get_message(msg_summary["id"])
+                    else:
+                        full_message = msg_summary
+
+                    # Get user account info (simplified - in real implementation would cache this)
+                    account_email = f"{user_id}@gmail.com"  # Placeholder
+                    account_name = f"Gmail Account ({user_id})"  # Placeholder
+
+                    normalized_msg = normalize_google_email(
+                        full_message, account_email, account_name
+                    )
+                    normalized_messages.append(normalized_msg)
+
+            elif provider == "microsoft":
+                microsoft_client = cast(MicrosoftAPIClient, client)
+
+                # Build filter for labels (categories in Microsoft)
+                filter_expr = None
+                if labels:
+                    category_filter = " or ".join(
+                        [f"categories/any(c:c eq '{label}')" for label in labels]
+                    )
+                    filter_expr = category_filter
+
+                # Convert page_token to skip value
+                skip_value = 0
+                if page_token:
+                    try:
+                        skip_value = int(page_token)
+                    except (ValueError, TypeError):
+                        skip_value = 0
+
+                # Fetch messages from Outlook
+                messages_response = await microsoft_client.get_messages(
+                    top=limit,
+                    skip=skip_value,
+                    filter=filter_expr,
+                    search=q,
+                    order_by="receivedDateTime desc",
+                )
+                messages = messages_response.get("value", [])
+
+                # Normalize messages
+                normalized_messages = []
+                for msg in messages:
+                    # Get user account info (simplified - in real implementation would cache this)
+                    account_email = f"{user_id}@outlook.com"  # Placeholder
+                    account_name = f"Outlook Account ({user_id})"  # Placeholder
+
+                    normalized_msg = normalize_microsoft_email(
+                        msg, account_email, account_name
+                    )
+                    normalized_messages.append(normalized_msg)
+
+            else:
+                raise ValueError(f"Unsupported provider: {provider}")
+
+            logger.info(
+                f"[{request_id}] Successfully fetched {len(normalized_messages)} messages from {provider}"
             )
-            messages = messages_response.get("messages", [])
-
-            # Normalize messages
-            normalized_messages = []
-            for msg_summary in messages:
-                # Fetch full message if we only got summaries
-                if include_body or "payload" not in msg_summary:
-                    full_message = await google_client.get_message(msg_summary["id"])
-                else:
-                    full_message = msg_summary
-
-                # Get user account info (simplified - in real implementation would cache this)
-                account_email = f"{user_id}@gmail.com"  # Placeholder
-                account_name = f"Gmail Account ({user_id})"  # Placeholder
-
-                normalized_msg = normalize_google_email(
-                    full_message, account_email, account_name
-                )
-                normalized_messages.append(normalized_msg)
-
-        elif provider == "microsoft":
-            microsoft_client = cast(MicrosoftAPIClient, client)
-
-            # Build filter for labels (categories in Microsoft)
-            filter_expr = None
-            if labels:
-                category_filter = " or ".join(
-                    [f"categories/any(c:c eq '{label}')" for label in labels]
-                )
-                filter_expr = category_filter
-
-            # Convert page_token to skip value
-            skip_value = 0
-            if page_token:
-                try:
-                    skip_value = int(page_token)
-                except (ValueError, TypeError):
-                    skip_value = 0
-
-            # Fetch messages from Outlook
-            messages_response = await microsoft_client.get_messages(
-                top=limit,
-                skip=skip_value,
-                filter=filter_expr,
-                search=q,
-                order_by="receivedDateTime desc",
-            )
-            messages = messages_response.get("value", [])
-
-            # Normalize messages
-            normalized_messages = []
-            for msg in messages:
-                # Get user account info (simplified - in real implementation would cache this)
-                account_email = f"{user_id}@outlook.com"  # Placeholder
-                account_name = f"Outlook Account ({user_id})"  # Placeholder
-
-                normalized_msg = normalize_microsoft_email(
-                    msg, account_email, account_name
-                )
-                normalized_messages.append(normalized_msg)
-
-        else:
-            raise ValueError(f"Unsupported provider: {provider}")
-
-        logger.info(
-            f"[{request_id}] Successfully fetched {len(normalized_messages)} messages from {provider}"
-        )
-        return normalized_messages, provider
+            return normalized_messages, provider
 
     except Exception as e:
         logger.error(f"[{request_id}] Failed to fetch emails from {provider}: {e}")
@@ -711,32 +713,34 @@ async def fetch_single_message(
         if client is None:
             raise ValueError(f"Failed to create API client for provider {provider}")
 
-        if provider == "google":
-            google_client = cast(GoogleAPIClient, client)
-            # Fetch message from Gmail
-            message = await google_client.get_message(
-                original_message_id, format="full" if include_body else "metadata"
-            )
+        # Use client as async context manager
+        async with client:
+            if provider == "google":
+                google_client = cast(GoogleAPIClient, client)
+                # Fetch message from Gmail
+                message = await google_client.get_message(
+                    original_message_id, format="full" if include_body else "metadata"
+                )
 
-            # Get user account info (simplified)
-            account_email = f"{user_id}@gmail.com"  # Placeholder
-            account_name = f"Gmail Account ({user_id})"  # Placeholder
+                # Get user account info (simplified)
+                account_email = f"{user_id}@gmail.com"  # Placeholder
+                account_name = f"Gmail Account ({user_id})"  # Placeholder
 
-            return normalize_google_email(message, account_email, account_name)
+                return normalize_google_email(message, account_email, account_name)
 
-        elif provider == "microsoft":
-            microsoft_client = cast(MicrosoftAPIClient, client)
-            # Fetch message from Outlook
-            message = await microsoft_client.get_message(original_message_id)
+            elif provider == "microsoft":
+                microsoft_client = cast(MicrosoftAPIClient, client)
+                # Fetch message from Outlook
+                message = await microsoft_client.get_message(original_message_id)
 
-            # Get user account info (simplified)
-            account_email = f"{user_id}@outlook.com"  # Placeholder
-            account_name = f"Outlook Account ({user_id})"  # Placeholder
+                # Get user account info (simplified)
+                account_email = f"{user_id}@outlook.com"  # Placeholder
+                account_name = f"Outlook Account ({user_id})"  # Placeholder
 
-            return normalize_microsoft_email(message, account_email, account_name)
+                return normalize_microsoft_email(message, account_email, account_name)
 
-        else:
-            raise ValueError(f"Unsupported provider: {provider}")
+            else:
+                raise ValueError(f"Unsupported provider: {provider}")
 
     except Exception as e:
         logger.error(
