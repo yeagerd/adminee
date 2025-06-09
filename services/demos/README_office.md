@@ -50,6 +50,7 @@ To access Outlook, Microsoft Calendar, and OneDrive:
    - Use the Microsoft Graph Explorer: https://developer.microsoft.com/en-us/graph/graph-explorer
    - Sign in and copy the access token from the "Access Token" tab
    - Or use the OAuth 2.0 flow with your app registration
+   - Note: you need to copy the auth token AFTER you grant the scopes
 
 ### 3. Set Environment Variables
 
@@ -68,8 +69,10 @@ You can set one or both tokens depending on which services you want to test.
 ```bash
 # From the repository root
 cd /path/to/briefly
-python services/demos/office.py
+python services/demos/office.py your-email@example.com
 ```
+
+The email address is used as a user identifier for the API calls and logging.
 
 ## What the Demo Does
 
@@ -143,4 +146,5 @@ The Office Service unified API is working! 🎉
 
 ### Import errors
 - Make sure you're running from the repository root directory
-- The Office Service code should be in `services/office_service/` 
+- The Office Service code should be in `services/office_service/`
+- Include the email argument: `python services/demos/office.py your-email@example.com` 

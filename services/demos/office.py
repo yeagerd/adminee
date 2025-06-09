@@ -12,11 +12,12 @@ Setup:
 
 2. Run from the repo root:
    cd /path/to/briefly
-   python services/demos/office.py
+   python services/demos/office.py your-email@example.com
 
 Note: This demo bypasses the user management service and uses tokens directly.
 """
 
+import argparse
 import asyncio
 import os
 import sys
@@ -36,12 +37,19 @@ class OfficeDemoService:
     """Simplified Office Service for demonstration purposes."""
 
     def __init__(
-        self, google_token: Optional[str] = None, microsoft_token: Optional[str] = None
+        self,
+        email: str,
+        google_token: Optional[str] = None,
+        microsoft_token: Optional[str] = None,
     ):
-        """Initialize with optional API tokens."""
+        """Initialize with email and optional API tokens."""
+        self.email = email
         self.google_token = google_token
         self.microsoft_token = microsoft_token
-        self.user_id = "demo-user"
+        self.user_id = email  # Use email as user_id for more realistic demo
+
+        # Track errors per provider
+        self.provider_errors: Dict[str, List[str]] = {"google": [], "microsoft": []}
 
     async def get_emails(self, limit: int = 5) -> Dict[str, List[EmailMessage]]:
         """Fetch emails from all available providers."""
@@ -61,12 +69,14 @@ class OfficeDemoService:
                             full_msg = await google_client.get_message(
                                 msg_ref["id"], format="full"
                             )
-                            normalized = normalize_google_email(full_msg)
+                            normalized = normalize_google_email(full_msg, self.email)
                             results["google"].append(normalized)
 
                     print(f"✅ Found {len(results['google'])} Gmail messages")
             except Exception as e:
+                error_msg = f"Gmail API error: {e}"
                 print(f"❌ Error fetching Gmail: {e}")
+                self.provider_errors["google"].append(error_msg)
 
         # Fetch from Microsoft
         if self.microsoft_token:
@@ -80,12 +90,14 @@ class OfficeDemoService:
 
                     if "value" in response:
                         for msg in response["value"][:limit]:
-                            normalized = normalize_microsoft_email(msg)
+                            normalized = normalize_microsoft_email(msg, self.email)
                             results["microsoft"].append(normalized)
 
                     print(f"✅ Found {len(results['microsoft'])} Outlook messages")
             except Exception as e:
+                error_msg = f"Outlook API error: {e}"
                 print(f"❌ Error fetching Outlook: {e}")
+                self.provider_errors["microsoft"].append(error_msg)
 
         return results
 
@@ -113,7 +125,9 @@ class OfficeDemoService:
 
                     print(f"✅ Found {len(results['google'])} Google Calendar events")
             except Exception as e:
+                error_msg = f"Google Calendar API error: {e}"
                 print(f"❌ Error fetching Google Calendar: {e}")
+                self.provider_errors["google"].append(error_msg)
 
         # Fetch from Microsoft Calendar
         if self.microsoft_token:
@@ -124,7 +138,7 @@ class OfficeDemoService:
                 async with microsoft_client:
                     print("📅 Fetching events from Outlook Calendar...")
                     response = await microsoft_client.get_events(
-                        top=limit, filter=f"start/dateTime ge '{now}'"
+                        top=limit, start_time=now
                     )
 
                     if "value" in response:
@@ -134,7 +148,9 @@ class OfficeDemoService:
                         f"✅ Found {len(results['microsoft'])} Outlook Calendar events"
                     )
             except Exception as e:
+                error_msg = f"Outlook Calendar API error: {e}"
                 print(f"❌ Error fetching Outlook Calendar: {e}")
+                self.provider_errors["microsoft"].append(error_msg)
 
         return results
 
@@ -155,7 +171,9 @@ class OfficeDemoService:
 
                     print(f"✅ Found {len(results['google'])} Google Drive files")
             except Exception as e:
+                error_msg = f"Google Drive API error: {e}"
                 print(f"❌ Error fetching Google Drive: {e}")
+                self.provider_errors["google"].append(error_msg)
 
         # Fetch from Microsoft OneDrive
         if self.microsoft_token:
@@ -172,9 +190,23 @@ class OfficeDemoService:
 
                     print(f"✅ Found {len(results['microsoft'])} OneDrive files")
             except Exception as e:
+                error_msg = f"OneDrive API error: {e}"
                 print(f"❌ Error fetching OneDrive: {e}")
+                self.provider_errors["microsoft"].append(error_msg)
 
         return results
+
+    def has_errors_for_provider(self, provider: str) -> bool:
+        """Check if a provider had any errors."""
+        return len(self.provider_errors[provider]) > 0
+
+    def get_provider_status(self, provider: str) -> str:
+        """Get status message for a provider."""
+        if self.has_errors_for_provider(provider):
+            error_count = len(self.provider_errors[provider])
+            return f"❌ Failed ({error_count} API{'s' if error_count > 1 else ''} had errors)"
+        else:
+            return "✅ All APIs working!"
 
 
 def print_section_header(title: str):
@@ -256,10 +288,11 @@ def print_files_summary(files: Dict[str, List[Dict[str, Any]]]):
                 print()
 
 
-async def run_demo():
-    """Run the Office Service demo."""
+async def run_demo(email: str):
+    """Run the Office Service demo with the provided email."""
     print("🚀 Office Service Live Demo")
     print("=" * 50)
+    print(f"👤 User: {email}")
 
     # Get tokens from environment variables
     google_token = os.getenv("GOOGLE_ACCESS_TOKEN")
@@ -273,7 +306,8 @@ async def run_demo():
         print("\nExample:")
         print("  export GOOGLE_ACCESS_TOKEN='your-google-token-here'")
         print("  export MICROSOFT_ACCESS_TOKEN='your-microsoft-token-here'")
-        print("  python services/demos/office.py")
+        print(f"  python services/demos/office.py {email}")
+        print("\nNote: The email address is used as the user identifier for API calls.")
         return
 
     # Show which providers are available
@@ -286,7 +320,9 @@ async def run_demo():
     print(f"🔑 Available providers: {', '.join(providers)}")
 
     # Initialize the demo service
-    demo = OfficeDemoService(google_token, microsoft_token)
+    demo = OfficeDemoService(
+        email=email, google_token=google_token, microsoft_token=microsoft_token
+    )
 
     try:
         # Fetch emails
@@ -309,18 +345,78 @@ async def run_demo():
         total_events = sum(len(evts) for evts in events.values())
         total_files = sum(len(fls) for fls in files.values())
 
-        print_section_header("✅ DEMO COMPLETE")
+        print_section_header("📊 RESULTS SUMMARY")
         print("Successfully fetched:")
         print(f"  📧 {total_emails} emails")
         print(f"  📅 {total_events} calendar events")
         print(f"  📁 {total_files} files")
-        print("\nThe Office Service unified API is working! 🎉")
+
+        # Show per-provider status
+        print_section_header("🔍 PROVIDER STATUS")
+        any_errors = False
+
+        if google_token:
+            status = demo.get_provider_status("google")
+            print(f"Google (Gmail, Calendar, Drive): {status}")
+            if demo.has_errors_for_provider("google"):
+                any_errors = True
+                # Show specific errors
+                for error in demo.provider_errors["google"]:
+                    print(f"  • {error}")
+
+        if microsoft_token:
+            status = demo.get_provider_status("microsoft")
+            print(f"Microsoft (Outlook, Calendar, OneDrive): {status}")
+            if demo.has_errors_for_provider("microsoft"):
+                any_errors = True
+                # Show specific errors
+                for error in demo.provider_errors["microsoft"]:
+                    print(f"  • {error}")
+
+        # Final status message
+        print_section_header("🎯 FINAL STATUS")
+        if any_errors:
+            print("❌ Some APIs encountered errors. Check provider status above.")
+            print("The Office Service API is partially working.")
+            # Exit with error code
+            import sys
+
+            sys.exit(1)
+        else:
+            print("✅ All APIs working successfully!")
+            print("The Office Service unified API is working! 🎉")
 
     except Exception as e:
         print(f"❌ Demo failed with error: {e}")
         import traceback
 
         traceback.print_exc()
+        import sys
+
+        sys.exit(1)
+
+
+def parse_arguments():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Live demo for Office Service with real API credentials",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python services/demos/office.py user@example.com
+  python services/demos/office.py john.doe@company.com
+
+Environment Variables:
+  GOOGLE_ACCESS_TOKEN      Your Google OAuth2 access token (optional)
+  MICROSOFT_ACCESS_TOKEN   Your Microsoft Graph access token (optional)
+        """,
+    )
+
+    parser.add_argument(
+        "email", help="Email address to use for the demo (used as user identifier)"
+    )
+
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
@@ -328,8 +424,11 @@ if __name__ == "__main__":
     if not os.path.exists("services/office_service"):
         print("❌ Please run this demo from the repository root:")
         print("   cd /path/to/briefly")
-        print("   python services/demos/office.py")
+        print("   python services/demos/office.py your-email@example.com")
         sys.exit(1)
 
+    # Parse command line arguments
+    args = parse_arguments()
+
     # Run the demo
-    asyncio.run(run_demo())
+    asyncio.run(run_demo(args.email))
