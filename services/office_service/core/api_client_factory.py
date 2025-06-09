@@ -1,3 +1,11 @@
+"""
+API Client Factory module for the Office Service.
+
+This module provides a factory pattern for creating provider-specific API clients
+with automatic token management and initialization. It abstracts the complexity
+of token retrieval and client instantiation across multiple OAuth providers.
+"""
+
 import logging
 from typing import Dict, List, Optional, Union
 
