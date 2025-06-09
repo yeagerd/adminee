@@ -133,7 +133,7 @@ Before committing:
 [x] 8.9 [Run `tox -p auto` and fix any errors.]
 
 [ ] 9. Implement Unified WRITE Endpoints (MVP)
-[ ] 9.1 [Implement POST /email/send in the email router. For the MVP, this can be a simple pass-through that determines the provider and makes the API call. The actual queuing can be stubbed or logged for now.]
+[x] 9.1 [Implement POST /email/send in the email router. For the MVP, this can be a simple pass-through that determines the provider and makes the API call. The actual queuing can be stubbed or logged for now.]
 [ ] 9.2 [Implement POST /calendar/events. This endpoint will need to take unified CalendarEvent data, "de-normalize" it into the provider-specific format, and use the correct API client to create the event.]
 [ ] 9.3 [Implement DELETE /calendar/events/{event_id}. This will require logic to find the original provider and use its API to delete the event.]
 [ ] 9.4 [Write unit tests for unified write endpoints with mocked API clients.]
