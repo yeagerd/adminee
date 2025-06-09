@@ -441,7 +441,7 @@ def integration_test_setup(
     async def mock_google_get_files(**kwargs):
         return mock_google_drive_response
     
-    async def mock_microsoft_get_files(**kwargs):
+    async def mock_microsoft_get_drive_items(**kwargs):
         return mock_microsoft_drive_response
 
     with (
@@ -452,6 +452,7 @@ def integration_test_setup(
         patch("core.cache_manager.cache_manager.get_from_cache", return_value=None),
         patch("core.cache_manager.cache_manager.set_to_cache", return_value=True),
         patch("httpx.AsyncClient.request", side_effect=mock_http_responses),
+        patch("core.clients.base.BaseAPIClient.__aenter__", return_value=None),
         patch("core.clients.google.GoogleAPIClient.get_messages", side_effect=mock_google_get_messages),
         patch("core.clients.microsoft.MicrosoftAPIClient.get_messages", side_effect=mock_microsoft_get_messages),
         patch("core.clients.google.GoogleAPIClient.get_message", side_effect=mock_google_get_message),
@@ -459,7 +460,7 @@ def integration_test_setup(
         patch("core.clients.google.GoogleAPIClient.get_events", side_effect=mock_google_get_events),
         patch("core.clients.microsoft.MicrosoftAPIClient.get_events", side_effect=mock_microsoft_get_events),
         patch("core.clients.google.GoogleAPIClient.get_files", side_effect=mock_google_get_files),
-        patch("core.clients.microsoft.MicrosoftAPIClient.get_files", side_effect=mock_microsoft_get_files),
+        patch("core.clients.microsoft.MicrosoftAPIClient.get_drive_items", side_effect=mock_microsoft_get_drive_items),
     ):
         yield {
             "user_id": test_user_id,
