@@ -403,9 +403,6 @@ async def fetch_provider_events(
         elif provider == "microsoft":
             microsoft_client = cast(MicrosoftAPIClient, client)
 
-            # Build filter for time range
-            time_filter = f"start/dateTime ge '{start_dt.isoformat()}' and end/dateTime le '{end_dt.isoformat()}'"
-
             # Fetch events from Outlook
             events_response = await microsoft_client.get_events(
                 calendar_id=None,  # Use primary calendar
