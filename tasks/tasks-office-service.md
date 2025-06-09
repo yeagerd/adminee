@@ -80,8 +80,8 @@ Before committing:
 [x] 3.3 [Integrate an httpx.AsyncClient into the TokenManager to make requests to the USER_MANAGEMENT_SERVICE_URL.]
 [x] 3.4 [Add robust error handling and logging for cases where token retrieval fails.]
 [x] 3.5 [Implement a simple in-memory cache (e.g., using a dictionary with TTL) within the TokenManager to reduce calls for the same token within a short period (as mentioned in Section 2.1).]
-[ ] 3.6 [Write unit tests for TokenManager including cache behavior and error handling.]
-[ ] 3.7 [Run ./fix to fix lint issues.]
+[x] 3.6 [Write unit tests for TokenManager including cache behavior and error handling.]
+[x] 3.7 [Run ./fix to fix lint issues.]
 [ ] 3.8 [Run `tox -p auto` and fix any errors.]
 
 [ ] 4. Core Module: API Client Factory
@@ -188,6 +188,7 @@ Before committing:
 
 ### Tests
 - `services/office_service/tests/test_schemas.py` - Unit tests for Pydantic schema models (validation, serialization)
+- `services/office_service/tests/test_token_manager.py` - Unit tests for TokenManager (caching, error handling, HTTP client integration)
 - `services/office_service/tests/test_api_email.py` - Unit tests for email API endpoints
 
 Next Steps (After MVP)
