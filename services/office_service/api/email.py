@@ -626,8 +626,13 @@ async def fetch_provider_emails(
                         full_message = msg_summary
 
                     # Get user account info (simplified - in real implementation would cache this)
-                    account_email = f"{user_id}@gmail.com"  # Placeholder
-                    account_name = f"Gmail Account ({user_id})"  # Placeholder
+                    # Handle case where user_id is already an email address
+                    if "@" in user_id:
+                        account_email = user_id
+                        account_name = f"Gmail Account ({user_id.split('@')[0]})"
+                    else:
+                        account_email = f"{user_id}@gmail.com"  # Placeholder
+                        account_name = f"Gmail Account ({user_id})"  # Placeholder
 
                     normalized_msg = normalize_google_email(
                         full_message, account_email, account_name
@@ -667,8 +672,13 @@ async def fetch_provider_emails(
                 normalized_messages = []
                 for msg in messages:
                     # Get user account info (simplified - in real implementation would cache this)
-                    account_email = f"{user_id}@outlook.com"  # Placeholder
-                    account_name = f"Outlook Account ({user_id})"  # Placeholder
+                    # Handle case where user_id is already an email address
+                    if "@" in user_id:
+                        account_email = user_id
+                        account_name = f"Outlook Account ({user_id.split('@')[0]})"
+                    else:
+                        account_email = f"{user_id}@outlook.com"  # Placeholder
+                        account_name = f"Outlook Account ({user_id})"  # Placeholder
 
                     normalized_msg = normalize_microsoft_email(
                         msg, account_email, account_name
@@ -724,8 +734,13 @@ async def fetch_single_message(
                 )
 
                 # Get user account info (simplified)
-                account_email = f"{user_id}@gmail.com"  # Placeholder
-                account_name = f"Gmail Account ({user_id})"  # Placeholder
+                # Handle case where user_id is already an email address
+                if "@" in user_id:
+                    account_email = user_id
+                    account_name = f"Gmail Account ({user_id.split('@')[0]})"
+                else:
+                    account_email = f"{user_id}@gmail.com"  # Placeholder
+                    account_name = f"Gmail Account ({user_id})"  # Placeholder
 
                 return normalize_google_email(message, account_email, account_name)
 
@@ -735,8 +750,13 @@ async def fetch_single_message(
                 message = await microsoft_client.get_message(original_message_id)
 
                 # Get user account info (simplified)
-                account_email = f"{user_id}@outlook.com"  # Placeholder
-                account_name = f"Outlook Account ({user_id})"  # Placeholder
+                # Handle case where user_id is already an email address
+                if "@" in user_id:
+                    account_email = user_id
+                    account_name = f"Outlook Account ({user_id.split('@')[0]})"
+                else:
+                    account_email = f"{user_id}@outlook.com"  # Placeholder
+                    account_name = f"Outlook Account ({user_id})"  # Placeholder
 
                 return normalize_microsoft_email(message, account_email, account_name)
 

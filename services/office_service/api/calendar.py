@@ -778,8 +778,17 @@ async def fetch_provider_events(
                         for event_data in events:
                             # Get calendar info (simplified)
                             calendar_name = f"Calendar {calendar_id}"
-                            account_email = f"{user_id}@gmail.com"  # Placeholder
-                            account_name = f"Google Account ({user_id})"  # Placeholder
+                            # Handle case where user_id is already an email address
+                            if "@" in user_id:
+                                account_email = user_id
+                                account_name = (
+                                    f"Google Account ({user_id.split('@')[0]})"
+                                )
+                            else:
+                                account_email = f"{user_id}@gmail.com"  # Placeholder
+                                account_name = (
+                                    f"Google Account ({user_id})"  # Placeholder
+                                )
 
                             normalized_event = normalize_google_calendar_event(
                                 event_data, account_email, account_name, calendar_name
@@ -812,8 +821,13 @@ async def fetch_provider_events(
                 normalized_events = []
                 for event_data in events:
                     # Get user account info (simplified)
-                    account_email = f"{user_id}@outlook.com"  # Placeholder
-                    account_name = f"Microsoft Account ({user_id})"  # Placeholder
+                    # Handle case where user_id is already an email address
+                    if "@" in user_id:
+                        account_email = user_id
+                        account_name = f"Microsoft Account ({user_id.split('@')[0]})"
+                    else:
+                        account_email = f"{user_id}@outlook.com"  # Placeholder
+                        account_name = f"Microsoft Account ({user_id})"  # Placeholder
                     calendar_name = "Default Calendar"  # Placeholder
 
                     # Convert Microsoft event to Google format for normalization
@@ -877,8 +891,13 @@ async def fetch_single_event(
                 event = response.json()
 
                 # Get user account info (simplified)
-                account_email = f"{user_id}@gmail.com"  # Placeholder
-                account_name = f"Google Account ({user_id})"  # Placeholder
+                # Handle case where user_id is already an email address
+                if "@" in user_id:
+                    account_email = user_id
+                    account_name = f"Google Account ({user_id.split('@')[0]})"
+                else:
+                    account_email = f"{user_id}@gmail.com"  # Placeholder
+                    account_name = f"Google Account ({user_id})"  # Placeholder
                 calendar_name = "Primary Calendar"  # Placeholder
 
                 return normalize_google_calendar_event(
@@ -892,8 +911,13 @@ async def fetch_single_event(
                 event = response.json()
 
                 # Get user account info (simplified)
-                account_email = f"{user_id}@outlook.com"  # Placeholder
-                account_name = f"Microsoft Account ({user_id})"  # Placeholder
+                # Handle case where user_id is already an email address
+                if "@" in user_id:
+                    account_email = user_id
+                    account_name = f"Microsoft Account ({user_id.split('@')[0]})"
+                else:
+                    account_email = f"{user_id}@outlook.com"  # Placeholder
+                    account_name = f"Microsoft Account ({user_id})"  # Placeholder
                 calendar_name = "Default Calendar"  # Placeholder
 
                 # Convert Microsoft event to Google format for normalization

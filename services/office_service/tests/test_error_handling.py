@@ -184,7 +184,7 @@ class TestAPIClientErrorHandling:
                 error = exc_info.value
                 assert error.provider == Provider.GOOGLE
                 assert error.status_code == 401
-                assert "HTTP 401" in error.message
+                assert "authentication failed" in error.message.lower()
                 assert error.response_body == "Unauthorized"
 
     @pytest.mark.asyncio

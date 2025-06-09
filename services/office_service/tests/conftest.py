@@ -364,7 +364,7 @@ def mock_http_responses(
         if "tokens/get" in url:
             json_data = kwargs.get("json", {})
             provider = json_data.get("provider", "google")
-            user_id = json_data.get("user_id", "test-user-123")
+            user_id = json_data.get("user_id", "test-user@example.com")
 
             if provider == "google":
                 return create_response(
@@ -416,7 +416,7 @@ def mock_http_responses(
 @pytest.fixture
 def test_user_id():
     """Standard test user ID."""
-    return "test-user-123"
+    return "test-user@example.com"
 
 
 @pytest.fixture
