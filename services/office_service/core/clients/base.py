@@ -6,7 +6,6 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 import httpx
-
 from core.exceptions import ProviderAPIError
 from models import ApiCall, ApiCallStatus, Provider
 

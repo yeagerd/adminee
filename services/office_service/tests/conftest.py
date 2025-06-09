@@ -5,13 +5,13 @@ This module provides reusable fixtures and configurations for testing
 the Office Service with proper mocking of external dependencies.
 """
 
+import os
+import sys
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import fakeredis.aioredis
 import pytest
-import sys
-import os
 
 # Add the parent directory to sys.path to enable relative imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -331,7 +331,9 @@ def mock_http_responses(
     def create_response(response_data, status_code=200):
         mock_response = MagicMock()
         mock_response.status_code = status_code
-        mock_response.json.return_value = response_data  # Use return_value instead of lambda
+        mock_response.json.return_value = (
+            response_data  # Use return_value instead of lambda
+        )
         mock_response.raise_for_status = lambda: None
         return mock_response
 
@@ -363,35 +365,39 @@ def mock_http_responses(
             json_data = kwargs.get("json", {})
             provider = json_data.get("provider", "google")
             user_id = json_data.get("user_id", "test-user-123")
-            
+
             if provider == "google":
-                return create_response({
-                    "access_token": "mock-google-token-12345",
-                    "refresh_token": "mock-google-refresh-token",
-                    "expires_at": "2024-12-31T23:59:59Z",
-                    "scopes": [
-                        "https://www.googleapis.com/auth/gmail.readonly",
-                        "https://www.googleapis.com/auth/gmail.send",
-                        "https://www.googleapis.com/auth/calendar",
-                        "https://www.googleapis.com/auth/drive.readonly",
-                    ],
-                    "provider": "google",
-                    "user_id": user_id
-                })
+                return create_response(
+                    {
+                        "access_token": "mock-google-token-12345",
+                        "refresh_token": "mock-google-refresh-token",
+                        "expires_at": "2024-12-31T23:59:59Z",
+                        "scopes": [
+                            "https://www.googleapis.com/auth/gmail.readonly",
+                            "https://www.googleapis.com/auth/gmail.send",
+                            "https://www.googleapis.com/auth/calendar",
+                            "https://www.googleapis.com/auth/drive.readonly",
+                        ],
+                        "provider": "google",
+                        "user_id": user_id,
+                    }
+                )
             elif provider == "microsoft":
-                return create_response({
-                    "access_token": "mock-microsoft-token-67890",
-                    "refresh_token": "mock-microsoft-refresh-token",
-                    "expires_at": "2024-12-31T23:59:59Z",
-                    "scopes": [
-                        "https://graph.microsoft.com/Mail.Read",
-                        "https://graph.microsoft.com/Mail.Send",
-                        "https://graph.microsoft.com/Calendars.ReadWrite",
-                        "https://graph.microsoft.com/Files.Read",
-                    ],
-                    "provider": "microsoft",
-                    "user_id": user_id
-                })
+                return create_response(
+                    {
+                        "access_token": "mock-microsoft-token-67890",
+                        "refresh_token": "mock-microsoft-refresh-token",
+                        "expires_at": "2024-12-31T23:59:59Z",
+                        "scopes": [
+                            "https://graph.microsoft.com/Mail.Read",
+                            "https://graph.microsoft.com/Mail.Send",
+                            "https://graph.microsoft.com/Calendars.ReadWrite",
+                            "https://graph.microsoft.com/Files.Read",
+                        ],
+                        "provider": "microsoft",
+                        "user_id": user_id,
+                    }
+                )
 
         # Handle individual message requests specifically
         if "/messages/msg-1" in url and "gmail" in url:
@@ -415,42 +421,42 @@ def test_user_id():
 
 @pytest.fixture
 def integration_test_setup(
-    mock_successful_tokens, 
-    mock_http_responses, 
+    mock_successful_tokens,
+    mock_http_responses,
     test_user_id,
     mock_google_email_response,
     mock_microsoft_email_response,
     mock_google_calendar_response,
     mock_microsoft_calendar_response,
     mock_google_drive_response,
-    mock_microsoft_drive_response
+    mock_microsoft_drive_response,
 ):
     """Complete setup for integration tests with all necessary mocks."""
-    
+
     # Mock API client methods
     async def mock_google_get_messages(**kwargs):
         return mock_google_email_response
-    
+
     async def mock_microsoft_get_messages(**kwargs):
         return mock_microsoft_email_response
-    
+
     async def mock_google_get_message(message_id, **kwargs):
         # Return first message from mock data
         return mock_google_email_response["messages"][0]
-    
+
     async def mock_microsoft_get_message(message_id, **kwargs):
         # Return first message from mock data
         return mock_microsoft_email_response["value"][0]
-    
+
     async def mock_google_get_events(**kwargs):
         return mock_google_calendar_response
-    
+
     async def mock_microsoft_get_events(**kwargs):
         return mock_microsoft_calendar_response
-    
+
     async def mock_google_get_files(**kwargs):
         return mock_google_drive_response
-    
+
     async def mock_microsoft_get_drive_items(**kwargs):
         return mock_microsoft_drive_response
 
@@ -466,16 +472,42 @@ def integration_test_setup(
         patch("core.cache_manager.cache_manager.get_from_cache", return_value=None),
         patch("core.cache_manager.cache_manager.set_to_cache", return_value=True),
         patch("httpx.AsyncClient.request", side_effect=mock_http_responses),
-        patch("core.clients.base.BaseAPIClient.__aenter__", side_effect=lambda self: self),
+        patch(
+            "core.clients.base.BaseAPIClient.__aenter__", side_effect=lambda self: self
+        ),
         patch("core.clients.base.BaseAPIClient.__aexit__", return_value=None),
-        patch("core.clients.google.GoogleAPIClient.get_messages", side_effect=mock_google_get_messages),
-        patch("core.clients.microsoft.MicrosoftAPIClient.get_messages", side_effect=mock_microsoft_get_messages),
-        patch("core.clients.google.GoogleAPIClient.get_message", side_effect=mock_google_get_message),
-        patch("core.clients.microsoft.MicrosoftAPIClient.get_message", side_effect=mock_microsoft_get_message),
-        patch("core.clients.google.GoogleAPIClient.get_events", side_effect=mock_google_get_events),
-        patch("core.clients.microsoft.MicrosoftAPIClient.get_events", side_effect=mock_microsoft_get_events),
-        patch("core.clients.google.GoogleAPIClient.get_files", side_effect=mock_google_get_files),
-        patch("core.clients.microsoft.MicrosoftAPIClient.get_drive_items", side_effect=mock_microsoft_get_drive_items),
+        patch(
+            "core.clients.google.GoogleAPIClient.get_messages",
+            side_effect=mock_google_get_messages,
+        ),
+        patch(
+            "core.clients.microsoft.MicrosoftAPIClient.get_messages",
+            side_effect=mock_microsoft_get_messages,
+        ),
+        patch(
+            "core.clients.google.GoogleAPIClient.get_message",
+            side_effect=mock_google_get_message,
+        ),
+        patch(
+            "core.clients.microsoft.MicrosoftAPIClient.get_message",
+            side_effect=mock_microsoft_get_message,
+        ),
+        patch(
+            "core.clients.google.GoogleAPIClient.get_events",
+            side_effect=mock_google_get_events,
+        ),
+        patch(
+            "core.clients.microsoft.MicrosoftAPIClient.get_events",
+            side_effect=mock_microsoft_get_events,
+        ),
+        patch(
+            "core.clients.google.GoogleAPIClient.get_files",
+            side_effect=mock_google_get_files,
+        ),
+        patch(
+            "core.clients.microsoft.MicrosoftAPIClient.get_drive_items",
+            side_effect=mock_microsoft_get_drive_items,
+        ),
     ):
         yield {
             "user_id": test_user_id,

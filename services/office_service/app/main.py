@@ -2,9 +2,6 @@ import logging
 import uuid
 
 import httpx
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
-
 from api.calendar import router as calendar_router
 from api.email import router as email_router
 from api.files import router as files_router
@@ -18,6 +15,8 @@ from core.exceptions import (
     ValidationError,
 )
 from core.logging_config import setup_logging
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from schemas import ApiError
 
 # Initialize logging

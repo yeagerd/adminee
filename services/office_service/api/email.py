@@ -11,8 +11,6 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, cast
 
-from fastapi import APIRouter, HTTPException, Path, Query
-
 from core.api_client_factory import APIClientFactory
 from core.cache_manager import cache_manager, generate_cache_key
 from core.clients.google import GoogleAPIClient
@@ -21,6 +19,7 @@ from core.normalizer import (
     normalize_google_email,
     normalize_microsoft_email,
 )
+from fastapi import APIRouter, HTTPException, Path, Query
 from models import Provider
 from schemas import ApiResponse, EmailMessage, SendEmailRequest
 
@@ -620,7 +619,9 @@ async def fetch_provider_emails(
                 for msg_summary in messages:
                     # Fetch full message if we only got summaries
                     if include_body or "payload" not in msg_summary:
-                        full_message = await google_client.get_message(msg_summary["id"])
+                        full_message = await google_client.get_message(
+                            msg_summary["id"]
+                        )
                     else:
                         full_message = msg_summary
 

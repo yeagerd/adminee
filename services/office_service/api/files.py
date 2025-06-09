@@ -10,10 +10,9 @@ import uuid
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Path, Query
-
 from core.api_client_factory import APIClientFactory
 from core.cache_manager import cache_manager, generate_cache_key
+from fastapi import APIRouter, HTTPException, Path, Query
 from schemas import ApiResponse
 
 logger = logging.getLogger(__name__)
