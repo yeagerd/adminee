@@ -12,6 +12,8 @@ from typing import Dict, List, Optional, Union
 from core.clients.base import BaseAPIClient
 from core.clients.google import GoogleAPIClient
 from core.clients.microsoft import MicrosoftAPIClient
+from core.config import settings
+from core.demo_token_manager import DemoTokenManager
 from core.token_manager import TokenManager
 from models import Provider
 
@@ -27,6 +29,7 @@ class APIClientFactory:
     - Token retrieval from User Management Service via TokenManager
     - Provider-specific client instantiation
     - Error handling for token and client creation failures
+    - Demo mode support using environment variables instead of user service
     """
 
     def __init__(self, token_manager: Optional[TokenManager] = None):
@@ -34,7 +37,8 @@ class APIClientFactory:
         Initialize the API client factory.
 
         Args:
-            token_manager: Optional TokenManager instance. If None, will create one.
+            token_manager: Optional TokenManager instance. If None, will create one
+                          based on DEMO_MODE setting.
         """
         self.token_manager = token_manager
 
@@ -79,7 +83,11 @@ class APIClientFactory:
         # Use provided token manager or create a new one
         token_manager = self.token_manager
         if token_manager is None:
-            token_manager = TokenManager()
+            if settings.DEMO_MODE:
+                logger.info("Demo mode enabled - using DemoTokenManager")
+                token_manager = DemoTokenManager()
+            else:
+                token_manager = TokenManager()
 
         try:
             # Get token from User Management Service
