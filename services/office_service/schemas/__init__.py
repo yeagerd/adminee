@@ -44,6 +44,19 @@ class EmailThread(BaseModel):
     providers: List[Provider]
 
 
+class SendEmailRequest(BaseModel):
+    """Request model for sending emails."""
+    
+    to: List[EmailAddress]
+    subject: str
+    body: str
+    cc: Optional[List[EmailAddress]] = None
+    bcc: Optional[List[EmailAddress]] = None
+    reply_to_message_id: Optional[str] = None
+    provider: Optional[str] = None  # If not specified, uses user's default preference
+    importance: Optional[str] = None  # "high", "normal", "low"
+
+
 # Unified Calendar Models
 class CalendarEvent(BaseModel):
     id: str

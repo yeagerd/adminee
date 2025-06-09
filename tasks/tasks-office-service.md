@@ -74,7 +74,7 @@ Before committing:
 [x] 2.6 [Run ./fix to fix lint issues.]
 [x] 2.7 [Run `tox -p auto` and fix any errors.]
 
-[ ] 3. Core Module: Token Manager
+[x] 3. Core Module: Token Manager
 [x] 3.1 [Create a core/token_manager.py module.]
 [x] 3.2 [Implement the TokenManager class with the async get_user_token method as shown in Section 3.1.]
 [x] 3.3 [Integrate an httpx.AsyncClient into the TokenManager to make requests to the USER_MANAGEMENT_SERVICE_URL.]
@@ -82,36 +82,36 @@ Before committing:
 [x] 3.5 [Implement a simple in-memory cache (e.g., using a dictionary with TTL) within the TokenManager to reduce calls for the same token within a short period (as mentioned in Section 2.1).]
 [x] 3.6 [Write unit tests for TokenManager including cache behavior and error handling.]
 [x] 3.7 [Run ./fix to fix lint issues.]
-[ ] 3.8 [Run `tox -p auto` and fix any errors.]
+[x] 3.8 [Run `tox -p auto` and fix any errors.]
 
-[ ] 4. Core Module: API Client Factory
+[x] 4. Core Module: API Client Factory
 [x] 4.1 [Create a core/clients/ directory for provider-specific clients.]
 [x] 4.2 [Implement a base API client class that includes an httpx.AsyncClient and basic request/response logging.]
 [x] 4.3 [Create a GoogleAPIClient that inherits from the base client. It should be initialized with a user's access token.]
 [x] 4.4 [Create a MicrosoftAPIClient that inherits from the base client, also initialized with a user's access token.]
 [x] 4.5 [Implement an APIClientFactory in core/api_client_factory.py that takes a user_id and provider and uses the TokenManager to fetch a token and return an initialized provider-specific API client.]
-[ ] 4.6 [Write unit tests for API clients and factory with mocked HTTP responses.]
-[ ] 4.7 [Run ./fix to fix lint issues.]
-[ ] 4.8 [Run `tox -p auto` and fix any errors.]
+[x] 4.6 [Write unit tests for API clients and factory with mocked HTTP responses.]
+[x] 4.7 [Run ./fix to fix lint issues.]
+[x] 4.8 [Run `tox -p auto` and fix any errors.]
 
-[ ] 5. Core Module: Data Normalizer
+[x] 5. Core Module: Data Normalizer
 [x] 5.1 [Create a core/normalizer.py module.]
 [x] 5.2 [Implement a function normalize_google_email that takes a raw JSON response from the Gmail API and converts it into the unified EmailMessage Pydantic model.]
 [x] 5.3 [Implement a function normalize_microsoft_email that takes a raw JSON response from the Microsoft Graph API and converts it into the unified EmailMessage Pydantic model.]
 [x] 5.4 [Implement initial normalization functions for Google Calendar events and Google Drive files, converting them to CalendarEvent and DriveFile models respectively.]
 [x] 5.5 [Write unit tests for normalizer functions using mock API response data.]
-[ ] 5.6 [Run ./fix to fix lint issues.]
-[ ] 5.7 [Run `tox -p auto` and fix any errors.]
+[x] 5.6 [Run ./fix to fix lint issues.]
+[x] 5.7 [Run `tox -p auto` and fix any errors.]
 
-[ ] 6. Core Module: Basic Caching (Redis)
+[x] 6. Core Module: Basic Caching (Redis)
 [x] 6.1 [Add the redis-py library to the project dependencies.]
 [x] 6.2 [Create a core/cache_manager.py module that establishes a connection to Redis using the REDIS_URL.]
 [x] 6.3 [Implement the generate_cache_key utility function as specified in Section 6.2.]
 [x] 6.4 [Create simple get_from_cache and set_to_cache functions in the CacheManager that interact with Redis.]
 [x] 6.5 [Write unit tests for the generate_cache_key function to ensure it is deterministic.]
 [x] 6.6 [Write unit tests for cache manager with mocked Redis operations.]
-[ ] 6.7 [Run ./fix to fix lint issues.]
-[ ] 6.8 [Run `tox -p auto` and fix any errors.]
+[x] 6.7 [Run ./fix to fix lint issues.]
+[x] 6.8 [Run `tox -p auto` and fix any errors.]
 
 [x] 7. Implement Health and Diagnostics Endpoints
 [x] 7.1 [Create an api/health.py router.]
@@ -189,6 +189,7 @@ Before committing:
 ### Tests
 - `services/office_service/tests/test_schemas.py` - Unit tests for Pydantic schema models (validation, serialization)
 - `services/office_service/tests/test_token_manager.py` - Unit tests for TokenManager (caching, error handling, HTTP client integration)
+- `services/office_service/tests/test_api_clients.py` - Unit tests for API clients and factory (mocked HTTP responses, error handling)
 - `services/office_service/tests/test_api_email.py` - Unit tests for email API endpoints
 
 Next Steps (After MVP)

@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 
 from services.office_service.app.main import app
 from services.office_service.models import Provider
-from services.office_service.schemas import EmailAddress, EmailMessage
+from services.office_service.schemas import EmailAddress, EmailMessage, SendEmailRequest
 
 
 @pytest.fixture
@@ -202,6 +202,252 @@ class TestEmailMessageDetailEndpoint:
 
         assert response.status_code == 404
         assert "not found" in response.json()["detail"]
+
+
+class TestSendEmailEndpoint:
+    """Tests for the POST /email/send endpoint."""
+
+    @pytest.fixture
+    def send_email_request(self):
+        """Create a sample send email request."""
+        return SendEmailRequest(
+            to=[EmailAddress(email="recipient@example.com", name="Test Recipient")],
+            subject="Test Email",
+            body="This is a test email body.",
+            cc=[EmailAddress(email="cc@example.com", name="CC Recipient")],
+            provider="google",
+        )
+
+    @patch("services.office_service.api.email.send_gmail_message")
+    @patch("services.office_service.api.email.api_client_factory")
+    @pytest.mark.asyncio
+    async def test_send_email_google_success(
+        self,
+        mock_api_client_factory,
+        mock_send_gmail_message,
+        send_email_request,
+        client,
+    ):
+        """Test successful email sending via Google."""
+        # Mock API client factory
+        mock_google_client = AsyncMock()
+        mock_google_client.__aenter__.return_value = mock_google_client
+        mock_google_client.__aexit__.return_value = None
+        mock_google_client.send_message.return_value = {"id": "gmail_sent_123"}
+        mock_api_client_factory.create_client.return_value = mock_google_client
+
+        # Mock send_gmail_message
+        mock_send_gmail_message.return_value = {
+            "id": "gmail_sent_123",
+            "status": "sent"
+        }
+
+        response = client.post(
+            "/email/send?user_id=test_user",
+            json=send_email_request.model_dump(),
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["success"] is True
+        assert data["data"]["message_id"] == "gmail_sent_123"
+        assert data["data"]["provider"] == "google"
+        assert data["data"]["status"] == "sent"
+
+        # Verify API client was created
+        mock_api_client_factory.create_client.assert_called_once_with("test_user", "google")
+
+    @patch("services.office_service.api.email.send_outlook_message")
+    @patch("services.office_service.api.email.api_client_factory")
+    @pytest.mark.asyncio
+    async def test_send_email_microsoft_success(
+        self,
+        mock_api_client_factory,
+        mock_send_outlook_message,
+        send_email_request,
+        client,
+    ):
+        """Test successful email sending via Microsoft."""
+        # Modify request to use Microsoft
+        send_email_request.provider = "microsoft"
+        
+        # Mock API client factory
+        mock_microsoft_client = AsyncMock()
+        mock_microsoft_client.__aenter__.return_value = mock_microsoft_client
+        mock_microsoft_client.__aexit__.return_value = None
+        mock_microsoft_client.send_message.return_value = None  # Microsoft returns None
+        mock_api_client_factory.create_client.return_value = mock_microsoft_client
+
+        # Mock send_outlook_message
+        mock_send_outlook_message.return_value = {
+            "id": "outlook_sent_456",
+            "status": "sent"
+        }
+
+        response = client.post(
+            "/email/send?user_id=test_user",
+            json=send_email_request.model_dump(),
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["success"] is True
+        assert data["data"]["message_id"] == "outlook_sent_456"
+        assert data["data"]["provider"] == "microsoft"
+        assert data["data"]["status"] == "sent"
+
+        # Verify API client was created
+        mock_api_client_factory.create_client.assert_called_once_with("test_user", "microsoft")
+
+    @patch("services.office_service.api.email.api_client_factory")
+    @pytest.mark.asyncio
+    async def test_send_email_default_provider(
+        self,
+        mock_api_client_factory,
+        client,
+    ):
+        """Test that default provider is Google when not specified."""
+        # Create request without provider
+        request_data = {
+            "to": [{"email": "recipient@example.com", "name": "Test Recipient"}],
+            "subject": "Test Email",
+            "body": "Test body",
+        }
+
+        # Mock API client factory to return None (no client available)
+        mock_api_client_factory.create_client.return_value = None
+
+        response = client.post(
+            "/email/send?user_id=test_user",
+            json=request_data,
+        )
+
+        # Should fail because no client available, but verify it tried Google
+        assert response.status_code == 503
+        mock_api_client_factory.create_client.assert_called_once_with("test_user", "google")
+
+    @pytest.mark.asyncio
+    async def test_send_email_invalid_provider(self, client):
+        """Test sending email with invalid provider."""
+        request_data = {
+            "to": [{"email": "recipient@example.com", "name": "Test Recipient"}],
+            "subject": "Test Email",
+            "body": "Test body",
+            "provider": "invalid_provider",
+        }
+
+        response = client.post(
+            "/email/send?user_id=test_user",
+            json=request_data,
+        )
+
+        assert response.status_code == 400
+        assert "Invalid provider" in response.json()["detail"]
+
+    @patch("services.office_service.api.email.api_client_factory")
+    @pytest.mark.asyncio
+    async def test_send_email_no_client_available(
+        self,
+        mock_api_client_factory,
+        send_email_request,
+        client,
+    ):
+        """Test sending email when no API client is available."""
+        # Mock API client factory to return None
+        mock_api_client_factory.create_client.return_value = None
+
+        response = client.post(
+            "/email/send?user_id=test_user",
+            json=send_email_request.model_dump(),
+        )
+
+        assert response.status_code == 503
+        assert "Failed to create API client" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_send_email_missing_user_id(self, send_email_request, client):
+        """Test sending email without user_id parameter."""
+        response = client.post(
+            "/email/send",
+            json=send_email_request.model_dump(),
+        )
+
+        assert response.status_code == 422  # Validation error
+
+    @pytest.mark.asyncio
+    async def test_send_email_invalid_request_data(self, client):
+        """Test sending email with invalid request data."""
+        # Missing required fields
+        request_data = {
+            "subject": "Test Email",
+            # Missing 'to' and 'body'
+        }
+
+        response = client.post(
+            "/email/send?user_id=test_user",
+            json=request_data,
+        )
+
+        assert response.status_code == 422  # Validation error
+
+    @patch("services.office_service.api.email.send_gmail_message")
+    @patch("services.office_service.api.email.api_client_factory")
+    @pytest.mark.asyncio
+    async def test_send_email_with_all_fields(
+        self,
+        mock_api_client_factory,
+        mock_send_gmail_message,
+        client,
+    ):
+        """Test sending email with all optional fields."""
+        # Mock API client factory
+        mock_google_client = AsyncMock()
+        mock_google_client.__aenter__.return_value = mock_google_client
+        mock_google_client.__aexit__.return_value = None
+        mock_google_client.send_message.return_value = {"id": "gmail_sent_789"}
+        mock_api_client_factory.create_client.return_value = mock_google_client
+
+        # Mock send_gmail_message
+        mock_send_gmail_message.return_value = {
+            "id": "gmail_sent_789",
+            "status": "sent"
+        }
+
+        request_data = {
+            "to": [{"email": "to@example.com", "name": "To Recipient"}],
+            "cc": [{"email": "cc@example.com", "name": "CC Recipient"}],
+            "bcc": [{"email": "bcc@example.com", "name": "BCC Recipient"}],
+            "subject": "Test Email with All Fields",
+            "body": "This is a comprehensive test email.",
+            "provider": "google",
+            "importance": "high",
+            "reply_to_message_id": "gmail_original_123",
+        }
+
+        response = client.post(
+            "/email/send?user_id=test_user",
+            json=request_data,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["success"] is True
+        assert data["data"]["message_id"] == "gmail_sent_789"
+        assert data["data"]["provider"] == "google"
+
+        # Verify the send function was called with correct data
+        mock_send_gmail_message.assert_called_once()
+        call_args = mock_send_gmail_message.call_args[0]
+        email_data = call_args[2]  # Third argument is the SendEmailRequest
+        
+        assert len(email_data.to) == 1
+        assert len(email_data.cc) == 1
+        assert len(email_data.bcc) == 1
+        assert email_data.importance == "high"
+        assert email_data.reply_to_message_id == "gmail_original_123"
 
     @pytest.mark.asyncio
     async def test_get_email_message_invalid_id_format(self, client):
