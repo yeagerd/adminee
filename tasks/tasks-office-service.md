@@ -65,7 +65,7 @@ Before committing:
 [x] 1.9 [Run ./fix to fix lint issues.]
 [x] 1.10 [Run tox and fix any errors.]
 
-[x] 2. Core Module: Pydantic & Error Models
+[ ] 2. Core Module: Pydantic & Error Models
 [x] 2.1 [Create a schemas/ directory to hold all Pydantic models for API responses.]
 [x] 2.2 [Define the unified Pydantic models for Email (EmailAddress, EmailMessage), Calendar (CalendarEvent, Calendar), and Files (DriveFile) from Section 5.2.]
 [x] 2.3 [Define the generic API response models (ApiResponse, PaginatedResponse) from Section 5.2.]
@@ -74,7 +74,7 @@ Before committing:
 [ ] 2.6 [Run ./fix to fix lint issues.]
 [ ] 2.7 [Run tox and fix any errors.]
 
-[x] 3. Core Module: Token Manager
+[ ] 3. Core Module: Token Manager
 [x] 3.1 [Create a core/token_manager.py module.]
 [x] 3.2 [Implement the TokenManager class with the async get_user_token method as shown in Section 3.1.]
 [x] 3.3 [Integrate an httpx.AsyncClient into the TokenManager to make requests to the USER_MANAGEMENT_SERVICE_URL.]
@@ -84,7 +84,7 @@ Before committing:
 [ ] 3.7 [Run ./fix to fix lint issues.]
 [ ] 3.8 [Run tox and fix any errors.]
 
-[x] 4. Core Module: API Client Factory
+[ ] 4. Core Module: API Client Factory
 [x] 4.1 [Create a core/clients/ directory for provider-specific clients.]
 [x] 4.2 [Implement a base API client class that includes an httpx.AsyncClient and basic request/response logging.]
 [x] 4.3 [Create a GoogleAPIClient that inherits from the base client. It should be initialized with a user's access token.]
@@ -94,7 +94,7 @@ Before committing:
 [ ] 4.7 [Run ./fix to fix lint issues.]
 [ ] 4.8 [Run tox and fix any errors.]
 
-[x] 5. Core Module: Data Normalizer
+[ ] 5. Core Module: Data Normalizer
 [x] 5.1 [Create a core/normalizer.py module.]
 [x] 5.2 [Implement a function normalize_google_email that takes a raw JSON response from the Gmail API and converts it into the unified EmailMessage Pydantic model.]
 [x] 5.3 [Implement a function normalize_microsoft_email that takes a raw JSON response from the Microsoft Graph API and converts it into the unified EmailMessage Pydantic model.]
@@ -103,7 +103,7 @@ Before committing:
 [ ] 5.6 [Run ./fix to fix lint issues.]
 [ ] 5.7 [Run tox and fix any errors.]
 
-[x] 6. Core Module: Basic Caching (Redis)
+[ ] 6. Core Module: Basic Caching (Redis)
 [x] 6.1 [Add the redis-py library to the project dependencies.]
 [x] 6.2 [Create a core/cache_manager.py module that establishes a connection to Redis using the REDIS_URL.]
 [x] 6.3 [Implement the generate_cache_key utility function as specified in Section 6.2.]
