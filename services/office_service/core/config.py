@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     APP_NAME: str = "Office Service"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
+    ENVIRONMENT: str = "development"
+    LOG_LEVEL: str = "INFO"
 
     # Rate Limiting Configuration
     RATE_LIMIT_ENABLED: bool = True
