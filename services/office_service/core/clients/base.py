@@ -169,6 +169,7 @@ class BaseAPIClient(ABC):
             # Log successful request
             logger.debug(
                 f"Response: {response.status_code} | "
+                f"Endpoint: {endpoint} | "
                 f"Time: {response_time_ms}ms | "
                 f"Request-ID: {request_id}"
             )
@@ -192,6 +193,7 @@ class BaseAPIClient(ABC):
 
             logger.error(
                 f"Timeout error: {error_msg} | "
+                f"Endpoint: {endpoint} | "
                 f"Request-ID: {request_id} | "
                 f"User: {self.user_id} | Provider: {self.provider}"
             )
@@ -227,6 +229,7 @@ class BaseAPIClient(ABC):
 
             logger.error(
                 f"HTTP error: {error_msg} | "
+                f"Endpoint: {endpoint} | "
                 f"Request-ID: {request_id} | "
                 f"User: {self.user_id} | Provider: {self.provider}"
             )
@@ -269,6 +272,7 @@ class BaseAPIClient(ABC):
 
             logger.error(
                 f"Request error: {error_msg} | "
+                f"Endpoint: {endpoint} | "
                 f"Request-ID: {request_id} | "
                 f"User: {self.user_id} | Provider: {self.provider}"
             )
@@ -298,6 +302,7 @@ class BaseAPIClient(ABC):
 
             logger.error(
                 f"Unexpected error: {error_msg} | "
+                f"Endpoint: {endpoint} | "
                 f"Request-ID: {request_id} | "
                 f"User: {self.user_id} | Provider: {self.provider}"
             )
