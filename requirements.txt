@@ -1,4 +1,7 @@
 alembic
+celery
+clerk-backend-api
+cryptography
 databases
 email-validator
 fastapi
@@ -21,6 +24,7 @@ pytz
 redis
 requests
 sqlalchemy
+structlog
 tox
 types-requests
 types-pytz
