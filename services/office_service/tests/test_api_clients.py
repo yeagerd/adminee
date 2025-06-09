@@ -9,7 +9,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
-
 from core.api_client_factory import APIClientFactory
 from core.clients.base import BaseAPIClient
 from core.clients.google import GoogleAPIClient
@@ -478,9 +477,7 @@ class TestAPIClientFactory:
     @pytest.mark.asyncio
     async def test_create_google_client_success(self, mock_token_data):
         """Test successful Google client creation."""
-        with patch(
-            "core.api_client_factory.TokenManager"
-        ) as MockTokenManager:
+        with patch("core.api_client_factory.TokenManager") as MockTokenManager:
             mock_token_manager = AsyncMock()
             mock_token_manager.__aenter__.return_value = mock_token_manager
             mock_token_manager.get_user_token.return_value = mock_token_data
@@ -500,9 +497,7 @@ class TestAPIClientFactory:
         """Test successful Microsoft client creation."""
         mock_token_data.provider = "microsoft"
 
-        with patch(
-            "core.api_client_factory.TokenManager"
-        ) as MockTokenManager:
+        with patch("core.api_client_factory.TokenManager") as MockTokenManager:
             mock_token_manager = AsyncMock()
             mock_token_manager.__aenter__.return_value = mock_token_manager
             mock_token_manager.get_user_token.return_value = mock_token_data
@@ -520,9 +515,7 @@ class TestAPIClientFactory:
     @pytest.mark.asyncio
     async def test_create_client_with_enum_provider(self, mock_token_data):
         """Test client creation with Provider enum."""
-        with patch(
-            "core.api_client_factory.TokenManager"
-        ) as MockTokenManager:
+        with patch("core.api_client_factory.TokenManager") as MockTokenManager:
             mock_token_manager = AsyncMock()
             mock_token_manager.__aenter__.return_value = mock_token_manager
             mock_token_manager.get_user_token.return_value = mock_token_data
@@ -545,9 +538,7 @@ class TestAPIClientFactory:
     @pytest.mark.asyncio
     async def test_create_client_no_token(self):
         """Test client creation when no token is available."""
-        with patch(
-            "core.api_client_factory.TokenManager"
-        ) as MockTokenManager:
+        with patch("core.api_client_factory.TokenManager") as MockTokenManager:
             mock_token_manager = AsyncMock()
             mock_token_manager.__aenter__.return_value = mock_token_manager
             mock_token_manager.get_user_token.return_value = None  # No token
@@ -563,9 +554,7 @@ class TestAPIClientFactory:
         """Test client creation with custom scopes."""
         custom_scopes = ["https://www.googleapis.com/auth/gmail.readonly"]
 
-        with patch(
-            "core.api_client_factory.TokenManager"
-        ) as MockTokenManager:
+        with patch("core.api_client_factory.TokenManager") as MockTokenManager:
             mock_token_manager = AsyncMock()
             mock_token_manager.__aenter__.return_value = mock_token_manager
             mock_token_manager.get_user_token.return_value = mock_token_data
@@ -583,9 +572,7 @@ class TestAPIClientFactory:
     @pytest.mark.asyncio
     async def test_convenience_methods(self, mock_token_data):
         """Test convenience methods for specific providers."""
-        with patch(
-            "core.api_client_factory.TokenManager"
-        ) as MockTokenManager:
+        with patch("core.api_client_factory.TokenManager") as MockTokenManager:
             mock_token_manager = AsyncMock()
             mock_token_manager.__aenter__.return_value = mock_token_manager
             mock_token_manager.get_user_token.return_value = mock_token_data
@@ -605,9 +592,7 @@ class TestAPIClientFactory:
     @pytest.mark.asyncio
     async def test_create_all_clients(self, mock_token_data):
         """Test creating clients for all providers."""
-        with patch(
-            "core.api_client_factory.TokenManager"
-        ) as MockTokenManager:
+        with patch("core.api_client_factory.TokenManager") as MockTokenManager:
             mock_token_manager = AsyncMock()
             mock_token_manager.__aenter__.return_value = mock_token_manager
             mock_token_manager.get_user_token.return_value = mock_token_data
