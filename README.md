@@ -16,6 +16,91 @@ Key components include:
 - **Database:** PostgreSQL
 - **Vector Database:** Pinecone
 
+## Office Service
+
+The Office Service is a FastAPI-based microservice that provides unified access to email, calendar, and file data across Google and Microsoft providers. It handles OAuth token management, data normalization, caching, and provides RESTful APIs for frontend consumption.
+
+### Key Features
+
+- **Unified API:** Single endpoints for email, calendar, and files across Google and Microsoft
+- **Data Normalization:** Converts provider-specific responses to standardized models
+- **Caching:** Redis-based caching for improved performance
+- **Error Handling:** Comprehensive error handling with structured logging
+- **Token Management:** Secure OAuth token retrieval and caching
+- **Async Architecture:** Built with FastAPI and async/await for high performance
+
+### Office Service Setup
+
+1. **Navigate to the service directory:**
+   ```bash
+   cd services/office_service
+   ```
+
+2. **Create and activate virtual environment:**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Set up environment variables:**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
+
+5. **Run database migrations:**
+   ```bash
+   alembic upgrade head
+   ```
+
+6. **Start the service:**
+   ```bash
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+   ```
+
+### Office Service API Endpoints
+
+- **Health:** `GET /health` - Service health check
+- **Email:** 
+  - `GET /email/messages` - Get unified email messages
+  - `GET /email/messages/{id}` - Get specific email message
+  - `POST /email/send` - Send email
+- **Calendar:**
+  - `GET /calendar/events` - Get calendar events
+  - `POST /calendar/events` - Create calendar event
+  - `DELETE /calendar/events/{id}` - Delete calendar event
+- **Files:**
+  - `GET /files/` - List files
+  - `GET /files/search` - Search files
+  - `GET /files/{id}` - Get specific file
+
+### Office Service Testing
+
+```bash
+# Run all tests
+pytest
+
+# Run specific test categories
+pytest tests/test_integration.py     # Integration tests
+pytest tests/test_api_email.py       # Email API tests
+pytest tests/test_token_manager.py   # Token management tests
+
+# Run with coverage
+pytest --cov=services.office_service
+
+# Type checking
+mypy services/
+
+# Linting and formatting
+./fix                    # Auto-fix issues
+tox -p auto             # Full test matrix
+```
+
 ## Local Development Setup
 
 ### Prerequisites
@@ -76,8 +161,16 @@ Key components include:
     -   Each service in `services/` should have its own test suite within a `tests/` subdirectory (e.g., `services/office-service/tests/`).
     -   To run tests for a specific service, you might execute commands within its container or set up test scripts.
         ```bash
-        # Example: Run tests for office-service (assuming a Makefile or test runner)
-        # docker-compose exec app python -m pytest services/office-service/tests
+        # Office Service Testing:
+        cd services/office_service
+        source venv/bin/activate  # Activate virtual environment
+        pytest                    # Run all tests
+        pytest tests/test_integration.py  # Run integration tests only
+        
+        # Run type checking and linting
+        mypy services/
+        ./fix                     # Auto-fix lint issues
+        tox -p auto              # Run full test matrix in parallel
         ```
 -   **API Testing:** Use tools like Postman, Insomnia, or `curl` to test API endpoints exposed by the Next.js proxy and individual backend services.
 
