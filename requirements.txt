@@ -15,6 +15,7 @@ ormar>=0.20.2
 pinecone-client
 psycopg2-binary
 pydantic>=2.0,<2.9.0
+PyJWT
 pydantic-settings
 pytest
 pytest-asyncio
