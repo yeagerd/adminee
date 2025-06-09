@@ -70,6 +70,13 @@
 - `services/user_management/routers/__init__.py` - Router package exports for main application registration
 - `services/user_management/tests/test_main.py` - Comprehensive unit tests for application startup, health endpoint, exception handling, and middleware
 
+### Phase 2: User Authentication & Authorization (Partial)
+- `requirements.txt` - Added PyJWT dependency for JWT token handling
+- `services/user_management/auth/clerk.py` - Clerk JWT token validation with verify_jwt_token, get_current_user, and user ownership verification
+- `services/user_management/auth/service_auth.py` - Service-to-service API key authentication with multiple header format support and permission validation
+- `services/user_management/auth/__init__.py` - Authentication package exports for easy importing
+- `services/user_management/tests/test_auth.py` - Comprehensive unit tests for JWT validation, service authentication, and authorization checks
+
 ### Phase 1: Project Setup & Foundation
 
 * [x] 1. Project Structure & Environment Setup
@@ -109,16 +116,16 @@
 
 ### Phase 2: User Authentication & Authorization
 
-* [ ] 4. Authentication Middleware
-* [ ] 4.1 Create `auth/clerk.py` with Clerk JWT token validation using clerk-sdk-python
-* [ ] 4.2 Implement `verify_jwt_token()` function to validate and decode Clerk JWT tokens
-* [ ] 4.3 Create `get_current_user()` dependency to extract user_id from JWT claims
-* [ ] 4.4 Implement service-to-service API key authentication in `auth/service_auth.py`
+* [x] 4. Authentication Middleware
+* [x] 4.1 Create `auth/clerk.py` with Clerk JWT token validation using clerk-sdk-python
+* [x] 4.2 Implement `verify_jwt_token()` function to validate and decode Clerk JWT tokens
+* [x] 4.3 Create `get_current_user()` dependency to extract user_id from JWT claims
+* [x] 4.4 Implement service-to-service API key authentication in `auth/service_auth.py`
 * [ ] 4.5 Create rate limiting middleware using fastapi-limiter with Redis backend
-* [ ] 4.6 Implement `verify_user_ownership()` helper to ensure users can only access their own data
-* [ ] 4.7 Write unit tests for JWT validation, user extraction, and authorization checks
-* [ ] 4.8 Run `./fix` to format and lint code
-* [ ] 4.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
+* [x] 4.6 Implement `verify_user_ownership()` helper to ensure users can only access their own data
+* [x] 4.7 Write unit tests for JWT validation, user extraction, and authorization checks
+* [x] 4.8 Run `./fix` to format and lint code
+* [x] 4.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
 * [ ] 5. User Profile CRUD Operations
 * [ ] 5.1 Create `schemas/user.py` with Pydantic models for UserResponse, UserUpdate, and UserCreate
