@@ -1,7 +1,7 @@
 # User Service Task List
 
 ## References
-* Design doc: `documentation/user-service.md`
+* Design doc: `documentation/user-management-service.md`
 * Backend architecture: `/documentation/backend-architecture.md`
 
 ## Task Management Protocol
@@ -33,20 +33,33 @@
 
 ## User Management Service Implementation Tasks
 
+## Relevant Files
+
+### Phase 1: Project Setup & Foundation
+- `requirements.txt` - Added FastAPI, Ormar, Pydantic, cryptography, clerk-backend-api, celery, structlog dependencies
+- `services/user_management/` - Main service directory with auth, models, routers, services, utils subdirectories
+- `services/user_management/main.py` - FastAPI application entry point with health check endpoint
+- `services/user_management/settings.py` - Pydantic Settings configuration for environment variables
+- `services/user_management/database.py` - Database connection and Ormar configuration
+- `services/user_management/alembic/` - Alembic migration configuration
+- `services/user_management/logging_config.py` - Structlog configuration for structured logging
+- `Dockerfile.user-service` - Python/FastAPI Docker configuration
+- `docker-compose.yml` - Updated with user-management service and Redis
+- `services/user_management/tests/test_settings.py` - Unit tests for settings configuration
 
 ### Phase 1: Project Setup & Foundation
 
-* [ ] 1. Project Structure & Environment Setup
-* [ ] 1.1 Create new Python project with FastAPI, Ormar, Pydantic dependencies in requirements.txt
-* [ ] 1.2 Set up project structure: `services/user_management/{auth,models,routers,services,utils}/__init__.py`
-* [ ] 1.3 Create `settings.py` using Pydantic Settings for environment variable management
-* [ ] 1.4 Configure PostgreSQL connection string and database configuration
-* [ ] 1.5 Initialize Alembic with `alembic init alembic` and configure `alembic.ini`
-* [ ] 1.6 Set up structlog configuration in `logging_config.py`
-* [ ] 1.7 Create `Dockerfile` and `docker-compose.yml` for development environment
-* [ ] 1.8 Write unit tests for settings configuration and environment variable loading
-* [ ] 1.9 Run `./fix` to format and lint code
-* [ ] 1.10 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
+* [x] 1. Project Structure & Environment Setup
+* [x] 1.1 Create new Python project with FastAPI, Ormar, Pydantic dependencies in requirements.txt
+* [x] 1.2 Set up project structure: `services/user_management/{auth,models,routers,services,utils}/__init__.py`
+* [x] 1.3 Create `settings.py` using Pydantic Settings for environment variable management
+* [x] 1.4 Configure PostgreSQL connection string and database configuration
+* [x] 1.5 Initialize Alembic with `alembic init alembic` and configure `alembic.ini`
+* [x] 1.6 Set up structlog configuration in `logging_config.py`
+* [x] 1.7 Create `Dockerfile` and `docker-compose.yml` for development environment
+* [x] 1.8 Write unit tests for settings configuration and environment variable loading
+* [x] 1.9 Run `./fix` to format and lint code
+* [x] 1.10 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
 * [ ] 2. Database Models & Schema
 * [ ] 2.1 Create `models/user.py` with User model including id, email, first_name, last_name, profile_image_url, onboarding fields, timestamps
