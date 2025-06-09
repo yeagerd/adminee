@@ -11,13 +11,12 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, cast
 
-from fastapi import APIRouter, HTTPException, Path, Query
-
 from core.api_client_factory import APIClientFactory
 from core.cache_manager import cache_manager, generate_cache_key
 from core.clients.google import GoogleAPIClient
 from core.clients.microsoft import MicrosoftAPIClient
 from core.normalizer import normalize_google_calendar_event
+from fastapi import APIRouter, HTTPException, Path, Query
 from models import Provider
 from schemas import (
     ApiResponse,

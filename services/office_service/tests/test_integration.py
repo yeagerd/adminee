@@ -109,7 +109,9 @@ class TestEmailEndpoints:
         assert data["success"] is True
         assert "data" in data
         assert "messages" in data["data"]
-        assert len(data["data"]["messages"]) <= 2  # May have up to 1 per provider (2 total)
+        assert (
+            len(data["data"]["messages"]) <= 2
+        )  # May have up to 1 per provider (2 total)
 
     def test_get_email_messages_missing_user_id(self, client):
         """Test email messages endpoint without user_id parameter."""
@@ -126,7 +128,9 @@ class TestEmailEndpoints:
 
         data = response.json()
         assert data["success"] is True
-        assert data["data"]["message"]["id"] == "gmail_google-msg-1"  # Normalized ID includes provider prefix
+        assert (
+            data["data"]["message"]["id"] == "gmail_google-msg-1"
+        )  # Normalized ID includes provider prefix
         assert data["data"]["provider"] == "google"
 
     def test_get_email_message_not_found(self, client, integration_test_setup):
@@ -326,10 +330,14 @@ class TestErrorScenarios:
             )
 
             response = client.get(f"/email/messages?user_id={test_user_id}")
-            assert response.status_code == status.HTTP_200_OK  # Should return partial results
+            assert (
+                response.status_code == status.HTTP_200_OK
+            )  # Should return partial results
 
             data = response.json()
-            assert data["success"] is True  # Should be successful even with some provider failures
+            assert (
+                data["success"] is True
+            )  # Should be successful even with some provider failures
             assert "data" in data
             assert "provider_errors" in data["data"]  # Should report provider errors
 
@@ -338,10 +346,15 @@ class TestErrorScenarios:
         with patch("core.token_manager.TokenManager.get_user_token") as mock_token:
             from core.exceptions import ProviderAPIError
             from models import Provider
-            mock_token.side_effect = ProviderAPIError("Authentication failed", Provider.GOOGLE)
+
+            mock_token.side_effect = ProviderAPIError(
+                "Authentication failed", Provider.GOOGLE
+            )
 
             response = client.get(f"/email/messages?user_id={test_user_id}")
-            assert response.status_code == status.HTTP_200_OK  # Should handle gracefully and return partial results
+            assert (
+                response.status_code == status.HTTP_200_OK
+            )  # Should handle gracefully and return partial results
 
 
 class TestCaching:
@@ -354,7 +367,7 @@ class TestCaching:
             "messages": [{"id": "cached-msg-1", "subject": "Cached Email"}],
             "total_count": 1,
             "providers_used": ["google"],
-            "provider_errors": None
+            "provider_errors": None,
         }
 
         with patch(
