@@ -13,10 +13,10 @@ import httpx
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from services.office_service.core.cache_manager import cache_manager
-from services.office_service.core.config import settings
-from services.office_service.core.token_manager import TokenManager
-from services.office_service.models import database
+from core.cache_manager import cache_manager
+from core.config import settings
+from core.token_manager import TokenManager
+from models import database
 
 logger = logging.getLogger(__name__)
 
