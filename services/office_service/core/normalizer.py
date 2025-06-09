@@ -360,6 +360,92 @@ def normalize_google_drive_file(
         raise
 
 
+def normalize_microsoft_drive_file(
+    raw_data: Dict[str, Any], account_email: str, account_name: Optional[str] = None
+) -> DriveFile:
+    """
+    Convert a raw Microsoft OneDrive API file response into a unified DriveFile model.
+
+    Args:
+        raw_data: Raw JSON response from Microsoft Graph API (OneDrive)
+        account_email: Email address of the account this file belongs to
+        account_name: Display name for the account
+
+    Returns:
+        DriveFile: Unified drive file model
+
+    Raises:
+        ValueError: If required fields are missing from raw_data
+    """
+    try:
+        # Extract basic file info
+        file_id = raw_data.get("id")
+        if not file_id:
+            raise ValueError(
+                "Missing required field 'id' in Microsoft OneDrive response"
+            )
+
+        name = raw_data.get("name", "")
+
+        # Microsoft stores size as an integer directly
+        size = raw_data.get("size")
+
+        # Parse timestamps
+        created_time = _parse_iso_datetime(raw_data.get("createdDateTime"))
+        modified_time = _parse_iso_datetime(raw_data.get("lastModifiedDateTime"))
+
+        # Extract links
+        web_view_link = raw_data.get("webUrl")
+        download_link = raw_data.get("@microsoft.graph.downloadUrl")
+        thumbnail_link = None
+
+        # Extract thumbnail from thumbnails array if available
+        thumbnails = raw_data.get("thumbnails", [])
+        if thumbnails and len(thumbnails) > 0:
+            large_thumb = thumbnails[0].get("large", {})
+            thumbnail_link = large_thumb.get("url")
+
+        # Check if it's a folder
+        is_folder = "folder" in raw_data
+
+        # Get MIME type - Microsoft stores it in file.mimeType
+        file_data = raw_data.get("file", {})
+        mime_type = file_data.get("mimeType", "")
+
+        # If it's a folder, use the standard folder MIME type
+        if is_folder:
+            mime_type = "application/vnd.microsoft.onedrive.folder"
+
+        # Extract parent folder info
+        parent_reference = raw_data.get("parentReference", {})
+        parent_folder_id = parent_reference.get("id")
+        if parent_folder_id:
+            parent_folder_id = f"microsoft_{parent_folder_id}"
+
+        return DriveFile(
+            id=f"microsoft_{file_id}",
+            name=name,
+            mime_type=mime_type,
+            size=size,
+            created_time=created_time,
+            modified_time=modified_time,
+            web_view_link=web_view_link,
+            download_link=download_link,
+            thumbnail_link=thumbnail_link,
+            parent_folder_id=parent_folder_id,
+            is_folder=is_folder,
+            provider=Provider.MICROSOFT,
+            provider_file_id=file_id,
+            account_email=account_email,
+            account_name=account_name,
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to normalize Microsoft OneDrive file: {e}")
+        logger.error(f"Raw data: {raw_data}")
+        raise
+
+
 # Helper functions
 
 

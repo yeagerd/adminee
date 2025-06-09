@@ -5,6 +5,7 @@ Provides endpoints for reading files across Google Drive and Microsoft OneDrive 
 with unified data models, caching, and parallel API calls for optimal performance.
 """
 
+import asyncio
 import logging
 import uuid
 from datetime import datetime
@@ -12,6 +13,7 @@ from typing import List, Optional
 
 from core.api_client_factory import APIClientFactory
 from core.cache_manager import cache_manager, generate_cache_key
+from core.normalizer import normalize_google_drive_file, normalize_microsoft_drive_file
 from fastapi import APIRouter, HTTPException, Path, Query
 from schemas import ApiResponse
 
@@ -111,15 +113,128 @@ async def get_files(
                 success=True, data=cached_result, cache_hit=True, request_id=request_id
             )
 
-        # Build response with placeholder for MVP
+        # Fetch files from each provider
+        all_files = []
+        providers_used = []
+        provider_errors = {}
+
+        async def fetch_from_provider(provider: str):
+            try:
+                logger.info(f"[{request_id}] Fetching files from {provider}")
+
+                # Get API client for the provider
+                client = await api_client_factory.create_client(user_id, provider)
+                if client is None:
+                    raise Exception(
+                        f"Failed to create API client for provider {provider}"
+                    )
+
+                async with client:
+                    if provider == "google":
+                        # Build query for Google Drive
+                        query_parts = []
+                        if q:
+                            query_parts.append(f"name contains '{q}'")
+                        if file_types:
+                            mime_queries = [f"mimeType='{ft}'" for ft in file_types]
+                            query_parts.append(f"({' or '.join(mime_queries)})")
+                        if not include_folders:
+                            query_parts.append(
+                                "mimeType!='application/vnd.google-apps.folder'"
+                            )
+
+                        google_query = (
+                            " and ".join(query_parts) if query_parts else None
+                        )
+
+                        # Fetch files from Google Drive
+                        response = await client.get_files(
+                            page_size=limit, query=google_query
+                        )
+
+                        # Normalize Google Drive files
+                        if "files" in response:
+                            for file_data in response["files"]:
+                                try:
+                                    normalized_file = normalize_google_drive_file(
+                                        file_data, user_id
+                                    )
+                                    all_files.append(normalized_file)
+                                except Exception as norm_error:
+                                    logger.error(
+                                        f"[{request_id}] Failed to normalize Google Drive file: {norm_error}"
+                                    )
+                                    continue
+
+                        providers_used.append("google")
+                        logger.info(
+                            f"[{request_id}] Successfully fetched {len(response.get('files', []))} files from Google"
+                        )
+
+                    elif provider == "microsoft":
+                        # Fetch files from Microsoft OneDrive
+                        response = await client.get_drive_items(
+                            top=limit,
+                            search=q if q else None,
+                            order_by=(
+                                "lastModifiedDateTime desc"
+                                if order_by and order_by.startswith("modifiedTime")
+                                else None
+                            ),
+                        )
+
+                        # Normalize Microsoft OneDrive files
+                        if "value" in response:
+                            for file_data in response["value"]:
+                                try:
+                                    # Filter out folders if not requested
+                                    if not include_folders and file_data.get("folder"):
+                                        continue
+
+                                    # Filter by file types if specified
+                                    if file_types:
+                                        file_mime = file_data.get("file", {}).get(
+                                            "mimeType", ""
+                                        )
+                                        if not any(
+                                            ft in file_mime for ft in file_types
+                                        ):
+                                            continue
+
+                                    normalized_file = normalize_microsoft_drive_file(
+                                        file_data, user_id
+                                    )
+                                    all_files.append(normalized_file)
+                                except Exception as norm_error:
+                                    logger.error(
+                                        f"[{request_id}] Failed to normalize Microsoft Drive file: {norm_error}"
+                                    )
+                                    continue
+
+                        providers_used.append("microsoft")
+                        logger.info(
+                            f"[{request_id}] Successfully fetched {len(response.get('value', []))} files from Microsoft"
+                        )
+
+            except Exception as e:
+                error_msg = str(e)
+                logger.error(
+                    f"[{request_id}] Failed to fetch files from {provider}: {error_msg}"
+                )
+                provider_errors[provider] = error_msg
+
+        # Execute provider requests in parallel
+        await asyncio.gather(
+            *[fetch_from_provider(provider) for provider in valid_providers],
+            return_exceptions=True,
+        )
+
+        # Build response data
         response_data = {
-            "files": [],
-            "total_count": 0,
-            "providers_used": [],
-            "provider_errors": {
-                "google": "Not yet implemented",
-                "microsoft": "Not yet implemented",
-            },
+            "files": [file.dict() for file in all_files],
+            "total_count": len(all_files),
+            "providers_used": providers_used,
+            "provider_errors": provider_errors,
             "folder_context": {
                 "folder_id": folder_id,
                 "include_folders": include_folders,
@@ -132,12 +247,15 @@ async def get_files(
             },
         }
 
+        # Cache the result (5 minutes TTL for files)
+        await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=300)
+
         # Calculate response time
         end_time = datetime.utcnow()
         response_time_ms = int((end_time - start_time).total_seconds() * 1000)
 
         logger.info(
-            f"[{request_id}] Files request completed in {response_time_ms}ms (placeholder)"
+            f"[{request_id}] Files request completed in {response_time_ms}ms: {len(all_files)} files from {len(providers_used)} providers"
         )
 
         return ApiResponse(
@@ -204,17 +322,125 @@ async def search_files(
         if not valid_providers:
             raise HTTPException(status_code=400, detail="No valid providers specified")
 
-        # Build response with placeholder for MVP
+        # Build cache key for search results
+        cache_params = {
+            "query": q,
+            "providers": valid_providers,
+            "limit": limit,
+            "file_types": file_types or [],
+        }
+        cache_key = generate_cache_key(user_id, "unified", "files_search", cache_params)
+
+        # Check cache first (5 minute TTL for search results)
+        cached_result = await cache_manager.get_from_cache(cache_key)
+        if cached_result:
+            logger.info(f"[{request_id}] Cache hit for file search")
+            return ApiResponse(
+                success=True, data=cached_result, cache_hit=True, request_id=request_id
+            )
+
+        # Search files from each provider
+        all_results = []
+        providers_used = []
+        provider_errors = {}
+
+        async def search_provider(provider: str):
+            try:
+                logger.info(f"[{request_id}] Searching files in {provider}")
+
+                # Get API client for the provider
+                client = await api_client_factory.create_client(user_id, provider)
+                if client is None:
+                    raise Exception(
+                        f"Failed to create API client for provider {provider}"
+                    )
+
+                async with client:
+                    if provider == "google":
+                        # Search Google Drive
+                        response = await client.search_files(q, max_results=limit)
+
+                        # Normalize Google Drive search results
+                        if "files" in response:
+                            for file_data in response["files"]:
+                                try:
+                                    # Filter by file types if specified
+                                    if file_types:
+                                        file_mime = file_data.get("mimeType", "")
+                                        if not any(
+                                            ft in file_mime for ft in file_types
+                                        ):
+                                            continue
+
+                                    normalized_file = normalize_google_drive_file(
+                                        file_data, user_id
+                                    )
+                                    all_results.append(normalized_file)
+                                except Exception as norm_error:
+                                    logger.error(
+                                        f"[{request_id}] Failed to normalize Google search result: {norm_error}"
+                                    )
+                                    continue
+
+                        providers_used.append("google")
+                        logger.info(
+                            f"[{request_id}] Successfully searched Google: {len(response.get('files', []))} results"
+                        )
+
+                    elif provider == "microsoft":
+                        # Search Microsoft OneDrive
+                        response = await client.search_drive_items(q, top=limit)
+
+                        # Normalize Microsoft OneDrive search results
+                        if "value" in response:
+                            for file_data in response["value"]:
+                                try:
+                                    # Filter by file types if specified
+                                    if file_types:
+                                        file_mime = file_data.get("file", {}).get(
+                                            "mimeType", ""
+                                        )
+                                        if not any(
+                                            ft in file_mime for ft in file_types
+                                        ):
+                                            continue
+
+                                    normalized_file = normalize_microsoft_drive_file(
+                                        file_data, user_id
+                                    )
+                                    all_results.append(normalized_file)
+                                except Exception as norm_error:
+                                    logger.error(
+                                        f"[{request_id}] Failed to normalize Microsoft search result: {norm_error}"
+                                    )
+                                    continue
+
+                        providers_used.append("microsoft")
+                        logger.info(
+                            f"[{request_id}] Successfully searched Microsoft: {len(response.get('value', []))} results"
+                        )
+
+            except Exception as e:
+                error_msg = str(e)
+                logger.error(
+                    f"[{request_id}] Failed to search files in {provider}: {error_msg}"
+                )
+                provider_errors[provider] = error_msg
+
+        # Execute provider searches in parallel
+        await asyncio.gather(
+            *[search_provider(provider) for provider in valid_providers],
+            return_exceptions=True,
+        )
+
+        # Build response data
         response_data = {
-            "files": [],
-            "total_count": 0,
-            "search_query": q,
-            "providers_used": [],
-            "provider_errors": {
-                "google": "Not yet implemented",
-                "microsoft": "Not yet implemented",
-            },
-            "request_metadata": {
+            "files": [file.dict() for file in all_results],
+            "total_count": len(all_results),
+            "providers_used": providers_used,
+            "provider_errors": provider_errors,
+            "search_metadata": {
+                "query": q,
                 "user_id": user_id,
                 "providers_requested": valid_providers,
                 "limit": limit,
@@ -222,12 +448,15 @@ async def search_files(
             },
         }
 
+        # Cache the search results (5 minutes TTL)
+        await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=300)
+
         # Calculate response time
         end_time = datetime.utcnow()
         response_time_ms = int((end_time - start_time).total_seconds() * 1000)
 
         logger.info(
-            f"[{request_id}] File search completed in {response_time_ms}ms (placeholder)"
+            f"[{request_id}] File search completed in {response_time_ms}ms: {len(all_results)} results from {len(providers_used)} providers"
         )
 
         return ApiResponse(
@@ -274,33 +503,86 @@ async def get_file(
         # Parse provider from file_id
         provider, original_file_id = parse_file_id(file_id)
 
-        # Build response with placeholder for MVP
-        response_data = {
-            "file": None,
-            "provider": provider,
-            "error": "File detail endpoint not yet implemented",
-            "request_metadata": {
-                "user_id": user_id,
-                "file_id": file_id,
-                "include_download_url": include_download_url,
-            },
-        }
+        logger.info(f"[{request_id}] Fetching file from {provider}: {original_file_id}")
 
-        # Calculate response time
-        end_time = datetime.utcnow()
-        response_time_ms = int((end_time - start_time).total_seconds() * 1000)
+        # Get API client for the provider
+        client = await api_client_factory.create_client(user_id, provider)
+        if client is None:
+            raise Exception(f"Failed to create API client for provider {provider}")
 
-        logger.info(
-            f"[{request_id}] File detail request completed in {response_time_ms}ms (placeholder)"
-        )
+        async with client:
+            try:
+                if provider == "google":
+                    # Fetch file from Google Drive
+                    response = await client.get_file(original_file_id)
 
-        return ApiResponse(
-            success=False,
-            data=response_data,
-            cache_hit=False,
-            provider_used=provider,
-            request_id=request_id,
-        )
+                    # Normalize Google Drive file
+                    normalized_file = normalize_google_drive_file(response, user_id)
+
+                elif provider == "microsoft":
+                    # Fetch file from Microsoft OneDrive
+                    response = await client.get_drive_item(original_file_id)
+
+                    # Normalize Microsoft OneDrive file
+                    normalized_file = normalize_microsoft_drive_file(response, user_id)
+
+                else:
+                    raise HTTPException(
+                        status_code=400, detail=f"Unsupported provider: {provider}"
+                    )
+
+                # Build response data
+                response_data = {
+                    "file": normalized_file.dict(),
+                    "provider": provider,
+                    "request_metadata": {
+                        "user_id": user_id,
+                        "file_id": file_id,
+                        "include_download_url": include_download_url,
+                    },
+                }
+
+                # Calculate response time
+                end_time = datetime.utcnow()
+                response_time_ms = int((end_time - start_time).total_seconds() * 1000)
+
+                logger.info(
+                    f"[{request_id}] File detail request completed in {response_time_ms}ms: {normalized_file.name}"
+                )
+
+                return ApiResponse(
+                    success=True,
+                    data=response_data,
+                    cache_hit=False,
+                    provider_used=provider,
+                    request_id=request_id,
+                )
+
+            except Exception as e:
+                error_msg = str(e)
+                logger.error(
+                    f"[{request_id}] Failed to fetch file from {provider}: {error_msg}"
+                )
+
+                # Return error response
+                response_data = {
+                    "file": None,
+                    "provider": provider,
+                    "error": error_msg,
+                    "request_metadata": {
+                        "user_id": user_id,
+                        "file_id": file_id,
+                        "include_download_url": include_download_url,
+                    },
+                }
+
+                return ApiResponse(
+                    success=False,
+                    data=response_data,
+                    cache_hit=False,
+                    provider_used=provider,
+                    request_id=request_id,
+                )
 
     except HTTPException:
         raise

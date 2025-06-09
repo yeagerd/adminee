@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     DEFAULT_CACHE_TTL_SECONDS: int = 900  # 15 minutes default
     CACHE_ENABLED: bool = True
 
+    # Demo Configuration
+    DEMO_MODE: bool = (
+        False  # Set to True to use demo token manager instead of user service
+    )
+
     model_config = ConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

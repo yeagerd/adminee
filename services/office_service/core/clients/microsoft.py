@@ -208,33 +208,37 @@ class MicrosoftAPIClient(BaseAPIClient):
     async def get_drive_items(
         self,
         top: int = 100,
-        skip: int = 0,
         filter: Optional[str] = None,
         search: Optional[str] = None,
         order_by: Optional[str] = None,
+        skip_token: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Get list of OneDrive items.
 
         Args:
             top: Number of items to return per page
-            skip: Number of items to skip (for pagination)
             filter: OData filter expression
             search: Search query
             order_by: Order by expression
+            skip_token: Token for cursor-based pagination (from @odata.nextLink)
 
         Returns:
             Dictionary containing items list and pagination info
         """
-        params: Dict[str, Any] = {"$top": top, "$skip": skip}
+        # If search is provided, use the search endpoint instead
+        if search:
+            return await self.search_drive_items(search, top=top)
+
+        params: Dict[str, Any] = {"$top": top}
         if filter:
             params["$filter"] = filter
-        if search:
-            params["$search"] = search
         if order_by:
             params["$orderby"] = order_by
         else:
             params["$orderby"] = "lastModifiedDateTime desc"
+        if skip_token:
+            params["$skiptoken"] = skip_token
 
         response = await self.get("/me/drive/root/children", params=params)
         return response.json()
