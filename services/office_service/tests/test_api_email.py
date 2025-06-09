@@ -9,9 +9,8 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from fastapi.testclient import TestClient
-
 from app.main import app
+from fastapi.testclient import TestClient
 from models import Provider
 from schemas import EmailAddress, EmailMessage, SendEmailRequest
 
@@ -511,9 +510,8 @@ class TestEmailHelperFunctions:
 
     def test_parse_message_id_invalid_format(self):
         """Test parsing invalid message ID format."""
-        from fastapi import HTTPException
-
         from api.email import parse_message_id
+        from fastapi import HTTPException
 
         with pytest.raises(HTTPException) as exc_info:
             parse_message_id("invalid_format_no_underscore")
@@ -523,9 +521,8 @@ class TestEmailHelperFunctions:
 
     def test_parse_message_id_unknown_provider(self):
         """Test parsing message ID with unknown provider."""
-        from fastapi import HTTPException
-
         from api.email import parse_message_id
+        from fastapi import HTTPException
 
         with pytest.raises(HTTPException) as exc_info:
             parse_message_id("unknown_abc123")

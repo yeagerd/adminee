@@ -5,7 +5,6 @@ from typing import Any, Dict, Optional
 import databases
 import ormar
 import sqlalchemy
-
 from core.config import settings
 
 # Database setup

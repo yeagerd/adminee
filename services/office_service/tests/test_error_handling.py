@@ -3,9 +3,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
-from fastapi import Request
-from fastapi.responses import JSONResponse
-
 from app.main import (
     office_service_error_handler,
     provider_api_error_handler,
@@ -17,6 +14,8 @@ from core.exceptions import (
     ProviderAPIError,
     RateLimitError,
 )
+from fastapi import Request
+from fastapi.responses import JSONResponse
 from models import Provider
 
 
@@ -277,9 +276,7 @@ class TestLoggingIntegration:
             mock_response.raise_for_status.return_value = None
             mock_client.request.return_value = mock_response
 
-            with patch(
-                "core.clients.base.logger"
-            ) as mock_logger:
+            with patch("core.clients.base.logger") as mock_logger:
                 async with google_client:
                     await google_client.get("/test/endpoint")
 
@@ -315,9 +312,7 @@ class TestLoggingIntegration:
                 "Request timed out"
             )
 
-            with patch(
-                "core.clients.base.logger"
-            ) as mock_logger:
+            with patch("core.clients.base.logger") as mock_logger:
                 async with google_client:
                     with pytest.raises(ProviderAPIError):
                         await google_client.get("/test/endpoint")

@@ -13,9 +13,8 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 
 import redis.asyncio as redis
-from redis.asyncio import Redis
-
 from core.config import settings
+from redis.asyncio import Redis
 
 logger = logging.getLogger(__name__)
 

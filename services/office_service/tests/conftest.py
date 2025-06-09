@@ -472,11 +472,8 @@ def integration_test_setup(
         patch("core.cache_manager.cache_manager.get_from_cache", return_value=None),
         patch("core.cache_manager.cache_manager.set_to_cache", return_value=True),
         patch("httpx.AsyncClient.request", side_effect=mock_http_responses),
-        patch(
-            "core.clients.base.BaseAPIClient.__aenter__", 
-            side_effect=lambda self: self
-        ),
-        patch("core.clients.base.BaseAPIClient.__aexit__", return_value=None),
+        patch("httpx.AsyncClient.__aenter__", return_value=MagicMock()),
+        patch("httpx.AsyncClient.__aexit__", return_value=None),
         patch(
             "core.clients.google.GoogleAPIClient.get_messages",
             side_effect=mock_google_get_messages,
