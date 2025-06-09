@@ -4,395 +4,392 @@
 * Design doc: `documentation/user-service.md`
 * Backend architecture: `/documentation/backend-architecture.md`
 
-## Task List Management
+## Task Management Protocol
 
-Guidelines for managing task lists in markdown files to track progress on completing a PRD
+### Workflow
+1. Check next available sub-task before starting work
+2. Complete one sub-task at a time
+3. Update task list after each sub-task completion
+4. Make descriptive git commit after completing full tasks
 
-### Task Implementation
-- **One sub-task at a time:** 
-- **Completion protocol:**  
-  1. When you finish a **sub‑task**, immediately mark it as completed by changing `[ ]` to `[x]`.  
-  2. If **all** subtasks underneath a parent task are now `[x]`, also mark the **parent task** as completed.  
+### Task List Updates
+- Mark completed sub-tasks: `[ ]` → `[x]`
+- Mark parent task complete when all sub-tasks are `[x]`
+- Add new tasks as discovered
+- Maintain "Relevant Files" section with one-line descriptions for all created/modified files
 
-### Task List Maintenance
+## General instructions for working in Python in this repo
 
-1. **Update the task list as you work:**
-   - Mark tasks and subtasks as completed (`[x]`) per the protocol above.
-   - Add new tasks as they emerge.
+### Setup
+* Activate the virtual environment: `source venv/bin/activate`
+* Run all Python commands from the repository root.
 
-2. **Maintain the “Relevant Files” section:**
-   - List every file created or modified.
-   - Give each file a one‑line description of its purpose.
-
-### AI Instructions
-
-When working with task lists, the AI must:
-
-1. Regularly update the task list file after finishing any significant work.
-2. Follow the completion protocol:
-   - Mark each finished **sub‑task** `[x]`.
-   - Mark the **parent task** `[x]` once **all** its subtasks are `[x]`.
-3. Add newly discovered tasks.
-4. Keep “Relevant Files” accurate and up to date.
-5. Before starting work, check which sub‑task is next.
-6. After implementing a sub‑task, update this file.
-
+### Before committing
+* Run `pytest` and fix all test failures.
+* Run `mypy services/` and resolve all type errors.
+* Fix lint issues using `./fix`
+* Run ``tox -p auto`` to validate the full test matrix and environment compatibility.
 
 
 ## User Management Service Implementation Tasks
 
-### Phase 1: Project Setup & Foundation (Week 1)
 
-- [ ] 1. Project Structure & Environment Setup
-  - [ ] 1.1 Create new Python project with FastAPI, Ormar, Pydantic dependencies
-  - [ ] 1.2 Set up project structure with modules for auth, models, routers, services
-  - [ ] 1.3 Configure environment variables and settings management using Pydantic Settings
-  - [ ] 1.4 Set up PostgreSQL database connection and configuration
-  - [ ] 1.5 Initialize Alembic for database migrations
-  - [ ] 1.6 Set up logging configuration with structlog
-  - [ ] 1.7 Create Docker configuration for development environment
-  - [ ] 1.8 Add unit tests for new functionality
-  - [ ] 1.9 Run `./fix` to address linting issues
-  - [ ] 1.10 Run `tox` and fix any test failures
+### Phase 1: Project Setup & Foundation
 
-- [ ] 2. Database Models & Schema
-  - [ ] 2.1 Implement User model with Ormar including all fields (id, email, names, etc.)
-  - [ ] 2.2 Implement UserPreferences model with all preference categories (UI, notifications, AI, etc.)
-  - [ ] 2.3 Implement Integration model with provider enum and status tracking
-  - [ ] 2.4 Implement EncryptedToken model with proper relationships
-  - [ ] 2.5 Implement AuditLog model for compliance tracking
-  - [ ] 2.6 Create initial Alembic migration for all models
-  - [ ] 2.7 Add database indexes for performance optimization
-  - [ ] 2.8 Test database models with sample data creation and queries
-  - [ ] 2.9 Add unit tests for database models
-  - [ ] 2.10 Run `./fix` to address linting issues
-  - [ ] 2.11 Run `tox` and fix any test failures
+* [ ] 1. Project Structure & Environment Setup
+* [ ] 1.1 Create new Python project with FastAPI, Ormar, Pydantic dependencies in requirements.txt
+* [ ] 1.2 Set up project structure: `services/user_management/{auth,models,routers,services,utils}/__init__.py`
+* [ ] 1.3 Create `settings.py` using Pydantic Settings for environment variable management
+* [ ] 1.4 Configure PostgreSQL connection string and database configuration
+* [ ] 1.5 Initialize Alembic with `alembic init alembic` and configure `alembic.ini`
+* [ ] 1.6 Set up structlog configuration in `logging_config.py`
+* [ ] 1.7 Create `Dockerfile` and `docker-compose.yml` for development environment
+* [ ] 1.8 Write unit tests for settings configuration and environment variable loading
+* [ ] 1.9 Run `./fix` to format and lint code
+* [ ] 1.10 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-- [ ] 3. Basic FastAPI Application Structure
-  - [ ] 3.1 Create main FastAPI application with CORS and middleware setup
-  - [ ] 3.2 Set up router structure for users, preferences, integrations, webhooks
-  - [ ] 3.3 Implement basic health check endpoint
-  - [ ] 3.4 Configure OpenAPI documentation settings
-  - [ ] 3.5 Set up exception handling middleware with standardized error responses
-  - [ ] 3.6 Add unit tests for API endpoints
-  - [ ] 3.7 Run `./fix` to address linting issues
-  - [ ] 3.8 Run `tox` and fix any test failures
+* [ ] 2. Database Models & Schema
+* [ ] 2.1 Create `models/user.py` with User model including id, email, first_name, last_name, profile_image_url, onboarding fields, timestamps
+* [ ] 2.2 Create `models/preferences.py` with UserPreferences model including UI, notification, AI, integration, and privacy preferences
+* [ ] 2.3 Create `models/integration.py` with Integration model including provider enum, status enum, and relationship to User
+* [ ] 2.4 Create `models/token.py` with EncryptedToken model including foreign keys to User and Integration
+* [ ] 2.5 Create `models/audit.py` with AuditLog model for compliance tracking
+* [ ] 2.6 Create `models/__init__.py` to import all models and set up database metadata
+* [ ] 2.7 Generate initial Alembic migration with `alembic revision --autogenerate -m "Initial schema"`
+* [ ] 2.8 Add database indexes in migration file for user_id, provider, status, created_at fields
+* [ ] 2.9 Write unit tests for all model creation, validation, and relationship queries
+* [ ] 2.10 Run `./fix` to format and lint code
+* [ ] 2.11 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-### Phase 2: User Profile Management (Week 1-2)
+* [ ] 3. Basic FastAPI Application Structure
+* [ ] 3.1 Create `main.py` with FastAPI app initialization, CORS middleware, and error handling middleware
+* [ ] 3.2 Create router files: `routers/{users,preferences,integrations,webhooks,internal}.py`
+* [ ] 3.3 Implement `GET /health` endpoint returning service status and database connectivity
+* [ ] 3.4 Configure OpenAPI documentation with title, description, version, and contact info
+* [ ] 3.5 Create `exceptions.py` with custom exception classes and global exception handler
+* [ ] 3.6 Write unit tests for application startup, health endpoint, and exception handling
+* [ ] 3.7 Run `./fix` to format and lint code
+* [ ] 3.8 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-- [ ] 4. User Authentication & Authorization
-  - [ ] 4.1 Implement Clerk JWT token validation middleware
-  - [ ] 4.2 Create user identity extraction from JWT claims
-  - [ ] 4.3 Implement service-to-service API key authentication
-  - [ ] 4.4 Add rate limiting using fastapi-limiter
-  - [ ] 4.5 Create authorization helpers to verify user ownership of resources
-  - [ ] 4.6 Add unit tests for authentication flows
-  - [ ] 4.7 Run `./fix` to address linting issues
-  - [ ] 4.8 Run `tox` and fix any test failures
+### Phase 2: User Authentication & Authorization
 
-- [ ] 5. User Profile CRUD Operations
-  - [ ] 5.1 Implement GET /users/{user_id} endpoint with authentication
-  - [ ] 5.2 Implement PUT /users/{user_id} endpoint with validation
-  - [ ] 5.3 Implement DELETE /users/{user_id} endpoint with soft delete
-  - [ ] 5.4 Add Pydantic schemas for request/response validation
-  - [ ] 5.5 Implement user profile update logic with audit logging
-  - [ ] 5.6 Add comprehensive error handling for all user endpoints
-  - [ ] 5.7 Add unit tests for profile operations
-  - [ ] 5.8 Run `./fix` to address linting issues
-  - [ ] 5.9 Run `tox` and fix any test failures
+* [ ] 4. Authentication Middleware
+* [ ] 4.1 Create `auth/clerk.py` with Clerk JWT token validation using clerk-sdk-python
+* [ ] 4.2 Implement `verify_jwt_token()` function to validate and decode Clerk JWT tokens
+* [ ] 4.3 Create `get_current_user()` dependency to extract user_id from JWT claims
+* [ ] 4.4 Implement service-to-service API key authentication in `auth/service_auth.py`
+* [ ] 4.5 Create rate limiting middleware using fastapi-limiter with Redis backend
+* [ ] 4.6 Implement `verify_user_ownership()` helper to ensure users can only access their own data
+* [ ] 4.7 Write unit tests for JWT validation, user extraction, and authorization checks
+* [ ] 4.8 Run `./fix` to format and lint code
+* [ ] 4.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-- [ ] 6. Clerk Webhook Integration
-  - [ ] 6.1 Implement webhook signature verification using Clerk SDK
-  - [ ] 6.2 Create POST /webhooks/clerk endpoint handler
-  - [ ] 6.3 Implement user.created event handling (create User and UserPreferences)
-  - [ ] 6.4 Implement user.updated event handling (update User record)
-  - [ ] 6.5 Implement user.deleted event handling (soft delete cascade)
-  - [ ] 6.6 Add comprehensive error handling and retry logic for webhook processing
-  - [ ] 6.7 Test webhook integration with Clerk test events
-  - [ ] 6.8 Add unit tests for webhook handlers
-  - [ ] 6.9 Run `./fix` to address linting issues
-  - [ ] 6.10 Run `tox` and fix any test failures
+* [ ] 5. User Profile CRUD Operations
+* [ ] 5.1 Create `schemas/user.py` with Pydantic models for UserResponse, UserUpdate, and UserCreate
+* [ ] 5.2 Implement `GET /users/{user_id}` endpoint in `routers/users.py` with authentication and authorization
+* [ ] 5.3 Implement `PUT /users/{user_id}` endpoint with request validation and audit logging
+* [ ] 5.4 Implement `DELETE /users/{user_id}` endpoint with soft delete functionality
+* [ ] 5.5 Create `services/user_service.py` with business logic for user operations
+* [ ] 5.6 Add comprehensive error handling with proper HTTP status codes and error messages
+* [ ] 5.7 Write unit tests for all endpoints including success and error scenarios
+* [ ] 5.8 Run `./fix` to format and lint code
+* [ ] 5.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-### Phase 3: Preferences Management (Week 2)
+* [ ] 6. Clerk Webhook Integration
+* [ ] 6.1 Install and configure Clerk Python SDK with webhook signature verification
+* [ ] 6.2 Create `POST /webhooks/clerk` endpoint in `routers/webhooks.py`
+* [ ] 6.3 Implement webhook signature verification using Clerk's webhook secret
+* [ ] 6.4 Handle `user.created` event: create User record and default UserPreferences
+* [ ] 6.5 Handle `user.updated` event: update User record with new information
+* [ ] 6.6 Handle `user.deleted` event: soft delete User and cascade to related records
+* [ ] 6.7 Add error handling, logging, and idempotency for webhook processing
+* [ ] 6.8 Write unit tests for webhook processing including signature validation and event handling
+* [ ] 6.9 Run `./fix` to format and lint code
+* [ ] 6.10 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-- [ ] 7. User Preferences API
-  - [ ] 7.1 Implement GET /users/{user_id}/preferences endpoint
-  - [ ] 7.2 Implement PUT /users/{user_id}/preferences endpoint with partial updates
-  - [ ] 7.3 Implement POST /users/{user_id}/preferences/reset endpoint
-  - [ ] 7.4 Create Pydantic schemas for preference validation with proper types/enums
-  - [ ] 7.5 Implement preference inheritance and default value logic
-  - [ ] 7.6 Add validation for preference values (theme choices, timezone validation, etc.)
-  - [ ] 7.7 Implement audit logging for preference changes
-  - [ ] 7.8 Add unit tests for preferences API
-  - [ ] 7.9 Run `./fix` to address linting issues
-  - [ ] 7.10 Run `tox` and fix any test failures
+### Phase 3: User Preferences Management
 
-- [ ] 8. Preferences Management Logic
-  - [ ] 8.1 Create PreferencesManager service class
-  - [ ] 8.2 Implement preference schema validation and migration support
-  - [ ] 8.3 Add support for nested preference updates (partial JSON updates)
-  - [ ] 8.4 Implement preference history tracking for rollback capabilities
-  - [ ] 8.5 Create helper functions for common preference operations
-  - [ ] 8.6 Add unit tests for preferences management
-  - [ ] 8.7 Run `./fix` to address linting issues
-  - [ ] 8.8 Run `tox` and fix any test failures
+* [ ] 7. Preferences API Implementation
+* [ ] 7.1 Create `schemas/preferences.py` with comprehensive Pydantic models for all preference categories
+* [ ] 7.2 Implement `GET /users/{user_id}/preferences` endpoint returning all user preferences
+* [ ] 7.3 Implement `PUT /users/{user_id}/preferences` with support for partial updates using PATCH semantics
+* [ ] 7.4 Implement `POST /users/{user_id}/preferences/reset` to restore default preferences
+* [ ] 7.5 Add validation for preference values including enums for theme, timezone, language, etc.
+* [ ] 7.6 Create `services/preferences_service.py` with preference management business logic
+* [ ] 7.7 Write unit tests for preference validation, partial updates, and default value handling
+* [ ] 7.8 Run `./fix` to format and lint code
+* [ ] 7.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-### Phase 4: Token Encryption & Security (Week 3)
+* [ ] 8. Advanced Preferences Features
+* [ ] 8.1 Implement preference inheritance system with system defaults and user overrides
+* [ ] 8.2 Add preference validation schema with custom validators for complex fields
+* [ ] 8.3 Create preference migration system for handling schema changes
+* [ ] 8.4 Implement preference history tracking for audit and rollback capabilities
+* [ ] 8.5 Add preference export/import functionality for user data portability
+* [ ] 8.6 Write unit tests for inheritance, validation, migration, and history features
+* [ ] 8.7 Run `./fix` to format and lint code
+* [ ] 8.8 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-- [ ] 9. Token Encryption System
-  - [ ] 9.1 Implement TokenEncryption class with AES-256-GCM
-  - [ ] 9.2 Implement user-specific key derivation using PBKDF2
-  - [ ] 9.3 Create encrypt_token and decrypt_token methods
-  - [ ] 9.4 Implement key rotation support with versioning
-  - [ ] 9.5 Add comprehensive error handling for encryption failures
-  - [ ] 9.6 Create unit tests for all encryption/decryption operations
-  - [ ] 9.7 Implement secure key storage and environment variable management
-  - [ ] 9.8 Add unit tests for token encryption
-  - [ ] 9.9 Run `./fix` to address linting issues
-  - [ ] 9.10 Run `tox` and fix any test failures
+### Phase 4: Token Encryption & Security
 
-- [ ] 10. Audit Logging System
-  - [ ] 10.1 Create AuditLogger service class
-  - [ ] 10.2 Implement structured logging for all sensitive operations
-  - [ ] 10.3 Add audit logging to all user profile and preference changes
-  - [ ] 10.4 Implement audit log querying capabilities for compliance
-  - [ ] 10.5 Add automatic audit log retention and cleanup
-  - [ ] 10.6 Create audit log analytics and reporting functions
-  - [ ] 10.7 Add unit tests for audit logging
-  - [ ] 10.8 Run `./fix` to address linting issues
-  - [ ] 10.9 Run `tox` and fix any test failures
+* [ ] 9. Token Encryption Implementation
+* [ ] 9.1 Create `security/encryption.py` with TokenEncryption class using cryptography library
+* [ ] 9.2 Implement `derive_user_key()` method using PBKDF2 with user_id and service salt
+* [ ] 9.3 Implement `encrypt_token()` method using AES-256-GCM with user-specific keys
+* [ ] 9.4 Implement `decrypt_token()` method with proper error handling for invalid tokens
+* [ ] 9.5 Add key rotation support with versioned encryption keys
+* [ ] 9.6 Create comprehensive error handling for encryption failures and key derivation issues
+* [ ] 9.7 Write unit tests for encryption/decryption, key derivation, and error scenarios
+* [ ] 9.8 Run `./fix` to format and lint code
+* [ ] 9.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-### Phase 5: OAuth Integration Management (Week 3-4)
+* [ ] 10. Audit Logging System
+* [ ] 10.1 Create `services/audit_service.py` with AuditLogger class
+* [ ] 10.2 Implement `log_audit_event()` method with structured logging using structlog
+* [ ] 10.3 Add audit logging to all user profile changes, preference updates, and token operations
+* [ ] 10.4 Implement audit log querying with filtering by user, action, date range
+* [ ] 10.5 Create audit log retention policy with automatic cleanup of old logs
+* [ ] 10.6 Add audit log analytics functions for compliance reporting
+* [ ] 10.7 Write unit tests for audit logging, querying, and retention policies
+* [ ] 10.8 Run `./fix` to format and lint code
+* [ ] 10.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-- [ ] 11. OAuth Flow Implementation
-  - [ ] 11.1 Create OAuth provider configurations (Google, Microsoft)
-  - [ ] 11.2 Implement OAuth state generation and validation with PKCE
-  - [ ] 11.3 Create authorization URL generation for providers
-  - [ ] 11.4 Implement authorization code exchange for tokens
-  - [ ] 11.5 Add OAuth scope validation and management
-  - [ ] 11.6 Implement provider-specific user info retrieval
-  - [ ] 11.7 Add comprehensive error handling for OAuth failures
-  - [ ] 11.8 Add unit tests for OAuth implementation
-  - [ ] 11.9 Run `./fix` to address linting issues
-  - [ ] 11.10 Run `tox` and fix any test failures
+### Phase 5: OAuth Integration Management
 
-- [ ] 12. Integration Management API
-  - [ ] 12.1 Implement GET /users/{user_id}/integrations endpoint
-  - [ ] 12.2 Implement POST /users/{user_id}/integrations/{provider} endpoint
-  - [ ] 12.3 Implement DELETE /users/{user_id}/integrations/{provider} endpoint
-  - [ ] 12.4 Implement PUT /users/{user_id}/integrations/{provider}/refresh endpoint
-  - [ ] 12.5 Add integration status tracking and health monitoring
-  - [ ] 12.6 Implement integration metadata management
-  - [ ] 12.7 Create Pydantic schemas for integration requests/responses
-  - [ ] 12.8 Add unit tests for integration management
-  - [ ] 12.9 Run `./fix` to address linting issues
-  - [ ] 12.10 Run `tox` and fix any test failures
+* [ ] 11. OAuth Provider Configuration
+* [ ] 11.1 Create `integrations/oauth_config.py` with Google and Microsoft OAuth configurations
+* [ ] 11.2 Implement OAuth state generation and validation with PKCE support
+* [ ] 11.3 Create authorization URL generation for each provider with proper scopes
+* [ ] 11.4 Implement authorization code exchange for access and refresh tokens
+* [ ] 11.5 Add OAuth scope validation and management with provider-specific scope mapping
+* [ ] 11.6 Implement provider-specific user info retrieval using access tokens
+* [ ] 11.7 Write unit tests for OAuth configuration, state validation, and token exchange
+* [ ] 11.8 Run `./fix` to format and lint code
+* [ ] 11.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-- [ ] 13. Token Storage & Management
-  - [ ] 13.1 Implement secure token storage using EncryptedToken model
-  - [ ] 13.2 Create token lifecycle management (create, update, delete)
-  - [ ] 13.3 Implement automatic token expiration checking
-  - [ ] 13.4 Add token refresh logic with provider-specific implementations
-  - [ ] 13.5 Implement token revocation and cleanup procedures
-  - [ ] 13.6 Add token usage tracking and analytics
-  - [ ] 13.7 Add unit tests for token management
-  - [ ] 13.8 Run `./fix` to address linting issues
-  - [ ] 13.9 Run `tox` and fix any test failures
+* [ ] 12. Integration Management Endpoints
+* [ ] 12.1 Create `schemas/integration.py` with Pydantic models for integration requests and responses
+* [ ] 12.2 Implement `GET /users/{user_id}/integrations` endpoint showing all user integrations
+* [ ] 12.3 Implement `POST /users/{user_id}/integrations/{provider}` for completing OAuth flow
+* [ ] 12.4 Implement `DELETE /users/{user_id}/integrations/{provider}` for disconnecting integrations
+* [ ] 12.5 Implement `PUT /users/{user_id}/integrations/{provider}/refresh` for manual token refresh
+* [ ] 12.6 Add integration status tracking and health monitoring
+* [ ] 12.7 Create `services/integration_service.py` with integration management business logic
+* [ ] 12.8 Write unit tests for all integration endpoints and business logic
+* [ ] 12.9 Run `./fix` to format and lint code
+* [ ] 12.10 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-### Phase 6: Service-to-Service Integration (Week 4)
+* [ ] 13. Secure Token Storage
+* [ ] 13.1 Create `services/token_service.py` for encrypted token storage and retrieval
+* [ ] 13.2 Implement `store_tokens()` method with automatic encryption before database storage
+* [ ] 13.3 Implement `get_valid_token()` method with automatic refresh if token is expired
+* [ ] 13.4 Add token lifecycle management including creation, updates, and secure deletion
+* [ ] 13.5 Implement token expiration checking with configurable buffer time
+* [ ] 13.6 Add token revocation procedures that notify providers when possible
+* [ ] 13.7 Write unit tests for token storage, retrieval, refresh, and lifecycle management
+* [ ] 13.8 Run `./fix` to format and lint code
+* [ ] 13.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-- [ ] 14. Internal Token API
-  - [ ] 14.1 Implement POST /internal/tokens/get endpoint with service auth
-  - [ ] 14.2 Implement POST /internal/tokens/refresh endpoint
-  - [ ] 14.3 Add automatic token refresh logic with expiration buffer
-  - [ ] 14.4 Implement scope validation for token requests
-  - [ ] 14.5 Add comprehensive error handling for token retrieval failures
-  - [ ] 14.6 Create service-to-service authentication validation
-  - [ ] 14.7 Implement request/response logging for internal endpoints
-  - [ ] 14.8 Add unit tests for internal token API
-  - [ ] 14.9 Run `./fix` to address linting issues
-  - [ ] 14.10 Run `tox` and fix any test failures
+### Phase 6: Service-to-Service API
 
-- [ ] 15. Integration Status Management
-  - [ ] 15.1 Create IntegrationStatusTracker service class
-  - [ ] 15.2 Implement integration health monitoring
-  - [ ] 15.3 Add integration status broadcasting to dependent services
-  - [ ] 15.4 Implement automatic status updates based on token operations
-  - [ ] 15.5 Create integration troubleshooting and diagnostic tools
-  - [ ] 15.6 Add integration usage analytics and reporting
-  - [ ] 15.7 Add unit tests for integration status management
-  - [ ] 15.8 Run `./fix` to address linting issues
-  - [ ] 15.9 Run `tox` and fix any test failures
+* [ ] 14. Internal Token Retrieval API
+* [ ] 14.1 Create `routers/internal.py` with service-to-service authentication required
+* [ ] 14.2 Implement `POST /internal/tokens/get` endpoint for other services to retrieve user tokens
+* [ ] 14.3 Add automatic token refresh logic with expiration buffer (5 minutes)
+* [ ] 14.4 Implement scope validation ensuring requested scopes are available
+* [ ] 14.5 Add comprehensive error handling for token retrieval failures
+* [ ] 14.6 Implement request/response logging for audit trail of token access
+* [ ] 14.7 Create `POST /internal/tokens/refresh` endpoint for manual token refresh
+* [ ] 14.8 Write unit tests for internal API endpoints including authentication and error handling
+* [ ] 14.9 Run `./fix` to format and lint code
+* [ ] 14.10 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-### Phase 7: Background Jobs & Maintenance (Week 5)
+* [ ] 15. Integration Status Management
+* [ ] 15.1 Create `services/integration_status_service.py` for monitoring integration health
+* [ ] 15.2 Implement periodic health checks for each integration type
+* [ ] 15.3 Add automatic status updates based on token refresh success/failure
+* [ ] 15.4 Create integration diagnostic tools for troubleshooting connection issues
+* [ ] 15.5 Implement status broadcasting to dependent services via webhooks or message queue
+* [ ] 15.6 Add integration usage analytics and reporting capabilities
+* [ ] 15.7 Write unit tests for status tracking, health checks, and diagnostic tools
+* [ ] 15.8 Run `./fix` to format and lint code
+* [ ] 15.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-- [ ] 16. Celery Setup & Configuration
-  - [ ] 16.1 Set up Celery with Redis/RabbitMQ broker
-  - [ ] 16.2 Create Celery app configuration with task routing
-  - [ ] 16.3 Implement Celery worker deployment configuration
-  - [ ] 16.4 Add Celery monitoring and health check endpoints
-  - [ ] 16.5 Configure task retry logic and error handling
-  - [ ] 16.6 Add unit tests for Celery configuration
-  - [ ] 16.7 Run `./fix` to address linting issues
-  - [ ] 16.8 Run `tox` and fix any test failures
+### Phase 7: Background Jobs & Maintenance
 
-- [ ] 17. Background Job Implementation
-  - [ ] 17.1 Implement proactive token refresh job (hourly)
-  - [ ] 17.2 Create data cleanup job for soft-deleted users (daily)
-  - [ ] 17.3 Implement integration health check job (every 15 minutes)
-  - [ ] 17.4 Add audit log cleanup and archival job (weekly)
-  - [ ] 17.5 Create user activity tracking and analytics job
-  - [ ] 17.6 Implement backup verification job
-  - [ ] 17.7 Add job scheduling with Celery Beat
-  - [ ] 17.8 Add unit tests for background jobs
-  - [ ] 17.9 Run `./fix` to address linting issues
-  - [ ] 17.10 Run `tox` and fix any test failures
+* [ ] 16. Celery Setup
+* [ ] 16.1 Install Celery and configure with Redis broker in `celery_config.py`
+* [ ] 16.2 Create `celery_app.py` with Celery application configuration and task routing
+* [ ] 16.3 Set up Celery worker configuration with proper error handling and logging
+* [ ] 16.4 Add Celery monitoring endpoints for health checks and task status
+* [ ] 16.5 Configure task retry logic with exponential backoff for transient failures
+* [ ] 16.6 Write unit tests for Celery configuration and task execution
+* [ ] 16.7 Run `./fix` to format and lint code
+* [ ] 16.8 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-### Phase 8: Error Handling & Validation (Week 5-6)
+* [ ] 17. Background Tasks Implementation
+* [ ] 17.1 Create `tasks/token_refresh.py` with proactive token refresh task (runs hourly)
+* [ ] 17.2 Implement `tasks/data_cleanup.py` for cleaning up soft-deleted users (runs daily)
+* [ ] 17.3 Create `tasks/integration_health.py` for checking integration status (runs every 15 minutes)
+* [ ] 17.4 Implement `tasks/audit_cleanup.py` for audit log archival and cleanup (runs weekly)
+* [ ] 17.5 Add `tasks/user_analytics.py` for user activity tracking and analytics
+* [ ] 17.6 Create `tasks/backup_verification.py` for verifying backup integrity
+* [ ] 17.7 Set up Celery Beat for task scheduling with crontab expressions
+* [ ] 17.8 Write unit tests for all background tasks and scheduling
+* [ ] 17.9 Run `./fix` to format and lint code
+* [ ] 17.10 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-- [ ] 18. Comprehensive Error Handling
-  - [ ] 18.1 Implement standardized error response format
-  - [ ] 18.2 Create custom exception classes for all error types
-  - [ ] 18.3 Add global exception handler with proper status codes
-  - [ ] 18.4 Implement error logging with context and stack traces
-  - [ ] 18.5 Add user-friendly error messages for common scenarios
-  - [ ] 18.6 Create error recovery procedures for transient failures
-  - [ ] 18.7 Add unit tests for error handling
-  - [ ] 18.8 Run `./fix` to address linting issues
-  - [ ] 18.9 Run `tox` and fix any test failures
+### Phase 8: Error Handling & Validation
 
-- [ ] 19. Input Validation & Sanitization
-  - [ ] 19.1 Implement comprehensive Pydantic schemas for all endpoints
-  - [ ] 19.2 Add input sanitization for user-provided data
-  - [ ] 19.3 Create validation rules for email addresses, URLs, and user data
-  - [ ] 19.4 Implement SQL injection prevention measures
-  - [ ] 19.5 Add XSS protection for text fields
-  - [ ] 19.6 Create data validation unit tests
-  - [ ] 19.7 Add unit tests for input validation
-  - [ ] 19.8 Run `./fix` to address linting issues
-  - [ ] 19.9 Run `tox` and fix any test failures
+* [ ] 18. Comprehensive Error System
+* [ ] 18.1 Update `exceptions.py` with all custom exception classes mentioned in design doc
+* [ ] 18.2 Implement standardized error response format with type, message, details, timestamp, request_id
+* [ ] 18.3 Create global exception handler that maps exceptions to appropriate HTTP status codes
+* [ ] 18.4 Add error logging with full context including stack traces and request details
+* [ ] 18.5 Implement user-friendly error messages for common failure scenarios
+* [ ] 18.6 Create error recovery procedures for transient failures with automatic retry
+* [ ] 18.7 Write unit tests for all exception types and error handling scenarios
+* [ ] 18.8 Run `./fix` to format and lint code
+* [ ] 18.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-### Phase 9: Testing Suite (Week 6-7)
+* [ ] 19. Input Validation & Security
+* [ ] 19.1 Review and enhance all Pydantic schemas with comprehensive validation rules
+* [ ] 19.2 Add input sanitization middleware for user-provided text data
+* [ ] 19.3 Create custom validators for email addresses, URLs, timezone strings, and other domain-specific fields
+* [ ] 19.4 Implement SQL injection prevention through parameterized queries (verify Ormar usage)
+* [ ] 19.5 Add XSS protection for all text fields with proper escaping
+* [ ] 19.6 Create validation unit tests covering edge cases and malicious input attempts
+* [ ] 19.7 Run `./fix` to format and lint code
+* [ ] 19.8 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-- [ ] 20. Unit Tests
-  - [ ] 20.1 Create unit tests for all encryption/decryption functions
-  - [ ] 20.2 Implement unit tests for OAuth flow logic
-  - [ ] 20.3 Add unit tests for preference management and validation
-  - [ ] 20.4 Create unit tests for user profile operations
-  - [ ] 20.5 Implement unit tests for audit logging functionality
-  - [ ] 20.6 Add unit tests for background job logic
-  - [ ] 20.7 Create unit tests for error handling scenarios
-  - [ ] 20.8 Run `./fix` to address linting issues
-  - [ ] 20.9 Run `tox` and fix any test failures
+### Phase 9: Comprehensive Testing
 
-- [ ] 21. Integration Tests
-  - [ ] 21.1 Set up test database and fixtures
-  - [ ] 21.2 Create integration tests for all API endpoints
-  - [ ] 21.3 Implement OAuth flow testing with mock providers
-  - [ ] 21.4 Add database operation testing with transactions
-  - [ ] 21.5 Create service-to-service communication tests
-  - [ ] 21.6 Implement webhook integration testing
-  - [ ] 21.7 Add performance testing for token operations
-  - [ ] 21.8 Run `./fix` to address linting issues
-  - [ ] 21.9 Run `tox` and fix any test failures
+* [ ] 20. Unit Test Suite
+* [ ] 20.1 Create comprehensive unit tests for all encryption/decryption functions with edge cases
+* [ ] 20.2 Implement unit tests for OAuth flow logic including error scenarios and edge cases
+* [ ] 20.3 Add unit tests for preference management including validation and inheritance
+* [ ] 20.4 Create unit tests for user profile operations covering all CRUD scenarios
+* [ ] 20.5 Implement unit tests for audit logging functionality and log retention
+* [ ] 20.6 Add unit tests for background job logic and error handling
+* [ ] 20.7 Create unit tests for all error handling scenarios and exception types
+* [ ] 20.8 Run `./fix` to format and lint code
+* [ ] 20.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-- [ ] 22. Security Tests
-  - [ ] 22.1 Implement token security and encryption strength tests
-  - [ ] 22.2 Create access control and authorization tests
-  - [ ] 22.3 Add data isolation testing between users
-  - [ ] 22.4 Implement audit logging completeness tests
-  - [ ] 22.5 Create rate limiting and abuse prevention tests
-  - [ ] 22.6 Add vulnerability scanning and security assessment
-  - [ ] 22.7 Run `./fix` to address linting issues
-  - [ ] 22.8 Run `tox` and fix any test failures
+* [ ] 21. Integration Test Suite
+* [ ] 21.1 Set up test database with fixtures using pytest and pytest-asyncio
+* [ ] 21.2 Create integration tests for all API endpoints with real database operations
+* [ ] 21.3 Implement OAuth flow testing with mock provider responses using httpx-mock
+* [ ] 21.4 Add database transaction testing to ensure data consistency
+* [ ] 21.5 Create service-to-service communication tests with mock internal API calls
+* [ ] 21.6 Implement webhook integration testing with mock Clerk webhook events
+* [ ] 21.7 Add performance testing for token operations and database queries
+* [ ] 21.8 Run `./fix` to format and lint code
+* [ ] 21.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-### Phase 10: Monitoring & Observability (Week 7)
+* [ ] 22. Security Testing
+* [ ] 22.1 Implement token security tests verifying encryption strength and key derivation
+* [ ] 22.2 Create access control tests ensuring users can only access their own data
+* [ ] 22.3 Add data isolation tests preventing cross-user data leakage
+* [ ] 22.4 Implement audit logging completeness tests for all sensitive operations
+* [ ] 22.5 Create rate limiting tests to verify abuse prevention mechanisms
+* [ ] 22.6 Add vulnerability scanning tests for common security issues (SQL injection, XSS, etc.)
+* [ ] 22.7 Write unit tests for security features and run security-focused test scenarios
+* [ ] 22.8 Run `./fix` to format and lint code
+* [ ] 22.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-- [ ] 23. Metrics & Monitoring
-  - [ ] 23.1 Implement Prometheus metrics collection
-  - [ ] 23.2 Add custom metrics for token operations and API performance
-  - [ ] 23.3 Create integration health and OAuth success rate metrics
-  - [ ] 23.4 Implement user activity and engagement metrics
-  - [ ] 23.5 Add database performance and connection pool metrics
-  - [ ] 23.6 Create alerting rules for critical failures
-  - [ ] 23.7 Add unit tests for metrics collection
-  - [ ] 23.8 Run `./fix` to address linting issues
-  - [ ] 23.9 Run `tox` and fix any test failures
+### Phase 10: Monitoring & Observability
 
-- [ ] 24. Logging & Observability
-  - [ ] 24.1 Implement structured logging with correlation IDs
-  - [ ] 24.2 Add distributed tracing with OpenTelemetry
-  - [ ] 24.3 Create log aggregation and search capabilities
-  - [ ] 24.4 Implement log retention and archival policies
-  - [ ] 24.5 Add performance profiling and bottleneck detection
-  - [ ] 24.6 Create operational dashboards and visualizations
-  - [ ] 24.7 Add unit tests for logging implementation
-  - [ ] 24.8 Run `./fix` to address linting issues
-  - [ ] 24.9 Run `tox` and fix any test failures
+* [ ] 23. Metrics Collection
+* [ ] 23.1 Install and configure Prometheus client library for Python
+* [ ] 23.2 Add custom metrics for token operations (encrypt/decrypt time, refresh success rate)
+* [ ] 23.3 Create API performance metrics (request duration, error rates by endpoint)
+* [ ] 23.4 Implement integration health metrics (connection status, OAuth success rates)
+* [ ] 23.5 Add user activity metrics (login frequency, preference changes, integration usage)
+* [ ] 23.6 Create database performance metrics (query duration, connection pool usage)
+* [ ] 23.7 Write unit tests for metrics collection and export functionality
+* [ ] 23.8 Run `./fix` to format and lint code
+* [ ] 23.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-### Phase 11: Performance & Optimization (Week 8)
+* [ ] 24. Logging & Tracing
+* [ ] 24.1 Enhance structlog configuration with correlation IDs for request tracing
+* [ ] 24.2 Add OpenTelemetry integration for distributed tracing across services
+* [ ] 24.3 Create log aggregation configuration for centralized logging (ELK stack or similar)
+* [ ] 24.4 Implement log retention policies with automatic archival and cleanup
+* [ ] 24.5 Add performance profiling capabilities for identifying bottlenecks
+* [ ] 24.6 Create operational dashboards configuration for monitoring service health
+* [ ] 24.7 Write unit tests for logging configuration and trace correlation
+* [ ] 24.8 Run `./fix` to format and lint code
+* [ ] 24.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-- [ ] 25. Performance Optimization
-  - [ ] 25.1 Implement database query optimization and indexing
-  - [ ] 25.2 Add connection pooling and database performance tuning
-  - [ ] 25.3 Implement caching layer for frequently accessed data
-  - [ ] 25.4 Add request/response compression
-  - [ ] 25.5 Optimize token encryption/decryption performance
-  - [ ] 25.6 Implement async processing for non-blocking operations
-  - [ ] 25.7 Add load testing and performance benchmarking
-  - [ ] 25.8 Run `./fix` to address linting issues
-  - [ ] 25.9 Run `tox` and fix any test failures
+### Phase 11: Performance & Optimization
 
-- [ ] 26. Scalability Preparations
-  - [ ] 26.1 Implement horizontal scaling support
-  - [ ] 26.2 Add database read replicas configuration
-  - [ ] 26.3 Create load balancer health check endpoints
-  - [ ] 26.4 Implement graceful shutdown procedures
-  - [ ] 26.5 Add capacity planning and resource monitoring
-  - [ ] 26.6 Create auto-scaling configuration
-  - [ ] 26.7 Add unit tests for scaling components
-  - [ ] 26.8 Run `./fix` to address linting issues
-  - [ ] 26.9 Run `tox` and fix any test failures
+* [ ] 25. Database Optimization
+* [ ] 25.1 Review and optimize all database queries using EXPLAIN ANALYZE
+* [ ] 25.2 Add missing database indexes based on query patterns and performance testing
+* [ ] 25.3 Configure connection pooling with optimal pool size and connection management
+* [ ] 25.4 Implement database query result caching for frequently accessed data
+* [ ] 25.5 Add request/response compression middleware for API endpoints
+* [ ] 25.6 Optimize token encryption/decryption performance with caching and batching
+* [ ] 25.7 Write performance tests and benchmarks for critical operations
+* [ ] 25.8 Run `./fix` to format and lint code
+* [ ] 25.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-### Phase 12: Documentation & Deployment (Week 8)
+* [ ] 26. Scalability Features
+* [ ] 26.1 Implement horizontal scaling support with stateless service design
+* [ ] 26.2 Add database read replica configuration for read-heavy operations
+* [ ] 26.3 Create load balancer health check endpoints (`/health`, `/ready`)
+* [ ] 26.4 Implement graceful shutdown procedures for zero-downtime deployments
+* [ ] 26.5 Add capacity planning tools and resource monitoring
+* [ ] 26.6 Create auto-scaling configuration for container orchestration
+* [ ] 26.7 Write unit tests for scalability features and health check endpoints
+* [ ] 26.8 Run `./fix` to format and lint code
+* [ ] 26.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-- [ ] 27. Documentation
-  - [ ] 27.1 Create comprehensive API documentation with OpenAPI
-  - [ ] 27.2 Write deployment and configuration guides
-  - [ ] 27.3 Create troubleshooting and operational runbooks
-  - [ ] 27.4 Document security procedures and incident response
-  - [ ] 27.5 Add developer onboarding and contribution guidelines
-  - [ ] 27.6 Create architecture decision records (ADRs)
-  - [ ] 27.7 Run `./fix` to address linting issues
-  - [ ] 27.8 Run `tox` and fix any test failures
+### Phase 12: Documentation & Deployment
 
-- [ ] 28. Production Deployment
-  - [ ] 28.1 Set up CI/CD pipeline with automated testing
-  - [ ] 28.2 Create Docker images and container orchestration
-  - [ ] 28.3 Implement infrastructure as code (Terraform/Helm)
-  - [ ] 28.4 Set up production environment with proper security
-  - [ ] 28.5 Add deployment rollback and blue-green deployment strategies
-  - [ ] 28.6 Create production monitoring and alerting
-  - [ ] 28.7 Implement backup and disaster recovery procedures
-  - [ ] 28.8 Run `./fix` to address linting issues
-  - [ ] 28.9 Run `tox` and fix any test failures
+* [ ] 27. Documentation
+* [ ] 27.1 Generate comprehensive OpenAPI documentation with examples and descriptions
+* [ ] 27.2 Write deployment guide including environment setup and configuration
+* [ ] 27.3 Create troubleshooting runbook with common issues and solutions  
+* [ ] 27.4 Document security procedures including incident response and key rotation
+* [ ] 27.5 Add developer onboarding guide with local development setup
+* [ ] 27.6 Create architecture decision records (ADRs) for key design decisions
+* [ ] 27.7 Write unit tests for documentation generation and API schema validation
+* [ ] 27.8 Run `./fix` to format and lint code
+* [ ] 27.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-### Phase 13: Final Integration & Testing (Week 8)
+* [ ] 28. Production Deployment
+* [ ] 28.1 Set up CI/CD pipeline with GitHub Actions or similar including automated testing
+* [ ] 28.2 Create optimized Docker images with multi-stage builds and security scanning
+* [ ] 28.3 Implement Infrastructure as Code using Terraform or Kubernetes Helm charts
+* [ ] 28.4 Configure production environment with proper secrets management and security groups
+* [ ] 28.5 Add deployment strategies including blue-green deployments and rollback procedures
+* [ ] 28.6 Set up production monitoring with alerting rules and incident response procedures
+* [ ] 28.7 Implement automated backup procedures with disaster recovery testing
+* [ ] 28.8 Write unit tests for deployment scripts and infrastructure configuration
+* [ ] 28.9 Run `./fix` to format and lint code
+* [ ] 28.10 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-- [ ] 29. End-to-End Testing
-  - [ ] 29.1 Create complete user journey tests
-  - [ ] 29.2 Test integration with Next.js frontend
-  - [ ] 29.3 Validate service-to-service communication with other microservices
-  - [ ] 29.4 Perform load testing under realistic conditions
-  - [ ] 29.5 Test disaster recovery and backup procedures
-  - [ ] 29.6 Validate security measures and compliance requirements
-  - [ ] 29.7 Run `./fix` to address linting issues
-  - [ ] 29.8 Run `tox` and fix any test failures
+### Phase 13: Final Integration & Production Readiness
 
-- [ ] 30. Production Readiness
-- [ ] 30.1 Complete security audit and penetration testing
-- [ ] 30.2 Perform final performance optimization
-- [ ] 30.3 Validate all monitoring and alerting systems
-- [ ] 30.4 Complete documentation and knowledge transfer
-- [ ] 30.5 Conduct final code review and quality assurance
-- [ ] 30.6 Prepare production deployment and go-live plan
+* [ ] 29. End-to-End Testing
+* [ ] 29.1 Create complete user journey tests from registration through integration setup
+* [ ] 29.2 Test integration with Next.js frontend using realistic API calls
+* [ ] 29.3 Validate service-to-service communication with other microservices in staging environment
+* [ ] 29.4 Perform load testing under realistic traffic conditions using tools like Locust
+* [ ] 29.5 Test disaster recovery procedures including database restoration and service failover
+* [ ] 29.6 Validate all security measures including encryption, authentication, and authorization
+* [ ] 29.7 Write comprehensive end-to-end test suite with realistic scenarios
+* [ ] 29.8 Run `./fix` to format and lint code
+* [ ] 29.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
+
+* [ ] 30. Production Go-Live
+* [ ] 30.1 Complete security audit including penetration testing and vulnerability assessment
+* [ ] 30.2 Perform final performance optimization and capacity planning validation
+* [ ] 30.3 Validate all monitoring, alerting, and observability systems in production environment
+* [ ] 30.4 Complete final documentation review and knowledge transfer to operations team
+* [ ] 30.5 Conduct comprehensive code review with security and architecture teams
+* [ ] 30.6 Execute production deployment plan with rollback procedures ready
+* [ ] 30.7 Write post-deployment validation tests and monitoring checks
+* [ ] 30.8 Run `./fix` to format and lint code
+* [ ] 30.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
