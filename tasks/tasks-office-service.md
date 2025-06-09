@@ -117,9 +117,9 @@ Before committing:
 [x] 7.1 [Create an api/health.py router.]
 [x] 7.2 [Implement the GET /health endpoint as specified in Section 9.2, including checks for the database and Redis connections.]
 [x] 7.3 [Implement the GET /health/integrations/{user_id} endpoint. For the MVP, this can simply attempt to fetch a token for both 'google' and 'microsoft' for the given user and report success or failure.]
-[ ] 7.4 [Write unit tests for health endpoints with mocked dependencies.]
-[ ] 7.5 [Run ./fix to fix lint issues.]
-[ ] 7.6 [Run `tox -p auto` and fix any errors.]
+[x] 7.4 [Write unit tests for health endpoints with mocked dependencies.]
+[x] 7.5 [Run ./fix to fix lint issues.]
+[x] 7.6 [Run `tox -p auto` and fix any errors.]
 
 [x] 8. Implement Unified READ Endpoints (MVP)
 [x] 8.1 [Create an api/email.py router.]
@@ -136,9 +136,9 @@ Before committing:
 [x] 9.1 [Implement POST /email/send in the email router. For the MVP, this can be a simple pass-through that determines the provider and makes the API call. The actual queuing can be stubbed or logged for now.]
 [x] 9.2 [Implement POST /calendar/events. This endpoint will need to take unified CalendarEvent data, "de-normalize" it into the provider-specific format, and use the correct API client to create the event.]
 [x] 9.3 [Implement DELETE /calendar/events/{event_id}. This will require logic to find the original provider and use its API to delete the event.]
-[ ] 9.4 [Write unit tests for unified write endpoints with mocked API clients.]
-[ ] 9.5 [Run ./fix to fix lint issues.]
-[ ] 9.6 [Run `tox -p auto` and fix any errors.]
+[x] 9.4 [Write unit tests for unified write endpoints with mocked API clients.]
+[x] 9.5 [Run ./fix to fix lint issues.]
+[x] 9.6 [Run `tox -p auto` and fix any errors.]
 
 [ ] 10. Implement Basic Error Handling & Logging
 [ ] 10.1 [Configure structured logging for the application (e.g., using the standard logging library with a JSON formatter).]
