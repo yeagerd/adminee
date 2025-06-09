@@ -172,13 +172,13 @@ async def check_database_connection() -> bool:
         # Test database connection by executing a simple query
         if database.is_connected:
             # Try to execute a simple query to test the connection
-            await database.execute_query("SELECT 1")
+            await database.execute("SELECT 1")
             logger.debug("Database health check passed")
             return True
         else:
             # Try to connect
             await database.connect()
-            await database.execute_query("SELECT 1")
+            await database.execute("SELECT 1")
             logger.debug("Database connection established and health check passed")
             return True
 
