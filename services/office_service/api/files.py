@@ -178,7 +178,7 @@ async def get_files(
                             search=q if q else None,
                             order_by=(
                                 "lastModifiedDateTime desc"
-                                if order_by.startswith("modifiedTime")
+                                if order_by and order_by.startswith("modifiedTime")
                                 else None
                             ),
                         )

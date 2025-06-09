@@ -276,7 +276,9 @@ class TestFilesEndpoints:
             assert "id" in first_file
             assert "name" in first_file
             assert "size" in first_file
-            assert "created_at" in first_file
+            assert (
+                "created_time" in first_file
+            )  # DriveFile uses created_time, not created_at
             assert "provider" in first_file
 
     def test_search_files_success(self, client, integration_test_setup):
@@ -297,14 +299,25 @@ class TestFilesEndpoints:
         user_id = integration_test_setup["user_id"]
         file_id = "google_file-1"  # Fixed format: underscore instead of hyphen
 
-        response = client.get(f"/files/{file_id}?user_id={user_id}")
-        assert response.status_code == status.HTTP_200_OK
+        # Mock individual file response correctly
+        with patch("core.clients.google.GoogleAPIClient.get_file") as mock_get_file:
+            mock_get_file.return_value = {
+                "id": "file-1",
+                "name": "Important Document.pdf",
+                "mimeType": "application/pdf",
+                "size": "1048576",
+                "createdTime": "2024-01-01T10:00:00Z",
+                "modifiedTime": "2024-01-01T12:00:00Z",
+                "webViewLink": "https://drive.google.com/file/d/file-1/view",
+            }
 
-        data = response.json()
-        # Files endpoint is currently placeholder, so expect success=False
-        assert data["success"] is False
-        assert "error" in data["data"]
-        assert "not yet implemented" in data["data"]["error"]
+            response = client.get(f"/files/{file_id}?user_id={user_id}")
+            assert response.status_code == status.HTTP_200_OK
+
+            data = response.json()
+            assert data["success"] is True
+            assert "file" in data["data"]
+            assert data["data"]["file"]["name"] == "Important Document.pdf"
 
 
 class TestErrorScenarios:

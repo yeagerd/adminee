@@ -69,9 +69,8 @@ class BaseAPIClient(ABC):
 
     def _generate_request_id(self) -> str:
         """Generate a unique request ID for tracking"""
-        import uuid
-
-        return str(uuid.uuid4())[:8] + "-" + str(int(time.time() * 1000))[-8:]
+        # Use microsecond precision for better uniqueness
+        return self._session_id + "-" + str(int(time.time() * 1000000))[-8:]
 
     def _parse_microsoft_error(self, response_text: str, status_code: int) -> str:
         """
@@ -185,12 +184,10 @@ class BaseAPIClient(ABC):
             if isinstance(error, dict):
                 error_code = error.get("code", "")
                 error_message = error.get("message", "")
-                error_status = error.get("status", "")
             else:
                 # Some Google APIs return error as a string
                 error_message = str(error)
                 error_code = ""
-                error_status = ""
 
             if status_code == 401:
                 if (
