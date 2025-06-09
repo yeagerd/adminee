@@ -70,43 +70,59 @@ class BaseAPIClient(ABC):
     def _generate_request_id(self) -> str:
         """Generate a unique request ID for tracking"""
         import uuid
+
         return str(uuid.uuid4())[:8] + "-" + str(int(time.time() * 1000))[-8:]
 
     def _parse_microsoft_error(self, response_text: str, status_code: int) -> str:
         """
         Parse Microsoft Graph API error responses to provide user-friendly messages.
-        
+
         Args:
             response_text: Raw response body from Microsoft API
             status_code: HTTP status code
-            
+
         Returns:
             User-friendly error message
         """
         try:
             import json
+
             error_data = json.loads(response_text)
             error = error_data.get("error", {})
-            
+
             error_code = error.get("code", "")
             error_message = error.get("message", "")
-            
+
             # Parse specific Microsoft error codes
             if status_code == 401:
                 if "InvalidAuthenticationToken" in error_code:
                     # Check for specific token issues
-                    if "JWT is not well formed" in error_message or "no dots" in error_message:
+                    if (
+                        "JWT is not well formed" in error_message
+                        or "no dots" in error_message
+                    ):
                         return "Authentication token is malformed or invalid. Please refresh your Microsoft token."
-                    elif "Lifetime validation failed" in error_message or "expired" in error_message.lower():
+                    elif (
+                        "Lifetime validation failed" in error_message
+                        or "expired" in error_message.lower()
+                    ):
                         return "Microsoft token has expired. Please refresh your authentication."
                     elif "NotBefore" in error_message or "nbf" in error_message:
                         return "Microsoft token is not yet valid. Please check your system time."
                     elif "Signature validation failed" in error_message:
                         return "Microsoft token signature is invalid. Please re-authenticate."
-                    elif "audience" in error_message.lower() and "invalid" in error_message.lower():
+                    elif (
+                        "audience" in error_message.lower()
+                        and "invalid" in error_message.lower()
+                    ):
                         return "Microsoft token audience is invalid. Please re-authenticate with correct permissions."
-                    elif "issuer" in error_message.lower() and ("invalid" in error_message.lower() or "untrusted" in error_message.lower()):
-                        return "Microsoft token issuer is invalid. Please re-authenticate."
+                    elif "issuer" in error_message.lower() and (
+                        "invalid" in error_message.lower()
+                        or "untrusted" in error_message.lower()
+                    ):
+                        return (
+                            "Microsoft token issuer is invalid. Please re-authenticate."
+                        )
                     else:
                         return f"Microsoft authentication failed: {error_message}"
                 elif "TokenExpired" in error_code:
@@ -116,7 +132,9 @@ class BaseAPIClient(ABC):
                 elif "TokenNotFound" in error_code:
                     return "Microsoft token not found. Please authenticate first."
                 elif "CompactToken" in error_code:
-                    return "Microsoft token format is invalid. Please refresh your token."
+                    return (
+                        "Microsoft token format is invalid. Please refresh your token."
+                    )
                 else:
                     return f"Microsoft authentication error: {error_message}"
             elif status_code == 403:
@@ -134,7 +152,7 @@ class BaseAPIClient(ABC):
                 return f"Microsoft service error: {error_message}"
             else:
                 return f"Microsoft API error ({error_code}): {error_message}"
-                
+
         except (json.JSONDecodeError, KeyError):
             # Fall back to generic message if parsing fails
             if status_code == 401:
@@ -149,18 +167,19 @@ class BaseAPIClient(ABC):
     def _parse_google_error(self, response_text: str, status_code: int) -> str:
         """
         Parse Google API error responses to provide user-friendly messages.
-        
+
         Args:
             response_text: Raw response body from Google API
             status_code: HTTP status code
-            
+
         Returns:
             User-friendly error message
         """
         try:
             import json
+
             error_data = json.loads(response_text)
-            
+
             # Google APIs have different error formats
             error = error_data.get("error", {})
             if isinstance(error, dict):
@@ -172,18 +191,26 @@ class BaseAPIClient(ABC):
                 error_message = str(error)
                 error_code = ""
                 error_status = ""
-            
+
             if status_code == 401:
-                if "Invalid Credentials" in error_message or "unauthorized" in error_message.lower():
+                if (
+                    "Invalid Credentials" in error_message
+                    or "unauthorized" in error_message.lower()
+                ):
                     return "Google authentication failed. Please refresh your Google token."
                 elif "Token has been expired" in error_message:
-                    return "Google token has expired. Please refresh your authentication."
+                    return (
+                        "Google token has expired. Please refresh your authentication."
+                    )
                 elif "insufficient authentication scopes" in error_message.lower():
                     return "Insufficient Google permissions. Please re-authenticate with required scopes."
                 else:
                     return f"Google authentication error: {error_message}"
             elif status_code == 403:
-                if "insufficientPermissions" in error_code or "forbidden" in error_message.lower():
+                if (
+                    "insufficientPermissions" in error_code
+                    or "forbidden" in error_message.lower()
+                ):
                     return "Insufficient Google permissions. Please grant additional access."
                 elif "quotaExceeded" in error_code:
                     return "Google API quota exceeded. Please try again later."
@@ -195,7 +222,7 @@ class BaseAPIClient(ABC):
                 return f"Google service error: {error_message}"
             else:
                 return f"Google API error: {error_message}"
-                
+
         except (json.JSONDecodeError, KeyError):
             # Fall back to generic message if parsing fails
             if status_code == 401:
@@ -355,14 +382,20 @@ class BaseAPIClient(ABC):
 
         except httpx.HTTPStatusError as e:
             response_time_ms = int((time.time() - start_time) * 1000)
-            
+
             # Parse provider-specific error messages
             if self.provider == Provider.MICROSOFT:
-                user_friendly_error = self._parse_microsoft_error(e.response.text, e.response.status_code)
+                user_friendly_error = self._parse_microsoft_error(
+                    e.response.text, e.response.status_code
+                )
             elif self.provider == Provider.GOOGLE:
-                user_friendly_error = self._parse_google_error(e.response.text, e.response.status_code)
+                user_friendly_error = self._parse_google_error(
+                    e.response.text, e.response.status_code
+                )
             else:
-                user_friendly_error = f"HTTP {e.response.status_code}: {e.response.text}"
+                user_friendly_error = (
+                    f"HTTP {e.response.status_code}: {e.response.text}"
+                )
 
             # Determine status based on response code
             if e.response.status_code == 429:

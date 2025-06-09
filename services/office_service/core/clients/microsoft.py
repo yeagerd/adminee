@@ -229,7 +229,7 @@ class MicrosoftAPIClient(BaseAPIClient):
         # If search is provided, use the search endpoint instead
         if search:
             return await self.search_drive_items(search, top=top)
-        
+
         params: Dict[str, Any] = {"$top": top}
         if filter:
             params["$filter"] = filter
