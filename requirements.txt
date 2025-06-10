@@ -25,3 +25,11 @@ tox
 types-requests
 types-pytz
 uvicorn[standard]
+# --- OpenTelemetry Requirements ---
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-instrumentation
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-httpx
+opentelemetry-exporter-gcp-trace
+# --- End OpenTelemetry Requirements ---
