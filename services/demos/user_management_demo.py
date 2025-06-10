@@ -48,6 +48,15 @@ logger = structlog.get_logger(__name__)
 class UserManagementDemo:
     """Demo class for user management service."""
 
+    base_url: str
+    client: httpx.AsyncClient
+    demo_user_id: str
+    demo_database_user_id: Optional[int]
+    service_api_key: Optional[str]
+    api_key_source: str
+    auth_token: str
+    test_results: Dict[str, bool]
+
     def __init__(
         self,
         base_url: str = "http://localhost:8000",
@@ -66,8 +75,9 @@ class UserManagementDemo:
             self.service_api_key = os.getenv("API_KEY_USER_MANAGEMENT") or ""
             self.api_key_source = "API_KEY_USER_MANAGEMENT environment variable"
         else:
-            self.service_api_key = "demo-service-key-12345"
-            self.api_key_source = "demo default"
+            # No default for security - internal API test will fail gracefully
+            self.service_api_key = None
+            self.api_key_source = "not configured (internal API test will fail)"
 
         # Generate valid JWT token for demo user
         self.auth_token = create_bearer_token(
@@ -466,6 +476,12 @@ class UserManagementDemo:
         self.print_section("Testing Internal Service-to-Service API")
 
         print(f"   🔑 Using API key from: {self.api_key_source}")
+
+        if self.service_api_key is None:
+            print("   ⚠️  No API key configured - test will fail as expected")
+            print("   💡 Set SERVICE_API_KEY env var or use --service-api-key flag")
+            return False
+
         print(
             f"   🔑 API key: {self.service_api_key[:8]}..."
             if len(self.service_api_key) > 8

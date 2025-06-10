@@ -63,6 +63,15 @@ async def lifespan(app: FastAPI):
     """
     # Startup
     logger.info("Starting User Management Service")
+
+    # Validate required configuration
+    if not settings.api_key_user_management:
+        logger.error("API_KEY_USER_MANAGEMENT is required but not configured")
+        logger.error(
+            "Set the API_KEY_USER_MANAGEMENT environment variable or configure it in settings"
+        )
+        raise RuntimeError("API_KEY_USER_MANAGEMENT is required but not configured")
+
     try:
         await connect_database()
         logger.info("Database connected successfully")
@@ -684,6 +693,8 @@ async def readiness_check():
         config_issues.append("CLERK_SECRET_KEY not configured")
     if not getattr(settings, "encryption_service_salt", None):
         config_issues.append("ENCRYPTION_SERVICE_SALT not configured")
+    if not getattr(settings, "api_key_user_management", None):
+        config_issues.append("API_KEY_USER_MANAGEMENT not configured")
 
     readiness_status["checks"]["configuration"] = {
         "status": "ready" if not config_issues else "not_ready",

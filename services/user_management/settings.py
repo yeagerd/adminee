@@ -36,8 +36,8 @@ class Settings(BaseSettings):
     )
 
     # Security Configuration
-    api_key_user_management: str = Field(
-        "dev-service-key",
+    api_key_user_management: Optional[str] = Field(
+        default=None,
         description="API key for this User Management service",
     )
     api_key_office: Optional[str] = Field(
