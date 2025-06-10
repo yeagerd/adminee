@@ -174,10 +174,10 @@ class UserManagementDemo:
             print("🔴 Cannot update profile - user profile not found")
             return False
 
-        # The profile from /users/me should contain the database ID as 'id'
-        user_db_id = profile.get("id")
-        if not user_db_id:
-            print("🔴 Could not get user database ID from profile")
+        # Get Clerk ID for the update endpoint
+        clerk_id = await self.get_user_clerk_id()
+        if not clerk_id:
+            print("🔴 Could not get user Clerk ID")
             return False
 
         update_data = {
@@ -189,9 +189,9 @@ class UserManagementDemo:
         }
 
         try:
-            # Use the user ID from the profile for the update
+            # Use the Clerk ID for the update endpoint
             response = await self.client.put(
-                f"{self.base_url}/users/{user_db_id}",
+                f"{self.base_url}/users/{clerk_id}",
                 json=update_data,
                 headers={"Authorization": self.auth_token},
             )
@@ -201,12 +201,7 @@ class UserManagementDemo:
             print(f"🔴 Failed to update user profile: {e}")
             return False
 
-    async def get_user_database_id(self) -> Optional[int]:
-        """Get the user's database ID from their profile."""
-        profile = await self.get_user_profile()
-        if profile:
-            return profile.get("id")
-        return None
+
 
     async def get_user_clerk_id(self) -> Optional[str]:
         """Get the user's Clerk ID from the JWT token."""

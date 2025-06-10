@@ -188,7 +188,7 @@ class UserDeleteResponse(BaseModel):
 
     success: bool = Field(..., description="Whether the deletion was successful")
     message: str = Field(..., description="Deletion status message")
-    user_id: str = Field(..., description="Clerk ID of the deleted user")
+    clerk_id: str = Field(..., description="Clerk ID of the deleted user")
     deleted_at: datetime = Field(..., description="When the user was deleted")
 
     class Config:

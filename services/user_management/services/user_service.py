@@ -30,39 +30,12 @@ logger = logging.getLogger(__name__)
 class UserService:
     """Service class for user profile operations."""
 
-    async def get_user_by_id(self, user_id: str) -> User:
+    async def get_user_by_clerk_id(self, clerk_id: str) -> User:
         """
         Get user by Clerk ID (which is the primary key).
 
         Args:
-            user_id: Clerk ID of the user
-
-        Returns:
-            User model instance
-
-        Raises:
-            UserNotFoundException: If user is not found
-        """
-        try:
-            user = await User.objects.get(id=user_id)
-            if user.deleted_at is not None:
-                raise UserNotFoundException(str(user_id))
-
-            logger.info(f"Retrieved user by ID: {user_id}")
-            return user
-
-        except Exception as e:
-            if isinstance(e, UserNotFoundException):
-                raise
-            logger.error(f"Error retrieving user by ID {user_id}: {e}")
-            raise UserNotFoundException(str(user_id))
-
-    async def get_user_by_clerk_id(self, clerk_id: str) -> User:
-        """
-        Get user by Clerk ID.
-
-        Args:
-            clerk_id: Clerk user ID
+            clerk_id: Clerk ID of the user
 
         Returns:
             User model instance
@@ -72,18 +45,19 @@ class UserService:
         """
         try:
             user = await User.objects.get(id=clerk_id)
-
-            # Check if user is deleted
             if user.deleted_at is not None:
-                logger.warning(f"User {clerk_id} is deleted")
-                raise UserNotFoundException(clerk_id)
+                raise UserNotFoundException(str(clerk_id))
 
             logger.info(f"Retrieved user by Clerk ID: {clerk_id}")
             return user
 
         except Exception as e:
+            if isinstance(e, UserNotFoundException):
+                raise
             logger.error(f"Error retrieving user by Clerk ID {clerk_id}: {e}")
-            raise UserNotFoundException(clerk_id)
+            raise UserNotFoundException(str(clerk_id))
+
+
 
     async def create_user(self, user_data: UserCreate) -> User:
         """
@@ -135,12 +109,12 @@ class UserService:
                 reason=f"Failed to create user: {str(e)}",
             )
 
-    async def update_user(self, user_id: int, user_data: UserUpdate) -> User:
+    async def update_user(self, clerk_id: str, user_data: UserUpdate) -> User:
         """
         Update an existing user.
 
         Args:
-            user_id: Database ID of the user
+            clerk_id: Clerk ID of the user
             user_data: User update data
 
         Returns:
@@ -151,7 +125,7 @@ class UserService:
             ValidationException: If update data is invalid
         """
         try:
-            user = await self.get_user_by_id(user_id)
+            user = await self.get_user_by_clerk_id(clerk_id)
 
             # Update only provided fields
             update_fields = {}
@@ -171,14 +145,14 @@ class UserService:
                 await user.load()  # Reload to get updated data
 
             logger.info(
-                f"Updated user {user_id} with fields: {list(update_fields.keys())}"
+                f"Updated user {clerk_id} with fields: {list(update_fields.keys())}"
             )
             return user
 
         except UserNotFoundException:
             raise
         except Exception as e:
-            logger.error(f"Error updating user {user_id}: {e}")
+            logger.error(f"Error updating user {clerk_id}: {e}")
             raise ValidationException(
                 field="user_data",
                 value=str(user_data),
@@ -186,13 +160,13 @@ class UserService:
             )
 
     async def update_user_onboarding(
-        self, user_id: int, onboarding_data: UserOnboardingUpdate
+        self, clerk_id: str, onboarding_data: UserOnboardingUpdate
     ) -> User:
         """
         Update user onboarding status.
 
         Args:
-            user_id: Database ID of the user
+            clerk_id: Clerk ID of the user
             onboarding_data: Onboarding update data
 
         Returns:
@@ -203,7 +177,7 @@ class UserService:
             ValidationException: If onboarding data is invalid
         """
         try:
-            user = await self.get_user_by_id(user_id)
+            user = await self.get_user_by_clerk_id(clerk_id)
 
             await user.update(
                 onboarding_completed=onboarding_data.onboarding_completed,
@@ -212,26 +186,26 @@ class UserService:
             await user.load()
 
             logger.info(
-                f"Updated onboarding for user {user_id}: completed={onboarding_data.onboarding_completed}"
+                f"Updated onboarding for user {clerk_id}: completed={onboarding_data.onboarding_completed}"
             )
             return user
 
         except UserNotFoundException:
             raise
         except Exception as e:
-            logger.error(f"Error updating onboarding for user {user_id}: {e}")
+            logger.error(f"Error updating onboarding for user {clerk_id}: {e}")
             raise ValidationException(
                 field="onboarding_data",
                 value=str(onboarding_data),
                 reason=f"Failed to update onboarding: {str(e)}",
             )
 
-    async def delete_user(self, user_id: int) -> UserDeleteResponse:
+    async def delete_user(self, clerk_id: str) -> UserDeleteResponse:
         """
         Soft delete a user.
 
         Args:
-            user_id: Database ID of the user
+            clerk_id: Clerk ID of the user
 
         Returns:
             Deletion response with status
@@ -240,28 +214,28 @@ class UserService:
             UserNotFoundException: If user is not found
         """
         try:
-            user = await self.get_user_by_id(user_id)
+            user = await self.get_user_by_clerk_id(clerk_id)
 
             # Perform soft delete
             deleted_at = datetime.utcnow()
             await user.update(deleted_at=deleted_at)
 
-            logger.info(f"Soft deleted user {user_id}")
+            logger.info(f"Soft deleted user {clerk_id}")
 
             return UserDeleteResponse(
                 success=True,
-                message=f"User {user_id} successfully deleted",
-                user_id=user_id,
+                message=f"User {clerk_id} successfully deleted",
+                clerk_id=clerk_id,
                 deleted_at=deleted_at,
             )
 
         except UserNotFoundException:
             raise
         except Exception as e:
-            logger.error(f"Error deleting user {user_id}: {e}")
+            logger.error(f"Error deleting user {clerk_id}: {e}")
             raise ValidationException(
-                field="user_id",
-                value=user_id,
+                field="clerk_id",
+                value=clerk_id,
                 reason=f"Failed to delete user: {str(e)}",
             )
 
@@ -326,12 +300,12 @@ class UserService:
                 reason=f"Failed to search users: {str(e)}",
             )
 
-    async def get_user_profile(self, user_id: str) -> UserResponse:
+    async def get_user_profile(self, clerk_id: str) -> UserResponse:
         """
         Get user profile response.
 
         Args:
-            user_id: Clerk ID of the user
+            clerk_id: Clerk ID of the user
 
         Returns:
             User response schema
@@ -339,65 +313,65 @@ class UserService:
         Raises:
             UserNotFoundException: If user is not found
         """
-        user = await self.get_user_by_id(user_id)
+        user = await self.get_user_by_clerk_id(clerk_id)
         return UserResponse.from_orm(user)
 
-    async def verify_user_exists(self, user_id: int) -> bool:
+    async def verify_user_exists(self, clerk_id: str) -> bool:
         """
         Verify if user exists (for authorization checks).
 
         Args:
-            user_id: Database ID of the user
+            clerk_id: Clerk ID of the user
 
         Returns:
             True if user exists and is not deleted
         """
         try:
-            await self.get_user_by_id(user_id)
+            await self.get_user_by_clerk_id(clerk_id)
             return True
         except UserNotFoundException:
             return False
 
-    async def get_users_by_ids(self, user_ids: List[int]) -> List[User]:
+    async def get_users_by_clerk_ids(self, clerk_ids: List[str]) -> List[User]:
         """
-        Get multiple users by their database IDs.
+        Get multiple users by their Clerk IDs.
 
         Args:
-            user_ids: List of database IDs
+            clerk_ids: List of Clerk IDs
 
         Returns:
             List of user model instances
         """
         try:
             users = await User.objects.filter(
-                id__in=user_ids, deleted_at__isnull=True
+                id__in=clerk_ids, deleted_at__isnull=True
             ).all()
 
             logger.info(
-                f"Retrieved {len(users)} users from {len(user_ids)} requested IDs"
+                f"Retrieved {len(users)} users from {len(clerk_ids)} requested IDs"
             )
             return users
 
         except Exception as e:
-            logger.error(f"Error retrieving users by IDs: {e}")
+            logger.error(f"Error retrieving users by Clerk IDs: {e}")
             return []
 
-    async def update_user_last_login(self, user_id: int) -> None:
+    async def update_user_last_login(self, clerk_id: str) -> None:
         """
         Update user's last login timestamp.
 
         Args:
-            user_id: Database ID of the user
+            clerk_id: Clerk ID of the user
         """
         try:
-            user = await self.get_user_by_id(user_id)
+            user = await self.get_user_by_clerk_id(clerk_id)
             await user.update(updated_at=datetime.utcnow())
 
-            logger.debug(f"Updated last login for user {user_id}")
+            logger.debug(f"Updated last login for user {clerk_id}")
 
         except Exception as e:
             # Don't raise exception for this non-critical operation
-            logger.warning(f"Failed to update last login for user {user_id}: {e}")
+            logger.warning(f"Failed to update last login for user {clerk_id}: {e}")
 
 
 # Global service instance
