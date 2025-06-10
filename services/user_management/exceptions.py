@@ -202,6 +202,15 @@ class DatabaseError(UserManagementException):
         self.reason = reason
 
 
+class DatabaseException(UserManagementException):
+    """Exception raised when database operations fail (alias for compatibility)."""
+
+    def __init__(self, reason: str, details: Optional[Dict[str, Any]] = None):
+        message = f"Database operation failed: {reason}"
+        super().__init__(message, details)
+        self.reason = reason
+
+
 # HTTP Exception mappings for FastAPI
 def user_not_found_exception(user_id: str) -> HTTPException:
     """Create HTTPException for user not found."""
