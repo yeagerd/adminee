@@ -16,7 +16,7 @@ class UserPreferences(ormar.Model):
     """
     User preferences model for storing all user settings.
 
-    Includes UI preferences, notifications, AI settings, integrations, and privacy.
+    Uses JSON fields to store structured preference data by category.
     Each user has exactly one preferences record.
     """
 
@@ -25,31 +25,15 @@ class UserPreferences(ormar.Model):
     id: int = ormar.Integer(primary_key=True)
     user: User = ormar.ForeignKey(User, ondelete="CASCADE")
 
-    # UI Preferences
-    theme: str = ormar.String(max_length=20, default="light")  # light, dark, auto
-    language: str = ormar.String(max_length=10, default="en")  # ISO language codes
-    timezone: str = ormar.String(max_length=50, default="UTC")  # IANA timezone
-    date_format: str = ormar.String(max_length=20, default="MM/DD/YYYY")
-    time_format: str = ormar.String(max_length=10, default="12h")  # 12h, 24h
+    # Version field for migration support
+    version: str = ormar.String(max_length=10, default="1.0")
 
-    # Notification Preferences
-    email_notifications: bool = ormar.Boolean(default=True)
-    push_notifications: bool = ormar.Boolean(default=True)
-    marketing_emails: bool = ormar.Boolean(default=False)
-
-    # AI Preferences
-    ai_suggestions_enabled: bool = ormar.Boolean(default=True)
-    ai_model_preference: str = ormar.String(max_length=50, default="gpt-4")
-    auto_summarization: bool = ormar.Boolean(default=True)
-
-    # Integration Preferences
-    google_integration_enabled: bool = ormar.Boolean(default=False)
-    microsoft_integration_enabled: bool = ormar.Boolean(default=False)
-    slack_integration_enabled: bool = ormar.Boolean(default=False)
-
-    # Privacy Preferences
-    data_retention_days: int = ormar.Integer(default=365)  # Days to keep data
-    share_analytics: bool = ormar.Boolean(default=False)  # Share usage analytics
+    # Structured preference data stored as JSON
+    ui_preferences: dict = ormar.JSON(default={})
+    notification_preferences: dict = ormar.JSON(default={})
+    ai_preferences: dict = ormar.JSON(default={})
+    integration_preferences: dict = ormar.JSON(default={})
+    privacy_preferences: dict = ormar.JSON(default={})
 
     # Timestamps
     created_at: datetime = ormar.DateTime(default=lambda: datetime.now(timezone.utc))

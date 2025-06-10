@@ -84,12 +84,13 @@ class PreferencesService:
                 # Create default preferences
                 default_prefs = PreferencesService._get_default_preferences()
                 preferences = await UserPreferences.objects.create(
-                    user_id=user.id, **default_prefs
+                    user_id=user.id, version="1.0", **default_prefs
                 )
 
             # Convert to response schema
             return UserPreferencesResponse(
                 user_id=user_id,
+                version=preferences.version,
                 ui=UIPreferencesSchema(**preferences.ui_preferences),
                 notifications=NotificationPreferencesSchema(
                     **preferences.notification_preferences

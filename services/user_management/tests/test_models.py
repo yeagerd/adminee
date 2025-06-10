@@ -75,40 +75,38 @@ class TestUserPreferencesModel:
         user = User(id="pref_user", email="pref@example.com")
 
         preferences = UserPreferences(user=user)
-        assert preferences.theme == "light"
-        assert preferences.language == "en"
-        assert preferences.timezone == "UTC"
-        assert preferences.date_format == "MM/DD/YYYY"
-        assert preferences.time_format == "12h"
-        assert preferences.email_notifications is True
-        assert preferences.push_notifications is True
-        assert preferences.marketing_emails is False
-        assert preferences.ai_suggestions_enabled is True
-        assert preferences.ai_model_preference == "gpt-4"
-        assert preferences.auto_summarization is True
-        assert preferences.data_retention_days == 365
-        assert preferences.share_analytics is False
+        assert preferences.version == "1.0"
+        assert preferences.ui_preferences == {}
+        assert preferences.notification_preferences == {}
+        assert preferences.ai_preferences == {}
+        assert preferences.integration_preferences == {}
+        assert preferences.privacy_preferences == {}
 
     def test_preferences_custom_values(self):
         """Test creating preferences with custom values."""
         user = User(id="custom_user", email="custom@example.com")
 
+        ui_prefs = {"theme": "dark", "language": "es", "timezone": "America/New_York"}
+        notification_prefs = {"email_notifications": False}
+        ai_prefs = {"preferred_model": "claude-3"}
+        privacy_prefs = {"data_retention_period": "180_days"}
+
         preferences = UserPreferences(
             user=user,
-            theme="dark",
-            language="es",
-            timezone="America/New_York",
-            email_notifications=False,
-            ai_model_preference="claude-3",
-            data_retention_days=180,
+            version="1.0",
+            ui_preferences=ui_prefs,
+            notification_preferences=notification_prefs,
+            ai_preferences=ai_prefs,
+            privacy_preferences=privacy_prefs,
         )
 
-        assert preferences.theme == "dark"
-        assert preferences.language == "es"
-        assert preferences.timezone == "America/New_York"
-        assert preferences.email_notifications is False
-        assert preferences.ai_model_preference == "claude-3"
-        assert preferences.data_retention_days == 180
+        assert preferences.version == "1.0"
+        assert preferences.ui_preferences["theme"] == "dark"
+        assert preferences.ui_preferences["language"] == "es"
+        assert preferences.ui_preferences["timezone"] == "America/New_York"
+        assert preferences.notification_preferences["email_notifications"] is False
+        assert preferences.ai_preferences["preferred_model"] == "claude-3"
+        assert preferences.privacy_preferences["data_retention_period"] == "180_days"
 
 
 class TestIntegrationModel:
@@ -276,10 +274,14 @@ class TestModelRelationships:
     def test_user_preferences_relationship(self):
         """Test one-to-one relationship between User and UserPreferences."""
         user = User(id="rel_user", email="relationship@example.com")
-        preferences = UserPreferences(user=user, theme="dark")
+        preferences = UserPreferences(
+            user=user, version="1.0", ui_preferences={"theme": "dark"}
+        )
 
         # Test foreign key relationship
         assert preferences.user == user
+        assert preferences.version == "1.0"
+        assert preferences.ui_preferences["theme"] == "dark"
 
     def test_user_integrations_relationship(self):
         """Test one-to-many relationship between User and Integrations."""

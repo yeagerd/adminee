@@ -418,6 +418,7 @@ class UserPreferencesResponse(BaseModel):
     """Complete user preferences response schema."""
 
     user_id: str = Field(description="User ID")
+    version: str = Field(default="1.0", description="Preferences schema version")
     ui: UIPreferencesSchema = Field(description="UI preferences")
     notifications: NotificationPreferencesSchema = Field(
         description="Notification preferences"
