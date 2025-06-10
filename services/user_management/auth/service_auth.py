@@ -21,10 +21,13 @@ class ServiceAPIKeyAuth:
     """Service API key authentication handler."""
 
     def __init__(self):
-        self.valid_api_keys = {
-            settings.service_api_key: "user-management",
-            # Add other service API keys here as needed
-        }
+        self.valid_api_keys = {}
+        if settings.api_key_user_management:
+            self.valid_api_keys[settings.api_key_user_management] = "user-management"
+        if settings.api_key_office:
+            self.valid_api_keys[settings.api_key_office] = "office-service"
+        if settings.api_key_chat:
+            self.valid_api_keys[settings.api_key_chat] = "chat-service"
 
     def verify_api_key(self, api_key: str) -> Optional[str]:
         """
