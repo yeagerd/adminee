@@ -57,6 +57,17 @@ class UserManagementDemo:
         self.auth_token = create_bearer_token(
             self.demo_user_id, "demo.user@example.com"
         )
+        # Track test results for accurate summary
+        self.test_results = {
+            "service_health": False,
+            "service_readiness": False,
+            "user_creation": False,
+            "profile_operations": False,
+            "preferences": False,
+            "integrations": False,
+            "oauth_initiation": False,
+            "internal_api": False,
+        }
 
     async def __aenter__(self):
         """Async context manager entry."""
@@ -618,51 +629,80 @@ class UserManagementDemo:
 
         # Check service health
         self.print_section("Service Health Check")
-        if not await self.check_service_health():
+        self.test_results["service_health"] = await self.check_service_health()
+        if not self.test_results["service_health"]:
             print("❌ Service is not running. Please start the service first:")
             print("   cd /Users/yeagerd/github/briefly")
             print("   uvicorn services.user_management.main:app --reload --port 8000")
             return False
 
         # Check service readiness
-        await self.check_service_readiness()
+        self.test_results["service_readiness"] = await self.check_service_readiness()
 
         # Create demo user
-        await self.create_demo_user()
+        self.test_results["user_creation"] = await self.create_demo_user()
 
         # User profile operations
-        await self.get_user_profile()
-        await self.update_user_profile()
+        profile_get = await self.get_user_profile()
+        profile_update = await self.update_user_profile()
+        self.test_results["profile_operations"] = profile_get is not None and profile_update
 
         # User preferences
-        await self.get_user_preferences()
-        await self.update_user_preferences()
+        prefs_get = await self.get_user_preferences()
+        prefs_update = await self.update_user_preferences()
+        self.test_results["preferences"] = prefs_get is not None and prefs_update
 
         # List current integrations
-        await self.list_integrations()
+        integrations = await self.list_integrations()
+        self.test_results["integrations"] = integrations is not None
 
         # Test OAuth flow initiation (without completion)
         self.print_section("Testing OAuth Flow Initiation")
-        await self.start_oauth_flow("google")
-        await self.start_oauth_flow("microsoft")
+        google_oauth = await self.start_oauth_flow("google")
+        microsoft_oauth = await self.start_oauth_flow("microsoft")
+        self.test_results["oauth_initiation"] = google_oauth is not None and microsoft_oauth is not None
 
         # Test internal API
-        await self.test_internal_api()
+        self.test_results["internal_api"] = await self.test_internal_api()
 
+        # Show accurate summary
         self.print_header("Simple Demo Summary")
-        print("✅ Demo completed successfully!")
+        
+        # Determine overall success
+        failed_tests = [name for name, passed in self.test_results.items() if not passed]
+        overall_success = len(failed_tests) == 0
+        
+        if overall_success:
+            print("✅ Demo completed successfully!")
+        else:
+            print("⚠️ Demo completed with some failures.")
+        
         print("📋 All core functionality tested:")
-        print("   - Service health: ✅")
-        print("   - User creation: ✅")
-        print("   - Profile operations: ✅")
-        print("   - Preferences: ✅")
-        print("   - Integrations: ✅")
-        print("   - OAuth initiation: ✅")
-        print("   - Internal API: ✅")
+        
+        # Helper function to get status icon
+        def get_status(passed: bool) -> str:
+            return "✅" if passed else "❌"
+        
+        print(f"   - Service health: {get_status(self.test_results['service_health'])}")
+        print(f"   - Service readiness: {get_status(self.test_results['service_readiness'])}")
+        print(f"   - User creation: {get_status(self.test_results['user_creation'])}")
+        print(f"   - Profile operations: {get_status(self.test_results['profile_operations'])}")
+        print(f"   - Preferences: {get_status(self.test_results['preferences'])}")
+        print(f"   - Integrations: {get_status(self.test_results['integrations'])}")
+        print(f"   - OAuth initiation: {get_status(self.test_results['oauth_initiation'])}")
+        print(f"   - Internal API: {get_status(self.test_results['internal_api'])}")
+        
+        if failed_tests:
+            print(f"\n❌ Failed tests: {', '.join(failed_tests)}")
+            if "oauth_initiation" in failed_tests:
+                print("   • OAuth endpoints not implemented or credentials not configured")
+            if "internal_api" in failed_tests:
+                print("   • Service API key validation issues")
+        
         print()
         print("💡 For interactive OAuth flows, run without --simple flag")
 
-        return True
+        return overall_success
 
 
 async def main():
