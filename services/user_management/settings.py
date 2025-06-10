@@ -40,9 +40,9 @@ class Settings(BaseSettings):
         default="dev-service-key",
         description="API key for service-to-service authentication",
     )
-    token_encryption_salt: str = Field(
-        default="default-salt-change-in-production",
-        description="Salt for token encryption key derivation",
+    encryption_service_salt: Optional[str] = Field(
+        default=None,
+        description="Base64-encoded service salt for token encryption key derivation",
     )
 
     # Clerk Configuration
