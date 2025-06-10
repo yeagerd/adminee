@@ -1,31 +1,40 @@
-# Dockerfile for User Service (Node.js)
+# Dockerfile for User Management Service (Python/FastAPI)
 
-# Use an official Node.js runtime as a parent image
-FROM node:20-alpine
+# Use an official Python runtime as a parent image
+FROM python:3.11-slim
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 # Set the working directory in the container
-WORKDIR /app/user-service
+WORKDIR /app
 
-# Copy package.json and package-lock.json (or yarn.lock) first
-# Assuming the user service is in services/user-service/
-COPY services/user-service/package.json services/user-service/yarn.lock* ./ 
-# If using npm instead of yarn, it would be:
-# COPY services/user-service/package.json services/user-service/package-lock.json* ./
+# Install system dependencies
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        gcc \
+        libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
-# If using yarn:
-RUN yarn install --frozen-lockfile --production
-# If using npm:
-# RUN npm ci --only=production
+# Copy requirements file
+COPY requirements.txt .
 
-# Copy the rest of the application code for the user service
-COPY services/user-service/ ./ 
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Expose the port the app runs on (e.g., 8081 or 3002)
-EXPOSE 8081
+# Copy the user management service code
+COPY services/user_management/ ./services/user_management/
+
+# Set Python path to include the services directory
+ENV PYTHONPATH=/app
+
+# Expose the port the app runs on
+EXPOSE 8001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8001/health || exit 1
 
 # Define the command to run the application
-# This assumes your entry point is index.js
-# CMD ["node", "index.js"]
-# For now, a placeholder command as index.js doesn't exist yet
-CMD ["node", "-e", "console.log('User service placeholder. index.js with server logic needed. Listening on port 8081 (example).')"] 
+CMD ["uvicorn", "services.user_management.main:app", "--host", "0.0.0.0", "--port", "8001"] 
