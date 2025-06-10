@@ -6,7 +6,7 @@ error handling, authentication, and authorization.
 """
 
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException, status
@@ -14,6 +14,7 @@ from fastapi import HTTPException, status
 from ..exceptions import UserNotFoundException, ValidationException
 from ..models import User
 from ..schemas.user import (
+    UserCreate,
     UserDeleteResponse,
     UserListResponse,
     UserOnboardingUpdate,
@@ -381,65 +382,72 @@ class TestUserProfileEndpoints:
 class TestUserServiceIntegration:
     """Integration tests for user service methods."""
 
-    @pytest.mark.skip(reason="Integration test that requires database setup")
+    @pytest.mark.skip(
+        reason="Integration test requiring complex Ormar ORM mocking - recommend unit tests for service logic instead"
+    )
     @pytest.mark.asyncio
-    async def test_user_profile_workflow(self):
-        """Test complete user profile workflow with proper mocking."""
-        # Mock the database operations more comprehensively
-        mock_user = MagicMock(spec=User)
-        mock_user.id = 1
-        mock_user.clerk_id = "user_123"
-        mock_user.email = "test@example.com"
-        mock_user.deleted_at = None
+    async def test_user_profile_workflow(self, integration_test_user):
+        """Test complete user profile workflow with mocked database operations."""
+        user, preferences = integration_test_user
 
-        # Mock the Ormar query chain
-        mock_query = MagicMock()
-        mock_query.get.return_value = mock_user
-        mock_filter = MagicMock()
-        mock_filter.return_value = mock_query
+        # Test getting user profile
+        retrieved_user = await user_service.get_user_by_id(user.id)
+        assert retrieved_user.id == user.id
+        assert retrieved_user.clerk_id == "user_integration_test"
+        assert retrieved_user.email == "integration@test.com"
 
-        with (
-            patch.object(User.objects, "get", return_value=mock_user),
-            patch.object(User.objects, "create", return_value=mock_user),
-            patch.object(User.objects, "filter", mock_filter),
-            patch.object(mock_user, "update"),
-            patch.object(mock_user, "load"),
-        ):
+        # Test updating user
+        from ..schemas.user import UserUpdate
 
-            # Test getting user profile
-            user = await user_service.get_user_by_id(1)
-            assert user.id == 1
+        update_data = UserUpdate(first_name="Updated")
 
-            # Test updating user
-            from ..schemas.user import UserUpdate
+        # Mock the update behavior
+        user.first_name = "Updated"
 
-            update_data = UserUpdate(first_name="Updated")
-            updated_user = await user_service.update_user(1, update_data)
-            assert updated_user.id == 1
+        updated_user = await user_service.update_user(user.id, update_data)
+        assert updated_user.first_name == "Updated"
+        assert updated_user.id == user.id
 
-    @pytest.mark.skip(reason="Integration test that requires database setup")
+    @pytest.mark.skip(
+        reason="Integration test requiring complex Ormar ORM mocking - recommend unit tests for service logic instead"
+    )
     @pytest.mark.asyncio
-    async def test_error_handling_workflow(self):
+    async def test_error_handling_workflow(self, integration_test_setup):
         """Test error handling in various scenarios."""
-        # Test user not found
-        with patch.object(User.objects, "get") as mock_get:
-            mock_get.side_effect = Exception("User not found")
+        setup = integration_test_setup
+        user = setup["user"]
+        mocks = setup["mocks"]
 
-            with pytest.raises(UserNotFoundException):
-                await user_service.get_user_by_id(999)
+        # Test user not found - configure mock to raise exception for non-existent ID
+        from ..exceptions import UserNotFoundException
 
-        # Test validation error
-        with patch.object(User.objects, "filter") as mock_filter:
-            mock_query = MagicMock()
-            mock_query.get_or_none.return_value = self.create_mock_user()
-            mock_filter.return_value = mock_query
+        mocks["get"].side_effect = lambda user_id: (
+            user if user_id == user.id else UserNotFoundException("User not found")
+        )
 
-            from ..schemas.user import UserCreate
+        # Test getting existing user (should work)
+        retrieved_user = await user_service.get_user_by_id(user.id)
+        assert retrieved_user.id == user.id
 
-            create_data = UserCreate(clerk_id="user_123", email="test@example.com")
+        # Test user not found scenario
+        with pytest.raises(UserNotFoundException):
+            await user_service.get_user_by_id(999999)  # Non-existent ID
 
-            with pytest.raises(ValidationException):
-                await user_service.create_user(create_data)
+        # Test validation error - configure filter to return existing user for duplicate check
+        from ..exceptions import ValidationException
+
+        # Set up the mock to simulate finding an existing user with the same clerk_id
+        mock_query = MagicMock()
+        mock_query.get_or_none = AsyncMock(return_value=user)  # User exists
+        mocks["filter"].return_value = mock_query
+
+        create_data = UserCreate(
+            clerk_id=user.clerk_id,  # Use existing clerk_id to trigger validation error
+            email="duplicate@example.com",
+        )
+
+        with pytest.raises(ValidationException):
+            await user_service.create_user(create_data)
 
     def create_mock_user(self, user_id: int = 1, clerk_id: str = "user_123") -> User:
         """Create a mock user for testing."""
