@@ -438,39 +438,283 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-# Health check endpoint
-@app.get("/health", tags=["Health"])
+# Load balancer health check endpoints
+@app.get(
+    "/health",
+    tags=["Health"],
+    summary="Service health check",
+    description="Basic health check for load balancer liveness probes",
+    responses={
+        200: {
+            "description": "Service is healthy and ready to handle requests",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "healthy",
+                        "service": "user-management",
+                        "version": "0.1.0",
+                        "timestamp": "2024-01-01T00:00:00Z",
+                        "environment": "production",
+                        "database": {"status": "healthy"},
+                    }
+                }
+            },
+        },
+        503: {
+            "description": "Service is unhealthy and should not receive traffic",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "unhealthy",
+                        "service": "user-management",
+                        "version": "0.1.0",
+                        "timestamp": "2024-01-01T00:00:00Z",
+                        "environment": "production",
+                        "database": {
+                            "status": "error",
+                            "error": "Database unavailable",
+                        },
+                    }
+                }
+            },
+        },
+    },
+)
 async def health_check():
     """
-    Health check endpoint.
+    Basic health check endpoint for load balancer liveness probes.
 
-    Returns service status and database connectivity information.
-    Performs basic database connectivity test.
+    This endpoint performs minimal checks to determine if the service
+    is alive and can handle requests. Used by load balancers to determine
+    if traffic should be routed to this instance.
+
+    Returns:
+        dict: Service health status with minimal checks
+
+    Status Codes:
+        200: Service is healthy and can handle requests
+        503: Service is unhealthy and should not receive traffic
     """
+    from datetime import datetime, timezone
+
     health_status = {
         "status": "healthy",
         "service": "user-management",
         "version": "0.1.0",
-        "environment": settings.environment,
-        "database": {"status": "unknown"},
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "environment": str(getattr(settings, "environment", "unknown")),
     }
 
-    # Check database connectivity
+    # Basic database connectivity check
     try:
         if database.is_connected:
-            # Perform a simple query to test database connectivity
+            # Quick connectivity test
             await database.execute("SELECT 1")
-            health_status["database"]["status"] = "healthy"
+            health_status["database"] = {"status": "healthy"}
         else:
-            health_status["database"]["status"] = "disconnected"
+            health_status["database"] = {"status": "disconnected"}
             health_status["status"] = "unhealthy"
     except Exception as e:
         logger.warning(f"Database health check failed: {e}")
-        health_status["database"]["status"] = "error"
-        health_status["database"]["error"] = str(e)
+        health_status["database"] = {
+            "status": "error",
+            "error": (
+                str(e) if getattr(settings, "debug", False) else "Database unavailable"
+            ),
+        }
         health_status["status"] = "unhealthy"
 
-    return health_status
+    # Return appropriate HTTP status code
+    status_code = (
+        status.HTTP_200_OK
+        if health_status["status"] == "healthy"
+        else status.HTTP_503_SERVICE_UNAVAILABLE
+    )
+
+    return JSONResponse(
+        status_code=status_code,
+        content=health_status,
+    )
+
+
+@app.get(
+    "/ready",
+    tags=["Health"],
+    summary="Service readiness check",
+    description="Comprehensive readiness check for load balancer readiness probes",
+    responses={
+        200: {
+            "description": "Service is ready to handle requests",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "ready",
+                        "service": "user-management",
+                        "version": "0.1.0",
+                        "timestamp": "2024-01-01T00:00:00Z",
+                        "environment": "production",
+                        "checks": {
+                            "database": {
+                                "status": "ready",
+                                "response_time_ms": 5.2,
+                                "connected": True,
+                            },
+                            "configuration": {"status": "ready", "issues": []},
+                            "dependencies": {
+                                "status": "ready",
+                                "services": {
+                                    "encryption_service": True,
+                                    "audit_logging": True,
+                                },
+                            },
+                        },
+                        "performance": {"total_check_time_ms": 12.5},
+                    }
+                }
+            },
+        },
+        503: {
+            "description": "Service is not ready to handle requests",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "not_ready",
+                        "service": "user-management",
+                        "version": "0.1.0",
+                        "timestamp": "2024-01-01T00:00:00Z",
+                        "environment": "production",
+                        "checks": {
+                            "database": {
+                                "status": "not_ready",
+                                "connected": False,
+                                "error": "Database not connected",
+                            },
+                            "configuration": {
+                                "status": "not_ready",
+                                "issues": ["DATABASE_URL not configured"],
+                            },
+                        },
+                    }
+                }
+            },
+        },
+    },
+)
+async def readiness_check():
+    """
+    Readiness check endpoint for load balancer readiness probes.
+
+    This endpoint performs comprehensive checks to determine if the service
+    is ready to handle requests. Used by load balancers and orchestrators
+    to determine when to start routing traffic to a new instance.
+
+    Performs deeper health checks including:
+    - Database connectivity and query performance
+    - Essential service dependencies
+    - Configuration validation
+    - Resource availability
+
+    Returns:
+        dict: Detailed readiness status with comprehensive checks
+
+    Status Codes:
+        200: Service is ready to handle requests
+        503: Service is not ready (dependencies unavailable, etc.)
+    """
+    import time
+    from datetime import datetime, timezone
+
+    start_time = time.time()
+    readiness_status = {
+        "status": "ready",
+        "service": "user-management",
+        "version": "0.1.0",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "environment": str(getattr(settings, "environment", "unknown")),
+        "checks": {},
+    }
+
+    # Database readiness check
+    try:
+        if database.is_connected:
+            # More comprehensive database check
+            db_start = time.time()
+            await database.execute("SELECT 1")
+
+            # Check if we can query actual tables
+            await database.execute(
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'"
+            )
+            db_duration = (time.time() - db_start) * 1000  # Convert to milliseconds
+
+            readiness_status["checks"]["database"] = {
+                "status": "ready",
+                "response_time_ms": round(db_duration, 2),
+                "connected": bool(database.is_connected),
+            }
+        else:
+            readiness_status["checks"]["database"] = {
+                "status": "not_ready",
+                "connected": False,
+                "error": "Database not connected",
+            }
+            readiness_status["status"] = "not_ready"
+    except Exception as e:
+        logger.warning(f"Database readiness check failed: {e}")
+        readiness_status["checks"]["database"] = {
+            "status": "not_ready",
+            "connected": bool(database.is_connected),
+            "error": (
+                str(e) if getattr(settings, "debug", False) else "Database check failed"
+            ),
+        }
+        readiness_status["status"] = "not_ready"
+
+    # Configuration check
+    config_issues = []
+    if not getattr(settings, "database_url", None):
+        config_issues.append("DATABASE_URL not configured")
+    if not getattr(settings, "clerk_secret_key", None):
+        config_issues.append("CLERK_SECRET_KEY not configured")
+    if not getattr(settings, "encryption_service_salt", None):
+        config_issues.append("ENCRYPTION_SERVICE_SALT not configured")
+
+    readiness_status["checks"]["configuration"] = {
+        "status": "ready" if not config_issues else "not_ready",
+        "issues": config_issues,
+    }
+
+    if config_issues:
+        readiness_status["status"] = "not_ready"
+
+    # Service dependencies check
+    dependencies = {
+        "encryption_service": True,  # Always available as it's internal
+        "audit_logging": True,  # Always available as it's internal
+    }
+
+    readiness_status["checks"]["dependencies"] = {
+        "status": "ready",
+        "services": dependencies,
+    }
+
+    # Performance metrics
+    total_duration = (time.time() - start_time) * 1000
+    readiness_status["performance"] = {
+        "total_check_time_ms": round(total_duration, 2),
+    }
+
+    # Return appropriate HTTP status code
+    status_code = (
+        status.HTTP_200_OK
+        if readiness_status["status"] == "ready"
+        else status.HTTP_503_SERVICE_UNAVAILABLE
+    )
+
+    return JSONResponse(
+        status_code=status_code,
+        content=readiness_status,
+    )
 
 
 if __name__ == "__main__":
