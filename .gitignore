@@ -143,6 +143,7 @@ env/
 venv/
 .venv/
 .env/
+.tox/
 # Python bytecode
 __pycache__/
 *.py[cod]

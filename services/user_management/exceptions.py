@@ -211,6 +211,15 @@ class DatabaseException(UserManagementException):
         self.reason = reason
 
 
+class AuditException(UserManagementException):
+    """Exception raised when audit logging operations fail."""
+
+    def __init__(self, reason: str, details: Optional[Dict[str, Any]] = None):
+        message = f"Audit operation failed: {reason}"
+        super().__init__(message, details)
+        self.reason = reason
+
+
 # HTTP Exception mappings for FastAPI
 def user_not_found_exception(user_id: str) -> HTTPException:
     """Create HTTPException for user not found."""
