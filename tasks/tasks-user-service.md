@@ -81,6 +81,11 @@
 - `services/user_management/services/user_service.py` - User service business logic for profile operations, onboarding, and search functionality
 - `services/user_management/routers/users.py` - Enhanced user profile management router with full CRUD operations, authentication, and authorization
 - `services/user_management/tests/test_user_endpoints.py` - Comprehensive unit tests for all user profile endpoints including success and error scenarios
+- `services/user_management/schemas/webhook.py` - Pydantic schemas for Clerk webhook events with validation and email extraction
+- `services/user_management/services/webhook_service.py` - Webhook service business logic for processing Clerk user lifecycle events
+- `services/user_management/auth/webhook_auth.py` - Webhook signature verification for Clerk webhooks with HMAC validation
+- `services/user_management/routers/webhooks.py` - Enhanced webhook router with Clerk event handling, signature verification, and comprehensive error handling
+- `services/user_management/tests/test_webhook_endpoints.py` - Comprehensive unit tests for webhook processing including signature validation and event handling
 
 ### Phase 1: Project Setup & Foundation
 
@@ -143,17 +148,17 @@
 * [x] 5.8 Run `./fix` to format and lint code
 * [x] 5.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-* [ ] 6. Clerk Webhook Integration
-* [ ] 6.1 Install and configure Clerk Python SDK with webhook signature verification
-* [ ] 6.2 Create `POST /webhooks/clerk` endpoint in `routers/webhooks.py`
-* [ ] 6.3 Implement webhook signature verification using Clerk's webhook secret
-* [ ] 6.4 Handle `user.created` event: create User record and default UserPreferences
-* [ ] 6.5 Handle `user.updated` event: update User record with new information
-* [ ] 6.6 Handle `user.deleted` event: soft delete User and cascade to related records
-* [ ] 6.7 Add error handling, logging, and idempotency for webhook processing
-* [ ] 6.8 Write unit tests for webhook processing including signature validation and event handling
-* [ ] 6.9 Run `./fix` to format and lint code
-* [ ] 6.10 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
+* [x] 6. Clerk Webhook Integration
+* [x] 6.1 Install and configure Clerk Python SDK with webhook signature verification
+* [x] 6.2 Create `POST /webhooks/clerk` endpoint in `routers/webhooks.py`
+* [x] 6.3 Implement webhook signature verification using Clerk's webhook secret
+* [x] 6.4 Handle `user.created` event: create User record and default UserPreferences
+* [x] 6.5 Handle `user.updated` event: update User record with new information
+* [x] 6.6 Handle `user.deleted` event: soft delete User and cascade to related records
+* [x] 6.7 Add error handling, logging, and idempotency for webhook processing
+* [x] 6.8 Write unit tests for webhook processing including signature validation and event handling
+* [x] 6.9 Run `./fix` to format and lint code
+* [x] 6.10 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
 ### Phase 3: User Preferences Management
 

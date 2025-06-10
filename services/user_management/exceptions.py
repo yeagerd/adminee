@@ -184,6 +184,24 @@ class WebhookValidationException(UserManagementException):
         self.reason = reason
 
 
+class WebhookProcessingError(UserManagementException):
+    """Exception raised when webhook processing fails."""
+
+    def __init__(self, reason: str, details: Optional[Dict[str, Any]] = None):
+        message = f"Webhook processing failed: {reason}"
+        super().__init__(message, details)
+        self.reason = reason
+
+
+class DatabaseError(UserManagementException):
+    """Exception raised when database operations fail."""
+
+    def __init__(self, reason: str, details: Optional[Dict[str, Any]] = None):
+        message = f"Database operation failed: {reason}"
+        super().__init__(message, details)
+        self.reason = reason
+
+
 # HTTP Exception mappings for FastAPI
 def user_not_found_exception(user_id: str) -> HTTPException:
     """Create HTTPException for user not found."""

@@ -14,6 +14,7 @@ from .user import (
     UserSearchRequest,
     UserUpdate,
 )
+from .webhook import ClerkWebhookEvent, ClerkWebhookEventData, WebhookResponse
 
 __all__ = [
     "UserBase",
@@ -24,4 +25,8 @@ __all__ = [
     "UserDeleteResponse",
     "UserOnboardingUpdate",
     "UserSearchRequest",
+    # Webhook schemas
+    "ClerkWebhookEvent",
+    "ClerkWebhookEventData",
+    "WebhookResponse",
 ]
