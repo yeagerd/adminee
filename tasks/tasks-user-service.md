@@ -279,16 +279,32 @@
 * [x] 14.9 Run `./fix` to format and lint code
 * [x] 14.10 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-* [ ] 15. Integration Status Management
-* [ ] 15.1 Create `services/integration_status_service.py` for monitoring integration health
-* [ ] 15.2 Implement periodic health checks for each integration type
-* [ ] 15.3 Add automatic status updates based on token refresh success/failure
-* [ ] 15.4 Create integration diagnostic tools for troubleshooting connection issues
-* [ ] 15.5 Implement status broadcasting to dependent services via webhooks or message queue
-* [ ] 15.6 Add integration usage analytics and reporting capabilities
-* [ ] 15.7 Write unit tests for status tracking, health checks, and diagnostic tools
-* [ ] 15.8 Run `./fix` to format and lint code
-* [ ] 15.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
+### Phase 8: Error Handling & Validation
+
+* [ ] 18. Comprehensive Error System
+* [ ] 18.1 Update `exceptions.py` with all custom exception classes mentioned in design doc
+* [ ] 18.2 Implement standardized error response format with type, message, details, timestamp, request_id
+* [ ] 18.3 Create global exception handler that maps exceptions to appropriate HTTP status codes
+* [ ] 18.4 Add error logging with full context including stack traces and request details
+* [ ] 18.5 Implement user-friendly error messages for common failure scenarios
+* [ ] 18.6 Create error recovery procedures for transient failures with automatic retry
+* [ ] 18.7 Write unit tests for all exception types and error handling scenarios
+* [ ] 18.8 Run `./fix` to format and lint code
+* [ ] 18.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
+
+* [ ] 19. Input Validation & Security
+* [ ] 19.1 Review and enhance all Pydantic schemas with comprehensive validation rules
+* [ ] 19.2 Add input sanitization middleware for user-provided text data
+* [ ] 19.3 Create custom validators for email addresses, URLs, timezone strings, and other domain-specific fields
+* [ ] 19.4 Implement SQL injection prevention through parameterized queries (verify Ormar usage)
+* [ ] 19.5 Add XSS protection for all text fields with proper escaping
+* [ ] 19.6 Create validation unit tests covering edge cases and malicious input attempts
+* [ ] 19.7 Run `./fix` to format and lint code
+* [ ] 19.8 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
+
+### Phase 6.5: Basic health endpoints
+
+* [ ] 26.3 Create load balancer health check endpoints (`/health`, `/ready`)
 
 ### Phase 7: Background Jobs & Maintenance
 
@@ -313,29 +329,6 @@
 * [ ] 17.8 Write unit tests for all background tasks and scheduling
 * [ ] 17.9 Run `./fix` to format and lint code
 * [ ] 17.10 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
-
-### Phase 8: Error Handling & Validation
-
-* [ ] 18. Comprehensive Error System
-* [ ] 18.1 Update `exceptions.py` with all custom exception classes mentioned in design doc
-* [ ] 18.2 Implement standardized error response format with type, message, details, timestamp, request_id
-* [ ] 18.3 Create global exception handler that maps exceptions to appropriate HTTP status codes
-* [ ] 18.4 Add error logging with full context including stack traces and request details
-* [ ] 18.5 Implement user-friendly error messages for common failure scenarios
-* [ ] 18.6 Create error recovery procedures for transient failures with automatic retry
-* [ ] 18.7 Write unit tests for all exception types and error handling scenarios
-* [ ] 18.8 Run `./fix` to format and lint code
-* [ ] 18.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
-
-* [ ] 19. Input Validation & Security
-* [ ] 19.1 Review and enhance all Pydantic schemas with comprehensive validation rules
-* [ ] 19.2 Add input sanitization middleware for user-provided text data
-* [ ] 19.3 Create custom validators for email addresses, URLs, timezone strings, and other domain-specific fields
-* [ ] 19.4 Implement SQL injection prevention through parameterized queries (verify Ormar usage)
-* [ ] 19.5 Add XSS protection for all text fields with proper escaping
-* [ ] 19.6 Create validation unit tests covering edge cases and malicious input attempts
-* [ ] 19.7 Run `./fix` to format and lint code
-* [ ] 19.8 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
 ### Phase 9: Comprehensive Testing
 
@@ -396,6 +389,7 @@
 * [ ] 24.8 Run `./fix` to format and lint code
 * [ ] 24.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
+
 ### Phase 10.5: Advanced User Preferences
 
 * [ ] 8. Advanced Preferences Features
@@ -409,6 +403,18 @@
 * [ ] 8.8 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
 ### Phase 11: Performance & Optimization
+
+* [ ] 15. Integration Status Management
+* [ ] 15.1 Create `services/integration_status_service.py` for monitoring integration health
+* [ ] 15.2 Implement periodic health checks for each integration type
+* [ ] 15.3 Add automatic status updates based on token refresh success/failure
+* [ ] 15.4 Create integration diagnostic tools for troubleshooting connection issues
+* [ ] 15.5 Implement status broadcasting to dependent services via webhooks or message queue
+* [ ] 15.6 Add integration usage analytics and reporting capabilities
+* [ ] 15.7 Write unit tests for status tracking, health checks, and diagnostic tools
+* [ ] 15.8 Run `./fix` to format and lint code
+* [ ] 15.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
+
 
 * [ ] 25. Database Optimization
 * [ ] 25.1 Review and optimize all database queries using EXPLAIN ANALYZE
@@ -424,7 +430,6 @@
 * [ ] 26. Scalability Features
 * [ ] 26.1 Implement horizontal scaling support with stateless service design
 * [ ] 26.2 Add database read replica configuration for read-heavy operations
-* [ ] 26.3 Create load balancer health check endpoints (`/health`, `/ready`)
 * [ ] 26.4 Implement graceful shutdown procedures for zero-downtime deployments
 * [ ] 26.5 Add capacity planning tools and resource monitoring
 * [ ] 26.6 Create auto-scaling configuration for container orchestration
