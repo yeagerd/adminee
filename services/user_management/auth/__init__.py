@@ -19,6 +19,7 @@ from .service_auth import (
     validate_service_permissions,
     verify_service_authentication,
 )
+from .webhook_auth import WebhookSignatureVerifier, verify_webhook_signature
 
 __all__ = [
     # Clerk authentication
@@ -33,4 +34,7 @@ __all__ = [
     "require_service_auth",
     "validate_service_permissions",
     "ServiceAuthRequired",
+    # Webhook authentication
+    "WebhookSignatureVerifier",
+    "verify_webhook_signature",
 ]

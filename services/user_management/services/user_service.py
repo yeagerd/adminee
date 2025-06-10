@@ -160,7 +160,9 @@ class UserService:
                 update_fields["profile_image_url"] = user_data.profile_image_url
 
             if update_fields:
-                await user.update(**update_fields)
+                for field, value in update_fields.items():
+                    setattr(user, field, value)
+                await user.update()
                 await user.load()  # Reload to get updated data
 
             logger.info(
