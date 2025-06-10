@@ -115,20 +115,16 @@ def init_db_sync():
     import asyncio
 
     try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-    if loop.is_running():
+        asyncio.get_running_loop()
         # If we're in an async context, schedule the coroutine
         import concurrent.futures
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
             future = executor.submit(asyncio.run, init_db())
             future.result()
-    else:
-        loop.run_until_complete(init_db())
+    except RuntimeError:
+        # No running loop, we can run directly
+        asyncio.run(init_db())
 
 
 init_db_sync()

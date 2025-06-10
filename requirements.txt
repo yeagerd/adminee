@@ -10,9 +10,9 @@ fastapi
 httpx
 langchain>=0.1.0,<0.3.0
 litellm
-llama-index>=0.10.0,<0.12.0
-llama-index-embeddings-openai>=0.2.0,<0.3.0
-llama-index-llms-litellm>=0.2.0,<0.3.0
+llama-index>=0.12.0,<0.13.0
+llama-index-embeddings-openai>=0.3.0,<0.4.0
+llama-index-llms-litellm>=0.3.0,<0.6.0
 sqlmodel>=0.0.21
 pinecone-client
 psycopg2-binary
