@@ -26,7 +26,8 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 # Copy the rest of the application code for the office service
 # Assuming the office service code is in services/office-service/
-COPY ./services/office-service/ /app/office-service/
+COPY ./services/office-service /app/office-service-src
+RUN cp -r /app/office-service-src/. /app/office-service/ && rm -rf /app/office-service-src
 
 # Expose the port the app runs on (e.g., 8080 for FastAPI)
 EXPOSE 8080
