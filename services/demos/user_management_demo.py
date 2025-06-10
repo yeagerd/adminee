@@ -58,7 +58,7 @@ class UserManagementDemo:
         self.demo_user_id = "demo_user_12345"  # This is the external auth ID (Clerk ID)
         self.demo_database_user_id = None  # This will be set after user creation
 
-        # Set service API key with precedence: arg > env var > default
+        # Set service API key with precedence: arg > env var > no default for security
         if service_api_key:
             self.service_api_key = service_api_key
             self.api_key_source = "command line argument"
@@ -66,8 +66,9 @@ class UserManagementDemo:
             self.service_api_key = os.getenv("SERVICE_API_KEY") or ""
             self.api_key_source = "SERVICE_API_KEY environment variable"
         else:
-            self.service_api_key = "demo-service-key-12345"
-            self.api_key_source = "demo default"
+            # No default for security - internal API test will fail gracefully
+            self.service_api_key = None
+            self.api_key_source = "not configured (internal API test will fail)"
 
         # Generate valid JWT token for demo user
         self.auth_token = create_bearer_token(
@@ -466,6 +467,12 @@ class UserManagementDemo:
         self.print_section("Testing Internal Service-to-Service API")
 
         print(f"   🔑 Using API key from: {self.api_key_source}")
+
+        if self.service_api_key is None:
+            print("   ⚠️  No API key configured - test will fail as expected")
+            print("   💡 Set SERVICE_API_KEY env var or use --service-api-key flag")
+            return False
+
         print(
             f"   🔑 API key: {self.service_api_key[:8]}..."
             if len(self.service_api_key) > 8

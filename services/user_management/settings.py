@@ -37,7 +37,7 @@ class Settings(BaseSettings):
 
     # Security Configuration
     service_api_key: str = Field(
-        default="dev-service-key",
+        ...,  # Required field - no default
         description="API key for service-to-service authentication",
     )
     encryption_service_salt: Optional[str] = Field(
