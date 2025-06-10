@@ -26,7 +26,7 @@ class ClerkWebhookEventData(BaseModel):
         None, description="Update timestamp in milliseconds"
     )
 
-    @field_validator("email_addresses", mode='before')
+    @field_validator("email_addresses", mode="before")
     def extract_primary_email(cls, v) -> Optional[str]:
         """Extract primary email from email addresses array."""
         if v and isinstance(v, list) and len(v) > 0:
