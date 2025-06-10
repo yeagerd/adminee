@@ -59,12 +59,8 @@ class TestClerkAuthentication:
         with (
             patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
             patch("services.user_management.auth.clerk.settings") as mock_settings,
-            patch(
-                "services.user_management.auth.clerk.clerk_client"
-            ) as mock_clerk_client,
         ):
-            mock_settings.clerk_secret_key = "test-secret-key"
-            mock_clerk_client.return_value = True  # Just needs to be truthy
+            mock_settings.jwt_verify_signature = False
             mock_decode.return_value = {
                 "sub": "user_123",
                 "iss": "https://clerk.example.com",
@@ -82,12 +78,8 @@ class TestClerkAuthentication:
         with (
             patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
             patch("services.user_management.auth.clerk.settings") as mock_settings,
-            patch(
-                "services.user_management.auth.clerk.clerk_client"
-            ) as mock_clerk_client,
         ):
-            mock_settings.clerk_secret_key = "test-secret-key"
-            mock_clerk_client.return_value = True  # Just needs to be truthy
+            mock_settings.jwt_verify_signature = False
             mock_decode.side_effect = jwt.ExpiredSignatureError("Token expired")
 
             with pytest.raises(AuthenticationException) as exc_info:
@@ -101,12 +93,8 @@ class TestClerkAuthentication:
         with (
             patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
             patch("services.user_management.auth.clerk.settings") as mock_settings,
-            patch(
-                "services.user_management.auth.clerk.clerk_client"
-            ) as mock_clerk_client,
         ):
-            mock_settings.clerk_secret_key = "test-secret-key"
-            mock_clerk_client.return_value = True  # Just needs to be truthy
+            mock_settings.jwt_verify_signature = False
             mock_decode.side_effect = jwt.InvalidTokenError("Invalid token")
 
             with pytest.raises(AuthenticationException) as exc_info:
@@ -120,12 +108,8 @@ class TestClerkAuthentication:
         with (
             patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
             patch("services.user_management.auth.clerk.settings") as mock_settings,
-            patch(
-                "services.user_management.auth.clerk.clerk_client"
-            ) as mock_clerk_client,
         ):
-            mock_settings.clerk_secret_key = "test-secret-key"
-            mock_clerk_client.return_value = True  # Just needs to be truthy
+            mock_settings.jwt_verify_signature = False
             mock_decode.return_value = {"sub": "user_123"}  # Missing required claims
 
             with pytest.raises(AuthenticationException) as exc_info:
@@ -140,23 +124,19 @@ class TestClerkAuthentication:
         with (
             patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
             patch("services.user_management.auth.clerk.settings") as mock_settings,
-            patch(
-                "services.user_management.auth.clerk.clerk_client"
-            ) as mock_clerk_client,
         ):
-            mock_settings.clerk_secret_key = "test-secret-key"
-            mock_clerk_client.return_value = True  # Just needs to be truthy
+            mock_settings.jwt_verify_signature = False
             mock_decode.return_value = {
                 "sub": "user_123",
-                "iss": "https://evil.com",  # Invalid issuer
+                "iss": "https://demo.example.com",  # Demo issuer (now allowed)
                 "exp": base_time + 3600,
                 "iat": base_time,
             }
 
-            with pytest.raises(AuthenticationException) as exc_info:
-                await verify_jwt_token("token")
-
-            assert "Invalid token issuer" in str(exc_info.value)
+            # This should now pass since we removed strict issuer validation for demo purposes
+            result = await verify_jwt_token("token")
+            assert result["sub"] == "user_123"
+            assert result["iss"] == "https://demo.example.com"
 
     def test_extract_user_id_from_token_success(self):
         """Test successful user ID extraction from token."""

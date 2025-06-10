@@ -58,7 +58,9 @@ class WebhookService:
 
         try:
             # Check if user already exists (idempotency)
-            existing_user = await User.objects.get_or_none(id=user_data.id)
+            existing_user = await User.objects.get_or_none(
+                external_auth_id=user_data.id, auth_provider="clerk"
+            )
             if existing_user:
                 logger.info(f"User {user_data.id} already exists, skipping creation")
                 return {
@@ -74,7 +76,8 @@ class WebhookService:
 
             # Create User record
             user = await User.objects.create(
-                id=user_data.id,
+                external_auth_id=user_data.id,
+                auth_provider="clerk",
                 email=primary_email,
                 first_name=user_data.first_name,
                 last_name=user_data.last_name,
@@ -96,7 +99,8 @@ class WebhookService:
             logger.info(f"Successfully created user {user_data.id} with preferences")
             return {
                 "action": "user_created",
-                "user_id": user_data.id,
+                "user_id": user.id,  # Return the database ID
+                "external_auth_id": user_data.id,  # Also return the external auth ID
                 "preferences_id": preferences.id,
             }
 
@@ -118,7 +122,9 @@ class WebhookService:
 
         try:
             # Find existing user
-            user = await User.objects.get_or_none(id=user_data.id)
+            user = await User.objects.get_or_none(
+                external_auth_id=user_data.id, auth_provider="clerk"
+            )
             if not user:
                 logger.warning(
                     f"User {user_data.id} not found for update, creating new user"
@@ -185,14 +191,16 @@ class WebhookService:
 
         try:
             # Find existing user
-            user = await User.objects.get_or_none(id=user_data.id)
+            user = await User.objects.get_or_none(
+                external_auth_id=user_data.id, auth_provider="clerk"
+            )
             if not user:
                 logger.info(
                     f"User {user_data.id} not found for deletion, already removed"
                 )
                 return {
                     "action": "user_deletion_skipped",
-                    "user_id": user_data.id,
+                    "external_auth_id": user_data.id,
                     "reason": "User not found",
                 }
 
@@ -210,7 +218,11 @@ class WebhookService:
             # due to the foreign key relationship with ondelete="CASCADE"
 
             logger.info(f"Successfully deleted user {user_data.id}")
-            return {"action": "user_deleted", "user_id": user_data.id}
+            return {
+                "action": "user_deleted",
+                "user_id": user.id,  # Return the database ID
+                "external_auth_id": user_data.id,  # Also return the external auth ID
+            }
 
         except Exception as e:
             logger.error(f"Failed to delete user {user_data.id}: {str(e)}")
