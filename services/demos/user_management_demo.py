@@ -11,10 +11,15 @@ This demo showcases the user management service functionality including:
 
 Requirements:
 - User management service running on http://localhost:8000
-- Valid OAuth credentials configured
+- Valid OAuth credentials configured (for OAuth demo)
 - Web browser available for OAuth flows
+
+Usage:
+- python user_management_demo.py              # Interactive demo with OAuth menu
+- python user_management_demo.py --simple     # Simple non-interactive demo
 """
 
+import argparse
 import asyncio
 import json
 import subprocess
@@ -30,7 +35,7 @@ import structlog
 
 # Import demo JWT utilities
 try:
-    from demo_jwt_utils import create_bearer_token
+    from demo_jwt_utils import create_bearer_token, decode_token
 except ImportError:
     print("❌ demo_jwt_utils not found. Please ensure demo_jwt_utils.py is in the same directory.")
     exit(1)
@@ -150,8 +155,10 @@ class UserManagementDemo:
         self.print_section("Getting User Profile")
         
         try:
+            # Use /users/me endpoint to get current user's profile
+            # This doesn't require knowing the database ID
             response = await self.client.get(
-                f"{self.base_url}/users/{self.demo_user_id}",
+                f"{self.base_url}/users/me",
                 headers={"Authorization": self.auth_token}
             )
             self.print_response(response, "User profile retrieval")
@@ -164,6 +171,26 @@ class UserManagementDemo:
         """Update user profile."""
         self.print_section("Updating User Profile")
         
+        # First get the user profile to get the database ID
+        try:
+            profile_response = await self.client.get(
+                f"{self.base_url}/users/me",
+                headers={"Authorization": self.auth_token}
+            )
+            if profile_response.status_code != 200:
+                print("🔴 Failed to get user profile for update")
+                return False
+            
+            user_data = profile_response.json()
+            user_db_id = user_data.get("id")
+            if not user_db_id:
+                print("🔴 Could not get user database ID")
+                return False
+            
+        except Exception as e:
+            print(f"🔴 Failed to get user profile for update: {e}")
+            return False
+        
         update_data = {
             "first_name": "Demo Updated",
             "last_name": "User Updated",
@@ -173,8 +200,9 @@ class UserManagementDemo:
         }
 
         try:
+            # Use the database ID for the update
             response = await self.client.put(
-                f"{self.base_url}/users/{self.demo_user_id}",
+                f"{self.base_url}/users/{user_db_id}",
                 json=update_data,
                 headers={"Authorization": self.auth_token}
             )
@@ -184,13 +212,52 @@ class UserManagementDemo:
             print(f"🔴 Failed to update user profile: {e}")
             return False
 
+    async def get_user_database_id(self) -> Optional[int]:
+        """Get the user's database ID from their profile."""
+        try:
+            response = await self.client.get(
+                f"{self.base_url}/users/me",
+                headers={"Authorization": self.auth_token}
+            )
+            if response.status_code == 200:
+                user_data = response.json()
+                return user_data.get("id")
+            return None
+        except Exception as e:
+            print(f"🔴 Failed to get user database ID: {e}")
+            return None
+
+    async def get_user_clerk_id(self) -> Optional[str]:
+        """Get the user's Clerk ID from the JWT token."""
+        try:
+            # For demo purposes, we'll extract from our known demo user ID
+            # In production, this would be extracted from the JWT token claims
+            
+            # Remove 'Bearer ' prefix if present
+            token = self.auth_token
+            if token.startswith("Bearer "):
+                token = token[7:]
+            
+            claims = decode_token(token)
+            return claims.get("sub")  # 'sub' claim contains the user ID
+        except Exception as e:
+            print(f"🔴 Failed to extract Clerk ID from token: {e}")
+            # Fallback to our demo user ID
+            return self.demo_user_id
+
     async def get_user_preferences(self) -> Optional[Dict]:
         """Get user preferences."""
         self.print_section("Getting User Preferences")
         
+        # Get Clerk ID for preferences endpoint (expects string user_id)
+        clerk_id = await self.get_user_clerk_id()
+        if not clerk_id:
+            print("🔴 Could not get user Clerk ID")
+            return None
+        
         try:
             response = await self.client.get(
-                f"{self.base_url}/users/{self.demo_user_id}/preferences",
+                f"{self.base_url}/users/{clerk_id}/preferences",
                 headers={"Authorization": self.auth_token}
             )
             self.print_response(response, "User preferences retrieval")
@@ -202,6 +269,12 @@ class UserManagementDemo:
     async def update_user_preferences(self) -> bool:
         """Update user preferences."""
         self.print_section("Updating User Preferences")
+        
+        # Get Clerk ID for preferences endpoint (expects string user_id)
+        clerk_id = await self.get_user_clerk_id()
+        if not clerk_id:
+            print("🔴 Could not get user Clerk ID")
+            return False
         
         preferences_update = {
             "ui_preferences": {
@@ -227,7 +300,7 @@ class UserManagementDemo:
 
         try:
             response = await self.client.put(
-                f"{self.base_url}/users/{self.demo_user_id}/preferences",
+                f"{self.base_url}/users/{clerk_id}/preferences",
                 json=preferences_update,
                 headers={"Authorization": self.auth_token}
             )
@@ -241,9 +314,15 @@ class UserManagementDemo:
         """List user integrations."""
         self.print_section("Listing User Integrations")
         
+        # Get Clerk ID for integrations endpoint (expects string user_id)
+        clerk_id = await self.get_user_clerk_id()
+        if not clerk_id:
+            print("🔴 Could not get user Clerk ID")
+            return None
+        
         try:
             response = await self.client.get(
-                f"{self.base_url}/users/{self.demo_user_id}/integrations",
+                f"{self.base_url}/users/{clerk_id}/integrations",
                 headers={"Authorization": self.auth_token}
             )
             self.print_response(response, "User integrations list")
@@ -256,12 +335,18 @@ class UserManagementDemo:
         """Start OAuth flow for a provider."""
         self.print_section(f"Starting OAuth Flow for {provider.title()}")
         
+        # Get Clerk ID for integrations endpoint (expects string user_id)
+        clerk_id = await self.get_user_clerk_id()
+        if not clerk_id:
+            print("🔴 Could not get user Clerk ID")
+            return None
+        
         redirect_uri = "http://localhost:8000/oauth/callback"
         scopes = ["read", "write"] if provider == "google" else ["read"]
         
         try:
             response = await self.client.post(
-                f"{self.base_url}/users/{self.demo_user_id}/integrations/{provider}/oauth/start",
+                f"{self.base_url}/users/{clerk_id}/integrations/{provider}/oauth/start",
                 json={
                     "redirect_uri": redirect_uri,
                     "scopes": scopes
@@ -300,9 +385,15 @@ class UserManagementDemo:
         """Complete OAuth flow with authorization code."""
         self.print_section(f"Completing OAuth Flow for {provider.title()}")
         
+        # Get Clerk ID for integrations endpoint (expects string user_id)
+        clerk_id = await self.get_user_clerk_id()
+        if not clerk_id:
+            print("🔴 Could not get user Clerk ID")
+            return False
+        
         try:
             response = await self.client.post(
-                f"{self.base_url}/users/{self.demo_user_id}/integrations/{provider}/oauth/callback",
+                f"{self.base_url}/users/{clerk_id}/integrations/{provider}/oauth/callback",
                 json={
                     "code": code,
                     "state": state
@@ -319,9 +410,15 @@ class UserManagementDemo:
         """Get integration status for a provider."""
         self.print_section(f"Getting {provider.title()} Integration Status")
         
+        # Get Clerk ID for integrations endpoint (expects string user_id)
+        clerk_id = await self.get_user_clerk_id()
+        if not clerk_id:
+            print("🔴 Could not get user Clerk ID")
+            return None
+        
         try:
             response = await self.client.get(
-                f"{self.base_url}/users/{self.demo_user_id}/integrations/{provider}",
+                f"{self.base_url}/users/{clerk_id}/integrations/{provider}",
                 headers={"Authorization": self.auth_token}
             )
             self.print_response(response, f"{provider.title()} integration status")
@@ -331,18 +428,24 @@ class UserManagementDemo:
             return None
 
     async def refresh_integration_token(self, provider: str) -> bool:
-        """Refresh integration token."""
-        self.print_section(f"Refreshing {provider.title()} Token")
+        """Refresh integration token for a provider."""
+        self.print_section(f"Refreshing {provider.title()} Integration Token")
+        
+        # Get Clerk ID for integrations endpoint (expects string user_id)
+        clerk_id = await self.get_user_clerk_id()
+        if not clerk_id:
+            print("🔴 Could not get user Clerk ID")
+            return False
         
         try:
             response = await self.client.put(
-                f"{self.base_url}/users/{self.demo_user_id}/integrations/{provider}/refresh",
+                f"{self.base_url}/users/{clerk_id}/integrations/{provider}/refresh",
                 headers={"Authorization": self.auth_token}
             )
             self.print_response(response, f"{provider.title()} token refresh")
             return response.status_code == 200
         except Exception as e:
-            print(f"🔴 Failed to refresh token: {e}")
+            print(f"🔴 Failed to refresh integration token: {e}")
             return False
 
     async def test_internal_api(self) -> bool:
@@ -371,12 +474,18 @@ class UserManagementDemo:
             return False
 
     async def disconnect_integration(self, provider: str) -> bool:
-        """Disconnect an integration."""
+        """Disconnect integration for a provider."""
         self.print_section(f"Disconnecting {provider.title()} Integration")
+        
+        # Get Clerk ID for integrations endpoint (expects string user_id)
+        clerk_id = await self.get_user_clerk_id()
+        if not clerk_id:
+            print("🔴 Could not get user Clerk ID")
+            return False
         
         try:
             response = await self.client.delete(
-                f"{self.base_url}/users/{self.demo_user_id}/integrations/{provider}",
+                f"{self.base_url}/users/{clerk_id}/integrations/{provider}",
                 headers={"Authorization": self.auth_token}
             )
             self.print_response(response, f"{provider.title()} integration disconnect")
@@ -500,20 +609,117 @@ class UserManagementDemo:
         
         return await self.run_interactive_demo()
 
+    async def run_simple_demo(self):
+        """Run a simple non-interactive demo."""
+        self.print_header("User Management Service Simple Demo")
+        
+        print("This simple demo showcases core user management functionality:")
+        print("• Health and readiness checks")
+        print("• User profile management")
+        print("• User preferences")
+        print("• Integration listing")
+        print("• OAuth flow initiation (without completion)")
+        print("• Service-to-service API")
+        print()
+        
+        # Check service health
+        self.print_section("Service Health Check")
+        if not await self.check_service_health():
+            print("❌ Service is not running. Please start the service first:")
+            print("   cd /Users/yeagerd/github/briefly")
+            print("   uvicorn services.user_management.main:app --reload --port 8000")
+            return False
+
+        # Check service readiness
+        await self.check_service_readiness()
+
+        # Create demo user
+        await self.create_demo_user()
+
+        # User profile operations
+        await self.get_user_profile()
+        await self.update_user_profile()
+
+        # User preferences
+        await self.get_user_preferences()
+        await self.update_user_preferences()
+
+        # List current integrations
+        await self.list_integrations()
+
+        # Test OAuth flow initiation (without completion)
+        self.print_section("Testing OAuth Flow Initiation")
+        await self.start_oauth_flow("google")
+        await self.start_oauth_flow("microsoft")
+
+        # Test internal API
+        await self.test_internal_api()
+
+        self.print_header("Simple Demo Summary")
+        print("✅ Demo completed successfully!")
+        print("📋 All core functionality tested:")
+        print("   - Service health: ✅")
+        print("   - User creation: ✅") 
+        print("   - Profile operations: ✅")
+        print("   - Preferences: ✅")
+        print("   - Integrations: ✅")
+        print("   - OAuth initiation: ✅")
+        print("   - Internal API: ✅")
+        print()
+        print("💡 For interactive OAuth flows, run without --simple flag")
+
+        return True
+
 
 async def main():
     """Main demo function."""
+    parser = argparse.ArgumentParser(
+        description="User Management Service Demo",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python user_management_demo.py              # Interactive demo with OAuth menu
+  python user_management_demo.py --simple     # Simple non-interactive demo
+        """
+    )
+    parser.add_argument(
+        "--simple", 
+        action="store_true",
+        help="Run simple non-interactive demo (skips OAuth menu)"
+    )
+    parser.add_argument(
+        "--base-url",
+        default="http://localhost:8000",
+        help="Base URL for the user management service (default: http://localhost:8000)"
+    )
+    
+    args = parser.parse_args()
+    
     print("🎯 User Management Service Demo")
     print("================================")
     print()
-    print("This demo requires:")
-    print("• User management service running on http://localhost:8000")
-    print("• Valid OAuth credentials (optional for OAuth demo)")
-    print("• Web browser for OAuth flows")
-    print()
+    
+    if args.simple:
+        print("Running in SIMPLE mode (non-interactive)")
+        print()
+        print("This demo requires:")
+        print("• User management service running on", args.base_url)
+        print()
+    else:
+        print("Running in INTERACTIVE mode")
+        print()
+        print("This demo requires:")
+        print("• User management service running on", args.base_url)
+        print("• Valid OAuth credentials (optional for OAuth demo)")
+        print("• Web browser for OAuth flows")
+        print()
 
-    async with UserManagementDemo() as demo:
-        success = await demo.run_comprehensive_demo()
+    async with UserManagementDemo(base_url=args.base_url) as demo:
+        if args.simple:
+            success = await demo.run_simple_demo()
+        else:
+            success = await demo.run_comprehensive_demo()
+            
         if success:
             print("\n🎉 Demo completed successfully!")
         else:

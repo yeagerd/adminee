@@ -19,7 +19,7 @@ Environment Variables:
 """
 
 import time
-from typing import Dict
+from typing import Dict, Any
 
 try:
     import jwt
@@ -61,10 +61,11 @@ def create_demo_jwt_token(user_id: str, email: str = None) -> str:
     payload["permissions"] = ["read", "write", "admin"]
     
     # Create JWT token (unsigned for demo - signature verification is disabled in auth code)
+    # Use HS256 algorithm for simplicity in demos
     token = jwt.encode(
         payload,
-        "demo-secret-key",  # Demo secret
-        algorithm="HS256"   # Simple algorithm for demo
+        "demo-secret-key",  # Demo secret (signature verification disabled anyway)
+        algorithm="HS256",   # Simple algorithm for demo
     )
     
     return token
@@ -103,6 +104,41 @@ def create_bearer_token(user_id: str, email: str = None) -> str:
     """
     jwt_token = create_demo_jwt_token(user_id, email)
     return f"Bearer {jwt_token}"
+
+
+def decode_token(token: str) -> Dict[str, Any]:
+    """
+    Decode JWT token and return claims.
+    
+    Args:
+        token: JWT token string
+        
+    Returns:
+        Dictionary containing token claims
+        
+    Raises:
+        jwt.InvalidTokenError: If token is invalid
+    """
+    try:
+        # Decode without signature verification (matches the service behavior)
+        # Try RS256 first (service expectation), then HS256 (fallback)
+        for algorithm in ["RS256", "HS256"]:
+            try:
+                decoded = jwt.decode(
+                    token,
+                    options={"verify_signature": False},
+                    algorithms=[algorithm]
+                )
+                return decoded
+            except jwt.InvalidTokenError:
+                continue
+        
+        # If both fail, raise the error
+        raise jwt.InvalidTokenError("Token could not be decoded with supported algorithms")
+        
+    except jwt.InvalidTokenError as e:
+        print(f"Failed to decode token: {e}")
+        raise
 
 
 if __name__ == "__main__":

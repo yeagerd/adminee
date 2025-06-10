@@ -56,7 +56,7 @@ class Settings(BaseSettings):
         default=None, description="Clerk JWKS public key for networkless JWT verification"
     )
     jwt_verify_signature: bool = Field(
-        default=False, description="Enable JWT signature verification (requires Clerk public key)"
+        default=True, description="Enable JWT signature verification (requires Clerk public key)"
     )
 
     # Redis Configuration (for caching and background jobs)

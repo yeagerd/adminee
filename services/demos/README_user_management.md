@@ -2,67 +2,40 @@
 
 This demo showcases the comprehensive functionality of the user management service, including user profiles, preferences, OAuth integrations, and service-to-service APIs.
 
-## Features Demonstrated
+## Optional Prerequisites (for full OAuth demo)
 
-### 🏥 Health & Status
-- Service health checks (`/health`)
-- Service readiness checks (`/ready`)
-- Real-time service monitoring
-
-### 👤 User Profile Management
-- User creation via webhook simulation
-- Profile retrieval and updates
-- User data management
-- Audit logging of profile changes
-
-### ⚙️ User Preferences
-- Complete preference management
-- UI preferences (theme, language, timezone)
-- Notification preferences
-- AI preferences and consent
-- Partial preference updates
-
-### 🔗 OAuth Integrations
-- **Google OAuth Integration**
-  - Complete OAuth 2.0 flow with PKCE
-  - Real browser-based authorization
-  - Token management and refresh
-  - Scope validation
-  
-- **Microsoft OAuth Integration**
-  - Microsoft Graph API integration
-  - Enterprise-grade OAuth flow
-  - Token lifecycle management
-  
-- **Integration Management**
-  - List all user integrations
-  - Check integration status and health
-  - Refresh expired tokens
-  - Disconnect integrations
-
-### 🔐 Service-to-Service API
-- Internal token retrieval
-- Automatic token refresh
-- Scope validation
-- Service authentication
-
-### 🛡️ Security Features
-- JWT authentication simulation
-- API key authentication
-- Input validation and sanitization
-- Error handling and recovery
-
-## Prerequisites
-
-### Required
-- Python 3.9+
-- User Management Service running
-- Web browser for OAuth flows
-
-### Optional (for full OAuth demo)
 - Google OAuth credentials configured
 - Microsoft OAuth credentials configured
 - Valid redirect URIs set up
+
+## Usage
+
+The demo supports two modes:
+
+### Interactive Mode (Default)
+Full demo with OAuth menu and browser-based flows:
+```bash
+python user_management_demo.py
+```
+
+### Simple Mode
+Non-interactive demo that tests all core functionality without OAuth completion:
+```bash
+python user_management_demo.py --simple
+```
+
+### Custom Service URL
+Point to a different service instance:
+```bash
+python user_management_demo.py --base-url http://your-service.com:8080
+python user_management_demo.py --simple --base-url http://your-service.com:8080
+```
+
+### Help
+View all available options:
+```bash
+python user_management_demo.py --help
+```
 
 ## Quick Start
 
@@ -73,7 +46,9 @@ This demo showcases the comprehensive functionality of the user management servi
 cd /Users/yeagerd/github/briefly/services/user_management
 alembic upgrade head
 export DATABASE_URL="sqlite:///./services/user_management/user_management.db"
-cd /path/to/briefly  # Navigate to project root
+export JWT_VERIFY_SIGNATURE=false
+export ENCRYPTION_SERVICE_SALT="ZGVtby1lbmNyeXB0aW9uLXNhbHQtZm9yLXRlc3Rpbmc="
+cd /Users/yeagerd/github/briefly  # Navigate to project root
 uvicorn services.user_management.main:app --reload --port 8000
 ```
 
@@ -85,36 +60,86 @@ INFO:     Started reloader process
 
 ### 2. Run the Demo
 
+Choose your preferred mode:
+
+**Quick Test (Simple Mode):**
 ```bash
-# Terminal 2: Run the demo
+# Terminal 2: Run simple demo
+cd services/demos
+python user_management_demo.py --simple
+```
+
+**Full Interactive Demo:**
+```bash
+# Terminal 2: Run interactive demo
 cd services/demos
 python user_management_demo.py
 ```
 
-## Demo Flow
+## Demo Modes
 
-### Interactive Mode
+### Simple Mode (`--simple`)
 
-The demo runs in interactive mode, allowing you to:
+Non-interactive demo that runs all core functionality sequentially:
 
-1. **Service Health Check**
-   - Verifies service is running and healthy
-   - Checks database connectivity
-   - Validates service readiness
+1. **Service Health Checks** - Verifies service is running and ready
+2. **User Profile Demo** - Creates and manages user profiles
+3. **Preferences Management** - Updates various preference categories
+4. **Integration Listing** - Shows current OAuth integrations
+5. **OAuth Flow Initiation** - Tests OAuth flow start (without completion)
+6. **Internal API Testing** - Tests service-to-service authentication
 
-2. **User Profile Demo**
-   - Creates a demo user via webhook simulation
-   - Retrieves and displays user profile
-   - Updates profile information
-   - Shows audit logging in action
+**Sample Simple Mode Output:**
+```bash
+🎯 User Management Service Demo
+================================
 
-3. **Preferences Management**
-   - Displays default user preferences
-   - Updates various preference categories
-   - Demonstrates partial updates
-   - Shows preference validation
+Running in SIMPLE mode (non-interactive)
 
-4. **OAuth Integration Menu**
+This demo requires:
+• User management service running on http://localhost:8000
+
+============================================================
+ User Management Service Simple Demo
+============================================================
+
+This simple demo showcases core user management functionality:
+• Health and readiness checks
+• User profile management
+• User preferences
+• Integration listing
+• OAuth flow initiation (without completion)
+• Service-to-service API
+
+--- Service Health Check ---
+🟢 200 OK
+   Health check
+   Response: {
+     "status": "healthy",
+     "service": "user-management"
+   }
+
+✅ Demo completed successfully!
+📋 All core functionality tested:
+   - Service health: ✅
+   - User creation: ✅
+   - Profile operations: ✅
+   - Preferences: ✅
+   - Integrations: ✅
+   - OAuth initiation: ✅
+   - Internal API: ✅
+
+💡 For interactive OAuth flows, run without --simple flag
+```
+
+### Interactive Mode (Default)
+
+Full-featured demo with OAuth menu and real browser-based authorization:
+
+1. **Service Health Checks** - Same as simple mode
+2. **User Profile Demo** - Same as simple mode  
+3. **Preferences Management** - Same as simple mode
+4. **OAuth Integration Menu** - Interactive menu for OAuth flows:
    ```
    OAuth Integration Demo
    1. Connect Google Integration
@@ -127,77 +152,57 @@ The demo runs in interactive mode, allowing you to:
    0. Exit Demo
    ```
 
-### OAuth Flow Demo
+**OAuth Flow Demo (Interactive Mode Only):**
 
 When you select an OAuth provider:
 
-1. **Authorization URL Generation**
-   - Creates secure OAuth state with PKCE
-   - Generates authorization URL with proper scopes
-   - Opens browser automatically
-
-2. **Browser Authorization**
-   - Redirects to provider's OAuth consent screen
-   - User grants permissions
-   - Provider redirects back with authorization code
-
-3. **Token Exchange**
-   - Exchanges authorization code for tokens
-   - Stores encrypted tokens securely
-   - Creates integration record
-
-4. **Integration Management**
-   - View integration status
-   - Refresh tokens
-   - Test token validity
-   - Disconnect when done
+1. **Authorization URL Generation** - Creates secure OAuth state with PKCE
+2. **Browser Authorization** - Opens browser for real OAuth consent
+3. **Token Exchange** - Exchanges authorization code for tokens
+4. **Integration Management** - View, refresh, test, and disconnect integrations
 
 ## Sample Output
 
+### Simple Mode
 ```bash
 🎯 User Management Service Demo
 ================================
 
-This demo requires:
-• User management service running on http://localhost:8000
-• Valid OAuth credentials (optional for OAuth demo)
-• Web browser for OAuth flows
+Running in SIMPLE mode (non-interactive)
 
 ============================================================
- User Management Service Interactive Demo
+ User Management Service Simple Demo
 ============================================================
 
 --- Service Health Check ---
 🟢 200 OK
    Health check
-   Response: {
-     "status": "healthy",
-     "service": "user-management",
-     "version": "0.1.0",
-     "timestamp": "2024-01-01T12:00:00Z",
-     "environment": "development",
-     "database": {"status": "healthy"}
-   }
 
 --- Creating Demo User via Webhook ---
 🟢 200 OK
    Demo user creation via webhook
-   Response: {
-     "message": "User created successfully",
-     "user_id": "demo_user_12345"
-   }
 
 --- Getting User Profile ---
 🟢 200 OK
    User profile retrieval
-   Response: {
-     "id": "demo_user_12345",
-     "email": "demo.user@example.com",
-     "first_name": "Demo",
-     "last_name": "User",
-     "profile_image_url": "https://images.clerk.dev/demo-avatar.png",
-     "created_at": "2024-01-01T12:00:00Z"
-   }
+
+--- Testing OAuth Flow Initiation ---
+🟢 200 OK
+   OAuth flow started successfully
+   State: secure_random_state_12345
+
+============================================================
+ Simple Demo Summary
+============================================================
+✅ Demo completed successfully!
+```
+
+### Interactive Mode
+```bash
+🎯 User Management Service Demo
+================================
+
+Running in INTERACTIVE mode
 
 🔗🔗🔗🔗🔗🔗🔗🔗🔗🔗🔗🔗🔗🔗🔗🔗🔗🔗🔗🔗
 OAuth Integration Demo
@@ -214,22 +219,7 @@ OAuth Integration Demo
 Enter your choice (0-7): 1
 
 🚀 Starting Google OAuth Demo
-This will open your browser for OAuth authorization.
-Note: You'll need valid OAuth credentials configured for this to work.
-
-Do you want to proceed with Google OAuth? (y/n): y
-
---- Starting OAuth Flow for Google ---
-🟢 200 OK
-   OAuth flow started successfully
-   Authorization URL: https://accounts.google.com/oauth2/v2/auth?client_id=...
-   State: secure_random_state_12345
-
 🌐 Opening browser for Google OAuth authorization...
-   Please complete the OAuth flow in your browser.
-   After authorization, you'll be redirected back to the service.
-
-Press Enter after completing the Google OAuth flow...
 ```
 
 ## Configuration

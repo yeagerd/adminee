@@ -91,12 +91,19 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
         # We'll use direct JWT validation for now since Clerk SDK v5+ has different API
         # For production, you should use Clerk's official JWT verification
         # This is a simplified implementation for development
+        
+        # When signature verification is disabled, we still need to provide a key
+        # but it won't be used for verification
+        verify_signature = getattr(settings, 'jwt_verify_signature', False)
+        dummy_key = "dummy-key-for-verification-disabled"
+        
         decoded_token = jwt.decode(
             token,
+            key=dummy_key,
             options={
-                "verify_signature": getattr(settings, 'jwt_verify_signature', False)
+                "verify_signature": verify_signature
             },  # Configurable signature verification
-            algorithms=["RS256"],
+            algorithms=["RS256", "HS256"],  # Accept both RS256 (production) and HS256 (demo)
         )
 
         # Validate required claims

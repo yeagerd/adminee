@@ -27,6 +27,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/users", tags=["users"])
 
 
+
+
+
 @router.get(
     "/{user_id}",
     response_model=UserResponse,
