@@ -304,7 +304,7 @@
 
 ### Phase 6.5: Basic health endpoints
 
-* [ ] 26.3 Create load balancer health check endpoints (`/health`, `/ready`)
+* [ ] 26.3 Create load balancer health check endpoints (`/health`, `/ready`).  Write unit tests for new functionality. Run `./fix` and `tox -p auto` and fix issues.
 
 ### Phase 7: Background Jobs & Maintenance
 
