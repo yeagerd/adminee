@@ -57,7 +57,9 @@ class UserService:
             logger.error(f"Error retrieving user by ID {user_id}: {e}")
             raise UserNotFoundException(str(user_id))
 
-    async def get_user_by_external_auth_id(self, external_auth_id: str, auth_provider: str = "clerk") -> User:
+    async def get_user_by_external_auth_id(
+        self, external_auth_id: str, auth_provider: str = "clerk"
+    ) -> User:
         """
         Get user by external authentication ID.
 
@@ -72,20 +74,24 @@ class UserService:
             UserNotFoundException: If user is not found
         """
         try:
-            user = await User.objects.get(external_auth_id=external_auth_id, auth_provider=auth_provider)
+            user = await User.objects.get(
+                external_auth_id=external_auth_id, auth_provider=auth_provider
+            )
             if user.deleted_at is not None:
                 raise UserNotFoundException(f"{auth_provider}:{external_auth_id}")
 
-            logger.info(f"Retrieved user by external auth ID: {auth_provider}:{external_auth_id}")
+            logger.info(
+                f"Retrieved user by external auth ID: {auth_provider}:{external_auth_id}"
+            )
             return user
 
         except Exception as e:
             if isinstance(e, UserNotFoundException):
                 raise
-            logger.error(f"Error retrieving user by external auth ID {auth_provider}:{external_auth_id}: {e}")
+            logger.error(
+                f"Error retrieving user by external auth ID {auth_provider}:{external_auth_id}: {e}"
+            )
             raise UserNotFoundException(f"{auth_provider}:{external_auth_id}")
-
-
 
     async def create_user(self, user_data: UserCreate) -> User:
         """
@@ -104,7 +110,7 @@ class UserService:
             # Check if user with this external_auth_id already exists
             existing_user = await User.objects.filter(
                 external_auth_id=user_data.external_auth_id,
-                auth_provider=user_data.auth_provider
+                auth_provider=user_data.auth_provider,
             ).get_or_none()
 
             if existing_user and existing_user.deleted_at is None:
@@ -126,7 +132,9 @@ class UserService:
                 onboarding_step="profile_setup",
             )
 
-            logger.info(f"Created new user with {user_data.auth_provider} ID: {user_data.external_auth_id}")
+            logger.info(
+                f"Created new user with {user_data.auth_provider} ID: {user_data.external_auth_id}"
+            )
             return user
 
         except ValidationException:

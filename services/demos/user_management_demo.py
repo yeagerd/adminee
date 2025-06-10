@@ -22,6 +22,7 @@ Usage:
 import argparse
 import asyncio
 import json
+import os
 import sys
 import time
 import webbrowser
@@ -47,12 +48,25 @@ logger = structlog.get_logger(__name__)
 class UserManagementDemo:
     """Demo class for user management service."""
 
-    def __init__(self, base_url: str = "http://localhost:8000"):
+    def __init__(
+        self, base_url: str = "http://localhost:8000", service_api_key: str = None
+    ):
         self.base_url = base_url
         self.client = httpx.AsyncClient()
         self.demo_user_id = "demo_user_12345"  # This is the external auth ID (Clerk ID)
         self.demo_database_user_id = None  # This will be set after user creation
-        self.service_api_key = "demo-service-key-12345"  # For internal API calls
+
+        # Set service API key with precedence: arg > env var > default
+        if service_api_key:
+            self.service_api_key = service_api_key
+            self.api_key_source = "command line argument"
+        elif os.getenv("SERVICE_API_KEY"):
+            self.service_api_key = os.getenv("SERVICE_API_KEY")
+            self.api_key_source = "SERVICE_API_KEY environment variable"
+        else:
+            self.service_api_key = "demo-service-key-12345"
+            self.api_key_source = "demo default"
+
         # Generate valid JWT token for demo user
         self.auth_token = create_bearer_token(
             self.demo_user_id, "demo.user@example.com"
@@ -156,19 +170,21 @@ class UserManagementDemo:
                 },
             )
             self.print_response(response, "Demo user creation via webhook")
-            
+
             # Store the database user ID for later use by getting the created user profile
             if response.status_code in [200, 201]:
                 # Get the user profile to extract the database ID
                 profile_response = await self.client.get(
-                    f"{self.base_url}/users/me", 
-                    headers={"Authorization": self.auth_token}
+                    f"{self.base_url}/users/me",
+                    headers={"Authorization": self.auth_token},
                 )
                 if profile_response.status_code == 200:
                     profile_data = profile_response.json()
                     self.demo_database_user_id = profile_data.get("id")
-                    print(f"   💾 Stored database user ID: {self.demo_database_user_id}")
-            
+                    print(
+                        f"   💾 Stored database user ID: {self.demo_database_user_id}"
+                    )
+
             return response.status_code in [200, 201]
         except Exception as e:
             print(f"🔴 Failed to create demo user: {e}")
@@ -221,8 +237,6 @@ class UserManagementDemo:
         except Exception as e:
             print(f"🔴 Failed to update user profile: {e}")
             return False
-
-
 
     async def get_user_clerk_id(self) -> Optional[str]:
         """Get the user's Clerk ID from the JWT token."""
@@ -449,6 +463,13 @@ class UserManagementDemo:
         """Test internal service-to-service API."""
         self.print_section("Testing Internal Service-to-Service API")
 
+        print(f"   🔑 Using API key from: {self.api_key_source}")
+        print(
+            f"   🔑 API key: {self.service_api_key[:8]}..."
+            if len(self.service_api_key) > 8
+            else f"   🔑 API key: {self.service_api_key}"
+        )
+
         token_request = {
             "user_id": self.demo_user_id,
             "provider": "google",
@@ -645,7 +666,9 @@ class UserManagementDemo:
         # User profile operations
         profile_get = await self.get_user_profile()
         profile_update = await self.update_user_profile()
-        self.test_results["profile_operations"] = profile_get is not None and profile_update
+        self.test_results["profile_operations"] = (
+            profile_get is not None and profile_update
+        )
 
         # User preferences
         prefs_get = await self.get_user_preferences()
@@ -660,45 +683,57 @@ class UserManagementDemo:
         self.print_section("Testing OAuth Flow Initiation")
         google_oauth = await self.start_oauth_flow("google")
         microsoft_oauth = await self.start_oauth_flow("microsoft")
-        self.test_results["oauth_initiation"] = google_oauth is not None and microsoft_oauth is not None
+        self.test_results["oauth_initiation"] = (
+            google_oauth is not None and microsoft_oauth is not None
+        )
 
         # Test internal API
         self.test_results["internal_api"] = await self.test_internal_api()
 
         # Show accurate summary
         self.print_header("Simple Demo Summary")
-        
+
         # Determine overall success
-        failed_tests = [name for name, passed in self.test_results.items() if not passed]
+        failed_tests = [
+            name for name, passed in self.test_results.items() if not passed
+        ]
         overall_success = len(failed_tests) == 0
-        
+
         if overall_success:
             print("✅ Demo completed successfully!")
         else:
             print("⚠️ Demo completed with some failures.")
-        
+
         print("📋 All core functionality tested:")
-        
+
         # Helper function to get status icon
         def get_status(passed: bool) -> str:
             return "✅" if passed else "❌"
-        
+
         print(f"   - Service health: {get_status(self.test_results['service_health'])}")
-        print(f"   - Service readiness: {get_status(self.test_results['service_readiness'])}")
+        print(
+            f"   - Service readiness: {get_status(self.test_results['service_readiness'])}"
+        )
         print(f"   - User creation: {get_status(self.test_results['user_creation'])}")
-        print(f"   - Profile operations: {get_status(self.test_results['profile_operations'])}")
+        print(
+            f"   - Profile operations: {get_status(self.test_results['profile_operations'])}"
+        )
         print(f"   - Preferences: {get_status(self.test_results['preferences'])}")
         print(f"   - Integrations: {get_status(self.test_results['integrations'])}")
-        print(f"   - OAuth initiation: {get_status(self.test_results['oauth_initiation'])}")
+        print(
+            f"   - OAuth initiation: {get_status(self.test_results['oauth_initiation'])}"
+        )
         print(f"   - Internal API: {get_status(self.test_results['internal_api'])}")
-        
+
         if failed_tests:
             print(f"\n❌ Failed tests: {', '.join(failed_tests)}")
             if "oauth_initiation" in failed_tests:
-                print("   • OAuth endpoints not implemented or credentials not configured")
+                print(
+                    "   • OAuth endpoints not implemented or credentials not configured"
+                )
             if "internal_api" in failed_tests:
                 print("   • Service API key validation issues")
-        
+
         print()
         print("💡 For interactive OAuth flows, run without --simple flag")
 
@@ -714,6 +749,9 @@ async def main():
 Examples:
   python user_management_demo.py              # Interactive demo with OAuth menu
   python user_management_demo.py --simple     # Simple non-interactive demo
+  
+Environment Variables:
+  SERVICE_API_KEY          Service-to-service API key for internal API testing
         """,
     )
     parser.add_argument(
@@ -725,6 +763,10 @@ Examples:
         "--base-url",
         default="http://localhost:8000",
         help="Base URL for the user management service (default: http://localhost:8000)",
+    )
+    parser.add_argument(
+        "--service-api-key",
+        help="Service API key for internal API testing (overrides SERVICE_API_KEY env var)",
     )
 
     args = parser.parse_args()
@@ -748,7 +790,9 @@ Examples:
         print("• Web browser for OAuth flows")
         print()
 
-    async with UserManagementDemo(base_url=args.base_url) as demo:
+    async with UserManagementDemo(
+        base_url=args.base_url, service_api_key=getattr(args, "service_api_key", None)
+    ) as demo:
         if args.simple:
             success = await demo.run_simple_demo()
         else:

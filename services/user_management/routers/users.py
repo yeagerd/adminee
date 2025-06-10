@@ -48,10 +48,14 @@ async def get_current_user_profile(
     without needing to know their database ID.
     """
     try:
-        current_user = await user_service.get_user_by_external_auth_id(current_user_external_auth_id)
+        current_user = await user_service.get_user_by_external_auth_id(
+            current_user_external_auth_id
+        )
         user_response = UserResponse.from_orm(current_user)
 
-        logger.info(f"Retrieved current user profile for {current_user_external_auth_id}")
+        logger.info(
+            f"Retrieved current user profile for {current_user_external_auth_id}"
+        )
         return user_response
 
     except UserNotFoundException as e:
@@ -90,13 +94,13 @@ async def get_user_profile(
     """
     Get user profile by database ID.
 
-    Users can only access their own profile. The user_id must belong 
+    Users can only access their own profile. The user_id must belong
     to the authenticated user.
     """
     try:
         # Get the user to verify they exist and check ownership
         user = await user_service.get_user_by_id(user_id)
-        
+
         # Verify ownership - check if the authenticated user's external auth ID matches
         if current_user_external_auth_id != user.external_auth_id:
             logger.warning(
@@ -161,7 +165,7 @@ async def update_user_profile(
     try:
         # Get the user to verify they exist and check ownership
         user = await user_service.get_user_by_id(user_id)
-        
+
         # Verify ownership
         if current_user_external_auth_id != user.external_auth_id:
             logger.warning(

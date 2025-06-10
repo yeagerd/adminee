@@ -58,7 +58,9 @@ class WebhookService:
 
         try:
             # Check if user already exists (idempotency)
-            existing_user = await User.objects.get_or_none(external_auth_id=user_data.id, auth_provider="clerk")
+            existing_user = await User.objects.get_or_none(
+                external_auth_id=user_data.id, auth_provider="clerk"
+            )
             if existing_user:
                 logger.info(f"User {user_data.id} already exists, skipping creation")
                 return {
@@ -120,7 +122,9 @@ class WebhookService:
 
         try:
             # Find existing user
-            user = await User.objects.get_or_none(external_auth_id=user_data.id, auth_provider="clerk")
+            user = await User.objects.get_or_none(
+                external_auth_id=user_data.id, auth_provider="clerk"
+            )
             if not user:
                 logger.warning(
                     f"User {user_data.id} not found for update, creating new user"
@@ -187,7 +191,9 @@ class WebhookService:
 
         try:
             # Find existing user
-            user = await User.objects.get_or_none(external_auth_id=user_data.id, auth_provider="clerk")
+            user = await User.objects.get_or_none(
+                external_auth_id=user_data.id, auth_provider="clerk"
+            )
             if not user:
                 logger.info(
                     f"User {user_data.id} not found for deletion, already removed"
@@ -213,9 +219,9 @@ class WebhookService:
 
             logger.info(f"Successfully deleted user {user_data.id}")
             return {
-                "action": "user_deleted", 
+                "action": "user_deleted",
                 "user_id": user.id,  # Return the database ID
-                "external_auth_id": user_data.id  # Also return the external auth ID
+                "external_auth_id": user_data.id,  # Also return the external auth ID
             }
 
         except Exception as e:

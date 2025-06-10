@@ -72,7 +72,10 @@ class UserCreate(UserBase):
     """Schema for creating a new user."""
 
     external_auth_id: str = Field(
-        ..., min_length=1, max_length=255, description="External authentication provider user ID"
+        ...,
+        min_length=1,
+        max_length=255,
+        description="External authentication provider user ID",
     )
     auth_provider: str = Field(
         default="clerk", max_length=50, description="Authentication provider name"
@@ -106,7 +109,9 @@ class UserCreate(UserBase):
 
         valid_providers = ["clerk", "custom", "auth0", "firebase", "supabase"]
         if v not in valid_providers:
-            raise ValueError(f"Invalid auth provider. Must be one of: {', '.join(valid_providers)}")
+            raise ValueError(
+                f"Invalid auth provider. Must be one of: {', '.join(valid_providers)}"
+            )
 
         return v
 
@@ -171,7 +176,9 @@ class UserResponse(UserBase):
     """Schema for user response data."""
 
     id: int = Field(..., description="User's internal database ID (primary key)")
-    external_auth_id: str = Field(..., description="External authentication provider user ID")
+    external_auth_id: str = Field(
+        ..., description="External authentication provider user ID"
+    )
     auth_provider: str = Field(..., description="Authentication provider name")
     onboarding_completed: bool = Field(
         ..., description="Whether user has completed onboarding"
@@ -206,7 +213,9 @@ class UserDeleteResponse(BaseModel):
     success: bool = Field(..., description="Whether the deletion was successful")
     message: str = Field(..., description="Deletion status message")
     user_id: int = Field(..., description="Internal database ID of the deleted user")
-    external_auth_id: str = Field(..., description="External auth ID of the deleted user")
+    external_auth_id: str = Field(
+        ..., description="External auth ID of the deleted user"
+    )
     deleted_at: datetime = Field(..., description="When the user was deleted")
 
     class Config:
