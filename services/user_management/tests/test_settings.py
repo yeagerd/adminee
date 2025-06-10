@@ -70,7 +70,7 @@ class TestSettings:
             os.environ,
             {
                 "SERVICE_API_KEY": "test-api-key",
-                "TOKEN_ENCRYPTION_SALT": "test-salt",
+                "ENCRYPTION_SERVICE_SALT": "test-salt",
                 "CLERK_SECRET_KEY": "test-clerk-key",
                 "CLERK_WEBHOOK_SECRET": "test-webhook-secret",
             },
@@ -78,7 +78,7 @@ class TestSettings:
             settings = TestableSettings()
 
             assert settings.service_api_key == "test-api-key"
-            assert settings.token_encryption_salt == "test-salt"
+            assert settings.encryption_service_salt == "test-salt"
             assert settings.clerk_secret_key == "test-clerk-key"
             assert settings.clerk_webhook_secret == "test-webhook-secret"
 
@@ -122,6 +122,7 @@ class TestSettings:
         with patch.dict(os.environ, {}, clear=True):
             settings = TestableSettings()
 
+            assert settings.encryption_service_salt is None
             assert settings.clerk_secret_key is None
             assert settings.clerk_webhook_secret is None
             assert settings.google_client_id is None
