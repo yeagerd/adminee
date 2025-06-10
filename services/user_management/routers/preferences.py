@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from ..auth.clerk import get_current_user, verify_user_ownership
 from ..exceptions import (
+    AuthorizationException,
     DatabaseException,
     PreferencesNotFoundException,
     UserNotFoundException,
@@ -50,7 +51,6 @@ router = APIRouter(
 async def get_preferences(
     user_id: str,
     current_user: Annotated[str, Depends(get_current_user)],
-    _: Annotated[None, Depends(verify_user_ownership)],
 ):
     """
     Get user preferences endpoint.
@@ -62,6 +62,9 @@ async def get_preferences(
         logger.info(
             "Getting user preferences", user_id=user_id, current_user=current_user
         )
+
+        # Verify user ownership
+        await verify_user_ownership(current_user, user_id)
 
         preferences = await preferences_service.get_user_preferences(user_id)
 
@@ -81,6 +84,11 @@ async def get_preferences(
     except UserNotFoundException:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+    except AuthorizationException:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: You can only access your own preferences",
         )
     except DatabaseException as e:
         logger.error(
@@ -119,7 +127,6 @@ async def update_preferences(
     user_id: str,
     preferences_update: UserPreferencesUpdate,
     current_user: Annotated[str, Depends(get_current_user)],
-    _: Annotated[None, Depends(verify_user_ownership)],
 ):
     """
     Update user preferences endpoint.
@@ -138,6 +145,9 @@ async def update_preferences(
             ],
         )
 
+        # Verify user ownership
+        await verify_user_ownership(current_user, user_id)
+
         updated_preferences = await preferences_service.update_user_preferences(
             user_id, preferences_update
         )
@@ -152,6 +162,11 @@ async def update_preferences(
     except PreferencesNotFoundException:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Preferences not found"
+        )
+    except AuthorizationException:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: You can only update your own preferences",
         )
     except ValidationException as e:
         logger.warning(
@@ -197,7 +212,6 @@ async def reset_preferences(
     user_id: str,
     reset_request: PreferencesResetRequest,
     current_user: Annotated[str, Depends(get_current_user)],
-    _: Annotated[None, Depends(verify_user_ownership)],
 ):
     """
     Reset user preferences to defaults endpoint.
@@ -212,6 +226,9 @@ async def reset_preferences(
             current_user=current_user,
             categories=reset_request.categories,
         )
+
+        # Verify user ownership
+        await verify_user_ownership(current_user, user_id)
 
         reset_preferences = await preferences_service.reset_user_preferences(
             user_id, reset_request.categories
@@ -231,6 +248,11 @@ async def reset_preferences(
     except PreferencesNotFoundException:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Preferences not found"
+        )
+    except AuthorizationException:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: You can only reset your own preferences",
         )
     except ValidationException as e:
         logger.warning(
