@@ -48,6 +48,15 @@ logger = structlog.get_logger(__name__)
 class UserManagementDemo:
     """Demo class for user management service."""
 
+    base_url: str
+    client: httpx.AsyncClient
+    demo_user_id: str
+    demo_database_user_id: Optional[int]
+    service_api_key: Optional[str]
+    api_key_source: str
+    auth_token: str
+    test_results: Dict[str, bool]
+
     def __init__(
         self,
         base_url: str = "http://localhost:8000",
