@@ -707,4 +707,48 @@ This approach gives users full transparency about data sources and enables infor
 - **Offline Support**: Local caching for offline access
 - **Enterprise Features**: SSO integration, admin dashboards
 - **API Versioning**: Support for multiple API versions
-- **Data Export**: Comprehensive data export and backup features 
+- **Data Export**: Comprehensive data export and backup features
+
+---
+
+## OpenTelemetry Configuration for Google Cloud Run
+
+### IAM Permissions
+The service account used by your Cloud Run service needs permission to write traces.
+- Navigate to the IAM page in the Google Cloud Console.
+- Find the service account your Cloud Run service uses (by default, it's `[PROJECT_NUMBER]-compute@developer.gserviceaccount.com`).
+- Grant it the "Cloud Trace Agent" role (`roles/cloudtrace.agent`).
+
+### Environment Variables
+Deploy your service with the following environment variables:
+- `OTEL_TRACES_EXPORTER=gcp_trace`
+- `OTEL_SERVICE_NAME=office-service` (or a unique name for your service)
+- `OTEL_PYTHON_TRACER_PROVIDER=sdk_tracer_provider` (This is required for the GCP Trace Exporter)
+
+### Deployment Command
+Example `gcloud run deploy` command:
+```bash
+gcloud run deploy office-service \
+  --image gcr.io/[PROJECT_ID]/[YOUR_IMAGE_NAME] \
+  --platform managed \
+  --region [YOUR_REGION] \
+  --allow-unauthenticated \
+  --set-env-vars="OTEL_TRACES_EXPORTER=gcp_trace" \
+  --set-env-vars="OTEL_SERVICE_NAME=office-service" \
+  --set-env-vars="OTEL_PYTHON_TRACER_PROVIDER=sdk_tracer_provider"
+```
+Replace `[PROJECT_ID]`, `[YOUR_IMAGE_NAME]`, and `[YOUR_REGION]` with your specific values.
+
+---
+
+## Local Development with OpenTelemetry
+
+For local development, you can configure OpenTelemetry to print traces directly to your console. This is useful for verifying that instrumentation is working without sending data to Google Cloud Trace.
+
+Use the following command to run your service locally with console tracing:
+```bash
+OTEL_TRACES_EXPORTER=console \
+OTEL_SERVICE_NAME=local-office-service \
+opentelemetry-instrument uvicorn services.office_service.app.main:app --reload --host 0.0.0.0 --port 8080
+```
+When you make a request to your local service, you will see trace data printed as JSON in your terminal.
