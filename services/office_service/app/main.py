@@ -1,5 +1,6 @@
 import logging
 import uuid
+from datetime import datetime
 
 import httpx
 from api.calendar import router as calendar_router
@@ -15,7 +16,6 @@ from core.exceptions import (
     ValidationError,
 )
 from core.logging_config import setup_logging
-from datetime import datetime
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from schemas import ApiError
