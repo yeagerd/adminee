@@ -5,15 +5,13 @@ Tests the TokenService class functionality including token retrieval,
 refresh operations, user status tracking, and error handling.
 """
 
-import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
-from ..exceptions import NotFoundException, IntegrationException
+import pytest
+
 from ..models.integration import Integration, IntegrationProvider, IntegrationStatus
-from ..models.token import EncryptedToken, TokenType
 from ..models.user import User
-from ..schemas.integration import InternalTokenResponse, InternalUserStatusResponse
 from ..services.token_service import TokenService
 
 
@@ -55,9 +53,15 @@ class TestTokenService:
             "expires_in": 3600,
         }
 
-        with patch.object(token_service, "_get_user_integration", return_value=mock_integration), \
-             patch.object(token_service, "_store_token_record") as mock_store, \
-             patch("services.user_management.services.token_service.audit_logger.log_user_action"):
+        with (
+            patch.object(
+                token_service, "_get_user_integration", return_value=mock_integration
+            ),
+            patch.object(token_service, "_store_token_record") as mock_store,
+            patch(
+                "services.user_management.services.token_service.audit_logger.log_user_action"
+            ),
+        ):
 
             await token_service.store_tokens(
                 user_id="test_user_123",
@@ -85,4 +89,4 @@ class TestTokenService:
         required_scopes = ["read", "write", "admin"]
 
         result = token_service._has_required_scopes(granted_scopes, required_scopes)
-        assert result is False 
+        assert result is False
