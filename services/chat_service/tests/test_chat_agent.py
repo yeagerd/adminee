@@ -219,11 +219,7 @@ async def test_chat_with_agent():
     ):
         mock_history_manager.get_thread_history.return_value = []
         mock_history_manager.append_message = AsyncMock()
-        mock_history_manager.Thread = MagicMock()
-        mock_history_manager.Thread.objects = MagicMock()
-        mock_history_manager.Thread.objects.get = AsyncMock(
-            return_value=MagicMock(id=202)
-        )
+        mock_history_manager.get_thread = AsyncMock(return_value=MagicMock(id=202))
 
         agent = ChatAgent(
             thread_id=202,

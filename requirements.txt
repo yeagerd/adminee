@@ -13,7 +13,7 @@ litellm
 llama-index
 llama-index-embeddings-openai
 llama-index-llms-litellm
-ormar>=0.20.2
+sqlmodel>=0.0.21
 pinecone-client
 psycopg2-binary
 pydantic-settings

@@ -309,11 +309,8 @@ class ChatAgent:
         )
 
         # Ensure thread exists
-        from ormar.exceptions import NoMatch
-
-        try:
-            thread = await history_manager.Thread.objects.get(id=self.thread_id)
-        except NoMatch:
+        thread = await history_manager.get_thread(self.thread_id)
+        if thread is None:
             logger.warning(
                 f"Thread id={self.thread_id} not found. Creating new thread for user_id={self.user_id}"
             )
