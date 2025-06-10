@@ -6,13 +6,18 @@ Defines OAuth integration connections with external providers.
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
-import ormar
 from pydantic import EmailStr
+from sqlalchemy import JSON
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import Text, func
+from sqlmodel import Column, DateTime, Field, Relationship, SQLModel
 
-from ..database import base_ormar_config
 from .user import User
+
+if TYPE_CHECKING:
+    from .token import EncryptedToken
 
 
 class IntegrationProvider(str, Enum):
@@ -32,7 +37,7 @@ class IntegrationStatus(str, Enum):
     PENDING = "pending"  # OAuth flow in progress
 
 
-class Integration(ormar.Model):
+class Integration(SQLModel, table=True):
     """
     Integration model for OAuth connections to external providers.
 
@@ -40,31 +45,48 @@ class Integration(ormar.Model):
     Links to encrypted tokens for secure credential storage.
     """
 
-    ormar_config = base_ormar_config.copy(tablename="integrations")
+    __tablename__ = "integrations"
 
-    id: int = ormar.Integer(primary_key=True)
-    user: User = ormar.ForeignKey(User, ondelete="CASCADE")
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="users.id", ondelete="CASCADE")
 
     # Provider information
-    provider: IntegrationProvider = ormar.Enum(enum_class=IntegrationProvider)
-    status: IntegrationStatus = ormar.Enum(
-        enum_class=IntegrationStatus, default=IntegrationStatus.PENDING
+    provider: IntegrationProvider = Field(
+        sa_column=Column(SQLEnum(IntegrationProvider), name="provider")
+    )
+    status: IntegrationStatus = Field(
+        default=IntegrationStatus.PENDING,
+        sa_column=Column(SQLEnum(IntegrationStatus), name="status"),
     )
 
     # Provider-specific user information
-    provider_user_id: Optional[str] = ormar.String(max_length=255, nullable=True)
-    provider_email: Optional[EmailStr] = ormar.String(max_length=255, nullable=True)
+    provider_user_id: Optional[str] = Field(default=None, max_length=255)
+    provider_email: Optional[EmailStr] = Field(default=None, max_length=255)
 
     # OAuth scopes and metadata
-    scopes: Optional[Dict[str, Any]] = ormar.JSON(nullable=True)
-    metadata: Optional[Dict[str, Any]] = ormar.JSON(
-        nullable=True
+    scopes: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
+    provider_metadata: Optional[Dict[str, Any]] = Field(
+        default=None, sa_column=Column(JSON)
     )  # Provider-specific data
 
     # Sync information
-    last_sync_at: Optional[datetime] = ormar.DateTime(nullable=True)
-    error_message: Optional[str] = ormar.Text(nullable=True)
+    last_sync_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True))
+    )
+    error_message: Optional[str] = Field(default=None, sa_column=Column(Text))
 
     # Timestamps
-    created_at: datetime = ormar.DateTime(default=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = ormar.DateTime(default=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(
+            DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+        ),
+    )
+
+    # Relationships
+    user: Optional["User"] = Relationship(back_populates="integrations")
+    tokens: list["EncryptedToken"] = Relationship(back_populates="integration")

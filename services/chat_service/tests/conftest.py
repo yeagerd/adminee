@@ -1,10 +1,11 @@
 import os
 import tempfile
 
-import databases
 import pytest
 import pytest_asyncio
-import sqlalchemy
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
+from sqlmodel import SQLModel, select
 
 from services.chat_service import history_manager as hm
 
@@ -59,40 +60,35 @@ async def temp_db():
 
     # Store original values to restore later
     original_database_url = os.environ.get("DATABASE_URL")
-    original_database = hm.database
+    original_engine = hm.engine
+    original_async_session = hm.async_session
     original_database_url_var = hm.DATABASE_URL
 
     # Set the DATABASE_URL to use the temporary file
-    new_database_url = f"sqlite:///{db_path}"
+    new_database_url = f"sqlite+aiosqlite:///{db_path}"
     os.environ["DATABASE_URL"] = new_database_url
 
     # Completely reinitialize the database components
     hm.DATABASE_URL = new_database_url
-    hm.database = databases.Database(new_database_url)
+    hm.engine = create_async_engine(new_database_url, echo=False)
+    hm.async_session = sessionmaker(
+        hm.engine, class_=AsyncSession, expire_on_commit=False
+    )
 
-    # Update the database reference in all the Ormar models
-    hm.Thread.ormar_config.database = hm.database
-    hm.Message.ormar_config.database = hm.database
-    hm.Draft.ormar_config.database = hm.database
-
-    # Create tables and connect
-    engine = sqlalchemy.create_engine(new_database_url)
-    hm.metadata.create_all(engine)
-    await hm.database.connect()
+    # Create tables
+    async with hm.engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.create_all)
 
     yield db_path
 
     # Cleanup
-    await hm.database.disconnect()
-    hm.metadata.drop_all(engine)
+    await hm.engine.dispose()
     os.unlink(db_path)
 
     # Restore original values
     hm.DATABASE_URL = original_database_url_var
-    hm.database = original_database
-    hm.Thread.ormar_config.database = original_database
-    hm.Message.ormar_config.database = original_database
-    hm.Draft.ormar_config.database = original_database
+    hm.engine = original_engine
+    hm.async_session = original_async_session
 
     if original_database_url is not None:
         os.environ["DATABASE_URL"] = original_database_url
@@ -105,9 +101,24 @@ async def temp_db():
 async def clear_db(temp_db):
     """Clear data between tests."""
     try:
-        await hm.Message.objects.delete(each=True)
-        await hm.Draft.objects.delete(each=True)
-        await hm.Thread.objects.delete(each=True)
+        async with hm.async_session() as session:
+            # Delete all records from tables in order (messages, drafts, then threads)
+            result = await session.execute(select(hm.Message))
+            messages = result.scalars().all()
+            for message in messages:
+                await session.delete(message)
+
+            result = await session.execute(select(hm.Draft))
+            drafts = result.scalars().all()
+            for draft in drafts:
+                await session.delete(draft)
+
+            result = await session.execute(select(hm.Thread))
+            threads = result.scalars().all()
+            for thread in threads:
+                await session.delete(thread)
+
+            await session.commit()
     except Exception as e:
         # If tables don't exist yet, that's fine
         print(f"Warning: Could not clear database: {e}")

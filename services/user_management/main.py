@@ -11,8 +11,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 
-from .database import connect_database, database, disconnect_database
+from .database import close_db, create_all_tables
 from .exceptions import (
     AuditException,
     AuthenticationException,
@@ -73,7 +74,7 @@ async def lifespan(app: FastAPI):
         raise RuntimeError("API_KEY_USER_MANAGEMENT is required but not configured")
 
     try:
-        await connect_database()
+        await create_all_tables()
         logger.info("Database connected successfully")
     except Exception as e:
         logger.error(f"Failed to connect to database: {e}")
@@ -84,7 +85,7 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info("Shutting down User Management Service")
     try:
-        await disconnect_database()
+        await close_db()
         logger.info("Database disconnected successfully")
     except Exception as e:
         logger.error(f"Error during database disconnect: {e}")
@@ -516,13 +517,12 @@ async def health_check():
 
     # Basic database connectivity check
     try:
-        if database.is_connected:
+        from .database import async_session
+
+        async with async_session() as session:
             # Quick connectivity test
-            await database.execute("SELECT 1")
+            await session.execute(text("SELECT 1"))
             health_status["database"] = {"status": "healthy"}
-        else:
-            health_status["database"] = {"status": "disconnected"}
-            health_status["status"] = "unhealthy"
     except Exception as e:
         logger.warning(f"Database health check failed: {e}")
         health_status["database"] = {
@@ -645,15 +645,17 @@ async def readiness_check():
 
     # Database readiness check
     try:
-        if database.is_connected:
+        from .database import async_session
+
+        async with async_session() as session:
             # More comprehensive database check
             db_start = time.time()
-            await database.execute("SELECT 1")
+            await session.execute(text("SELECT 1"))
 
             # Check if we can query actual tables - use a more generic approach
             try:
                 # Try to query the users table directly (should exist after migrations)
-                await database.execute("SELECT COUNT(*) FROM users LIMIT 1")
+                await session.execute(text("SELECT COUNT(*) FROM users LIMIT 1"))
             except Exception:
                 # If users table doesn't exist, the database isn't properly set up
                 raise Exception(
@@ -665,20 +667,14 @@ async def readiness_check():
             readiness_status["checks"]["database"] = {
                 "status": "ready",
                 "response_time_ms": round(db_duration, 2),
-                "connected": bool(database.is_connected),
+                "connected": True,
             }
-        else:
-            readiness_status["checks"]["database"] = {
-                "status": "not_ready",
-                "connected": False,
-                "error": "Database not connected",
-            }
-            readiness_status["status"] = "not_ready"
+        readiness_status["status"] = "ready"
     except Exception as e:
         logger.warning(f"Database readiness check failed: {e}")
         readiness_status["checks"]["database"] = {
             "status": "not_ready",
-            "connected": bool(database.is_connected),
+            "connected": False,
             "error": (
                 str(e) if getattr(settings, "debug", False) else "Database check failed"
             ),

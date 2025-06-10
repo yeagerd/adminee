@@ -1,38 +1,54 @@
 """
 Database configuration for User Management Service.
 
-Sets up database connection using Ormar ORM and SQLAlchemy.
+Sets up database connection using SQLModel and SQLAlchemy.
 """
 
-import databases
-import ormar
-import sqlalchemy
+from typing import AsyncGenerator
 
-from .settings import settings
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlmodel import SQLModel
 
-# Database and metadata setup
-database = databases.Database(settings.database_url)
-metadata = sqlalchemy.MetaData()
+from .core.config import settings
 
-# Base OrmarConfig for all models
-base_ormar_config = ormar.OrmarConfig(database=database, metadata=metadata)
+
+# Create async engine for database operations
+def get_async_database_url(url: str) -> str:
+    """Convert database URL to async format."""
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+asyncpg://")
+    elif url.startswith("sqlite://"):
+        return url.replace("sqlite://", "sqlite+aiosqlite://")
+    else:
+        return url
+
+
+engine = create_async_engine(
+    get_async_database_url(settings.database_url),
+    echo=settings.debug,
+)
+
+# Session factory for dependency injection
+async_session = async_sessionmaker(
+    engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+)
 
 
 # Database lifecycle management
-async def connect_database():
-    """Connect to the database."""
-    if not database.is_connected:
-        await database.connect()
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    """Get async database session for dependency injection."""
+    async with async_session() as session:
+        yield session
 
 
-async def disconnect_database():
-    """Disconnect from the database."""
-    if database.is_connected:
-        await database.disconnect()
-
-
-# Create all tables (for development/testing)
 async def create_all_tables():
     """Create all database tables. Use Alembic migrations in production."""
-    engine = sqlalchemy.create_engine(settings.database_url)
-    metadata.create_all(engine)
+    async with engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.create_all)
+
+
+async def close_db():
+    """Close database connections."""
+    await engine.dispose()

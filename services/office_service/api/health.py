@@ -15,7 +15,8 @@ from core.config import settings
 from core.token_manager import TokenManager
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
-from models import database
+from models import ApiCall, async_session
+from sqlmodel import select
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,7 @@ async def health_check():
 
     try:
         # Check database connection
-        checks["database"] = await check_database_connection()
+        checks["database"] = await check_database_health()
 
         # Check Redis connection
         checks["redis"] = await check_redis_connection()
@@ -160,29 +161,16 @@ async def integration_health_check(user_id: str):
         )
 
 
-async def check_database_connection() -> bool:
-    """
-    Check database connectivity and basic operations.
-
-    Returns:
-        bool: True if database is healthy, False otherwise
-    """
+async def check_database_health() -> bool:
+    """Check if the database connection is healthy."""
     try:
         # Test database connection by executing a simple query
-        if database.is_connected:
-            # Try to execute a simple query to test the connection
-            await database.execute("SELECT 1")
+        async with async_session() as session:
+            await session.execute(select(ApiCall).limit(1))
             logger.debug("Database health check passed")
             return True
-        else:
-            # Try to connect
-            await database.connect()
-            await database.execute("SELECT 1")
-            logger.debug("Database connection established and health check passed")
-            return True
-
     except Exception as e:
-        logger.error(f"Database health check failed: {e}")
+        logger.warning(f"Database health check failed: {e}")
         return False
 
 

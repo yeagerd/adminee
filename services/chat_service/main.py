@@ -5,6 +5,7 @@ from typing import AsyncIterator
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+from sqlmodel import select
 
 from . import history_manager
 from .api import router
@@ -21,16 +22,13 @@ logger.info("Logging is configured")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    # Startup: Ensure the database is created and connected
-    await history_manager.database.connect()
-    # Create tables if they don't exist
-    engine = history_manager.sqlalchemy.create_engine(history_manager.DATABASE_URL)
-    history_manager.metadata.create_all(engine)
+    # Startup: Ensure the database is created and tables exist
+    await history_manager.init_db()
 
     yield  # The application runs here
 
-    # Shutdown: Clean up the connection
-    await history_manager.database.disconnect()
+    # Shutdown: Clean up connections
+    await history_manager.engine.dispose()
 
 
 app = FastAPI(title="Chat Service", version="0.1.0", lifespan=lifespan)
@@ -53,7 +51,11 @@ app.include_router(router)
 async def health_check() -> JSONResponse:
     try:
         # Simple query to verify database connection
-        count = await history_manager.Thread.objects.count()
+        async with history_manager.async_session() as session:
+            result = await session.execute(select(history_manager.Thread))
+            threads = result.scalars().all()
+            count = len(threads)
+
         return JSONResponse(
             content={
                 "status": "ok",
