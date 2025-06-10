@@ -1,9 +1,12 @@
+aiosqlite
 alembic
+asyncpg
 celery
 clerk-backend-api
 cryptography
 databases
 email-validator
+fakeredis
 fastapi
 httpx
 langchain
@@ -14,12 +17,11 @@ llama-index-llms-litellm
 ormar>=0.20.2
 pinecone-client
 psycopg2-binary
+pydantic-settings
 pydantic>=2.0,<2.9.0
 PyJWT
-pydantic-settings
 pytest
 pytest-asyncio
-fakeredis
 python-dotenv
 pytz
 redis
@@ -27,6 +29,6 @@ requests
 sqlalchemy
 structlog
 tox
-types-requests
 types-pytz
+types-requests
 uvicorn[standard]
