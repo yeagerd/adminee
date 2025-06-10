@@ -421,3 +421,18 @@ class InternalUserStatusResponse(BaseModel):
     last_sync_at: Optional[datetime] = Field(
         None, description="Last successful sync across all integrations"
     )
+
+
+class TokenRevocationResponse(BaseModel):
+    """Response model for token revocation requests."""
+
+    success: bool = Field(..., description="Whether token revocation succeeded")
+    provider: IntegrationProvider = Field(..., description="OAuth provider")
+    user_id: str = Field(..., description="User ID")
+    integration_id: Optional[int] = Field(None, description="Integration ID")
+    revoked_at: Optional[datetime] = Field(None, description="Revocation timestamp")
+    reason: Optional[str] = Field(None, description="Reason for revocation")
+    error: Optional[str] = Field(None, description="Error message if failed")
+    provider_response: Optional[Dict[str, Any]] = Field(
+        None, description="Provider revocation response"
+    )
