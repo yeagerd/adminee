@@ -90,3 +90,63 @@ class TestTokenService:
 
         result = token_service._has_required_scopes(granted_scopes, required_scopes)
         assert result is False
+
+    @pytest.mark.asyncio
+    async def test_revoke_google_token_success(self, token_service):
+        """Test successful Google token revocation."""
+        with patch("httpx.AsyncClient") as mock_client:
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_client.return_value.__aenter__.return_value.post.return_value = (
+                mock_response
+            )
+
+            result = await token_service._revoke_google_token("test_token")
+
+            assert result["success"] is True
+            assert result["provider"] == "google"
+
+    @pytest.mark.asyncio
+    async def test_revoke_google_token_failure(self, token_service):
+        """Test Google token revocation failure."""
+        with patch("httpx.AsyncClient") as mock_client:
+            mock_response = MagicMock()
+            mock_response.status_code = 400
+            mock_response.text = "Invalid token"
+            mock_client.return_value.__aenter__.return_value.post.return_value = (
+                mock_response
+            )
+
+            result = await token_service._revoke_google_token("test_token")
+
+            assert result["success"] is False
+            assert "Google revocation failed: 400" in result["error"]
+
+    @pytest.mark.asyncio
+    async def test_revoke_microsoft_token_success(self, token_service):
+        """Test successful Microsoft token revocation."""
+        with patch("httpx.AsyncClient") as mock_client:
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_client.return_value.__aenter__.return_value.post.return_value = (
+                mock_response
+            )
+
+            result = await token_service._revoke_microsoft_token("test_token")
+
+            assert result["success"] is True
+            assert result["provider"] == "microsoft"
+
+    @pytest.mark.asyncio
+    async def test_revoke_with_provider_unsupported(self, token_service):
+        """Test token revocation with unsupported provider."""
+        # Create a mock provider that's not implemented
+        mock_provider = MagicMock()
+        mock_provider.value = "unsupported"
+
+        result = await token_service._revoke_with_provider(
+            mock_provider, "test_token", "access_token"
+        )
+
+        assert result["success"] is False
+        assert "not implemented" in result["error"]
