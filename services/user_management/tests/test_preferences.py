@@ -133,6 +133,38 @@ class TestPreferencesSchemas:
         with pytest.raises(ValueError, match="Invalid category"):
             PreferencesResetRequest(categories=["invalid_category"])
 
+    def test_user_preferences_response_version_field(self):
+        """Test that UserPreferencesResponse includes version field."""
+        response = UserPreferencesResponse(
+            user_id="user_123",
+            version="1.0",
+            ui=UIPreferencesSchema(),
+            notifications=NotificationPreferencesSchema(),
+            ai=AIPreferencesSchema(),
+            integrations=IntegrationPreferencesSchema(),
+            privacy=PrivacyPreferencesSchema(),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+
+        assert response.version == "1.0"
+        assert response.user_id == "user_123"
+
+    def test_user_preferences_response_default_version(self):
+        """Test default version value in UserPreferencesResponse."""
+        response = UserPreferencesResponse(
+            user_id="user_123",
+            ui=UIPreferencesSchema(),
+            notifications=NotificationPreferencesSchema(),
+            ai=AIPreferencesSchema(),
+            integrations=IntegrationPreferencesSchema(),
+            privacy=PrivacyPreferencesSchema(),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+
+        assert response.version == "1.0"  # Default version
+
 
 class TestPreferencesService:
     """Test preferences service business logic."""
@@ -151,6 +183,7 @@ class TestPreferencesService:
         """Mock preferences object."""
         prefs = Mock()
         prefs.user_id = 1
+        prefs.version = "1.0"  # Add version field
         prefs.ui_preferences = {
             "theme": "system",
             "language": "en",
@@ -199,6 +232,7 @@ class TestPreferencesService:
 
             assert result is not None
             assert result.user_id == "user_123"
+            assert result.version == "1.0"
             assert result.ui.theme == ThemeMode.SYSTEM
             assert result.notifications.email_notifications is True
 
@@ -230,6 +264,7 @@ class TestPreferencesService:
 
             created_prefs = Mock()
             created_prefs.user_id = 1
+            created_prefs.version = "1.0"  # Add version field
             created_prefs.ui_preferences = UIPreferencesSchema().model_dump()
             created_prefs.notification_preferences = (
                 NotificationPreferencesSchema().model_dump()
@@ -247,7 +282,10 @@ class TestPreferencesService:
             result = await PreferencesService.get_user_preferences("user_123")
 
             assert result is not None
+            # Verify that version is set when creating defaults
             mock_prefs_model.objects.create.assert_called_once()
+            create_call_args = mock_prefs_model.objects.create.call_args
+            assert create_call_args[1]["version"] == "1.0"
 
     @pytest.mark.asyncio
     async def test_update_user_preferences_success(self, mock_user, mock_preferences):
@@ -435,6 +473,39 @@ class TestPreferencesService:
             with pytest.raises(ValidationException):
                 await PreferencesService.reset_user_preferences("user_123", categories)
 
+    def test_version_field_for_migration_support(self):
+        """Test that version field supports future migration scenarios."""
+        # Test that different version values are handled correctly
+        response_v1 = UserPreferencesResponse(
+            user_id="user_123",
+            version="1.0",
+            ui=UIPreferencesSchema(),
+            notifications=NotificationPreferencesSchema(),
+            ai=AIPreferencesSchema(),
+            integrations=IntegrationPreferencesSchema(),
+            privacy=PrivacyPreferencesSchema(),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+
+        response_v2 = UserPreferencesResponse(
+            user_id="user_123",
+            version="2.0",
+            ui=UIPreferencesSchema(),
+            notifications=NotificationPreferencesSchema(),
+            ai=AIPreferencesSchema(),
+            integrations=IntegrationPreferencesSchema(),
+            privacy=PrivacyPreferencesSchema(),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+
+        assert response_v1.version == "1.0"
+        assert response_v2.version == "2.0"
+
+        # Verify that version field can be used for migration logic
+        assert response_v1.version != response_v2.version
+
 
 @pytest.fixture
 def client():
@@ -496,6 +567,8 @@ class TestPreferencesEndpoints:
             assert response.status_code == status.HTTP_200_OK
             data = response.json()
             assert data["user_id"] == "user_123"
+            assert "version" in data
+            assert data["version"] == "1.0"
 
     def test_get_preferences_not_found(self, client, mock_auth_dependencies):
         """Test preferences not found."""

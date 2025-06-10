@@ -181,16 +181,6 @@
 * [x] 7.8 Run `./fix` to format and lint code
 * [x] 7.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-* [ ] 8. Advanced Preferences Features
-* [ ] 8.1 Implement preference inheritance system with system defaults and user overrides
-* [ ] 8.2 Add preference validation schema with custom validators for complex fields
-* [ ] 8.3 Create preference migration system for handling schema changes
-* [ ] 8.4 Implement preference history tracking for audit and rollback capabilities
-* [ ] 8.5 Add preference export/import functionality for user data portability
-* [ ] 8.6 Write unit tests for inheritance, validation, migration, and history features
-* [ ] 8.7 Run `./fix` to format and lint code
-* [ ] 8.8 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
-
 ### Phase 4: Token Encryption & Security
 
 * [ ] 9. Token Encryption Implementation
@@ -381,6 +371,18 @@
 * [ ] 24.7 Write unit tests for logging configuration and trace correlation
 * [ ] 24.8 Run `./fix` to format and lint code
 * [ ] 24.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
+
+### Phase 10.5: Advanced User Preferences
+
+* [ ] 8. Advanced Preferences Features
+* [ ] 8.1 Implement preference inheritance system with system defaults and user overrides
+* [ ] 8.2 Add preference validation schema with custom validators for complex fields
+* [ ] 8.3 Create preference migration system for handling schema changes
+* [ ] 8.4 Implement preference history tracking for audit and rollback capabilities
+* [ ] 8.5 Add preference export/import functionality for user data portability
+* [ ] 8.6 Write unit tests for inheritance, validation, migration, and history features
+* [ ] 8.7 Run `./fix` to format and lint code
+* [ ] 8.8 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
 ### Phase 11: Performance & Optimization
 
