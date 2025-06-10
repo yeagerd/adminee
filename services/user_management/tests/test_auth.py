@@ -5,7 +5,6 @@ Tests Clerk JWT validation, service authentication, user extraction,
 and authorization checks.
 """
 
-import time
 from unittest.mock import MagicMock, patch
 
 import jwt
@@ -36,11 +35,13 @@ class TestClerkAuthentication:
 
     def create_test_token(self, claims: dict = None, expired: bool = False):
         """Create a test JWT token for testing."""
+        # Use fixed timestamps to avoid CI timing issues
+        base_time = 1640995200  # 2022-01-01 00:00:00 UTC
         default_claims = {
             "sub": "user_123",
             "iss": "https://clerk.example.com",
-            "iat": int(time.time()),
-            "exp": int(time.time()) + (3600 if not expired else -3600),
+            "iat": base_time,
+            "exp": base_time + (3600 if not expired else -3600),
             "email": "test@example.com",
         }
 
@@ -53,13 +54,18 @@ class TestClerkAuthentication:
     async def test_verify_jwt_token_success(self):
         """Test successful JWT token verification."""
         token = self.create_test_token()
+        base_time = 1640995200  # 2022-01-01 00:00:00 UTC
 
-        with patch("services.user_management.auth.clerk.jwt.decode") as mock_decode:
+        with (
+            patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
+            patch("services.user_management.auth.clerk.settings") as mock_settings,
+        ):
+            mock_settings.clerk_secret_key = "test-secret-key"
             mock_decode.return_value = {
                 "sub": "user_123",
                 "iss": "https://clerk.example.com",
-                "exp": int(time.time()) + 3600,
-                "iat": int(time.time()),
+                "exp": base_time + 3600,
+                "iat": base_time,
             }
 
             result = await verify_jwt_token(token)
@@ -69,7 +75,11 @@ class TestClerkAuthentication:
     @pytest.mark.asyncio
     async def test_verify_jwt_token_expired(self):
         """Test JWT token verification with expired token."""
-        with patch("services.user_management.auth.clerk.jwt.decode") as mock_decode:
+        with (
+            patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
+            patch("services.user_management.auth.clerk.settings") as mock_settings,
+        ):
+            mock_settings.clerk_secret_key = "test-secret-key"
             mock_decode.side_effect = jwt.ExpiredSignatureError("Token expired")
 
             with pytest.raises(AuthenticationException) as exc_info:
@@ -80,7 +90,11 @@ class TestClerkAuthentication:
     @pytest.mark.asyncio
     async def test_verify_jwt_token_invalid(self):
         """Test JWT token verification with invalid token."""
-        with patch("services.user_management.auth.clerk.jwt.decode") as mock_decode:
+        with (
+            patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
+            patch("services.user_management.auth.clerk.settings") as mock_settings,
+        ):
+            mock_settings.clerk_secret_key = "test-secret-key"
             mock_decode.side_effect = jwt.InvalidTokenError("Invalid token")
 
             with pytest.raises(AuthenticationException) as exc_info:
@@ -91,7 +105,11 @@ class TestClerkAuthentication:
     @pytest.mark.asyncio
     async def test_verify_jwt_token_missing_claims(self):
         """Test JWT token verification with missing required claims."""
-        with patch("services.user_management.auth.clerk.jwt.decode") as mock_decode:
+        with (
+            patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
+            patch("services.user_management.auth.clerk.settings") as mock_settings,
+        ):
+            mock_settings.clerk_secret_key = "test-secret-key"
             mock_decode.return_value = {"sub": "user_123"}  # Missing required claims
 
             with pytest.raises(AuthenticationException) as exc_info:
@@ -102,12 +120,17 @@ class TestClerkAuthentication:
     @pytest.mark.asyncio
     async def test_verify_jwt_token_invalid_issuer(self):
         """Test JWT token verification with invalid issuer."""
-        with patch("services.user_management.auth.clerk.jwt.decode") as mock_decode:
+        base_time = 1640995200  # 2022-01-01 00:00:00 UTC
+        with (
+            patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
+            patch("services.user_management.auth.clerk.settings") as mock_settings,
+        ):
+            mock_settings.clerk_secret_key = "test-secret-key"
             mock_decode.return_value = {
                 "sub": "user_123",
                 "iss": "https://evil.com",  # Invalid issuer
-                "exp": int(time.time()) + 3600,
-                "iat": int(time.time()),
+                "exp": base_time + 3600,
+                "iat": base_time,
             }
 
             with pytest.raises(AuthenticationException) as exc_info:
