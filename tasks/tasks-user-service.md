@@ -66,7 +66,8 @@
 - `services/user_management/routers/preferences.py` - User preferences management router with placeholder endpoints
 - `services/user_management/routers/integrations.py` - OAuth integrations management router with placeholder endpoints
 - `services/user_management/routers/webhooks.py` - Webhook handling router for external providers with placeholder endpoints
-- `services/user_management/routers/internal.py` - Internal service-to-service API router with placeholder endpoints
+- `services/user_management/routers/internal.py` - Internal service-to-service API with secure token retrieval, automatic refresh, scope validation, and comprehensive error handling with service authentication
+- `services/user_management/services/token_service.py` - Dedicated token service for internal API operations with encrypted storage, automatic refresh, scope validation, and user status tracking
 - `services/user_management/routers/__init__.py` - Router package exports for main application registration
 - `services/user_management/tests/test_main.py` - Comprehensive unit tests for application startup, health endpoint, exception handling, and middleware
 
@@ -114,6 +115,9 @@
 - `services/user_management/integrations/__init__.py` - Integrations package exports for OAuth configuration classes
 - `services/user_management/integrations/oauth_config.py` - Comprehensive OAuth configuration with Google and Microsoft providers, PKCE support, state management, token exchange, user info retrieval, and security features
 - `services/user_management/tests/test_oauth_config.py` - Comprehensive unit tests for OAuth configuration covering PKCE challenges, state validation, provider management, token operations, and integration workflows
+- `services/user_management/routers/integrations.py` - Complete integration router with OAuth flow management (start/callback), CRUD operations (list/disconnect/refresh), health monitoring, and comprehensive authentication/authorization
+- `services/user_management/services/integration_service.py` - Full integration service with OAuth flow handling, token management, refresh operations, health checks, statistics, and encrypted token storage
+- `services/user_management/tests/test_integration_endpoints.py` - Comprehensive test suite covering all 20 integration endpoints including OAuth flows, CRUD operations, authentication, authorization, error handling, and security scenarios
 
 ### Phase 1: Project Setup & Foundation
 
@@ -238,19 +242,19 @@
 * [x] 11.8 Run `./fix` to format and lint code
 * [x] 11.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-* [ ] 12. Integration Management Endpoints
-* [ ] 12.1 Create `schemas/integration.py` with Pydantic models for integration requests and responses
-* [ ] 12.2 Implement `GET /users/{user_id}/integrations` endpoint showing all user integrations
-* [ ] 12.3 Implement `POST /users/{user_id}/integrations/{provider}` for completing OAuth flow
-* [ ] 12.4 Implement `DELETE /users/{user_id}/integrations/{provider}` for disconnecting integrations
-* [ ] 12.5 Implement `PUT /users/{user_id}/integrations/{provider}/refresh` for manual token refresh
-* [ ] 12.6 Add integration status tracking and health monitoring
-* [ ] 12.7 Create `services/integration_service.py` with integration management business logic
-* [ ] 12.8 Write unit tests for all integration endpoints and business logic
-* [ ] 12.9 Run `./fix` to format and lint code
-* [ ] 12.10 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
+* [x] 12. Integration Management Endpoints
+* [x] 12.1 Create `schemas/integration.py` with Pydantic models for integration requests and responses
+* [x] 12.2 Implement `GET /users/{user_id}/integrations` endpoint showing all user integrations
+* [x] 12.3 Implement `POST /users/{user_id}/integrations/{provider}` for completing OAuth flow
+* [x] 12.4 Implement `DELETE /users/{user_id}/integrations/{provider}` for disconnecting integrations
+* [x] 12.5 Implement `PUT /users/{user_id}/integrations/{provider}/refresh` for manual token refresh
+* [x] 12.6 Add integration status tracking and health monitoring
+* [x] 12.7 Create `services/integration_service.py` with integration management business logic
+* [x] 12.8 Write unit tests for all integration endpoints and business logic
+* [x] 12.9 Run `./fix` to format and lint code
+* [x] 12.10 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-* [ ] 13. Secure Token Storage
+* [ ] 13. Secure Token Storage (where additive with 9. Token Encryption Implementation)
 * [ ] 13.1 Create `services/token_service.py` for encrypted token storage and retrieval
 * [ ] 13.2 Implement `store_tokens()` method with automatic encryption before database storage
 * [ ] 13.3 Implement `get_valid_token()` method with automatic refresh if token is expired
@@ -263,17 +267,17 @@
 
 ### Phase 6: Service-to-Service API
 
-* [ ] 14. Internal Token Retrieval API
-* [ ] 14.1 Create `routers/internal.py` with service-to-service authentication required
-* [ ] 14.2 Implement `POST /internal/tokens/get` endpoint for other services to retrieve user tokens
-* [ ] 14.3 Add automatic token refresh logic with expiration buffer (5 minutes)
-* [ ] 14.4 Implement scope validation ensuring requested scopes are available
-* [ ] 14.5 Add comprehensive error handling for token retrieval failures
-* [ ] 14.6 Implement request/response logging for audit trail of token access
-* [ ] 14.7 Create `POST /internal/tokens/refresh` endpoint for manual token refresh
-* [ ] 14.8 Write unit tests for internal API endpoints including authentication and error handling
-* [ ] 14.9 Run `./fix` to format and lint code
-* [ ] 14.10 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
+* [x] 14. Internal Token Retrieval API
+* [x] 14.1 Create `routers/internal.py` with service-to-service authentication required
+* [x] 14.2 Implement `POST /internal/tokens/get` endpoint for other services to retrieve user tokens
+* [x] 14.3 Add automatic token refresh logic with expiration buffer (5 minutes)
+* [x] 14.4 Implement scope validation ensuring requested scopes are available
+* [x] 14.5 Add comprehensive error handling for token retrieval failures
+* [x] 14.6 Implement request/response logging for audit trail of token access
+* [x] 14.7 Create `POST /internal/tokens/refresh` endpoint for manual token refresh
+* [x] 14.8 Write unit tests for internal API endpoints including authentication and error handling
+* [x] 14.9 Run `./fix` to format and lint code
+* [x] 14.10 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
 * [ ] 15. Integration Status Management
 * [ ] 15.1 Create `services/integration_status_service.py` for monitoring integration health
