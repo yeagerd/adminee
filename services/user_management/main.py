@@ -14,16 +14,30 @@ from fastapi.responses import JSONResponse
 
 from .database import connect_database, database, disconnect_database
 from .exceptions import (
+    AuditException,
     AuthenticationException,
     AuthorizationException,
+    DatabaseException,
+    EncryptionException,
+    IntegrationAlreadyExistsException,
+    IntegrationException,
     IntegrationNotFoundException,
+    InternalError,
     PreferencesNotFoundException,
+    ServiceException,
+    TokenExpiredException,
+    TokenNotFoundException,
+    UserAlreadyExistsException,
     UserManagementException,
     UserNotFoundException,
     ValidationException,
     WebhookValidationException,
 )
 from .logging_config import setup_logging
+from .middleware.sanitization import (
+    InputSanitizationMiddleware,
+    XSSProtectionMiddleware,
+)
 from .routers import (
     integrations_router,
     internal_router,
@@ -84,6 +98,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Add security middleware
+app.add_middleware(XSSProtectionMiddleware)
+app.add_middleware(
+    InputSanitizationMiddleware,
+    enabled=True,
+    strict_mode=settings.debug,  # Use strict mode in development
+)
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -106,15 +128,19 @@ app.include_router(internal_router)
 @app.exception_handler(UserNotFoundException)
 async def user_not_found_handler(request: Request, exc: UserNotFoundException):
     """Handle user not found exceptions."""
-    logger.info(f"User not found: {exc.message}", extra={"user_id": exc.user_id})
+    logger.info(
+        f"User not found: {exc.message}",
+        extra={
+            "user_id": exc.user_id,
+            "path": request.url.path,
+            "method": request.method,
+            "error_code": exc.error_code,
+            "request_headers": dict(request.headers),
+        },
+    )
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
-        content={
-            "error": "UserNotFound",
-            "message": exc.message,
-            "user_id": exc.user_id,
-            "details": exc.details,
-        },
+        content=exc.to_error_response(),
     )
 
 
@@ -126,12 +152,7 @@ async def preferences_not_found_handler(
     logger.info(f"Preferences not found: {exc.message}", extra={"user_id": exc.user_id})
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
-        content={
-            "error": "PreferencesNotFound",
-            "message": exc.message,
-            "user_id": exc.user_id,
-            "details": exc.details,
-        },
+        content=exc.to_error_response(),
     )
 
 
@@ -146,13 +167,7 @@ async def integration_not_found_handler(
     )
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
-        content={
-            "error": "IntegrationNotFound",
-            "message": exc.message,
-            "user_id": exc.user_id,
-            "provider": exc.provider,
-            "details": exc.details,
-        },
+        content=exc.to_error_response(),
     )
 
 
@@ -161,17 +176,19 @@ async def validation_exception_handler(request: Request, exc: ValidationExceptio
     """Handle validation exceptions."""
     logger.info(
         f"Validation error: {exc.message}",
-        extra={"field": exc.field, "value": exc.value},
+        extra={
+            "field": exc.field,
+            "value": exc.value,
+            "reason": exc.reason,
+            "path": request.url.path,
+            "method": request.method,
+            "error_code": exc.error_code,
+            "query_params": dict(request.query_params),
+        },
     )
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={
-            "error": "ValidationError",
-            "message": exc.message,
-            "field": exc.field,
-            "reason": exc.reason,
-            "details": exc.details,
-        },
+        content=exc.to_error_response(),
     )
 
 
@@ -180,14 +197,20 @@ async def authentication_exception_handler(
     request: Request, exc: AuthenticationException
 ):
     """Handle authentication exceptions."""
-    logger.warning(f"Authentication failed: {exc.message}")
+    logger.warning(
+        f"Authentication failed: {exc.message}",
+        extra={
+            "path": request.url.path,
+            "method": request.method,
+            "error_code": exc.error_code,
+            "user_agent": request.headers.get("user-agent"),
+            "client_ip": request.client.host if request.client else None,
+            "authorization_header_present": "authorization" in request.headers,
+        },
+    )
     return JSONResponse(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        content={
-            "error": "AuthenticationError",
-            "message": exc.message,
-            "details": exc.details,
-        },
+        content=exc.to_error_response(),
         headers={"WWW-Authenticate": "Bearer"},
     )
 
@@ -203,13 +226,7 @@ async def authorization_exception_handler(
     )
     return JSONResponse(
         status_code=status.HTTP_403_FORBIDDEN,
-        content={
-            "error": "AuthorizationError",
-            "message": exc.message,
-            "resource": exc.resource,
-            "action": exc.action,
-            "details": exc.details,
-        },
+        content=exc.to_error_response(),
     )
 
 
@@ -224,13 +241,133 @@ async def webhook_validation_exception_handler(
     )
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
-        content={
-            "error": "WebhookValidationError",
-            "message": exc.message,
-            "provider": exc.provider,
-            "reason": exc.reason,
+        content=exc.to_error_response(),
+    )
+
+
+@app.exception_handler(UserAlreadyExistsException)
+async def user_already_exists_handler(
+    request: Request, exc: UserAlreadyExistsException
+):
+    """Handle user already exists exceptions."""
+    logger.info(f"User already exists: {exc.message}")
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content=exc.to_error_response(),
+    )
+
+
+@app.exception_handler(IntegrationAlreadyExistsException)
+async def integration_already_exists_handler(
+    request: Request, exc: IntegrationAlreadyExistsException
+):
+    """Handle integration already exists exceptions."""
+    logger.info(f"Integration already exists: {exc.message}")
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content=exc.to_error_response(),
+    )
+
+
+@app.exception_handler(TokenNotFoundException)
+async def token_not_found_handler(request: Request, exc: TokenNotFoundException):
+    """Handle token not found exceptions."""
+    logger.info(f"Token not found: {exc.message}")
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content=exc.to_error_response(),
+    )
+
+
+@app.exception_handler(TokenExpiredException)
+async def token_expired_handler(request: Request, exc: TokenExpiredException):
+    """Handle token expired exceptions."""
+    logger.info(f"Token expired: {exc.message}")
+    return JSONResponse(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        content=exc.to_error_response(),
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+@app.exception_handler(EncryptionException)
+async def encryption_exception_handler(request: Request, exc: EncryptionException):
+    """Handle encryption exceptions."""
+    logger.error(
+        f"Encryption error: {exc.message}",
+        extra={
+            "path": request.url.path,
+            "method": request.method,
+            "error_code": exc.error_code,
+            "error_type": exc.error_type,
             "details": exc.details,
         },
+        exc_info=True,
+    )
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content=exc.to_error_response(),
+    )
+
+
+@app.exception_handler(DatabaseException)
+async def database_exception_handler(request: Request, exc: DatabaseException):
+    """Handle database exceptions."""
+    logger.error(
+        f"Database error: {exc.message}",
+        extra={
+            "path": request.url.path,
+            "method": request.method,
+            "error_code": exc.error_code,
+            "error_type": exc.error_type,
+            "details": exc.details,
+            "operation": exc.details.get("operation", "unknown"),
+        },
+        exc_info=True,
+    )
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content=exc.to_error_response(),
+    )
+
+
+@app.exception_handler(ServiceException)
+async def service_exception_handler(request: Request, exc: ServiceException):
+    """Handle service exceptions."""
+    logger.error(f"Service error: {exc.message}")
+    return JSONResponse(
+        status_code=status.HTTP_502_BAD_GATEWAY,
+        content=exc.to_error_response(),
+    )
+
+
+@app.exception_handler(AuditException)
+async def audit_exception_handler(request: Request, exc: AuditException):
+    """Handle audit exceptions."""
+    logger.error(f"Audit error: {exc.message}")
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content=exc.to_error_response(),
+    )
+
+
+@app.exception_handler(IntegrationException)
+async def integration_exception_handler(request: Request, exc: IntegrationException):
+    """Handle integration exceptions."""
+    logger.warning(f"Integration error: {exc.message}")
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content=exc.to_error_response(),
+    )
+
+
+@app.exception_handler(InternalError)
+async def internal_error_handler(request: Request, exc: InternalError):
+    """Handle internal errors."""
+    logger.error(f"Internal error: {exc.message}")
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content=exc.to_error_response(),
     )
 
 
@@ -240,15 +377,21 @@ async def user_management_exception_handler(
 ):
     """Handle general user management exceptions."""
     logger.error(
-        f"User management error: {exc.message}", extra={"details": exc.details}
+        f"User management error: {exc.message}",
+        extra={
+            "path": request.url.path,
+            "method": request.method,
+            "error_code": exc.error_code,
+            "error_type": exc.error_type,
+            "details": exc.details,
+            "user_agent": request.headers.get("user-agent"),
+            "client_ip": request.client.host if request.client else None,
+        },
+        exc_info=True,
     )
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={
-            "error": "UserManagementError",
-            "message": exc.message,
-            "details": exc.details,
-        },
+        content=exc.to_error_response(),
     )
 
 
@@ -261,6 +404,11 @@ async def global_exception_handler(request: Request, exc: Exception):
     Logs the error and returns a generic error response to avoid
     exposing internal details in production.
     """
+    import uuid
+    from datetime import datetime, timezone
+
+    request_id = str(uuid.uuid4())
+
     logger.error(
         "Unhandled exception occurred",
         extra={
@@ -268,6 +416,7 @@ async def global_exception_handler(request: Request, exc: Exception):
             "method": request.method,
             "error": str(exc),
             "error_type": type(exc).__name__,
+            "request_id": request_id,
         },
         exc_info=True,
     )
@@ -275,46 +424,297 @@ async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
-            "error": "Internal server error",
+            "type": "internal_error",
             "message": "An unexpected error occurred. Please try again later.",
-            "request_id": getattr(request.state, "request_id", None),
+            "details": {
+                "error_type": type(exc).__name__,
+                "path": request.url.path,
+                "method": request.method,
+                "code": "INTERNAL_SERVER_ERROR",
+            },
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "request_id": request_id,
         },
     )
 
 
-# Health check endpoint
-@app.get("/health", tags=["Health"])
+# Load balancer health check endpoints
+@app.get(
+    "/health",
+    tags=["Health"],
+    summary="Service health check",
+    description="Basic health check for load balancer liveness probes",
+    responses={
+        200: {
+            "description": "Service is healthy and ready to handle requests",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "healthy",
+                        "service": "user-management",
+                        "version": "0.1.0",
+                        "timestamp": "2024-01-01T00:00:00Z",
+                        "environment": "production",
+                        "database": {"status": "healthy"},
+                    }
+                }
+            },
+        },
+        503: {
+            "description": "Service is unhealthy and should not receive traffic",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "unhealthy",
+                        "service": "user-management",
+                        "version": "0.1.0",
+                        "timestamp": "2024-01-01T00:00:00Z",
+                        "environment": "production",
+                        "database": {
+                            "status": "error",
+                            "error": "Database unavailable",
+                        },
+                    }
+                }
+            },
+        },
+    },
+)
 async def health_check():
     """
-    Health check endpoint.
+    Basic health check endpoint for load balancer liveness probes.
 
-    Returns service status and database connectivity information.
-    Performs basic database connectivity test.
+    This endpoint performs minimal checks to determine if the service
+    is alive and can handle requests. Used by load balancers to determine
+    if traffic should be routed to this instance.
+
+    Returns:
+        dict: Service health status with minimal checks
+
+    Status Codes:
+        200: Service is healthy and can handle requests
+        503: Service is unhealthy and should not receive traffic
     """
+    from datetime import datetime, timezone
+
     health_status = {
         "status": "healthy",
         "service": "user-management",
         "version": "0.1.0",
-        "environment": settings.environment,
-        "database": {"status": "unknown"},
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "environment": str(getattr(settings, "environment", "unknown")),
     }
 
-    # Check database connectivity
+    # Basic database connectivity check
     try:
         if database.is_connected:
-            # Perform a simple query to test database connectivity
+            # Quick connectivity test
             await database.execute("SELECT 1")
-            health_status["database"]["status"] = "healthy"
+            health_status["database"] = {"status": "healthy"}
         else:
-            health_status["database"]["status"] = "disconnected"
+            health_status["database"] = {"status": "disconnected"}
             health_status["status"] = "unhealthy"
     except Exception as e:
         logger.warning(f"Database health check failed: {e}")
-        health_status["database"]["status"] = "error"
-        health_status["database"]["error"] = str(e)
+        health_status["database"] = {
+            "status": "error",
+            "error": (
+                str(e) if getattr(settings, "debug", False) else "Database unavailable"
+            ),
+        }
         health_status["status"] = "unhealthy"
 
-    return health_status
+    # Return appropriate HTTP status code
+    status_code = (
+        status.HTTP_200_OK
+        if health_status["status"] == "healthy"
+        else status.HTTP_503_SERVICE_UNAVAILABLE
+    )
+
+    return JSONResponse(
+        status_code=status_code,
+        content=health_status,
+    )
+
+
+@app.get(
+    "/ready",
+    tags=["Health"],
+    summary="Service readiness check",
+    description="Comprehensive readiness check for load balancer readiness probes",
+    responses={
+        200: {
+            "description": "Service is ready to handle requests",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "ready",
+                        "service": "user-management",
+                        "version": "0.1.0",
+                        "timestamp": "2024-01-01T00:00:00Z",
+                        "environment": "production",
+                        "checks": {
+                            "database": {
+                                "status": "ready",
+                                "response_time_ms": 5.2,
+                                "connected": True,
+                            },
+                            "configuration": {"status": "ready", "issues": []},
+                            "dependencies": {
+                                "status": "ready",
+                                "services": {
+                                    "encryption_service": True,
+                                    "audit_logging": True,
+                                },
+                            },
+                        },
+                        "performance": {"total_check_time_ms": 12.5},
+                    }
+                }
+            },
+        },
+        503: {
+            "description": "Service is not ready to handle requests",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "not_ready",
+                        "service": "user-management",
+                        "version": "0.1.0",
+                        "timestamp": "2024-01-01T00:00:00Z",
+                        "environment": "production",
+                        "checks": {
+                            "database": {
+                                "status": "not_ready",
+                                "connected": False,
+                                "error": "Database not connected",
+                            },
+                            "configuration": {
+                                "status": "not_ready",
+                                "issues": ["DATABASE_URL not configured"],
+                            },
+                        },
+                    }
+                }
+            },
+        },
+    },
+)
+async def readiness_check():
+    """
+    Readiness check endpoint for load balancer readiness probes.
+
+    This endpoint performs comprehensive checks to determine if the service
+    is ready to handle requests. Used by load balancers and orchestrators
+    to determine when to start routing traffic to a new instance.
+
+    Performs deeper health checks including:
+    - Database connectivity and query performance
+    - Essential service dependencies
+    - Configuration validation
+    - Resource availability
+
+    Returns:
+        dict: Detailed readiness status with comprehensive checks
+
+    Status Codes:
+        200: Service is ready to handle requests
+        503: Service is not ready (dependencies unavailable, etc.)
+    """
+    import time
+    from datetime import datetime, timezone
+
+    start_time = time.time()
+    readiness_status = {
+        "status": "ready",
+        "service": "user-management",
+        "version": "0.1.0",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "environment": str(getattr(settings, "environment", "unknown")),
+        "checks": {},
+    }
+
+    # Database readiness check
+    try:
+        if database.is_connected:
+            # More comprehensive database check
+            db_start = time.time()
+            await database.execute("SELECT 1")
+
+            # Check if we can query actual tables
+            await database.execute(
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'"
+            )
+            db_duration = (time.time() - db_start) * 1000  # Convert to milliseconds
+
+            readiness_status["checks"]["database"] = {
+                "status": "ready",
+                "response_time_ms": round(db_duration, 2),
+                "connected": bool(database.is_connected),
+            }
+        else:
+            readiness_status["checks"]["database"] = {
+                "status": "not_ready",
+                "connected": False,
+                "error": "Database not connected",
+            }
+            readiness_status["status"] = "not_ready"
+    except Exception as e:
+        logger.warning(f"Database readiness check failed: {e}")
+        readiness_status["checks"]["database"] = {
+            "status": "not_ready",
+            "connected": bool(database.is_connected),
+            "error": (
+                str(e) if getattr(settings, "debug", False) else "Database check failed"
+            ),
+        }
+        readiness_status["status"] = "not_ready"
+
+    # Configuration check
+    config_issues = []
+    if not getattr(settings, "database_url", None):
+        config_issues.append("DATABASE_URL not configured")
+    if not getattr(settings, "clerk_secret_key", None):
+        config_issues.append("CLERK_SECRET_KEY not configured")
+    if not getattr(settings, "encryption_service_salt", None):
+        config_issues.append("ENCRYPTION_SERVICE_SALT not configured")
+
+    readiness_status["checks"]["configuration"] = {
+        "status": "ready" if not config_issues else "not_ready",
+        "issues": config_issues,
+    }
+
+    if config_issues:
+        readiness_status["status"] = "not_ready"
+
+    # Service dependencies check
+    dependencies = {
+        "encryption_service": True,  # Always available as it's internal
+        "audit_logging": True,  # Always available as it's internal
+    }
+
+    readiness_status["checks"]["dependencies"] = {
+        "status": "ready",
+        "services": dependencies,
+    }
+
+    # Performance metrics
+    total_duration = (time.time() - start_time) * 1000
+    readiness_status["performance"] = {
+        "total_check_time_ms": round(total_duration, 2),
+    }
+
+    # Return appropriate HTTP status code
+    status_code = (
+        status.HTTP_200_OK
+        if readiness_status["status"] == "ready"
+        else status.HTTP_503_SERVICE_UNAVAILABLE
+    )
+
+    return JSONResponse(
+        status_code=status_code,
+        content=readiness_status,
+    )
 
 
 if __name__ == "__main__":

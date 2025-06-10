@@ -11,6 +11,12 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from ..models.integration import IntegrationProvider, IntegrationStatus
+from ..utils.validation import (
+    check_sql_injection_patterns,
+    sanitize_text_input,
+    validate_json_safe_string,
+    validate_url,
+)
 
 
 class IntegrationScopeResponse(BaseModel):
@@ -110,18 +116,28 @@ class OAuthStartRequest(BaseModel):
     @field_validator("redirect_uri")
     @classmethod
     def validate_redirect_uri(cls, v: str) -> str:
-        """Validate redirect URI format."""
-        if not v.startswith(("http://", "https://")):
-            raise ValueError("Redirect URI must be a valid HTTP/HTTPS URL")
-        return v
+        """Enhanced redirect URI validation."""
+        # Use comprehensive URL validation
+        return validate_url(v, allowed_schemes=["http", "https"])
 
     @field_validator("scopes")
     @classmethod
     def validate_scopes(cls, v: Optional[List[str]]) -> Optional[List[str]]:
-        """Validate OAuth scopes."""
+        """Enhanced OAuth scopes validation."""
         if v is not None:
-            # Remove duplicates and empty strings
-            v = list(set(scope.strip() for scope in v if scope.strip()))
+            cleaned_scopes = []
+            for scope in v:
+                if scope and scope.strip():
+                    # Check for SQL injection patterns
+                    check_sql_injection_patterns(scope, "oauth_scope")
+
+                    # Sanitize the scope
+                    sanitized_scope = sanitize_text_input(scope, max_length=200)
+                    if sanitized_scope:
+                        cleaned_scopes.append(sanitized_scope)
+
+            # Remove duplicates
+            v = list(set(cleaned_scopes))
             if not v:
                 return None
         return v
@@ -152,18 +168,37 @@ class OAuthCallbackRequest(BaseModel):
     @field_validator("code")
     @classmethod
     def validate_code(cls, v: Optional[str]) -> Optional[str]:
-        """Validate authorization code."""
-        if v is not None and not v.strip():
+        """Enhanced authorization code validation."""
+        if v is None:
+            return None
+
+        v = v.strip()
+        if not v:
             raise ValueError("Authorization code cannot be empty")
-        return v.strip() if v else None
+
+        # Check for SQL injection patterns
+        check_sql_injection_patterns(v, "authorization_code")
+
+        # Validate JSON safety
+        validate_json_safe_string(v, "authorization_code")
+
+        return v
 
     @field_validator("state")
     @classmethod
     def validate_state(cls, v: str) -> str:
-        """Validate OAuth state."""
-        if not v.strip():
+        """Enhanced OAuth state validation."""
+        v = v.strip()
+        if not v:
             raise ValueError("OAuth state cannot be empty")
-        return v.strip()
+
+        # Check for SQL injection patterns
+        check_sql_injection_patterns(v, "oauth_state")
+
+        # Validate JSON safety
+        validate_json_safe_string(v, "oauth_state")
+
+        return v
 
     @model_validator(mode="after")
     def validate_code_or_error(self) -> "OAuthCallbackRequest":
@@ -420,4 +455,19 @@ class InternalUserStatusResponse(BaseModel):
     has_errors: bool = Field(..., description="Whether any integrations have errors")
     last_sync_at: Optional[datetime] = Field(
         None, description="Last successful sync across all integrations"
+    )
+
+
+class TokenRevocationResponse(BaseModel):
+    """Response model for token revocation requests."""
+
+    success: bool = Field(..., description="Whether token revocation succeeded")
+    provider: IntegrationProvider = Field(..., description="OAuth provider")
+    user_id: str = Field(..., description="User ID")
+    integration_id: Optional[int] = Field(None, description="Integration ID")
+    revoked_at: Optional[datetime] = Field(None, description="Revocation timestamp")
+    reason: Optional[str] = Field(None, description="Reason for revocation")
+    error: Optional[str] = Field(None, description="Error message if failed")
+    provider_response: Optional[Dict[str, Any]] = Field(
+        None, description="Provider revocation response"
     )

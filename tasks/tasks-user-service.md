@@ -119,6 +119,14 @@
 - `services/user_management/services/integration_service.py` - Full integration service with OAuth flow handling, token management, refresh operations, health checks, statistics, and encrypted token storage
 - `services/user_management/tests/test_integration_endpoints.py` - Comprehensive test suite covering all 20 integration endpoints including OAuth flows, CRUD operations, authentication, authorization, error handling, and security scenarios
 
+### Phase 8: Error Handling & Validation
+- `services/user_management/utils/retry.py` - Comprehensive retry utilities with exponential backoff, jitter, transient error detection, and convenience decorators for database, API, and OAuth operations
+- `services/user_management/tests/test_retry_utils.py` - Comprehensive unit tests for retry utilities covering all functionality including async/sync retry, decorators, jitter, exponential backoff, and error handling scenarios
+- `services/user_management/tests/test_exception_handling.py` - Complete unit tests for all exception types, error response formatting, user-friendly messages, and exception hierarchy validation
+- `services/user_management/utils/validation.py` - Comprehensive validation utilities with custom validators for email addresses, URLs, timezone strings, phone numbers, and security-focused input validation including SQL injection and XSS protection
+- `services/user_management/middleware/sanitization.py` - Input sanitization middleware for automatic sanitization of all incoming user data to prevent XSS, injection attacks, and other security vulnerabilities with configurable strict mode
+- `services/user_management/tests/test_validation_security.py` - Comprehensive unit tests for validation utilities and security features including edge cases, malicious input attempts, and performance testing
+
 ### Phase 1: Project Setup & Foundation
 
 * [x] 1. Project Structure & Environment Setup
@@ -254,16 +262,16 @@
 * [x] 12.9 Run `./fix` to format and lint code
 * [x] 12.10 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-* [ ] 13. Secure Token Storage (where additive with 9. Token Encryption Implementation)
-* [ ] 13.1 Create `services/token_service.py` for encrypted token storage and retrieval
-* [ ] 13.2 Implement `store_tokens()` method with automatic encryption before database storage
-* [ ] 13.3 Implement `get_valid_token()` method with automatic refresh if token is expired
-* [ ] 13.4 Add token lifecycle management including creation, updates, and secure deletion
-* [ ] 13.5 Implement token expiration checking with configurable buffer time
-* [ ] 13.6 Add token revocation procedures that notify providers when possible
-* [ ] 13.7 Write unit tests for token storage, retrieval, refresh, and lifecycle management
-* [ ] 13.8 Run `./fix` to format and lint code
-* [ ] 13.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
+* [x] 13. Secure Token Storage (where additive with 9. Token Encryption Implementation)
+* [x] 13.1 Create `services/token_service.py` for encrypted token storage and retrieval
+* [x] 13.2 Implement `store_tokens()` method with automatic encryption before database storage
+* [x] 13.3 Implement `get_valid_token()` method with automatic refresh if token is expired
+* [x] 13.4 Add token lifecycle management including creation, updates, and secure deletion
+* [x] 13.5 Implement token expiration checking with configurable buffer time
+* [x] 13.6 Add token revocation procedures that notify providers when possible
+* [x] 13.7 Write unit tests for token storage, retrieval, refresh, and lifecycle management
+* [x] 13.8 Run `./fix` to format and lint code
+* [x] 13.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
 ### Phase 6: Service-to-Service API
 
@@ -279,16 +287,32 @@
 * [x] 14.9 Run `./fix` to format and lint code
 * [x] 14.10 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-* [ ] 15. Integration Status Management
-* [ ] 15.1 Create `services/integration_status_service.py` for monitoring integration health
-* [ ] 15.2 Implement periodic health checks for each integration type
-* [ ] 15.3 Add automatic status updates based on token refresh success/failure
-* [ ] 15.4 Create integration diagnostic tools for troubleshooting connection issues
-* [ ] 15.5 Implement status broadcasting to dependent services via webhooks or message queue
-* [ ] 15.6 Add integration usage analytics and reporting capabilities
-* [ ] 15.7 Write unit tests for status tracking, health checks, and diagnostic tools
-* [ ] 15.8 Run `./fix` to format and lint code
-* [ ] 15.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
+### Phase 8: Error Handling & Validation
+
+* [x] 18. Comprehensive Error System
+* [x] 18.1 Update `exceptions.py` with all custom exception classes mentioned in design doc
+* [x] 18.2 Implement standardized error response format with type, message, details, timestamp, request_id
+* [x] 18.3 Create global exception handler that maps exceptions to appropriate HTTP status codes
+* [x] 18.4 Add error logging with full context including stack traces and request details
+* [x] 18.5 Implement user-friendly error messages for common failure scenarios
+* [x] 18.6 Create error recovery procedures for transient failures with automatic retry
+* [x] 18.7 Write unit tests for all exception types and error handling scenarios
+* [x] 18.8 Run `./fix` to format and lint code
+* [x] 18.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
+
+* [x] 19. Input Validation & Security
+* [x] 19.1 Review and enhance all Pydantic schemas with comprehensive validation rules
+* [x] 19.2 Add input sanitization middleware for user-provided text data
+* [x] 19.3 Create custom validators for email addresses, URLs, timezone strings, and other domain-specific fields
+* [x] 19.4 Implement SQL injection prevention through parameterized queries (verify Ormar usage)
+* [x] 19.5 Add XSS protection for all text fields with proper escaping
+* [x] 19.6 Create validation unit tests covering edge cases and malicious input attempts
+* [x] 19.7 Run `./fix` to format and lint code
+* [x] 19.8 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
+
+### Phase 6.5: Basic health endpoints
+
+* [ ] 26.3 Create load balancer health check endpoints (`/health`, `/ready`).  Write unit tests for new functionality. Run `./fix` and `tox -p auto` and fix issues.
 
 ### Phase 7: Background Jobs & Maintenance
 
@@ -313,29 +337,6 @@
 * [ ] 17.8 Write unit tests for all background tasks and scheduling
 * [ ] 17.9 Run `./fix` to format and lint code
 * [ ] 17.10 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
-
-### Phase 8: Error Handling & Validation
-
-* [ ] 18. Comprehensive Error System
-* [ ] 18.1 Update `exceptions.py` with all custom exception classes mentioned in design doc
-* [ ] 18.2 Implement standardized error response format with type, message, details, timestamp, request_id
-* [ ] 18.3 Create global exception handler that maps exceptions to appropriate HTTP status codes
-* [ ] 18.4 Add error logging with full context including stack traces and request details
-* [ ] 18.5 Implement user-friendly error messages for common failure scenarios
-* [ ] 18.6 Create error recovery procedures for transient failures with automatic retry
-* [ ] 18.7 Write unit tests for all exception types and error handling scenarios
-* [ ] 18.8 Run `./fix` to format and lint code
-* [ ] 18.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
-
-* [ ] 19. Input Validation & Security
-* [ ] 19.1 Review and enhance all Pydantic schemas with comprehensive validation rules
-* [ ] 19.2 Add input sanitization middleware for user-provided text data
-* [ ] 19.3 Create custom validators for email addresses, URLs, timezone strings, and other domain-specific fields
-* [ ] 19.4 Implement SQL injection prevention through parameterized queries (verify Ormar usage)
-* [ ] 19.5 Add XSS protection for all text fields with proper escaping
-* [ ] 19.6 Create validation unit tests covering edge cases and malicious input attempts
-* [ ] 19.7 Run `./fix` to format and lint code
-* [ ] 19.8 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
 ### Phase 9: Comprehensive Testing
 
@@ -396,6 +397,7 @@
 * [ ] 24.8 Run `./fix` to format and lint code
 * [ ] 24.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
+
 ### Phase 10.5: Advanced User Preferences
 
 * [ ] 8. Advanced Preferences Features
@@ -409,6 +411,18 @@
 * [ ] 8.8 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
 ### Phase 11: Performance & Optimization
+
+* [ ] 15. Integration Status Management
+* [ ] 15.1 Create `services/integration_status_service.py` for monitoring integration health
+* [ ] 15.2 Implement periodic health checks for each integration type
+* [ ] 15.3 Add automatic status updates based on token refresh success/failure
+* [ ] 15.4 Create integration diagnostic tools for troubleshooting connection issues
+* [ ] 15.5 Implement status broadcasting to dependent services via webhooks or message queue
+* [ ] 15.6 Add integration usage analytics and reporting capabilities
+* [ ] 15.7 Write unit tests for status tracking, health checks, and diagnostic tools
+* [ ] 15.8 Run `./fix` to format and lint code
+* [ ] 15.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
+
 
 * [ ] 25. Database Optimization
 * [ ] 25.1 Review and optimize all database queries using EXPLAIN ANALYZE
@@ -424,7 +438,6 @@
 * [ ] 26. Scalability Features
 * [ ] 26.1 Implement horizontal scaling support with stateless service design
 * [ ] 26.2 Add database read replica configuration for read-heavy operations
-* [ ] 26.3 Create load balancer health check endpoints (`/health`, `/ready`)
 * [ ] 26.4 Implement graceful shutdown procedures for zero-downtime deployments
 * [ ] 26.5 Add capacity planning tools and resource monitoring
 * [ ] 26.6 Create auto-scaling configuration for container orchestration
