@@ -12,6 +12,13 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
+from ..utils.validation import (
+    check_sql_injection_patterns,
+    sanitize_text_input,
+    validate_enum_value,
+    validate_time_format,
+)
+
 
 class ThemeMode(str, Enum):
     """Theme mode options."""
@@ -189,17 +196,16 @@ class NotificationPreferencesSchema(BaseModel):
 
     @field_validator("quiet_hours_start", "quiet_hours_end")
     @classmethod
-    def validate_time_format(cls, v: str) -> str:
-        """Validate time format."""
+    def validate_time_format_enhanced(cls, v: str) -> str:
+        """Enhanced time format validation."""
         if not v:
             return v
-        try:
-            hours, minutes = v.split(":")
-            if not (0 <= int(hours) <= 23 and 0 <= int(minutes) <= 59):
-                raise ValueError("Invalid time format")
-        except (ValueError, AttributeError):
-            raise ValueError("Time must be in HH:MM format")
-        return v
+
+        # Check for SQL injection patterns
+        check_sql_injection_patterns(v, "time")
+
+        # Use comprehensive time validation
+        return validate_time_format(v)
 
     class Config:
         """Pydantic config."""
@@ -263,24 +269,34 @@ class AIPreferencesSchema(BaseModel):
     @field_validator("response_style")
     @classmethod
     def validate_response_style(cls, v: str) -> str:
-        """Validate response style."""
+        """Enhanced response style validation."""
+        # Check for SQL injection patterns
+        check_sql_injection_patterns(v, "response_style")
+
+        # Sanitize the input
+        sanitized = sanitize_text_input(v, max_length=50)
+        if sanitized is None:
+            raise ValueError("Value cannot be empty after sanitization")
+
+        # Use enum validation
         valid_styles = ["concise", "balanced", "detailed", "creative", "technical"]
-        if v not in valid_styles:
-            raise ValueError(
-                f"Response style must be one of: {', '.join(valid_styles)}"
-            )
-        return v
+        return validate_enum_value(sanitized, valid_styles, "response_style")
 
     @field_validator("response_length")
     @classmethod
     def validate_response_length(cls, v: str) -> str:
-        """Validate response length."""
+        """Enhanced response length validation."""
+        # Check for SQL injection patterns
+        check_sql_injection_patterns(v, "response_length")
+
+        # Sanitize the input
+        sanitized = sanitize_text_input(v, max_length=50)
+        if sanitized is None:
+            raise ValueError("Value cannot be empty after sanitization")
+
+        # Use enum validation
         valid_lengths = ["short", "medium", "long"]
-        if v not in valid_lengths:
-            raise ValueError(
-                f"Response length must be one of: {', '.join(valid_lengths)}"
-            )
-        return v
+        return validate_enum_value(sanitized, valid_lengths, "response_length")
 
     class Config:
         """Pydantic config."""
@@ -337,13 +353,18 @@ class IntegrationPreferencesSchema(BaseModel):
     @field_validator("conflict_resolution")
     @classmethod
     def validate_conflict_resolution(cls, v: str) -> str:
-        """Validate conflict resolution strategy."""
+        """Enhanced conflict resolution strategy validation."""
+        # Check for SQL injection patterns
+        check_sql_injection_patterns(v, "conflict_resolution")
+
+        # Sanitize the input
+        sanitized = sanitize_text_input(v, max_length=50)
+        if sanitized is None:
+            raise ValueError("Value cannot be empty after sanitization")
+
+        # Use enum validation
         valid_strategies = ["prompt", "local_wins", "remote_wins", "create_copy"]
-        if v not in valid_strategies:
-            raise ValueError(
-                f"Conflict resolution must be one of: {', '.join(valid_strategies)}"
-            )
-        return v
+        return validate_enum_value(sanitized, valid_strategies, "conflict_resolution")
 
     class Config:
         """Pydantic config."""
@@ -553,13 +574,18 @@ class PreferencesImportRequest(BaseModel):
     @field_validator("merge_strategy")
     @classmethod
     def validate_merge_strategy(cls, v: str) -> str:
-        """Validate merge strategy."""
+        """Enhanced merge strategy validation."""
+        # Check for SQL injection patterns
+        check_sql_injection_patterns(v, "merge_strategy")
+
+        # Sanitize the input
+        sanitized = sanitize_text_input(v, max_length=50)
+        if sanitized is None:
+            raise ValueError("Value cannot be empty after sanitization")
+
+        # Use enum validation
         valid_strategies = ["replace", "merge", "skip_existing"]
-        if v not in valid_strategies:
-            raise ValueError(
-                f"Merge strategy must be one of: {', '.join(valid_strategies)}"
-            )
-        return v
+        return validate_enum_value(sanitized, valid_strategies, "merge_strategy")
 
     class Config:
         """Pydantic config."""

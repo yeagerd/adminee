@@ -34,6 +34,10 @@ from .exceptions import (
     WebhookValidationException,
 )
 from .logging_config import setup_logging
+from .middleware.sanitization import (
+    InputSanitizationMiddleware,
+    XSSProtectionMiddleware,
+)
 from .routers import (
     integrations_router,
     internal_router,
@@ -92,6 +96,14 @@ app = FastAPI(
     docs_url="/docs" if settings.debug else None,
     redoc_url="/redoc" if settings.debug else None,
     lifespan=lifespan,
+)
+
+# Add security middleware
+app.add_middleware(XSSProtectionMiddleware)
+app.add_middleware(
+    InputSanitizationMiddleware,
+    enabled=True,
+    strict_mode=settings.debug,  # Use strict mode in development
 )
 
 # Add CORS middleware
