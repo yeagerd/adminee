@@ -303,6 +303,8 @@ class IntegrationService:
             )
 
             # Store encrypted tokens
+            if integration.id is None:
+                raise IntegrationException("Integration was not properly saved")
             await self._store_encrypted_tokens(integration.id, tokens)
 
             # Update integration status
@@ -441,6 +443,8 @@ class IntegrationService:
             )
 
             # Store new encrypted tokens
+            if integration.id is None:
+                raise IntegrationException("Integration was not properly saved")
             await self._store_encrypted_tokens(integration.id, new_tokens)
 
             # Update integration

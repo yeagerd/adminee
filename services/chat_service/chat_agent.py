@@ -315,7 +315,7 @@ class ChatAgent:
                 f"Thread id={self.thread_id} not found. Creating new thread for user_id={self.user_id}"
             )
             thread = await history_manager.create_thread(self.user_id)
-            self.thread_id = thread.id
+            self.thread_id = int(thread.id)  # Ensure proper type
 
         # Handle fake LLM mode
         if isinstance(self.llm, FakeLLM):

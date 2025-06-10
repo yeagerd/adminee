@@ -6,7 +6,7 @@ import datetime
 import os
 from typing import List, Optional
 
-from sqlalchemy import Text, UniqueConstraint, func
+from sqlalchemy import Text, UniqueConstraint, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, select
@@ -169,7 +169,7 @@ async def get_thread_history(
         result = await session.execute(
             select(Message)
             .where(Message.thread_id == thread_id)
-            .order_by(Message.created_at.desc())
+            .order_by(desc(Message.created_at))
             .offset(offset)
             .limit(limit)
         )

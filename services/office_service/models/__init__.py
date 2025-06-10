@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import Column, DateTime, Field, SQLModel
 
-from ..core.config import settings
+from services.office_service.core.config import settings
 
 
 # Create async engine for database operations
