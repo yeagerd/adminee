@@ -12,6 +12,7 @@ import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 
+from ..auth.clerk import get_current_user
 from ..exceptions import (
     PreferencesNotFoundException,
     UserNotFoundException,
@@ -181,14 +182,18 @@ class TestPreferencesService:
     async def test_get_user_preferences_success(self, mock_user, mock_preferences):
         """Test successful retrieval of user preferences."""
         with (
-            patch("services.user_management.models.user.User") as mock_user_model,
             patch(
-                "services.user_management.models.preferences.UserPreferences"
+                "services.user_management.services.preferences_service.User"
+            ) as mock_user_model,
+            patch(
+                "services.user_management.services.preferences_service.UserPreferences"
             ) as mock_prefs_model,
         ):
 
-            mock_user_model.objects.get_or_none.return_value = mock_user
-            mock_prefs_model.objects.get_or_none.return_value = mock_preferences
+            mock_user_model.objects.get_or_none = AsyncMock(return_value=mock_user)
+            mock_prefs_model.objects.get_or_none = AsyncMock(
+                return_value=mock_preferences
+            )
 
             result = await PreferencesService.get_user_preferences("user_123")
 
@@ -200,8 +205,10 @@ class TestPreferencesService:
     @pytest.mark.asyncio
     async def test_get_user_preferences_user_not_found(self):
         """Test preferences retrieval when user doesn't exist."""
-        with patch("services.user_management.models.user.User") as mock_user_model:
-            mock_user_model.objects.get_or_none.return_value = None
+        with patch(
+            "services.user_management.services.preferences_service.User"
+        ) as mock_user_model:
+            mock_user_model.objects.get_or_none = AsyncMock(return_value=None)
 
             with pytest.raises(UserNotFoundException):
                 await PreferencesService.get_user_preferences("nonexistent")
@@ -210,14 +217,16 @@ class TestPreferencesService:
     async def test_get_user_preferences_create_defaults(self, mock_user):
         """Test automatic creation of default preferences."""
         with (
-            patch("services.user_management.models.user.User") as mock_user_model,
             patch(
-                "services.user_management.models.preferences.UserPreferences"
+                "services.user_management.services.preferences_service.User"
+            ) as mock_user_model,
+            patch(
+                "services.user_management.services.preferences_service.UserPreferences"
             ) as mock_prefs_model,
         ):
 
-            mock_user_model.objects.get_or_none.return_value = mock_user
-            mock_prefs_model.objects.get_or_none.return_value = None
+            mock_user_model.objects.get_or_none = AsyncMock(return_value=mock_user)
+            mock_prefs_model.objects.get_or_none = AsyncMock(return_value=None)
 
             created_prefs = Mock()
             created_prefs.user_id = 1
@@ -233,7 +242,7 @@ class TestPreferencesService:
             created_prefs.created_at = datetime.utcnow()
             created_prefs.updated_at = datetime.utcnow()
 
-            mock_prefs_model.objects.create.return_value = created_prefs
+            mock_prefs_model.objects.create = AsyncMock(return_value=created_prefs)
 
             result = await PreferencesService.get_user_preferences("user_123")
 
@@ -244,14 +253,18 @@ class TestPreferencesService:
     async def test_update_user_preferences_success(self, mock_user, mock_preferences):
         """Test successful preferences update."""
         with (
-            patch("services.user_management.models.user.User") as mock_user_model,
             patch(
-                "services.user_management.models.preferences.UserPreferences"
+                "services.user_management.services.preferences_service.User"
+            ) as mock_user_model,
+            patch(
+                "services.user_management.services.preferences_service.UserPreferences"
             ) as mock_prefs_model,
         ):
 
-            mock_user_model.objects.get_or_none.return_value = mock_user
-            mock_prefs_model.objects.get_or_none.return_value = mock_preferences
+            mock_user_model.objects.get_or_none = AsyncMock(return_value=mock_user)
+            mock_prefs_model.objects.get_or_none = AsyncMock(
+                return_value=mock_preferences
+            )
 
             # Mock the get_user_preferences method for return value
             with patch.object(PreferencesService, "get_user_preferences") as mock_get:
@@ -284,14 +297,18 @@ class TestPreferencesService:
     ):
         """Test preferences update with no changes."""
         with (
-            patch("services.user_management.models.user.User") as mock_user_model,
             patch(
-                "services.user_management.models.preferences.UserPreferences"
+                "services.user_management.services.preferences_service.User"
+            ) as mock_user_model,
+            patch(
+                "services.user_management.services.preferences_service.UserPreferences"
             ) as mock_prefs_model,
         ):
 
-            mock_user_model.objects.get_or_none.return_value = mock_user
-            mock_prefs_model.objects.get_or_none.return_value = mock_preferences
+            mock_user_model.objects.get_or_none = AsyncMock(return_value=mock_user)
+            mock_prefs_model.objects.get_or_none = AsyncMock(
+                return_value=mock_preferences
+            )
 
             with patch.object(PreferencesService, "get_user_preferences") as mock_get:
                 mock_response = UserPreferencesResponse(
@@ -323,14 +340,18 @@ class TestPreferencesService:
     ):
         """Test resetting all preference categories."""
         with (
-            patch("services.user_management.models.user.User") as mock_user_model,
             patch(
-                "services.user_management.models.preferences.UserPreferences"
+                "services.user_management.services.preferences_service.User"
+            ) as mock_user_model,
+            patch(
+                "services.user_management.services.preferences_service.UserPreferences"
             ) as mock_prefs_model,
         ):
 
-            mock_user_model.objects.get_or_none.return_value = mock_user
-            mock_prefs_model.objects.get_or_none.return_value = mock_preferences
+            mock_user_model.objects.get_or_none = AsyncMock(return_value=mock_user)
+            mock_prefs_model.objects.get_or_none = AsyncMock(
+                return_value=mock_preferences
+            )
 
             with patch.object(PreferencesService, "get_user_preferences") as mock_get:
                 mock_response = UserPreferencesResponse(
@@ -356,14 +377,18 @@ class TestPreferencesService:
     ):
         """Test resetting specific preference categories."""
         with (
-            patch("services.user_management.models.user.User") as mock_user_model,
             patch(
-                "services.user_management.models.preferences.UserPreferences"
+                "services.user_management.services.preferences_service.User"
+            ) as mock_user_model,
+            patch(
+                "services.user_management.services.preferences_service.UserPreferences"
             ) as mock_prefs_model,
         ):
 
-            mock_user_model.objects.get_or_none.return_value = mock_user
-            mock_prefs_model.objects.get_or_none.return_value = mock_preferences
+            mock_user_model.objects.get_or_none = AsyncMock(return_value=mock_user)
+            mock_prefs_model.objects.get_or_none = AsyncMock(
+                return_value=mock_preferences
+            )
 
             with patch.object(PreferencesService, "get_user_preferences") as mock_get:
                 mock_response = UserPreferencesResponse(
@@ -392,14 +417,18 @@ class TestPreferencesService:
     ):
         """Test resetting with invalid category."""
         with (
-            patch("services.user_management.models.user.User") as mock_user_model,
             patch(
-                "services.user_management.models.preferences.UserPreferences"
+                "services.user_management.services.preferences_service.User"
+            ) as mock_user_model,
+            patch(
+                "services.user_management.services.preferences_service.UserPreferences"
             ) as mock_prefs_model,
         ):
 
-            mock_user_model.objects.get_or_none.return_value = mock_user
-            mock_prefs_model.objects.get_or_none.return_value = mock_preferences
+            mock_user_model.objects.get_or_none = AsyncMock(return_value=mock_user)
+            mock_prefs_model.objects.get_or_none = AsyncMock(
+                return_value=mock_preferences
+            )
 
             categories = ["invalid_category"]
 
@@ -416,20 +445,26 @@ def client():
 @pytest.fixture
 def mock_auth_dependencies():
     """Mock authentication dependencies."""
-    with (
-        patch("services.user_management.auth.clerk.get_current_user") as mock_get_user,
-        patch(
-            "services.user_management.auth.clerk.verify_user_ownership"
-        ) as mock_verify,
-    ):
 
-        mock_get_user.return_value = "user_123"
+    async def mock_get_current_user():
+        return "user_123"
+
+    # Override dependencies in the FastAPI app
+    app.dependency_overrides[get_current_user] = mock_get_current_user
+
+    # Mock the verify_user_ownership function
+    with patch(
+        "services.user_management.routers.preferences.verify_user_ownership"
+    ) as mock_verify:
         mock_verify.return_value = None  # No exception means authorized
 
         yield {
-            "get_user": mock_get_user,
+            "get_user": mock_get_current_user,
             "verify": mock_verify,
         }
+
+    # Clean up
+    app.dependency_overrides.clear()
 
 
 class TestPreferencesEndpoints:
