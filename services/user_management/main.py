@@ -14,10 +14,20 @@ from fastapi.responses import JSONResponse
 
 from .database import connect_database, database, disconnect_database
 from .exceptions import (
+    AuditException,
     AuthenticationException,
     AuthorizationException,
+    DatabaseException,
+    EncryptionException,
+    IntegrationAlreadyExistsException,
+    IntegrationException,
     IntegrationNotFoundException,
+    InternalError,
     PreferencesNotFoundException,
+    ServiceException,
+    TokenExpiredException,
+    TokenNotFoundException,
+    UserAlreadyExistsException,
     UserManagementException,
     UserNotFoundException,
     ValidationException,
@@ -106,15 +116,19 @@ app.include_router(internal_router)
 @app.exception_handler(UserNotFoundException)
 async def user_not_found_handler(request: Request, exc: UserNotFoundException):
     """Handle user not found exceptions."""
-    logger.info(f"User not found: {exc.message}", extra={"user_id": exc.user_id})
+    logger.info(
+        f"User not found: {exc.message}",
+        extra={
+            "user_id": exc.user_id,
+            "path": request.url.path,
+            "method": request.method,
+            "error_code": exc.error_code,
+            "request_headers": dict(request.headers),
+        },
+    )
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
-        content={
-            "error": "UserNotFound",
-            "message": exc.message,
-            "user_id": exc.user_id,
-            "details": exc.details,
-        },
+        content=exc.to_error_response(),
     )
 
 
@@ -126,12 +140,7 @@ async def preferences_not_found_handler(
     logger.info(f"Preferences not found: {exc.message}", extra={"user_id": exc.user_id})
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
-        content={
-            "error": "PreferencesNotFound",
-            "message": exc.message,
-            "user_id": exc.user_id,
-            "details": exc.details,
-        },
+        content=exc.to_error_response(),
     )
 
 
@@ -146,13 +155,7 @@ async def integration_not_found_handler(
     )
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
-        content={
-            "error": "IntegrationNotFound",
-            "message": exc.message,
-            "user_id": exc.user_id,
-            "provider": exc.provider,
-            "details": exc.details,
-        },
+        content=exc.to_error_response(),
     )
 
 
@@ -161,17 +164,19 @@ async def validation_exception_handler(request: Request, exc: ValidationExceptio
     """Handle validation exceptions."""
     logger.info(
         f"Validation error: {exc.message}",
-        extra={"field": exc.field, "value": exc.value},
+        extra={
+            "field": exc.field,
+            "value": exc.value,
+            "reason": exc.reason,
+            "path": request.url.path,
+            "method": request.method,
+            "error_code": exc.error_code,
+            "query_params": dict(request.query_params),
+        },
     )
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={
-            "error": "ValidationError",
-            "message": exc.message,
-            "field": exc.field,
-            "reason": exc.reason,
-            "details": exc.details,
-        },
+        content=exc.to_error_response(),
     )
 
 
@@ -180,14 +185,20 @@ async def authentication_exception_handler(
     request: Request, exc: AuthenticationException
 ):
     """Handle authentication exceptions."""
-    logger.warning(f"Authentication failed: {exc.message}")
+    logger.warning(
+        f"Authentication failed: {exc.message}",
+        extra={
+            "path": request.url.path,
+            "method": request.method,
+            "error_code": exc.error_code,
+            "user_agent": request.headers.get("user-agent"),
+            "client_ip": request.client.host if request.client else None,
+            "authorization_header_present": "authorization" in request.headers,
+        },
+    )
     return JSONResponse(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        content={
-            "error": "AuthenticationError",
-            "message": exc.message,
-            "details": exc.details,
-        },
+        content=exc.to_error_response(),
         headers={"WWW-Authenticate": "Bearer"},
     )
 
@@ -203,13 +214,7 @@ async def authorization_exception_handler(
     )
     return JSONResponse(
         status_code=status.HTTP_403_FORBIDDEN,
-        content={
-            "error": "AuthorizationError",
-            "message": exc.message,
-            "resource": exc.resource,
-            "action": exc.action,
-            "details": exc.details,
-        },
+        content=exc.to_error_response(),
     )
 
 
@@ -224,13 +229,133 @@ async def webhook_validation_exception_handler(
     )
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
-        content={
-            "error": "WebhookValidationError",
-            "message": exc.message,
-            "provider": exc.provider,
-            "reason": exc.reason,
+        content=exc.to_error_response(),
+    )
+
+
+@app.exception_handler(UserAlreadyExistsException)
+async def user_already_exists_handler(
+    request: Request, exc: UserAlreadyExistsException
+):
+    """Handle user already exists exceptions."""
+    logger.info(f"User already exists: {exc.message}")
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content=exc.to_error_response(),
+    )
+
+
+@app.exception_handler(IntegrationAlreadyExistsException)
+async def integration_already_exists_handler(
+    request: Request, exc: IntegrationAlreadyExistsException
+):
+    """Handle integration already exists exceptions."""
+    logger.info(f"Integration already exists: {exc.message}")
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content=exc.to_error_response(),
+    )
+
+
+@app.exception_handler(TokenNotFoundException)
+async def token_not_found_handler(request: Request, exc: TokenNotFoundException):
+    """Handle token not found exceptions."""
+    logger.info(f"Token not found: {exc.message}")
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content=exc.to_error_response(),
+    )
+
+
+@app.exception_handler(TokenExpiredException)
+async def token_expired_handler(request: Request, exc: TokenExpiredException):
+    """Handle token expired exceptions."""
+    logger.info(f"Token expired: {exc.message}")
+    return JSONResponse(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        content=exc.to_error_response(),
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+@app.exception_handler(EncryptionException)
+async def encryption_exception_handler(request: Request, exc: EncryptionException):
+    """Handle encryption exceptions."""
+    logger.error(
+        f"Encryption error: {exc.message}",
+        extra={
+            "path": request.url.path,
+            "method": request.method,
+            "error_code": exc.error_code,
+            "error_type": exc.error_type,
             "details": exc.details,
         },
+        exc_info=True,
+    )
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content=exc.to_error_response(),
+    )
+
+
+@app.exception_handler(DatabaseException)
+async def database_exception_handler(request: Request, exc: DatabaseException):
+    """Handle database exceptions."""
+    logger.error(
+        f"Database error: {exc.message}",
+        extra={
+            "path": request.url.path,
+            "method": request.method,
+            "error_code": exc.error_code,
+            "error_type": exc.error_type,
+            "details": exc.details,
+            "operation": exc.details.get("operation", "unknown"),
+        },
+        exc_info=True,
+    )
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content=exc.to_error_response(),
+    )
+
+
+@app.exception_handler(ServiceException)
+async def service_exception_handler(request: Request, exc: ServiceException):
+    """Handle service exceptions."""
+    logger.error(f"Service error: {exc.message}")
+    return JSONResponse(
+        status_code=status.HTTP_502_BAD_GATEWAY,
+        content=exc.to_error_response(),
+    )
+
+
+@app.exception_handler(AuditException)
+async def audit_exception_handler(request: Request, exc: AuditException):
+    """Handle audit exceptions."""
+    logger.error(f"Audit error: {exc.message}")
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content=exc.to_error_response(),
+    )
+
+
+@app.exception_handler(IntegrationException)
+async def integration_exception_handler(request: Request, exc: IntegrationException):
+    """Handle integration exceptions."""
+    logger.warning(f"Integration error: {exc.message}")
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content=exc.to_error_response(),
+    )
+
+
+@app.exception_handler(InternalError)
+async def internal_error_handler(request: Request, exc: InternalError):
+    """Handle internal errors."""
+    logger.error(f"Internal error: {exc.message}")
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content=exc.to_error_response(),
     )
 
 
@@ -240,15 +365,21 @@ async def user_management_exception_handler(
 ):
     """Handle general user management exceptions."""
     logger.error(
-        f"User management error: {exc.message}", extra={"details": exc.details}
+        f"User management error: {exc.message}",
+        extra={
+            "path": request.url.path,
+            "method": request.method,
+            "error_code": exc.error_code,
+            "error_type": exc.error_type,
+            "details": exc.details,
+            "user_agent": request.headers.get("user-agent"),
+            "client_ip": request.client.host if request.client else None,
+        },
+        exc_info=True,
     )
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={
-            "error": "UserManagementError",
-            "message": exc.message,
-            "details": exc.details,
-        },
+        content=exc.to_error_response(),
     )
 
 
@@ -261,6 +392,11 @@ async def global_exception_handler(request: Request, exc: Exception):
     Logs the error and returns a generic error response to avoid
     exposing internal details in production.
     """
+    import uuid
+    from datetime import datetime, timezone
+
+    request_id = str(uuid.uuid4())
+
     logger.error(
         "Unhandled exception occurred",
         extra={
@@ -268,6 +404,7 @@ async def global_exception_handler(request: Request, exc: Exception):
             "method": request.method,
             "error": str(exc),
             "error_type": type(exc).__name__,
+            "request_id": request_id,
         },
         exc_info=True,
     )
@@ -275,9 +412,16 @@ async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
-            "error": "Internal server error",
+            "type": "internal_error",
             "message": "An unexpected error occurred. Please try again later.",
-            "request_id": getattr(request.state, "request_id", None),
+            "details": {
+                "error_type": type(exc).__name__,
+                "path": request.url.path,
+                "method": request.method,
+                "code": "INTERNAL_SERVER_ERROR",
+            },
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "request_id": request_id,
         },
     )
 
