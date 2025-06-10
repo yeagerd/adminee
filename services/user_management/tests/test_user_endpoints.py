@@ -52,9 +52,7 @@ class TestUserProfileEndpoints:
         mock_user = self.create_mock_user()
 
         with (
-            patch.object(
-                user_service, "get_user_by_external_auth_id", return_value=mock_user
-            ),
+            patch.object(user_service, "get_user_by_id", return_value=mock_user),
             patch.object(user_service, "get_user_profile") as mock_get_profile,
         ):
 
@@ -88,12 +86,14 @@ class TestUserProfileEndpoints:
     @pytest.mark.asyncio
     async def test_get_user_profile_unauthorized(self):
         """Test user profile retrieval with unauthorized access."""
-        mock_current_user = self.create_mock_user(
-            user_id=1, external_auth_id="user_123"
+        # Create a mock user that would be returned by get_user_by_id for user_id=2
+        # This user has external_auth_id="different_user" (not "user_123")
+        mock_target_user = self.create_mock_user(
+            user_id=2, external_auth_id="different_user"
         )
 
         with patch.object(
-            user_service, "get_user_by_external_auth_id", return_value=mock_current_user
+            user_service, "get_user_by_id", return_value=mock_target_user
         ):
 
             from ..routers.users import get_user_profile
@@ -110,10 +110,8 @@ class TestUserProfileEndpoints:
     @pytest.mark.asyncio
     async def test_get_user_profile_not_found(self):
         """Test user profile retrieval when user not found."""
-        with patch.object(
-            user_service, "get_user_by_external_auth_id"
-        ) as mock_get_by_auth:
-            mock_get_by_auth.side_effect = UserNotFoundException("User not found")
+        with patch.object(user_service, "get_user_by_id") as mock_get_by_id:
+            mock_get_by_id.side_effect = UserNotFoundException("User not found")
 
             from ..routers.users import get_user_profile
 
@@ -134,9 +132,7 @@ class TestUserProfileEndpoints:
         user_update = UserUpdate(first_name="Updated", last_name="Name")
 
         with (
-            patch.object(
-                user_service, "get_user_by_external_auth_id", return_value=mock_user
-            ),
+            patch.object(user_service, "get_user_by_id", return_value=mock_user),
             patch.object(user_service, "update_user", return_value=mock_updated_user),
             patch(
                 "services.user_management.schemas.user.UserResponse.from_orm"
@@ -176,9 +172,7 @@ class TestUserProfileEndpoints:
         user_update = UserUpdate(first_name="Updated")
 
         with (
-            patch.object(
-                user_service, "get_user_by_external_auth_id", return_value=mock_user
-            ),
+            patch.object(user_service, "get_user_by_id", return_value=mock_user),
             patch.object(user_service, "update_user") as mock_update,
         ):
 
@@ -210,9 +204,7 @@ class TestUserProfileEndpoints:
         )
 
         with (
-            patch.object(
-                user_service, "get_user_by_external_auth_id", return_value=mock_user
-            ),
+            patch.object(user_service, "get_user_by_id", return_value=mock_user),
             patch.object(
                 user_service, "delete_user", return_value=mock_delete_response
             ),
@@ -231,12 +223,14 @@ class TestUserProfileEndpoints:
     @pytest.mark.asyncio
     async def test_delete_user_profile_unauthorized(self):
         """Test user profile deletion with unauthorized access."""
-        mock_current_user = self.create_mock_user(
-            user_id=1, external_auth_id="user_123"
+        # Create a mock user that would be returned by get_user_by_id for user_id=2
+        # This user has external_auth_id="different_user" (not "user_123")
+        mock_target_user = self.create_mock_user(
+            user_id=2, external_auth_id="different_user"
         )
 
         with patch.object(
-            user_service, "get_user_by_external_auth_id", return_value=mock_current_user
+            user_service, "get_user_by_id", return_value=mock_target_user
         ):
 
             from ..routers.users import delete_user_profile
@@ -262,9 +256,7 @@ class TestUserProfileEndpoints:
         )
 
         with (
-            patch.object(
-                user_service, "get_user_by_external_auth_id", return_value=mock_user
-            ),
+            patch.object(user_service, "get_user_by_id", return_value=mock_user),
             patch.object(
                 user_service, "update_user_onboarding", return_value=mock_updated_user
             ),
