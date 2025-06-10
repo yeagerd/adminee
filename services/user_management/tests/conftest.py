@@ -197,7 +197,7 @@ def mock_settings():
     with patch("services.user_management.settings.settings") as mock_settings:
         mock_settings.database_url = "sqlite:///test.db"
         mock_settings.clerk_webhook_secret = "test-webhook-secret"
-        mock_settings.service_api_key = "test-api-key"
+        mock_settings.api_key_user_management = "test-api-key"
         mock_settings.cors_origins = ["http://localhost:3000"]
         yield mock_settings
 

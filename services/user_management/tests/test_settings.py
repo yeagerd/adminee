@@ -69,7 +69,7 @@ class TestSettings:
         with patch.dict(
             os.environ,
             {
-                "SERVICE_API_KEY": "test-api-key",
+                "API_KEY_USER_MANAGEMENT": "test-api-key",
                 "ENCRYPTION_SERVICE_SALT": "test-salt",
                 "CLERK_SECRET_KEY": "test-clerk-key",
                 "CLERK_WEBHOOK_SECRET": "test-webhook-secret",
@@ -77,7 +77,7 @@ class TestSettings:
         ):
             settings = TestableSettings()
 
-            assert settings.service_api_key == "test-api-key"
+            assert settings.api_key_user_management == "test-api-key"
             assert settings.encryption_service_salt == "test-salt"
             assert settings.clerk_secret_key == "test-clerk-key"
             assert settings.clerk_webhook_secret == "test-webhook-secret"

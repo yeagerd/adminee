@@ -12,7 +12,7 @@ services:
     command: sleep infinity
     ports:
       - "3000:3000" # For Next.js frontend
-      - "8000:8000" # For Python/FastAPI backend
+      - "8000:8000" # For Python/FastAPI backend (Note: Original 'app' service. If chat-service is also FastAPI on 8000, ports need adjustment)
     depends_on:
       - db
     environment:
@@ -43,7 +43,9 @@ services:
       - REDIS_URL=redis://redis:6379
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - SERVICE_API_KEY=${SERVICE_API_KEY:-dev-service-key}
+      - API_KEY_USER_MANAGEMENT=${API_KEY_USER_MANAGEMENT:-dev-user-management-key}
+      - API_KEY_OFFICE=${API_KEY_OFFICE:-dev-office-key}
+      - API_KEY_CHAT=${API_KEY_CHAT:-dev-chat-key}
       - TOKEN_ENCRYPTION_SALT=${TOKEN_ENCRYPTION_SALT:-default-salt-change-in-production}
       - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
       - CLERK_WEBHOOK_SECRET=${CLERK_WEBHOOK_SECRET}
@@ -53,6 +55,47 @@ services:
       - MICROSOFT_CLIENT_SECRET=${MICROSOFT_CLIENT_SECRET}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - LOG_FORMAT=${LOG_FORMAT:-json}
+    restart: unless-stopped
+
+  office-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.office-service
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+      - redis
+      - user-management
+    environment:
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-briefly}-office
+      - REDIS_URL=redis://redis:6379
+      - USER_MANAGEMENT_SERVICE_URL=http://user-management:8001
+      - API_KEY_OFFICE=${API_KEY_OFFICE:-dev-office-key}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FORMAT=${LOG_FORMAT:-json}
+      # Add other necessary environment variables for office-service
+    restart: unless-stopped
+
+  chat-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.chat-service
+    ports:
+      - "8002:8000" # Changed from 8000 to 8002 to avoid conflict with 'app' service
+    depends_on:
+      - db # Assuming it might use the main db or its own
+      - user-management # If it needs to authenticate/call user-management
+    environment:
+      - DATABASE_URL=sqlite:///./chat_service.db # Using SQLite as per .env.example, adjust if shared PG
+      - USER_MANAGEMENT_SERVICE_URL=http://user-management:8001 # If it needs to call user-management
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - LLM_PROVIDER=${LLM_PROVIDER}
+      - LLM_MODEL=${LLM_MODEL}
+      - API_KEY_CHAT=${API_KEY_CHAT:-dev-chat-key}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FORMAT=${LOG_FORMAT:-json}
+      # Add other necessary environment variables for chat-service
     restart: unless-stopped
 
   redis:
@@ -74,4 +117,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  postgres_data: 
+  postgres_data:
