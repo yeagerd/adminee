@@ -8,7 +8,14 @@ with comprehensive validation and serialization.
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+
+from ..utils.validation import (
+    check_sql_injection_patterns,
+    sanitize_text_input,
+    validate_email_address,
+    validate_url,
+)
 
 
 class UserBase(BaseModel):
@@ -25,38 +32,40 @@ class UserBase(BaseModel):
         None, description="URL to user's profile image"
     )
 
-    @validator("first_name", "last_name", pre=True)
+    @field_validator("first_name", "last_name", mode="before")
+    @classmethod
     def validate_names(cls, v):
         """Validate and sanitize name fields."""
-        if v is not None:
-            v = v.strip()
-            if not v:  # Empty string after strip
-                return None
-            # Remove any HTML tags or special characters for security
-            import re
+        if v is None:
+            return v
 
-            v = re.sub(r"<[^>]*>", "", v)  # Remove HTML tags
-            v = re.sub(r'[<>"\']', "", v)  # Remove potentially dangerous characters
-        return v
+        # Check for SQL injection patterns
+        check_sql_injection_patterns(str(v), "name")
 
-    @validator("profile_image_url")
+        # Sanitize the input
+        sanitized = sanitize_text_input(str(v), max_length=100)
+
+        return sanitized
+
+    @field_validator("profile_image_url")
+    @classmethod
     def validate_profile_image_url(cls, v):
         """Validate profile image URL format."""
-        if v is not None:
-            import re
+        if v is None:
+            return v
 
-            url_pattern = re.compile(
-                r"^https?://"  # http:// or https://
-                r"(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|"  # domain...
-                r"localhost|"  # localhost...
-                r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"  # ...or ip
-                r"(?::\d+)?"  # optional port
-                r"(?:/?|[/?]\S+)$",
-                re.IGNORECASE,
-            )
-            if not url_pattern.match(v):
-                raise ValueError("Invalid URL format for profile image")
-        return v
+        # Use comprehensive URL validation
+        return validate_url(v, allowed_schemes=["http", "https"])
+
+    @field_validator("email")
+    @classmethod
+    def validate_email_enhanced(cls, v):
+        """Enhanced email validation with security checks."""
+        if v is None:
+            return v
+
+        # Use comprehensive email validation
+        return validate_email_address(v)
 
 
 class UserCreate(UserBase):
@@ -66,17 +75,25 @@ class UserCreate(UserBase):
         ..., min_length=1, max_length=255, description="Clerk user ID"
     )
 
-    @validator("clerk_id")
+    @field_validator("clerk_id")
+    @classmethod
     def validate_clerk_id(cls, v):
         """Validate Clerk ID format."""
         if not v or not v.strip():
             raise ValueError("Clerk ID cannot be empty")
+
+        v = v.strip()
+
+        # Check for SQL injection patterns
+        check_sql_injection_patterns(v, "clerk_id")
+
         # Clerk IDs typically start with 'user_' followed by alphanumeric characters
         import re
 
-        if not re.match(r"^user_[a-zA-Z0-9]+$", v.strip()):
+        if not re.match(r"^user_[a-zA-Z0-9]+$", v):
             raise ValueError("Invalid Clerk ID format")
-        return v.strip()
+
+        return v
 
 
 class UserUpdate(BaseModel):
@@ -93,38 +110,40 @@ class UserUpdate(BaseModel):
         None, description="URL to user's profile image"
     )
 
-    @validator("first_name", "last_name", pre=True)
+    @field_validator("first_name", "last_name", mode="before")
+    @classmethod
     def validate_names(cls, v):
         """Validate and sanitize name fields."""
-        if v is not None:
-            v = v.strip()
-            if not v:  # Empty string after strip
-                return None
-            # Remove any HTML tags or special characters for security
-            import re
+        if v is None:
+            return v
 
-            v = re.sub(r"<[^>]*>", "", v)  # Remove HTML tags
-            v = re.sub(r'[<>"\']', "", v)  # Remove potentially dangerous characters
-        return v
+        # Check for SQL injection patterns
+        check_sql_injection_patterns(str(v), "name")
 
-    @validator("profile_image_url")
+        # Sanitize the input
+        sanitized = sanitize_text_input(str(v), max_length=100)
+
+        return sanitized
+
+    @field_validator("profile_image_url")
+    @classmethod
     def validate_profile_image_url(cls, v):
         """Validate profile image URL format."""
-        if v is not None:
-            import re
+        if v is None:
+            return v
 
-            url_pattern = re.compile(
-                r"^https?://"  # http:// or https://
-                r"(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|"  # domain...
-                r"localhost|"  # localhost...
-                r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"  # ...or ip
-                r"(?::\d+)?"  # optional port
-                r"(?:/?|[/?]\S+)$",
-                re.IGNORECASE,
-            )
-            if not url_pattern.match(v):
-                raise ValueError("Invalid URL format for profile image")
-        return v
+        # Use comprehensive URL validation
+        return validate_url(v, allowed_schemes=["http", "https"])
+
+    @field_validator("email")
+    @classmethod
+    def validate_email_enhanced(cls, v):
+        """Enhanced email validation with security checks."""
+        if v is None:
+            return v
+
+        # Use comprehensive email validation
+        return validate_email_address(v)
 
     class Config:
         """Pydantic config for update schema."""
@@ -187,18 +206,18 @@ class UserOnboardingUpdate(BaseModel):
     )
     onboarding_step: Optional[str] = Field(None, description="Current onboarding step")
 
-    @validator("onboarding_step")
-    def validate_onboarding_step(cls, v, values):
-        """Validate onboarding step based on completion status."""
-        if values.get("onboarding_completed") and v is not None:
-            raise ValueError(
-                "Onboarding step should be None when onboarding is completed"
-            )
+    @field_validator("onboarding_step")
+    @classmethod
+    def validate_onboarding_step(cls, v):
+        """Validate onboarding step format."""
+        if v is None:
+            return v
 
-        if not values.get("onboarding_completed") and v is None:
-            raise ValueError(
-                "Onboarding step is required when onboarding is not completed"
-            )
+        # Check for SQL injection patterns
+        check_sql_injection_patterns(str(v), "onboarding_step")
+
+        # Sanitize the input
+        v = sanitize_text_input(str(v), max_length=50)
 
         if v is not None:
             valid_steps = [
@@ -214,6 +233,21 @@ class UserOnboardingUpdate(BaseModel):
 
         return v
 
+    @model_validator(mode="after")
+    def validate_onboarding_consistency(self):
+        """Validate onboarding step consistency."""
+        if self.onboarding_completed and self.onboarding_step is not None:
+            raise ValueError(
+                "Onboarding step should be None when onboarding is completed"
+            )
+
+        if not self.onboarding_completed and self.onboarding_step is None:
+            raise ValueError(
+                "Onboarding step is required when onboarding is not completed"
+            )
+
+        return self
+
 
 class UserSearchRequest(BaseModel):
     """Schema for user search requests."""
@@ -226,15 +260,27 @@ class UserSearchRequest(BaseModel):
     page: int = Field(1, ge=1, description="Page number")
     page_size: int = Field(20, ge=1, le=100, description="Number of results per page")
 
-    @validator("query")
+    @field_validator("query")
+    @classmethod
     def validate_query(cls, v):
         """Validate and sanitize search query."""
-        if v is not None:
-            v = v.strip()
-            if not v:
-                return None
-            # Basic sanitization to prevent injection attacks
-            import re
+        if v is None:
+            return v
 
-            v = re.sub(r'[<>"\';]', "", v)  # Remove potentially dangerous characters
-        return v
+        # Check for SQL injection patterns
+        check_sql_injection_patterns(str(v), "search_query")
+
+        # Sanitize the input
+        sanitized = sanitize_text_input(str(v), max_length=255)
+
+        return sanitized
+
+    @field_validator("email")
+    @classmethod
+    def validate_email_search(cls, v):
+        """Enhanced email validation for search."""
+        if v is None:
+            return v
+
+        # Use comprehensive email validation
+        return validate_email_address(v)
