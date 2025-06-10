@@ -230,3 +230,7 @@ class WebhookService:
         # TODO: Implement idempotency tracking using Redis or database table
         # For now, we rely on database constraints and get_or_none checks
         return False
+
+
+# Create service instance
+webhook_service = WebhookService()
