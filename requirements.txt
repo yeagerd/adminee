@@ -2,7 +2,6 @@ aiosqlite
 alembic
 asyncpg
 celery
-clerk-backend-api>=3.0.0
 cryptography
 databases
 email-validator

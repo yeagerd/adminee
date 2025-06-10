@@ -351,7 +351,8 @@ class TestSchemaValidation:
     def test_user_create_valid(self):
         """Test valid user creation."""
         user_data = {
-            "clerk_id": "user_abc123",
+            "external_auth_id": "user_abc123",
+            "auth_provider": "clerk",
             "email": "test@example.com",
             "first_name": "John",
             "last_name": "Doe",
@@ -359,7 +360,8 @@ class TestSchemaValidation:
         }
 
         user = UserCreate(**user_data)
-        assert user.clerk_id == "user_abc123"
+        assert user.external_auth_id == "user_abc123"
+        assert user.auth_provider == "clerk"
         assert user.email == "test@example.com"
         assert user.first_name == "John"
         assert user.last_name == "Doe"
@@ -367,7 +369,8 @@ class TestSchemaValidation:
     def test_user_create_malicious_input(self):
         """Test user creation with malicious input."""
         malicious_data = {
-            "clerk_id": "user_abc123",
+            "external_auth_id": "user_abc123",
+            "auth_provider": "clerk",
             "email": "test@example.com",
             "first_name": "<script>alert('xss')</script>John",
             "last_name": "Doe'; DROP TABLE users; --",

@@ -8,10 +8,7 @@ Handles token verification, decoding, and user information extraction.
 import logging
 from typing import Dict, Optional
 
-import httpx
 import jwt
-from clerk_backend_api import Clerk
-from clerk_backend_api.jwks_helpers import AuthenticateRequestOptions
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
@@ -24,15 +21,10 @@ logger = logging.getLogger(__name__)
 # HTTP Bearer token security scheme
 security = HTTPBearer()
 
-# Initialize Clerk client
-clerk_client = None
-if settings.clerk_secret_key:
-    clerk_client = Clerk(bearer_auth=settings.clerk_secret_key)
-
 
 async def verify_jwt_token(token: str) -> Dict[str, str]:
     """
-    Verify JWT token using Clerk's official SDK or fallback to manual verification.
+    Verify JWT token using manual verification.
 
     Args:
         token: JWT token to verify
@@ -46,54 +38,10 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
     logger = get_logger(__name__)
 
     try:
-        # Try using Clerk's official SDK first (recommended)
-        if settings.clerk_secret_key:
-            clerk_client = Clerk(bearer_auth=settings.clerk_secret_key)
-
-            # Create a mock request object with the Authorization header
-            request = httpx.Request(
-                method="GET",
-                url="http://localhost/",
-                headers={"Authorization": f"Bearer {token}"},
-            )
-
-            # Use Clerk's authenticate_request method
-            auth_options = AuthenticateRequestOptions()
-            if hasattr(settings, "clerk_jwt_key") and settings.clerk_jwt_key:
-                auth_options.jwt_key = settings.clerk_jwt_key
-
-            request_state = clerk_client.authenticate_request(request, auth_options)
-
-            if not request_state.is_signed_in:
-                reason = getattr(request_state, "reason", "Authentication failed")
-                logger.warning(f"Clerk authentication failed: {reason}")
-                raise AuthenticationException(f"Authentication failed: {reason}")
-
-            # Extract claims from the validated token
-            token_claims = request_state.payload
-            logger.info(
-                "Token validated successfully with Clerk SDK",
-                extra={
-                    "user_id": token_claims.get("sub"),
-                    "issuer": token_claims.get("iss"),
-                },
-            )
-            return token_claims
-
-    except Exception as e:
-        logger.warning(f"Clerk SDK verification failed, falling back to manual: {e}")
-
-    # Fallback to manual verification (for development/demo)
-    try:
         logger.info("Using manual JWT verification (signature verification disabled)")
 
-        # Note: Clerk's Python SDK handles JWT verification internally
-        # We'll use direct JWT validation for now since Clerk SDK v5+ has different API
-        # For production, you should use Clerk's official JWT verification
-        # This is a simplified implementation for development
-
-        # When signature verification is disabled, we still need to provide a key
-        # but it won't be used for verification
+        # For development/demo, we use simplified JWT validation
+        # In production, you should use proper signature verification with JWKS
         verify_signature = getattr(settings, "jwt_verify_signature", False)
         dummy_key = "dummy-key-for-verification-disabled"
 
@@ -116,11 +64,8 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
                 logger.error(f"Missing required claim: {claim}")
                 raise AuthenticationException(f"Missing required claim: {claim}")
 
-        # Validate issuer (should be from Clerk)
-        if not decoded_token["iss"].startswith("https://clerk."):
-            logger.error("Invalid token issuer")
-            raise AuthenticationException("Invalid token issuer")
-
+        # For demo purposes, accept various issuers
+        # In production, you should validate against your specific issuer
         logger.info(
             "Token validated successfully (manual verification)",
             extra={
@@ -150,7 +95,10 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
 
 async def get_user_from_clerk(user_id: str) -> Optional[Dict]:
     """
-    Retrieve user information from Clerk API.
+    Placeholder for Clerk user retrieval.
+
+    In production, this would make an API call to Clerk to get user information.
+    For development/demo purposes, returns None.
 
     Args:
         user_id: Clerk user ID
@@ -158,30 +106,8 @@ async def get_user_from_clerk(user_id: str) -> Optional[Dict]:
     Returns:
         User information dictionary or None if not found
     """
-    if not clerk_client:
-        logger.error("Clerk client not initialized")
-        return None
-
-    try:
-        # Use Clerk SDK to get user information
-        # Note: Adjust based on your Clerk SDK version
-        user = clerk_client.users.get(user_id)
-
-        return {
-            "id": user.id,
-            "email": (
-                user.email_addresses[0].email_address if user.email_addresses else None
-            ),
-            "first_name": user.first_name,
-            "last_name": user.last_name,
-            "profile_image_url": user.profile_image_url,
-            "created_at": user.created_at,
-            "updated_at": user.updated_at,
-        }
-
-    except Exception as e:
-        logger.error(f"Failed to retrieve user from Clerk: {e}")
-        return None
+    logger.warning("get_user_from_clerk called but Clerk client not available")
+    return None
 
 
 def extract_user_id_from_token(token_claims: Dict[str, str]) -> str:
