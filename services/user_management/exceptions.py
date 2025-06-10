@@ -32,10 +32,13 @@ class UserManagementException(Exception):
 
     def to_error_response(self) -> Dict[str, Any]:
         """Convert exception to standardized error response format."""
+        user_friendly_message = self._get_user_friendly_message()
+
         return {
             "error": {
                 "type": self.error_type,
                 "message": self.message,
+                "user_message": user_friendly_message,
                 "details": {
                     **self.details,
                     **({"code": self.error_code} if self.error_code else {}),
@@ -44,6 +47,43 @@ class UserManagementException(Exception):
                 "request_id": self.request_id,
             }
         }
+
+    def _get_user_friendly_message(self) -> str:
+        """Get user-friendly error message based on error type and code."""
+        # Map common error codes to user-friendly messages
+        user_friendly_messages = {
+            "AUTH_FAILED": "Please check your login credentials and try again.",
+            "AUTHORIZATION_FAILED": "You don't have permission to perform this action.",
+            "VALIDATION_FAILED": "Please check your input and try again.",
+            "USER_NOT_FOUND": "The requested user could not be found.",
+            "INTEGRATION_NOT_FOUND": "The integration you're looking for doesn't exist.",
+            "INTEGRATION_ERROR": "There was a problem with the integration. Please try again later.",
+            "TOKEN_EXPIRED": "Your session has expired. Please log in again.",
+            "TOKEN_NOT_FOUND": "Authentication token is missing. Please log in again.",
+            "ENCRYPTION_FAILED": "A security error occurred. Please try again later.",
+            "DATABASE_ERROR": "A temporary service issue occurred. Please try again in a moment.",
+            "INTERNAL_ERROR": "An unexpected error occurred. Our team has been notified.",
+            "WEBHOOK_ERROR": "There was an issue processing the webhook.",
+            "NOT_FOUND": "The requested resource could not be found.",
+        }
+
+        # Get user-friendly message based on error code
+        if self.error_code and self.error_code in user_friendly_messages:
+            return user_friendly_messages[self.error_code]
+
+        # Fallback user-friendly messages based on error type
+        type_messages = {
+            "validation_error": "Please check your input and correct any errors.",
+            "auth_error": "Authentication is required to access this resource.",
+            "integration_error": "There was an issue with the integration service.",
+            "encryption_error": "A security error occurred. Please try again later.",
+            "not_found": "The requested resource could not be found.",
+            "internal_error": "An unexpected error occurred. Please try again later.",
+        }
+
+        return type_messages.get(
+            self.error_type, "An error occurred. Please try again later."
+        )
 
 
 # Validation Errors
