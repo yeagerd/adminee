@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 from ..auth.clerk import get_current_user
 from ..exceptions import (
@@ -106,7 +107,7 @@ class TestPreferencesSchemas:
             assert prefs.response_style == style
 
         # Invalid style
-        with pytest.raises(ValueError, match="Response style must be one of"):
+        with pytest.raises(ValidationError, match="Must be one of"):
             AIPreferencesSchema(response_style="invalid")
 
     def test_user_preferences_update_partial(self):

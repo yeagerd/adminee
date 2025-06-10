@@ -222,7 +222,7 @@ class TestOAuthStartRequest:
                 provider=IntegrationProvider.GOOGLE,
                 redirect_uri="invalid-uri",
             )
-        assert "Redirect URI must be a valid HTTP/HTTPS URL" in str(exc_info.value)
+        assert "URL scheme must be one of" in str(exc_info.value)
 
     def test_oauth_start_request_scope_validation(self):
         """Test scope validation and cleanup."""
