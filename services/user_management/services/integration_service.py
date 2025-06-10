@@ -73,13 +73,13 @@ class IntegrationService:
         """
         try:
             # Verify user exists
-            user = await User.objects.get_or_none(clerk_id=user_id)
+            user = await User.objects.get_or_none(external_auth_id=user_id)
             if not user:
                 raise NotFoundException(f"User not found: {user_id}")
 
             # Build query
             query = Integration.objects.select_related("user")
-            query = query.filter(user__clerk_id=user_id)
+            query = query.filter(user__external_auth_id=user_id)
 
             if provider:
                 query = query.filter(provider=provider)
@@ -98,7 +98,7 @@ class IntegrationService:
 
                 integration_response = IntegrationResponse(
                     id=integration.id,
-                    user_id=integration.user.clerk_id,
+                    user_id=integration.user.external_auth_id,
                     provider=integration.provider,
                     status=integration.status,
                     scopes=(
@@ -191,7 +191,7 @@ class IntegrationService:
         """
         try:
             # Verify user exists
-            user = await User.objects.get_or_none(clerk_id=user_id)
+            user = await User.objects.get_or_none(external_auth_id=user_id)
             if not user:
                 raise NotFoundException(f"User not found: {user_id}")
 
@@ -273,7 +273,7 @@ class IntegrationService:
         """
         try:
             # Verify user exists
-            user = await User.objects.get_or_none(clerk_id=user_id)
+            user = await User.objects.get_or_none(external_auth_id=user_id)
             if not user:
                 raise NotFoundException(f"User not found: {user_id}")
 
@@ -748,7 +748,7 @@ class IntegrationService:
         """
         try:
             # Verify user exists
-            user = await User.objects.get_or_none(clerk_id=user_id)
+            user = await User.objects.get_or_none(external_auth_id=user_id)
             if not user:
                 raise NotFoundException(f"User not found: {user_id}")
 
@@ -831,7 +831,7 @@ class IntegrationService:
     ) -> Integration:
         """Get integration for user and provider."""
         integration = await Integration.objects.select_related("user").get_or_none(
-            user__clerk_id=user_id,
+            user__external_auth_id=user_id,
             provider=provider,
         )
         if not integration:
@@ -911,7 +911,7 @@ class IntegrationService:
 
         # Log the integration creation
         await audit_logger.log_user_action(
-            user_id=user.clerk_id,
+            user_id=user.external_auth_id,
             action="integration_created",
             resource_type="integration",
             resource_id=str(integration.id),
@@ -934,7 +934,7 @@ class IntegrationService:
         integration = await Integration.objects.select_related("user").get(
             id=integration_id
         )
-        user_id = integration.user.clerk_id
+        user_id = integration.user.external_auth_id
 
         # Encrypt tokens
         encrypted_access = self.token_encryption.encrypt_token(

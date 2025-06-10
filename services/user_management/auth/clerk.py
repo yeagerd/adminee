@@ -95,19 +95,66 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
 
 async def get_user_from_clerk(user_id: str) -> Optional[Dict]:
     """
-    Placeholder for Clerk user retrieval.
+    Retrieve user information from Clerk via API.
 
-    In production, this would make an API call to Clerk to get user information.
-    For development/demo purposes, returns None.
+    This function makes an HTTP request to Clerk's API to fetch user details.
+    In development/testing, it can work without Clerk credentials by returning None.
 
     Args:
         user_id: Clerk user ID
 
     Returns:
         User information dictionary or None if not found
+
+    Raises:
+        AuthenticationException: If API request fails
     """
-    logger.warning("get_user_from_clerk called but Clerk client not available")
-    return None
+    import os
+
+    import httpx
+
+    # Check if we have Clerk credentials
+    clerk_secret_key = os.getenv("CLERK_SECRET_KEY")
+    if not clerk_secret_key:
+        logger.warning("get_user_from_clerk called but CLERK_SECRET_KEY not available")
+        return None
+
+    try:
+        # Make API request to Clerk
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"https://api.clerk.com/v1/users/{user_id}",
+                headers={
+                    "Authorization": f"Bearer {clerk_secret_key}",
+                    "Content-Type": "application/json",
+                },
+                timeout=10.0,
+            )
+
+            if response.status_code == 404:
+                logger.info(f"User {user_id} not found in Clerk")
+                return None
+
+            if response.status_code == 200:
+                user_data = response.json()
+                logger.debug(f"Successfully retrieved user {user_id} from Clerk")
+                return user_data
+
+            # Handle other error codes
+            logger.error(
+                f"Clerk API request failed with status {response.status_code}: {response.text}"
+            )
+            return None
+
+    except httpx.TimeoutException:
+        logger.error(f"Timeout while fetching user {user_id} from Clerk")
+        raise AuthenticationException("Clerk API timeout")
+    except httpx.RequestError as e:
+        logger.error(f"Request error while fetching user {user_id} from Clerk: {e}")
+        raise AuthenticationException("Clerk API request failed")
+    except Exception as e:
+        logger.error(f"Unexpected error fetching user {user_id} from Clerk: {e}")
+        raise AuthenticationException("Failed to retrieve user from Clerk")
 
 
 def extract_user_id_from_token(token_claims: Dict[str, str]) -> str:
