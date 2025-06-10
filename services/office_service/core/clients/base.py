@@ -69,8 +69,13 @@ class BaseAPIClient(ABC):
 
     def _generate_request_id(self) -> str:
         """Generate a unique request ID for tracking"""
-        # Use microsecond precision for better uniqueness
-        return self._session_id + "-" + str(int(time.time() * 1000000))[-8:]
+        # Use nanosecond precision and counter for better uniqueness
+        import random
+        import time
+
+        timestamp = str(int(time.time_ns()))[-8:]
+        random_suffix = str(random.randint(1000, 9999))
+        return f"{self._session_id}-{timestamp}-{random_suffix}"
 
     def _parse_microsoft_error(self, response_text: str, status_code: int) -> str:
         """
