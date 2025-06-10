@@ -28,6 +28,13 @@ from urllib.parse import parse_qs, urlparse
 import httpx
 import structlog
 
+# Import demo JWT utilities
+try:
+    from demo_jwt_utils import create_bearer_token
+except ImportError:
+    print("❌ demo_jwt_utils not found. Please ensure demo_jwt_utils.py is in the same directory.")
+    exit(1)
+
 # Set up logging
 logger = structlog.get_logger(__name__)
 
@@ -40,6 +47,11 @@ class UserManagementDemo:
         self.client = httpx.AsyncClient()
         self.demo_user_id = "demo_user_12345"
         self.service_api_key = "demo-service-key-12345"  # For internal API calls
+        # Generate valid JWT token for demo user
+        self.auth_token = create_bearer_token(
+            self.demo_user_id,
+            "demo.user@example.com"
+        )
 
     async def __aenter__(self):
         """Async context manager entry."""
@@ -99,6 +111,7 @@ class UserManagementDemo:
         # Simulate Clerk webhook for user creation
         webhook_payload = {
             "type": "user.created",
+            "object": "event",  # Required by ClerkWebhookEvent schema
             "data": {
                 "id": self.demo_user_id,
                 "email_addresses": [
@@ -109,7 +122,7 @@ class UserManagementDemo:
                 ],
                 "first_name": "Demo",
                 "last_name": "User",
-                "profile_image_url": "https://images.clerk.dev/demo-avatar.png",
+                "image_url": "https://images.clerk.dev/demo-avatar.png",  # Changed from profile_image_url
                 "created_at": int(datetime.now(timezone.utc).timestamp() * 1000),
                 "updated_at": int(datetime.now(timezone.utc).timestamp() * 1000),
             }
@@ -139,7 +152,7 @@ class UserManagementDemo:
         try:
             response = await self.client.get(
                 f"{self.base_url}/users/{self.demo_user_id}",
-                headers={"Authorization": f"Bearer demo_jwt_token"}
+                headers={"Authorization": self.auth_token}
             )
             self.print_response(response, "User profile retrieval")
             return response.json() if response.status_code == 200 else None
@@ -163,7 +176,7 @@ class UserManagementDemo:
             response = await self.client.put(
                 f"{self.base_url}/users/{self.demo_user_id}",
                 json=update_data,
-                headers={"Authorization": f"Bearer demo_jwt_token"}
+                headers={"Authorization": self.auth_token}
             )
             self.print_response(response, "User profile update")
             return response.status_code == 200
@@ -178,7 +191,7 @@ class UserManagementDemo:
         try:
             response = await self.client.get(
                 f"{self.base_url}/users/{self.demo_user_id}/preferences",
-                headers={"Authorization": f"Bearer demo_jwt_token"}
+                headers={"Authorization": self.auth_token}
             )
             self.print_response(response, "User preferences retrieval")
             return response.json() if response.status_code == 200 else None
@@ -216,7 +229,7 @@ class UserManagementDemo:
             response = await self.client.put(
                 f"{self.base_url}/users/{self.demo_user_id}/preferences",
                 json=preferences_update,
-                headers={"Authorization": f"Bearer demo_jwt_token"}
+                headers={"Authorization": self.auth_token}
             )
             self.print_response(response, "User preferences update")
             return response.status_code == 200
@@ -231,7 +244,7 @@ class UserManagementDemo:
         try:
             response = await self.client.get(
                 f"{self.base_url}/users/{self.demo_user_id}/integrations",
-                headers={"Authorization": f"Bearer demo_jwt_token"}
+                headers={"Authorization": self.auth_token}
             )
             self.print_response(response, "User integrations list")
             return response.json() if response.status_code == 200 else None
@@ -253,7 +266,7 @@ class UserManagementDemo:
                     "redirect_uri": redirect_uri,
                     "scopes": scopes
                 },
-                headers={"Authorization": f"Bearer demo_jwt_token"}
+                headers={"Authorization": self.auth_token}
             )
             
             if response.status_code == 200:
@@ -294,7 +307,7 @@ class UserManagementDemo:
                     "code": code,
                     "state": state
                 },
-                headers={"Authorization": f"Bearer demo_jwt_token"}
+                headers={"Authorization": self.auth_token}
             )
             self.print_response(response, f"{provider.title()} OAuth completion")
             return response.status_code == 200
@@ -309,7 +322,7 @@ class UserManagementDemo:
         try:
             response = await self.client.get(
                 f"{self.base_url}/users/{self.demo_user_id}/integrations/{provider}",
-                headers={"Authorization": f"Bearer demo_jwt_token"}
+                headers={"Authorization": self.auth_token}
             )
             self.print_response(response, f"{provider.title()} integration status")
             return response.json() if response.status_code == 200 else None
@@ -324,7 +337,7 @@ class UserManagementDemo:
         try:
             response = await self.client.put(
                 f"{self.base_url}/users/{self.demo_user_id}/integrations/{provider}/refresh",
-                headers={"Authorization": f"Bearer demo_jwt_token"}
+                headers={"Authorization": self.auth_token}
             )
             self.print_response(response, f"{provider.title()} token refresh")
             return response.status_code == 200
@@ -364,7 +377,7 @@ class UserManagementDemo:
         try:
             response = await self.client.delete(
                 f"{self.base_url}/users/{self.demo_user_id}/integrations/{provider}",
-                headers={"Authorization": f"Bearer demo_jwt_token"}
+                headers={"Authorization": self.auth_token}
             )
             self.print_response(response, f"{provider.title()} integration disconnect")
             return response.status_code == 200

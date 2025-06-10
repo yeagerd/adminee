@@ -24,6 +24,13 @@ except ImportError:
     print("❌ httpx not installed. Install with: pip install httpx")
     exit(1)
 
+# Import demo JWT utilities
+try:
+    from demo_jwt_utils import create_bearer_token
+except ImportError:
+    print("❌ demo_jwt_utils not found. Please ensure demo_jwt_utils.py is in the same directory.")
+    exit(1)
+
 
 class SimpleUserDemo:
     """Simple demo for user management service."""
@@ -31,6 +38,11 @@ class SimpleUserDemo:
     def __init__(self, base_url: str = "http://localhost:8000"):
         self.base_url = base_url
         self.demo_user_id = "simple_demo_user_123"
+        # Generate valid JWT token for demo user
+        self.auth_token = create_bearer_token(
+            self.demo_user_id, 
+            "simple.demo@example.com"
+        )
 
     def print_banner(self, text: str, char: str = "="):
         """Print a banner."""
@@ -65,6 +77,7 @@ class SimpleUserDemo:
         print("• User preferences")
         print("• Integration listing")
         print("• OAuth flow initiation (without completion)")
+        print(f"• Uses valid JWT tokens for authentication")
         
         async with httpx.AsyncClient() as client:
             # Health check
@@ -97,6 +110,7 @@ class SimpleUserDemo:
             self.print_step("Creating demo user (webhook simulation)")
             webhook_data = {
                 "type": "user.created",
+                "object": "event",  # Required by ClerkWebhookEvent schema
                 "data": {
                     "id": self.demo_user_id,
                     "email_addresses": [{
@@ -105,7 +119,7 @@ class SimpleUserDemo:
                     }],
                     "first_name": "Simple",
                     "last_name": "Demo",
-                    "profile_image_url": "https://images.clerk.dev/demo.png",
+                    "image_url": "https://images.clerk.dev/demo.png",  # Changed from profile_image_url
                     "created_at": int(datetime.now(timezone.utc).timestamp() * 1000),
                     "updated_at": int(datetime.now(timezone.utc).timestamp() * 1000),
                 }
@@ -131,7 +145,7 @@ class SimpleUserDemo:
             try:
                 response = await client.get(
                     f"{self.base_url}/users/{self.demo_user_id}",
-                    headers={"Authorization": "Bearer demo_token"}
+                    headers={"Authorization": self.auth_token}
                 )
                 self.print_result(response, "User profile retrieval")
             except Exception as e:
@@ -148,7 +162,7 @@ class SimpleUserDemo:
                 response = await client.put(
                     f"{self.base_url}/users/{self.demo_user_id}",
                     json=update_data,
-                    headers={"Authorization": "Bearer demo_token"}
+                    headers={"Authorization": self.auth_token}
                 )
                 self.print_result(response, "User profile update")
             except Exception as e:
@@ -159,7 +173,7 @@ class SimpleUserDemo:
             try:
                 response = await client.get(
                     f"{self.base_url}/users/{self.demo_user_id}/preferences",
-                    headers={"Authorization": "Bearer demo_token"}
+                    headers={"Authorization": self.auth_token}
                 )
                 self.print_result(response, "User preferences")
             except Exception as e:
@@ -182,7 +196,7 @@ class SimpleUserDemo:
                 response = await client.put(
                     f"{self.base_url}/users/{self.demo_user_id}/preferences",
                     json=prefs_data,
-                    headers={"Authorization": "Bearer demo_token"}
+                    headers={"Authorization": self.auth_token}
                 )
                 self.print_result(response, "Preferences update")
             except Exception as e:
@@ -193,7 +207,7 @@ class SimpleUserDemo:
             try:
                 response = await client.get(
                     f"{self.base_url}/users/{self.demo_user_id}/integrations",
-                    headers={"Authorization": "Bearer demo_token"}
+                    headers={"Authorization": self.auth_token}
                 )
                 self.print_result(response, "Integration list")
             except Exception as e:
@@ -213,7 +227,7 @@ class SimpleUserDemo:
                             "redirect_uri": "http://localhost:8000/oauth/callback",
                             "scopes": ["read"]
                         },
-                        headers={"Authorization": "Bearer demo_token"}
+                        headers={"Authorization": self.auth_token}
                     )
                     
                     if response.status_code == 200:
@@ -276,6 +290,7 @@ class SimpleUserDemo:
         print("✅ Integration listing")
         print("✅ OAuth flow initiation")
         print("✅ Internal service API")
+        print("✅ Valid JWT token authentication")
         
         print(f"\n🌐 Explore more at: {self.base_url}/docs")
         print("📚 Full demo: python user_management_demo.py")
@@ -292,8 +307,8 @@ async def main():
     start_service = input("\nIs the user management service running on http://localhost:8000? (y/n): ").strip().lower()
     if start_service == 'n':
         print("\n📋 To start the service:")
-        print("   cd services/user_management")
-        print("   uvicorn main:app --reload --port 8000")
+        print("   cd /path/to/briefly")
+        print("   uvicorn services.user_management.main:app --reload --port 8000")
         print("\nPress Enter when ready...")
         input()
 
