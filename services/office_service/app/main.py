@@ -1,5 +1,6 @@
 import logging
 import uuid
+from datetime import datetime
 
 import httpx
 from api.calendar import router as calendar_router
@@ -303,3 +304,16 @@ async def read_root():
     """Hello World root endpoint"""
     logger.info("Root endpoint accessed")
     return {"message": "Hello World", "service": "Office Service"}
+
+
+@app.get("/ready")
+async def ready_check():
+    """
+    Simple readiness check.
+    """
+    return {
+        "status": "ok",
+        "service": settings.APP_NAME,
+        "version": settings.APP_VERSION,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
