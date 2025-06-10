@@ -59,7 +59,9 @@ class TestClerkAuthentication:
         with (
             patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
             patch("services.user_management.auth.clerk.settings") as mock_settings,
-            patch("services.user_management.auth.clerk.clerk_client") as mock_clerk_client,
+            patch(
+                "services.user_management.auth.clerk.clerk_client"
+            ) as mock_clerk_client,
         ):
             mock_settings.clerk_secret_key = "test-secret-key"
             mock_clerk_client.return_value = True  # Just needs to be truthy
@@ -80,7 +82,9 @@ class TestClerkAuthentication:
         with (
             patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
             patch("services.user_management.auth.clerk.settings") as mock_settings,
-            patch("services.user_management.auth.clerk.clerk_client") as mock_clerk_client,
+            patch(
+                "services.user_management.auth.clerk.clerk_client"
+            ) as mock_clerk_client,
         ):
             mock_settings.clerk_secret_key = "test-secret-key"
             mock_clerk_client.return_value = True  # Just needs to be truthy
@@ -97,7 +101,9 @@ class TestClerkAuthentication:
         with (
             patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
             patch("services.user_management.auth.clerk.settings") as mock_settings,
-            patch("services.user_management.auth.clerk.clerk_client") as mock_clerk_client,
+            patch(
+                "services.user_management.auth.clerk.clerk_client"
+            ) as mock_clerk_client,
         ):
             mock_settings.clerk_secret_key = "test-secret-key"
             mock_clerk_client.return_value = True  # Just needs to be truthy
@@ -114,7 +120,9 @@ class TestClerkAuthentication:
         with (
             patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
             patch("services.user_management.auth.clerk.settings") as mock_settings,
-            patch("services.user_management.auth.clerk.clerk_client") as mock_clerk_client,
+            patch(
+                "services.user_management.auth.clerk.clerk_client"
+            ) as mock_clerk_client,
         ):
             mock_settings.clerk_secret_key = "test-secret-key"
             mock_clerk_client.return_value = True  # Just needs to be truthy
@@ -132,7 +140,9 @@ class TestClerkAuthentication:
         with (
             patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
             patch("services.user_management.auth.clerk.settings") as mock_settings,
-            patch("services.user_management.auth.clerk.clerk_client") as mock_clerk_client,
+            patch(
+                "services.user_management.auth.clerk.clerk_client"
+            ) as mock_clerk_client,
         ):
             mock_settings.clerk_secret_key = "test-secret-key"
             mock_clerk_client.return_value = True  # Just needs to be truthy
