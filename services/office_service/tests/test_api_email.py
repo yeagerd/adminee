@@ -9,10 +9,11 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from app.main import app
 from fastapi.testclient import TestClient
 from models import Provider
 from schemas import EmailAddress, EmailMessage, SendEmailRequest
+
+from app.main import app
 
 
 @pytest.fixture
