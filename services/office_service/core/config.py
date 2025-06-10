@@ -1,4 +1,4 @@
-from pydantic import ConfigDict
+from pydantic import ConfigDict, Field
 from pydantic_settings import BaseSettings
 
 
@@ -13,7 +13,10 @@ class Settings(BaseSettings):
 
     # External Services
     USER_MANAGEMENT_SERVICE_URL: str = "http://localhost:8001"
-    SERVICE_API_KEY: str = "your-service-api-key-here"
+    api_key_office: str = Field(
+        "dev-office-key",
+        description="API key for this Office service, used for authenticating to other services",
+    )
 
     # Application Configuration
     APP_NAME: str = "Office Service"

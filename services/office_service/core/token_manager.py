@@ -63,7 +63,7 @@ class TokenManager:
         """Async context manager entry"""
         self.http_client = httpx.AsyncClient(
             timeout=httpx.Timeout(10.0),  # 10 second timeout
-            headers={"Authorization": f"Bearer {settings.SERVICE_API_KEY}"},
+            headers={"Authorization": f"Bearer {settings.api_key_office}"},
         )
         return self
 
