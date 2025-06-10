@@ -220,6 +220,32 @@ class AuditException(UserManagementException):
         self.reason = reason
 
 
+class IntegrationException(UserManagementException):
+    """Exception raised for general OAuth integration operations."""
+
+    def __init__(self, reason: str, details: Optional[Dict[str, Any]] = None):
+        message = f"Integration operation failed: {reason}"
+        super().__init__(message, details)
+        self.reason = reason
+
+
+class NotFoundException(UserManagementException):
+    """Exception raised when a resource is not found."""
+
+    def __init__(self, resource: str, details: Optional[Dict[str, Any]] = None):
+        message = f"Resource not found: {resource}"
+        super().__init__(message, details)
+        self.resource = resource
+
+
+class SimpleValidationException(UserManagementException):
+    """Exception raised for simple validation errors (single message)."""
+
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+        super().__init__(message, details)
+        self.validation_message = message
+
+
 # HTTP Exception mappings for FastAPI
 def user_not_found_exception(user_id: str) -> HTTPException:
     """Create HTTPException for user not found."""

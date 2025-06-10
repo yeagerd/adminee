@@ -28,6 +28,7 @@ from .routers import (
     integrations_router,
     internal_router,
     preferences_router,
+    provider_router,
     users_router,
     webhooks_router,
 )
@@ -96,6 +97,7 @@ app.add_middleware(
 app.include_router(users_router)
 app.include_router(preferences_router)
 app.include_router(integrations_router)
+app.include_router(provider_router)
 app.include_router(webhooks_router)
 app.include_router(internal_router)
 
