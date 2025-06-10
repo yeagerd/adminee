@@ -8,11 +8,11 @@ email-validator
 fakeredis
 fastapi
 httpx
-langchain
+langchain>=0.1.0,<0.3.0
 litellm
-llama-index
-llama-index-embeddings-openai
-llama-index-llms-litellm
+llama-index>=0.10.0,<0.12.0
+llama-index-embeddings-openai>=0.2.0,<0.3.0
+llama-index-llms-litellm>=0.2.0,<0.3.0
 sqlmodel>=0.0.21
 pinecone-client
 psycopg2-binary
@@ -25,7 +25,7 @@ python-dotenv
 pytz
 redis
 requests
-sqlalchemy
+sqlalchemy>=2.0.0
 structlog
 tox
 types-pytz
