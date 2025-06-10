@@ -313,16 +313,3 @@ async def quick_health_check():
         "version": settings.APP_VERSION,
         "timestamp": datetime.utcnow().isoformat(),
     }
-
-
-@router.get("/ready")
-async def ready_check():
-    """
-    Simple readiness check.
-    """
-    return {
-        "status": "ok",
-        "service": settings.APP_NAME,
-        "version": settings.APP_VERSION,
-        "timestamp": datetime.utcnow().isoformat(),
-    }
