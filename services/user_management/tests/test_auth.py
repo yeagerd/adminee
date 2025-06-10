@@ -230,17 +230,17 @@ class TestClerkAuthentication:
 class TestServiceAuthentication:
     """Test cases for service-to-service authentication."""
 
-    def test_service_api_key_auth_verify_valid_key(self):
+    def test_user_management_api_key_auth_verify_valid_key(self):
         """Test valid API key verification."""
         service_name = service_auth.verify_api_key("dev-service-key")
         assert service_name == "user-management"
 
-    def test_service_api_key_auth_verify_invalid_key(self):
+    def test_user_management_api_key_auth_verify_invalid_key(self):
         """Test invalid API key verification."""
         service_name = service_auth.verify_api_key("invalid-key")
         assert service_name is None
 
-    def test_service_api_key_auth_is_valid_service(self):
+    def test_user_management_api_key_auth_is_valid_service(self):
         """Test service name validation."""
         assert service_auth.is_valid_service("user-management") is True
         assert service_auth.is_valid_service("office-service") is True

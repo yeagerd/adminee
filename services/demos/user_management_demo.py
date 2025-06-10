@@ -51,20 +51,20 @@ class UserManagementDemo:
     def __init__(
         self,
         base_url: str = "http://localhost:8000",
-        service_api_key: Optional[str] = None,
+        user_management_api_key: Optional[str] = None,
     ):
         self.base_url = base_url
         self.client = httpx.AsyncClient()
         self.demo_user_id = "demo_user_12345"  # This is the external auth ID (Clerk ID)
         self.demo_database_user_id = None  # This will be set after user creation
 
-        # Set service API key with precedence: arg > env var > no default for security
-        if service_api_key:
-            self.service_api_key = service_api_key
+        # Set service API key with precedence: arg > env var > default
+        if user_management_api_key:
+            self.service_api_key = user_management_api_key
             self.api_key_source = "command line argument"
-        elif os.getenv("SERVICE_API_KEY"):
-            self.service_api_key = os.getenv("SERVICE_API_KEY") or ""
-            self.api_key_source = "SERVICE_API_KEY environment variable"
+        elif os.getenv("API_KEY_USER_MANAGEMENT"):
+            self.service_api_key = os.getenv("API_KEY_USER_MANAGEMENT") or ""
+            self.api_key_source = "API_KEY_USER_MANAGEMENT environment variable"
         else:
             # No default for security - internal API test will fail gracefully
             self.service_api_key = None
@@ -760,7 +760,7 @@ Examples:
   python user_management_demo.py --simple     # Simple non-interactive demo
   
 Environment Variables:
-  SERVICE_API_KEY          Service-to-service API key for internal API testing
+  API_KEY_USER_MANAGEMENT          Service-to-service API key for internal API testing
         """,
     )
     parser.add_argument(
@@ -775,7 +775,7 @@ Environment Variables:
     )
     parser.add_argument(
         "--service-api-key",
-        help="Service API key for internal API testing (overrides SERVICE_API_KEY env var)",
+        help="Service API key for internal API testing (overrides API_KEY_USER_MANAGEMENT env var)",
     )
 
     args = parser.parse_args()
@@ -800,7 +800,8 @@ Environment Variables:
         print()
 
     async with UserManagementDemo(
-        base_url=args.base_url, service_api_key=getattr(args, "service_api_key", None)
+        base_url=args.base_url,
+        user_management_api_key=getattr(args, "service_api_key", None),
     ) as demo:
         if args.simple:
             success = await demo.run_simple_demo()

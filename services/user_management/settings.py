@@ -36,9 +36,16 @@ class Settings(BaseSettings):
     )
 
     # Security Configuration
-    service_api_key: str = Field(
-        ...,  # Required field - no default
-        description="API key for service-to-service authentication",
+    api_key_user_management: str = Field(
+        "dev-service-key",
+        description="API key for this User Management service",
+    )
+    api_key_office: Optional[str] = Field(
+        default=None,
+        description="API key provided by Office service for authentication",
+    )
+    api_key_chat: Optional[str] = Field(
+        default=None, description="API key provided by Chat service for authentication"
     )
     encryption_service_salt: Optional[str] = Field(
         default=None,
