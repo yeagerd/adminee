@@ -3,6 +3,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
+from app.main import (
+    office_service_error_handler,
+    provider_api_error_handler,
+    rate_limit_error_handler,
+)
 from core.clients.google import GoogleAPIClient
 from core.exceptions import (
     OfficeServiceError,
@@ -12,12 +17,6 @@ from core.exceptions import (
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from models import Provider
-
-from app.main import (
-    office_service_error_handler,
-    provider_api_error_handler,
-    rate_limit_error_handler,
-)
 
 
 class TestGlobalExceptionHandlers:
