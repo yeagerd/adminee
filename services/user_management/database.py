@@ -4,11 +4,12 @@ Database configuration for User Management Service.
 Sets up database connection using SQLModel and SQLAlchemy.
 """
 
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from typing import AsyncGenerator
+
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlmodel import SQLModel
 
-from .settings import settings
+from .core.config import settings
 
 
 # Create async engine for database operations
@@ -28,11 +29,15 @@ engine = create_async_engine(
 )
 
 # Session factory for dependency injection
-async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+async_session = async_sessionmaker(
+    engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+)
 
 
 # Database lifecycle management
-async def get_session() -> AsyncSession:
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
     """Get async database session for dependency injection."""
     async with async_session() as session:
         yield session

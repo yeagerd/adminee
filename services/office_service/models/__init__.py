@@ -1,12 +1,11 @@
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, AsyncGenerator, Dict, Optional
 
 from sqlalchemy import JSON
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import Text, func
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlmodel import Column, DateTime, Field, SQLModel
 
 from services.office_service.core.config import settings
@@ -29,7 +28,11 @@ engine = create_async_engine(
 )
 
 # Session factory for dependency injection
-async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+async_session = async_sessionmaker(
+    engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+)
 
 
 class Provider(str, Enum):
@@ -106,7 +109,7 @@ class RateLimitBucket(SQLModel, table=True):
 
 
 # Database lifecycle management
-async def get_session() -> AsyncSession:
+async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     """Get async database session for dependency injection."""
     async with async_session() as session:
         yield session

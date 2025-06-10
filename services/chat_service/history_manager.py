@@ -6,9 +6,8 @@ import datetime
 import os
 from typing import List, Optional
 
-from sqlalchemy import Text, UniqueConstraint, desc, func
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import Text, UniqueConstraint, func, text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, select
 
 # Read DATABASE_URL from environment, default to file-based SQLite
@@ -29,7 +28,11 @@ def get_async_database_url(url: str) -> str:
 engine = create_async_engine(get_async_database_url(DATABASE_URL), echo=False)
 
 # Session factory for dependency injection
-async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+async_session = async_sessionmaker(
+    engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+)
 
 
 class Thread(SQLModel, table=True):
@@ -150,7 +153,7 @@ async def create_thread(user_id: str, title: Optional[str] = None) -> Thread:
 async def list_threads(user_id: str) -> List[Thread]:
     async with async_session() as session:
         result = await session.execute(select(Thread).where(Thread.user_id == user_id))
-        return result.scalars().all()
+        return list(result.scalars().all())
 
 
 async def append_message(thread_id: int, user_id: str, content: str) -> Message:
@@ -169,11 +172,11 @@ async def get_thread_history(
         result = await session.execute(
             select(Message)
             .where(Message.thread_id == thread_id)
-            .order_by(desc(Message.created_at))
+            .order_by(text("created_at DESC"))
             .offset(offset)
             .limit(limit)
         )
-        return result.scalars().all()
+        return list(result.scalars().all())
 
 
 async def create_or_update_draft(
@@ -222,7 +225,7 @@ async def list_drafts(thread_id: int) -> List[Draft]:
         result = await session.execute(
             select(Draft).where(Draft.thread_id == thread_id)
         )
-        return result.scalars().all()
+        return list(result.scalars().all())
 
 
 async def get_thread(thread_id: int) -> Optional[Thread]:
