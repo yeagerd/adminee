@@ -353,13 +353,13 @@ class TokenService:
         """
         try:
             # Verify user exists
-            user = await User.objects.get_or_none(clerk_id=user_id)
+            user = await User.objects.get_or_none(external_auth_id=user_id)
             if not user:
                 raise NotFoundException(f"User not found: {user_id}")
 
             # Get all user integrations
             integrations = await Integration.objects.filter(
-                user__clerk_id=user_id
+                user__external_auth_id=user_id
             ).all()
 
             # Calculate statistics
@@ -401,7 +401,7 @@ class TokenService:
     ) -> Integration:
         """Get user integration by user ID and provider."""
         integration = await Integration.objects.select_related("user").get_or_none(
-            user__clerk_id=user_id, provider=provider
+            user__external_auth_id=user_id, provider=provider
         )
         if not integration:
             raise NotFoundException(
@@ -629,7 +629,7 @@ class TokenService:
         try:
             # Get all user integrations
             integrations = await Integration.objects.filter(
-                user__clerk_id=user_id
+                user__external_auth_id=user_id
             ).all()
 
             if not integrations:
@@ -712,7 +712,7 @@ class TokenService:
             if "provider" in criteria:
                 query = query.filter(provider=criteria["provider"])
             if "user_ids" in criteria:
-                query = query.filter(user__clerk_id__in=criteria["user_ids"])
+                query = query.filter(user__external_auth_id__in=criteria["user_ids"])
             if "created_after" in criteria:
                 query = query.filter(created_at__gte=criteria["created_after"])
             if "last_sync_before" in criteria:
@@ -734,7 +734,7 @@ class TokenService:
             for integration in integrations:
                 try:
                     response = await self.revoke_tokens(
-                        user_id=integration.user.clerk_id,
+                        user_id=integration.user.external_auth_id,
                         provider=integration.provider,
                         reason=reason,
                     )
@@ -744,7 +744,7 @@ class TokenService:
                     self.logger.error(
                         "Failed to revoke tokens for integration",
                         integration_id=integration.id,
-                        user_id=integration.user.clerk_id,
+                        user_id=integration.user.external_auth_id,
                         provider=integration.provider.value,
                         error=str(e),
                     )

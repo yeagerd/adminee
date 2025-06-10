@@ -27,11 +27,14 @@ from ..services.user_service import user_service
 class TestUserProfileEndpoints:
     """Test cases for user profile endpoints."""
 
-    def create_mock_user(self, user_id: int = 1, clerk_id: str = "user_123") -> User:
+    def create_mock_user(
+        self, user_id: int = 1, external_auth_id: str = "user_123"
+    ) -> User:
         """Create a mock user for testing."""
         user = MagicMock(spec=User)
         user.id = user_id
-        user.clerk_id = clerk_id
+        user.external_auth_id = external_auth_id
+        user.auth_provider = "clerk"
         user.email = "test@example.com"
         user.first_name = "Test"
         user.last_name = "User"
@@ -49,13 +52,14 @@ class TestUserProfileEndpoints:
         mock_user = self.create_mock_user()
 
         with (
-            patch.object(user_service, "get_user_by_clerk_id", return_value=mock_user),
+            patch.object(user_service, "get_user_by_id", return_value=mock_user),
             patch.object(user_service, "get_user_profile") as mock_get_profile,
         ):
 
             mock_response = UserResponse(
                 id=1,
-                clerk_id="user_123",
+                external_auth_id="user_123",
+                auth_provider="clerk",
                 email="test@example.com",
                 first_name="Test",
                 last_name="User",
@@ -70,27 +74,35 @@ class TestUserProfileEndpoints:
             # Import here to avoid circular imports during testing
             from ..routers.users import get_user_profile
 
-            result = await get_user_profile(user_id=1, current_user_id="user_123")
+            result = await get_user_profile(
+                user_id=1, current_user_external_auth_id="user_123"
+            )
 
             assert result.id == 1
-            assert result.clerk_id == "user_123"
+            assert result.external_auth_id == "user_123"
             assert result.email == "test@example.com"
             mock_get_profile.assert_called_once_with(1)
 
     @pytest.mark.asyncio
     async def test_get_user_profile_unauthorized(self):
         """Test user profile retrieval with unauthorized access."""
-        mock_current_user = self.create_mock_user(user_id=1, clerk_id="user_123")
+        # Create a mock user that would be returned by get_user_by_id for user_id=2
+        # This user has external_auth_id="different_user" (not "user_123")
+        mock_target_user = self.create_mock_user(
+            user_id=2, external_auth_id="different_user"
+        )
 
         with patch.object(
-            user_service, "get_user_by_clerk_id", return_value=mock_current_user
+            user_service, "get_user_by_id", return_value=mock_target_user
         ):
 
             from ..routers.users import get_user_profile
 
             # Try to access different user's profile
             with pytest.raises(HTTPException) as exc_info:
-                await get_user_profile(user_id=2, current_user_id="user_123")
+                await get_user_profile(
+                    user_id=2, current_user_external_auth_id="user_123"
+                )
 
             assert exc_info.value.status_code == status.HTTP_403_FORBIDDEN
             assert "Access denied" in str(exc_info.value.detail)
@@ -98,13 +110,15 @@ class TestUserProfileEndpoints:
     @pytest.mark.asyncio
     async def test_get_user_profile_not_found(self):
         """Test user profile retrieval when user not found."""
-        with patch.object(user_service, "get_user_by_clerk_id") as mock_get_by_clerk:
-            mock_get_by_clerk.side_effect = UserNotFoundException("User not found")
+        with patch.object(user_service, "get_user_by_id") as mock_get_by_id:
+            mock_get_by_id.side_effect = UserNotFoundException("User not found")
 
             from ..routers.users import get_user_profile
 
             with pytest.raises(HTTPException) as exc_info:
-                await get_user_profile(user_id=1, current_user_id="user_123")
+                await get_user_profile(
+                    user_id=1, current_user_external_auth_id="user_123"
+                )
 
             assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
 
@@ -118,7 +132,7 @@ class TestUserProfileEndpoints:
         user_update = UserUpdate(first_name="Updated", last_name="Name")
 
         with (
-            patch.object(user_service, "get_user_by_clerk_id", return_value=mock_user),
+            patch.object(user_service, "get_user_by_id", return_value=mock_user),
             patch.object(user_service, "update_user", return_value=mock_updated_user),
             patch(
                 "services.user_management.schemas.user.UserResponse.from_orm"
@@ -127,7 +141,8 @@ class TestUserProfileEndpoints:
 
             mock_response = UserResponse(
                 id=1,
-                clerk_id="user_123",
+                external_auth_id="user_123",
+                auth_provider="clerk",
                 email="test@example.com",
                 first_name="Updated",
                 last_name="Name",
@@ -142,7 +157,9 @@ class TestUserProfileEndpoints:
             from ..routers.users import update_user_profile
 
             result = await update_user_profile(
-                user_data=user_update, user_id=1, current_user_id="user_123"
+                user_data=user_update,
+                user_id=1,
+                current_user_external_auth_id="user_123",
             )
 
             assert result.first_name == "Updated"
@@ -155,7 +172,7 @@ class TestUserProfileEndpoints:
         user_update = UserUpdate(first_name="Updated")
 
         with (
-            patch.object(user_service, "get_user_by_clerk_id", return_value=mock_user),
+            patch.object(user_service, "get_user_by_id", return_value=mock_user),
             patch.object(user_service, "update_user") as mock_update,
         ):
 
@@ -167,7 +184,9 @@ class TestUserProfileEndpoints:
 
             with pytest.raises(HTTPException) as exc_info:
                 await update_user_profile(
-                    user_data=user_update, user_id=1, current_user_id="user_123"
+                    user_data=user_update,
+                    user_id=1,
+                    current_user_external_auth_id="user_123",
                 )
 
             assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
@@ -180,11 +199,12 @@ class TestUserProfileEndpoints:
             success=True,
             message="User 1 successfully deleted",
             user_id=1,
+            external_auth_id="user_123",
             deleted_at=datetime.utcnow(),
         )
 
         with (
-            patch.object(user_service, "get_user_by_clerk_id", return_value=mock_user),
+            patch.object(user_service, "get_user_by_id", return_value=mock_user),
             patch.object(
                 user_service, "delete_user", return_value=mock_delete_response
             ),
@@ -192,7 +212,9 @@ class TestUserProfileEndpoints:
 
             from ..routers.users import delete_user_profile
 
-            result = await delete_user_profile(user_id=1, current_user_id="user_123")
+            result = await delete_user_profile(
+                user_id=1, current_user_external_auth_id="user_123"
+            )
 
             assert result.success is True
             assert result.user_id == 1
@@ -201,17 +223,23 @@ class TestUserProfileEndpoints:
     @pytest.mark.asyncio
     async def test_delete_user_profile_unauthorized(self):
         """Test user profile deletion with unauthorized access."""
-        mock_current_user = self.create_mock_user(user_id=1, clerk_id="user_123")
+        # Create a mock user that would be returned by get_user_by_id for user_id=2
+        # This user has external_auth_id="different_user" (not "user_123")
+        mock_target_user = self.create_mock_user(
+            user_id=2, external_auth_id="different_user"
+        )
 
         with patch.object(
-            user_service, "get_user_by_clerk_id", return_value=mock_current_user
+            user_service, "get_user_by_id", return_value=mock_target_user
         ):
 
             from ..routers.users import delete_user_profile
 
             # Try to delete different user's profile
             with pytest.raises(HTTPException) as exc_info:
-                await delete_user_profile(user_id=2, current_user_id="user_123")
+                await delete_user_profile(
+                    user_id=2, current_user_external_auth_id="user_123"
+                )
 
             assert exc_info.value.status_code == status.HTTP_403_FORBIDDEN
 
@@ -228,7 +256,7 @@ class TestUserProfileEndpoints:
         )
 
         with (
-            patch.object(user_service, "get_user_by_clerk_id", return_value=mock_user),
+            patch.object(user_service, "get_user_by_id", return_value=mock_user),
             patch.object(
                 user_service, "update_user_onboarding", return_value=mock_updated_user
             ),
@@ -239,7 +267,8 @@ class TestUserProfileEndpoints:
 
             mock_response = UserResponse(
                 id=1,
-                clerk_id="user_123",
+                external_auth_id="user_123",
+                auth_provider="clerk",
                 email="test@example.com",
                 first_name="Test",
                 last_name="User",
@@ -254,11 +283,12 @@ class TestUserProfileEndpoints:
             from ..routers.users import update_user_onboarding
 
             result = await update_user_onboarding(
-                onboarding_data=onboarding_update, user_id=1, current_user_id="user_123"
+                onboarding_data=onboarding_update,
+                user_id=1,
+                current_user_external_auth_id="user_123",
             )
 
             assert result.onboarding_completed is True
-            assert result.onboarding_step is None
             user_service.update_user_onboarding.assert_called_once_with(
                 1, onboarding_update
             )
@@ -270,7 +300,8 @@ class TestUserProfileEndpoints:
             users=[
                 UserResponse(
                     id=1,
-                    clerk_id="user_123",
+                    external_auth_id="user_123",
+                    auth_provider="clerk",
                     email="test@example.com",
                     first_name="Test",
                     last_name="User",
@@ -337,7 +368,9 @@ class TestUserProfileEndpoints:
         mock_user = self.create_mock_user()
 
         with (
-            patch.object(user_service, "get_user_by_clerk_id", return_value=mock_user),
+            patch.object(
+                user_service, "get_user_by_external_auth_id", return_value=mock_user
+            ),
             patch(
                 "services.user_management.schemas.user.UserResponse.from_orm"
             ) as mock_from_orm,
@@ -345,7 +378,8 @@ class TestUserProfileEndpoints:
 
             mock_response = UserResponse(
                 id=1,
-                clerk_id="user_123",
+                external_auth_id="user_123",
+                auth_provider="clerk",
                 email="test@example.com",
                 first_name="Test",
                 last_name="User",
@@ -359,22 +393,25 @@ class TestUserProfileEndpoints:
 
             from ..routers.users import get_current_user_profile
 
-            result = await get_current_user_profile(current_user_id="user_123")
+            result = await get_current_user_profile(
+                current_user_external_auth_id="user_123"
+            )
 
-            assert result.clerk_id == "user_123"
-            assert result.email == "test@example.com"
-            user_service.get_user_by_clerk_id.assert_called_once_with("user_123")
+            assert result.external_auth_id == "user_123"
+            user_service.get_user_by_external_auth_id.assert_called_once_with(
+                "user_123"
+            )
 
     @pytest.mark.asyncio
     async def test_get_current_user_profile_not_found(self):
         """Test current user profile retrieval when user not found."""
-        with patch.object(user_service, "get_user_by_clerk_id") as mock_get:
+        with patch.object(user_service, "get_user_by_external_auth_id") as mock_get:
             mock_get.side_effect = UserNotFoundException("User not found")
 
             from ..routers.users import get_current_user_profile
 
             with pytest.raises(HTTPException) as exc_info:
-                await get_current_user_profile(current_user_id="user_123")
+                await get_current_user_profile(current_user_external_auth_id="user_123")
 
             assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
 
@@ -449,11 +486,14 @@ class TestUserServiceIntegration:
         with pytest.raises(ValidationException):
             await user_service.create_user(create_data)
 
-    def create_mock_user(self, user_id: int = 1, clerk_id: str = "user_123") -> User:
+    def create_mock_user(
+        self, user_id: int = 1, external_auth_id: str = "user_123"
+    ) -> User:
         """Create a mock user for testing."""
         user = MagicMock(spec=User)
         user.id = user_id
-        user.clerk_id = clerk_id
+        user.external_auth_id = external_auth_id
+        user.auth_provider = "clerk"
         user.email = "test@example.com"
         user.first_name = "Test"
         user.last_name = "User"

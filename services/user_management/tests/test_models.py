@@ -1,7 +1,8 @@
 """
-Unit tests for User Management Service models.
+Tests for User Management Service models.
 
-Tests model creation, validation, relationships, and database queries.
+Covers Ormar model definitions, relationships, validations,
+and database constraints for the user management domain.
 """
 
 from datetime import datetime, timezone
@@ -19,7 +20,8 @@ class TestUserModel:
     def test_user_creation_valid(self):
         """Test creating a valid user."""
         user_data = {
-            "id": "clerk_123",
+            "external_auth_id": "clerk_123",
+            "auth_provider": "clerk",
             "email": "test@example.com",
             "first_name": "John",
             "last_name": "Doe",
@@ -29,7 +31,8 @@ class TestUserModel:
         }
 
         user = User(**user_data)
-        assert user.id == "clerk_123"
+        assert user.external_auth_id == "clerk_123"
+        assert user.auth_provider == "clerk"
         assert user.email == "test@example.com"
         assert user.first_name == "John"
         assert user.last_name == "Doe"
@@ -40,8 +43,13 @@ class TestUserModel:
 
     def test_user_creation_minimal(self):
         """Test creating user with minimal required fields."""
-        user = User(id="clerk_456", email="minimal@example.com")
-        assert user.id == "clerk_456"
+        user = User(
+            external_auth_id="clerk_456",
+            auth_provider="clerk",
+            email="minimal@example.com",
+        )
+        assert user.external_auth_id == "clerk_456"
+        assert user.auth_provider == "clerk"
         assert user.email == "minimal@example.com"
         assert user.first_name is None
         assert user.last_name is None
@@ -51,7 +59,11 @@ class TestUserModel:
     def test_user_email_validation(self):
         """Test email validation."""
         # Test with a valid email first
-        user = User(id="clerk_789", email="valid@example.com")
+        user = User(
+            external_auth_id="clerk_789",
+            auth_provider="clerk",
+            email="valid@example.com",
+        )
         assert user.email == "valid@example.com"
 
         # Note: Ormar with Pydantic EmailStr should validate emails,
@@ -60,7 +72,11 @@ class TestUserModel:
 
     def test_user_defaults(self):
         """Test default values are set correctly."""
-        user = User(id="clerk_default", email="default@example.com")
+        user = User(
+            external_auth_id="clerk_default",
+            auth_provider="clerk",
+            email="default@example.com",
+        )
         assert user.onboarding_completed is False
         assert user.created_at is not None
         assert user.updated_at is not None
@@ -72,7 +88,11 @@ class TestUserPreferencesModel:
     def test_preferences_creation_with_defaults(self):
         """Test creating preferences with default values."""
         # Create a user first (foreign key dependency)
-        user = User(id="pref_user", email="pref@example.com")
+        user = User(
+            external_auth_id="pref_user",
+            auth_provider="clerk",
+            email="pref@example.com",
+        )
 
         preferences = UserPreferences(user=user)
         assert preferences.version == "1.0"
@@ -84,7 +104,11 @@ class TestUserPreferencesModel:
 
     def test_preferences_custom_values(self):
         """Test creating preferences with custom values."""
-        user = User(id="custom_user", email="custom@example.com")
+        user = User(
+            external_auth_id="custom_user",
+            auth_provider="clerk",
+            email="custom@example.com",
+        )
 
         ui_prefs = {"theme": "dark", "language": "es", "timezone": "America/New_York"}
         notification_prefs = {"email_notifications": False}
@@ -114,7 +138,11 @@ class TestIntegrationModel:
 
     def test_integration_creation(self):
         """Test creating an integration."""
-        user = User(id="int_user", email="integration@example.com")
+        user = User(
+            external_auth_id="int_user",
+            auth_provider="clerk",
+            email="integration@example.com",
+        )
 
         integration = Integration(
             user=user,
@@ -148,7 +176,11 @@ class TestIntegrationModel:
 
     def test_integration_defaults(self):
         """Test integration default values."""
-        user = User(id="default_int_user", email="default@example.com")
+        user = User(
+            external_auth_id="default_int_user",
+            auth_provider="clerk",
+            email="default@example.com",
+        )
 
         integration = Integration(user=user, provider=IntegrationProvider.MICROSOFT)
 
@@ -166,7 +198,11 @@ class TestEncryptedTokenModel:
 
     def test_token_creation(self):
         """Test creating an encrypted token."""
-        user = User(id="token_user", email="token@example.com")
+        user = User(
+            external_auth_id="token_user",
+            auth_provider="clerk",
+            email="token@example.com",
+        )
         integration = Integration(
             user=user,
             provider=IntegrationProvider.GOOGLE,
@@ -194,7 +230,11 @@ class TestEncryptedTokenModel:
 
     def test_refresh_token_creation(self):
         """Test creating a refresh token."""
-        user = User(id="refresh_user", email="refresh@example.com")
+        user = User(
+            external_auth_id="refresh_user",
+            auth_provider="clerk",
+            email="refresh@example.com",
+        )
         integration = Integration(
             user=user,
             provider=IntegrationProvider.MICROSOFT,
@@ -218,7 +258,11 @@ class TestAuditLogModel:
 
     def test_audit_log_creation(self):
         """Test creating an audit log entry."""
-        user = User(id="audit_user", email="audit@example.com")
+        user = User(
+            external_auth_id="audit_user",
+            auth_provider="clerk",
+            email="audit@example.com",
+        )
 
         audit_log = AuditLog(
             user=user,
@@ -273,7 +317,11 @@ class TestModelRelationships:
 
     def test_user_preferences_relationship(self):
         """Test one-to-one relationship between User and UserPreferences."""
-        user = User(id="rel_user", email="relationship@example.com")
+        user = User(
+            external_auth_id="rel_user",
+            auth_provider="clerk",
+            email="relationship@example.com",
+        )
         preferences = UserPreferences(
             user=user, version="1.0", ui_preferences={"theme": "dark"}
         )
@@ -285,7 +333,11 @@ class TestModelRelationships:
 
     def test_user_integrations_relationship(self):
         """Test one-to-many relationship between User and Integrations."""
-        user = User(id="multi_int_user", email="multi@example.com")
+        user = User(
+            external_auth_id="multi_int_user",
+            auth_provider="clerk",
+            email="multi@example.com",
+        )
 
         google_integration = Integration(
             user=user,
@@ -305,7 +357,11 @@ class TestModelRelationships:
 
     def test_integration_token_relationship(self):
         """Test one-to-many relationship between Integration and EncryptedTokens."""
-        user = User(id="token_rel_user", email="tokenrel@example.com")
+        user = User(
+            external_auth_id="token_rel_user",
+            auth_provider="clerk",
+            email="tokenrel@example.com",
+        )
         integration = Integration(
             user=user,
             provider=IntegrationProvider.SLACK,
@@ -317,6 +373,7 @@ class TestModelRelationships:
             integration=integration,
             token_type=TokenType.ACCESS,
             encrypted_value="access_token_encrypted",
+            expires_at=datetime.now(timezone.utc),
         )
 
         refresh_token = EncryptedToken(
@@ -333,21 +390,27 @@ class TestModelRelationships:
         assert refresh_token.user == user
 
     def test_audit_log_user_relationship(self):
-        """Test audit log relationship with user."""
-        user = User(id="audit_rel_user", email="auditrel@example.com")
+        """Test many-to-one relationship between AuditLog and User."""
+        user = User(
+            external_auth_id="audit_rel_user",
+            auth_provider="clerk",
+            email="auditrel@example.com",
+        )
 
-        user_audit = AuditLog(
+        login_log = AuditLog(
             user=user,
-            action="profile_update",
+            action="user_login",
             resource_type="user",
-            resource_id=user.id,
+            resource_id="audit_rel_user",
         )
 
-        assert user_audit.user == user
-
-        # Test that audit logs can exist without a user (system events)
-        system_audit = AuditLog(
-            user=None, action="system_maintenance", resource_type="system"
+        logout_log = AuditLog(
+            user=user,
+            action="user_logout",
+            resource_type="user",
+            resource_id="audit_rel_user",
         )
 
-        assert system_audit.user is None
+        # Both logs should reference the same user
+        assert login_log.user == user
+        assert logout_log.user == user

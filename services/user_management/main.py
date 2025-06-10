@@ -641,10 +641,16 @@ async def readiness_check():
             db_start = time.time()
             await database.execute("SELECT 1")
 
-            # Check if we can query actual tables
-            await database.execute(
-                "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public'"
-            )
+            # Check if we can query actual tables - use a more generic approach
+            try:
+                # Try to query the users table directly (should exist after migrations)
+                await database.execute("SELECT COUNT(*) FROM users LIMIT 1")
+            except Exception:
+                # If users table doesn't exist, the database isn't properly set up
+                raise Exception(
+                    "Database tables not initialized (run alembic upgrade head)"
+                )
+
             db_duration = (time.time() - db_start) * 1000  # Convert to milliseconds
 
             readiness_status["checks"]["database"] = {

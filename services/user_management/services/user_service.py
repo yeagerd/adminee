@@ -32,10 +32,10 @@ class UserService:
 
     async def get_user_by_id(self, user_id: int) -> User:
         """
-        Get user by database ID.
+        Get user by internal database ID.
 
         Args:
-            user_id: Database ID of the user
+            user_id: Internal database ID of the user
 
         Returns:
             User model instance
@@ -57,12 +57,15 @@ class UserService:
             logger.error(f"Error retrieving user by ID {user_id}: {e}")
             raise UserNotFoundException(str(user_id))
 
-    async def get_user_by_clerk_id(self, clerk_id: str) -> User:
+    async def get_user_by_external_auth_id(
+        self, external_auth_id: str, auth_provider: str = "clerk"
+    ) -> User:
         """
-        Get user by Clerk ID.
+        Get user by external authentication ID.
 
         Args:
-            clerk_id: Clerk user ID
+            external_auth_id: External auth provider user ID
+            auth_provider: Authentication provider name
 
         Returns:
             User model instance
@@ -71,14 +74,24 @@ class UserService:
             UserNotFoundException: If user is not found
         """
         try:
-            user = await User.objects.get(clerk_id=clerk_id, deleted_at__isnull=True)
+            user = await User.objects.get(
+                external_auth_id=external_auth_id, auth_provider=auth_provider
+            )
+            if user.deleted_at is not None:
+                raise UserNotFoundException(f"{auth_provider}:{external_auth_id}")
 
-            logger.info(f"Retrieved user by Clerk ID: {clerk_id}")
+            logger.info(
+                f"Retrieved user by external auth ID: {auth_provider}:{external_auth_id}"
+            )
             return user
 
         except Exception as e:
-            logger.error(f"Error retrieving user by Clerk ID {clerk_id}: {e}")
-            raise UserNotFoundException(clerk_id)
+            if isinstance(e, UserNotFoundException):
+                raise
+            logger.error(
+                f"Error retrieving user by external auth ID {auth_provider}:{external_auth_id}: {e}"
+            )
+            raise UserNotFoundException(f"{auth_provider}:{external_auth_id}")
 
     async def create_user(self, user_data: UserCreate) -> User:
         """
@@ -91,24 +104,26 @@ class UserService:
             Created user model instance
 
         Raises:
-            ValidationException: If user data is invalid or clerk_id already exists
+            ValidationException: If user data is invalid or external_auth_id already exists
         """
         try:
-            # Check if user with this clerk_id already exists
+            # Check if user with this external_auth_id already exists
             existing_user = await User.objects.filter(
-                clerk_id=user_data.clerk_id, deleted_at__isnull=True
+                external_auth_id=user_data.external_auth_id,
+                auth_provider=user_data.auth_provider,
             ).get_or_none()
 
-            if existing_user:
+            if existing_user and existing_user.deleted_at is None:
                 raise ValidationException(
-                    field="clerk_id",
-                    value=user_data.clerk_id,
-                    reason=f"User with Clerk ID {user_data.clerk_id} already exists",
+                    field="external_auth_id",
+                    value=user_data.external_auth_id,
+                    reason=f"User with {user_data.auth_provider} ID {user_data.external_auth_id} already exists",
                 )
 
             # Create new user
             user = await User.objects.create(
-                clerk_id=user_data.clerk_id,
+                external_auth_id=user_data.external_auth_id,
+                auth_provider=user_data.auth_provider,
                 email=user_data.email,
                 first_name=user_data.first_name,
                 last_name=user_data.last_name,
@@ -117,7 +132,9 @@ class UserService:
                 onboarding_step="profile_setup",
             )
 
-            logger.info(f"Created new user with Clerk ID: {user_data.clerk_id}")
+            logger.info(
+                f"Created new user with {user_data.auth_provider} ID: {user_data.external_auth_id}"
+            )
             return user
 
         except ValidationException:
@@ -135,7 +152,7 @@ class UserService:
         Update an existing user.
 
         Args:
-            user_id: Database ID of the user
+            user_id: Internal database ID of the user
             user_data: User update data
 
         Returns:
@@ -187,7 +204,7 @@ class UserService:
         Update user onboarding status.
 
         Args:
-            user_id: Database ID of the user
+            user_id: Internal database ID of the user
             onboarding_data: Onboarding update data
 
         Returns:
@@ -226,7 +243,7 @@ class UserService:
         Soft delete a user.
 
         Args:
-            user_id: Database ID of the user
+            user_id: Internal database ID of the user
 
         Returns:
             Deletion response with status
@@ -247,6 +264,7 @@ class UserService:
                 success=True,
                 message=f"User {user_id} successfully deleted",
                 user_id=user_id,
+                external_auth_id=user.external_auth_id,
                 deleted_at=deleted_at,
             )
 
@@ -326,7 +344,7 @@ class UserService:
         Get user profile response.
 
         Args:
-            user_id: Database ID of the user
+            user_id: Internal database ID of the user
 
         Returns:
             User response schema
@@ -342,7 +360,7 @@ class UserService:
         Verify if user exists (for authorization checks).
 
         Args:
-            user_id: Database ID of the user
+            user_id: Internal database ID of the user
 
         Returns:
             True if user exists and is not deleted
@@ -355,10 +373,10 @@ class UserService:
 
     async def get_users_by_ids(self, user_ids: List[int]) -> List[User]:
         """
-        Get multiple users by their database IDs.
+        Get multiple users by their internal database IDs.
 
         Args:
-            user_ids: List of database IDs
+            user_ids: List of internal database IDs
 
         Returns:
             List of user model instances
@@ -382,7 +400,7 @@ class UserService:
         Update user's last login timestamp.
 
         Args:
-            user_id: Database ID of the user
+            user_id: Internal database ID of the user
         """
         try:
             user = await self.get_user_by_id(user_id)
