@@ -254,16 +254,16 @@
 * [x] 12.9 Run `./fix` to format and lint code
 * [x] 12.10 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-* [ ] 13. Secure Token Storage (where additive with 9. Token Encryption Implementation)
-* [ ] 13.1 Create `services/token_service.py` for encrypted token storage and retrieval
-* [ ] 13.2 Implement `store_tokens()` method with automatic encryption before database storage
-* [ ] 13.3 Implement `get_valid_token()` method with automatic refresh if token is expired
-* [ ] 13.4 Add token lifecycle management including creation, updates, and secure deletion
-* [ ] 13.5 Implement token expiration checking with configurable buffer time
-* [ ] 13.6 Add token revocation procedures that notify providers when possible
-* [ ] 13.7 Write unit tests for token storage, retrieval, refresh, and lifecycle management
-* [ ] 13.8 Run `./fix` to format and lint code
-* [ ] 13.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
+* [x] 13. Secure Token Storage (where additive with 9. Token Encryption Implementation)
+* [x] 13.1 Create `services/token_service.py` for encrypted token storage and retrieval
+* [x] 13.2 Implement `store_tokens()` method with automatic encryption before database storage
+* [x] 13.3 Implement `get_valid_token()` method with automatic refresh if token is expired
+* [x] 13.4 Add token lifecycle management including creation, updates, and secure deletion
+* [x] 13.5 Implement token expiration checking with configurable buffer time
+* [x] 13.6 Add token revocation procedures that notify providers when possible
+* [x] 13.7 Write unit tests for token storage, retrieval, refresh, and lifecycle management
+* [x] 13.8 Run `./fix` to format and lint code
+* [x] 13.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
 ### Phase 6: Service-to-Service API
 

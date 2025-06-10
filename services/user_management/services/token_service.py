@@ -8,6 +8,7 @@ internal service-to-service communication with automatic refresh and validation.
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
+import httpx
 import structlog
 
 from ..exceptions import (
@@ -20,6 +21,7 @@ from ..models.user import User
 from ..schemas.integration import (
     InternalTokenResponse,
     InternalUserStatusResponse,
+    TokenRevocationResponse,
 )
 from ..security.encryption import TokenEncryption
 from ..services.audit_service import audit_logger
@@ -474,6 +476,409 @@ class TokenService:
     ) -> bool:
         """Check if granted scopes include all required scopes."""
         return all(scope in granted_scopes for scope in required_scopes)
+
+    async def revoke_tokens(
+        self,
+        user_id: str,
+        provider: IntegrationProvider,
+        reason: str = "user_request",
+    ) -> TokenRevocationResponse:
+        """
+        Revoke tokens with provider and clean up locally.
+
+        Args:
+            user_id: User identifier
+            provider: OAuth provider
+            reason: Reason for revocation (for audit trail)
+
+        Returns:
+            TokenRevocationResponse with revocation status
+        """
+        try:
+            # Get user integration
+            integration = await self._get_user_integration(user_id, provider)
+
+            # Get tokens to revoke
+            access_token_record = await EncryptedToken.objects.get_or_none(
+                integration=integration, token_type=TokenType.ACCESS
+            )
+            refresh_token_record = await EncryptedToken.objects.get_or_none(
+                integration=integration, token_type=TokenType.REFRESH
+            )
+
+            if not access_token_record and not refresh_token_record:
+                return TokenRevocationResponse(
+                    success=True,  # No tokens to revoke is considered success
+                    provider=provider,
+                    user_id=user_id,
+                    integration_id=integration.id,
+                    revoked_at=datetime.now(timezone.utc),
+                    reason=reason,
+                    error="No tokens found to revoke",
+                )
+
+            revocation_results = []
+
+            # Revoke access token with provider
+            if access_token_record:
+                access_token = self.token_encryption.decrypt_token(
+                    encrypted_token=access_token_record.encrypted_value,
+                    user_id=user_id,
+                )
+
+                provider_result = await self._revoke_with_provider(
+                    provider, access_token, "access_token"
+                )
+                revocation_results.append(provider_result)
+
+            # Revoke refresh token with provider
+            if refresh_token_record:
+                refresh_token = self.token_encryption.decrypt_token(
+                    encrypted_token=refresh_token_record.encrypted_value,
+                    user_id=user_id,
+                )
+
+                provider_result = await self._revoke_with_provider(
+                    provider, refresh_token, "refresh_token"
+                )
+                revocation_results.append(provider_result)
+
+            # Clean up local token storage
+            if access_token_record:
+                await access_token_record.delete()
+            if refresh_token_record:
+                await refresh_token_record.delete()
+
+            # Update integration status
+            await integration.update(
+                status=IntegrationStatus.ERROR,  # Use ERROR instead of DISCONNECTED
+                last_error=None,
+                error_count=0,
+                updated_at=datetime.now(timezone.utc),
+            )
+
+            # Determine overall success
+            overall_success = any(
+                result.get("success", False) for result in revocation_results
+            )
+            errors = [str(r.get("error")) for r in revocation_results if r.get("error")]
+
+            # Log audit event
+            await audit_logger.log_user_action(
+                user_id=user_id,
+                action="tokens_revoked",
+                resource_type="token",
+                details={
+                    "provider": provider.value,
+                    "integration_id": integration.id,
+                    "reason": reason,
+                    "success": overall_success,
+                    "provider_results": revocation_results,
+                },
+            )
+
+            self.logger.info(
+                "Token revocation completed",
+                user_id=user_id,
+                provider=provider.value,
+                integration_id=integration.id,
+                success=overall_success,
+                reason=reason,
+            )
+
+            return TokenRevocationResponse(
+                success=overall_success,
+                provider=provider,
+                user_id=user_id,
+                integration_id=integration.id,
+                revoked_at=datetime.now(timezone.utc),
+                reason=reason,
+                error="; ".join(errors) if errors else None,
+                provider_response={"results": revocation_results},
+            )
+
+        except Exception as e:
+            self.logger.error(
+                "Failed to revoke tokens",
+                user_id=user_id,
+                provider=provider.value,
+                reason=reason,
+                error=str(e),
+            )
+            return TokenRevocationResponse(
+                success=False,
+                provider=provider,
+                user_id=user_id,
+                reason=reason,
+                error=f"Token revocation failed: {str(e)}",
+            )
+
+    async def revoke_all_user_tokens(
+        self, user_id: str, reason: str = "account_deletion"
+    ) -> List[TokenRevocationResponse]:
+        """
+        Revoke all tokens for a user (e.g., account deletion).
+
+        Args:
+            user_id: User identifier
+            reason: Reason for bulk revocation
+
+        Returns:
+            List of TokenRevocationResponse for each provider
+        """
+        try:
+            # Get all user integrations
+            integrations = await Integration.objects.filter(
+                user__clerk_id=user_id
+            ).all()
+
+            if not integrations:
+                self.logger.info(
+                    "No integrations found for user",
+                    user_id=user_id,
+                    reason=reason,
+                )
+                return []
+
+            revocation_responses = []
+
+            # Revoke tokens for each provider
+            for integration in integrations:
+                if integration.status == IntegrationStatus.ACTIVE:
+                    response = await self.revoke_tokens(
+                        user_id=user_id,
+                        provider=integration.provider,
+                        reason=reason,
+                    )
+                    revocation_responses.append(response)
+
+            await audit_logger.log_user_action(
+                user_id=user_id,
+                action="all_tokens_revoked",
+                resource_type="token",
+                details={
+                    "reason": reason,
+                    "integrations_count": len(integrations),
+                    "revoked_count": len(revocation_responses),
+                    "results": [r.dict() for r in revocation_responses],
+                },
+            )
+
+            self.logger.info(
+                "Bulk token revocation completed",
+                user_id=user_id,
+                reason=reason,
+                total_integrations=len(integrations),
+                revoked_count=len(revocation_responses),
+            )
+
+            return revocation_responses
+
+        except Exception as e:
+            self.logger.error(
+                "Failed to revoke all user tokens",
+                user_id=user_id,
+                reason=reason,
+                error=str(e),
+            )
+            # Return error response for unknown integration
+            return [
+                TokenRevocationResponse(
+                    success=False,
+                    provider=IntegrationProvider.GOOGLE,  # Default for error case
+                    user_id=user_id,
+                    reason=reason,
+                    error=f"Bulk revocation failed: {str(e)}",
+                )
+            ]
+
+    async def emergency_revoke_tokens(
+        self, criteria: Dict, reason: str = "security_incident"
+    ) -> int:
+        """
+        Bulk revoke tokens matching criteria (e.g., security incident).
+
+        Args:
+            criteria: Dictionary with filtering criteria
+            reason: Reason for emergency revocation
+
+        Returns:
+            Number of integrations processed
+        """
+        try:
+            # Build query based on criteria
+            query = Integration.objects.filter(status=IntegrationStatus.ACTIVE)
+
+            if "provider" in criteria:
+                query = query.filter(provider=criteria["provider"])
+            if "user_ids" in criteria:
+                query = query.filter(user__clerk_id__in=criteria["user_ids"])
+            if "created_after" in criteria:
+                query = query.filter(created_at__gte=criteria["created_after"])
+            if "last_sync_before" in criteria:
+                query = query.filter(last_sync_at__lte=criteria["last_sync_before"])
+
+            integrations = await query.all()
+
+            if not integrations:
+                self.logger.warning(
+                    "No integrations matched emergency revocation criteria",
+                    criteria=criteria,
+                    reason=reason,
+                )
+                return 0
+
+            revocation_count = 0
+
+            # Revoke tokens for matching integrations
+            for integration in integrations:
+                try:
+                    response = await self.revoke_tokens(
+                        user_id=integration.user.clerk_id,
+                        provider=integration.provider,
+                        reason=reason,
+                    )
+                    if response.success:
+                        revocation_count += 1
+                except Exception as e:
+                    self.logger.error(
+                        "Failed to revoke tokens for integration",
+                        integration_id=integration.id,
+                        user_id=integration.user.clerk_id,
+                        provider=integration.provider.value,
+                        error=str(e),
+                    )
+
+            await audit_logger.log_system_action(
+                action="emergency_token_revocation",
+                resource_type="token",
+                details={
+                    "criteria": criteria,
+                    "reason": reason,
+                    "matched_integrations": len(integrations),
+                    "successful_revocations": revocation_count,
+                },
+            )
+
+            self.logger.warning(
+                "Emergency token revocation completed",
+                criteria=criteria,
+                reason=reason,
+                matched_count=len(integrations),
+                revoked_count=revocation_count,
+            )
+
+            return revocation_count
+
+        except Exception as e:
+            self.logger.error(
+                "Emergency token revocation failed",
+                criteria=criteria,
+                reason=reason,
+                error=str(e),
+            )
+            return 0
+
+    async def _revoke_with_provider(
+        self, provider: IntegrationProvider, token: str, token_type: str
+    ) -> Dict:
+        """
+        Revoke token with OAuth provider.
+
+        Args:
+            provider: OAuth provider
+            token: Token to revoke
+            token_type: Type of token (access_token or refresh_token)
+
+        Returns:
+            Dictionary with revocation result
+        """
+        try:
+            if provider == IntegrationProvider.GOOGLE:
+                return await self._revoke_google_token(token)
+            elif provider == IntegrationProvider.MICROSOFT:
+                return await self._revoke_microsoft_token(token)
+            else:
+                return {
+                    "success": False,
+                    "error": f"Token revocation not implemented for {provider.value}",
+                }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Provider revocation failed: {str(e)}",
+                "provider": provider.value,
+                "token_type": token_type,
+            }
+
+    async def _revoke_google_token(self, token: str) -> Dict:
+        """Revoke Google OAuth token."""
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    "https://oauth2.googleapis.com/revoke",
+                    data={"token": token},
+                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                    timeout=10.0,
+                )
+
+                if response.status_code == 200:
+                    return {
+                        "success": True,
+                        "provider": "google",
+                        "status_code": response.status_code,
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "error": f"Google revocation failed: {response.status_code}",
+                        "provider": "google",
+                        "status_code": response.status_code,
+                        "response_text": response.text,
+                    }
+
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Google revocation request failed: {str(e)}",
+                "provider": "google",
+            }
+
+    async def _revoke_microsoft_token(self, token: str) -> Dict:
+        """Revoke Microsoft OAuth token."""
+        try:
+            # Microsoft uses logout endpoint for token revocation
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    "https://login.microsoftonline.com/common/oauth2/v2.0/logout",
+                    data={"token": token},
+                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                    timeout=10.0,
+                )
+
+                # Microsoft logout doesn't always return success codes consistently
+                # We'll consider it successful if no error response
+                if response.status_code in [200, 302, 204]:
+                    return {
+                        "success": True,
+                        "provider": "microsoft",
+                        "status_code": response.status_code,
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "error": f"Microsoft revocation failed: {response.status_code}",
+                        "provider": "microsoft",
+                        "status_code": response.status_code,
+                        "response_text": response.text,
+                    }
+
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Microsoft revocation request failed: {str(e)}",
+                "provider": "microsoft",
+            }
 
 
 # Global token service instance
