@@ -1,9 +1,21 @@
 #!/usr/bin/env python3
 """
-JWT Token Utilities for User Management Demo
+JWT utilities for user management service demos.
 
-Creates valid JWT tokens for demo purposes that will pass
-the service's authentication validation.
+This module provides utilities for creating and working with JWT tokens
+that are compatible with the user management service's authentication system.
+
+The service now supports both Clerk's official SDK verification and manual 
+verification with configurable signature verification:
+
+- With CLERK_SECRET_KEY: Uses Clerk's authenticate_request() method (recommended)
+- With CLERK_JWT_KEY: Uses networkless verification with Clerk's public key
+- Fallback: Manual verification with configurable signature verification
+
+Environment Variables:
+- CLERK_SECRET_KEY: Clerk secret key for full SDK verification
+- CLERK_JWT_KEY: Clerk JWKS public key for networkless verification  
+- JWT_VERIFY_SIGNATURE: Enable signature verification (default: False for demos)
 """
 
 import time

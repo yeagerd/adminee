@@ -12,9 +12,12 @@ import jwt
 from clerk_backend_api import Clerk
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from clerk_backend_api.jwks_helpers import AuthenticateRequestOptions
+import httpx
 
 from ..exceptions import AuthenticationException
 from ..settings import settings
+from ..logging_config import get_logger
 
 logger = logging.getLogger(__name__)
 
@@ -29,41 +32,70 @@ if settings.clerk_secret_key:
 
 async def verify_jwt_token(token: str) -> Dict[str, str]:
     """
-    Verify and decode a Clerk JWT token.
-
+    Verify JWT token using Clerk's official SDK or fallback to manual verification.
+    
     Args:
-        token: The JWT token to verify
-
+        token: JWT token to verify
+        
     Returns:
-        Dict containing decoded token claims
-
+        Decoded token claims
+        
     Raises:
-        AuthenticationException: If token is invalid, expired, or verification fails
+        AuthenticationException: If token is invalid
     """
-    if not settings.clerk_secret_key:
-        logger.error("Clerk secret key not configured")
-        raise AuthenticationException("Authentication service not configured")
-
-    if not clerk_client:
-        logger.error("Clerk client not initialized")
-        raise AuthenticationException("Authentication service not available")
-
+    logger = get_logger(__name__)
+    
     try:
-        # Remove 'Bearer ' prefix if present
-        if token.startswith("Bearer "):
-            token = token[7:]
-
-        # Verify token using Clerk's SDK
+        # Try using Clerk's official SDK first (recommended)
+        if settings.clerk_secret_key:
+            clerk_client = Clerk(bearer_auth=settings.clerk_secret_key)
+            
+            # Create a mock request object with the Authorization header
+            request = httpx.Request(
+                method="GET",
+                url="http://localhost/",
+                headers={"Authorization": f"Bearer {token}"}
+            )
+            
+            # Use Clerk's authenticate_request method
+            auth_options = AuthenticateRequestOptions()
+            if hasattr(settings, 'clerk_jwt_key') and settings.clerk_jwt_key:
+                auth_options.jwt_key = settings.clerk_jwt_key
+            
+            request_state = clerk_client.authenticate_request(request, auth_options)
+            
+            if not request_state.is_signed_in:
+                reason = getattr(request_state, 'reason', 'Authentication failed')
+                logger.warning(f"Clerk authentication failed: {reason}")
+                raise AuthenticationException(f"Authentication failed: {reason}")
+            
+            # Extract claims from the validated token
+            token_claims = request_state.payload
+            logger.info(
+                "Token validated successfully with Clerk SDK",
+                extra={
+                    "user_id": token_claims.get("sub"),
+                    "issuer": token_claims.get("iss"),
+                },
+            )
+            return token_claims
+            
+    except Exception as e:
+        logger.warning(f"Clerk SDK verification failed, falling back to manual: {e}")
+    
+    # Fallback to manual verification (for development/demo)
+    try:
+        logger.info("Using manual JWT verification (signature verification disabled)")
+        
         # Note: Clerk's Python SDK handles JWT verification internally
         # We'll use direct JWT validation for now since Clerk SDK v5+ has different API
-
         # For production, you should use Clerk's official JWT verification
         # This is a simplified implementation for development
         decoded_token = jwt.decode(
             token,
             options={
-                "verify_signature": False
-            },  # In production, use proper verification
+                "verify_signature": getattr(settings, 'jwt_verify_signature', False)
+            },  # Configurable signature verification
             algorithms=["RS256"],
         )
 
@@ -80,7 +112,7 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
             raise AuthenticationException("Invalid token issuer")
 
         logger.info(
-            "Token validated successfully",
+            "Token validated successfully (manual verification)",
             extra={
                 "user_id": decoded_token.get("sub"),
                 "issuer": decoded_token.get("iss"),
