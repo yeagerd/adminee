@@ -49,7 +49,9 @@ class UserManagementDemo:
     """Demo class for user management service."""
 
     def __init__(
-        self, base_url: str = "http://localhost:8000", service_api_key: str = None
+        self,
+        base_url: str = "http://localhost:8000",
+        service_api_key: Optional[str] = None,
     ):
         self.base_url = base_url
         self.client = httpx.AsyncClient()
@@ -61,7 +63,7 @@ class UserManagementDemo:
             self.service_api_key = service_api_key
             self.api_key_source = "command line argument"
         elif os.getenv("SERVICE_API_KEY"):
-            self.service_api_key = os.getenv("SERVICE_API_KEY")
+            self.service_api_key = os.getenv("SERVICE_API_KEY") or ""
             self.api_key_source = "SERVICE_API_KEY environment variable"
         else:
             self.service_api_key = "demo-service-key-12345"

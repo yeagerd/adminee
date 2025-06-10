@@ -211,7 +211,7 @@ async def update_user_profile(
 
 
 @router.delete(
-    "/{clerk_id}",
+    "/{user_id}",
     response_model=UserDeleteResponse,
     summary="Delete user profile",
     description="Soft delete user profile. Users can only delete their own profile.",
@@ -223,8 +223,8 @@ async def update_user_profile(
     },
 )
 async def delete_user_profile(
-    clerk_id: str = Path(..., description="User Clerk ID"),
-    current_user_id: str = Depends(get_current_user),
+    user_id: int = Path(..., description="User database ID"),
+    current_user_external_auth_id: str = Depends(get_current_user),
 ) -> UserDeleteResponse:
     """
     Delete user profile (soft delete).
@@ -233,10 +233,13 @@ async def delete_user_profile(
     by setting the deleted_at timestamp.
     """
     try:
+        # Get the user to verify they exist and check ownership
+        user = await user_service.get_user_by_id(user_id)
+
         # Verify ownership
-        if current_user_id != clerk_id:
+        if current_user_external_auth_id != user.external_auth_id:
             logger.warning(
-                f"User {current_user_id} attempted to delete profile of user {clerk_id}"
+                f"User {current_user_external_auth_id} attempted to delete profile of user {user_id}"
             )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -246,9 +249,9 @@ async def delete_user_profile(
                 },
             )
 
-        delete_response = await user_service.delete_user(clerk_id)
+        delete_response = await user_service.delete_user(user_id)
 
-        logger.info(f"Deleted profile for user {clerk_id}")
+        logger.info(f"Deleted profile for user {user_id}")
         return delete_response
 
     except UserNotFoundException as e:
@@ -260,7 +263,7 @@ async def delete_user_profile(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error deleting user profile {clerk_id}: {e}")
+        logger.error(f"Unexpected error deleting user profile {user_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
@@ -271,7 +274,7 @@ async def delete_user_profile(
 
 
 @router.put(
-    "/{clerk_id}/onboarding",
+    "/{user_id}/onboarding",
     response_model=UserResponse,
     summary="Update user onboarding status",
     description="Update user onboarding completion status and current step.",
@@ -287,8 +290,8 @@ async def delete_user_profile(
 )
 async def update_user_onboarding(
     onboarding_data: UserOnboardingUpdate,
-    clerk_id: str = Path(..., description="User Clerk ID"),
-    current_user_id: str = Depends(get_current_user),
+    user_id: int = Path(..., description="User database ID"),
+    current_user_external_auth_id: str = Depends(get_current_user),
 ) -> UserResponse:
     """
     Update user onboarding status.
@@ -297,10 +300,13 @@ async def update_user_onboarding(
     is used to track user progress through the onboarding flow.
     """
     try:
+        # Get the user to verify they exist and check ownership
+        user = await user_service.get_user_by_id(user_id)
+
         # Verify ownership
-        if current_user_id != clerk_id:
+        if current_user_external_auth_id != user.external_auth_id:
             logger.warning(
-                f"User {current_user_id} attempted to update onboarding of user {clerk_id}"
+                f"User {current_user_external_auth_id} attempted to update onboarding of user {user_id}"
             )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -311,12 +317,12 @@ async def update_user_onboarding(
             )
 
         updated_user = await user_service.update_user_onboarding(
-            clerk_id, onboarding_data
+            user_id, onboarding_data
         )
         user_response = UserResponse.from_orm(updated_user)
 
         logger.info(
-            f"Updated onboarding for user {clerk_id}: completed={onboarding_data.onboarding_completed}"
+            f"Updated onboarding for user {user_id}: completed={onboarding_data.onboarding_completed}"
         )
         return user_response
 
@@ -328,7 +334,7 @@ async def update_user_onboarding(
         )
     except ValidationException as e:
         logger.warning(
-            f"Validation error updating onboarding for user {clerk_id}: {e.message}"
+            f"Validation error updating onboarding for user {user_id}: {e.message}"
         )
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -337,7 +343,7 @@ async def update_user_onboarding(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error updating onboarding for user {clerk_id}: {e}")
+        logger.error(f"Unexpected error updating onboarding for user {user_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={

@@ -28,7 +28,7 @@ class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
     """HTTP handler for OAuth callbacks."""
 
     # Shared state for capturing OAuth data
-    captured_data = {}
+    captured_data: dict[str, str] = {}
 
     def do_GET(self):
         """Handle GET requests (OAuth callbacks)."""
