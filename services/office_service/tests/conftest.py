@@ -16,9 +16,10 @@ import pytest
 # Add the parent directory to sys.path to enable relative imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.main import app
 from core.token_manager import TokenData
 from fastapi.testclient import TestClient
+
+from app.main import app
 
 
 @pytest.fixture(scope="session", autouse=True)
