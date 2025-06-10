@@ -39,7 +39,7 @@ router = APIRouter(prefix="/users", tags=["users"])
     },
 )
 async def get_current_user_profile(
-    current_user_id: str = Depends(get_current_user),
+    current_user_external_auth_id: str = Depends(get_current_user),
 ) -> UserResponse:
     """
     Get current user's profile.
@@ -48,10 +48,10 @@ async def get_current_user_profile(
     without needing to know their database ID.
     """
     try:
-        current_user = await user_service.get_user_by_clerk_id(current_user_id)
+        current_user = await user_service.get_user_by_external_auth_id(current_user_external_auth_id)
         user_response = UserResponse.from_orm(current_user)
 
-        logger.info(f"Retrieved current user profile for {current_user_id}")
+        logger.info(f"Retrieved current user profile for {current_user_external_auth_id}")
         return user_response
 
     except UserNotFoundException as e:
@@ -72,10 +72,10 @@ async def get_current_user_profile(
 
 
 @router.get(
-    "/{clerk_id}",
+    "/{user_id}",
     response_model=UserResponse,
     summary="Get user profile",
-    description="Retrieve user profile information by Clerk ID. Users can only access their own profile.",
+    description="Retrieve user profile information by user ID. Users can only access their own profile.",
     responses={
         200: {"description": "User profile retrieved successfully"},
         401: {"description": "Authentication required"},
@@ -84,20 +84,23 @@ async def get_current_user_profile(
     },
 )
 async def get_user_profile(
-    clerk_id: str = Path(..., description="User Clerk ID"),
-    current_user_id: str = Depends(get_current_user),
+    user_id: int = Path(..., description="User database ID"),
+    current_user_external_auth_id: str = Depends(get_current_user),
 ) -> UserResponse:
     """
-    Get user profile by Clerk ID.
+    Get user profile by database ID.
 
-    Users can only access their own profile. The clerk_id in the path
-    must match the authenticated user's Clerk ID.
+    Users can only access their own profile. The user_id must belong 
+    to the authenticated user.
     """
     try:
-        # Verify ownership
-        if current_user_id != clerk_id:
+        # Get the user to verify they exist and check ownership
+        user = await user_service.get_user_by_id(user_id)
+        
+        # Verify ownership - check if the authenticated user's external auth ID matches
+        if current_user_external_auth_id != user.external_auth_id:
             logger.warning(
-                f"User {current_user_id} attempted to access profile of user {clerk_id}"
+                f"User {current_user_external_auth_id} attempted to access profile of user {user_id}"
             )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -107,9 +110,9 @@ async def get_user_profile(
                 },
             )
 
-        user_profile = await user_service.get_user_profile(clerk_id)
+        user_profile = await user_service.get_user_profile(user_id)
 
-        logger.info(f"Retrieved profile for user {clerk_id}")
+        logger.info(f"Retrieved profile for user {user_id}")
         return user_profile
 
     except UserNotFoundException as e:
@@ -121,7 +124,7 @@ async def get_user_profile(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error retrieving user profile {clerk_id}: {e}")
+        logger.error(f"Unexpected error retrieving user profile {user_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
@@ -132,7 +135,7 @@ async def get_user_profile(
 
 
 @router.put(
-    "/{clerk_id}",
+    "/{user_id}",
     response_model=UserResponse,
     summary="Update user profile",
     description="Update user profile information. Users can only update their own profile.",
@@ -146,8 +149,8 @@ async def get_user_profile(
 )
 async def update_user_profile(
     user_data: UserUpdate,
-    clerk_id: str = Path(..., description="User Clerk ID"),
-    current_user_id: str = Depends(get_current_user),
+    user_id: int = Path(..., description="User database ID"),
+    current_user_external_auth_id: str = Depends(get_current_user),
 ) -> UserResponse:
     """
     Update user profile.
@@ -156,10 +159,13 @@ async def update_user_profile(
     - only provided fields will be updated.
     """
     try:
+        # Get the user to verify they exist and check ownership
+        user = await user_service.get_user_by_id(user_id)
+        
         # Verify ownership
-        if current_user_id != clerk_id:
+        if current_user_external_auth_id != user.external_auth_id:
             logger.warning(
-                f"User {current_user_id} attempted to update profile of user {clerk_id}"
+                f"User {current_user_external_auth_id} attempted to update profile of user {user_id}"
             )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -169,10 +175,10 @@ async def update_user_profile(
                 },
             )
 
-        updated_user = await user_service.update_user(clerk_id, user_data)
+        updated_user = await user_service.update_user(user_id, user_data)
         user_response = UserResponse.from_orm(updated_user)
 
-        logger.info(f"Updated profile for user {clerk_id}")
+        logger.info(f"Updated profile for user {user_id}")
         return user_response
 
     except UserNotFoundException as e:
@@ -182,7 +188,7 @@ async def update_user_profile(
             detail={"error": "UserNotFound", "message": e.message},
         )
     except ValidationException as e:
-        logger.warning(f"Validation error updating user {clerk_id}: {e.message}")
+        logger.warning(f"Validation error updating user {user_id}: {e.message}")
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={"error": "ValidationError", "message": e.message},
@@ -190,7 +196,7 @@ async def update_user_profile(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error updating user profile {clerk_id}: {e}")
+        logger.error(f"Unexpected error updating user profile {user_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={

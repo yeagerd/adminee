@@ -71,27 +71,42 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     """Schema for creating a new user."""
 
-    clerk_id: str = Field(
-        ..., min_length=1, max_length=255, description="Clerk user ID"
+    external_auth_id: str = Field(
+        ..., min_length=1, max_length=255, description="External authentication provider user ID"
+    )
+    auth_provider: str = Field(
+        default="clerk", max_length=50, description="Authentication provider name"
     )
 
-    @field_validator("clerk_id")
+    @field_validator("external_auth_id")
     @classmethod
-    def validate_clerk_id(cls, v):
-        """Validate Clerk ID format."""
+    def validate_external_auth_id(cls, v):
+        """Validate external auth ID format."""
         if not v or not v.strip():
-            raise ValueError("Clerk ID cannot be empty")
+            raise ValueError("External auth ID cannot be empty")
 
         v = v.strip()
 
         # Check for SQL injection patterns
-        check_sql_injection_patterns(v, "clerk_id")
+        check_sql_injection_patterns(v, "external_auth_id")
 
-        # Clerk IDs typically start with 'user_' followed by alphanumeric characters
-        import re
+        return v
 
-        if not re.match(r"^user_[a-zA-Z0-9]+$", v):
-            raise ValueError("Invalid Clerk ID format")
+    @field_validator("auth_provider")
+    @classmethod
+    def validate_auth_provider(cls, v):
+        """Validate auth provider format."""
+        if not v or not v.strip():
+            raise ValueError("Auth provider cannot be empty")
+
+        v = v.strip().lower()
+
+        # Check for SQL injection patterns
+        check_sql_injection_patterns(v, "auth_provider")
+
+        valid_providers = ["clerk", "custom", "auth0", "firebase", "supabase"]
+        if v not in valid_providers:
+            raise ValueError(f"Invalid auth provider. Must be one of: {', '.join(valid_providers)}")
 
         return v
 
@@ -155,7 +170,9 @@ class UserUpdate(BaseModel):
 class UserResponse(UserBase):
     """Schema for user response data."""
 
-    id: str = Field(..., description="User's Clerk ID (primary key)")
+    id: int = Field(..., description="User's internal database ID (primary key)")
+    external_auth_id: str = Field(..., description="External authentication provider user ID")
+    auth_provider: str = Field(..., description="Authentication provider name")
     onboarding_completed: bool = Field(
         ..., description="Whether user has completed onboarding"
     )
@@ -188,7 +205,8 @@ class UserDeleteResponse(BaseModel):
 
     success: bool = Field(..., description="Whether the deletion was successful")
     message: str = Field(..., description="Deletion status message")
-    clerk_id: str = Field(..., description="Clerk ID of the deleted user")
+    user_id: int = Field(..., description="Internal database ID of the deleted user")
+    external_auth_id: str = Field(..., description="External auth ID of the deleted user")
     deleted_at: datetime = Field(..., description="When the user was deleted")
 
     class Config:

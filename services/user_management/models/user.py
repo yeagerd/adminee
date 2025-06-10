@@ -18,12 +18,14 @@ class User(ormar.Model):
     User model representing registered users in the system.
 
     Stores basic profile information and onboarding status.
-    Connected to Clerk for authentication.
+    Uses internal database ID as primary key with external auth ID for authentication providers.
     """
 
     ormar_config = base_ormar_config.copy(tablename="users")
 
-    id: str = ormar.String(primary_key=True, max_length=255)
+    id: int = ormar.Integer(primary_key=True, autoincrement=True)
+    external_auth_id: str = ormar.String(max_length=255, unique=True, index=True)
+    auth_provider: str = ormar.String(max_length=50, default="clerk")
     email: EmailStr = ormar.String(max_length=255, unique=True)
     first_name: Optional[str] = ormar.String(max_length=100, nullable=True)
     last_name: Optional[str] = ormar.String(max_length=100, nullable=True)

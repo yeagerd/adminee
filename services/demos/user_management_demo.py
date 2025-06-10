@@ -50,7 +50,8 @@ class UserManagementDemo:
     def __init__(self, base_url: str = "http://localhost:8000"):
         self.base_url = base_url
         self.client = httpx.AsyncClient()
-        self.demo_user_id = "demo_user_12345"
+        self.demo_user_id = "demo_user_12345"  # This is the external auth ID (Clerk ID)
+        self.demo_database_user_id = None  # This will be set after user creation
         self.service_api_key = "demo-service-key-12345"  # For internal API calls
         # Generate valid JWT token for demo user
         self.auth_token = create_bearer_token(
@@ -144,6 +145,19 @@ class UserManagementDemo:
                 },
             )
             self.print_response(response, "Demo user creation via webhook")
+            
+            # Store the database user ID for later use by getting the created user profile
+            if response.status_code in [200, 201]:
+                # Get the user profile to extract the database ID
+                profile_response = await self.client.get(
+                    f"{self.base_url}/users/me", 
+                    headers={"Authorization": self.auth_token}
+                )
+                if profile_response.status_code == 200:
+                    profile_data = profile_response.json()
+                    self.demo_database_user_id = profile_data.get("id")
+                    print(f"   💾 Stored database user ID: {self.demo_database_user_id}")
+            
             return response.status_code in [200, 201]
         except Exception as e:
             print(f"🔴 Failed to create demo user: {e}")
@@ -174,24 +188,20 @@ class UserManagementDemo:
             print("🔴 Cannot update profile - user profile not found")
             return False
 
-        # Get Clerk ID for the update endpoint
-        clerk_id = await self.get_user_clerk_id()
-        if not clerk_id:
-            print("🔴 Could not get user Clerk ID")
+        # Use the database user ID for the update endpoint
+        if not self.demo_database_user_id:
+            print("🔴 Database user ID not available - user may not have been created")
             return False
 
         update_data = {
             "first_name": "Demo Updated",
             "last_name": "User Updated",
-            "bio": "This is a demo user for testing the user management service!",
-            "location": "San Francisco, CA",
-            "website": "https://demo.example.com",
         }
 
         try:
-            # Use the Clerk ID for the update endpoint
+            # Use the database ID for the update endpoint
             response = await self.client.put(
-                f"{self.base_url}/users/{clerk_id}",
+                f"{self.base_url}/users/{self.demo_database_user_id}",
                 json=update_data,
                 headers={"Authorization": self.auth_token},
             )
