@@ -8,7 +8,7 @@ from external services like Clerk.
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class ClerkWebhookEventData(BaseModel):
@@ -26,7 +26,7 @@ class ClerkWebhookEventData(BaseModel):
         None, description="Update timestamp in milliseconds"
     )
 
-    @validator("email_addresses", pre=True)
+    @field_validator("email_addresses", mode='before')
     def extract_primary_email(cls, v) -> Optional[str]:
         """Extract primary email from email addresses array."""
         if v and isinstance(v, list) and len(v) > 0:
@@ -50,7 +50,7 @@ class ClerkWebhookEvent(BaseModel):
     object: str = Field(..., description="Object type (e.g., event)")
     timestamp: Optional[int] = Field(None, description="Event timestamp")
 
-    @validator("type")
+    @field_validator("type")
     def validate_event_type(cls, v):
         """Validate that we support this event type."""
         supported_events = ["user.created", "user.updated", "user.deleted"]
