@@ -59,8 +59,10 @@ class TestClerkAuthentication:
         with (
             patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
             patch("services.user_management.auth.clerk.settings") as mock_settings,
+            patch("services.user_management.auth.clerk.clerk_client") as mock_clerk_client,
         ):
             mock_settings.clerk_secret_key = "test-secret-key"
+            mock_clerk_client.return_value = True  # Just needs to be truthy
             mock_decode.return_value = {
                 "sub": "user_123",
                 "iss": "https://clerk.example.com",
@@ -78,8 +80,10 @@ class TestClerkAuthentication:
         with (
             patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
             patch("services.user_management.auth.clerk.settings") as mock_settings,
+            patch("services.user_management.auth.clerk.clerk_client") as mock_clerk_client,
         ):
             mock_settings.clerk_secret_key = "test-secret-key"
+            mock_clerk_client.return_value = True  # Just needs to be truthy
             mock_decode.side_effect = jwt.ExpiredSignatureError("Token expired")
 
             with pytest.raises(AuthenticationException) as exc_info:
@@ -93,8 +97,10 @@ class TestClerkAuthentication:
         with (
             patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
             patch("services.user_management.auth.clerk.settings") as mock_settings,
+            patch("services.user_management.auth.clerk.clerk_client") as mock_clerk_client,
         ):
             mock_settings.clerk_secret_key = "test-secret-key"
+            mock_clerk_client.return_value = True  # Just needs to be truthy
             mock_decode.side_effect = jwt.InvalidTokenError("Invalid token")
 
             with pytest.raises(AuthenticationException) as exc_info:
@@ -108,8 +114,10 @@ class TestClerkAuthentication:
         with (
             patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
             patch("services.user_management.auth.clerk.settings") as mock_settings,
+            patch("services.user_management.auth.clerk.clerk_client") as mock_clerk_client,
         ):
             mock_settings.clerk_secret_key = "test-secret-key"
+            mock_clerk_client.return_value = True  # Just needs to be truthy
             mock_decode.return_value = {"sub": "user_123"}  # Missing required claims
 
             with pytest.raises(AuthenticationException) as exc_info:
@@ -124,8 +132,10 @@ class TestClerkAuthentication:
         with (
             patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
             patch("services.user_management.auth.clerk.settings") as mock_settings,
+            patch("services.user_management.auth.clerk.clerk_client") as mock_clerk_client,
         ):
             mock_settings.clerk_secret_key = "test-secret-key"
+            mock_clerk_client.return_value = True  # Just needs to be truthy
             mock_decode.return_value = {
                 "sub": "user_123",
                 "iss": "https://evil.com",  # Invalid issuer
