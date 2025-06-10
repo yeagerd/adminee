@@ -34,6 +34,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="Chat Service", version="0.1.0", lifespan=lifespan)
+
+
+@app.get("/ready")
+async def ready_check() -> JSONResponse:
+    return JSONResponse(
+        content={
+            "status": "ok",
+            "service": "chat-service",
+        }
+    )
+
+
 app.include_router(router)
 
 
