@@ -5,16 +5,18 @@ Handles user profile operations including CRUD operations,
 onboarding management, and user search functionality.
 """
 
-import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 
+from sqlmodel import func, select
+
+from ..database import async_session
 from ..exceptions import (
     UserNotFoundException,
     ValidationException,
 )
 from ..models import User
-from ..schemas.user import (
+from ..schemas import (
     UserCreate,
     UserDeleteResponse,
     UserListResponse,
@@ -23,8 +25,9 @@ from ..schemas.user import (
     UserSearchRequest,
     UserUpdate,
 )
+from .audit_service import audit_logger
 
-logger = logging.getLogger(__name__)
+logger = audit_logger.logger
 
 
 class UserService:
@@ -35,7 +38,7 @@ class UserService:
         Get user by internal database ID.
 
         Args:
-            user_id: Internal database ID of the user
+            user_id: Internal database ID
 
         Returns:
             User model instance
@@ -44,16 +47,19 @@ class UserService:
             UserNotFoundException: If user is not found
         """
         try:
-            user = await User.objects.get(id=user_id)
-            if user.deleted_at is not None:
-                raise UserNotFoundException(str(user_id))
+            async with async_session() as session:
+                result = await session.execute(select(User).where(User.id == user_id))
+                user = result.scalar_one_or_none()
 
-            logger.info(f"Retrieved user by ID: {user_id}")
-            return user
+                if user is None or user.deleted_at is not None:
+                    raise UserNotFoundException(str(user_id))
 
+                logger.info(f"Retrieved user by ID: {user_id}")
+                return user
+
+        except UserNotFoundException:
+            raise
         except Exception as e:
-            if isinstance(e, UserNotFoundException):
-                raise
             logger.error(f"Error retrieving user by ID {user_id}: {e}")
             raise UserNotFoundException(str(user_id))
 
@@ -74,20 +80,26 @@ class UserService:
             UserNotFoundException: If user is not found
         """
         try:
-            user = await User.objects.get(
-                external_auth_id=external_auth_id, auth_provider=auth_provider
-            )
-            if user.deleted_at is not None:
-                raise UserNotFoundException(f"{auth_provider}:{external_auth_id}")
+            async with async_session() as session:
+                result = await session.execute(
+                    select(User).where(
+                        User.external_auth_id == external_auth_id,
+                        User.auth_provider == auth_provider,
+                    )
+                )
+                user = result.scalar_one_or_none()
 
-            logger.info(
-                f"Retrieved user by external auth ID: {auth_provider}:{external_auth_id}"
-            )
-            return user
+                if user is None or user.deleted_at is not None:
+                    raise UserNotFoundException(f"{auth_provider}:{external_auth_id}")
 
+                logger.info(
+                    f"Retrieved user by external auth ID: {auth_provider}:{external_auth_id}"
+                )
+                return user
+
+        except UserNotFoundException:
+            raise
         except Exception as e:
-            if isinstance(e, UserNotFoundException):
-                raise
             logger.error(
                 f"Error retrieving user by external auth ID {auth_provider}:{external_auth_id}: {e}"
             )
@@ -107,35 +119,43 @@ class UserService:
             ValidationException: If user data is invalid or external_auth_id already exists
         """
         try:
-            # Check if user with this external_auth_id already exists
-            existing_user = await User.objects.filter(
-                external_auth_id=user_data.external_auth_id,
-                auth_provider=user_data.auth_provider,
-            ).get_or_none()
+            async with async_session() as session:
+                # Check if user with this external_auth_id already exists
+                result = await session.execute(
+                    select(User).where(
+                        User.external_auth_id == user_data.external_auth_id,
+                        User.auth_provider == user_data.auth_provider,
+                    )
+                )
+                existing_user = result.scalar_one_or_none()
 
-            if existing_user and existing_user.deleted_at is None:
-                raise ValidationException(
-                    field="external_auth_id",
-                    value=user_data.external_auth_id,
-                    reason=f"User with {user_data.auth_provider} ID {user_data.external_auth_id} already exists",
+                if existing_user and existing_user.deleted_at is None:
+                    raise ValidationException(
+                        field="external_auth_id",
+                        value=user_data.external_auth_id,
+                        reason=f"User with {user_data.auth_provider} ID {user_data.external_auth_id} already exists",
+                    )
+
+                # Create new user
+                user = User(
+                    external_auth_id=user_data.external_auth_id,
+                    auth_provider=user_data.auth_provider,
+                    email=user_data.email,
+                    first_name=user_data.first_name,
+                    last_name=user_data.last_name,
+                    profile_image_url=user_data.profile_image_url,
+                    onboarding_completed=False,
+                    onboarding_step="profile_setup",
                 )
 
-            # Create new user
-            user = await User.objects.create(
-                external_auth_id=user_data.external_auth_id,
-                auth_provider=user_data.auth_provider,
-                email=user_data.email,
-                first_name=user_data.first_name,
-                last_name=user_data.last_name,
-                profile_image_url=user_data.profile_image_url,
-                onboarding_completed=False,
-                onboarding_step="profile_setup",
-            )
+                session.add(user)
+                await session.commit()
+                await session.refresh(user)
 
-            logger.info(
-                f"Created new user with {user_data.auth_provider} ID: {user_data.external_auth_id}"
-            )
-            return user
+                logger.info(
+                    f"Created new user with {user_data.auth_provider} ID: {user_data.external_auth_id}"
+                )
+                return user
 
         except ValidationException:
             raise
@@ -163,29 +183,35 @@ class UserService:
             ValidationException: If update data is invalid
         """
         try:
-            user = await self.get_user_by_id(user_id)
+            async with async_session() as session:
+                # Get user first
+                result = await session.execute(select(User).where(User.id == user_id))
+                user = result.scalar_one_or_none()
 
-            # Update only provided fields
-            update_fields = {}
-            if user_data.email is not None:
-                update_fields["email"] = user_data.email
-            if user_data.first_name is not None:
-                update_fields["first_name"] = user_data.first_name
-            if user_data.last_name is not None:
-                update_fields["last_name"] = user_data.last_name
-            if user_data.profile_image_url is not None:
-                update_fields["profile_image_url"] = user_data.profile_image_url
+                if user is None or user.deleted_at is not None:
+                    raise UserNotFoundException(str(user_id))
 
-            if update_fields:
-                for field, value in update_fields.items():
-                    setattr(user, field, value)
-                await user.update()
-                await user.load()  # Reload to get updated data
+                # Update only provided fields
+                update_fields = {}
+                if user_data.email is not None:
+                    update_fields["email"] = user_data.email
+                if user_data.first_name is not None:
+                    update_fields["first_name"] = user_data.first_name
+                if user_data.last_name is not None:
+                    update_fields["last_name"] = user_data.last_name
+                if user_data.profile_image_url is not None:
+                    update_fields["profile_image_url"] = user_data.profile_image_url
 
-            logger.info(
-                f"Updated user {user_id} with fields: {list(update_fields.keys())}"
-            )
-            return user
+                if update_fields:
+                    for field, value in update_fields.items():
+                        setattr(user, field, value)
+                    await session.commit()
+                    await session.refresh(user)
+
+                logger.info(
+                    f"Updated user {user_id} with fields: {list(update_fields.keys())}"
+                )
+                return user
 
         except UserNotFoundException:
             raise
@@ -215,18 +241,24 @@ class UserService:
             ValidationException: If onboarding data is invalid
         """
         try:
-            user = await self.get_user_by_id(user_id)
+            async with async_session() as session:
+                # Get user first
+                result = await session.execute(select(User).where(User.id == user_id))
+                user = result.scalar_one_or_none()
 
-            await user.update(
-                onboarding_completed=onboarding_data.onboarding_completed,
-                onboarding_step=onboarding_data.onboarding_step,
-            )
-            await user.load()
+                if user is None or user.deleted_at is not None:
+                    raise UserNotFoundException(str(user_id))
 
-            logger.info(
-                f"Updated onboarding for user {user_id}: completed={onboarding_data.onboarding_completed}"
-            )
-            return user
+                user.onboarding_completed = onboarding_data.onboarding_completed
+                user.onboarding_step = onboarding_data.onboarding_step
+
+                await session.commit()
+                await session.refresh(user)
+
+                logger.info(
+                    f"Updated onboarding for user {user_id}: completed={onboarding_data.onboarding_completed}"
+                )
+                return user
 
         except UserNotFoundException:
             raise
@@ -252,21 +284,29 @@ class UserService:
             UserNotFoundException: If user is not found
         """
         try:
-            user = await self.get_user_by_id(user_id)
+            async with async_session() as session:
+                # Get user first
+                result = await session.execute(select(User).where(User.id == user_id))
+                user = result.scalar_one_or_none()
 
-            # Perform soft delete
-            deleted_at = datetime.utcnow()
-            await user.update(deleted_at=deleted_at)
+                if user is None or user.deleted_at is not None:
+                    raise UserNotFoundException(str(user_id))
 
-            logger.info(f"Soft deleted user {user_id}")
+                # Perform soft delete
+                deleted_at = datetime.now(timezone.utc)
+                user.deleted_at = deleted_at
 
-            return UserDeleteResponse(
-                success=True,
-                message=f"User {user_id} successfully deleted",
-                user_id=user_id,
-                external_auth_id=user.external_auth_id,
-                deleted_at=deleted_at,
-            )
+                await session.commit()
+
+                logger.info(f"Soft deleted user {user_id}")
+
+                return UserDeleteResponse(
+                    success=True,
+                    message=f"User {user_id} successfully deleted",
+                    user_id=user_id,
+                    external_auth_id=user.external_auth_id,
+                    deleted_at=deleted_at,
+                )
 
         except UserNotFoundException:
             raise
@@ -289,47 +329,49 @@ class UserService:
             Paginated user list response
         """
         try:
-            # Build query
-            query = User.objects.filter(deleted_at__isnull=True)
+            async with async_session() as session:
+                # Build base query for non-deleted users
+                query = select(User).where(User.deleted_at is None)
 
-            # Apply filters
-            if search_request.email:
-                query = query.filter(email__icontains=search_request.email)
+                # Apply filters with simple comparisons for now
+                if search_request.email:
+                    query = query.where(User.email == search_request.email)
 
-            if search_request.onboarding_completed is not None:
-                query = query.filter(
-                    onboarding_completed=search_request.onboarding_completed
+                if search_request.onboarding_completed is not None:
+                    query = query.where(
+                        User.onboarding_completed == search_request.onboarding_completed
+                    )
+
+                if search_request.query:
+                    # Search by exact first_name match for simplicity
+                    query = query.where(User.first_name == search_request.query)
+
+                # Get total count
+                count_query = select(func.count()).select_from(query.subquery())
+                total_result = await session.execute(count_query)
+                total = total_result.scalar()
+
+                # Apply pagination
+                offset = (search_request.page - 1) * search_request.page_size
+                paginated_query = query.offset(offset).limit(search_request.page_size)
+
+                result = await session.execute(paginated_query)
+                users = list(result.scalars().all())
+
+                # Calculate pagination info
+                has_next = (search_request.page * search_request.page_size) < total
+                has_previous = search_request.page > 1
+
+                logger.info(f"Found {total} users matching search criteria")
+
+                return UserListResponse(
+                    users=[UserResponse.from_orm(user) for user in users],
+                    total=total,
+                    page=search_request.page,
+                    page_size=search_request.page_size,
+                    has_next=has_next,
+                    has_previous=has_previous,
                 )
-
-            if search_request.query:
-                # Search in first_name, last_name, and email
-                query = query.filter(
-                    # This would need to be adjusted based on your ORM's syntax
-                    # For now, we'll search in first_name
-                    first_name__icontains=search_request.query
-                )
-
-            # Get total count
-            total = await query.count()
-
-            # Apply pagination
-            offset = (search_request.page - 1) * search_request.page_size
-            users = await query.offset(offset).limit(search_request.page_size).all()
-
-            # Calculate pagination info
-            has_next = (search_request.page * search_request.page_size) < total
-            has_previous = search_request.page > 1
-
-            logger.info(f"Found {total} users matching search criteria")
-
-            return UserListResponse(
-                users=[UserResponse.from_orm(user) for user in users],
-                total=total,
-                page=search_request.page,
-                page_size=search_request.page_size,
-                has_next=has_next,
-                has_previous=has_previous,
-            )
 
         except Exception as e:
             logger.error(f"Error searching users: {e}")
@@ -382,14 +424,20 @@ class UserService:
             List of user model instances
         """
         try:
-            users = await User.objects.filter(
-                id__in=user_ids, deleted_at__isnull=True
-            ).all()
+            async with async_session() as session:
+                all_users = []
+                for user_id in user_ids:
+                    result = await session.execute(
+                        select(User).where(User.id == user_id, User.deleted_at is None)
+                    )
+                    user = result.scalar_one_or_none()
+                    if user:
+                        all_users.append(user)
 
-            logger.info(
-                f"Retrieved {len(users)} users from {len(user_ids)} requested IDs"
-            )
-            return users
+                logger.info(
+                    f"Retrieved {len(all_users)} users from {len(user_ids)} requested IDs"
+                )
+                return all_users
 
         except Exception as e:
             logger.error(f"Error retrieving users by IDs: {e}")
@@ -403,10 +451,15 @@ class UserService:
             user_id: Internal database ID of the user
         """
         try:
-            user = await self.get_user_by_id(user_id)
-            await user.update(updated_at=datetime.utcnow())
+            async with async_session() as session:
+                # Get user first
+                result = await session.execute(select(User).where(User.id == user_id))
+                user = result.scalar_one_or_none()
 
-            logger.debug(f"Updated last login for user {user_id}")
+                if user and user.deleted_at is None:
+                    user.updated_at = datetime.now(timezone.utc)
+                    await session.commit()
+                    logger.debug(f"Updated last login for user {user_id}")
 
         except Exception as e:
             # Don't raise exception for this non-critical operation

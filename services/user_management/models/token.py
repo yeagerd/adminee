@@ -6,13 +6,16 @@ Stores encrypted OAuth tokens with secure user-specific encryption.
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
-import ormar
+from sqlalchemy import JSON
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import Text, func
+from sqlmodel import Column, DateTime, Field, Relationship, SQLModel
 
-from ..database import base_ormar_config
-from .integration import Integration
-from .user import User
+if TYPE_CHECKING:
+    from .integration import Integration
+    from .user import User
 
 
 class TokenType(str, Enum):
@@ -22,7 +25,7 @@ class TokenType(str, Enum):
     REFRESH = "refresh"
 
 
-class EncryptedToken(ormar.Model):
+class EncryptedToken(SQLModel, table=True):
     """
     Encrypted token model for secure OAuth token storage.
 
@@ -30,20 +33,38 @@ class EncryptedToken(ormar.Model):
     Linked to specific integrations and users for proper access control.
     """
 
-    ormar_config = base_ormar_config.copy(tablename="encrypted_tokens")
+    __tablename__ = "encrypted_tokens"
 
-    id: int = ormar.Integer(primary_key=True)
-    user: User = ormar.ForeignKey(User, ondelete="CASCADE")
-    integration: Integration = ormar.ForeignKey(Integration, ondelete="CASCADE")
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="users.id", ondelete="CASCADE")
+    integration_id: int = Field(foreign_key="integrations.id", ondelete="CASCADE")
 
     # Token information
-    token_type: TokenType = ormar.Enum(enum_class=TokenType)
-    encrypted_value: str = ormar.Text()  # Base64 encoded encrypted token
+    token_type: TokenType = Field(
+        sa_column=Column(SQLEnum(TokenType), name="token_type")
+    )
+    encrypted_value: str = Field(
+        sa_column=Column(Text)
+    )  # Base64 encoded encrypted token
 
     # Token metadata
-    expires_at: Optional[datetime] = ormar.DateTime(nullable=True)
-    scopes: Optional[Dict[str, Any]] = ormar.JSON(nullable=True)
+    expires_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True))
+    )
+    scopes: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSON))
 
     # Timestamps
-    created_at: datetime = ormar.DateTime(default=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = ormar.DateTime(default=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(
+            DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+        ),
+    )
+
+    # Relationships
+    user: Optional["User"] = Relationship(back_populates="tokens")
+    integration: Optional["Integration"] = Relationship(back_populates="tokens")

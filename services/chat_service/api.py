@@ -55,7 +55,7 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
 
     # Initialize the agent with LLM from LLMManager
     agent = ChatAgentManager(
-        thread_id=thread.id,
+        thread_id=int(thread.id),
         user_id=user_id,
         tools=[],
         subagents=[],

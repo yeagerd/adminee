@@ -7,15 +7,13 @@ from services.chat_service.main import app
 
 async def setup_test_database():
     """Initialize the test database with tables."""
-    await history_manager.database.connect()
-    engine = history_manager.sqlalchemy.create_engine(history_manager.DATABASE_URL)
-    history_manager.metadata.create_all(engine)
+    await history_manager.init_db()
 
 
 @pytest.fixture(autouse=True)
 def fake_llm_env(monkeypatch):
     # Set shared in-memory SQLite DB for tests
-    monkeypatch.setenv("DATABASE_URL", "sqlite:///file::memory:?cache=shared")
+    monkeypatch.setenv("DATABASE_URL", "sqlite+aiosqlite:///file::memory:?cache=shared")
     # Simulate no OpenAI API key for tests
     monkeypatch.setenv("OPENAI_API_KEY", "")
     # Initialize test database synchronously

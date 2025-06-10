@@ -1,48 +1,50 @@
-from pydantic import ConfigDict, Field
-from pydantic_settings import BaseSettings
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Application settings loaded from environment variables"""
+    """Office Service settings and configuration."""
 
-    # Database Configuration
-    DATABASE_URL: str = "sqlite:///./services/office_service/office_service.db"
-
-    # Redis Configuration
-    REDIS_URL: str = "redis://localhost:6379"
-
-    # External Services
-    USER_MANAGEMENT_SERVICE_URL: str = "http://localhost:8001"
-    api_key_office: str = Field(
-        "dev-office-key",
-        description="API key for this Office service, used for authenticating to other services",
-    )
-
-    # Application Configuration
-    APP_NAME: str = "Office Service"
-    APP_VERSION: str = "1.0.0"
-    DEBUG: bool = False
-    ENVIRONMENT: str = "development"
-    LOG_LEVEL: str = "INFO"
-
-    # Rate Limiting Configuration
-    RATE_LIMIT_ENABLED: bool = True
-    DEFAULT_RATE_LIMIT: int = 1000  # requests per hour
-
-    # Cache Configuration
-    DEFAULT_CACHE_TTL_SECONDS: int = 900  # 15 minutes default
-    CACHE_ENABLED: bool = True
-
-    # Demo Configuration
-    DEMO_MODE: bool = (
-        False  # Set to True to use demo token manager instead of user service
-    )
-
-    model_config = ConfigDict(
+    model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        extra="ignore",  # Allow extra fields from .env file
+        extra="ignore",
+        case_sensitive=False,
     )
+
+    # Database configuration
+    DATABASE_URL: str = Field(
+        default="sqlite:///./office_service.db",
+        description="Database connection URL",
+    )
+
+    # Service configuration
+    SERVICE_NAME: str = Field(default="office-service", description="Service name")
+    PORT: int = Field(default=8003, description="Port to bind to")
+    HOST: str = Field(default="0.0.0.0", description="Host to bind to")
+    DEBUG: bool = Field(default=False, description="Debug mode")
+
+    # API Keys for inter-service communication
+    api_key_office: str = Field(
+        default="default-office-key", description="Office service API key"
+    )
+
+    # Redis configuration for caching and background tasks
+    REDIS_URL: str = Field(
+        default="redis://localhost:6379", description="Redis connection URL"
+    )
+
+    # Rate limiting configuration
+    RATE_LIMIT_REQUESTS: int = Field(
+        default=1000, description="Rate limit requests per minute"
+    )
+    RATE_LIMIT_DURATION: int = Field(
+        default=60, description="Rate limit duration in seconds"
+    )
+
+    # Cache configuration
+    CACHE_TTL: int = Field(default=300, description="Cache TTL in seconds")
+    CACHE_MAX_SIZE: int = Field(default=1000, description="Maximum cache entries")
 
 
 # Global settings instance

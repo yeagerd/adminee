@@ -1,7 +1,7 @@
 """
 Models package for User Management Service.
 
-Imports all models to register them with the database metadata.
+Imports all models to register them with SQLModel metadata.
 """
 
 from .audit import AuditLog

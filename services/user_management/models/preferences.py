@@ -5,14 +5,15 @@ Defines comprehensive user preference settings across all categories.
 """
 
 from datetime import datetime, timezone
+from typing import Dict, Optional
 
-import ormar
+from sqlalchemy import JSON, func
+from sqlmodel import Column, DateTime, Field, Relationship, SQLModel
 
-from ..database import base_ormar_config
 from .user import User
 
 
-class UserPreferences(ormar.Model):
+class UserPreferences(SQLModel, table=True):
     """
     User preferences model for storing all user settings.
 
@@ -20,21 +21,32 @@ class UserPreferences(ormar.Model):
     Each user has exactly one preferences record.
     """
 
-    ormar_config = base_ormar_config.copy(tablename="user_preferences")
+    __tablename__ = "user_preferences"
 
-    id: int = ormar.Integer(primary_key=True)
-    user: User = ormar.ForeignKey(User, ondelete="CASCADE")
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="users.id", ondelete="CASCADE")
 
     # Version field for migration support
-    version: str = ormar.String(max_length=10, default="1.0")
+    version: str = Field(default="1.0", max_length=10)
 
     # Structured preference data stored as JSON
-    ui_preferences: dict = ormar.JSON(default={})
-    notification_preferences: dict = ormar.JSON(default={})
-    ai_preferences: dict = ormar.JSON(default={})
-    integration_preferences: dict = ormar.JSON(default={})
-    privacy_preferences: dict = ormar.JSON(default={})
+    ui_preferences: Dict = Field(default_factory=dict, sa_column=Column(JSON))
+    notification_preferences: Dict = Field(default_factory=dict, sa_column=Column(JSON))
+    ai_preferences: Dict = Field(default_factory=dict, sa_column=Column(JSON))
+    integration_preferences: Dict = Field(default_factory=dict, sa_column=Column(JSON))
+    privacy_preferences: Dict = Field(default_factory=dict, sa_column=Column(JSON))
 
     # Timestamps
-    created_at: datetime = ormar.DateTime(default=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = ormar.DateTime(default=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(
+            DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+        ),
+    )
+
+    # Relationship
+    user: Optional["User"] = Relationship(back_populates="preferences")

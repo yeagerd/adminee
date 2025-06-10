@@ -1,148 +1,230 @@
 """
-History manager for chat_service: manages threads, messages, and drafts using Ormar ORM.
+History manager for chat_service: manages threads, messages, and drafts using SQLModel.
 """
 
 import datetime
 import os
 from typing import List, Optional
 
-import databases
-import ormar
-import sqlalchemy
+from sqlalchemy import Text, UniqueConstraint, func, text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, select
 
 # Read DATABASE_URL from environment, default to file-based SQLite
-DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./chat_service.db")
-database = databases.Database(DATABASE_URL)
-metadata = sqlalchemy.MetaData()
+DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///./chat_service.db")
 
 
-class Thread(ormar.Model):
-    class Meta:
-        tablename = "threads"
+def get_async_database_url(url: str) -> str:
+    """Convert database URL to async format."""
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+asyncpg://")
+    elif url.startswith("sqlite://"):
+        return url.replace("sqlite://", "sqlite+aiosqlite://")
+    else:
+        return url
 
-    ormar_config = ormar.OrmarConfig(
-        metadata=metadata,
-        database=database,
-        tablename="threads",
+
+# Create async engine for database operations
+engine = create_async_engine(get_async_database_url(DATABASE_URL), echo=False)
+
+# Session factory for dependency injection
+async_session = async_sessionmaker(
+    engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+)
+
+
+class Thread(SQLModel, table=True):
+    __tablename__ = "threads"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str = Field(index=True, max_length=128)
+    created_at: datetime.datetime = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc),
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
     )
-    id: int = ormar.Integer(primary_key=True)
-    user_id: str = ormar.String(max_length=128, index=True)
-    created_at: datetime.datetime = ormar.DateTime(
-        default=lambda: datetime.datetime.now(datetime.timezone.utc)
+    updated_at: datetime.datetime = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc),
+        sa_column=Column(
+            DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+        ),
     )
-    updated_at: datetime.datetime = ormar.DateTime(
-        default=lambda: datetime.datetime.now(datetime.timezone.utc)
-    )
-    title: Optional[str] = ormar.String(max_length=256, nullable=True)
+    title: Optional[str] = Field(default=None, max_length=256)
+
+    # Relationships
+    messages: list["Message"] = Relationship(back_populates="thread")
+    drafts: list["Draft"] = Relationship(back_populates="thread")
 
 
-class Message(ormar.Model):
-    class Meta:
-        tablename = "messages"
+class Message(SQLModel, table=True):
+    __tablename__ = "messages"
 
-    ormar_config = ormar.OrmarConfig(
-        metadata=metadata,
-        database=database,
-        tablename="messages",
+    id: Optional[int] = Field(default=None, primary_key=True)
+    thread_id: int = Field(foreign_key="threads.id")
+    user_id: str = Field(index=True, max_length=128)
+    content: str = Field(sa_column=Column(Text))
+    created_at: datetime.datetime = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc),
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
     )
-    id: int = ormar.Integer(primary_key=True)
-    thread: Thread = ormar.ForeignKey(Thread, related_name="messages")
-    user_id: str = ormar.String(max_length=128, index=True)
-    content: str = ormar.Text()
-    created_at: datetime.datetime = ormar.DateTime(
-        default=lambda: datetime.datetime.now(datetime.timezone.utc)
-    )
-    updated_at: datetime.datetime = ormar.DateTime(
-        default=lambda: datetime.datetime.now(datetime.timezone.utc)
+    updated_at: datetime.datetime = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc),
+        sa_column=Column(
+            DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+        ),
     )
 
+    # Relationship
+    thread: Optional[Thread] = Relationship(back_populates="messages")
 
-class Draft(ormar.Model):
-    class Meta:
-        tablename = "drafts"
-        constraints = [ormar.UniqueColumns("thread", "type")]
 
-    ormar_config = ormar.OrmarConfig(
-        metadata=metadata,
-        database=database,
-        tablename="drafts",
-        constraints=[ormar.UniqueColumns("thread", "type")],
-    )
-    id: int = ormar.Integer(primary_key=True)
-    thread: Thread = ormar.ForeignKey(Thread, related_name="drafts")
-    type: str = ormar.String(
-        max_length=64, index=True
+class Draft(SQLModel, table=True):
+    __tablename__ = "drafts"
+    __table_args__ = (UniqueConstraint("thread_id", "type", name="uq_thread_type"),)
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    thread_id: int = Field(foreign_key="threads.id")
+    type: str = Field(
+        index=True, max_length=64
     )  # e.g., 'email', 'calendar_event', 'calendar_change'
-    content: str = ormar.Text()
-    created_at: datetime.datetime = ormar.DateTime(
-        default=lambda: datetime.datetime.now(datetime.timezone.utc)
+    content: str = Field(sa_column=Column(Text))
+    created_at: datetime.datetime = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc),
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
     )
-    updated_at: datetime.datetime = ormar.DateTime(
-        default=lambda: datetime.datetime.now(datetime.timezone.utc)
+    updated_at: datetime.datetime = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc),
+        sa_column=Column(
+            DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+        ),
     )
+
+    # Relationship
+    thread: Optional[Thread] = Relationship(back_populates="drafts")
 
 
 # Ensure tables are created on import
-def init_db():
-    engine = sqlalchemy.create_engine(DATABASE_URL)
-    metadata.create_all(engine)
+async def init_db():
+    async with engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.create_all)
 
 
-init_db()
+# Initialize database synchronously for backward compatibility
+def init_db_sync():
+    import asyncio
+
+    try:
+        asyncio.get_running_loop()
+        # If we're in an async context, schedule the coroutine
+        import concurrent.futures
+
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(asyncio.run, init_db())
+            future.result()
+    except RuntimeError:
+        # No running loop, we can run directly
+        asyncio.run(init_db())
+
+
+init_db_sync()
 
 
 # Utility functions for thread, message, and draft management
+async def get_session():
+    """Get async database session."""
+    async with async_session() as session:
+        yield session
+
+
 async def create_thread(user_id: str, title: Optional[str] = None) -> Thread:
-    return await Thread.objects.create(user_id=user_id, title=title)
+    async with async_session() as session:
+        thread = Thread(user_id=user_id, title=title)
+        session.add(thread)
+        await session.commit()
+        await session.refresh(thread)
+        return thread
 
 
 async def list_threads(user_id: str) -> List[Thread]:
-    return await Thread.objects.filter(user_id=user_id).all()
+    async with async_session() as session:
+        result = await session.execute(select(Thread).where(Thread.user_id == user_id))
+        return list(result.scalars().all())
 
 
 async def append_message(thread_id: int, user_id: str, content: str) -> Message:
-    thread = await Thread.objects.get(id=thread_id)
-    return await Message.objects.create(thread=thread, user_id=user_id, content=content)
+    async with async_session() as session:
+        message = Message(thread_id=thread_id, user_id=user_id, content=content)
+        session.add(message)
+        await session.commit()
+        await session.refresh(message)
+        return message
 
 
 async def get_thread_history(
     thread_id: int, limit: int = 50, offset: int = 0
 ) -> List[Message]:
-    return (
-        await Message.objects.filter(thread=thread_id)
-        .order_by("-created_at")
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
+    async with async_session() as session:
+        result = await session.execute(
+            select(Message)
+            .where(Message.thread_id == thread_id)
+            .order_by(text("created_at DESC"))
+            .offset(offset)
+            .limit(limit)
+        )
+        return list(result.scalars().all())
 
 
 async def create_or_update_draft(
     thread_id: int, draft_type: str, content: str
 ) -> Draft:
-    draft = await Draft.objects.filter(thread=thread_id, type=draft_type).get_or_none()
-    if draft:
-        draft.content = content
-        draft.updated_at = datetime.datetime.now(datetime.UTC)
-        await draft.update()
+    async with async_session() as session:
+        # Try to get existing draft
+        result = await session.execute(
+            select(Draft).where(Draft.thread_id == thread_id, Draft.type == draft_type)
+        )
+        draft = result.scalar_one_or_none()
+
+        if draft:
+            draft.content = content
+            draft.updated_at = datetime.datetime.now(datetime.timezone.utc)
+        else:
+            draft = Draft(thread_id=thread_id, type=draft_type, content=content)
+            session.add(draft)
+
+        await session.commit()
+        await session.refresh(draft)
         return draft
-    thread = await Thread.objects.get(id=thread_id)
-    return await Draft.objects.create(thread=thread, type=draft_type, content=content)
 
 
 async def delete_draft(thread_id: int, draft_type: str) -> None:
-    draft = await Draft.objects.filter(thread=thread_id, type=draft_type).get_or_none()
-    if draft:
-        await draft.delete()
+    async with async_session() as session:
+        result = await session.execute(
+            select(Draft).where(Draft.thread_id == thread_id, Draft.type == draft_type)
+        )
+        draft = result.scalar_one_or_none()
+        if draft:
+            await session.delete(draft)
+            await session.commit()
 
 
 async def get_draft(thread_id: int, draft_type: str) -> Optional[Draft]:
-    return await Draft.objects.filter(thread=thread_id, type=draft_type).get_or_none()
+    async with async_session() as session:
+        result = await session.execute(
+            select(Draft).where(Draft.thread_id == thread_id, Draft.type == draft_type)
+        )
+        return result.scalar_one_or_none()
 
 
 async def list_drafts(thread_id: int) -> List[Draft]:
-    return await Draft.objects.filter(thread=thread_id).all()
+    async with async_session() as session:
+        result = await session.execute(
+            select(Draft).where(Draft.thread_id == thread_id)
+        )
+        return list(result.scalars().all())
 
 
 async def get_thread(thread_id: int) -> Optional[Thread]:
-    return await Thread.objects.get_or_none(id=thread_id)
+    async with async_session() as session:
+        result = await session.execute(select(Thread).where(Thread.id == thread_id))
+        return result.scalar_one_or_none()

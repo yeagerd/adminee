@@ -1,19 +1,38 @@
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, AsyncGenerator, Dict, Optional
 
-import databases
-import ormar
-import sqlalchemy
-from core.config import settings
+from sqlalchemy import JSON
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import Text, func
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlmodel import Column, DateTime, Field, SQLModel
 
-# Database setup
-database = databases.Database(settings.DATABASE_URL)
-metadata = sqlalchemy.MetaData()
+from services.office_service.core.config import settings
 
 
-# Base OrmarConfig for all models
-base_ormar_config = ormar.OrmarConfig(database=database, metadata=metadata)
+# Create async engine for database operations
+def get_async_database_url(url: str) -> str:
+    """Convert database URL to async format."""
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+asyncpg://")
+    elif url.startswith("sqlite://"):
+        return url.replace("sqlite://", "sqlite+aiosqlite://")
+    else:
+        return url
+
+
+engine = create_async_engine(
+    get_async_database_url(settings.DATABASE_URL),
+    echo=False,
+)
+
+# Session factory for dependency injection
+async_session = async_sessionmaker(
+    engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+)
 
 
 class Provider(str, Enum):
@@ -29,47 +48,79 @@ class ApiCallStatus(str, Enum):
 
 
 # API Call Tracking
-class ApiCall(ormar.Model):
-    ormar_config = base_ormar_config.copy(tablename="api_calls")
+class ApiCall(SQLModel, table=True):
+    __tablename__ = "api_calls"
 
-    id: int = ormar.Integer(primary_key=True)
-    user_id: str = ormar.String(max_length=255, index=True)
-    provider: Provider = ormar.Enum(enum_class=Provider)
-    endpoint: str = ormar.String(max_length=200)
-    method: str = ormar.String(max_length=10)
-    status: ApiCallStatus = ormar.Enum(enum_class=ApiCallStatus)
-    response_time_ms: Optional[int] = ormar.Integer(nullable=True)
-    error_message: Optional[str] = ormar.Text(nullable=True)
-    created_at: datetime = ormar.DateTime(
-        default=lambda: datetime.now(timezone.utc), index=True
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str = Field(index=True, max_length=255)
+    provider: Provider = Field(sa_column=Column(SQLEnum(Provider), name="provider"))
+    endpoint: str = Field(max_length=200)
+    method: str = Field(max_length=10)
+    status: ApiCallStatus = Field(
+        sa_column=Column(SQLEnum(ApiCallStatus), name="status")
+    )
+    response_time_ms: Optional[int] = Field(default=None)
+    error_message: Optional[str] = Field(default=None, sa_column=Column(Text))
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(
+            DateTime(timezone=True), server_default=func.now(), index=True
+        ),
     )
 
 
 # Cache Entries
-class CacheEntry(ormar.Model):
-    ormar_config = base_ormar_config.copy(tablename="cache_entries")
+class CacheEntry(SQLModel, table=True):
+    __tablename__ = "cache_entries"
 
-    id: int = ormar.Integer(primary_key=True)
-    cache_key: str = ormar.String(max_length=500, unique=True, index=True)
-    user_id: str = ormar.String(max_length=255, index=True)
-    provider: Provider = ormar.Enum(enum_class=Provider)
-    endpoint: str = ormar.String(max_length=200)
-    data: Dict[str, Any] = ormar.JSON()
-    expires_at: datetime = ormar.DateTime(index=True)
-    created_at: datetime = ormar.DateTime(default=lambda: datetime.now(timezone.utc))
-    last_accessed: datetime = ormar.DateTime(default=lambda: datetime.now(timezone.utc))
+    id: Optional[int] = Field(default=None, primary_key=True)
+    cache_key: str = Field(unique=True, index=True, max_length=500)
+    user_id: str = Field(index=True, max_length=255)
+    provider: Provider = Field(sa_column=Column(SQLEnum(Provider), name="provider"))
+    endpoint: str = Field(max_length=200)
+    data: Dict[str, Any] = Field(sa_column=Column(JSON))
+    expires_at: datetime = Field(sa_column=Column(DateTime(timezone=True), index=True))
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
+    )
+    last_accessed: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
+    )
 
 
 # Rate Limiting
-class RateLimitBucket(ormar.Model):
-    ormar_config = base_ormar_config.copy(tablename="rate_limit_buckets")
+class RateLimitBucket(SQLModel, table=True):
+    __tablename__ = "rate_limit_buckets"
 
-    id: int = ormar.Integer(primary_key=True)
-    user_id: str = ormar.String(max_length=255, index=True)
-    provider: Provider = ormar.Enum(enum_class=Provider)
-    bucket_type: str = ormar.String(
-        max_length=50
-    )  # "user_hourly", "provider_daily", etc.
-    current_count: int = ormar.Integer(default=0)
-    window_start: datetime = ormar.DateTime(index=True)
-    last_reset: datetime = ormar.DateTime(default=lambda: datetime.now(timezone.utc))
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: str = Field(index=True, max_length=255)
+    provider: Provider = Field(sa_column=Column(SQLEnum(Provider), name="provider"))
+    bucket_type: str = Field(max_length=50)  # "user_hourly", "provider_daily", etc.
+    current_count: int = Field(default=0)
+    window_start: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), index=True)
+    )
+    last_reset: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
+    )
+
+
+# Database lifecycle management
+async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
+    """Get async database session for dependency injection."""
+    async with async_session() as session:
+        yield session
+
+
+async def create_all_tables():
+    """Create all database tables."""
+    async with engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.create_all)
+
+
+async def close_db():
+    """Close database connections."""
+    await engine.dispose()
