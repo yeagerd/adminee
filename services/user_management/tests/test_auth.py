@@ -230,6 +230,21 @@ class TestClerkAuthentication:
 class TestServiceAuthentication:
     """Test cases for service-to-service authentication."""
 
+    @pytest.fixture(autouse=True)
+    def setup_service_auth(self):
+        """Set up service auth with test API key."""
+        with patch(
+            "services.user_management.auth.service_auth.settings"
+        ) as mock_settings:
+            mock_settings.api_key_user_management = "dev-service-key"
+            mock_settings.api_key_office = None
+            mock_settings.api_key_chat = None
+
+            # Re-initialize the service auth with mocked settings
+
+            service_auth.__init__()
+            yield
+
     def test_user_management_api_key_auth_verify_valid_key(self):
         """Test valid API key verification."""
         service_name = service_auth.verify_api_key("dev-service-key")
@@ -366,6 +381,21 @@ class TestServiceAuthentication:
 
 class TestAuthenticationIntegration:
     """Integration tests for authentication components."""
+
+    @pytest.fixture(autouse=True)
+    def setup_service_auth(self):
+        """Set up service auth with test API key."""
+        with patch(
+            "services.user_management.auth.service_auth.settings"
+        ) as mock_settings:
+            mock_settings.api_key_user_management = "dev-service-key"
+            mock_settings.api_key_office = None
+            mock_settings.api_key_chat = None
+
+            # Re-initialize the service auth with mocked settings
+
+            service_auth.__init__()
+            yield
 
     @pytest.mark.asyncio
     async def test_user_and_service_auth_combined(self):
