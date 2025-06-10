@@ -30,12 +30,12 @@ logger = logging.getLogger(__name__)
 class UserService:
     """Service class for user profile operations."""
 
-    async def get_user_by_id(self, user_id: int) -> User:
+    async def get_user_by_id(self, user_id: str) -> User:
         """
-        Get user by database ID.
+        Get user by Clerk ID (which is the primary key).
 
         Args:
-            user_id: Database ID of the user
+            user_id: Clerk ID of the user
 
         Returns:
             User model instance
@@ -71,7 +71,12 @@ class UserService:
             UserNotFoundException: If user is not found
         """
         try:
-            user = await User.objects.get(clerk_id=clerk_id, deleted_at__isnull=True)
+            user = await User.objects.get(id=clerk_id)
+
+            # Check if user is deleted
+            if user.deleted_at is not None:
+                logger.warning(f"User {clerk_id} is deleted")
+                raise UserNotFoundException(clerk_id)
 
             logger.info(f"Retrieved user by Clerk ID: {clerk_id}")
             return user
@@ -96,10 +101,10 @@ class UserService:
         try:
             # Check if user with this clerk_id already exists
             existing_user = await User.objects.filter(
-                clerk_id=user_data.clerk_id, deleted_at__isnull=True
+                id=user_data.clerk_id
             ).get_or_none()
 
-            if existing_user:
+            if existing_user and existing_user.deleted_at is None:
                 raise ValidationException(
                     field="clerk_id",
                     value=user_data.clerk_id,
@@ -108,7 +113,7 @@ class UserService:
 
             # Create new user
             user = await User.objects.create(
-                clerk_id=user_data.clerk_id,
+                id=user_data.clerk_id,
                 email=user_data.email,
                 first_name=user_data.first_name,
                 last_name=user_data.last_name,
@@ -321,12 +326,12 @@ class UserService:
                 reason=f"Failed to search users: {str(e)}",
             )
 
-    async def get_user_profile(self, user_id: int) -> UserResponse:
+    async def get_user_profile(self, user_id: str) -> UserResponse:
         """
         Get user profile response.
 
         Args:
-            user_id: Database ID of the user
+            user_id: Clerk ID of the user
 
         Returns:
             User response schema

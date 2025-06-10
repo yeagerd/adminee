@@ -647,8 +647,10 @@ async def readiness_check():
                 await database.execute("SELECT COUNT(*) FROM users LIMIT 1")
             except Exception:
                 # If users table doesn't exist, the database isn't properly set up
-                raise Exception("Database tables not initialized (run alembic upgrade head)")
-                
+                raise Exception(
+                    "Database tables not initialized (run alembic upgrade head)"
+                )
+
             db_duration = (time.time() - db_start) * 1000  # Convert to milliseconds
 
             readiness_status["checks"]["database"] = {

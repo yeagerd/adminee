@@ -155,8 +155,7 @@ class UserUpdate(BaseModel):
 class UserResponse(UserBase):
     """Schema for user response data."""
 
-    id: int = Field(..., description="User's database ID")
-    clerk_id: str = Field(..., description="Clerk user ID")
+    id: str = Field(..., description="User's Clerk ID (primary key)")
     onboarding_completed: bool = Field(
         ..., description="Whether user has completed onboarding"
     )
@@ -189,7 +188,7 @@ class UserDeleteResponse(BaseModel):
 
     success: bool = Field(..., description="Whether the deletion was successful")
     message: str = Field(..., description="Deletion status message")
-    user_id: int = Field(..., description="ID of the deleted user")
+    user_id: str = Field(..., description="Clerk ID of the deleted user")
     deleted_at: datetime = Field(..., description="When the user was deleted")
 
     class Config:

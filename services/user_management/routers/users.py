@@ -27,7 +27,48 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/users", tags=["users"])
 
 
+@router.get(
+    "/me",
+    response_model=UserResponse,
+    summary="Get current user profile",
+    description="Get the profile of the currently authenticated user.",
+    responses={
+        200: {"description": "Current user profile retrieved successfully"},
+        401: {"description": "Authentication required"},
+        404: {"description": "User not found"},
+    },
+)
+async def get_current_user_profile(
+    current_user_id: str = Depends(get_current_user),
+) -> UserResponse:
+    """
+    Get current user's profile.
 
+    Convenience endpoint to get the authenticated user's profile
+    without needing to know their database ID.
+    """
+    try:
+        current_user = await user_service.get_user_by_clerk_id(current_user_id)
+        user_response = UserResponse.from_orm(current_user)
+
+        logger.info(f"Retrieved current user profile for {current_user_id}")
+        return user_response
+
+    except UserNotFoundException as e:
+        logger.warning(f"Current user not found: {e.message}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": "UserNotFound", "message": e.message},
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error retrieving current user profile: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error": "InternalServerError",
+                "message": "Failed to retrieve current user profile",
+            },
+        )
 
 
 @router.get(
@@ -364,49 +405,5 @@ async def search_users(
             detail={
                 "error": "InternalServerError",
                 "message": "Failed to search users",
-            },
-        )
-
-
-@router.get(
-    "/me",
-    response_model=UserResponse,
-    summary="Get current user profile",
-    description="Get the profile of the currently authenticated user.",
-    responses={
-        200: {"description": "Current user profile retrieved successfully"},
-        401: {"description": "Authentication required"},
-        404: {"description": "User not found"},
-    },
-)
-async def get_current_user_profile(
-    current_user_id: str = Depends(get_current_user),
-) -> UserResponse:
-    """
-    Get current user's profile.
-
-    Convenience endpoint to get the authenticated user's profile
-    without needing to know their database ID.
-    """
-    try:
-        current_user = await user_service.get_user_by_clerk_id(current_user_id)
-        user_response = UserResponse.from_orm(current_user)
-
-        logger.info(f"Retrieved current user profile for {current_user_id}")
-        return user_response
-
-    except UserNotFoundException as e:
-        logger.warning(f"Current user not found: {e.message}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error": "UserNotFound", "message": e.message},
-        )
-    except Exception as e:
-        logger.error(f"Unexpected error retrieving current user profile: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error": "InternalServerError",
-                "message": "Failed to retrieve current user profile",
             },
         )

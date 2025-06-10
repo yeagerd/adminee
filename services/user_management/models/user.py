@@ -32,3 +32,4 @@ class User(ormar.Model):
     onboarding_step: Optional[str] = ormar.String(max_length=50, nullable=True)
     created_at: datetime = ormar.DateTime(default=lambda: datetime.now(timezone.utc))
     updated_at: datetime = ormar.DateTime(default=lambda: datetime.now(timezone.utc))
+    deleted_at: Optional[datetime] = ormar.DateTime(nullable=True, default=None)

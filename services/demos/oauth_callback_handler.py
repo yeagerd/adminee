@@ -26,33 +26,35 @@ from typing import Optional
 
 class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
     """HTTP handler for OAuth callbacks."""
-    
+
     # Shared state for capturing OAuth data
     captured_data = {}
-    
+
     def do_GET(self):
         """Handle GET requests (OAuth callbacks)."""
         # Parse the URL and query parameters
         parsed_url = urllib.parse.urlparse(self.path)
         query_params = urllib.parse.parse_qs(parsed_url.query)
-        
+
         # Extract OAuth parameters
-        code = query_params.get('code', [None])[0]
-        state = query_params.get('state', [None])[0]
-        error = query_params.get('error', [None])[0]
-        error_description = query_params.get('error_description', [None])[0]
-        
+        code = query_params.get("code", [None])[0]
+        state = query_params.get("state", [None])[0]
+        error = query_params.get("error", [None])[0]
+        error_description = query_params.get("error_description", [None])[0]
+
         # Store the captured data
-        self.captured_data.update({
-            'code': code,
-            'state': state,
-            'error': error,
-            'error_description': error_description,
-            'timestamp': datetime.now().isoformat(),
-            'path': self.path,
-            'query_params': query_params
-        })
-        
+        self.captured_data.update(
+            {
+                "code": code,
+                "state": state,
+                "error": error,
+                "error_description": error_description,
+                "timestamp": datetime.now().isoformat(),
+                "path": self.path,
+                "query_params": query_params,
+            }
+        )
+
         # Prepare response
         if error:
             self.send_error_response(error, error_description)
@@ -60,13 +62,13 @@ class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
             self.send_success_response(code, state)
         else:
             self.send_invalid_response()
-    
+
     def send_success_response(self, code: str, state: Optional[str]):
         """Send success response for OAuth callback."""
         self.send_response(200)
-        self.send_header('Content-type', 'text/html')
+        self.send_header("Content-type", "text/html")
         self.end_headers()
-        
+
         html = f"""
         <!DOCTYPE html>
         <html>
@@ -110,13 +112,13 @@ class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
         </html>
         """
         self.wfile.write(html.encode())
-    
+
     def send_error_response(self, error: str, error_description: Optional[str]):
         """Send error response for OAuth callback."""
         self.send_response(400)
-        self.send_header('Content-type', 'text/html')
+        self.send_header("Content-type", "text/html")
         self.end_headers()
-        
+
         html = f"""
         <!DOCTYPE html>
         <html>
@@ -153,13 +155,13 @@ class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
         </html>
         """
         self.wfile.write(html.encode())
-    
+
     def send_invalid_response(self):
         """Send response for invalid OAuth callback."""
         self.send_response(400)
-        self.send_header('Content-type', 'text/html')
+        self.send_header("Content-type", "text/html")
         self.end_headers()
-        
+
         html = """
         <!DOCTYPE html>
         <html>
@@ -187,7 +189,7 @@ class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
         </html>
         """
         self.wfile.write(html.encode())
-    
+
     def log_message(self, format, *args):
         """Override log message to be more demo-friendly."""
         print(f"🌐 OAuth Callback: {format % args}")
@@ -195,13 +197,13 @@ class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
 
 class OAuthCallbackServer:
     """OAuth callback server for demo purposes."""
-    
+
     def __init__(self, port: int = 8080):
         self.port = port
         self.server = None
         self.thread = None
         self.handler = OAuthCallbackHandler
-    
+
     def start(self):
         """Start the OAuth callback server."""
         try:
@@ -209,41 +211,43 @@ class OAuthCallbackServer:
             self.thread = threading.Thread(target=self.server.serve_forever)
             self.thread.daemon = True
             self.thread.start()
-            
+
             print(f"🚀 OAuth Callback Server started on http://localhost:{self.port}")
-            print(f"🔗 Ready to handle OAuth callbacks at http://localhost:{self.port}/oauth/callback")
+            print(
+                f"🔗 Ready to handle OAuth callbacks at http://localhost:{self.port}/oauth/callback"
+            )
             print("   (Configure this as your OAuth redirect URI)")
             return True
         except Exception as e:
             print(f"❌ Failed to start OAuth callback server: {e}")
             return False
-    
+
     def stop(self):
         """Stop the OAuth callback server."""
         if self.server:
             self.server.shutdown()
             self.server.server_close()
             print("🛑 OAuth Callback Server stopped")
-    
+
     def get_captured_data(self) -> dict:
         """Get captured OAuth data."""
         return self.handler.captured_data.copy()
-    
+
     def clear_captured_data(self):
         """Clear captured OAuth data."""
         self.handler.captured_data.clear()
-    
+
     def wait_for_callback(self, timeout: int = 300) -> Optional[dict]:
         """Wait for OAuth callback with timeout."""
         print(f"⏳ Waiting for OAuth callback (timeout: {timeout}s)...")
         start_time = time.time()
-        
+
         while time.time() - start_time < timeout:
             data = self.get_captured_data()
-            if data.get('code') or data.get('error'):
+            if data.get("code") or data.get("error"):
                 return data
             time.sleep(1)
-        
+
         print("⏰ Timeout waiting for OAuth callback")
         return None
 
@@ -252,23 +256,25 @@ def main():
     """Main function for standalone usage."""
     print("🔗 OAuth Callback Handler for User Management Demo")
     print("=" * 50)
-    
+
     # Start the server
     server = OAuthCallbackServer(port=8080)
     if not server.start():
         return
-    
+
     try:
         print("\n📋 Instructions:")
-        print("1. Configure your OAuth provider redirect URI to: http://localhost:8080/oauth/callback")
+        print(
+            "1. Configure your OAuth provider redirect URI to: http://localhost:8080/oauth/callback"
+        )
         print("2. Run your user management demo")
         print("3. When OAuth flow starts, this server will capture the callback")
         print("4. Press Ctrl+C to stop the server")
-        
+
         # Keep the server running
         while True:
             time.sleep(1)
-            
+
     except KeyboardInterrupt:
         print("\n\n👋 Stopping OAuth callback server...")
         server.stop()
@@ -278,4 +284,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main() 
+    main()

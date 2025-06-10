@@ -8,16 +8,16 @@ Handles token verification, decoding, and user information extraction.
 import logging
 from typing import Dict, Optional
 
+import httpx
 import jwt
 from clerk_backend_api import Clerk
+from clerk_backend_api.jwks_helpers import AuthenticateRequestOptions
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from clerk_backend_api.jwks_helpers import AuthenticateRequestOptions
-import httpx
 
 from ..exceptions import AuthenticationException
-from ..settings import settings
 from ..logging_config import get_logger
+from ..settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -33,42 +33,42 @@ if settings.clerk_secret_key:
 async def verify_jwt_token(token: str) -> Dict[str, str]:
     """
     Verify JWT token using Clerk's official SDK or fallback to manual verification.
-    
+
     Args:
         token: JWT token to verify
-        
+
     Returns:
         Decoded token claims
-        
+
     Raises:
         AuthenticationException: If token is invalid
     """
     logger = get_logger(__name__)
-    
+
     try:
         # Try using Clerk's official SDK first (recommended)
         if settings.clerk_secret_key:
             clerk_client = Clerk(bearer_auth=settings.clerk_secret_key)
-            
+
             # Create a mock request object with the Authorization header
             request = httpx.Request(
                 method="GET",
                 url="http://localhost/",
-                headers={"Authorization": f"Bearer {token}"}
+                headers={"Authorization": f"Bearer {token}"},
             )
-            
+
             # Use Clerk's authenticate_request method
             auth_options = AuthenticateRequestOptions()
-            if hasattr(settings, 'clerk_jwt_key') and settings.clerk_jwt_key:
+            if hasattr(settings, "clerk_jwt_key") and settings.clerk_jwt_key:
                 auth_options.jwt_key = settings.clerk_jwt_key
-            
+
             request_state = clerk_client.authenticate_request(request, auth_options)
-            
+
             if not request_state.is_signed_in:
-                reason = getattr(request_state, 'reason', 'Authentication failed')
+                reason = getattr(request_state, "reason", "Authentication failed")
                 logger.warning(f"Clerk authentication failed: {reason}")
                 raise AuthenticationException(f"Authentication failed: {reason}")
-            
+
             # Extract claims from the validated token
             token_claims = request_state.payload
             logger.info(
@@ -79,31 +79,34 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
                 },
             )
             return token_claims
-            
+
     except Exception as e:
         logger.warning(f"Clerk SDK verification failed, falling back to manual: {e}")
-    
+
     # Fallback to manual verification (for development/demo)
     try:
         logger.info("Using manual JWT verification (signature verification disabled)")
-        
+
         # Note: Clerk's Python SDK handles JWT verification internally
         # We'll use direct JWT validation for now since Clerk SDK v5+ has different API
         # For production, you should use Clerk's official JWT verification
         # This is a simplified implementation for development
-        
+
         # When signature verification is disabled, we still need to provide a key
         # but it won't be used for verification
-        verify_signature = getattr(settings, 'jwt_verify_signature', False)
+        verify_signature = getattr(settings, "jwt_verify_signature", False)
         dummy_key = "dummy-key-for-verification-disabled"
-        
+
         decoded_token = jwt.decode(
             token,
             key=dummy_key,
             options={
                 "verify_signature": verify_signature
             },  # Configurable signature verification
-            algorithms=["RS256", "HS256"],  # Accept both RS256 (production) and HS256 (demo)
+            algorithms=[
+                "RS256",
+                "HS256",
+            ],  # Accept both RS256 (production) and HS256 (demo)
         )
 
         # Validate required claims
