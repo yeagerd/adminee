@@ -127,6 +127,12 @@
 - `services/user_management/middleware/sanitization.py` - Input sanitization middleware for automatic sanitization of all incoming user data to prevent XSS, injection attacks, and other security vulnerabilities with configurable strict mode
 - `services/user_management/tests/test_validation_security.py` - Comprehensive unit tests for validation utilities and security features including edge cases, malicious input attempts, and performance testing
 
+### Demo & Testing
+- `services/demos/user_management_demo.py` - Comprehensive interactive demo showcasing all user management features including OAuth flows, profile management, preferences, and service APIs with real browser-based OAuth authorization
+- `services/demos/user_management_simple.py` - Lightweight demo script for quick testing of core user management functionality without OAuth dependencies
+- `services/demos/oauth_callback_handler.py` - OAuth callback handler server for capturing real OAuth authorization codes during demo flows
+- `services/demos/README_user_management.md` - Comprehensive documentation for user management demos including setup instructions, OAuth configuration, and troubleshooting guide
+
 ### Phase 1: Project Setup & Foundation
 
 * [x] 1. Project Structure & Environment Setup
@@ -312,7 +318,7 @@
 
 ### Phase 6.5: Basic health endpoints
 
-* [ ] 26.3 Create load balancer health check endpoints (`/health`, `/ready`).  Write unit tests for new functionality. Run `./fix` and `tox -p auto` and fix issues.
+* [x] 26.3 Create load balancer health check endpoints (`/health`, `/ready`).  Write unit tests for new functionality. Run `./fix` and `tox -p auto` and fix issues.
 
 ### Phase 7: Background Jobs & Maintenance
 
