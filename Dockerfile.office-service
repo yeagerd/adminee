@@ -23,9 +23,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY services/office_service/requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
-# Copy the common modules first (if they exist)
-COPY services/common/ /app/services/common/ 2>/dev/null || echo "No common directory found"
-
 # Copy the rest of the application code for the office service
 COPY services/office_service/ /app/services/office_service/
 
