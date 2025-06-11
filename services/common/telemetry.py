@@ -8,6 +8,7 @@ import os
 import socket
 
 from opentelemetry import trace
+
 try:
     from opentelemetry.exporter.gcp.trace import CloudTraceSpanExporter
 except ImportError:
