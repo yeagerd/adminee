@@ -25,10 +25,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Startup: Ensure the database is created and tables exist
     logger.info("Starting Chat Service")
 
-    # Validate required configuration
-    if not settings.api_key_chat:
-        logger.error("API_KEY_CHAT is required but not configured")
-        raise RuntimeError("API_KEY_CHAT is required")
+    # Validate API keys for outgoing service calls (optional - will warn if missing)
+    if not settings.api_chat_user_key:
+        logger.warning(
+            "API_CHAT_USER_KEY not configured - user management calls will fail"
+        )
+    if not settings.api_chat_office_key:
+        logger.warning(
+            "API_CHAT_OFFICE_KEY not configured - office service calls will fail"
+        )
 
     await history_manager.init_db()
 
@@ -67,11 +72,12 @@ async def health_check() -> JSONResponse:
 
         # Check service configuration
         config_status = {
-            "api_key_chat": "configured" if settings.api_key_chat else "missing",
-            "api_key_user_management": (
-                "configured" if settings.api_key_user_management else "missing"
+            "api_chat_user_key": (
+                "configured" if settings.api_chat_user_key else "missing"
             ),
-            "api_key_office": "configured" if settings.api_key_office else "missing",
+            "api_chat_office_key": (
+                "configured" if settings.api_chat_office_key else "missing"
+            ),
             "user_management_service_url": settings.user_management_service_url,
             "office_service_url": settings.office_service_url,
         }

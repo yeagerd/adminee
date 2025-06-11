@@ -34,10 +34,10 @@ class ServiceClient:
         """Get authentication headers for a specific service."""
         headers = {"Content-Type": "application/json"}
 
-        if service_name == "user-management" and settings.api_key_user_management:
-            headers["X-API-Key"] = settings.api_key_user_management
-        elif service_name == "office" and settings.api_key_office:
-            headers["X-API-Key"] = settings.api_key_office
+        if service_name == "user-management" and settings.api_chat_user_key:
+            headers["X-API-Key"] = settings.api_chat_user_key
+        elif service_name == "office" and settings.api_chat_office_key:
+            headers["X-API-Key"] = settings.api_chat_office_key
 
         return headers
 

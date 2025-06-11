@@ -37,11 +37,6 @@ class TestAPIKeyFunctions:
         service_name = verify_api_key("api-chat-office-key")
         assert service_name == "office-service-access"
 
-    def test_verify_api_key_valid_legacy_key(self):
-        """Test valid legacy API key verification."""
-        service_name = verify_api_key("dev-office-key")
-        assert service_name == "office-service-access"
-
     def test_verify_api_key_invalid_key(self):
         """Test invalid API key verification."""
         service_name = verify_api_key("invalid-key")
@@ -476,21 +471,6 @@ class TestPermissionMatrix:
         assert "write_calendar" not in permissions
         assert "write_files" not in permissions
 
-    def test_legacy_key_permissions(self):
-        """Test that legacy key has full permissions."""
-        permissions = get_permissions_from_api_key("dev-office-key")
-        expected = [
-            "read_emails",
-            "send_emails",
-            "read_calendar",
-            "write_calendar",
-            "read_files",
-            "write_files",
-        ]
-
-        for permission in expected:
-            assert permission in permissions
-
 
 class TestSecurityScenarios:
     """Test various security scenarios."""
@@ -502,9 +482,6 @@ class TestSecurityScenarios:
 
         # Chat service cannot send
         assert has_permission("api-chat-office-key", "send_emails") is False
-
-        # Legacy key can send
-        assert has_permission("dev-office-key", "send_emails") is True
 
     def test_calendar_writing_security(self):
         """Test that only authorized clients can write to calendar."""
