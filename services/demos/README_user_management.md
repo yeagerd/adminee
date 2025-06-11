@@ -263,12 +263,7 @@ ENCRYPTION_SERVICE_SALT=your_encryption_salt
 ```bash
 🔴 Service not available: Connection refused
 ```
-**Solution:** Start the user management service first:
-```bash
-# From project root directory
-cd /path/to/briefly
-uvicorn services.user_management.main:app --reload --port 8000
-```
+**Solution:** Start the user management service first
 
 ### OAuth Flow Issues
 ```bash

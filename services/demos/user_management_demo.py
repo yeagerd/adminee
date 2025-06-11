@@ -21,6 +21,7 @@ Usage:
 
 import argparse
 import asyncio
+import dotenv
 import json
 import os
 import sys
@@ -71,9 +72,13 @@ class UserManagementDemo:
         if user_management_api_key:
             self.service_api_key = user_management_api_key
             self.api_key_source = "command line argument"
-        elif os.getenv("API_KEY_USER_MANAGEMENT"):
-            self.service_api_key = os.getenv("API_KEY_USER_MANAGEMENT") or ""
-            self.api_key_source = "API_KEY_USER_MANAGEMENT environment variable"
+        elif os.getenv("API_FRONTEND_USER_KEY"):
+            self.service_api_key = os.getenv("API_FRONTEND_USER_KEY") or ""
+            self.api_key_source = "API_FRONTEND_USER_KEY environment variable"
+        elif os.path.exists("../../.env"):
+            dotenv.load_dotenv()
+            self.service_api_key = os.getenv("API_FRONTEND_USER_KEY")
+            self.api_key_source = "API_FRONTEND_USER_KEY environment variable"
         else:
             # No default for security - internal API test will fail gracefully
             self.service_api_key = None
@@ -769,7 +774,7 @@ Examples:
   python user_management_demo.py --simple     # Simple non-interactive demo
   
 Environment Variables:
-  API_KEY_USER_MANAGEMENT          Service-to-service API key for internal API testing
+  API_FRONTEND_USER_KEY          Service-to-service API key for internal API testing
         """,
     )
     parser.add_argument(
@@ -784,7 +789,7 @@ Environment Variables:
     )
     parser.add_argument(
         "--service-api-key",
-        help="Service API key for internal API testing (overrides API_KEY_USER_MANAGEMENT env var)",
+        help="Service API key for internal API testing (overrides API_FRONTEND_USER_KEY env var)",
     )
 
     args = parser.parse_args()
