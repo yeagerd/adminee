@@ -38,13 +38,16 @@ class TestApplicationStartup:
         )
 
     @patch("services.user_management.main.settings")
-    @patch("services.user_management.main.database")
-    def test_cors_middleware_configured(self, mock_database, mock_settings, client):
+    @patch("services.user_management.database.async_session")
+    def test_cors_middleware_configured(
+        self, mock_async_session, mock_settings, client
+    ):
         """Test that CORS middleware is properly configured."""
         mock_settings.debug = True
         mock_settings.environment = "test"
-        mock_database.is_connected = True
-        mock_database.execute = AsyncMock()
+        # Mock session manager
+        mock_session = AsyncMock()
+        mock_async_session.return_value.__aenter__.return_value = mock_session
 
         # Test CORS headers on a regular request since OPTIONS may not be supported by default
         response = client.get("/health", headers={"Origin": "http://localhost:3000"})
@@ -75,13 +78,14 @@ class TestHealthEndpoint:
     """Test cases for health check endpoint (liveness probe)."""
 
     @patch("services.user_management.main.settings")
-    @patch("services.user_management.main.database")
-    def test_health_check_basic(self, mock_database, mock_settings, client):
+    @patch("services.user_management.database.async_session")
+    def test_health_check_basic(self, mock_async_session, mock_settings, client):
         """Test basic health check response."""
         mock_settings.debug = True
         mock_settings.environment = "test"
-        mock_database.is_connected = True
-        mock_database.execute = AsyncMock()
+        # Mock session manager
+        mock_session = AsyncMock()
+        mock_async_session.return_value.__aenter__.return_value = mock_session
 
         response = client.get("/health")
         assert response.status_code == 200
@@ -94,15 +98,16 @@ class TestHealthEndpoint:
         assert "timestamp" in data
 
     @patch("services.user_management.main.settings")
-    @patch("services.user_management.main.database")
+    @patch("services.user_management.database.async_session")
     def test_health_check_database_connected(
-        self, mock_database, mock_settings, client
+        self, mock_async_session, mock_settings, client
     ):
         """Test health check with database connected."""
         mock_settings.debug = True
         mock_settings.environment = "test"
-        mock_database.is_connected = True
-        mock_database.execute = AsyncMock()
+        # Mock session manager
+        mock_session = AsyncMock()
+        mock_async_session.return_value.__aenter__.return_value = mock_session
 
         response = client.get("/health")
         assert response.status_code == 200
@@ -112,32 +117,37 @@ class TestHealthEndpoint:
         assert data["database"]["status"] == "healthy"
 
     @patch("services.user_management.main.settings")
-    @patch("services.user_management.main.database")
+    @patch("services.user_management.database.async_session")
     def test_health_check_database_disconnected(
-        self, mock_database, mock_settings, client
+        self, mock_async_session, mock_settings, client
     ):
         """Test health check with database disconnected."""
         mock_settings.debug = True
         mock_settings.environment = "test"
-        mock_database.is_connected = False
+        # Mock session manager to raise exception
+        mock_async_session.side_effect = Exception("Database connection failed")
 
         response = client.get("/health")
         assert response.status_code == 503  # Service Unavailable
 
         data = response.json()
         assert data["status"] == "unhealthy"
-        assert data["database"]["status"] == "disconnected"
+        assert data["database"]["status"] == "error"
 
     @patch("services.user_management.main.settings")
-    @patch("services.user_management.main.database")
-    def test_health_check_database_error(self, mock_database, mock_settings, client):
+    @patch("services.user_management.database.async_session")
+    def test_health_check_database_error(
+        self, mock_async_session, mock_settings, client
+    ):
         """Test health check with database error."""
         mock_settings.debug = True
         mock_settings.environment = "test"
-        mock_database.is_connected = True
-        mock_database.execute = AsyncMock(
+        # Mock session to raise exception on execute
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock(
             side_effect=Exception("Database connection failed")
         )
+        mock_async_session.return_value.__aenter__.return_value = mock_session
 
         response = client.get("/health")
         assert response.status_code == 503  # Service Unavailable
@@ -148,16 +158,18 @@ class TestHealthEndpoint:
         assert "error" in data["database"]
 
     @patch("services.user_management.main.settings")
-    @patch("services.user_management.main.database")
+    @patch("services.user_management.database.async_session")
     def test_health_check_debug_mode_error_details(
-        self, mock_database, mock_settings, client
+        self, mock_async_session, mock_settings, client
     ):
         """Test health check error details in debug mode."""
         mock_settings.debug = True
-        mock_database.is_connected = True
-        mock_database.execute = AsyncMock(
+        # Mock session to raise exception on execute
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock(
             side_effect=Exception("Specific database error")
         )
+        mock_async_session.return_value.__aenter__.return_value = mock_session
 
         response = client.get("/health")
         assert response.status_code == 503
@@ -166,16 +178,18 @@ class TestHealthEndpoint:
         assert data["database"]["error"] == "Specific database error"
 
     @patch("services.user_management.main.settings")
-    @patch("services.user_management.main.database")
+    @patch("services.user_management.database.async_session")
     def test_health_check_production_mode_error_masking(
-        self, mock_database, mock_settings, client
+        self, mock_async_session, mock_settings, client
     ):
         """Test health check error masking in production mode."""
         mock_settings.debug = False
-        mock_database.is_connected = True
-        mock_database.execute = AsyncMock(
+        # Mock session to raise exception on execute
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock(
             side_effect=Exception("Specific database error")
         )
+        mock_async_session.return_value.__aenter__.return_value = mock_session
 
         response = client.get("/health")
         assert response.status_code == 503
@@ -187,9 +201,11 @@ class TestHealthEndpoint:
 class TestReadinessEndpoint:
     """Test cases for readiness check endpoint (readiness probe)."""
 
-    @patch("services.user_management.main.database")
+    @patch("services.user_management.database.async_session")
     @patch("services.user_management.main.settings")
-    def test_readiness_check_all_healthy(self, mock_settings, mock_database, client):
+    def test_readiness_check_all_healthy(
+        self, mock_settings, mock_async_session, client
+    ):
         """Test readiness check with all systems healthy."""
         # Mock settings
         mock_settings.database_url = "postgresql://test"
@@ -197,9 +213,9 @@ class TestReadinessEndpoint:
         mock_settings.encryption_service_salt = "test_salt"
         mock_settings.debug = True
 
-        # Mock database
-        mock_database.is_connected = True
-        mock_database.execute = AsyncMock()
+        # Mock database session
+        mock_session = AsyncMock()
+        mock_async_session.return_value.__aenter__.return_value = mock_session
 
         response = client.get("/ready")
         assert response.status_code == 200
@@ -228,9 +244,9 @@ class TestReadinessEndpoint:
         assert "total_check_time_ms" in data["performance"]
 
     @patch("services.user_management.main.settings")
-    @patch("services.user_management.main.database")
+    @patch("services.user_management.database.async_session")
     def test_readiness_check_database_disconnected(
-        self, mock_database, mock_settings, client
+        self, mock_async_session, mock_settings, client
     ):
         """Test readiness check with database disconnected."""
         mock_settings.debug = True
@@ -238,7 +254,8 @@ class TestReadinessEndpoint:
         mock_settings.database_url = "postgresql://test"
         mock_settings.clerk_secret_key = "test_key"
         mock_settings.encryption_service_salt = "test_salt"
-        mock_database.is_connected = False
+        # Mock session to raise exception
+        mock_async_session.side_effect = Exception("Database connection failed")
 
         response = client.get("/ready")
         assert response.status_code == 503
@@ -249,18 +266,20 @@ class TestReadinessEndpoint:
         assert data["checks"]["database"]["connected"] is False
 
     @patch("services.user_management.main.settings")
-    @patch("services.user_management.main.database")
-    def test_readiness_check_database_error(self, mock_database, mock_settings, client):
+    @patch("services.user_management.database.async_session")
+    def test_readiness_check_database_error(
+        self, mock_async_session, mock_settings, client
+    ):
         """Test readiness check with database error."""
         mock_settings.debug = True
         mock_settings.environment = "test"
         mock_settings.database_url = "postgresql://test"
         mock_settings.clerk_secret_key = "test_key"
         mock_settings.encryption_service_salt = "test_salt"
-        mock_database.is_connected = True
-        mock_database.execute = AsyncMock(
-            side_effect=Exception("Database query failed")
-        )
+        # Mock session to raise exception on execute
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock(side_effect=Exception("Database query failed"))
+        mock_async_session.return_value.__aenter__.return_value = mock_session
 
         response = client.get("/ready")
         assert response.status_code == 503
@@ -270,10 +289,10 @@ class TestReadinessEndpoint:
         assert data["checks"]["database"]["status"] == "not_ready"
         assert "error" in data["checks"]["database"]
 
-    @patch("services.user_management.main.database")
+    @patch("services.user_management.database.async_session")
     @patch("services.user_management.main.settings")
     def test_readiness_check_missing_configuration(
-        self, mock_settings, mock_database, client
+        self, mock_settings, mock_async_session, client
     ):
         """Test readiness check with missing configuration."""
         mock_settings.debug = True
@@ -281,8 +300,9 @@ class TestReadinessEndpoint:
         mock_settings.database_url = None
         mock_settings.clerk_secret_key = None
         mock_settings.encryption_service_salt = "test_salt"
-        mock_database.is_connected = True
-        mock_database.execute = AsyncMock()
+        # Mock session
+        mock_session = AsyncMock()
+        mock_async_session.return_value.__aenter__.return_value = mock_session
 
         response = client.get("/ready")
         assert response.status_code == 503
@@ -300,9 +320,9 @@ class TestReadinessEndpoint:
         )
 
     @patch("services.user_management.main.settings")
-    @patch("services.user_management.main.database")
+    @patch("services.user_management.database.async_session")
     def test_readiness_check_debug_mode_error_details(
-        self, mock_database, mock_settings, client
+        self, mock_async_session, mock_settings, client
     ):
         """Test readiness check error details in debug mode."""
         mock_settings.debug = True
@@ -310,10 +330,12 @@ class TestReadinessEndpoint:
         mock_settings.database_url = "postgresql://test"
         mock_settings.clerk_secret_key = "test_key"
         mock_settings.encryption_service_salt = "test_salt"
-        mock_database.is_connected = True
-        mock_database.execute = AsyncMock(
+        # Mock session to raise exception on execute
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock(
             side_effect=Exception("Specific database error")
         )
+        mock_async_session.return_value.__aenter__.return_value = mock_session
 
         response = client.get("/ready")
         assert response.status_code == 503
@@ -322,9 +344,9 @@ class TestReadinessEndpoint:
         assert data["checks"]["database"]["error"] == "Specific database error"
 
     @patch("services.user_management.main.settings")
-    @patch("services.user_management.main.database")
+    @patch("services.user_management.database.async_session")
     def test_readiness_check_production_mode_error_masking(
-        self, mock_database, mock_settings, client
+        self, mock_async_session, mock_settings, client
     ):
         """Test readiness check error masking in production mode."""
         mock_settings.debug = False
@@ -332,10 +354,12 @@ class TestReadinessEndpoint:
         mock_settings.database_url = "postgresql://test"
         mock_settings.clerk_secret_key = "test_key"
         mock_settings.encryption_service_salt = "test_salt"
-        mock_database.is_connected = True
-        mock_database.execute = AsyncMock(
+        # Mock session to raise exception on execute
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock(
             side_effect=Exception("Specific database error")
         )
+        mock_async_session.return_value.__aenter__.return_value = mock_session
 
         response = client.get("/ready")
         assert response.status_code == 503
@@ -343,10 +367,10 @@ class TestReadinessEndpoint:
         data = response.json()
         assert data["checks"]["database"]["error"] == "Database check failed"
 
-    @patch("services.user_management.main.database")
+    @patch("services.user_management.database.async_session")
     @patch("services.user_management.main.settings")
     def test_readiness_check_performance_timing(
-        self, mock_settings, mock_database, client
+        self, mock_settings, mock_async_session, client
     ):
         """Test readiness check includes performance timing."""
         # Mock settings to be valid
@@ -362,8 +386,10 @@ class TestReadinessEndpoint:
 
             await asyncio.sleep(0.01)  # 10ms delay
 
-        mock_database.is_connected = True
-        mock_database.execute = slow_db_execute
+        # Mock session with slow execute
+        mock_session = AsyncMock()
+        mock_session.execute = slow_db_execute
+        mock_async_session.return_value.__aenter__.return_value = mock_session
 
         response = client.get("/ready")
         assert response.status_code == 200
@@ -372,10 +398,10 @@ class TestReadinessEndpoint:
         assert data["checks"]["database"]["response_time_ms"] >= 10
         assert data["performance"]["total_check_time_ms"] > 0
 
-    @patch("services.user_management.main.database")
+    @patch("services.user_management.database.async_session")
     @patch("services.user_management.main.settings")
     def test_readiness_check_multiple_failures(
-        self, mock_settings, mock_database, client
+        self, mock_settings, mock_async_session, client
     ):
         """Test readiness check with multiple system failures."""
         # Missing configuration
@@ -386,8 +412,9 @@ class TestReadinessEndpoint:
         mock_settings.encryption_service_salt = None
 
         # Database error
-        mock_database.is_connected = True
-        mock_database.execute = AsyncMock(side_effect=Exception("Database error"))
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock(side_effect=Exception("Database error"))
+        mock_async_session.return_value.__aenter__.return_value = mock_session
 
         response = client.get("/ready")
         assert response.status_code == 503

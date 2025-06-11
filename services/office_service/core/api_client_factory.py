@@ -9,7 +9,6 @@ of token retrieval and client instantiation across multiple OAuth providers.
 import logging
 from typing import Dict, List, Optional, Union
 
-from core.clients.base import BaseAPIClient
 from core.clients.google import GoogleAPIClient
 from core.clients.microsoft import MicrosoftAPIClient
 from core.config import settings
@@ -47,7 +46,7 @@ class APIClientFactory:
         user_id: str,
         provider: Union[str, Provider],
         scopes: Optional[List[str]] = None,
-    ) -> Optional[BaseAPIClient]:
+    ) -> Optional[Union[GoogleAPIClient, MicrosoftAPIClient]]:
         """
         Create a provider-specific API client for a user.
 
@@ -103,7 +102,7 @@ class APIClientFactory:
                     return None
 
                 # Create provider-specific client
-                client: BaseAPIClient
+                client: Union[GoogleAPIClient, MicrosoftAPIClient]
                 if provider == Provider.GOOGLE:
                     client = GoogleAPIClient(token_data.access_token, user_id)
                 elif provider == Provider.MICROSOFT:
@@ -183,7 +182,7 @@ class APIClientFactory:
 
     async def create_all_clients(
         self, user_id: str, providers: Optional[List[Union[str, Provider]]] = None
-    ) -> Dict[Provider, Optional[BaseAPIClient]]:
+    ) -> Dict[Provider, Optional[Union[GoogleAPIClient, MicrosoftAPIClient]]]:
         """
         Create API clients for multiple providers.
 

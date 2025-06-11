@@ -3,12 +3,11 @@ import sys
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
+import history_manager
+from api import router
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from sqlmodel import select
-
-from . import history_manager
-from .api import router
 
 # Configure logging
 logging.basicConfig(
