@@ -1,0 +1,8 @@
+{
+  "folders": [
+    { "path": "services/chat_service" },
+    { "path": "services/office_service" },
+    { "path": "services/user_management" },
+    { "path": "services/vector-db" }
+  ]
+}
