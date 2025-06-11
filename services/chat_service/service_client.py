@@ -91,31 +91,6 @@ class ServiceClient:
             logger.error(f"Error getting user preferences for {user_id}: {e}")
             return None
 
-    async def send_email(
-        self, user_id: str, email_data: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
-        """Send email via Office Service."""
-        try:
-            headers = self._get_headers_for_service("office")
-
-            response = await self.http_client.post(
-                f"{settings.office_service_url}/email/send?user_id={user_id}",
-                headers=headers,
-                json=email_data,
-            )
-
-            if response.status_code == 200:
-                return response.json()
-            else:
-                logger.error(
-                    f"Failed to send email: {response.status_code} - {response.text}"
-                )
-                return None
-
-        except Exception as e:
-            logger.error(f"Error sending email for {user_id}: {e}")
-            return None
-
     async def get_calendar_events(
         self, user_id: str, days_ahead: int = 7
     ) -> Optional[List[Dict[str, Any]]]:
