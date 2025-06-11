@@ -185,7 +185,10 @@ class TestCalendarEndpoints:
         """Test successful retrieval of calendar events."""
         user_id = integration_test_setup["user_id"]
 
-        response = client.get(f"/calendar/events?user_id={user_id}")
+        response = client.get(
+            f"/calendar/events?user_id={user_id}",
+            headers={"X-API-Key": "api-frontend-office-key"},
+        )
         assert response.status_code == status.HTTP_200_OK
 
         data = response.json()
@@ -207,7 +210,8 @@ class TestCalendarEndpoints:
         user_id = integration_test_setup["user_id"]
 
         response = client.get(
-            f"/calendar/events?user_id={user_id}&start_date=2024-01-01&end_date=2024-01-31"
+            f"/calendar/events?user_id={user_id}&start_date=2024-01-01&end_date=2024-01-31",
+            headers={"X-API-Key": "api-frontend-office-key"},
         )
         assert response.status_code == status.HTTP_200_OK
 
@@ -232,7 +236,9 @@ class TestCalendarEndpoints:
             mock_create.return_value = {"id": "new-event-123", "status": "confirmed"}
 
             response = client.post(
-                f"/calendar/events?user_id={user_id}", json=event_data
+                f"/calendar/events?user_id={user_id}",
+                json=event_data,
+                headers={"X-API-Key": "api-frontend-office-key"},
             )
             assert response.status_code == status.HTTP_200_OK
 
@@ -248,7 +254,10 @@ class TestCalendarEndpoints:
         with patch("core.clients.google.GoogleAPIClient.delete_event") as mock_delete:
             mock_delete.return_value = None  # Delete typically returns nothing
 
-            response = client.delete(f"/calendar/events/{event_id}?user_id={user_id}")
+            response = client.delete(
+                f"/calendar/events/{event_id}?user_id={user_id}",
+                headers={"X-API-Key": "api-frontend-office-key"},
+            )
             assert response.status_code == status.HTTP_200_OK
 
             data = response.json()
@@ -262,7 +271,10 @@ class TestFilesEndpoints:
         """Test successful retrieval of files."""
         user_id = integration_test_setup["user_id"]
 
-        response = client.get(f"/files/?user_id={user_id}")
+        response = client.get(
+            f"/files/?user_id={user_id}",
+            headers={"X-API-Key": "api-frontend-office-key"},
+        )
         assert response.status_code == status.HTTP_200_OK
 
         data = response.json()
@@ -285,7 +297,10 @@ class TestFilesEndpoints:
         """Test successful file search."""
         user_id = integration_test_setup["user_id"]
 
-        response = client.get(f"/files/search?user_id={user_id}&q=document")
+        response = client.get(
+            f"/files/search?user_id={user_id}&q=document",
+            headers={"X-API-Key": "api-frontend-office-key"},
+        )
         assert response.status_code == status.HTTP_200_OK
 
         data = response.json()
@@ -311,7 +326,10 @@ class TestFilesEndpoints:
                 "webViewLink": "https://drive.google.com/file/d/file-1/view",
             }
 
-            response = client.get(f"/files/{file_id}?user_id={user_id}")
+            response = client.get(
+                f"/files/{file_id}?user_id={user_id}",
+                headers={"X-API-Key": "api-frontend-office-key"},
+            )
             assert response.status_code == status.HTTP_200_OK
 
             data = response.json()

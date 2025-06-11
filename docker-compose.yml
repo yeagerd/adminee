@@ -41,9 +41,8 @@ services:
       - REDIS_URL=redis://redis:6379
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - API_KEY_USER_MANAGEMENT=${API_KEY_USER_MANAGEMENT:-dev-user-management-key}
-      - API_KEY_OFFICE=${API_KEY_OFFICE:-dev-office-key}
-      - API_KEY_CHAT=${API_KEY_CHAT:-dev-chat-key}
+      # API key required to access this service
+      - API_KEY_USER_MANAGEMENT=${API_KEY_USER_MANAGEMENT:-api-frontend-user-key}
       - TOKEN_ENCRYPTION_SALT=${TOKEN_ENCRYPTION_SALT:-default-salt-change-in-production}
       - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
       - CLERK_WEBHOOK_SECRET=${CLERK_WEBHOOK_SECRET}
@@ -69,7 +68,10 @@ services:
       - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-briefly}-office
       - REDIS_URL=redis://redis:6379
       - USER_MANAGEMENT_SERVICE_URL=http://user-management:8001
-      - API_KEY_OFFICE=${API_KEY_OFFICE:-dev-office-key}
+      # API key required to access this service
+      - API_KEY_OFFICE=${API_KEY_OFFICE:-api-frontend-office-key}
+      # API key to call user management service
+      - API_KEY_USER_MANAGEMENT=${API_KEY_USER_MANAGEMENT:-api-office-user-key}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - LOG_FORMAT=${LOG_FORMAT:-json}
       # Add other necessary environment variables for office-service
@@ -84,13 +86,19 @@ services:
     depends_on:
       - db # Assuming it might use the main db or its own
       - user-management # If it needs to authenticate/call user-management
+      - office-service # If it needs to call office-service
     environment:
       - DATABASE_URL=sqlite:///./chat_service.db # Using SQLite as per .env.example, adjust if shared PG
-      - USER_MANAGEMENT_SERVICE_URL=http://user-management:8001 # If it needs to call user-management
+      - USER_MANAGEMENT_SERVICE_URL=http://user-management:8001
+      - OFFICE_SERVICE_URL=http://office-service:8080
+      # API key required to access this service
+      - API_KEY_CHAT=${API_KEY_CHAT:-api-frontend-chat-key}
+      # API keys to call other services
+      - API_KEY_USER_MANAGEMENT=${API_KEY_USER_MANAGEMENT:-api-chat-user-key}
+      - API_KEY_OFFICE=${API_KEY_OFFICE:-api-chat-office-key}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - LLM_PROVIDER=${LLM_PROVIDER}
       - LLM_MODEL=${LLM_MODEL}
-      - API_KEY_CHAT=${API_KEY_CHAT:-dev-chat-key}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - LOG_FORMAT=${LOG_FORMAT:-json}
       # Add other necessary environment variables for chat-service
