@@ -10,6 +10,9 @@ ENV PYTHONUNBUFFERED 1
 # Set work directory
 WORKDIR /app/chat-service
 
+# Set Python path to include the services directory
+ENV PYTHONPATH=/app
+
 # Install system dependencies
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -20,6 +23,9 @@ RUN apt-get update \
 # First, copy only the requirements file to leverage Docker cache
 COPY services/chat_service/requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
+
+# Copy the common modules first
+COPY services/common/ /app/services/common/
 
 # Copy the rest of the application code for the chat service
 COPY services/chat_service/ /app/chat-service/

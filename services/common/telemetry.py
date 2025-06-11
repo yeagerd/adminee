@@ -8,7 +8,10 @@ import os
 import socket
 
 from opentelemetry import trace
-from opentelemetry.exporter.gcp.trace import CloudTraceSpanExporter
+try:
+    from opentelemetry.exporter.gcp.trace import CloudTraceSpanExporter
+except ImportError:
+    CloudTraceSpanExporter = None
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.sdk.resources import Resource
@@ -47,8 +50,9 @@ def setup_telemetry(service_name: str, service_version: str = "1.0.0") -> None:
 
     if project_id and os.getenv("ENVIRONMENT") == "production":
         # Use Google Cloud Trace in production
-        cloud_trace_exporter = CloudTraceSpanExporter(project_id=project_id)
-        tracer_provider.add_span_processor(BatchSpanProcessor(cloud_trace_exporter))
+        if CloudTraceSpanExporter:
+            cloud_trace_exporter = CloudTraceSpanExporter(project_id=project_id)
+            tracer_provider.add_span_processor(BatchSpanProcessor(cloud_trace_exporter))
     else:
         # In development, you could add console exporter or other exporters
         # For now, we'll just set up the basics
