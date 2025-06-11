@@ -30,6 +30,12 @@ COPY services/common/ /app/services/common/
 # Copy the rest of the application code for the chat service
 COPY services/chat_service/ /app/chat-service/
 
+# Service URL environment variables (non-sensitive)
+ENV USER_MANAGEMENT_SERVICE_URL="http://user-management:8001"
+ENV OFFICE_SERVICE_URL="http://office-service:8080"
+
+# API keys will be provided at runtime via docker-compose environment
+
 # Expose the port the app runs on (e.g., 8000 for FastAPI)
 EXPOSE 8000
 

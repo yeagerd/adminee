@@ -34,6 +34,11 @@ COPY services/common/ /app/services/common/
 # Assuming the office service code is in services/office-service/
 COPY services/office_service/ /app/office-service/
 
+# Service URL environment variables (non-sensitive)
+ENV USER_MANAGEMENT_SERVICE_URL="http://user-management:8001"
+
+# API keys will be provided at runtime via docker-compose environment
+
 # Expose the port the app runs on (e.g., 8080 for FastAPI)
 EXPOSE 8080
 

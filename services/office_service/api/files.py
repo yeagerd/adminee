@@ -12,9 +12,10 @@ from datetime import datetime
 from typing import List, Optional
 
 from core.api_client_factory import APIClientFactory
+from core.auth import ServicePermissionRequired
 from core.cache_manager import cache_manager, generate_cache_key
 from core.normalizer import normalize_google_drive_file, normalize_microsoft_drive_file
-from fastapi import APIRouter, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from models import Provider
 from schemas import ApiResponse
 
@@ -50,6 +51,7 @@ async def get_files(
     include_folders: bool = Query(
         True, description="Whether to include folders in results"
     ),
+    service_name: str = Depends(ServicePermissionRequired(["read_files"])),
 ):
     """
     Get unified files from multiple providers.
@@ -297,6 +299,7 @@ async def search_files(
     file_types: Optional[List[str]] = Query(
         None, description="Filter by file types/mime types"
     ),
+    service_name: str = Depends(ServicePermissionRequired(["read_files"])),
 ):
     """
     Search files across multiple providers.
@@ -506,6 +509,7 @@ async def get_file(
     include_download_url: bool = Query(
         False, description="Whether to include download URL"
     ),
+    service_name: str = Depends(ServicePermissionRequired(["read_files"])),
 ):
     """
     Get a specific file by ID.

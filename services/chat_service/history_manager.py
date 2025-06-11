@@ -10,8 +10,16 @@ from sqlalchemy import Text, UniqueConstraint, func, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, select
 
-# Read DATABASE_URL from environment, default to file-based SQLite
-DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///./chat_service.db")
+# Import settings to get DATABASE_URL
+try:
+    from settings import settings
+
+    DATABASE_URL = settings.database_url
+except ImportError:
+    # Fallback for backwards compatibility
+    DATABASE_URL = os.environ.get(
+        "DATABASE_URL", "sqlite+aiosqlite:///./chat_service.db"
+    )
 
 
 def get_async_database_url(url: str) -> str:

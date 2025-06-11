@@ -4,8 +4,8 @@
 FROM python:3.11-slim-bullseye
 
 # Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
 
 # Set the working directory in the container
 WORKDIR /app
@@ -29,6 +29,8 @@ COPY services/user_management/ ./services/user_management/
 
 # Set Python path to include the services directory
 ENV PYTHONPATH=/app
+
+# API keys will be provided at runtime via docker-compose environment
 
 # Expose the port the app runs on
 EXPOSE 8001
