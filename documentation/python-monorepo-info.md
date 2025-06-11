@@ -45,7 +45,7 @@ Each service's `.vscode/settings.json` includes:
 
 ### 4. Workspace Configuration
 The VS Code workspace (`briefly.code-workspace`) includes:
-- Root directory (`.`) for running `tox` and accessing shared configurations  
+- Root directory (`.`) for running `tox` and accessing shared configurations
 - Individual service directories for development
 
 **Important**: `services/common` and `services/vector-db` are NOT included as separate workspace folders since they're shared libraries, not services. Including them would cause VS Code to expect them to have their own Python interpreters.
@@ -109,7 +109,7 @@ To verify the setup works:
 ## Services Configured
 
 - ✅ office_service
-- ✅ chat_service  
+- ✅ chat_service
 - ✅ user_management
 
 ## Files Created/Modified
@@ -130,4 +130,4 @@ The setup uses:
 - **Explicit package configuration**: Uses `packages=["package_name"]` and `package_dir` for precise control
 - **VS Code extra paths**: Enables IntelliSense for the shared packages
 
-This approach follows Python packaging best practices while maintaining the flexibility needed for active development. 
+This approach follows Python packaging best practices while maintaining the flexibility needed for active development.

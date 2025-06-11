@@ -25,17 +25,17 @@ echo "📦 Setting up service virtual environments..."
 for service in "${SERVICES[@]}"; do
     echo "  - $service"
     cd "services/$service"
-    
+
     # Create virtual environment if it doesn't exist
     if [ ! -d "venv" ]; then
         python3 -m venv venv
     fi
-    
+
     # Install service requirements
     source venv/bin/activate
     pip install -r requirements.txt
     deactivate
-    
+
     cd ../..
 done
 
@@ -44,22 +44,22 @@ echo "📦 Installing shared packages in editable mode..."
 
 for service in "${SERVICES[@]}"; do
     echo "  Installing shared packages for $service..."
-    
+
     if [ -d "services/$service/venv" ]; then
         cd "services/$service"
-        
+
         # Activate virtual environment and install shared packages
         source venv/bin/activate
-        
+
         echo "    Installing common package..."
         pip install -e ../common --force-reinstall
-        
+
         echo "    Installing vector-db package..."
         pip install -e ../vector-db --force-reinstall
-        
+
         deactivate
         cd ../..
-        
+
         echo "    ✓ $service shared packages installed"
     else
         echo "    ⚠️  Virtual environment not found for $service"
@@ -82,4 +82,4 @@ echo "  Office Service: cd services/office_service && source venv/bin/activate"
 echo ""
 echo "📦 Shared packages available in all services:"
 echo "  from common.telemetry import setup_telemetry, get_tracer"
-echo "  from vector_db.pinecone_client import PineconeClient" 
+echo "  from vector_db.pinecone_client import PineconeClient"
