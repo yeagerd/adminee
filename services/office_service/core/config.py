@@ -63,8 +63,7 @@ class Settings(BaseSettings):
 
     # Service URLs
     USER_MANAGEMENT_SERVICE_URL: str = Field(
-        default="http://localhost:8001", 
-        description="User management service URL"
+        default="http://localhost:8001", description="User management service URL"
     )
 
 
