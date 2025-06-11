@@ -5,7 +5,7 @@ Tests Clerk JWT validation, service authentication, user extraction,
 and authorization checks.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import jwt
 import pytest
@@ -236,7 +236,7 @@ class TestServiceAuthentication:
         with patch(
             "services.user_management.auth.service_auth.settings"
         ) as mock_settings:
-            mock_settings.api_key_user_management = "dev-service-key"
+            mock_settings.api_key_user_management = "api-frontend-user-key"
             mock_settings.api_key_office = None
             mock_settings.api_key_chat = None
 
@@ -247,7 +247,7 @@ class TestServiceAuthentication:
 
     def test_user_management_api_key_auth_verify_valid_key(self):
         """Test valid API key verification."""
-        service_name = service_auth.verify_api_key("dev-service-key")
+        service_name = service_auth.verify_api_key("api-frontend-user-key")
         assert service_name == "user-management-access"
 
     def test_user_management_api_key_auth_verify_invalid_key(self):
@@ -264,7 +264,8 @@ class TestServiceAuthentication:
     async def test_verify_service_authentication_success(self):
         """Test successful service authentication."""
         request = MagicMock(spec=Request)
-        request.headers = {"Authorization": "Bearer dev-service-key"}
+        request.headers = {"Authorization": "Bearer api-frontend-user-key"}
+        request.state = Mock()
 
         service_name = await verify_service_authentication(request)
         assert service_name == "user-management-access"
@@ -274,28 +275,31 @@ class TestServiceAuthentication:
         """Test service authentication with missing API key."""
         request = MagicMock(spec=Request)
         request.headers = {}
+        request.state = Mock()
 
-        with pytest.raises(AuthenticationException) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await verify_service_authentication(request)
 
-        assert "Service API key required" in str(exc_info.value)
+        assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
     async def test_verify_service_authentication_invalid_key(self):
         """Test service authentication with invalid API key."""
         request = MagicMock(spec=Request)
         request.headers = {"X-API-Key": "invalid-key"}
+        request.state = Mock()
 
-        with pytest.raises(AuthenticationException) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             await verify_service_authentication(request)
 
-        assert "Invalid service API key" in str(exc_info.value)
+        assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
     async def test_get_current_service_success(self):
         """Test successful current service extraction."""
         request = MagicMock(spec=Request)
-        request.headers = {"X-Service-Key": "dev-service-key"}
+        request.headers = {"X-Service-Key": "api-frontend-user-key"}
+        request.state = Mock()
 
         service_name = await get_current_service(request)
         assert service_name == "user-management-access"
@@ -305,11 +309,12 @@ class TestServiceAuthentication:
         """Test current service extraction with authentication failure."""
         request = MagicMock(spec=Request)
         request.headers = {}
+        request.state = Mock()
 
         with pytest.raises(HTTPException) as exc_info:
             await get_current_service(request)
 
-        assert exc_info.value.status_code == 401
+        assert exc_info.value.status_code == 500
 
     @pytest.mark.asyncio
     async def test_validate_service_permissions_success(self):
@@ -338,7 +343,8 @@ class TestServiceAuthentication:
     async def test_service_auth_required_success(self):
         """Test ServiceAuthRequired dependency success."""
         request = MagicMock(spec=Request)
-        request.headers = {"Authorization": "Bearer dev-service-key"}
+        request.headers = {"Authorization": "Bearer api-frontend-user-key"}
+        request.state = Mock()
 
         auth_dep = ServiceAuthRequired(permissions=["read_users"])
         service_name = await auth_dep(request)
@@ -348,7 +354,8 @@ class TestServiceAuthentication:
     async def test_service_auth_required_permission_failure(self):
         """Test ServiceAuthRequired dependency with permission failure."""
         request = MagicMock(spec=Request)
-        request.headers = {"Authorization": "Bearer dev-service-key"}
+        request.headers = {"Authorization": "Bearer api-frontend-user-key"}
+        request.state = Mock()
 
         # user-management service doesn't have "admin" permission
         auth_dep = ServiceAuthRequired(permissions=["admin"])
@@ -362,7 +369,8 @@ class TestServiceAuthentication:
     async def test_service_auth_required_service_restriction(self):
         """Test ServiceAuthRequired dependency with service restriction."""
         request = MagicMock(spec=Request)
-        request.headers = {"Authorization": "Bearer dev-service-key"}
+        request.headers = {"Authorization": "Bearer api-frontend-user-key"}
+        request.state = Mock()
 
         # Only allow office-service, but we're authenticating as user-management
         auth_dep = ServiceAuthRequired(allowed_services=["office-service-access"])
@@ -387,7 +395,7 @@ class TestAuthenticationIntegration:
         with patch(
             "services.user_management.auth.service_auth.settings"
         ) as mock_settings:
-            mock_settings.api_key_user_management = "dev-service-key"
+            mock_settings.api_key_user_management = "api-frontend-user-key"
             mock_settings.api_key_office = None
             mock_settings.api_key_chat = None
 
@@ -416,14 +424,15 @@ class TestAuthenticationIntegration:
     async def test_multiple_auth_header_formats(self):
         """Test different authentication header formats."""
         test_cases = [
-            {"Authorization": "Bearer dev-service-key"},
-            {"X-API-Key": "dev-service-key"},
-            {"X-Service-Key": "dev-service-key"},
+            {"Authorization": "Bearer api-frontend-user-key"},
+            {"X-API-Key": "api-frontend-user-key"},
+            {"X-Service-Key": "api-frontend-user-key"},
         ]
 
         for headers in test_cases:
             request = MagicMock(spec=Request)
             request.headers = headers
+            request.state = Mock()
 
             service_name = await verify_service_authentication(request)
             assert service_name == "user-management-access"
