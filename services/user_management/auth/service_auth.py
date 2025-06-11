@@ -82,12 +82,6 @@ API_KEYS: Dict[str, APIKeyConfig] = {
             "write_tokens",
         ],  # Can manage tokens
     ),
-    # Legacy dev key (for backward compatibility during transition)
-    "dev-service-key": APIKeyConfig(
-        client="legacy",
-        service="user-management-access",
-        permissions=["read_users", "write_users", "read_tokens", "write_tokens"],
-    ),
 }
 
 
