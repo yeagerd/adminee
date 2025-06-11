@@ -6,7 +6,6 @@ This module provides shared OpenTelemetry setup that can be used across all serv
 
 import os
 import socket
-from typing import Optional
 
 from opentelemetry import trace
 from opentelemetry.exporter.gcp.trace import CloudTraceSpanExporter
@@ -20,7 +19,7 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 def setup_telemetry(service_name: str, service_version: str = "1.0.0") -> None:
     """
     Set up OpenTelemetry for a service.
-    
+
     Args:
         service_name: Name of the service (e.g., "user-management", "chat-service")
         service_version: Version of the service
@@ -28,33 +27,33 @@ def setup_telemetry(service_name: str, service_version: str = "1.0.0") -> None:
     # Only set up telemetry if not already configured
     if trace.get_tracer_provider() != trace.NoOpTracerProvider():
         return
-    
+
     # Create resource with service information
-    resource = Resource.create({
-        "service.name": service_name,
-        "service.version": service_version,
-        "host.name": socket.gethostname(),
-        "deployment.environment": os.getenv("ENVIRONMENT", "development"),
-    })
-    
+    resource = Resource.create(
+        {
+            "service.name": service_name,
+            "service.version": service_version,
+            "host.name": socket.gethostname(),
+            "deployment.environment": os.getenv("ENVIRONMENT", "development"),
+        }
+    )
+
     # Set up tracer provider
     trace.set_tracer_provider(TracerProvider(resource=resource))
     tracer_provider = trace.get_tracer_provider()
-    
+
     # Set up exporters based on environment
     project_id = os.getenv("GOOGLE_CLOUD_PROJECT_ID")
-    
+
     if project_id and os.getenv("ENVIRONMENT") == "production":
         # Use Google Cloud Trace in production
         cloud_trace_exporter = CloudTraceSpanExporter(project_id=project_id)
-        tracer_provider.add_span_processor(
-            BatchSpanProcessor(cloud_trace_exporter)
-        )
+        tracer_provider.add_span_processor(BatchSpanProcessor(cloud_trace_exporter))
     else:
         # In development, you could add console exporter or other exporters
         # For now, we'll just set up the basics
         pass
-    
+
     # Auto-instrument FastAPI and HTTPX
     FastAPIInstrumentor.instrument()
     HTTPXClientInstrumentor.instrument()
@@ -63,10 +62,10 @@ def setup_telemetry(service_name: str, service_version: str = "1.0.0") -> None:
 def get_tracer(name: str) -> trace.Tracer:
     """
     Get a tracer for the given name.
-    
+
     Args:
         name: Name of the tracer (typically __name__ of the module)
-        
+
     Returns:
         OpenTelemetry tracer instance
     """
@@ -76,7 +75,7 @@ def get_tracer(name: str) -> trace.Tracer:
 def add_span_attributes(**attributes) -> None:
     """
     Add attributes to the current span.
-    
+
     Args:
         **attributes: Key-value pairs to add as span attributes
     """
@@ -89,7 +88,7 @@ def add_span_attributes(**attributes) -> None:
 def record_exception(exception: Exception, escaped: bool = False) -> None:
     """
     Record an exception in the current span.
-    
+
     Args:
         exception: The exception to record
         escaped: Whether the exception escaped the span
@@ -97,4 +96,4 @@ def record_exception(exception: Exception, escaped: bool = False) -> None:
     span = trace.get_current_span()
     if span and span.is_recording():
         span.record_exception(exception, escaped=escaped)
-        span.set_status(trace.Status(trace.StatusCode.ERROR, str(exception))) 
+        span.set_status(trace.Status(trace.StatusCode.ERROR, str(exception)))
