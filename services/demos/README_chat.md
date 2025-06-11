@@ -3,17 +3,27 @@
 ## Common Setup
 
 ```bash
-python3 -m venv venv
-. venv/bin/activate
-pip install -r requirements.txt
+./setup-dev.sh
+cp .env.example .env
 ```
+
+Populate
 
 ## chat.py
 
+```bash Server
+cd services/chat_service
+uvicorn main:app --port 8000 --host 0.0.0.0 --env-file ../../.env
+```
+
 ```bash
-uvicorn services.chat_service.main:app --port 8000 --host 0.0.0.0 &
+cd services/chat_service
 python services/demos/chat.py
 ```
+
+## Troubleshooting
+
+* Try `unset DATABASE_URL` to clear the env variable.
 
 ## Running with Docker and OpenTelemetry
 
