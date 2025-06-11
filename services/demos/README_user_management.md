@@ -45,7 +45,6 @@ python user_management_demo.py --help
 # Terminal 1: Start the service (from project root)
 cd /Users/yeagerd/github/briefly/services/user_management
 alembic upgrade head
-export DATABASE_URL="sqlite:///./services/user_management/user_management.db"
 export JWT_VERIFY_SIGNATURE=false
 export ENCRYPTION_SERVICE_SALT="ZGVtby1lbmNyeXB0aW9uLXNhbHQtZm9yLXRlc3Rpbmc="
 cd /Users/yeagerd/github/briefly  # Navigate to project root
@@ -264,12 +263,7 @@ ENCRYPTION_SERVICE_SALT=your_encryption_salt
 ```bash
 🔴 Service not available: Connection refused
 ```
-**Solution:** Start the user management service first:
-```bash
-# From project root directory
-cd /path/to/briefly
-uvicorn services.user_management.main:app --reload --port 8000
-```
+**Solution:** Start the user management service first
 
 ### OAuth Flow Issues
 ```bash

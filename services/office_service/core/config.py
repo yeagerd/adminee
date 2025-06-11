@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = Field(
         default="sqlite:///./office_service.db",
         description="Database connection URL",
+        validation_alias=AliasChoices("DB_URL_OFFICE", "DATABASE_URL"),
     )
 
     # Service configuration
@@ -26,14 +27,14 @@ class Settings(BaseSettings):
     HOST: str = Field(default="0.0.0.0", description="Host to bind to")
     DEBUG: bool = Field(default=False, description="Debug mode")
 
-    # API Keys for inter-service communication
-    api_key_office: str = Field(
+    # API Keys for service communication
+    api_frontend_office_key: str = Field(
         default="default-office-key",
-        description="Office service access key (required to call this service)",
+        description="Frontend API key to access this Office service",
     )
-    api_key_user_management: Optional[str] = Field(
+    api_office_user_key: Optional[str] = Field(
         default=None,
-        description="User Management service access key (to call User Management service)",
+        description="Office service API key to call User Management service",
     )
 
     # Redis configuration for caching and background tasks

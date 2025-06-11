@@ -6,7 +6,7 @@ Uses Pydantic Settings to manage environment variables and configuration.
 
 from typing import Optional
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings
 
 
@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     database_url: str = Field(
         default="sqlite+aiosqlite:///./chat_service.db",
         description="Database connection string",
+        validation_alias=AliasChoices("DB_URL_CHAT", "DATABASE_URL"),
     )
 
     # Service Configuration
@@ -29,15 +30,18 @@ class Settings(BaseSettings):
         description="Environment (development, staging, production)",
     )
 
-    # API Keys for outgoing service-to-service communication
-    # Following the api-{client}-{service}-key naming convention
+    # API Keys for service communication
+    api_frontend_chat_key: Optional[str] = Field(
+        default=None,
+        description="Frontend API key to access this Chat service",
+    )
     api_chat_user_key: Optional[str] = Field(
         default=None,
-        description="API key for Chat Service to call User Management service (api-chat-user-key)",
+        description="Chat service API key to call User Management service",
     )
     api_chat_office_key: Optional[str] = Field(
         default=None,
-        description="API key for Chat Service to call Office service (api-chat-office-key)",
+        description="Chat service API key to call Office service",
     )
 
     # Service URLs
