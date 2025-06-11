@@ -1,8 +1,8 @@
 """
-API key authentication and authorization for Office Service.
+Shared API key authentication and authorization for all services.
 
-Provides granular permission-based API key authentication for service-to-service
-and frontend-to-service communication with the principle of least privilege.
+Provides APIKeyConfig dataclass and common authentication utilities that can be
+used across all services for consistent service-to-service authentication.
 """
 
 import logging
@@ -23,7 +23,8 @@ class APIKeyConfig:
     permissions: List[str]
 
 
-# API Key to Service/Client mapping with permissions for Office Service
+# Centralized API Key to Service/Client mapping with permissions
+# This serves as the authoritative source for all service API key configurations
 API_KEYS: Dict[str, APIKeyConfig] = {
     # Frontend (Next.js API) keys - full permissions for user-facing operations
     "api-frontend-office-key": APIKeyConfig(
@@ -38,7 +39,29 @@ API_KEYS: Dict[str, APIKeyConfig] = {
             "write_files",
         ],
     ),
-    # Service-to-service keys - limited permissions
+    "api-frontend-user-key": APIKeyConfig(
+        client="frontend",
+        service="user-management-access",
+        permissions=[
+            "read_users",
+            "write_users",
+            "read_tokens",
+            "write_tokens",
+            "read_preferences",
+            "write_preferences",
+        ],
+    ),
+    "api-frontend-chat-key": APIKeyConfig(
+        client="frontend",
+        service="chat-service-access",
+        permissions=["read_chats", "write_chats", "read_threads", "write_threads"],
+    ),
+    # Service-to-service keys - limited permissions with principle of least privilege
+    "api-chat-user-key": APIKeyConfig(
+        client="chat-service",
+        service="user-management-access",
+        permissions=["read_users", "read_preferences"],  # Read-only for user context
+    ),
     "api-chat-office-key": APIKeyConfig(
         client="chat-service",
         service="office-service-access",
@@ -48,7 +71,21 @@ API_KEYS: Dict[str, APIKeyConfig] = {
             "read_files",
         ],  # No write permissions
     ),
-    # Legacy key (for backward compatibility during transition)
+    "api-office-user-key": APIKeyConfig(
+        client="office-service",
+        service="user-management-access",
+        permissions=[
+            "read_users",
+            "read_tokens",
+            "write_tokens",
+        ],  # Can manage tokens
+    ),
+    # Legacy dev keys (for backward compatibility during transition)
+    "dev-service-key": APIKeyConfig(
+        client="legacy",
+        service="user-management-access",
+        permissions=["read_users", "write_users", "read_tokens", "write_tokens"],
+    ),
     "dev-office-key": APIKeyConfig(
         client="legacy",
         service="office-service-access",
@@ -100,46 +137,6 @@ def has_permission(api_key: str, required_permission: str) -> bool:
     """Check if an API key has a specific permission."""
     permissions = get_permissions_from_api_key(api_key)
     return required_permission in permissions
-
-
-async def validate_service_permissions(
-    service_name: str,
-    required_permissions: Optional[List[str]] = None,
-    api_key: Optional[str] = None,
-) -> bool:
-    """
-    Validate that a service has the required permissions.
-
-    Args:
-        service_name: The authenticated service name
-        required_permissions: List of required permissions
-        api_key: The API key used (for granular permission checking)
-
-    Returns:
-        True if service has all required permissions, False otherwise
-    """
-    if not required_permissions:
-        return True
-
-    # If we have the API key, use granular permission checking
-    if api_key:
-        key_permissions = get_permissions_from_api_key(api_key)
-        return all(perm in key_permissions for perm in required_permissions)
-
-    # Fallback to service-level permissions
-    service_permissions = {
-        "office-service-access": [
-            "read_emails",
-            "send_emails",
-            "read_calendar",
-            "write_calendar",
-            "read_files",
-            "write_files",
-        ],
-    }
-
-    allowed_permissions = service_permissions.get(service_name, [])
-    return all(perm in allowed_permissions for perm in required_permissions)
 
 
 async def get_api_key_from_request(request: Request) -> Optional[str]:
@@ -219,6 +216,60 @@ async def verify_service_authentication(request: Request) -> str:
     return service_name
 
 
+async def validate_service_permissions(
+    service_name: str,
+    required_permissions: Optional[List[str]] = None,
+    api_key: Optional[str] = None,
+) -> bool:
+    """
+    Validate that a service has the required permissions.
+
+    Args:
+        service_name: The authenticated service name
+        required_permissions: List of required permissions
+        api_key: The API key used (for granular permission checking)
+
+    Returns:
+        True if service has all required permissions, False otherwise
+    """
+    if not required_permissions:
+        return True
+
+    # If we have the API key, use granular permission checking
+    if api_key:
+        key_permissions = get_permissions_from_api_key(api_key)
+        return all(perm in key_permissions for perm in required_permissions)
+
+    # Fallback to service-level permissions (expanded to include all services)
+    service_permissions = {
+        "user-management-access": [
+            "read_users",
+            "write_users",
+            "read_tokens",
+            "write_tokens",
+            "read_preferences",
+            "write_preferences",
+        ],
+        "office-service-access": [
+            "read_emails",
+            "send_emails",
+            "read_calendar",
+            "write_calendar",
+            "read_files",
+            "write_files",
+        ],
+        "chat-service-access": [
+            "read_chats",
+            "write_chats",
+            "read_threads",
+            "write_threads",
+        ],
+    }
+
+    allowed_permissions = service_permissions.get(service_name, [])
+    return all(perm in allowed_permissions for perm in required_permissions)
+
+
 class ServicePermissionRequired:
     """
     Dependency to check if the authenticated service has specific permissions.
@@ -284,25 +335,3 @@ async def optional_service_auth(request: Request) -> Optional[str]:
         return await verify_service_authentication(request)
     except HTTPException:
         return None
-
-
-# Legacy compatibility - keeping existing class structure
-class ServiceAPIKeyAuth:
-    """Legacy service API key authentication handler for backward compatibility."""
-
-    def __init__(self):
-        logger.warning(
-            "ServiceAPIKeyAuth is deprecated. Use the shared functions from services.common.auth instead."
-        )
-
-    def verify_api_key(self, api_key: str) -> Optional[str]:
-        """Legacy method - use verify_api_key function instead."""
-        return verify_api_key(api_key)
-
-    def is_valid_service(self, service_name: str) -> bool:
-        """Legacy method - use validate_service_permissions function instead."""
-        return service_name == "office-service-access"
-
-
-# Global service auth instance for backward compatibility
-service_auth = ServiceAPIKeyAuth()
