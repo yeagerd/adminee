@@ -6,7 +6,7 @@ Uses Pydantic Settings to manage environment variables and configuration.
 
 from typing import Optional
 
-from pydantic import Field
+from pydantic import Field, AliasChoices
 from pydantic_settings import BaseSettings
 
 
@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     database_url: str = Field(
         default="sqlite+aiosqlite:///./chat_service.db",
         description="Database connection string",
+        validation_alias=AliasChoices("DB_URL_CHAT", "DATABASE_URL"),
     )
 
     # Service Configuration

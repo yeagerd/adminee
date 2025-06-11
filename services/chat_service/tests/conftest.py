@@ -55,23 +55,28 @@ def force_fake_llm_globally(monkeypatch):
 
 
 @pytest_asyncio.fixture(scope="session")
-async def temp_db():
+async def temp_db(monkeypatch):
     """Create a temporary file-based SQLite database for testing."""
     # Create a temporary file for the database
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
         db_path = tmp.name
 
     # Store original values to restore later
-    original_database_url = os.environ.get("DATABASE_URL")
+    # original_database_url = os.environ.get("DATABASE_URL") # Monkeypatch will handle restoration
     original_engine = hm.engine
     original_async_session = hm.async_session
     original_database_url_var = hm.DATABASE_URL
 
-    # Set the DATABASE_URL to use the temporary file
+    # Set the DB_URL_CHAT to use the temporary file
     new_database_url = f"sqlite+aiosqlite:///{db_path}"
-    os.environ["DATABASE_URL"] = new_database_url
+    monkeypatch.setenv("DB_URL_CHAT", new_database_url)
+    # os.environ["DATABASE_URL"] = new_database_url # Replaced by monkeypatch
 
     # Completely reinitialize the database components
+    # settings.database_url will now pick up new_database_url via DB_URL_CHAT
+    # history_manager.py should ideally re-read from chat_service.settings
+    # For now, we explicitly update hm.DATABASE_URL, engine, and session as before.
+    # This is acceptable if history_manager.py is not re-importing settings dynamically.
     hm.DATABASE_URL = new_database_url
     hm.engine = create_async_engine(new_database_url, echo=False)
     hm.async_session = sessionmaker(
@@ -88,16 +93,17 @@ async def temp_db():
     await hm.engine.dispose()
     os.unlink(db_path)
 
-    # Restore original values
+    # Restore original values for history_manager module globals
+    # monkeypatch automatically restores the DB_URL_CHAT environment variable.
     hm.DATABASE_URL = original_database_url_var
     hm.engine = original_engine
     hm.async_session = original_async_session
 
-    if original_database_url is not None:
-        os.environ["DATABASE_URL"] = original_database_url
-    else:
-        if "DATABASE_URL" in os.environ:
-            del os.environ["DATABASE_URL"]
+    # if original_database_url is not None: # Handled by monkeypatch for DB_URL_CHAT
+    #     os.environ["DATABASE_URL"] = original_database_url
+    # else:
+    #     if "DATABASE_URL" in os.environ:
+    #         del os.environ["DATABASE_URL"]
 
 
 @pytest_asyncio.fixture(autouse=True)

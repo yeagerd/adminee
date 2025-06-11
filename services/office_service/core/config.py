@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import Field
+from pydantic import Field, AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = Field(
         default="sqlite:///./office_service.db",
         description="Database connection URL",
+        validation_alias=AliasChoices("DB_URL_OFFICE", "DATABASE_URL"),
     )
 
     # Service configuration

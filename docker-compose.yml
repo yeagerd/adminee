@@ -14,7 +14,7 @@ services:
     depends_on:
       - db
     environment:
-      - DATABASE_URL=${DATABASE_URL}
+      - DB_URL_APP=${DB_URL_APP}
       - PINECONE_API_KEY=${PINECONE_API_KEY}
       - PINECONE_ENVIRONMENT=${PINECONE_ENVIRONMENT}
       # Frontend / Next.js specific vars
@@ -37,7 +37,7 @@ services:
       - db
       - redis
     environment:
-      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-briefly}
+      - DB_URL_USER_MANAGEMENT=${DB_URL_USER_MANAGEMENT}
       - REDIS_URL=redis://redis:6379
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
@@ -65,7 +65,7 @@ services:
       - redis
       - user-management
     environment:
-      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-briefly}-office
+      - DB_URL_OFFICE=${DB_URL_OFFICE}
       - REDIS_URL=redis://redis:6379
       - USER_MANAGEMENT_SERVICE_URL=http://user-management:8001
       # API key required to access this service
@@ -88,7 +88,7 @@ services:
       - user-management # If it needs to authenticate/call user-management
       - office-service # If it needs to call office-service
     environment:
-      - DATABASE_URL=sqlite:///./chat_service.db # Using SQLite as per .env.example, adjust if shared PG
+      - DB_URL_CHAT=${DB_URL_CHAT} # Using SQLite as per .env.example, adjust if shared PG
       - USER_MANAGEMENT_SERVICE_URL=http://user-management:8001
       - OFFICE_SERVICE_URL=http://office-service:8080
       # API key required to access this service

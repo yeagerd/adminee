@@ -6,7 +6,7 @@ Uses Pydantic Settings to manage environment variables and configuration.
 
 from typing import List, Optional
 
-from pydantic import Field
+from pydantic import Field, AliasChoices
 from pydantic_settings import BaseSettings
 
 
@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     database_url: str = Field(
         default="postgresql://postgres:postgres@localhost:5432/briefly",
         description="PostgreSQL database connection string",
+        validation_alias=AliasChoices("DB_URL_USER_MANAGEMENT", "DATABASE_URL"),
     )
 
     # Service Configuration
