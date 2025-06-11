@@ -220,10 +220,15 @@ async def validate_service_permissions(
 
     # Define service permissions
     service_permissions = {
-        "user-management": ["read_users", "write_users", "read_tokens", "write_tokens"],
-        "office-service": ["read_users", "read_tokens"],
-        "chat-service": ["read_users"],
-        "api-gateway": ["read_users"],
+        "user-management-access": [
+            "read_users",
+            "write_users",
+            "read_tokens",
+            "write_tokens",
+        ],
+        "office-service-access": ["read_users", "read_tokens"],
+        "chat-service-access": ["read_users"],
+        "api-gateway-access": ["read_users"],
     }
 
     permissions = service_permissions.get(service_name, [])
