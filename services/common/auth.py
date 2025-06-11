@@ -251,6 +251,8 @@ async def validate_service_permissions(
             "write_preferences",
         ],
         "office-service-access": [
+            "read_users",
+            "read_tokens",
             "read_emails",
             "send_emails",
             "read_calendar",
@@ -259,6 +261,7 @@ async def validate_service_permissions(
             "write_files",
         ],
         "chat-service-access": [
+            "read_users",
             "read_chats",
             "write_chats",
             "read_threads",

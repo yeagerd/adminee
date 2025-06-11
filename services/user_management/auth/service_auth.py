@@ -234,14 +234,11 @@ class ServicePermissionRequired:
         self.required_permissions = required_permissions
 
     async def __call__(self, request: Request) -> str:
-        # First ensure service is authenticated
-        service_name = await verify_service_authentication(request)
-
         # Use the shared validation logic from common.auth
         from services.common.auth import (
             ServicePermissionRequired as CommonServicePermissionRequired,
         )
 
-        # Delegate to the common implementation
+        # Delegate to the common implementation (which handles authentication and validation)
         common_validator = CommonServicePermissionRequired(self.required_permissions)
         return await common_validator(request)
