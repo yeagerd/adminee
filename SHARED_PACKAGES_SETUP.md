@@ -12,13 +12,16 @@ The setup provides:
 
 ## Quick Setup
 
-Run the installation script from the repository root:
+Run the installation setup script from the repository root:
 
 ```bash
-./install_common_packages.sh
+./setup-dev.sh
 ```
 
-This installs both packages in editable mode for all services with virtual environments.
+This script will:
+- Create virtual environments for the main project and all services
+- Install requirements for each service
+- Install shared packages in editable mode for all services
 
 ## What Was Configured
 
@@ -110,7 +113,7 @@ To verify the setup works:
 - `services/office_service/.vscode/settings.json` (updated)
 - `services/chat_service/.vscode/settings.json` (updated)
 - `services/user_management/.vscode/settings.json` (updated)
-- `install_common_packages.sh` (new)
+- `setup-dev.sh` (updated - now includes shared package installation)
 
 ## Technical Details
 
