@@ -2,15 +2,15 @@ import os
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException
-
-from services.chat_service.llama_manager import ChatAgentManager
-from services.chat_service.models import Message as PydanticMessage
-
-from .models import (
+from llama_manager import ChatAgentManager
+from models import (
     ChatRequest,
     ChatResponse,
     FeedbackRequest,
     FeedbackResponse,
+)
+from models import Message as PydanticMessage
+from models import (
     Thread,
 )
 
@@ -27,7 +27,7 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
     """
     from typing import cast
 
-    from services.chat_service import history_manager
+    import history_manager
 
     user_id = request.user_id
     thread_id = request.thread_id
@@ -87,7 +87,7 @@ async def list_threads(user_id: str) -> List[Thread]:
     """
     List threads for a given user using history_manager.
     """
-    from services.chat_service import history_manager
+    import history_manager
 
     threads = await history_manager.list_threads(user_id)
     return [
@@ -106,8 +106,8 @@ async def thread_history(thread_id: str) -> ChatResponse:
     """
     Get chat history for a given thread using history_manager.
     """
-    from services.chat_service import history_manager
-    from services.chat_service.models import Message
+    import history_manager
+    from models import Message
 
     messages = await history_manager.get_thread_history(int(thread_id), limit=100)
     chat_messages = [
