@@ -7,4 +7,4 @@ setup(
     package_dir={"vector_db": "."},
     python_requires=">=3.8",
     description="Vector database utilities for Briefly services",
-) 
+)
