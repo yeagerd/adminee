@@ -37,9 +37,9 @@ class Settings(BaseSettings):
     )
 
     # Security Configuration
-    api_key_user_management: Optional[str] = Field(
+    api_frontend_user_key: Optional[str] = Field(
         default=None,
-        description="User Management service access key (required to call this service)",
+        description="Frontend API key to access User Management service",
     )
     encryption_service_salt: Optional[str] = Field(
         default=None,

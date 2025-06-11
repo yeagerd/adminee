@@ -6,9 +6,10 @@ Sets up database connection using SQLModel and SQLAlchemy.
 
 from typing import AsyncGenerator
 
-from .settings import settings
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlmodel import SQLModel
+
+from .settings import settings
 
 
 # Create async engine for database operations

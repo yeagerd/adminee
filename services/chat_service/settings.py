@@ -30,15 +30,18 @@ class Settings(BaseSettings):
         description="Environment (development, staging, production)",
     )
 
-    # API Keys for outgoing service-to-service communication
-    # Following the api-{client}-{service}-key naming convention
+    # API Keys for service communication
+    api_frontend_chat_key: Optional[str] = Field(
+        default=None,
+        description="Frontend API key to access this Chat service",
+    )
     api_chat_user_key: Optional[str] = Field(
         default=None,
-        description="API key for Chat Service to call User Management service (api-chat-user-key)",
+        description="Chat service API key to call User Management service",
     )
     api_chat_office_key: Optional[str] = Field(
         default=None,
-        description="API key for Chat Service to call Office service (api-chat-office-key)",
+        description="Chat service API key to call Office service",
     )
 
     # Service URLs

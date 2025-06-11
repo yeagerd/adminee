@@ -91,8 +91,8 @@ class ServiceAPIKeyAuth:
     def __init__(self):
         self.valid_api_keys = {}
         # Only accept this service's own API key for access
-        if settings.api_key_user_management:
-            self.valid_api_keys[settings.api_key_user_management] = (
+        if settings.api_frontend_user_key:
+            self.valid_api_keys[settings.api_frontend_user_key] = (
                 "user-management-access"
             )
 
