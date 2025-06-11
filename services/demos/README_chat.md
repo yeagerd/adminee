@@ -20,7 +20,7 @@ uvicorn main:app --port 8000 --host 0.0.0.0 --env-file ../../.env
 ```bash
 cd services/chat_service
 source venv/bin/activate
-python services/demos/chat.py
+python ../demos/chat.py
 ```
 
 ## Troubleshooting
