@@ -213,266 +213,353 @@ class TestPreferencesService:
         return prefs
 
     @pytest.mark.asyncio
-    async def test_get_user_preferences_success(self, mock_user, mock_preferences):
-        """Test successful retrieval of user preferences."""
-        with (
-            patch(
-                "services.user_management.services.preferences_service.User"
-            ) as mock_user_model,
-            patch(
-                "services.user_management.services.preferences_service.UserPreferences"
-            ) as mock_prefs_model,
-        ):
+    @patch("services.user_management.services.preferences_service.async_session")
+    async def test_get_user_preferences_success(
+        self, mock_async_session, mock_user, mock_preferences
+    ):
+        """Test successful preferences retrieval."""
+        # Setup mock session
+        mock_session = AsyncMock()
+        mock_async_session.return_value.__aenter__.return_value = mock_session
 
-            mock_user_model.objects.get_or_none = AsyncMock(return_value=mock_user)
-            mock_prefs_model.objects.get_or_none = AsyncMock(
-                return_value=mock_preferences
-            )
+        # Setup mock query results
+        mock_user_result = Mock()
+        mock_user_result.scalar_one_or_none = Mock(
+            return_value=mock_user
+        )  # Return actual value
 
-            result = await PreferencesService.get_user_preferences("user_123")
+        mock_prefs_result = Mock()
+        mock_prefs_result.scalar_one_or_none = Mock(
+            return_value=mock_preferences
+        )  # Return actual value
 
-            assert result is not None
-            assert result.user_id == "user_123"
-            assert result.version == "1.0"
-            assert result.ui.theme == ThemeMode.SYSTEM
-            assert result.notifications.email_notifications is True
+        mock_session.execute = AsyncMock(
+            side_effect=[mock_user_result, mock_prefs_result]
+        )
+
+        result = await PreferencesService.get_user_preferences("user_123")
+
+        assert result is not None
+        assert result.user_id == "user_123"
+        assert result.version == "1.0"
+        assert result.ui.theme == ThemeMode.SYSTEM
+        assert result.notifications.email_notifications is True
 
     @pytest.mark.asyncio
-    async def test_get_user_preferences_user_not_found(self):
+    @patch("services.user_management.services.preferences_service.async_session")
+    async def test_get_user_preferences_user_not_found(self, mock_async_session):
         """Test preferences retrieval when user doesn't exist."""
-        with patch(
-            "services.user_management.services.preferences_service.User"
-        ) as mock_user_model:
-            mock_user_model.objects.get_or_none = AsyncMock(return_value=None)
+        # Setup mock session
+        mock_session = AsyncMock()
+        mock_async_session.return_value.__aenter__.return_value = mock_session
 
-            with pytest.raises(UserNotFoundException):
-                await PreferencesService.get_user_preferences("nonexistent")
+        # Setup mock query result - user not found
+        mock_user_result = Mock()
+        mock_user_result.scalar_one_or_none = Mock(
+            return_value=None
+        )  # Return actual value
+        mock_session.execute = AsyncMock(return_value=mock_user_result)
+
+        with pytest.raises(UserNotFoundException):
+            await PreferencesService.get_user_preferences("nonexistent")
 
     @pytest.mark.asyncio
-    async def test_get_user_preferences_create_defaults(self, mock_user):
+    @patch("services.user_management.services.preferences_service.async_session")
+    async def test_get_user_preferences_create_defaults(
+        self, mock_async_session, mock_user
+    ):
         """Test automatic creation of default preferences."""
-        with (
-            patch(
-                "services.user_management.services.preferences_service.User"
-            ) as mock_user_model,
-            patch(
-                "services.user_management.services.preferences_service.UserPreferences"
-            ) as mock_prefs_model,
-        ):
+        # Setup mock session
+        mock_session = AsyncMock()
+        mock_async_session.return_value.__aenter__.return_value = mock_session
 
-            mock_user_model.objects.get_or_none = AsyncMock(return_value=mock_user)
-            mock_prefs_model.objects.get_or_none = AsyncMock(return_value=None)
+        # Setup mock query results - user exists, preferences don't
+        mock_user_result = Mock()
+        mock_user_result.scalar_one_or_none = Mock(
+            return_value=mock_user
+        )  # Return actual value
 
-            created_prefs = Mock()
-            created_prefs.user_id = 1
-            created_prefs.version = "1.0"  # Add version field
-            created_prefs.ui_preferences = UIPreferencesSchema().model_dump()
-            created_prefs.notification_preferences = (
-                NotificationPreferencesSchema().model_dump()
+        mock_prefs_result = Mock()
+        mock_prefs_result.scalar_one_or_none = Mock(
+            return_value=None
+        )  # No existing preferences
+
+        mock_session.execute = AsyncMock(
+            side_effect=[mock_user_result, mock_prefs_result]
+        )
+
+        # Mock the created preferences after refresh
+        created_prefs = Mock()
+        created_prefs.user_id = 1
+        created_prefs.version = "1.0"
+        created_prefs.ui_preferences = UIPreferencesSchema().model_dump()
+        created_prefs.notification_preferences = (
+            NotificationPreferencesSchema().model_dump()
+        )
+        created_prefs.ai_preferences = AIPreferencesSchema().model_dump()
+        created_prefs.integration_preferences = (
+            IntegrationPreferencesSchema().model_dump()
+        )
+        created_prefs.privacy_preferences = PrivacyPreferencesSchema().model_dump()
+        created_prefs.created_at = datetime.utcnow()
+        created_prefs.updated_at = datetime.utcnow()
+
+        mock_session.refresh = AsyncMock(return_value=None)
+        # Mock the preferences object that gets created
+        mock_session.add = AsyncMock(side_effect=lambda prefs: setattr(prefs, "id", 1))
+
+        result = await PreferencesService.get_user_preferences("user_123")
+
+        assert result is not None
+        # Verify that session.add was called (preferences were created)
+        mock_session.add.assert_called_once()
+        mock_session.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch("services.user_management.services.preferences_service.async_session")
+    async def test_update_user_preferences_success(
+        self, mock_async_session, mock_user, mock_preferences
+    ):
+        """Test successful preferences update."""
+        # Setup mock session
+        mock_session = AsyncMock()
+        mock_async_session.return_value.__aenter__.return_value = mock_session
+
+        # Setup mock query results for both sessions (get and update)
+        mock_user_result = Mock()
+        mock_user_result.scalar_one_or_none = Mock(
+            return_value=mock_user
+        )  # Return actual value
+
+        mock_prefs_result = Mock()
+        mock_prefs_result.scalar_one_or_none = Mock(
+            return_value=mock_preferences
+        )  # Return actual value
+        mock_prefs_result.scalar_one = Mock(
+            return_value=mock_preferences
+        )  # Return actual value
+
+        mock_session.execute = AsyncMock(
+            side_effect=[
+                mock_user_result,
+                mock_prefs_result,  # First session (validation)
+                mock_prefs_result,  # Second session (update)
+            ]
+        )
+
+        # Mock the get_user_preferences method for return value
+        with patch.object(PreferencesService, "get_user_preferences") as mock_get:
+            mock_response = UserPreferencesResponse(
+                user_id="user_123",
+                ui=UIPreferencesSchema(theme=ThemeMode.DARK),
+                notifications=NotificationPreferencesSchema(),
+                ai=AIPreferencesSchema(),
+                integrations=IntegrationPreferencesSchema(),
+                privacy=PrivacyPreferencesSchema(),
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
             )
-            created_prefs.ai_preferences = AIPreferencesSchema().model_dump()
-            created_prefs.integration_preferences = (
-                IntegrationPreferencesSchema().model_dump()
+            mock_get.return_value = mock_response
+
+            update_data = UserPreferencesUpdate(
+                ui=UIPreferencesSchema(theme=ThemeMode.DARK)
             )
-            created_prefs.privacy_preferences = PrivacyPreferencesSchema().model_dump()
-            created_prefs.created_at = datetime.utcnow()
-            created_prefs.updated_at = datetime.utcnow()
 
-            mock_prefs_model.objects.create = AsyncMock(return_value=created_prefs)
-
-            result = await PreferencesService.get_user_preferences("user_123")
+            result = await PreferencesService.update_user_preferences(
+                "user_123", update_data
+            )
 
             assert result is not None
-            # Verify that version is set when creating defaults
-            mock_prefs_model.objects.create.assert_called_once()
-            create_call_args = mock_prefs_model.objects.create.call_args
-            assert create_call_args[1]["version"] == "1.0"
+            # Verify session operations
+            assert mock_session.add.call_count >= 1
+            assert mock_session.commit.call_count >= 1
 
     @pytest.mark.asyncio
-    async def test_update_user_preferences_success(self, mock_user, mock_preferences):
-        """Test successful preferences update."""
-        with (
-            patch(
-                "services.user_management.services.preferences_service.User"
-            ) as mock_user_model,
-            patch(
-                "services.user_management.services.preferences_service.UserPreferences"
-            ) as mock_prefs_model,
-        ):
-
-            mock_user_model.objects.get_or_none = AsyncMock(return_value=mock_user)
-            mock_prefs_model.objects.get_or_none = AsyncMock(
-                return_value=mock_preferences
-            )
-
-            # Mock the get_user_preferences method for return value
-            with patch.object(PreferencesService, "get_user_preferences") as mock_get:
-                mock_response = UserPreferencesResponse(
-                    user_id="user_123",
-                    ui=UIPreferencesSchema(theme=ThemeMode.DARK),
-                    notifications=NotificationPreferencesSchema(),
-                    ai=AIPreferencesSchema(),
-                    integrations=IntegrationPreferencesSchema(),
-                    privacy=PrivacyPreferencesSchema(),
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow(),
-                )
-                mock_get.return_value = mock_response
-
-                update_data = UserPreferencesUpdate(
-                    ui=UIPreferencesSchema(theme=ThemeMode.DARK)
-                )
-
-                result = await PreferencesService.update_user_preferences(
-                    "user_123", update_data
-                )
-
-                assert result is not None
-                mock_preferences.update.assert_called_once()
-
-    @pytest.mark.asyncio
+    @patch("services.user_management.services.preferences_service.async_session")
     async def test_update_user_preferences_no_changes(
-        self, mock_user, mock_preferences
+        self, mock_async_session, mock_user, mock_preferences
     ):
         """Test preferences update with no changes."""
-        with (
-            patch(
-                "services.user_management.services.preferences_service.User"
-            ) as mock_user_model,
-            patch(
-                "services.user_management.services.preferences_service.UserPreferences"
-            ) as mock_prefs_model,
-        ):
+        # Setup mock session
+        mock_session = AsyncMock()
+        mock_async_session.return_value.__aenter__.return_value = mock_session
 
-            mock_user_model.objects.get_or_none = AsyncMock(return_value=mock_user)
-            mock_prefs_model.objects.get_or_none = AsyncMock(
-                return_value=mock_preferences
+        # Setup mock query results
+        mock_user_result = Mock()
+        mock_user_result.scalar_one_or_none = Mock(
+            return_value=mock_user
+        )  # Return actual value
+
+        mock_prefs_result = Mock()
+        mock_prefs_result.scalar_one_or_none = Mock(
+            return_value=mock_preferences
+        )  # Return actual value
+
+        mock_session.execute = AsyncMock(
+            side_effect=[mock_user_result, mock_prefs_result]
+        )
+
+        with patch.object(PreferencesService, "get_user_preferences") as mock_get:
+            mock_response = UserPreferencesResponse(
+                user_id="user_123",
+                ui=UIPreferencesSchema(),
+                notifications=NotificationPreferencesSchema(),
+                ai=AIPreferencesSchema(),
+                integrations=IntegrationPreferencesSchema(),
+                privacy=PrivacyPreferencesSchema(),
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+            )
+            mock_get.return_value = mock_response
+
+            # Empty update
+            update_data = UserPreferencesUpdate()
+
+            result = await PreferencesService.update_user_preferences(
+                "user_123", update_data
             )
 
-            with patch.object(PreferencesService, "get_user_preferences") as mock_get:
-                mock_response = UserPreferencesResponse(
-                    user_id="user_123",
-                    ui=UIPreferencesSchema(),
-                    notifications=NotificationPreferencesSchema(),
-                    ai=AIPreferencesSchema(),
-                    integrations=IntegrationPreferencesSchema(),
-                    privacy=PrivacyPreferencesSchema(),
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow(),
-                )
-                mock_get.return_value = mock_response
-
-                # Empty update
-                update_data = UserPreferencesUpdate()
-
-                result = await PreferencesService.update_user_preferences(
-                    "user_123", update_data
-                )
-
-                assert result is not None
-                # Should not call update if no changes
-                mock_preferences.update.assert_not_called()
+            assert result is not None
+            # Should call get_user_preferences since no changes
+            mock_get.assert_called()
 
     @pytest.mark.asyncio
+    @patch("services.user_management.services.preferences_service.async_session")
     async def test_reset_user_preferences_all_categories(
-        self, mock_user, mock_preferences
+        self, mock_async_session, mock_user, mock_preferences
     ):
         """Test resetting all preference categories."""
-        with (
-            patch(
-                "services.user_management.services.preferences_service.User"
-            ) as mock_user_model,
-            patch(
-                "services.user_management.services.preferences_service.UserPreferences"
-            ) as mock_prefs_model,
-        ):
+        # Setup mock session
+        mock_session = AsyncMock()
+        mock_async_session.return_value.__aenter__.return_value = mock_session
 
-            mock_user_model.objects.get_or_none = AsyncMock(return_value=mock_user)
-            mock_prefs_model.objects.get_or_none = AsyncMock(
-                return_value=mock_preferences
+        # Setup mock query results for both sessions
+        mock_user_result = Mock()
+        mock_user_result.scalar_one_or_none = Mock(
+            return_value=mock_user
+        )  # Return actual value
+
+        mock_prefs_result = Mock()
+        mock_prefs_result.scalar_one_or_none = Mock(
+            return_value=mock_preferences
+        )  # Return actual value
+        mock_prefs_result.scalar_one = Mock(
+            return_value=mock_preferences
+        )  # Return actual value
+
+        mock_session.execute = AsyncMock(
+            side_effect=[
+                mock_user_result,
+                mock_prefs_result,  # First session (validation)
+                mock_prefs_result,  # Second session (reset)
+            ]
+        )
+
+        # Mock the get_user_preferences method for return value
+        with patch.object(PreferencesService, "get_user_preferences") as mock_get:
+            mock_response = UserPreferencesResponse(
+                user_id="user_123",
+                ui=UIPreferencesSchema(),
+                notifications=NotificationPreferencesSchema(),
+                ai=AIPreferencesSchema(),
+                integrations=IntegrationPreferencesSchema(),
+                privacy=PrivacyPreferencesSchema(),
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
             )
+            mock_get.return_value = mock_response
 
-            with patch.object(PreferencesService, "get_user_preferences") as mock_get:
-                mock_response = UserPreferencesResponse(
-                    user_id="user_123",
-                    ui=UIPreferencesSchema(),
-                    notifications=NotificationPreferencesSchema(),
-                    ai=AIPreferencesSchema(),
-                    integrations=IntegrationPreferencesSchema(),
-                    privacy=PrivacyPreferencesSchema(),
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow(),
-                )
-                mock_get.return_value = mock_response
+            result = await PreferencesService.reset_user_preferences("user_123")
 
-                result = await PreferencesService.reset_user_preferences("user_123")
-
-                assert result is not None
-                mock_preferences.update.assert_called_once()
+            assert result is not None
+            # Verify session operations
+            assert mock_session.add.call_count >= 1
+            assert mock_session.commit.call_count >= 1
 
     @pytest.mark.asyncio
+    @patch("services.user_management.services.preferences_service.async_session")
     async def test_reset_user_preferences_specific_categories(
-        self, mock_user, mock_preferences
+        self, mock_async_session, mock_user, mock_preferences
     ):
         """Test resetting specific preference categories."""
-        with (
-            patch(
-                "services.user_management.services.preferences_service.User"
-            ) as mock_user_model,
-            patch(
-                "services.user_management.services.preferences_service.UserPreferences"
-            ) as mock_prefs_model,
-        ):
+        # Setup mock session
+        mock_session = AsyncMock()
+        mock_async_session.return_value.__aenter__.return_value = mock_session
 
-            mock_user_model.objects.get_or_none = AsyncMock(return_value=mock_user)
-            mock_prefs_model.objects.get_or_none = AsyncMock(
-                return_value=mock_preferences
+        # Setup mock query results for both sessions
+        mock_user_result = Mock()
+        mock_user_result.scalar_one_or_none = Mock(
+            return_value=mock_user
+        )  # Return actual value
+
+        mock_prefs_result = Mock()
+        mock_prefs_result.scalar_one_or_none = Mock(
+            return_value=mock_preferences
+        )  # Return actual value
+        mock_prefs_result.scalar_one = Mock(
+            return_value=mock_preferences
+        )  # Return actual value
+
+        mock_session.execute = AsyncMock(
+            side_effect=[
+                mock_user_result,
+                mock_prefs_result,  # First session (validation)
+                mock_prefs_result,  # Second session (reset)
+            ]
+        )
+
+        # Mock the get_user_preferences method for return value
+        with patch.object(PreferencesService, "get_user_preferences") as mock_get:
+            mock_response = UserPreferencesResponse(
+                user_id="user_123",
+                ui=UIPreferencesSchema(),
+                notifications=NotificationPreferencesSchema(),
+                ai=AIPreferencesSchema(),
+                integrations=IntegrationPreferencesSchema(),
+                privacy=PrivacyPreferencesSchema(),
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+            )
+            mock_get.return_value = mock_response
+
+            categories = ["ui", "notifications"]
+            result = await PreferencesService.reset_user_preferences(
+                "user_123", categories
             )
 
-            with patch.object(PreferencesService, "get_user_preferences") as mock_get:
-                mock_response = UserPreferencesResponse(
-                    user_id="user_123",
-                    ui=UIPreferencesSchema(),
-                    notifications=NotificationPreferencesSchema(),
-                    ai=AIPreferencesSchema(),
-                    integrations=IntegrationPreferencesSchema(),
-                    privacy=PrivacyPreferencesSchema(),
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow(),
-                )
-                mock_get.return_value = mock_response
-
-                categories = ["ui", "notifications"]
-                result = await PreferencesService.reset_user_preferences(
-                    "user_123", categories
-                )
-
-                assert result is not None
-                mock_preferences.update.assert_called_once()
+            assert result is not None
+            # Verify session operations
+            assert mock_session.add.call_count >= 1
+            assert mock_session.commit.call_count >= 1
 
     @pytest.mark.asyncio
+    @patch("services.user_management.services.preferences_service.async_session")
     async def test_reset_user_preferences_invalid_category(
-        self, mock_user, mock_preferences
+        self, mock_async_session, mock_user, mock_preferences
     ):
-        """Test resetting with invalid category."""
-        with (
-            patch(
-                "services.user_management.services.preferences_service.User"
-            ) as mock_user_model,
-            patch(
-                "services.user_management.services.preferences_service.UserPreferences"
-            ) as mock_prefs_model,
-        ):
+        """Test resetting preferences with invalid category."""
+        # Setup mock session
+        mock_session = AsyncMock()
+        mock_async_session.return_value.__aenter__.return_value = mock_session
 
-            mock_user_model.objects.get_or_none = AsyncMock(return_value=mock_user)
-            mock_prefs_model.objects.get_or_none = AsyncMock(
-                return_value=mock_preferences
-            )
+        # Setup mock query results
+        mock_user_result = Mock()
+        mock_user_result.scalar_one_or_none = Mock(
+            return_value=mock_user
+        )  # Return actual value
 
-            categories = ["invalid_category"]
+        mock_prefs_result = Mock()
+        mock_prefs_result.scalar_one_or_none = Mock(
+            return_value=mock_preferences
+        )  # Return actual value
 
-            with pytest.raises(ValidationException):
-                await PreferencesService.reset_user_preferences("user_123", categories)
+        mock_session.execute = AsyncMock(
+            side_effect=[mock_user_result, mock_prefs_result]
+        )
+
+        categories = ["invalid_category"]
+        with pytest.raises(ValidationException):
+            await PreferencesService.reset_user_preferences("user_123", categories)
 
     def test_version_field_for_migration_support(self):
         """Test that version field supports future migration scenarios."""

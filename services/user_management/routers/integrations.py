@@ -249,11 +249,62 @@ async def complete_oauth_flow(
         )
 
 
+@router.get("/{provider}")
+async def get_specific_integration(
+    user_id: str,
+    provider: IntegrationProvider,
+    current_user: str = Depends(get_current_user),
+):
+    """
+    Get details for a specific integration.
+
+    Returns detailed information about a specific provider integration
+    including status, token info, scopes, and metadata.
+
+    **Response includes:**
+    - Integration status and provider information
+    - Token availability and expiration details
+    - OAuth scopes and external user information
+    - Error details and health status
+    - Last sync timestamps and activity
+    """
+    # Verify user can access this resource
+    await verify_user_ownership(current_user, user_id)
+
+    try:
+        # Get all integrations and filter for the specific provider
+        integrations_response = await integration_service.get_user_integrations(
+            user_id=user_id,
+            provider=provider,
+            include_token_info=True,
+        )
+
+        if not integrations_response.integrations:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Integration not found for provider: {provider.value}",
+            )
+
+        # Return the first (and should be only) integration for this provider
+        return integrations_response.integrations[0]
+
+    except NotFoundException as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except SimpleValidationException as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
+        )
+    except IntegrationException as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
 @router.delete("/{provider}", response_model=IntegrationDisconnectResponse)
 async def disconnect_integration(
     user_id: str,
     provider: IntegrationProvider,
-    request: IntegrationDisconnectRequest = None,
+    request: IntegrationDisconnectRequest | None = None,
     current_user: str = Depends(get_current_user),
 ):
     """
@@ -326,15 +377,17 @@ async def refresh_integration_tokens(
         request = TokenRefreshRequest()
 
     try:
-        return await integration_service.refresh_integration_tokens(
+        result = await integration_service.refresh_integration_tokens(
             user_id=user_id,
             provider=provider,
             force=request.force,
         )
+
+        return result
     except NotFoundException as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except IntegrationException as e:
-        # Token refresh failures should return 200 with error details
+        # Return a failed TokenRefreshResponse instead of raising HTTP error
         return TokenRefreshResponse(
             success=False,
             integration_id=None,

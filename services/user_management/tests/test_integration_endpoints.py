@@ -22,6 +22,7 @@ from ..models.integration import IntegrationProvider, IntegrationStatus
 from ..schemas.integration import (
     IntegrationHealthResponse,
     IntegrationListResponse,
+    IntegrationStatsResponse,
 )
 
 
@@ -413,37 +414,37 @@ class TestIntegrationManagementEndpoints:
         """Test successful integration statistics retrieval."""
         user_id = "user_123"
 
-        mock_response = {
-            "total_integrations": 2,
-            "active_integrations": 1,
-            "failed_integrations": 1,
-            "pending_integrations": 0,
-            "by_provider": {
+        mock_response = IntegrationStatsResponse(
+            total_integrations=2,
+            active_integrations=1,
+            failed_integrations=1,
+            pending_integrations=0,
+            by_provider={
                 "google": 1,
                 "microsoft": 1,
             },
-            "by_status": {
+            by_status={
                 "active": 1,
                 "error": 1,
                 "inactive": 0,
                 "pending": 0,
             },
-            "recent_errors": [
+            recent_errors=[
                 {
                     "provider": "microsoft",
                     "error": "Token expired",
                     "occurred_at": datetime.now(timezone.utc).isoformat(),
                 }
             ],
-            "sync_stats": {
+            sync_stats={
                 "last_sync_at": datetime.now(timezone.utc).isoformat(),
                 "successful_syncs": 10,
                 "failed_syncs": 1,
             },
-        }
+        )
 
         with patch(
-            "services.user_management.services.integration_service.integration_service.get_integration_statistics",
+            "services.user_management.routers.integrations.integration_service.get_integration_statistics",
             return_value=mock_response,
         ):
             response = client.get(

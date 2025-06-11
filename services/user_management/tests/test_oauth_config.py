@@ -311,8 +311,8 @@ class TestOAuthConfig:
         self.settings = Settings(
             google_client_id="test-google-client-id",
             google_client_secret="test-google-client-secret",
-            microsoft_client_id="test-microsoft-client-id",
-            microsoft_client_secret="test-microsoft-client-secret",
+            azure_ad_client_id="test-microsoft-client-id",
+            azure_ad_client_secret="test-microsoft-client-secret",
         )
 
         self.oauth_config = OAuthConfig(self.settings)
