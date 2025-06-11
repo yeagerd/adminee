@@ -84,7 +84,59 @@ Headers: X-API-Key: api-chat-user-key
 Result: SUCCESS (has read_users permission)
 ```
 
-### 3. Token Management
+### 3. Calendar Event Security
+```python
+# ✅ Frontend can create/update/delete calendar events
+POST /api/calendar/events
+Headers: X-API-Key: api-frontend-office-key
+Result: SUCCESS (has write_calendar permission)
+
+PUT /api/calendar/events/123
+Headers: X-API-Key: api-frontend-office-key
+Result: SUCCESS (has write_calendar permission)
+
+DELETE /api/calendar/events/123
+Headers: X-API-Key: api-frontend-office-key
+Result: SUCCESS (has write_calendar permission)
+
+# ❌ Chat service cannot create/update/delete calendar events
+POST /api/calendar/events
+Headers: X-API-Key: api-chat-office-key
+Result: 403 Forbidden (lacks write_calendar permission)
+
+# ✅ Chat service can read calendar events
+GET /api/calendar/events
+Headers: X-API-Key: api-chat-office-key
+Result: SUCCESS (has read_calendar permission)
+```
+
+### 4. File Management Security
+```python
+# ✅ Frontend can create/update/delete files
+POST /api/files/upload
+Headers: X-API-Key: api-frontend-office-key
+Result: SUCCESS (has write_files permission)
+
+PUT /api/files/123
+Headers: X-API-Key: api-frontend-office-key
+Result: SUCCESS (has write_files permission)
+
+DELETE /api/files/123
+Headers: X-API-Key: api-frontend-office-key
+Result: SUCCESS (has write_files permission)
+
+# ❌ Chat service cannot create/update/delete files
+POST /api/files/upload
+Headers: X-API-Key: api-chat-office-key
+Result: 403 Forbidden (lacks write_files permission)
+
+# ✅ Chat service can read files
+GET /api/files
+Headers: X-API-Key: api-chat-office-key
+Result: SUCCESS (has read_files permission)
+```
+
+### 5. Token Management
 ```python
 # ✅ Office service can refresh OAuth tokens
 POST /api/tokens/refresh

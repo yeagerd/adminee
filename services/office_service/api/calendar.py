@@ -12,11 +12,12 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, cast
 
 from core.api_client_factory import APIClientFactory
+from core.auth import ServicePermissionRequired
 from core.cache_manager import cache_manager, generate_cache_key
 from core.clients.google import GoogleAPIClient
 from core.clients.microsoft import MicrosoftAPIClient
 from core.normalizer import normalize_google_calendar_event
-from fastapi import APIRouter, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from models import Provider
 from schemas import (
     ApiResponse,
@@ -54,6 +55,7 @@ async def get_calendar_events(
     ),
     q: Optional[str] = Query(None, description="Search query to filter events"),
     time_zone: Optional[str] = Query("UTC", description="Time zone for date filtering"),
+    service_name: str = Depends(ServicePermissionRequired(["read_calendar"])),
 ):
     """
     Get unified calendar events from multiple providers.
@@ -250,6 +252,7 @@ async def get_calendar_events(
 async def get_calendar_event(
     event_id: str = Path(..., description="Event ID (format: provider_originalId)"),
     user_id: str = Query(..., description="ID of the user who owns the event"),
+    service_name: str = Depends(ServicePermissionRequired(["read_calendar"])),
 ):
     """
     Get a specific calendar event by ID.
@@ -332,6 +335,7 @@ async def get_calendar_event(
 async def create_calendar_event(
     event_data: CreateCalendarEventRequest,
     user_id: str = Query(..., description="ID of the user creating the event"),
+    service_name: str = Depends(ServicePermissionRequired(["write_calendar"])),
 ):
     """
     Create a calendar event in a specific provider.
@@ -579,6 +583,7 @@ async def create_microsoft_event(
 async def delete_calendar_event(
     event_id: str = Path(..., description="Event ID (format: provider_originalId)"),
     user_id: str = Query(..., description="ID of the user who owns the event"),
+    service_name: str = Depends(ServicePermissionRequired(["write_calendar"])),
 ):
     """
     Delete a calendar event by ID.
