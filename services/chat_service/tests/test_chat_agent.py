@@ -2,11 +2,15 @@
 Tests for the new ModernChatAgent implementation.
 """
 
+import os
+import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from services.chat_service.chat_agent import ChatAgent, create_chat_agent
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from chat_agent import ChatAgent, create_chat_agent
 
 
 @pytest.fixture
@@ -193,7 +197,7 @@ async def test_tools_registration():
 async def test_backward_compatibility_imports():
     """Test that backward compatibility imports work."""
     # These should not raise ImportError
-    from services.chat_service.llama_manager import (
+    from llama_manager import (
         ChatAgentManager,
     )
 

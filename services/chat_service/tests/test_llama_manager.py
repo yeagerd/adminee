@@ -1,8 +1,12 @@
+import os
+import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from services.chat_service.llama_manager import ChatAgentManager
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from llama_manager import ChatAgentManager
 
 
 @pytest.fixture
