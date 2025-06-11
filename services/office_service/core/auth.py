@@ -6,19 +6,30 @@ and frontend-to-service communication with the principle of least privilege.
 """
 
 import logging
-from typing import List, Optional
+from dataclasses import dataclass
+from typing import Dict, List, Optional
 
 from fastapi import HTTPException, Request, status
 
 logger = logging.getLogger(__name__)
 
+
+@dataclass(frozen=True)
+class APIKeyConfig:
+    """Configuration for an API key."""
+
+    client: str
+    service: str
+    permissions: List[str]
+
+
 # API Key to Service/Client mapping with permissions for Office Service
-API_KEYS = {
+API_KEYS: Dict[str, APIKeyConfig] = {
     # Frontend (Next.js API) keys - full permissions for user-facing operations
-    "api-frontend-office-key": {
-        "client": "frontend",
-        "service": "office-service-access",
-        "permissions": [
+    "api-frontend-office-key": APIKeyConfig(
+        client="frontend",
+        service="office-service-access",
+        permissions=[
             "read_emails",
             "send_emails",
             "read_calendar",
@@ -26,22 +37,22 @@ API_KEYS = {
             "read_files",
             "write_files",
         ],
-    },
+    ),
     # Service-to-service keys - limited permissions
-    "api-chat-office-key": {
-        "client": "chat-service",
-        "service": "office-service-access",
-        "permissions": [
+    "api-chat-office-key": APIKeyConfig(
+        client="chat-service",
+        service="office-service-access",
+        permissions=[
             "read_emails",
             "read_calendar",
             "read_files",
         ],  # No write permissions
-    },
+    ),
     # Legacy key (for backward compatibility during transition)
-    "dev-office-key": {
-        "client": "legacy",
-        "service": "office-service-access",
-        "permissions": [
+    "dev-office-key": APIKeyConfig(
+        client="legacy",
+        service="office-service-access",
+        permissions=[
             "read_emails",
             "send_emails",
             "read_calendar",
@@ -49,7 +60,7 @@ API_KEYS = {
             "read_files",
             "write_files",
         ],
-    },
+    ),
 }
 
 
@@ -70,19 +81,19 @@ def verify_api_key(api_key: str) -> Optional[str]:
     if not key_config:
         return None
 
-    return key_config["service"]
+    return key_config.service
 
 
 def get_client_from_api_key(api_key: str) -> Optional[str]:
     """Get the client name from an API key."""
     key_config = API_KEYS.get(api_key)
-    return key_config["client"] if key_config else None
+    return key_config.client if key_config else None
 
 
 def get_permissions_from_api_key(api_key: str) -> List[str]:
     """Get the permissions for an API key."""
     key_config = API_KEYS.get(api_key)
-    return key_config["permissions"] if key_config else []
+    return key_config.permissions if key_config else []
 
 
 def has_permission(api_key: str, required_permission: str) -> bool:
