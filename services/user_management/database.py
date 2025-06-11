@@ -49,6 +49,10 @@ async def create_all_tables():
         await conn.run_sync(SQLModel.metadata.create_all)
 
 
+# Export metadata for Alembic
+metadata = SQLModel.metadata
+
+
 async def close_db():
     """Close database connections."""
     await engine.dispose()

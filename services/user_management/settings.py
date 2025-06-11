@@ -15,7 +15,7 @@ class Settings(BaseSettings):
 
     # Database Configuration
     database_url: str = Field(
-        default="postgresql://postgres:postgres@localhost:5432/briefly",
+        ...,
         description="PostgreSQL database connection string",
         validation_alias=AliasChoices("DB_URL_USER_MANAGEMENT", "DATABASE_URL"),
     )
