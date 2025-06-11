@@ -58,6 +58,15 @@ class Settings(BaseSettings):
         description="Environment (development, staging, production)",
     )
 
+    # Demo mode configuration
+    DEMO_MODE: bool = Field(default=False, description="Enable demo mode")
+
+    # Service URLs
+    USER_MANAGEMENT_SERVICE_URL: str = Field(
+        default="http://localhost:8001", 
+        description="User management service URL"
+    )
+
 
 # Global settings instance
 settings = Settings()

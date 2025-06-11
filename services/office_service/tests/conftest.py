@@ -43,16 +43,10 @@ def mock_database():
     async def mock_check_service(url):
         return True
 
-    # Mock the database execute method that's actually called
-    async def mock_database_execute(query):
-        return None
-
     with (
-        patch("api.health.check_database_connection", side_effect=mock_check_database),
+        patch("api.health.check_database_health", side_effect=mock_check_database),
         patch("api.health.check_redis_connection", side_effect=mock_check_redis),
         patch("api.health.check_service_connection", side_effect=mock_check_service),
-        patch("models.database.execute", side_effect=mock_database_execute),
-        patch("models.database.is_connected", True),
     ):
         yield
 
