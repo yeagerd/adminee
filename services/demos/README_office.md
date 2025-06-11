@@ -68,8 +68,9 @@ You can set one or both tokens depending on which services you want to test.
 
 ```bash
 # From the repository root
-cd /path/to/briefly
-python services/demos/office.py your-email@example.com
+cd services/chat_service
+source venv/bin/activate
+python ../demos/office.py user@example.com
 ```
 
 The email address is used as a user identifier for the API calls and logging.

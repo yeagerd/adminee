@@ -135,7 +135,8 @@ def init_db_sync():
         asyncio.run(init_db())
 
 
-init_db_sync()
+# Don't automatically initialize on import - let the application control this
+# init_db_sync()
 
 
 # Utility functions for thread, message, and draft management

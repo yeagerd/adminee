@@ -43,20 +43,15 @@ export REDIS_URL="redis://localhost:6379"
 
 # Start the Office Service (from office service directory)
 cd services/office_service
-uvicorn app.main:app --port 8000 --host 0.0.0.0
+./start.sh
 ```
 
 ### Step 2: Run the Full Demo
 
 ```bash
-# From repository root
-cd /path/to/briefly
-
-# Run the demo (service must be running)
-python services/demos/office_full.py user@example.com
-
-# Or specify custom service URL
-python services/demos/office_full.py user@example.com --url http://localhost:8080
+cd services/chat_service
+source venv/bin/activate
+python ../demos/office_full.py user@example.com
 ```
 
 ## Demo Flow
