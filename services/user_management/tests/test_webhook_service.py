@@ -12,14 +12,22 @@ import pytest
 import pytest_asyncio
 from sqlmodel import SQLModel, select, text
 
-# Set test database URL before importing anything that might load settings
-os.environ["DB_URL_USER_MANAGEMENT"] = "sqlite+aiosqlite:///./test_webhook_service.db"
-
 from ..database import async_session, engine
 from ..exceptions import DatabaseError
 from ..models import User, UserPreferences
 from ..schemas.webhook import ClerkWebhookEventData
 from ..services.webhook_service import WebhookService
+
+
+@pytest.fixture(scope="module", autouse=True)
+def setup_test_environment():
+    """Set up test environment variables for webhook service tests."""
+    with patch.dict(
+        os.environ,
+        {"DB_URL_USER_MANAGEMENT": "sqlite+aiosqlite:///./test_webhook_service.db"},
+        clear=False,
+    ):
+        yield
 
 
 @pytest_asyncio.fixture

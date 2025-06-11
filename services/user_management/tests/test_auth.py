@@ -236,7 +236,7 @@ class TestServiceAuthentication:
         with patch(
             "services.user_management.auth.service_auth.settings"
         ) as mock_settings:
-            mock_settings.api_key_user_management = "api-frontend-user-key"
+            mock_settings.api_frontend_user_key = "api-frontend-user-key"
             mock_settings.api_key_office = None
 
             # Re-initialize the service auth with mocked settings
@@ -394,7 +394,7 @@ class TestAuthenticationIntegration:
         with patch(
             "services.user_management.auth.service_auth.settings"
         ) as mock_settings:
-            mock_settings.api_key_user_management = "api-frontend-user-key"
+            mock_settings.api_frontend_user_key = "api-frontend-user-key"
             mock_settings.api_key_office = None
 
             # Re-initialize the service auth with mocked settings

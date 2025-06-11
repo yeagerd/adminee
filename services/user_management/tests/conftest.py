@@ -5,15 +5,11 @@ This module provides reusable fixtures and configurations for testing
 the User Management Service with proper mocking of dependencies.
 """
 
-import os
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
-
-# Set test database URL before importing anything that might load settings
-os.environ["DB_URL_USER_MANAGEMENT"] = "sqlite:///./test_user_management.db"
 
 # Import the application and models for testing
 from ..main import app
