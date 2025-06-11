@@ -25,6 +25,11 @@ jobs:
         with:
           python-version: '3.12.9'
 
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install tox
+
       - name: Run formatter
         run: |
           tox -e fix
