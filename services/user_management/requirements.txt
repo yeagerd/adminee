@@ -30,4 +30,13 @@ pytz
 
 # Development and testing
 pytest
-pytest-asyncio 
+pytest-asyncio
+
+# OpenTelemetry
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-instrumentation
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-httpx
+opentelemetry-distro
+opentelemetry-exporter-gcp-trace

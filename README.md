@@ -191,6 +191,47 @@ tox -p auto             # Full test matrix
         ```
     -   These images can then be pushed to a container registry (e.g., Docker Hub, AWS ECR, GCP Artifact Registry).
 
+## Tracing
+
+
+### Manual Instrumentation (Optional)
+
+For additional custom tracing, use the shared telemetry module:
+
+```python
+from services.common import setup_telemetry, get_tracer, add_span_attributes
+
+# Set up telemetry (optional - already done by opentelemetry-instrument)
+setup_telemetry("user-management", "1.0.0")
+
+# Get a tracer for custom spans
+tracer = get_tracer(__name__)
+
+# Create custom spans
+with tracer.start_as_current_span("custom_operation") as span:
+    add_span_attributes(user_id="123", operation="data_processing")
+    # Your code here
+```
+
+### Environment Variables
+
+#### Production Configuration
+
+For production environments with Google Cloud Trace:
+
+```bash
+ENVIRONMENT=production
+GOOGLE_CLOUD_PROJECT_ID=your-project-id
+```
+
+#### Development Configuration
+
+For development, OpenTelemetry runs with basic configuration:
+
+```bash
+ENVIRONMENT=development
+```
+
 ## Unit Testing
 
 -   Unit tests are co-located with the services or in dedicated test directories (e.g., `services/office-service/tests/`).
@@ -232,8 +273,8 @@ tox -p auto             # Full test matrix
 
 ## Code Quality and Linting (tox)
 
--   We use [tox](https://tox.readthedocs.io/) to automate code formatting, linting, and type checking for all Python backend services under `services/`.
--   Tox will run [black](https://black.readthedocs.io/), [isort](https://pycqa.github.io/isort/), [ruff](https://docs.astral.sh/ruff/), and [mypy](https://mypy-lang.org/) on all Python code in the `services/` directory.
+-   We use [tox -p auto](https://tox.readthedocs.io/) to automate code formatting, linting, and type checking for all Python backend services under `services/`.
+-   `tox -e fix` will run [black](https://black.readthedocs.io/), [isort](https://pycqa.github.io/isort/), [ruff](https://docs.astral.sh/ruff/), and [mypy](https://mypy-lang.org/) on all Python code in the `services/` directory.
 
 #### To run all checks:
 
