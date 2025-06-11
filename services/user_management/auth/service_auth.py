@@ -22,12 +22,11 @@ class ServiceAPIKeyAuth:
 
     def __init__(self):
         self.valid_api_keys = {}
+        # Only accept this service's own API key for access
         if settings.api_key_user_management:
-            self.valid_api_keys[settings.api_key_user_management] = "user-management"
-        if settings.api_key_office:
-            self.valid_api_keys[settings.api_key_office] = "office-service"
-        if settings.api_key_chat:
-            self.valid_api_keys[settings.api_key_chat] = "chat-service"
+            self.valid_api_keys[settings.api_key_user_management] = (
+                "user-management-access"
+            )
 
     def verify_api_key(self, api_key: str) -> Optional[str]:
         """
@@ -52,10 +51,7 @@ class ServiceAPIKeyAuth:
             True if service is authorized
         """
         authorized_services = [
-            "user-management",
-            "office-service",
-            "chat-service",
-            "api-gateway",
+            "user-management-access",
         ]
         return service_name in authorized_services
 

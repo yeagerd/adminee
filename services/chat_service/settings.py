@@ -32,15 +32,15 @@ class Settings(BaseSettings):
     # API Keys for service-to-service communication
     api_key_chat: Optional[str] = Field(
         default=None,
-        description="API key for this Chat service",
+        description="Chat service access key (required to call this service)",
     )
     api_key_user_management: Optional[str] = Field(
         default=None,
-        description="API key for calling User Management service",
+        description="User Management service access key (to call User Management service)",
     )
     api_key_office: Optional[str] = Field(
         default=None,
-        description="API key for calling Office service",
+        description="Office service access key (to call Office service)",
     )
 
     # Service URLs

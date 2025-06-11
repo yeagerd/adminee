@@ -38,15 +38,7 @@ class Settings(BaseSettings):
     # Security Configuration
     api_key_user_management: Optional[str] = Field(
         default=None,
-        description="API key for this User Management service",
-    )
-    # API keys from other services that are allowed to call this service
-    api_key_office: Optional[str] = Field(
-        default=None,
-        description="API key from Office service for authentication",
-    )
-    api_key_chat: Optional[str] = Field(
-        default=None, description="API key from Chat service for authentication"
+        description="User Management service access key (required to call this service)",
     )
     encryption_service_salt: Optional[str] = Field(
         default=None,
