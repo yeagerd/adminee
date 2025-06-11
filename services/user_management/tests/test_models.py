@@ -151,7 +151,7 @@ class TestIntegrationModel:
             provider_user_id="google_123",
             provider_email="user@gmail.com",
             scopes={"email": True, "calendar": True},
-            metadata={"display_name": "John's Gmail"},
+            provider_metadata={"display_name": "John's Gmail"},
         )
 
         assert integration.provider == IntegrationProvider.GOOGLE
@@ -159,7 +159,7 @@ class TestIntegrationModel:
         assert integration.provider_user_id == "google_123"
         assert integration.provider_email == "user@gmail.com"
         assert integration.scopes == {"email": True, "calendar": True}
-        assert integration.metadata["display_name"] == "John's Gmail"
+        assert integration.provider_metadata["display_name"] == "John's Gmail"
 
     def test_integration_enum_values(self):
         """Test integration enum values."""
@@ -188,7 +188,7 @@ class TestIntegrationModel:
         assert integration.provider_user_id is None
         assert integration.provider_email is None
         assert integration.scopes is None
-        assert integration.metadata is None
+        assert integration.provider_metadata is None
         assert integration.last_sync_at is None
         assert integration.error_message is None
 

@@ -2,13 +2,12 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, AsyncGenerator, Dict, Optional
 
+from core.config import settings
 from sqlalchemy import JSON
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import Text, func
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlmodel import Column, DateTime, Field, SQLModel
-
-from services.office_service.core.config import settings
 
 
 # Create async engine for database operations
@@ -50,6 +49,7 @@ class ApiCallStatus(str, Enum):
 # API Call Tracking
 class ApiCall(SQLModel, table=True):
     __tablename__ = "api_calls"
+    __table_args__ = {"extend_existing": True}
 
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: str = Field(index=True, max_length=255)
@@ -72,6 +72,7 @@ class ApiCall(SQLModel, table=True):
 # Cache Entries
 class CacheEntry(SQLModel, table=True):
     __tablename__ = "cache_entries"
+    __table_args__ = {"extend_existing": True}
 
     id: Optional[int] = Field(default=None, primary_key=True)
     cache_key: str = Field(unique=True, index=True, max_length=500)
@@ -93,6 +94,7 @@ class CacheEntry(SQLModel, table=True):
 # Rate Limiting
 class RateLimitBucket(SQLModel, table=True):
     __tablename__ = "rate_limit_buckets"
+    __table_args__ = {"extend_existing": True}
 
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: str = Field(index=True, max_length=255)

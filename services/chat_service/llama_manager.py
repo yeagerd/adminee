@@ -27,7 +27,7 @@ import logging
 from typing import Any, Callable, Dict, List, Optional
 
 # Import modules that tests expect to find here for backward compatibility
-from .chat_agent import ChatAgent
+from chat_agent import ChatAgent
 
 logger = logging.getLogger(__name__)
 

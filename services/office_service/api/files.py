@@ -15,6 +15,7 @@ from core.api_client_factory import APIClientFactory
 from core.cache_manager import cache_manager, generate_cache_key
 from core.normalizer import normalize_google_drive_file, normalize_microsoft_drive_file
 from fastapi import APIRouter, HTTPException, Path, Query
+from models import Provider
 from schemas import ApiResponse
 
 logger = logging.getLogger(__name__)
@@ -131,6 +132,13 @@ async def get_files(
 
                 async with client:
                     if provider == "google":
+                        from core.clients.google import GoogleAPIClient
+
+                        if not isinstance(client, GoogleAPIClient):
+                            raise Exception(
+                                f"Expected GoogleAPIClient for provider {provider}"
+                            )
+
                         # Build query for Google Drive
                         query_parts = []
                         if q:
@@ -172,6 +180,13 @@ async def get_files(
                         )
 
                     elif provider == "microsoft":
+                        from core.clients.microsoft import MicrosoftAPIClient
+
+                        if not isinstance(client, MicrosoftAPIClient):
+                            raise Exception(
+                                f"Expected MicrosoftAPIClient for provider {provider}"
+                            )
+
                         # Fetch files from Microsoft OneDrive
                         response = await client.get_drive_items(
                             top=limit,
@@ -357,6 +372,13 @@ async def search_files(
 
                 async with client:
                     if provider == "google":
+                        from core.clients.google import GoogleAPIClient
+
+                        if not isinstance(client, GoogleAPIClient):
+                            raise Exception(
+                                f"Expected GoogleAPIClient for provider {provider}"
+                            )
+
                         # Search Google Drive
                         response = await client.search_files(q, max_results=limit)
 
@@ -388,6 +410,13 @@ async def search_files(
                         )
 
                     elif provider == "microsoft":
+                        from core.clients.microsoft import MicrosoftAPIClient
+
+                        if not isinstance(client, MicrosoftAPIClient):
+                            raise Exception(
+                                f"Expected MicrosoftAPIClient for provider {provider}"
+                            )
+
                         # Search Microsoft OneDrive
                         response = await client.search_drive_items(q, top=limit)
 
@@ -513,6 +542,13 @@ async def get_file(
         async with client:
             try:
                 if provider == "google":
+                    from core.clients.google import GoogleAPIClient
+
+                    if not isinstance(client, GoogleAPIClient):
+                        raise Exception(
+                            f"Expected GoogleAPIClient for provider {provider}"
+                        )
+
                     # Fetch file from Google Drive
                     response = await client.get_file(original_file_id)
 
@@ -520,6 +556,13 @@ async def get_file(
                     normalized_file = normalize_google_drive_file(response, user_id)
 
                 elif provider == "microsoft":
+                    from core.clients.microsoft import MicrosoftAPIClient
+
+                    if not isinstance(client, MicrosoftAPIClient):
+                        raise Exception(
+                            f"Expected MicrosoftAPIClient for provider {provider}"
+                        )
+
                     # Fetch file from Microsoft OneDrive
                     response = await client.get_drive_item(original_file_id)
 
@@ -554,7 +597,7 @@ async def get_file(
                     success=True,
                     data=response_data,
                     cache_hit=False,
-                    provider_used=provider,
+                    provider_used=Provider(provider),
                     request_id=request_id,
                 )
 
@@ -580,7 +623,7 @@ async def get_file(
                     success=False,
                     data=response_data,
                     cache_hit=False,
-                    provider_used=provider,
+                    provider_used=Provider(provider),
                     request_id=request_id,
                 )
 

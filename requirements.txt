@@ -37,5 +37,6 @@ opentelemetry-sdk
 opentelemetry-instrumentation
 opentelemetry-instrumentation-fastapi
 opentelemetry-instrumentation-httpx
+opentelemetry-distro
 opentelemetry-exporter-gcp-trace
 # --- End OpenTelemetry Requirements ---

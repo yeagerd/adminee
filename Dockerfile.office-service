@@ -10,14 +10,14 @@ ENV PYTHONUNBUFFERED 1
 # Set work directory
 WORKDIR /app/office-service
 
-# Install system dependencies (if any)
-# RUN apt-get update && apt-get install -y --no-install-recommends \
-#    package-name \
-#    && rm -rf /var/lib/apt/lists/*
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
 # First, copy only the requirements file to leverage Docker cache
-COPY requirements.txt /tmp/requirements.txt
+COPY services/office_service/requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 # If the office service has its own requirements, create and use that:
@@ -26,12 +26,15 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 # Copy the rest of the application code for the office service
 # Assuming the office service code is in services/office-service/
-COPY services/office-service/ /app/office-service/
+COPY services/office_service/ /app/office-service/
 
 # Expose the port the app runs on (e.g., 8080 for FastAPI)
 EXPOSE 8080
 
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
 # Define the command to run the application
-# The FastAPI app is in services/office_service/app/main.py and the app object is named "app"
-ENTRYPOINT ["opentelemetry-instrument"]
-CMD ["uvicorn", "services.office_service.app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+# The FastAPI app is in the app subdirectory
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
