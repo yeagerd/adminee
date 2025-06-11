@@ -7,7 +7,6 @@ import logging
 import os
 from typing import Any, Dict, List, Optional, Union
 
-from dotenv import load_dotenv
 from litellm.utils import get_llm_provider
 from llama_index.core.llms import ChatMessage, MessageRole
 from llama_index.core.llms.function_calling import FunctionCallingLLM
@@ -109,10 +108,6 @@ class LoggingLiteLLM(LlamaLiteLLM):
         self._prompt_logger.info("=== END LLM RESPONSE ===")
 
         return response
-
-
-# Load environment variables from .env file if it exists
-load_dotenv(override=True)  # override=True ensures existing env vars take precedence
 
 
 class FakeLLM(FunctionCallingLLM):

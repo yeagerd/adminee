@@ -48,19 +48,6 @@ API_KEYS: Dict[str, APIKeyConfig] = {
             "read_files",
         ],  # No write permissions
     ),
-    # Legacy key (for backward compatibility during transition)
-    "dev-office-key": APIKeyConfig(
-        client="legacy",
-        service="office-service-access",
-        permissions=[
-            "read_emails",
-            "send_emails",
-            "read_calendar",
-            "write_calendar",
-            "read_files",
-            "write_files",
-        ],
-    ),
 }
 
 

@@ -29,18 +29,15 @@ class Settings(BaseSettings):
         description="Environment (development, staging, production)",
     )
 
-    # API Keys for service-to-service communication
-    api_key_chat: Optional[str] = Field(
+    # API Keys for outgoing service-to-service communication
+    # Following the api-{client}-{service}-key naming convention
+    api_chat_user_key: Optional[str] = Field(
         default=None,
-        description="Chat service access key (required to call this service)",
+        description="API key for Chat Service to call User Management service (api-chat-user-key)",
     )
-    api_key_user_management: Optional[str] = Field(
+    api_chat_office_key: Optional[str] = Field(
         default=None,
-        description="User Management service access key (to call User Management service)",
-    )
-    api_key_office: Optional[str] = Field(
-        default=None,
-        description="Office service access key (to call Office service)",
+        description="API key for Chat Service to call Office service (api-chat-office-key)",
     )
 
     # Service URLs
