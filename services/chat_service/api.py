@@ -1,4 +1,3 @@
-import os
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException
@@ -13,6 +12,7 @@ from models import Message as PydanticMessage
 from models import (
     Thread,
 )
+from settings import settings
 
 router = APIRouter()
 
@@ -59,9 +59,9 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
         user_id=user_id,
         tools=[],
         subagents=[],
-        # These will use environment variables if not specified
-        llm_model=os.getenv("LLM_MODEL"),
-        llm_provider=os.getenv("LLM_PROVIDER"),
+        # These will use settings
+        llm_model=settings.llm_model,
+        llm_provider=settings.llm_provider,
     )
     # Actually run the chat and get the agent's response
     agent_response = await agent.chat(user_input)

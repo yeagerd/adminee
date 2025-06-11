@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -27,6 +29,15 @@ class Settings(BaseSettings):
     # API Keys for inter-service communication
     api_key_office: str = Field(
         default="default-office-key", description="Office service API key"
+    )
+    api_key_user_management: Optional[str] = Field(
+        default=None,
+        description="API key for calling User Management service",
+    )
+    # API keys from other services that are allowed to call this service
+    api_key_chat: Optional[str] = Field(
+        default=None,
+        description="API key from Chat service for authentication",
     )
 
     # Redis configuration for caching and background tasks

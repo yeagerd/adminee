@@ -7,6 +7,7 @@ import history_manager
 from api import router
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+from settings import settings
 from sqlmodel import select
 
 # Configure logging
@@ -22,11 +23,19 @@ logger.info("Logging is configured")
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Startup: Ensure the database is created and tables exist
+    logger.info("Starting Chat Service")
+
+    # Validate required configuration
+    if not settings.api_key_chat:
+        logger.error("API_KEY_CHAT is required but not configured")
+        raise RuntimeError("API_KEY_CHAT is required")
+
     await history_manager.init_db()
 
     yield  # The application runs here
 
     # Shutdown: Clean up connections
+    logger.info("Shutting down Chat Service")
     await history_manager.engine.dispose()
 
 
@@ -47,6 +56,7 @@ app.include_router(router)
 
 
 @app.get("/")
+@app.get("/health")
 async def health_check() -> JSONResponse:
     try:
         # Simple query to verify database connection
@@ -55,12 +65,24 @@ async def health_check() -> JSONResponse:
             threads = result.scalars().all()
             count = len(threads)
 
+        # Check service configuration
+        config_status = {
+            "api_key_chat": "configured" if settings.api_key_chat else "missing",
+            "api_key_user_management": (
+                "configured" if settings.api_key_user_management else "missing"
+            ),
+            "api_key_office": "configured" if settings.api_key_office else "missing",
+            "user_management_service_url": settings.user_management_service_url,
+            "office_service_url": settings.office_service_url,
+        }
+
         return JSONResponse(
             content={
                 "status": "ok",
                 "service": "chat-service",
                 "database": "connected",
                 "threads_count": count,
+                "configuration": config_status,
             }
         )
     except Exception as e:

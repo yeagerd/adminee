@@ -40,12 +40,13 @@ class Settings(BaseSettings):
         default=None,
         description="API key for this User Management service",
     )
+    # API keys from other services that are allowed to call this service
     api_key_office: Optional[str] = Field(
         default=None,
-        description="API key provided by Office service for authentication",
+        description="API key from Office service for authentication",
     )
     api_key_chat: Optional[str] = Field(
-        default=None, description="API key provided by Chat service for authentication"
+        default=None, description="API key from Chat service for authentication"
     )
     encryption_service_salt: Optional[str] = Field(
         default=None,

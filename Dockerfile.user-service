@@ -30,6 +30,11 @@ COPY services/user_management/ ./services/user_management/
 # Set Python path to include the services directory
 ENV PYTHONPATH=/app
 
+# Environment variables for API keys (will be passed from docker-compose)
+ENV API_KEY_USER_MANAGEMENT=""
+ENV API_KEY_OFFICE=""
+ENV API_KEY_CHAT=""
+
 # Expose the port the app runs on
 EXPOSE 8001
 
