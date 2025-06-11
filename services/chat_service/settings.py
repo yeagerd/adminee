@@ -6,7 +6,7 @@ Uses Pydantic Settings to manage environment variables and configuration.
 
 from typing import Optional
 
-from pydantic import Field, AliasChoices
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings
 
 

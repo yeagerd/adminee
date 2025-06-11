@@ -54,7 +54,7 @@ def force_fake_llm_globally(monkeypatch):
     # Note: monkeypatch automatically restores original values on teardown
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture(scope="function")
 async def temp_db(monkeypatch):
     """Create a temporary file-based SQLite database for testing."""
     # Create a temporary file for the database

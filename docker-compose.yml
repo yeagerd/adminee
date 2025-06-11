@@ -12,11 +12,10 @@ services:
       - "3000:3000" # For Next.js frontend
       - "8000:8000" # For Python/FastAPI backend (Note: Original 'app' service. If chat-service is also FastAPI on 8000, ports need adjustment)
     depends_on:
-      - db
+      - user-management
+      - chat-service
+      - office-service
     environment:
-      - DB_URL_APP=${DB_URL_APP}
-      - PINECONE_API_KEY=${PINECONE_API_KEY}
-      - PINECONE_ENVIRONMENT=${PINECONE_ENVIRONMENT}
       # Frontend / Next.js specific vars
       - NEXTAUTH_URL=${NEXTAUTH_URL} # For NextAuth
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET} # For NextAuth
@@ -96,6 +95,8 @@ services:
       # API keys to call other services
       - API_KEY_USER_MANAGEMENT=${API_KEY_USER_MANAGEMENT:-api-chat-user-key}
       - API_KEY_OFFICE=${API_KEY_OFFICE:-api-chat-office-key}
+      - PINECONE_API_KEY=${PINECONE_API_KEY}
+      - PINECONE_ENVIRONMENT=${PINECONE_ENVIRONMENT}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - LLM_PROVIDER=${LLM_PROVIDER}
       - LLM_MODEL=${LLM_MODEL}

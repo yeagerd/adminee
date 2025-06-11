@@ -45,7 +45,6 @@ python user_management_demo.py --help
 # Terminal 1: Start the service (from project root)
 cd /Users/yeagerd/github/briefly/services/user_management
 alembic upgrade head
-export DATABASE_URL="sqlite:///./services/user_management/user_management.db"
 export JWT_VERIFY_SIGNATURE=false
 export ENCRYPTION_SERVICE_SALT="ZGVtby1lbmNyeXB0aW9uLXNhbHQtZm9yLXRlc3Rpbmc="
 cd /Users/yeagerd/github/briefly  # Navigate to project root
