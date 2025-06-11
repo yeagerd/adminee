@@ -11,11 +11,15 @@ This test suite covers:
 """
 
 import logging
+import os
+import sys
 
 import pytest
 
-from services.chat_service import history_manager
-from services.chat_service.llama_manager import ChatAgentManager
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+import history_manager
+from llama_manager import ChatAgentManager
 
 logger = logging.getLogger(__name__)
 

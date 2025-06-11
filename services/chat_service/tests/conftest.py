@@ -1,4 +1,5 @@
 import os
+import sys
 import tempfile
 
 import pytest
@@ -7,7 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel, select
 
-from services.chat_service import history_manager as hm
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+import history_manager as hm
 
 
 @pytest.fixture(autouse=True)

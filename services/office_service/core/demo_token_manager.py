@@ -16,8 +16,6 @@ import logging
 import os
 from typing import Optional
 
-from models import Provider
-
 from .token_manager import TokenData, TokenManager
 
 logger = logging.getLogger(__name__)
@@ -32,14 +30,14 @@ class DemoTokenManager(TokenManager):
     """
 
     async def get_user_token(
-        self, user_id: str, provider: Provider, scopes: Optional[list] = None
+        self, user_id: str, provider: str, scopes: list[str]
     ) -> Optional[TokenData]:
         """
         Get user token from environment variables instead of user service.
 
         Args:
             user_id: User identifier (ignored in demo mode)
-            provider: Provider enum (google or microsoft)
+            provider: Provider string (google or microsoft)
             scopes: List of required scopes (ignored in demo mode)
 
         Returns:
@@ -49,8 +47,8 @@ class DemoTokenManager(TokenManager):
 
         # Map provider to environment variable
         env_var_map = {
-            Provider.GOOGLE: "DEMO_GOOGLE_TOKEN",
-            Provider.MICROSOFT: "DEMO_MICROSOFT_TOKEN",
+            "google": "DEMO_GOOGLE_TOKEN",
+            "microsoft": "DEMO_MICROSOFT_TOKEN",
         }
 
         env_var = env_var_map.get(provider)
@@ -73,7 +71,7 @@ class DemoTokenManager(TokenManager):
             expires_at=None,  # Assume tokens don't expire in demo
             provider=provider,
             user_id=user_id,
-            scopes=scopes or [],
+            scopes=scopes,
         )
 
     async def __aenter__(self):

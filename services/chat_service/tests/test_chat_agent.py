@@ -2,11 +2,15 @@
 Tests for the new ModernChatAgent implementation.
 """
 
+import os
+import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from services.chat_service.chat_agent import ChatAgent, create_chat_agent
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from chat_agent import ChatAgent, create_chat_agent
 
 
 @pytest.fixture
@@ -104,11 +108,11 @@ async def test_memory_blocks_creation_minimal():
 
 
 @pytest.mark.asyncio
-@patch("services.chat_service.chat_agent.history_manager")
-async def test_build_agent_with_mocked_db(mock_history):
+@patch("services.chat_service.chat_agent.history_manager.get_thread_history")
+async def test_build_agent_with_mocked_db(mock_get_thread_history):
     """Test building agent with mocked database calls."""
-    # Mock database calls
-    mock_history.get_thread_history.return_value = []
+    # Mock database calls - setup the mock to return an awaitable
+    mock_get_thread_history.return_value = []
 
     agent = ChatAgent(
         thread_id=5,
@@ -125,7 +129,7 @@ async def test_build_agent_with_mocked_db(mock_history):
     assert agent.memory is not None
 
     # Should have called database to load history
-    mock_history.get_thread_history.assert_called_once_with(5, limit=100)
+    mock_get_thread_history.assert_called_once_with(5, limit=100)
 
 
 @pytest.mark.asyncio
@@ -193,7 +197,7 @@ async def test_tools_registration():
 async def test_backward_compatibility_imports():
     """Test that backward compatibility imports work."""
     # These should not raise ImportError
-    from services.chat_service.llama_manager import (
+    from llama_manager import (
         ChatAgentManager,
     )
 
@@ -210,35 +214,38 @@ async def test_backward_compatibility_imports():
 
 
 @pytest.mark.asyncio
-async def test_chat_with_agent():
+@patch("services.chat_service.chat_agent.history_manager.append_message")
+@patch("services.chat_service.chat_agent.history_manager.create_thread")
+@patch("services.chat_service.chat_agent.history_manager.get_thread")
+@patch("services.chat_service.chat_agent.history_manager.get_thread_history")
+async def test_chat_with_agent(
+    mock_get_thread_history, mock_get_thread, mock_create_thread, mock_append_message
+):
     """Test chatting with the agent using FakeLLM."""
-    with (
-        patch(
-            "services.chat_service.chat_agent.history_manager"
-        ) as mock_history_manager,
-    ):
-        mock_history_manager.get_thread_history.return_value = []
-        mock_history_manager.append_message = AsyncMock()
-        mock_history_manager.get_thread = AsyncMock(return_value=MagicMock(id=202))
+    # Setup mocks
+    mock_get_thread_history.return_value = []
+    mock_append_message.return_value = None
+    mock_get_thread.return_value = MagicMock(id=202)
+    mock_create_thread.return_value = MagicMock(id=202)
 
-        agent = ChatAgent(
-            thread_id=202,
-            user_id="test_user5",
-            enable_fact_extraction=False,  # Disable to avoid mocking complexity
-            enable_vector_memory=False,
-        )
+    agent = ChatAgent(
+        thread_id=202,
+        user_id="test_user5",
+        enable_fact_extraction=False,  # Disable to avoid mocking complexity
+        enable_vector_memory=False,
+    )
 
-        # Build agent first
-        await agent.build_agent()
+    # Build agent first
+    await agent.build_agent()
 
-        user_input = "Hello, how are you?"
-        response = await agent.chat(user_input)
+    user_input = "Hello, how are you?"
+    response = await agent.chat(user_input)
 
-        # With FakeLLM, we expect the fake response format
-        assert "[FAKE LLM RESPONSE]" in response
-        assert user_input in response
-        # Verify the message was stored
-        mock_history_manager.append_message.assert_called()
+    # With FakeLLM, we expect the fake response format
+    assert "[FAKE LLM RESPONSE]" in response
+    assert user_input in response
+    # Verify the message was stored - should be called for the response message
+    mock_append_message.assert_called()
 
 
 @pytest.mark.asyncio
