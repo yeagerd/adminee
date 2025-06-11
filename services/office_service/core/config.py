@@ -46,6 +46,18 @@ class Settings(BaseSettings):
     CACHE_TTL: int = Field(default=300, description="Cache TTL in seconds")
     CACHE_MAX_SIZE: int = Field(default=1000, description="Maximum cache entries")
 
+    # Logging configuration
+    LOG_LEVEL: str = Field(default="INFO", description="Logging level")
+    LOG_FORMAT: str = Field(default="json", description="Log format (json or text)")
+
+    # Application info
+    APP_NAME: str = Field(default="office-service", description="Application name")
+    APP_VERSION: str = Field(default="0.1.0", description="Application version")
+    ENVIRONMENT: str = Field(
+        default="development",
+        description="Environment (development, staging, production)",
+    )
+
 
 # Global settings instance
 settings = Settings()
