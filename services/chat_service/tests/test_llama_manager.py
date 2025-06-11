@@ -248,7 +248,7 @@ async def test_memory_aggregation():
 @patch("services.chat_service.chat_agent.history_manager")
 async def test_end_to_end_orchestration(mock_history, orchestration_tools):
     """Test end-to-end orchestration flow."""
-    mock_history.get_thread_history.return_value = []
+    mock_history.get_thread_history = AsyncMock(return_value=[])
 
     manager = ChatAgentManager(
         thread_id=106,
@@ -256,13 +256,10 @@ async def test_end_to_end_orchestration(mock_history, orchestration_tools):
         tools=orchestration_tools,
     )
 
-    # Mock the chat method on the main agent that will be created
-    with patch("services.chat_service.chat_agent.ChatAgent.chat") as mock_chat:
-        mock_chat.return_value = "Orchestrated response"
+    # This should build the system and process the query
+    response = await manager.chat("Hello, orchestrate this!")
 
-        # This should build the system and process the query
-        response = await manager.chat("Hello, orchestrate this!")
-
-        assert response == "Orchestrated response"
-        assert manager.main_agent is not None
-        mock_chat.assert_called_once_with("Hello, orchestrate this!")
+    # With FakeLLM in test environment, expect the fake response format
+    assert "[FAKE LLM RESPONSE]" in response
+    assert "Hello, orchestrate this!" in response
+    assert manager.main_agent is not None

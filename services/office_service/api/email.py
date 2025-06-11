@@ -198,7 +198,9 @@ async def get_email_messages(
             success=True,
             data=response_data,
             cache_hit=False,
-            provider_used=providers_used[0] if len(providers_used) == 1 else None,
+            provider_used=(
+                Provider(providers_used[0]) if len(providers_used) == 1 else None
+            ),
             request_id=request_id,
         )
 
@@ -294,7 +296,7 @@ async def get_email_message(
             success=True,
             data=response_data,
             cache_hit=False,
-            provider_used=provider,
+            provider_used=Provider(provider),
             request_id=request_id,
         )
 

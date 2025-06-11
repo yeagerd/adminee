@@ -111,8 +111,8 @@ async def test_memory_blocks_creation_minimal():
 @patch("services.chat_service.chat_agent.history_manager")
 async def test_build_agent_with_mocked_db(mock_history):
     """Test building agent with mocked database calls."""
-    # Mock database calls
-    mock_history.get_thread_history.return_value = []
+    # Mock database calls - setup the mock to return an awaitable
+    mock_history.get_thread_history = AsyncMock(return_value=[])
 
     agent = ChatAgent(
         thread_id=5,
@@ -221,9 +221,10 @@ async def test_chat_with_agent():
             "services.chat_service.chat_agent.history_manager"
         ) as mock_history_manager,
     ):
-        mock_history_manager.get_thread_history.return_value = []
+        mock_history_manager.get_thread_history = AsyncMock(return_value=[])
         mock_history_manager.append_message = AsyncMock()
         mock_history_manager.get_thread = AsyncMock(return_value=MagicMock(id=202))
+        mock_history_manager.create_thread = AsyncMock(return_value=MagicMock(id=202))
 
         agent = ChatAgent(
             thread_id=202,
@@ -241,7 +242,7 @@ async def test_chat_with_agent():
         # With FakeLLM, we expect the fake response format
         assert "[FAKE LLM RESPONSE]" in response
         assert user_input in response
-        # Verify the message was stored
+        # Verify the message was stored - should be called for the response message
         mock_history_manager.append_message.assert_called()
 
 
