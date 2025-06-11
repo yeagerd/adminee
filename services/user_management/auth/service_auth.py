@@ -184,7 +184,7 @@ async def verify_service_authentication(request: Request) -> str:
             headers={"WWW-Authenticate": "ApiKey"},
         )
 
-    service_name = verify_api_key(api_key)
+    service_name = service_auth.verify_api_key(api_key)
 
     if not service_name:
         logger.warning(f"Invalid API key: {api_key[:8]}...")
@@ -197,7 +197,8 @@ async def verify_service_authentication(request: Request) -> str:
     # Store API key and client info in request state for permission checking
     request.state.api_key = api_key
     request.state.service_name = service_name
-    request.state.client_name = get_client_from_api_key(api_key)
+    # For service auth instance, client is determined by the service key
+    request.state.client_name = "frontend" if service_name == "user-management-access" else get_client_from_api_key(api_key)
 
     logger.info(
         f"Service authenticated: {service_name} (client: {request.state.client_name})"
