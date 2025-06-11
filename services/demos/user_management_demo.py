@@ -21,7 +21,6 @@ Usage:
 
 import argparse
 import asyncio
-import dotenv
 import json
 import os
 import sys
@@ -30,6 +29,7 @@ import webbrowser
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
+import dotenv
 import httpx
 import structlog
 
