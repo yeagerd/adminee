@@ -24,7 +24,13 @@ class TestSettings:
     def test_default_settings(self):
         """Test that default settings are loaded correctly."""
         # Clear environment variables to test defaults
-        with patch.dict(os.environ, {}, clear=True):
+        with patch.dict(
+            os.environ,
+            {
+                "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly"
+            },
+            clear=True,
+        ):
             settings = TestableSettings()
 
             # Test default values
@@ -50,8 +56,9 @@ class TestSettings:
                 "PORT": "9000",
                 "DEBUG": "true",
                 "LOG_LEVEL": "DEBUG",
-                "DATABASE_URL": "postgresql://test:test@testhost:5432/testdb",
+                "DB_URL_USER_MANAGEMENT": "postgresql://test:test@testhost:5432/testdb",
             },
+            clear=True,
         ):
             settings = TestableSettings()
 
@@ -69,15 +76,17 @@ class TestSettings:
         with patch.dict(
             os.environ,
             {
-                "API_KEY_USER_MANAGEMENT": "test-api-key",
+                "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
+                "API_FRONTEND_USER_KEY": "test-api-key",
                 "ENCRYPTION_SERVICE_SALT": "test-salt",
                 "CLERK_SECRET_KEY": "test-clerk-key",
                 "CLERK_WEBHOOK_SECRET": "test-webhook-secret",
             },
+            clear=True,
         ):
             settings = TestableSettings()
 
-            assert settings.api_key_user_management == "test-api-key"
+            assert settings.api_frontend_user_key == "test-api-key"
             assert settings.encryption_service_salt == "test-salt"
             assert settings.clerk_secret_key == "test-clerk-key"
             assert settings.clerk_webhook_secret == "test-webhook-secret"
@@ -87,11 +96,13 @@ class TestSettings:
         with patch.dict(
             os.environ,
             {
+                "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
                 "GOOGLE_CLIENT_ID": "test-google-id",
                 "GOOGLE_CLIENT_SECRET": "test-google-secret",
                 "MICROSOFT_CLIENT_ID": "test-microsoft-id",
                 "MICROSOFT_CLIENT_SECRET": "test-microsoft-secret",
             },
+            clear=True,
         ):
             settings = TestableSettings()
 
@@ -105,10 +116,12 @@ class TestSettings:
         with patch.dict(
             os.environ,
             {
+                "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
                 "REDIS_URL": "redis://testhost:6380",
                 "CELERY_BROKER_URL": "redis://testhost:6380/1",
                 "CELERY_RESULT_BACKEND": "redis://testhost:6380/2",
             },
+            clear=True,
         ):
             settings = TestableSettings()
 
@@ -119,7 +132,13 @@ class TestSettings:
     def test_optional_settings_none_by_default(self):
         """Test that optional settings are None by default."""
         # Clear environment variables to test defaults
-        with patch.dict(os.environ, {}, clear=True):
+        with patch.dict(
+            os.environ,
+            {
+                "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly"
+            },
+            clear=True,
+        ):
             settings = TestableSettings()
 
             assert settings.encryption_service_salt is None
@@ -135,9 +154,11 @@ class TestSettings:
         with patch.dict(
             os.environ,
             {
+                "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
                 "service_name": "lowercase-test",
                 "HOST": "uppercase-test",
             },
+            clear=True,
         ):
             settings = TestableSettings()
 
@@ -159,13 +180,27 @@ class TestSettings:
         ]
 
         for env_value, expected in test_cases:
-            with patch.dict(os.environ, {"DEBUG": env_value}):
+            with patch.dict(
+                os.environ,
+                {
+                    "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
+                    "DEBUG": env_value,
+                },
+                clear=True,
+            ):
                 settings = TestableSettings()
                 assert settings.debug == expected, f"Failed for {env_value}"
 
     def test_integer_environment_variables(self):
         """Test that integer environment variables are parsed correctly."""
-        with patch.dict(os.environ, {"PORT": "8080"}):
+        with patch.dict(
+            os.environ,
+            {
+                "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
+                "PORT": "8080",
+            },
+            clear=True,
+        ):
             settings = TestableSettings()
             assert settings.port == 8080
             assert isinstance(settings.port, int)

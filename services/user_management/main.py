@@ -66,12 +66,12 @@ async def lifespan(app: FastAPI):
     logger.info("Starting User Management Service")
 
     # Validate required configuration
-    if not settings.api_key_user_management:
-        logger.error("API_KEY_USER_MANAGEMENT is required but not configured")
+    if not settings.api_frontend_user_key:
+        logger.error("API_FRONTEND_USER_KEY is required but not configured")
         logger.error(
-            "Set the API_KEY_USER_MANAGEMENT environment variable or configure it in settings"
+            "Set the API_FRONTEND_USER_KEY environment variable or configure it in settings"
         )
-        raise RuntimeError("API_KEY_USER_MANAGEMENT is required but not configured")
+        raise RuntimeError("API_FRONTEND_USER_KEY is required but not configured")
 
     try:
         await create_all_tables()
@@ -689,8 +689,8 @@ async def readiness_check():
         config_issues.append("CLERK_SECRET_KEY not configured")
     if not getattr(settings, "encryption_service_salt", None):
         config_issues.append("ENCRYPTION_SERVICE_SALT not configured")
-    if not getattr(settings, "api_key_user_management", None):
-        config_issues.append("API_KEY_USER_MANAGEMENT not configured")
+    if not getattr(settings, "api_frontend_user_key", None):
+        config_issues.append("API_FRONTEND_USER_KEY not configured")
 
     readiness_status["checks"]["configuration"] = {
         "status": "ready" if not config_issues else "not_ready",

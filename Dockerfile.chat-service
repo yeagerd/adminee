@@ -1,4 +1,4 @@
-# Dockerfile for chat Service (Python/FastAPI)
+# Dockerfile for Chat Service (Python/FastAPI)
 
 # Use an official Python runtime as a parent image
 FROM python:3.11-slim-bullseye
@@ -8,7 +8,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # Set work directory
-WORKDIR /app/chat-service
+WORKDIR /app
 
 # Set Python path to include the services directory
 ENV PYTHONPATH=/app
@@ -24,11 +24,8 @@ RUN apt-get update \
 COPY services/chat_service/requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
-# Copy the common modules first
-COPY services/common/ /app/services/common/
-
 # Copy the rest of the application code for the chat service
-COPY services/chat_service/ /app/chat-service/
+COPY services/chat_service/ /app/services/chat_service/
 
 # Service URL environment variables (non-sensitive)
 ENV USER_MANAGEMENT_SERVICE_URL="http://user-management:8001"
@@ -44,4 +41,4 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # Define the command to run the application
-CMD ["opentelemetry-instrument", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["opentelemetry-instrument", "uvicorn", "services.chat_service.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -11,12 +11,13 @@ Populate
 
 ## chat.py
 
-```bash Server
+Server (using repo root .env):
+```bash
 cd services/chat_service
-source venv/bin/activate
-uvicorn main:app --port 8000 --host 0.0.0.0 --env-file ../../.env
+./start.sh
 ```
 
+Client:
 ```bash
 cd services/chat_service
 source venv/bin/activate

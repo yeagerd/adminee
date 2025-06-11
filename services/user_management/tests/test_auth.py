@@ -236,7 +236,7 @@ class TestServiceAuthentication:
         with patch(
             "services.user_management.auth.service_auth.settings"
         ) as mock_settings:
-            mock_settings.api_key_user_management = "api-frontend-user-key"
+            mock_settings.api_frontend_user_key = "api-frontend-user-key"
             mock_settings.api_key_office = None
 
             # Re-initialize the service auth with mocked settings
@@ -246,12 +246,12 @@ class TestServiceAuthentication:
 
     def test_user_management_api_key_auth_verify_valid_key(self):
         """Test valid API key verification."""
-        service_name = service_auth.verify_api_key("api-frontend-user-key")
+        service_name = service_auth.verify_api_key_value("api-frontend-user-key")
         assert service_name == "user-management-access"
 
     def test_user_management_api_key_auth_verify_invalid_key(self):
         """Test invalid API key verification."""
-        service_name = service_auth.verify_api_key("invalid-key")
+        service_name = service_auth.verify_api_key_value("invalid-key")
         assert service_name is None
 
     def test_user_management_api_key_auth_is_valid_service(self):
@@ -394,7 +394,7 @@ class TestAuthenticationIntegration:
         with patch(
             "services.user_management.auth.service_auth.settings"
         ) as mock_settings:
-            mock_settings.api_key_user_management = "api-frontend-user-key"
+            mock_settings.api_frontend_user_key = "api-frontend-user-key"
             mock_settings.api_key_office = None
 
             # Re-initialize the service auth with mocked settings
