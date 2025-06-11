@@ -9,7 +9,6 @@ import logging
 from typing import List, Optional
 
 from fastapi import HTTPException, Request, status
-from fastapi.security.utils import get_authorization_scheme_param
 
 from ..exceptions import AuthenticationException, AuthorizationException
 from ..settings import settings
@@ -122,41 +121,6 @@ class ServiceAPIKeyAuth:
 
 # Global service auth instance
 service_auth = ServiceAPIKeyAuth()
-
-
-async def get_api_key_from_request(request: Request) -> Optional[str]:
-    """
-    Extract API key from request headers.
-
-    Supports multiple header formats:
-    - Authorization: Bearer <api_key>
-    - X-API-Key: <api_key>
-    - X-Service-Key: <api_key>
-
-    Args:
-        request: FastAPI request object
-
-    Returns:
-        API key if found, None otherwise
-    """
-    # Try Authorization header first
-    authorization = request.headers.get("Authorization")
-    if authorization:
-        scheme, credentials = get_authorization_scheme_param(authorization)
-        if scheme.lower() == "bearer":
-            return credentials
-
-    # Try X-API-Key header
-    api_key = request.headers.get("X-API-Key")
-    if api_key:
-        return api_key
-
-    # Try X-Service-Key header
-    service_key = request.headers.get("X-Service-Key")
-    if service_key:
-        return service_key
-
-    return None
 
 
 async def get_api_key_from_request(request: Request) -> Optional[str]:

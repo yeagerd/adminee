@@ -10,7 +10,6 @@ from typing import List, Optional
 
 from fastapi import HTTPException, Request, status
 
-
 logger = logging.getLogger(__name__)
 
 # API Key to Service/Client mapping with permissions for Office Service
