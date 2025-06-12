@@ -22,6 +22,7 @@ from services.office_service.core.exceptions import (
     OfficeServiceError,
     ProviderAPIError,
     RateLimitError,
+    ValidationError,
 )
 from services.office_service.models import Provider
 from fastapi import Request
@@ -109,10 +110,34 @@ class TestGlobalExceptionHandlers:
     @pytest.mark.asyncio
     async def test_validation_error_handler(self, mock_request):
         """Test ValidationError exception handler"""
-        # Create a Pydantic ValidationError
-        # Skip this test for now as the ValidationError handler has a bug accessing exc.field
-        # which doesn't exist on Pydantic ValidationError
-        pytest.skip("ValidationError handler has bug accessing non-existent fields")
+        # Create our custom ValidationError (not Pydantic's)
+        error = ValidationError(
+            message="Invalid email format",
+            field="email",
+            value="not-an-email",
+            details={"expected_format": "user@domain.com"},
+        )
+
+        with patch("services.office_service.app.main.logger") as mock_logger:
+            response = await validation_error_handler(mock_request, error)
+
+        # Verify response
+        assert isinstance(response, JSONResponse)
+        assert response.status_code == 400  # Bad Request
+
+        # Parse response content
+        response_data = json.loads(response.body.decode())
+        assert response_data["type"] == "validation_error"
+        assert "Invalid email format" in response_data["message"]
+        assert "request_id" in response_data
+        assert response_data["details"]["expected_format"] == "user@domain.com"
+
+        # Verify logging
+        mock_logger.warning.assert_called_once()
+        log_call = mock_logger.warning.call_args
+        log_extra = log_call[1]["extra"]
+        assert log_extra["field"] == "email"
+        assert log_extra["value"] == "not-an-email"
 
     @pytest.mark.asyncio
     async def test_office_service_error_handler(self, mock_request):
