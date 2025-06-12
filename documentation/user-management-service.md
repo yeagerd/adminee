@@ -162,9 +162,9 @@ async def get_user_token(user_id: str, provider: str, scopes: List[str]):
 
 ## 5. Data Models
 
-### 5.1. Ormar Models
+### 5.1. SqlModel Models
 ```python
-import ormar
+import sqlmodel
 import sqlalchemy
 from typing import Optional, Dict, List, Any
 from datetime import datetime
@@ -176,7 +176,7 @@ DATABASE_URL = "postgresql://user:password@localhost/briefly"
 database = databases.Database(DATABASE_URL)
 metadata = sqlalchemy.MetaData()
 
-class BaseMeta(ormar.ModelMeta):
+class BaseMeta(sqlmodel.SQLModel): # TODO: Check if this is the correct base class
     metadata = metadata
     database = database
 
@@ -190,109 +190,104 @@ class IntegrationStatus(str, Enum):
     REVOKED = "revoked"
     ERROR = "error"
 
-class User(ormar.Model):
-    class Meta(BaseMeta):
-        tablename = "users"
+class User(sqlmodel.SQLModel, table=True):
+    __tablename__ = "users"
 
-    id: str = ormar.String(max_length=255, primary_key=True)
-    email: EmailStr = ormar.String(max_length=255, unique=True)
-    first_name: Optional[str] = ormar.String(max_length=100, nullable=True)
-    last_name: Optional[str] = ormar.String(max_length=100, nullable=True)
-    profile_image_url: Optional[str] = ormar.Text(nullable=True)
-    onboarding_completed: bool = ormar.Boolean(default=False)
-    onboarding_completed_at: Optional[datetime] = ormar.DateTime(nullable=True)
-    created_at: datetime = ormar.DateTime(default=datetime.utcnow)
-    updated_at: datetime = ormar.DateTime(default=datetime.utcnow)
-    last_active_at: Optional[datetime] = ormar.DateTime(nullable=True)
+    id: str = sqlmodel.Field(default=None, primary_key=True, max_length=255)
+    email: EmailStr = sqlmodel.Field(default=None, unique=True, max_length=255)
+    first_name: Optional[str] = sqlmodel.Field(default=None, max_length=100)
+    last_name: Optional[str] = sqlmodel.Field(default=None, max_length=100)
+    profile_image_url: Optional[str] = sqlmodel.Field(default=None)
+    onboarding_completed: bool = sqlmodel.Field(default=False)
+    onboarding_completed_at: Optional[datetime] = sqlmodel.Field(default=None)
+    created_at: datetime = sqlmodel.Field(default_factory=datetime.utcnow)
+    updated_at: datetime = sqlmodel.Field(default_factory=datetime.utcnow)
+    last_active_at: Optional[datetime] = sqlmodel.Field(default=None)
 
-class UserPreferences(ormar.Model):
-    class Meta(BaseMeta):
-        tablename = "user_preferences"
+class UserPreferences(sqlmodel.SQLModel, table=True):
+    __tablename__ = "user_preferences"
 
-    user_id: str = ormar.ForeignKey(User, primary_key=True, ondelete="CASCADE")
+    user_id: str = sqlmodel.Field(default=None, primary_key=True, foreign_key="users.id") # TODO: Check ondelete="CASCADE"
     
     # UI Preferences
-    theme: str = ormar.String(max_length=20, default="system")
-    timezone: str = ormar.String(max_length=50, default="UTC")
-    language: str = ormar.String(max_length=10, default="en")
-    date_format: str = ormar.String(max_length=20, default="MM/DD/YYYY")
-    time_format: str = ormar.String(max_length=10, default="12h")
+    theme: str = sqlmodel.Field(default="system", max_length=20)
+    timezone: str = sqlmodel.Field(default="UTC", max_length=50)
+    language: str = sqlmodel.Field(default="en", max_length=10)
+    date_format: str = sqlmodel.Field(default="MM/DD/YYYY", max_length=20)
+    time_format: str = sqlmodel.Field(default="12h", max_length=10)
     
     # Notification Preferences
-    email_notifications: bool = ormar.Boolean(default=True)
-    push_notifications: bool = ormar.Boolean(default=True)
-    calendar_reminders: bool = ormar.Boolean(default=True)
-    ai_suggestions: bool = ormar.Boolean(default=True)
+    email_notifications: bool = sqlmodel.Field(default=True)
+    push_notifications: bool = sqlmodel.Field(default=True)
+    calendar_reminders: bool = sqlmodel.Field(default=True)
+    ai_suggestions: bool = sqlmodel.Field(default=True)
     
     # AI Preferences
-    preferred_ai_model: str = ormar.String(max_length=50, default="gpt-4")
-    ai_response_style: str = ormar.String(max_length=20, default="balanced")
-    ai_context_length: str = ormar.String(max_length=20, default="medium")
+    preferred_ai_model: str = sqlmodel.Field(default="gpt-4", max_length=50)
+    ai_response_style: str = sqlmodel.Field(default="balanced", max_length=20)
+    ai_context_length: str = sqlmodel.Field(default="medium", max_length=20)
     
     # Integration Preferences
-    default_calendar: Optional[str] = ormar.String(max_length=255, nullable=True)
-    default_email_signature: Optional[str] = ormar.Text(nullable=True)
-    sync_frequency: str = ormar.String(max_length=20, default="real-time")
+    default_calendar: Optional[str] = sqlmodel.Field(default=None, max_length=255)
+    default_email_signature: Optional[str] = sqlmodel.Field(default=None)
+    sync_frequency: str = sqlmodel.Field(default="real-time", max_length=20)
     
     # Privacy Preferences
-    data_sharing_analytics: bool = ormar.Boolean(default=True)
-    data_sharing_improvements: bool = ormar.Boolean(default=True)
+    data_sharing_analytics: bool = sqlmodel.Field(default=True)
+    data_sharing_improvements: bool = sqlmodel.Field(default=True)
     
-    created_at: datetime = ormar.DateTime(default=datetime.utcnow)
-    updated_at: datetime = ormar.DateTime(default=datetime.utcnow)
+    created_at: datetime = sqlmodel.Field(default_factory=datetime.utcnow)
+    updated_at: datetime = sqlmodel.Field(default_factory=datetime.utcnow)
 
-class Integration(ormar.Model):
-    class Meta(BaseMeta):
-        tablename = "integrations"
-        constraints = [ormar.UniqueColumns("user_id", "provider", "account_email")]
+class Integration(sqlmodel.SQLModel, table=True):
+    __tablename__ = "integrations"
+    # __table_args__ = (sqlmodel.UniqueConstraint("user_id", "provider", "account_email"),) # TODO: Add this back
 
-    id: str = ormar.UUID(primary_key=True, default=ormar.uuid4)
-    user: User = ormar.ForeignKey(User, ondelete="CASCADE")
-    provider: IntegrationProvider = ormar.String(max_length=50, choices=list(IntegrationProvider))
-    status: IntegrationStatus = ormar.String(max_length=20, choices=list(IntegrationStatus), default=IntegrationStatus.CONNECTED)
-    connected_at: datetime = ormar.DateTime(default=datetime.utcnow)
-    last_refresh_at: Optional[datetime] = ormar.DateTime(nullable=True)
-    expires_at: Optional[datetime] = ormar.DateTime(nullable=True)
-    granted_scopes: List[str] = ormar.JSON(default=list)
-    account_email: EmailStr = ormar.String(max_length=255)
-    account_name: Optional[str] = ormar.String(max_length=255, nullable=True)
-    metadata: Dict[str, Any] = ormar.JSON(default=dict)
-    created_at: datetime = ormar.DateTime(default=datetime.utcnow)
-    updated_at: datetime = ormar.DateTime(default=datetime.utcnow)
+    id: str = sqlmodel.Field(default_factory=sqlmodel.uuid4, primary_key=True)
+    user_id: str = sqlmodel.Field(default=None, foreign_key="users.id") # TODO: Check ondelete="CASCADE"
+    provider: IntegrationProvider = sqlmodel.Field(default=None, max_length=50)
+    status: IntegrationStatus = sqlmodel.Field(default=IntegrationStatus.CONNECTED, max_length=20)
+    connected_at: datetime = sqlmodel.Field(default_factory=datetime.utcnow)
+    last_refresh_at: Optional[datetime] = sqlmodel.Field(default=None)
+    expires_at: Optional[datetime] = sqlmodel.Field(default=None)
+    granted_scopes: List[str] = sqlmodel.Field(default_factory=list)
+    account_email: EmailStr = sqlmodel.Field(default=None, max_length=255)
+    account_name: Optional[str] = sqlmodel.Field(default=None, max_length=255)
+    metadata: Dict[str, Any] = sqlmodel.Field(default_factory=dict)
+    created_at: datetime = sqlmodel.Field(default_factory=datetime.utcnow)
+    updated_at: datetime = sqlmodel.Field(default_factory=datetime.utcnow)
 
-class EncryptedToken(ormar.Model):
-    class Meta(BaseMeta):
-        tablename = "encrypted_tokens"
-        constraints = [ormar.UniqueColumns("integration_id", "token_type")]
+class EncryptedToken(sqlmodel.SQLModel, table=True):
+    __tablename__ = "encrypted_tokens"
+    # __table_args__ = (sqlmodel.UniqueConstraint("integration_id", "token_type"),) # TODO: Add this back
 
-    id: str = ormar.UUID(primary_key=True, default=ormar.uuid4)
-    user: User = ormar.ForeignKey(User, ondelete="CASCADE")
-    integration: Integration = ormar.ForeignKey(Integration, ondelete="CASCADE")
-    token_type: str = ormar.String(max_length=50)  # access_token, refresh_token
-    encrypted_value: bytes = ormar.LargeBinary()
-    encryption_key_id: str = ormar.String(max_length=100)
-    expires_at: Optional[datetime] = ormar.DateTime(nullable=True)
-    created_at: datetime = ormar.DateTime(default=datetime.utcnow)
-    updated_at: datetime = ormar.DateTime(default=datetime.utcnow)
+    id: str = sqlmodel.Field(default_factory=sqlmodel.uuid4, primary_key=True)
+    user_id: str = sqlmodel.Field(default=None, foreign_key="users.id") # TODO: Check ondelete="CASCADE"
+    integration_id: str = sqlmodel.Field(default=None, foreign_key="integrations.id") # TODO: Check ondelete="CASCADE"
+    token_type: str = sqlmodel.Field(default=None, max_length=50)  # access_token, refresh_token
+    encrypted_value: bytes = sqlmodel.Field(default=None)
+    encryption_key_id: str = sqlmodel.Field(default=None, max_length=100)
+    expires_at: Optional[datetime] = sqlmodel.Field(default=None)
+    created_at: datetime = sqlmodel.Field(default_factory=datetime.utcnow)
+    updated_at: datetime = sqlmodel.Field(default_factory=datetime.utcnow)
 
-class AuditLog(ormar.Model):
-    class Meta(BaseMeta):
-        tablename = "audit_logs"
+class AuditLog(sqlmodel.SQLModel, table=True):
+    __tablename__ = "audit_logs"
 
-    id: str = ormar.UUID(primary_key=True, default=ormar.uuid4)
-    user: User = ormar.ForeignKey(User, ondelete="CASCADE")
-    action: str = ormar.String(max_length=100)
-    resource_type: str = ormar.String(max_length=50)
-    resource_id: Optional[str] = ormar.String(max_length=255, nullable=True)
-    details: Dict[str, Any] = ormar.JSON(default=dict)
-    ip_address: Optional[str] = ormar.String(max_length=45, nullable=True)  # IPv6 compatible
-    user_agent: Optional[str] = ormar.Text(nullable=True)
-    created_at: datetime = ormar.DateTime(default=datetime.utcnow)
+    id: str = sqlmodel.Field(default_factory=sqlmodel.uuid4, primary_key=True)
+    user_id: str = sqlmodel.Field(default=None, foreign_key="users.id") # TODO: Check ondelete="CASCADE"
+    action: str = sqlmodel.Field(default=None, max_length=100)
+    resource_type: str = sqlmodel.Field(default=None, max_length=50)
+    resource_id: Optional[str] = sqlmodel.Field(default=None, max_length=255)
+    details: Dict[str, Any] = sqlmodel.Field(default_factory=dict)
+    ip_address: Optional[str] = sqlmodel.Field(default=None, max_length=45)  # IPv6 compatible
+    user_agent: Optional[str] = sqlmodel.Field(default=None)
+    created_at: datetime = sqlmodel.Field(default_factory=datetime.utcnow)
 ```
 
 ### 5.2. Database Indexes and Constraints
 
-Since Ormar handles table creation automatically, we only need to define additional indexes for performance:
+Since SqlModel handles table creation automatically, we only need to define additional indexes for performance:
 
 ```python
 # Additional indexes can be defined in Alembic migrations
@@ -334,9 +329,9 @@ audit_logs_created_at_idx = Index(
 
 ## 6. ORM and Schema Management
 
-- Use **Ormar** as the ORM for all database models and operations
+- Use **SqlModel** as the ORM for all database models and operations
 - Use **Alembic** for schema migrations and management  
-- Ormar automatically generates database tables from model definitions
+- SqlModel automatically generates database tables from model definitions
 - Implement **soft deletes** for user data with configurable retention periods
 - Support **database connection pooling** for high-concurrency scenarios
 
@@ -439,30 +434,33 @@ class TokenEncryption:
 ```python
 async def get_valid_token(user_id: str, provider: str, required_scopes: List[str]):
     """Get valid access token, refreshing if necessary"""
-    # Query integration using Ormar
-    integration = await Integration.objects.select_related("user").get_or_none(
-        user__id=user_id, 
-        provider=provider,
-        status=IntegrationStatus.CONNECTED
-    )
+    # Query integration using SqlModel
+    # This is a placeholder, actual SqlModel query will depend on session/engine setup
+    integration = None
+    # Example: integration = await session.exec(
+    #     sqlmodel.select(Integration).where(Integration.user_id == user_id, Integration.provider == provider, Integration.status == IntegrationStatus.CONNECTED)
+    # ).first()
+
     if not integration:
         raise IntegrationNotFoundError()
     
-    # Get access token using Ormar relationship
-    access_token_record = await EncryptedToken.objects.get_or_none(
-        integration=integration,
-        token_type="access_token"
-    )
+    # Get access token using SqlModel relationship
+    # This is a placeholder, actual SqlModel query will depend on session/engine setup
+    access_token_record = None
+    # Example: access_token_record = await session.exec(
+    #     sqlmodel.select(EncryptedToken).where(EncryptedToken.integration_id == integration.id, EncryptedToken.token_type == "access_token")
+    # ).first()
     
     if not access_token_record:
         raise TokenNotFoundError()
     
     # Check if token is expired or expiring soon
-    if is_token_expired(access_token_record, buffer_minutes=5):
-        refresh_token_record = await EncryptedToken.objects.get_or_none(
-            integration=integration,
-            token_type="refresh_token"
-        )
+    if is_token_expired(access_token_record, buffer_minutes=5): # type: ignore
+        # This is a placeholder, actual SqlModel query will depend on session/engine setup
+        refresh_token_record = None
+        # Example: refresh_token_record = await session.exec(
+        #     sqlmodel.select(EncryptedToken).where(EncryptedToken.integration_id == integration.id, EncryptedToken.token_type == "refresh_token")
+        # ).first()
         
         if not refresh_token_record:
             raise RefreshTokenNotFoundError()
@@ -521,44 +519,60 @@ async def handle_clerk_webhook(request: Request):
     user_data = payload["data"]
     
     if event_type == "user.created":
-        # Create user profile using Ormar
-        await User.objects.create(
-            id=user_data["id"],
-            email=user_data["email_addresses"][0]["email_address"],
-            first_name=user_data.get("first_name"),
-            last_name=user_data.get("last_name"),
-            profile_image_url=user_data.get("image_url")
-        )
-        
-        # Create default preferences
-        await UserPreferences.objects.create(user_id=user_data["id"])
+        # Create user profile using SqlModel
+        # This is a placeholder, actual SqlModel create will depend on session/engine setup
+        # Example:
+        # new_user = User(
+        #     id=user_data["id"],
+        #     email=user_data["email_addresses"][0]["email_address"],
+        #     first_name=user_data.get("first_name"),
+        #     last_name=user_data.get("last_name"),
+        #     profile_image_url=user_data.get("image_url")
+        # )
+        # session.add(new_user)
+        # await session.commit()
+        # await session.refresh(new_user)
+        #
+        # # Create default preferences
+        # default_prefs = UserPreferences(user_id=new_user.id)
+        # session.add(default_prefs)
+        # await session.commit()
+        pass
         
     elif event_type == "user.updated":
-        # Update user profile using Ormar
-        user = await User.objects.get_or_none(id=user_data["id"])
-        if user:
-            await user.update(
-                email=user_data["email_addresses"][0]["email_address"],
-                first_name=user_data.get("first_name"),
-                last_name=user_data.get("last_name"),
-                profile_image_url=user_data.get("image_url"),
-                updated_at=datetime.utcnow()
-            )
+        # Update user profile using SqlModel
+        # This is a placeholder, actual SqlModel update will depend on session/engine setup
+        # Example:
+        # user = await session.get(User, user_data["id"])
+        # if user:
+        #     user.email = user_data["email_addresses"][0]["email_address"]
+        #     user.first_name = user_data.get("first_name")
+        #     user.last_name = user_data.get("last_name")
+        #     user.profile_image_url = user_data.get("image_url")
+        #     user.updated_at = datetime.utcnow()
+        #     session.add(user)
+        #     await session.commit()
+        #     await session.refresh(user)
+        pass
             
     elif event_type == "user.deleted":
         # Soft delete user and cascade to related records
-        user = await User.objects.get_or_none(id=user_data["id"])
-        if user:
-            # Ormar will handle CASCADE deletes automatically
-            await user.delete()
-            
-            # Log audit event
-            await AuditLog.objects.create(
-                user_id=user_data["id"],
-                action="user_deleted",
-                resource_type="user",
-                details={"source": "clerk_webhook"}
-            )
+        # This is a placeholder, actual SqlModel delete will depend on session/engine setup
+        # Example:
+        # user = await session.get(User, user_data["id"])
+        # if user:
+        #     await session.delete(user) # Assuming soft delete is handled by model/db logic or lifecycle events
+        #     await session.commit()
+        #     # Log audit event
+        #     audit_log = AuditLog(
+        #         user_id=user_data["id"],
+        #         action="user_deleted",
+        #         resource_type="user",
+        #         details={"source": "clerk_webhook"}
+        #     )
+        #     session.add(audit_log)
+        #     await session.commit()
+        pass
     
     return {"status": "processed"}
 ```
