@@ -162,7 +162,7 @@ async def get_user_token(user_id: str, provider: str, scopes: List[str]):
 
 ## 5. Data Models
 
-### 5.1. Ormar Models
+### 5.1. SqlModel Models
 ```python
 import ormar
 import sqlalchemy
@@ -292,7 +292,7 @@ class AuditLog(ormar.Model):
 
 ### 5.2. Database Indexes and Constraints
 
-Since Ormar handles table creation automatically, we only need to define additional indexes for performance:
+Since SqlModel handles table creation automatically, we only need to define additional indexes for performance:
 
 ```python
 # Additional indexes can be defined in Alembic migrations
@@ -334,9 +334,9 @@ audit_logs_created_at_idx = Index(
 
 ## 6. ORM and Schema Management
 
-- Use **Ormar** as the ORM for all database models and operations
+- Use **SqlModel** as the ORM for all database models and operations
 - Use **Alembic** for schema migrations and management  
-- Ormar automatically generates database tables from model definitions
+- SqlModel automatically generates database tables from model definitions
 - Implement **soft deletes** for user data with configurable retention periods
 - Support **database connection pooling** for high-concurrency scenarios
 

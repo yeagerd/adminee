@@ -239,7 +239,7 @@ class TokenManager:
 
 ## 5. Data Models
 
-### 5.1. Ormar Models
+### 5.1. SqlModel Models
 
 ```python
 import ormar
@@ -668,7 +668,7 @@ This approach gives users full transparency about data sources and enables infor
 ## 12. Implementation Phases
 
 ### 12.1. Phase 1: Core Infrastructure (MVP)
-1. Basic FastAPI setup with Ormar and Alembic
+1. Basic FastAPI setup with SqlModel and Alembic
 2. Token management integration with User Management Service
 3. Google and Microsoft API clients (internal modules)
 4. Basic unified endpoints (email, calendar, files, contacts)
