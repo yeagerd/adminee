@@ -5,12 +5,14 @@ Business logic for managing user preferences including CRUD operations,
 default value management, and preference validation.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 import structlog
 from sqlalchemy.exc import SQLAlchemyError
+from sqlmodel import select
 
+from ..database import async_session
 from ..exceptions import (
     DatabaseException,
     PreferencesNotFoundException,
@@ -71,21 +73,33 @@ class PreferencesService:
         try:
             logger.info("Getting user preferences", user_id=user_id)
 
-            # Check if user exists
-            user = await User.objects.get_or_none(id=user_id)
-            if not user:
-                logger.warning("User not found", user_id=user_id)
-                raise UserNotFoundException(f"User {user_id} not found")
-
-            # Get or create preferences
-            preferences = await UserPreferences.objects.get_or_none(user_id=user.id)
-            if not preferences:
-                logger.info("Creating default preferences for user", user_id=user_id)
-                # Create default preferences
-                default_prefs = PreferencesService._get_default_preferences()
-                preferences = await UserPreferences.objects.create(
-                    user_id=user.id, version="1.0", **default_prefs
+            async with async_session() as session:
+                # Check if user exists
+                user_result = await session.execute(
+                    select(User).where(User.id == user_id)
                 )
+                user = user_result.scalar_one_or_none()
+                if not user:
+                    logger.warning("User not found", user_id=user_id)
+                    raise UserNotFoundException(f"User {user_id} not found")
+
+                # Get or create preferences
+                prefs_result = await session.execute(
+                    select(UserPreferences).where(UserPreferences.user_id == user.id)
+                )
+                preferences = prefs_result.scalar_one_or_none()
+                if not preferences:
+                    logger.info(
+                        "Creating default preferences for user", user_id=user_id
+                    )
+                    # Create default preferences
+                    default_prefs = PreferencesService._get_default_preferences()
+                    preferences = UserPreferences(
+                        user_id=user.id, version="1.0", **default_prefs
+                    )
+                    session.add(preferences)
+                    await session.commit()
+                    await session.refresh(preferences)
 
             # Convert to response schema
             return UserPreferencesResponse(
@@ -140,19 +154,26 @@ class PreferencesService:
         try:
             logger.info("Updating user preferences", user_id=user_id)
 
-            # Check if user exists
-            user = await User.objects.get_or_none(id=user_id)
-            if not user:
-                logger.warning("User not found", user_id=user_id)
-                raise UserNotFoundException(f"User {user_id} not found")
-
-            # Get existing preferences
-            preferences = await UserPreferences.objects.get_or_none(user_id=user.id)
-            if not preferences:
-                logger.warning("Preferences not found", user_id=user_id)
-                raise PreferencesNotFoundException(
-                    f"Preferences not found for user {user_id}"
+            async with async_session() as session:
+                # Check if user exists
+                user_result = await session.execute(
+                    select(User).where(User.id == user_id)
                 )
+                user = user_result.scalar_one_or_none()
+                if not user:
+                    logger.warning("User not found", user_id=user_id)
+                    raise UserNotFoundException(f"User {user_id} not found")
+
+                # Get existing preferences
+                prefs_result = await session.execute(
+                    select(UserPreferences).where(UserPreferences.user_id == user.id)
+                )
+                preferences = prefs_result.scalar_one_or_none()
+                if not preferences:
+                    logger.warning("Preferences not found", user_id=user_id)
+                    raise PreferencesNotFoundException(
+                        f"Preferences not found for user {user_id}"
+                    )
 
             # Prepare update data
             update_data = {}
@@ -190,10 +211,20 @@ class PreferencesService:
                 return await PreferencesService.get_user_preferences(user_id)
 
             # Update timestamp
-            update_data["updated_at"] = datetime.utcnow()
+            update_data["updated_at"] = datetime.now(timezone.utc)
 
             # Update preferences
-            await preferences.update(**update_data)
+            async with async_session() as session:
+                # Re-fetch preferences in the new session
+                prefs_result = await session.execute(
+                    select(UserPreferences).where(UserPreferences.user_id == user.id)
+                )
+                preferences = prefs_result.scalar_one()
+
+                for key, value in update_data.items():
+                    setattr(preferences, key, value)
+                session.add(preferences)
+                await session.commit()
 
             logger.info(
                 "Successfully updated preferences",
@@ -242,14 +273,21 @@ class PreferencesService:
                 "Resetting user preferences", user_id=user_id, categories=categories
             )
 
-            # Check if user exists
-            user = await User.objects.get_or_none(id=user_id)
-            if not user:
-                logger.warning("User not found", user_id=user_id)
-                raise UserNotFoundException(f"User {user_id} not found")
+            async with async_session() as session:
+                # Check if user exists
+                user_result = await session.execute(
+                    select(User).where(User.id == user_id)
+                )
+                user = user_result.scalar_one_or_none()
+                if not user:
+                    logger.warning("User not found", user_id=user_id)
+                    raise UserNotFoundException(f"User {user_id} not found")
 
-            # Get existing preferences
-            preferences = await UserPreferences.objects.get_or_none(user_id=user.id)
+                # Get existing preferences
+                prefs_result = await session.execute(
+                    select(UserPreferences).where(UserPreferences.user_id == user.id)
+                )
+                preferences = prefs_result.scalar_one_or_none()
             if not preferences:
                 logger.warning("Preferences not found", user_id=user_id)
                 raise PreferencesNotFoundException(
@@ -296,10 +334,20 @@ class PreferencesService:
                         )
 
             # Update timestamp
-            reset_data["updated_at"] = datetime.utcnow()
+            reset_data["updated_at"] = datetime.now(timezone.utc)
 
             # Reset preferences
-            await preferences.update(**reset_data)
+            async with async_session() as session:
+                # Re-fetch preferences in the new session
+                prefs_result = await session.execute(
+                    select(UserPreferences).where(UserPreferences.user_id == user.id)
+                )
+                preferences = prefs_result.scalar_one()
+
+                for key, value in reset_data.items():
+                    setattr(preferences, key, value)
+                session.add(preferences)
+                await session.commit()
 
             logger.info(
                 "Successfully reset preferences", user_id=user_id, categories=categories

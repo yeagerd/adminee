@@ -5,7 +5,7 @@ Tests all user CRUD operations including success scenarios,
 error handling, authentication, and authorization.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -41,8 +41,8 @@ class TestUserProfileEndpoints:
         user.profile_image_url = "https://example.com/avatar.jpg"
         user.onboarding_completed = False
         user.onboarding_step = "profile_setup"
-        user.created_at = datetime.utcnow()
-        user.updated_at = datetime.utcnow()
+        user.created_at = datetime.now(timezone.utc)
+        user.updated_at = datetime.now(timezone.utc)
         user.deleted_at = None
         return user
 
@@ -66,8 +66,8 @@ class TestUserProfileEndpoints:
                 profile_image_url="https://example.com/avatar.jpg",
                 onboarding_completed=False,
                 onboarding_step="profile_setup",
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
             )
             mock_get_profile.return_value = mock_response
 
@@ -149,8 +149,8 @@ class TestUserProfileEndpoints:
                 profile_image_url="https://example.com/avatar.jpg",
                 onboarding_completed=False,
                 onboarding_step="profile_setup",
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
             )
             mock_from_orm.return_value = mock_response
 
@@ -200,7 +200,7 @@ class TestUserProfileEndpoints:
             message="User 1 successfully deleted",
             user_id=1,
             external_auth_id="user_123",
-            deleted_at=datetime.utcnow(),
+            deleted_at=datetime.now(timezone.utc),
         )
 
         with (
@@ -275,8 +275,8 @@ class TestUserProfileEndpoints:
                 profile_image_url="https://example.com/avatar.jpg",
                 onboarding_completed=True,
                 onboarding_step=None,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
             )
             mock_from_orm.return_value = mock_response
 
@@ -308,8 +308,8 @@ class TestUserProfileEndpoints:
                     profile_image_url="https://example.com/avatar.jpg",
                     onboarding_completed=False,
                     onboarding_step="profile_setup",
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow(),
+                    created_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(timezone.utc),
                 )
             ],
             total=1,
@@ -386,8 +386,8 @@ class TestUserProfileEndpoints:
                 profile_image_url="https://example.com/avatar.jpg",
                 onboarding_completed=False,
                 onboarding_step="profile_setup",
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
             )
             mock_from_orm.return_value = mock_response
 
