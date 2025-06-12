@@ -72,13 +72,17 @@ jobs:
       working-directory: ./frontend
       run: npx tsc --noEmit
 
-    # - name: Copy .env.example to .env
-    #   working-directory: ./frontend
-    #   run: cp ../.env.example .env
+    - name: Copy .env.example to .env
+      working-directory: ./frontend
+      run: cp ../.env.example .env
 
-    # - name: Build application
-    #   working-directory: ./frontend
-    #   run: npm run build
+    - name: Build application
+      working-directory: ./frontend
+      env:
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          TOKEN_ENCRYPTION_SALT: ${{ secrets.TOKEN_ENCRYPTION_SALT }}
+      run: npm run build
 
   docker-build:
     name: Docker Build Test
@@ -92,6 +96,10 @@ jobs:
       uses: docker/setup-buildx-action@v3
 
     - name: Test Docker Compose build
+      env:
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          TOKEN_ENCRYPTION_SALT: ${{ secrets.TOKEN_ENCRYPTION_SALT }}
       run: |
         # Create .env file for testing
         cp .env.example .env
