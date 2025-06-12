@@ -69,29 +69,24 @@ from vector_db.indexing_service import IndexingService
 If you need to install manually for a specific service:
 
 ```bash
-cd services/{service-name}
-source venv/bin/activate
-pip install -e ../common
-pip install -e ../vector-db
-deactivate
+# The unified setup script handles this automatically
+./setup-dev.sh
 ```
 
-Example for office_service:
+For manual installation (if needed):
 ```bash
-cd services/office_service
-source venv/bin/activate
+cd services/{service-name}
+source ../../venv/bin/activate  # Use unified venv
 pip install -e ../common
 pip install -e ../vector-db
-deactivate
 ```
 
 ## Verification
 
 To verify the setup works:
 
-1. Activate any service's virtual environment:
+1. Activate the unified virtual environment:
    ```bash
-   cd services/office_service
    source venv/bin/activate
    ```
 
