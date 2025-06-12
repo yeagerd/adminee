@@ -212,7 +212,6 @@ async def test_backward_compatibility_imports():
     assert hasattr(manager, "tools")
     assert hasattr(manager, "subagents")
 
-
 @pytest.mark.asyncio
 @patch("services.chat_service.chat_agent.history_manager.append_message")
 @patch("services.chat_service.chat_agent.history_manager.create_thread")

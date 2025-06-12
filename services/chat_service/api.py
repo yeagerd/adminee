@@ -8,9 +8,9 @@ from models import (
     FeedbackRequest,
     FeedbackResponse,
 )
-from models import Message as PydanticMessage
+from models import MessageResponse as PydanticMessage
 from models import (
-    Thread,
+    ThreadResponse,
 )
 from settings import settings
 
@@ -82,8 +82,8 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
     )
 
 
-@router.get("/threads", response_model=List[Thread])
-async def list_threads(user_id: str) -> List[Thread]:
+@router.get("/threads", response_model=List[ThreadResponse])
+async def list_threads(user_id: str) -> List[ThreadResponse]:
     """
     List threads for a given user using history_manager.
     """
@@ -91,7 +91,7 @@ async def list_threads(user_id: str) -> List[Thread]:
 
     threads = await history_manager.list_threads(user_id)
     return [
-        Thread(
+        ThreadResponse(
             thread_id=str(t.id),
             user_id=t.user_id,
             created_at=str(t.created_at),
@@ -107,11 +107,11 @@ async def thread_history(thread_id: str) -> ChatResponse:
     Get chat history for a given thread using history_manager.
     """
     import history_manager
-    from models import Message
+    from models import MessageResponse
 
     messages = await history_manager.get_thread_history(int(thread_id), limit=100)
     chat_messages = [
-        Message(
+        MessageResponse(
             message_id=str(i + 1),
             thread_id=str(thread_id),
             user_id=str(m.user_id) if m.user_id is not None else "",

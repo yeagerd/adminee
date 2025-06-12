@@ -11,18 +11,18 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     thread_id: str
-    messages: List["Message"]
+    messages: List["MessageResponse"]
     draft: Optional[dict] = None  # Placeholder for draft email/calendar event
 
 
-class Thread(BaseModel):
+class ThreadResponse(BaseModel):
     thread_id: str
     user_id: str
     created_at: str
     updated_at: str
 
 
-class Message(BaseModel):
+class MessageResponse(BaseModel):
     message_id: str
     thread_id: str
     user_id: str

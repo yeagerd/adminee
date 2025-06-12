@@ -9,6 +9,7 @@ from typing import List, Optional
 from sqlalchemy import Text, UniqueConstraint, func, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, select
+from sqlalchemy.orm import registry
 
 # Import settings to get DATABASE_URL
 try:
@@ -32,6 +33,13 @@ def get_async_database_url(url: str) -> str:
         return url
 
 
+# Create a separate registry for chat service models to avoid conflicts with other services
+chat_registry = registry()
+
+# Create a custom SQLModel base that uses our isolated registry
+class ChatSQLModel(SQLModel, registry=chat_registry):
+    pass
+
 # Create async engine for database operations
 engine = create_async_engine(get_async_database_url(DATABASE_URL), echo=False)
 
@@ -43,7 +51,7 @@ async_session = async_sessionmaker(
 )
 
 
-class Thread(SQLModel, table=True):
+class Thread(ChatSQLModel, table=True):
     __tablename__ = "threads"
     __table_args__ = {"extend_existing": True}
 
@@ -66,7 +74,7 @@ class Thread(SQLModel, table=True):
     drafts: list["Draft"] = Relationship(back_populates="thread")
 
 
-class Message(SQLModel, table=True):
+class Message(ChatSQLModel, table=True):
     __tablename__ = "messages"
     __table_args__ = {"extend_existing": True}
 
@@ -89,7 +97,7 @@ class Message(SQLModel, table=True):
     thread: Optional[Thread] = Relationship(back_populates="messages")
 
 
-class Draft(SQLModel, table=True):
+class Draft(ChatSQLModel, table=True):
     __tablename__ = "drafts"
     __table_args__ = (
         UniqueConstraint("thread_id", "type", name="uq_thread_type"),
@@ -120,7 +128,7 @@ class Draft(SQLModel, table=True):
 # Ensure tables are created on import
 async def init_db():
     async with engine.begin() as conn:
-        await conn.run_sync(SQLModel.metadata.create_all)
+        await conn.run_sync(chat_registry.metadata.create_all)
 
 
 # Initialize database synchronously for backward compatibility

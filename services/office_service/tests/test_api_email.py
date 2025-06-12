@@ -494,7 +494,7 @@ class TestEmailHelperFunctions:
 
     def test_parse_message_id_valid_gmail(self):
         """Test parsing valid Gmail message ID."""
-        from api.email import parse_message_id
+        from services.office_service.api.email import parse_message_id
 
         provider, original_id = parse_message_id("gmail_abc123")
 
@@ -503,7 +503,7 @@ class TestEmailHelperFunctions:
 
     def test_parse_message_id_valid_outlook(self):
         """Test parsing valid Outlook message ID."""
-        from api.email import parse_message_id
+        from services.office_service.api.email import parse_message_id
 
         provider, original_id = parse_message_id("microsoft_xyz789")
 
@@ -512,7 +512,7 @@ class TestEmailHelperFunctions:
 
     def test_parse_message_id_invalid_format(self):
         """Test parsing invalid message ID format."""
-        from api.email import parse_message_id
+        from services.office_service.api.email import parse_message_id
         from fastapi import HTTPException
 
         with pytest.raises(HTTPException) as exc_info:
@@ -523,7 +523,7 @@ class TestEmailHelperFunctions:
 
     def test_parse_message_id_unknown_provider(self):
         """Test parsing message ID with unknown provider."""
-        from api.email import parse_message_id
+        from services.office_service.api.email import parse_message_id
         from fastapi import HTTPException
 
         with pytest.raises(HTTPException) as exc_info:
@@ -543,7 +543,7 @@ class TestFetchProviderEmails:
         self, mock_normalize_google_email, mock_api_client_factory, mock_email_message
     ):
         """Test successful Google email fetching."""
-        from api.email import fetch_provider_emails
+        from services.office_service.api.email import fetch_provider_emails
 
         # Mock API client
         mock_client = AsyncMock()
@@ -573,7 +573,7 @@ class TestFetchProviderEmails:
         mock_email_message,
     ):
         """Test successful Microsoft email fetching."""
-        from api.email import fetch_provider_emails
+        from services.office_service.api.email import fetch_provider_emails
 
         # Mock API client
         mock_client = AsyncMock()
@@ -598,7 +598,7 @@ class TestFetchProviderEmails:
         self, mock_api_client_factory
     ):
         """Test handling of API client creation failure."""
-        from api.email import fetch_provider_emails
+        from services.office_service.api.email import fetch_provider_emails
 
         # Mock API client factory to raise exception
         mock_api_client_factory.create_client = AsyncMock(
@@ -623,7 +623,7 @@ class TestFetchSingleMessage:
         self, mock_normalize_google_email, mock_api_client_factory, mock_email_message
     ):
         """Test successful single Google message fetching."""
-        from api.email import fetch_single_message
+        from services.office_service.api.email import fetch_single_message
 
         # Mock API client
         mock_client = AsyncMock()
@@ -650,7 +650,7 @@ class TestFetchSingleMessage:
         mock_email_message,
     ):
         """Test successful single Microsoft message fetching."""
-        from api.email import fetch_single_message
+        from services.office_service.api.email import fetch_single_message
 
         # Mock API client
         mock_client = AsyncMock()
@@ -671,7 +671,7 @@ class TestFetchSingleMessage:
     @pytest.mark.asyncio
     async def test_fetch_single_message_not_found(self, mock_api_client_factory):
         """Test handling of message not found."""
-        from api.email import fetch_single_message
+        from services.office_service.api.email import fetch_single_message
 
         # Mock API client to raise exception
         mock_client = AsyncMock()

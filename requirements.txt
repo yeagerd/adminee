@@ -1,3 +1,17 @@
+## for testing
+black
+isort
+ruff
+pytest
+pytest-asyncio
+pytest-mock
+mypy
+types-requests
+types-pytz
+pytest-xdist
+pytest-asyncio
+
+## probably unnecessary:
 aiosqlite
 alembic
 asyncpg
