@@ -41,7 +41,8 @@ When working with task lists, the AI must:
 General instructions for working in Python in this repo:
 
 Setup:
-* Activate the virtual environment: `source venv/bin/activate`
+* Set up the unified development environment: `./setup-dev.sh`
+* The virtual environment will be automatically activated
 * Run all Python commands from the repository root.
 
 Before committing:
