@@ -217,6 +217,7 @@ async def test_backward_compatibility_imports():
 @patch("services.chat_service.chat_agent.history_manager.create_thread")
 @patch("services.chat_service.chat_agent.history_manager.get_thread")
 @patch("services.chat_service.chat_agent.history_manager.get_thread_history")
+@patch.dict(os.environ, {"OPENAI_API_KEY": ""})  # Force FakeLLM by removing API key
 async def test_chat_with_agent(
     mock_get_thread_history, mock_get_thread, mock_create_thread, mock_append_message
 ):

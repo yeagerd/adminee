@@ -246,6 +246,7 @@ async def test_memory_aggregation():
 
 @pytest.mark.asyncio
 @patch("services.chat_service.chat_agent.history_manager")
+@patch.dict(os.environ, {"OPENAI_API_KEY": ""})  # Force FakeLLM by removing API key
 async def test_end_to_end_orchestration(mock_history, orchestration_tools):
     """Test end-to-end orchestration flow."""
     mock_history.get_thread_history = AsyncMock(return_value=[])
