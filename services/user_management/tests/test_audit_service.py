@@ -436,11 +436,11 @@ class TestAuditLogger:
         ) as mock_log_system:
             deleted_count = await audit_service.cleanup_old_logs(retention_days=90)
 
-        # Verify cleanup
-        assert deleted_count == 3
+            # Verify cleanup
+            assert deleted_count == 3
         assert mock_session.delete.call_count == 3
         mock_session.commit.assert_called_once()
-        mock_log_system.assert_called_once()
+            mock_log_system.assert_called_once()
 
     @pytest.mark.asyncio
     @patch("services.user_management.services.audit_service.async_session")

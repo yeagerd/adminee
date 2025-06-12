@@ -23,6 +23,7 @@ from ..schemas.integration import (
     IntegrationHealthResponse,
     IntegrationListResponse,
     IntegrationStatsResponse,
+    OAuthCallbackResponse,
 )
 
 
@@ -229,8 +230,12 @@ class TestOAuthFlowEndpoints:
         assert data["integration_id"] == 123
         assert data["provider"] == "google"
 
-    def test_complete_oauth_flow_with_error(self, client: TestClient, mock_auth):
+    @patch("services.user_management.services.audit_service.audit_logger.log_audit_event")
+    def test_complete_oauth_flow_with_error(self, mock_audit, client: TestClient, mock_auth):
         """Test OAuth flow completion with OAuth error."""
+        # Mock audit logging to prevent database errors
+        mock_audit.return_value = None
+        
         user_id = "user_123"
 
         request_data = {
@@ -259,9 +264,21 @@ class TestOAuthFlowEndpoints:
             "state": "state_abc123",
         }
 
+        # Mock the service to return an error response instead of raising exception
+        mock_error_response = OAuthCallbackResponse(
+            success=False,
+            integration_id=None,
+            provider=IntegrationProvider.GOOGLE,
+            status=IntegrationStatus.ERROR,
+            scopes=[],
+            external_user_info=None,
+            error="Token exchange failed",
+        )
+
         with patch(
             "services.user_management.services.integration_service.integration_service.complete_oauth_flow",
-            side_effect=IntegrationException("Token exchange failed"),
+            new_callable=AsyncMock,
+            return_value=mock_error_response,
         ):
             response = client.post(
                 f"/users/{user_id}/integrations/oauth/callback?provider=google",

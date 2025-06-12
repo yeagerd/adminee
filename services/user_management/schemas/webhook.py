@@ -5,7 +5,7 @@ Defines Pydantic models for validating incoming webhook payloads
 from external services like Clerk.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
@@ -69,6 +69,6 @@ class WebhookResponse(BaseModel):
     )
     message: str = Field(..., description="Response message")
     processed_at: datetime = Field(
-        default_factory=datetime.utcnow, description="Processing timestamp"
+        default_factory=lambda: datetime.now(timezone.utc), description="Processing timestamp"
     )
     event_id: Optional[str] = Field(None, description="ID of the processed event")

@@ -328,7 +328,12 @@ class TestOAuthConfig:
 
     def test_oauth_config_missing_credentials(self):
         """Test OAuth configuration with missing credentials."""
-        settings_no_creds = Settings()
+        settings_no_creds = Settings(
+            google_client_id=None,
+            google_client_secret=None,
+            azure_ad_client_id=None,
+            azure_ad_client_secret=None,
+        )
         config = OAuthConfig(settings_no_creds)
 
         # Should have no providers available

@@ -78,7 +78,12 @@ async def clerk_webhook(
             result = await webhook_service.process_user_deleted(data)
         else:
             logger.warning(f"Unsupported webhook event type: {event_type}")
-            return {"status": "ignored", "message": f"Unsupported event: {event_type}"}
+            return WebhookResponse(
+                success=False,
+                message=f"Unsupported event: {event_type}",
+                processed_at=datetime.now(timezone.utc),
+                event_id=data.get("id"),
+            )
 
         # Calculate processing time
         processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
@@ -87,13 +92,12 @@ async def clerk_webhook(
             f"Webhook processed successfully: {event_type} in {processing_time:.3f}s"
         )
 
-        return {
-            "status": "success",
-            "event_type": event_type,
-            "processed_at": datetime.now(timezone.utc),
-            "processing_time": processing_time,
-            "result": result,
-        }
+        return WebhookResponse(
+            success=True,
+            message=f"Event {event_type} processed successfully in {processing_time:.3f}s",
+            processed_at=datetime.now(timezone.utc),
+            event_id=data.get("id"),
+        )
 
     except HTTPException:
         # Re-raise HTTP exceptions as-is

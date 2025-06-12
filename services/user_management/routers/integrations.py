@@ -224,22 +224,21 @@ async def complete_oauth_flow(
             )
 
         # Complete the OAuth flow
-        return await integration_service.complete_oauth_flow(
+        result = await integration_service.complete_oauth_flow(
             user_id=user_id,
             provider=provider,
             authorization_code=request.code,
             state=request.state,
         )
+        
+        # If the service returned an error result, still return it as 200 with success=False
+        return result
 
     except NotFoundException as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except SimpleValidationException as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
-        )
-    except IntegrationException as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
