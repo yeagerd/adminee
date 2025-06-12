@@ -34,6 +34,7 @@ from ..schemas.integration import (
     TokenRefreshRequest,
     TokenRefreshResponse,
 )
+from ..services.audit_service import audit_logger
 from ..services.integration_service import integration_service
 
 router = APIRouter(
@@ -199,37 +200,37 @@ async def complete_oauth_flow(
     # Verify user can access this resource
     await verify_user_ownership(current_user, user_id)
 
-    # Handle OAuth errors
-    if request.error:
-        return OAuthCallbackResponse(
-            success=False,
-            integration_id=None,
-            provider=provider,
-            status=IntegrationStatus.ERROR,
-            scopes=[],
-            external_user_info=None,
-            error=f"OAuth error: {request.error} - {request.error_description or 'No description'}",
-        )
-
-    # Validate authorization code is present
-    if not request.code:
-        return OAuthCallbackResponse(
-            success=False,
-            integration_id=None,
-            provider=provider,
-            status=IntegrationStatus.ERROR,
-            scopes=[],
-            external_user_info=None,
-            error="Missing authorization code",
-        )
-
     try:
+        # Handle OAuth errors from provider
+        if request.error:
+            await audit_logger.log_security_event(
+                user_id=user_id,
+                action="oauth_callback_error",
+                severity="medium",
+                details={
+                    "provider": provider.value,
+                    "error": request.error,
+                    "error_description": request.error_description,
+                },
+            )
+            return OAuthCallbackResponse(
+                success=False,
+                integration_id=None,
+                provider=provider,
+                status=IntegrationStatus.ERROR,
+                scopes=[],
+                external_user_info=None,
+                error=f"OAuth error: {request.error} - {request.error_description}",
+            )
+
+        # Complete the OAuth flow
         return await integration_service.complete_oauth_flow(
             user_id=user_id,
             provider=provider,
             authorization_code=request.code,
             state=request.state,
         )
+
     except NotFoundException as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except SimpleValidationException as e:
@@ -237,15 +238,44 @@ async def complete_oauth_flow(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
         )
     except IntegrationException as e:
-        # OAuth completion failures should return 200 with error details
-        return OAuthCallbackResponse(
-            success=False,
-            integration_id=None,
-            provider=provider,
-            status=IntegrationStatus.ERROR,
-            scopes=[],
-            external_user_info=None,
-            error=str(e),
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+@router.get("/stats", response_model=IntegrationStatsResponse)
+async def get_integration_statistics(
+    user_id: str,
+    current_user: str = Depends(get_current_user),
+):
+    """
+    Get comprehensive integration statistics for user.
+
+    Provides analytics and metrics about all user integrations including
+    status distribution, provider usage, error tracking, and sync activity.
+
+    **Statistics Include:**
+    - Total integration counts by status and provider
+    - Recent error history and patterns
+    - Synchronization activity and timestamps
+    - Health metrics and trends
+
+    **Response:**
+    - Counts by status (active, error, pending, etc.)
+    - Counts by provider (Google, Microsoft, etc.)
+    - Recent errors with timestamps and details
+    - Sync statistics and activity metrics
+    """
+    # Verify user can access this resource
+    await verify_user_ownership(current_user, user_id)
+
+    try:
+        return await integration_service.get_integration_statistics(user_id=user_id)
+    except NotFoundException as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except IntegrationException as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
 
@@ -430,42 +460,6 @@ async def check_integration_health(
             user_id=user_id,
             provider=provider,
         )
-    except NotFoundException as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except IntegrationException as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
-
-
-@router.get("/stats", response_model=IntegrationStatsResponse)
-async def get_integration_statistics(
-    user_id: str,
-    current_user: str = Depends(get_current_user),
-):
-    """
-    Get comprehensive integration statistics for user.
-
-    Provides analytics and metrics about all user integrations including
-    status distribution, provider usage, error tracking, and sync activity.
-
-    **Statistics Include:**
-    - Total integration counts by status and provider
-    - Recent error history and patterns
-    - Synchronization activity and timestamps
-    - Health metrics and trends
-
-    **Response:**
-    - Counts by status (active, error, pending, etc.)
-    - Counts by provider (Google, Microsoft, etc.)
-    - Recent errors with timestamps and details
-    - Sync statistics and activity metrics
-    """
-    # Verify user can access this resource
-    await verify_user_ownership(current_user, user_id)
-
-    try:
-        return await integration_service.get_integration_statistics(user_id=user_id)
     except NotFoundException as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except IntegrationException as e:

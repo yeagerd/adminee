@@ -5,7 +5,7 @@ Tests preferences service, router endpoints, validation,
 partial updates, and default value handling.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -144,8 +144,8 @@ class TestPreferencesSchemas:
             ai=AIPreferencesSchema(),
             integrations=IntegrationPreferencesSchema(),
             privacy=PrivacyPreferencesSchema(),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
 
         assert response.version == "1.0"
@@ -160,8 +160,8 @@ class TestPreferencesSchemas:
             ai=AIPreferencesSchema(),
             integrations=IntegrationPreferencesSchema(),
             privacy=PrivacyPreferencesSchema(),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
 
         assert response.version == "1.0"  # Default version
@@ -207,8 +207,8 @@ class TestPreferencesService:
             "google_drive_enabled": False,
         }
         prefs.privacy_preferences = {"data_collection": True, "analytics": True}
-        prefs.created_at = datetime.utcnow()
-        prefs.updated_at = datetime.utcnow()
+        prefs.created_at = datetime.now(timezone.utc)
+        prefs.updated_at = datetime.now(timezone.utc)
         prefs.update = AsyncMock()
         return prefs
 
@@ -301,8 +301,8 @@ class TestPreferencesService:
             IntegrationPreferencesSchema().model_dump()
         )
         created_prefs.privacy_preferences = PrivacyPreferencesSchema().model_dump()
-        created_prefs.created_at = datetime.utcnow()
-        created_prefs.updated_at = datetime.utcnow()
+        created_prefs.created_at = datetime.now(timezone.utc)
+        created_prefs.updated_at = datetime.now(timezone.utc)
 
         mock_session.refresh = AsyncMock(return_value=None)
         # Mock the preferences object that gets created
@@ -356,8 +356,8 @@ class TestPreferencesService:
                 ai=AIPreferencesSchema(),
                 integrations=IntegrationPreferencesSchema(),
                 privacy=PrivacyPreferencesSchema(),
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
             )
             mock_get.return_value = mock_response
 
@@ -407,8 +407,8 @@ class TestPreferencesService:
                 ai=AIPreferencesSchema(),
                 integrations=IntegrationPreferencesSchema(),
                 privacy=PrivacyPreferencesSchema(),
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
             )
             mock_get.return_value = mock_response
 
@@ -464,8 +464,8 @@ class TestPreferencesService:
                 ai=AIPreferencesSchema(),
                 integrations=IntegrationPreferencesSchema(),
                 privacy=PrivacyPreferencesSchema(),
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
             )
             mock_get.return_value = mock_response
 
@@ -517,8 +517,8 @@ class TestPreferencesService:
                 ai=AIPreferencesSchema(),
                 integrations=IntegrationPreferencesSchema(),
                 privacy=PrivacyPreferencesSchema(),
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
             )
             mock_get.return_value = mock_response
 
@@ -572,8 +572,8 @@ class TestPreferencesService:
             ai=AIPreferencesSchema(),
             integrations=IntegrationPreferencesSchema(),
             privacy=PrivacyPreferencesSchema(),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
 
         response_v2 = UserPreferencesResponse(
@@ -584,8 +584,8 @@ class TestPreferencesService:
             ai=AIPreferencesSchema(),
             integrations=IntegrationPreferencesSchema(),
             privacy=PrivacyPreferencesSchema(),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
 
         assert response_v1.version == "1.0"
@@ -638,8 +638,8 @@ class TestPreferencesEndpoints:
             ai=AIPreferencesSchema(),
             integrations=IntegrationPreferencesSchema(),
             privacy=PrivacyPreferencesSchema(),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
 
         with patch(
@@ -681,8 +681,8 @@ class TestPreferencesEndpoints:
             ai=AIPreferencesSchema(),
             integrations=IntegrationPreferencesSchema(),
             privacy=PrivacyPreferencesSchema(),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
 
         with patch(
@@ -730,8 +730,8 @@ class TestPreferencesEndpoints:
             ai=AIPreferencesSchema(),
             integrations=IntegrationPreferencesSchema(),
             privacy=PrivacyPreferencesSchema(),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
 
         with patch(

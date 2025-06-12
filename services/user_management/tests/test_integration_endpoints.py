@@ -6,7 +6,7 @@ health monitoring, and provider configuration endpoints.
 """
 
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import status
@@ -444,7 +444,8 @@ class TestIntegrationManagementEndpoints:
         )
 
         with patch(
-            "services.user_management.routers.integrations.integration_service.get_integration_statistics",
+            "services.user_management.services.integration_service.integration_service.get_integration_statistics",
+            new_callable=AsyncMock,
             return_value=mock_response,
         ):
             response = client.get(

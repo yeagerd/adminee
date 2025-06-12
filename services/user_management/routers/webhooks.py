@@ -6,15 +6,11 @@ with signature verification and event processing.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from ..auth.webhook_auth import verify_webhook_signature
-from ..exceptions import (
-    DatabaseError,
-    WebhookProcessingError,
-)
 from ..schemas.webhook import ClerkWebhookEvent, WebhookResponse
 from ..services.webhook_service import WebhookService
 
@@ -55,76 +51,49 @@ async def clerk_webhook(
     Raises:
         HTTPException: For validation errors, processing failures, or signature issues
     """
-    start_time = datetime.utcnow()
-    event_type = None
-
     try:
-        # Parse request body
-        body = await request.body()
-        payload = body.decode("utf-8")
+        start_time = datetime.now(timezone.utc)
+        event_type = None
 
-        logger.info(f"Received Clerk webhook: {len(payload)} bytes")
-
-        # Parse and validate webhook event
+        # Parse the webhook payload
         try:
-            event = ClerkWebhookEvent.model_validate_json(payload)
-            event_type = event.type
-            user_id = event.data.id
-
-            logger.info(f"Processing {event_type} event for user {user_id}")
-
+            webhook_data = await request.json()
+            event_type = webhook_data.get("type")
+            data = webhook_data.get("data", {})
         except Exception as e:
             logger.error(f"Failed to parse webhook payload: {str(e)}")
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail={
-                    "error": "PayloadValidationError",
-                    "message": f"Invalid webhook payload: {str(e)}",
-                    "timestamp": start_time.isoformat(),
-                },
-            )
-
-        # Process the webhook event
-        try:
-            result = await webhook_service.process_clerk_webhook(event)
-
-            processing_time = (datetime.utcnow() - start_time).total_seconds()
-
-            logger.info(
-                f"Successfully processed {event_type} event for user {user_id} "
-                f"in {processing_time:.3f}s: {result['action']}"
-            )
-
-            return WebhookResponse(
-                success=True,
-                message=f"Successfully processed {event_type} event",
-                processed_at=datetime.utcnow(),
-                event_id=user_id,
-            )
-
-        except WebhookProcessingError as e:
-            logger.error(f"Webhook processing failed for {event_type}: {e.message}")
-            raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "error": "WebhookProcessingError",
-                    "message": e.message,
-                    "event_type": event_type,
-                    "timestamp": start_time.isoformat(),
-                },
+                detail="Invalid webhook payload format",
             )
 
-        except DatabaseError as e:
-            logger.error(f"Database error processing {event_type}: {e.message}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={
-                    "error": "DatabaseError",
-                    "message": "Database operation failed",
-                    "event_type": event_type,
-                    "timestamp": start_time.isoformat(),
-                },
-            )
+        logger.info(f"Processing Clerk webhook: {event_type} for user {data.get('id')}")
+
+        # Process the webhook based on event type
+        if event_type == "user.created":
+            result = await webhook_service.process_user_created(data)
+        elif event_type == "user.updated":
+            result = await webhook_service.process_user_updated(data)
+        elif event_type == "user.deleted":
+            result = await webhook_service.process_user_deleted(data)
+        else:
+            logger.warning(f"Unsupported webhook event type: {event_type}")
+            return {"status": "ignored", "message": f"Unsupported event: {event_type}"}
+
+        # Calculate processing time
+        processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+
+        logger.info(
+            f"Webhook processed successfully: {event_type} in {processing_time:.3f}s"
+        )
+
+        return {
+            "status": "success",
+            "event_type": event_type,
+            "processed_at": datetime.now(timezone.utc),
+            "processing_time": processing_time,
+            "result": result,
+        }
 
     except HTTPException:
         # Re-raise HTTP exceptions as-is
@@ -138,7 +107,7 @@ async def clerk_webhook(
                 "error": "InternalServerError",
                 "message": "An unexpected error occurred",
                 "event_type": event_type,
-                "timestamp": start_time.isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             },
         )
 
@@ -169,7 +138,7 @@ async def test_clerk_webhook(
         return WebhookResponse(
             success=True,
             message=f"Test webhook processed successfully: {result['action']}",
-            processed_at=datetime.utcnow(),
+            processed_at=datetime.now(timezone.utc),
             event_id=event.data.id,
         )
 
@@ -180,7 +149,7 @@ async def test_clerk_webhook(
             detail={
                 "error": "TestWebhookError",
                 "message": f"Test webhook processing failed: {str(e)}",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             },
         )
 
@@ -196,7 +165,7 @@ async def webhook_health() -> dict:
     return {
         "status": "healthy",
         "service": "webhook-handler",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "supported_providers": ["clerk"],
         "supported_events": ["user.created", "user.updated", "user.deleted"],
     }

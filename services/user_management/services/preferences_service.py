@@ -5,7 +5,7 @@ Business logic for managing user preferences including CRUD operations,
 default value management, and preference validation.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 import structlog
@@ -211,7 +211,7 @@ class PreferencesService:
                 return await PreferencesService.get_user_preferences(user_id)
 
             # Update timestamp
-            update_data["updated_at"] = datetime.utcnow()
+            update_data["updated_at"] = datetime.now(timezone.utc)
 
             # Update preferences
             async with async_session() as session:
@@ -334,7 +334,7 @@ class PreferencesService:
                         )
 
             # Update timestamp
-            reset_data["updated_at"] = datetime.utcnow()
+            reset_data["updated_at"] = datetime.now(timezone.utc)
 
             # Reset preferences
             async with async_session() as session:
