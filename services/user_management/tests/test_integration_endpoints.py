@@ -295,20 +295,20 @@ class TestOAuthFlowEndpoints:
             # "error_description": None,
         }
 
-        mock_response_data = {
-            "success": True,
-            "integration_id": "ms-integration-id-456",
-            "provider": "microsoft",
-            "status": "active",
-            "scopes": ["openid", "email", "profile", "offline_access", "https://graph.microsoft.com/User.Read", "User.Read"],
-            "external_user_info": {"userPrincipalName": "user@example.com", "id": "ms-user-guid"},
-            "error": None,
-        }
+        mock_response_object = OAuthCallbackResponse(
+            success=True,
+            integration_id=456, # Use an integer for ID
+            provider=IntegrationProvider.MICROSOFT,
+            status=IntegrationStatus.ACTIVE,
+            scopes=["openid", "email", "profile", "offline_access", "https://graph.microsoft.com/User.Read", "User.Read"],
+            external_user_info={"userPrincipalName": "user@example.com", "id": "ms-user-guid"},
+            error=None,
+        )
 
         with patch(
             "services.user_management.services.integration_service.integration_service.complete_oauth_flow",
             new_callable=AsyncMock,
-            return_value=mock_response_data,
+            return_value=mock_response_object, # Use the Pydantic model instance
         ) as mock_complete_flow:
             response = client.post(
                 f"/users/{user_id}/integrations/oauth/callback?provider=microsoft", # Provider as query param
@@ -319,7 +319,7 @@ class TestOAuthFlowEndpoints:
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert data["success"] is True
-        assert data["integration_id"] == "ms-integration-id-456"
+        assert data["integration_id"] == 456
         assert data["provider"] == "microsoft"
         assert data["status"] == "active"
         assert "User.Read" in data["scopes"]

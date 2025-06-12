@@ -585,10 +585,10 @@ class TestOAuthConfig:
         }
         mock_response.raise_for_status = Mock()
 
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_client.return_value.__aenter__.return_value.post = AsyncMock(
-                return_value=mock_response
-            )
+        with patch("httpx.AsyncClient") as mock_client_patch:
+            mock_async_client = AsyncMock()
+            mock_async_client.post = AsyncMock(return_value=mock_response)
+            mock_client_patch.return_value.__aenter__.return_value = mock_async_client
 
             tokens = await self.oauth_config.exchange_code_for_tokens(
                 provider=IntegrationProvider.GOOGLE,
@@ -600,6 +600,15 @@ class TestOAuthConfig:
             assert tokens["refresh_token"] == "test-refresh-token"
             assert tokens["expires_in"] == 3600
 
+            expected_token_url = "https://oauth2.googleapis.com/token"
+            expected_payload = {
+                "client_id": self.settings.google_client_id,
+                "client_secret": self.settings.google_client_secret,
+                "code": "test-auth-code",
+                "redirect_uri": oauth_state.redirect_uri,
+                "grant_type": "authorization_code",
+                "code_verifier": oauth_state.pkce_verifier,
+            }
             mock_async_client.post.assert_called_once_with(
                 expected_token_url, data=expected_payload
             )
