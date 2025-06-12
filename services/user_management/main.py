@@ -775,8 +775,8 @@ async def readiness_check():
         config_issues.append("DATABASE_URL not configured")
     if not getattr(settings, "clerk_secret_key", None):
         config_issues.append("CLERK_SECRET_KEY not configured")
-    if not getattr(settings, "encryption_service_salt", None):
-        config_issues.append("ENCRYPTION_SERVICE_SALT not configured")
+    if not getattr(settings, "token_encryption_salt", None):
+        config_issues.append("TOKEN_ENCRYPTION_SALT not configured")
     if not getattr(settings, "api_frontend_user_key", None):
         config_issues.append("API_FRONTEND_USER_KEY not configured")
 
