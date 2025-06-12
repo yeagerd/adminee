@@ -55,7 +55,7 @@
 - [ ] test_internal_endpoints.py
 - [ ] test_retry_utils.py
 - [ ] test_integration_schemas.py
-- [x] test_webhook_service.py (done)
+- [x] test_webhook_service.py
 
 ## Chat Service Test Files to Refactor (DB/History Isolation)
 

@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
-from services.user_management.database import close_db, create_all_tables
+from services.user_management.database import close_db, create_all_tables, get_async_session
 from services.user_management.exceptions import (
     AuditException,
     AuthenticationException,
@@ -47,11 +47,10 @@ from services.user_management.routers import (
     users_router,
     webhooks_router,
 )
-from services.user_management.settings import settings
+from services.user_management.settings import settings, Settings
 
 from services.user_management.integrations.oauth_config import get_oauth_config
 from services.user_management.services.integration_service import integration_service
-from services.user_management.database import async_session
 
 # Setup structured logging
 setup_logging()
@@ -606,8 +605,8 @@ async def health_check():
 
     # Basic database connectivity check
     try:
+        async_session = get_async_session()
         async with async_session() as session:
-            # Quick connectivity test
             await session.execute(text("SELECT 1"))
             health_status["database"] = {"status": "healthy"}
     except Exception as e:
@@ -732,23 +731,17 @@ async def readiness_check():
 
     # Database readiness check
     try:
+        async_session = get_async_session()
         async with async_session() as session:
-            # More comprehensive database check
             db_start = time.time()
             await session.execute(text("SELECT 1"))
-
-            # Check if we can query actual tables - use a more generic approach
             try:
-                # Try to query the users table directly (should exist after migrations)
                 await session.execute(text("SELECT COUNT(*) FROM users LIMIT 1"))
             except Exception:
-                # If users table doesn't exist, the database isn't properly set up
                 raise Exception(
                     "Database tables not initialized (run alembic upgrade head)"
                 )
-
-            db_duration = (time.time() - db_start) * 1000  # Convert to milliseconds
-
+            db_duration = (time.time() - db_start) * 1000
             readiness_status["checks"]["database"] = {
                 "status": "ready",
                 "response_time_ms": round(db_duration, 2),
@@ -768,13 +761,15 @@ async def readiness_check():
 
     # Configuration check
     config_issues = []
-    if not getattr(settings, "database_url", None):
+    current_settings = Settings()
+    db_url = getattr(current_settings, "database_url", None)
+    if not db_url:
         config_issues.append("DATABASE_URL not configured")
-    if not getattr(settings, "clerk_secret_key", None):
+    if not getattr(current_settings, "clerk_secret_key", None):
         config_issues.append("CLERK_SECRET_KEY not configured")
-    if not getattr(settings, "token_encryption_salt", None):
+    if not getattr(current_settings, "token_encryption_salt", None):
         config_issues.append("TOKEN_ENCRYPTION_SALT not configured")
-    if not getattr(settings, "api_frontend_user_key", None):
+    if not getattr(current_settings, "api_frontend_user_key", None):
         config_issues.append("API_FRONTEND_USER_KEY not configured")
 
     readiness_status["checks"]["configuration"] = {

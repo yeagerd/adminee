@@ -10,7 +10,7 @@ from typing import List
 
 from sqlmodel import func, select
 
-from services.user_management.database import async_session
+from services.user_management.database import get_async_session
 from services.user_management.exceptions import (
     NotFoundException,
     SimpleValidationException,
@@ -47,6 +47,7 @@ class UserService:
             UserNotFoundException: If user is not found
         """
         try:
+            async_session = get_async_session()
             async with async_session() as session:
                 result = await session.execute(select(User).where(User.id == user_id))
                 user = result.scalar_one_or_none()
@@ -80,6 +81,7 @@ class UserService:
             UserNotFoundException: If user is not found
         """
         try:
+            async_session = get_async_session()
             async with async_session() as session:
                 result = await session.execute(
                     select(User).where(
@@ -119,6 +121,7 @@ class UserService:
             ValidationException: If user data is invalid or external_auth_id already exists
         """
         try:
+            async_session = get_async_session()
             async with async_session() as session:
                 # Check if user with this external_auth_id already exists
                 result = await session.execute(
@@ -183,6 +186,7 @@ class UserService:
             ValidationException: If update data is invalid
         """
         try:
+            async_session = get_async_session()
             async with async_session() as session:
                 # Get user first
                 result = await session.execute(select(User).where(User.id == user_id))
@@ -241,6 +245,7 @@ class UserService:
             ValidationException: If onboarding data is invalid
         """
         try:
+            async_session = get_async_session()
             async with async_session() as session:
                 # Get user first
                 result = await session.execute(select(User).where(User.id == user_id))
@@ -284,6 +289,7 @@ class UserService:
             UserNotFoundException: If user is not found
         """
         try:
+            async_session = get_async_session()
             async with async_session() as session:
                 # Get user first
                 result = await session.execute(select(User).where(User.id == user_id))
@@ -329,6 +335,7 @@ class UserService:
             Paginated user list response
         """
         try:
+            async_session = get_async_session()
             async with async_session() as session:
                 # Build base query for non-deleted users
                 query = select(User).where(User.deleted_at is None)
@@ -424,6 +431,7 @@ class UserService:
             List of user model instances
         """
         try:
+            async_session = get_async_session()
             async with async_session() as session:
                 all_users = []
                 for user_id in user_ids:
@@ -451,6 +459,7 @@ class UserService:
             user_id: Internal database ID of the user
         """
         try:
+            async_session = get_async_session()
             async with async_session() as session:
                 # Get user first
                 result = await session.execute(select(User).where(User.id == user_id))

@@ -20,6 +20,7 @@ from services.user_management.services.audit_service import (
     ResourceTypes,
     audit_logger,
 )
+from services.user_management.database import get_async_session
 
 
 class TestAuditActions:

@@ -12,7 +12,7 @@ import structlog
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import select
 
-from services.user_management.database import async_session
+from services.user_management.database import get_async_session
 from services.user_management.exceptions import AuditException, DatabaseException
 from services.user_management.models.audit import AuditLog
 from services.user_management.models.user import User
@@ -144,6 +144,7 @@ class AuditLogger:
             user = None
             if user_id:
                 try:
+                    async_session = get_async_session()
                     async with async_session() as session:
                         # Handle both internal ID and external auth ID
                         if user_id.isdigit():
@@ -166,6 +167,7 @@ class AuditLogger:
                     )
 
             # Create database audit log using async session
+            async_session = get_async_session()
             async with async_session() as session:
                 audit_log = AuditLog(
                     user_id=user.id if user else None,
@@ -361,6 +363,7 @@ class AuditLogger:
             DatabaseException: If query fails
         """
         try:
+            async_session = get_async_session()
             async with async_session() as session:
                 query = select(AuditLog)
 
@@ -517,6 +520,7 @@ class AuditLogger:
             List of security-related AuditLog records
         """
         try:
+            async_session = get_async_session()
             async with async_session() as session:
                 query = select(AuditLog)
 
@@ -578,6 +582,7 @@ class AuditLogger:
         try:
             cutoff_date = datetime.now(timezone.utc) - timedelta(days=retention_days)
 
+            async_session = get_async_session()
             async with async_session() as session:
                 # Get count before deletion for reporting
                 count_query = select(AuditLog).where(AuditLog.created_at < cutoff_date)

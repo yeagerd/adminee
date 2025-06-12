@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 from services.user_management.main import app
 from services.user_management.models.user import User
 from services.user_management.models.preferences import UserPreferences
-from services.user_management.database import async_session
+from services.user_management.database import get_async_session
 from sqlalchemy import text
 
 from ..database import engine
@@ -37,6 +37,7 @@ class TestWebhookServiceIntegration:
     def _clean_database(self):
         import asyncio
         async def clean():
+            async_session = get_async_session()
             async with async_session() as session:
                 await session.execute(text("UPDATE users SET deleted_at = NULL"))
                 await session.execute(text("DELETE FROM user_preferences"))
@@ -100,6 +101,7 @@ class TestWebhookServiceIntegration:
         assert delete_result["user_id"] == user_id
 
         # 4. Verify final state
+        async_session = get_async_session()
         async with async_session() as session:
             from sqlmodel import select
             user_result = await session.execute(
@@ -123,6 +125,7 @@ class TestWebhookServiceIntegration:
         assert results[1]["action"] == "user_creation_skipped"
         assert results[2]["action"] == "user_creation_skipped"
         # Verify only one user exists
+        async_session = get_async_session()
         async with async_session() as session:
             count_result = await session.execute(
                 text(

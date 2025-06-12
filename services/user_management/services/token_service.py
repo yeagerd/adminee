@@ -12,7 +12,7 @@ import httpx
 import structlog
 from sqlmodel import select
 
-from services.user_management.database import async_session
+from services.user_management.database import get_async_session
 from services.user_management.exceptions import (
     IntegrationException,
     NotFoundException,
@@ -100,23 +100,27 @@ class TokenService:
                 )
 
             # Store access token
-            await self._store_token_record(
-                integration=integration,
-                token_type=TokenType.ACCESS,
-                encrypted_value=encrypted_access,
-                expires_at=expires_at,
-                scopes=scopes,
-            )
+            async_session = get_async_session()
+            async with async_session() as session:
+                await self._store_token_record(
+                    integration=integration,
+                    token_type=TokenType.ACCESS,
+                    encrypted_value=encrypted_access,
+                    expires_at=expires_at,
+                    scopes=scopes,
+                )
 
             # Store refresh token if provided
             if encrypted_refresh:
-                await self._store_token_record(
-                    integration=integration,
-                    token_type=TokenType.REFRESH,
-                    encrypted_value=encrypted_refresh,
-                    expires_at=None,  # Refresh tokens usually don't expire
-                    scopes=scopes,
-                )
+                async_session = get_async_session()
+                async with async_session() as session:
+                    await self._store_token_record(
+                        integration=integration,
+                        token_type=TokenType.REFRESH,
+                        encrypted_value=encrypted_refresh,
+                        expires_at=None,  # Refresh tokens usually don't expire
+                        scopes=scopes,
+                    )
 
             await audit_logger.log_user_action(
                 user_id=user_id,
@@ -185,6 +189,7 @@ class TokenService:
                 )
 
             # Get access token record
+            async_session = get_async_session()
             async with async_session() as session:
                 token_result = await session.execute(
                     select(EncryptedToken).where(
@@ -217,6 +222,7 @@ class TokenService:
                 )
                 if refresh_result.success:
                     # Get the refreshed access token record
+                    async_session = get_async_session()
                     async with async_session() as session:
                         token_result = await session.execute(
                             select(EncryptedToken).where(
@@ -242,6 +248,7 @@ class TokenService:
 
             # Get refresh token if available
             refresh_token = None
+            async_session = get_async_session()
             async with async_session() as session:
                 refresh_result = await session.execute(
                     select(EncryptedToken).where(
@@ -377,6 +384,7 @@ class TokenService:
             InternalUserStatusResponse with user status
         """
         try:
+            async_session = get_async_session()
             async with async_session() as session:
                 # Verify user exists
                 user_result = await session.execute(
@@ -430,6 +438,7 @@ class TokenService:
         self, user_id: str, provider: IntegrationProvider
     ) -> Integration:
         """Get user integration by user ID and provider."""
+        async_session = get_async_session()
         async with async_session() as session:
             # First get the user
             user_result = await session.execute(
@@ -462,6 +471,7 @@ class TokenService:
         scopes: Optional[List[str]],
     ) -> None:
         """Store or update a token record."""
+        async_session = get_async_session()
         async with async_session() as session:
             # Check if token record exists
             existing_result = await session.execute(
@@ -549,6 +559,7 @@ class TokenService:
             integration = await self._get_user_integration(user_id, provider)
 
             # Get tokens to revoke
+            async_session = get_async_session()
             async with async_session() as session:
                 access_result = await session.execute(
                     select(EncryptedToken).where(
@@ -604,6 +615,7 @@ class TokenService:
                 revocation_results.append(provider_result)
 
             # Clean up local token storage and update integration status
+            async_session = get_async_session()
             async with async_session() as session:
                 if access_token_record:
                     await session.delete(access_token_record)
@@ -691,6 +703,7 @@ class TokenService:
         """
         try:
             # Get all user integrations
+            async_session = get_async_session()
             async with async_session() as session:
                 # First get the user
                 user_result = await session.execute(
@@ -784,6 +797,7 @@ class TokenService:
         """
         try:
             # Build query based on criteria
+            async_session = get_async_session()
             async with async_session() as session:
                 query = select(Integration).where(
                     Integration.status == IntegrationStatus.ACTIVE

@@ -12,7 +12,7 @@ import structlog
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import select
 
-from services.user_management.database import async_session
+from services.user_management.database import get_async_session
 from services.user_management.exceptions import (
     DatabaseException,
     PreferencesNotFoundException,
@@ -73,6 +73,7 @@ class PreferencesService:
         try:
             logger.info("Getting user preferences", user_id=user_id)
 
+            async_session = get_async_session()
             async with async_session() as session:
                 # Check if user exists
                 user_result = await session.execute(
@@ -154,6 +155,7 @@ class PreferencesService:
         try:
             logger.info("Updating user preferences", user_id=user_id)
 
+            async_session = get_async_session()
             async with async_session() as session:
                 # Check if user exists
                 user_result = await session.execute(
@@ -214,6 +216,7 @@ class PreferencesService:
             update_data["updated_at"] = datetime.now(timezone.utc)
 
             # Update preferences
+            async_session = get_async_session()
             async with async_session() as session:
                 # Re-fetch preferences in the new session
                 prefs_result = await session.execute(
@@ -273,6 +276,7 @@ class PreferencesService:
                 "Resetting user preferences", user_id=user_id, categories=categories
             )
 
+            async_session = get_async_session()
             async with async_session() as session:
                 # Check if user exists
                 user_result = await session.execute(
@@ -337,6 +341,7 @@ class PreferencesService:
             reset_data["updated_at"] = datetime.now(timezone.utc)
 
             # Reset preferences
+            async_session = get_async_session()
             async with async_session() as session:
                 # Re-fetch preferences in the new session
                 prefs_result = await session.execute(
