@@ -1,6 +1,6 @@
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 import httpx
 from api.calendar import router as calendar_router

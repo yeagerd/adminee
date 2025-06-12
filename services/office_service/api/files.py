@@ -8,7 +8,7 @@ with unified data models, caching, and parallel API calls for optimal performanc
 import asyncio
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from core.api_client_factory import APIClientFactory

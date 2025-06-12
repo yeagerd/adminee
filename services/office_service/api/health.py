@@ -6,7 +6,7 @@ including database, Redis, and external integrations.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict
 
 import httpx
