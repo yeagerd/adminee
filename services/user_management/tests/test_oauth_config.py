@@ -365,6 +365,31 @@ class TestOAuthConfig:
             is True
         )
 
+    def test_microsoft_provider_initialization(self):
+        """Test Microsoft OAuth provider initialization."""
+        config = self.oauth_config.get_provider_config(IntegrationProvider.MICROSOFT)
+        assert isinstance(config, OAuthProviderConfig)
+
+        assert (
+            config.authorization_url
+            == "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
+        )
+        assert (
+            config.token_url == "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+        )
+        assert config.userinfo_url == "https://graph.microsoft.com/v1.0/me"
+        assert config.client_id == self.settings.azure_ad_client_id
+        assert config.client_secret == self.settings.azure_ad_client_secret
+        assert set(config.default_scopes) == {
+            "openid",
+            "email",
+            "profile",
+            "offline_access",
+            "https://graph.microsoft.com/User.Read",
+        }
+        assert config.supports_pkce is True
+        assert config.pkce_method == PKCEChallengeMethod.S256
+
     def test_generate_state(self):
         """Test OAuth state generation."""
         state = self.oauth_config.generate_state(
@@ -482,6 +507,41 @@ class TestOAuthConfig:
         assert "code_challenge=" in auth_url  # PKCE challenge
         assert "code_challenge_method=S256" in auth_url
 
+    def test_generate_microsoft_authorization_url(self):
+        """Test authorization URL generation for Microsoft."""
+        auth_url, oauth_state = self.oauth_config.generate_authorization_url(
+            provider=IntegrationProvider.MICROSOFT,
+            user_id="user-msft-123",
+            redirect_uri="https://example.com/msft-callback",
+            scopes=["Mail.Read"],  # Additional scope
+        )
+
+        assert auth_url.startswith(
+            "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
+        )
+        assert f"client_id={self.settings.azure_ad_client_id}" in auth_url
+        assert "redirect_uri=https%3A%2F%2Fexample.com%2Fmsft-callback" in auth_url
+        assert "response_type=code" in auth_url
+        # Check for default and additional scopes
+        expected_scopes = {
+            "openid",
+            "email",
+            "profile",
+            "offline_access",
+            "https://graph.microsoft.com/User.Read",
+            "Mail.Read",
+        }
+        # URL scopes are space-encoded, so we need to check for each one
+        for scope in expected_scopes:
+            assert scope in oauth_state.scopes # Check that the state object has the correct scopes
+            assert scope in auth_url # Check that the url has the correct scopes
+
+        assert f"state={oauth_state.state}" in auth_url
+        assert "code_challenge=" in auth_url
+        assert "code_challenge_method=S256" in auth_url
+        assert oauth_state.provider == IntegrationProvider.MICROSOFT
+        assert oauth_state.user_id == "user-msft-123"
+
     def test_generate_authorization_url_invalid_provider(self):
         """Test authorization URL generation with invalid provider."""
         with patch.object(self.oauth_config, "get_provider_config", return_value=None):
@@ -539,6 +599,103 @@ class TestOAuthConfig:
             assert tokens["access_token"] == "test-access-token"
             assert tokens["refresh_token"] == "test-refresh-token"
             assert tokens["expires_in"] == 3600
+
+            mock_async_client.post.assert_called_once_with(
+                expected_token_url, data=expected_payload
+            )
+
+    @pytest.mark.asyncio
+    async def test_refresh_access_token_microsoft_success(self):
+        """Test successful token refresh for Microsoft."""
+        mock_response_data = {
+            "access_token": "new-msft-access-token",
+            "refresh_token": "new-msft-refresh-token", # Microsoft may return a new refresh token
+            "expires_in": 3599,
+            "scope": "openid email profile offline_access https://graph.microsoft.com/User.Read",
+            "token_type": "Bearer",
+        }
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = mock_response_data
+        mock_response.raise_for_status = Mock()
+
+        with patch("httpx.AsyncClient") as mock_client_patch:
+            mock_async_client = AsyncMock()
+            mock_async_client.post = AsyncMock(return_value=mock_response)
+            mock_client_patch.return_value.__aenter__.return_value = mock_async_client
+
+            tokens = await self.oauth_config.refresh_access_token(
+                provider=IntegrationProvider.MICROSOFT,
+                refresh_token="test-msft-refresh-token",
+            )
+
+            assert tokens["access_token"] == "new-msft-access-token"
+            assert tokens["refresh_token"] == "new-msft-refresh-token"
+            assert tokens["expires_in"] == 3599
+            assert tokens["scope"] == "openid email profile offline_access https://graph.microsoft.com/User.Read"
+
+
+            expected_token_url = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+            expected_payload = {
+                "client_id": self.settings.azure_ad_client_id,
+                "client_secret": self.settings.azure_ad_client_secret,
+                "refresh_token": "test-msft-refresh-token",
+                "grant_type": "refresh_token",
+            }
+            mock_async_client.post.assert_called_once_with(
+                expected_token_url, data=expected_payload
+            )
+
+    @pytest.mark.asyncio
+    async def test_exchange_code_for_tokens_microsoft_success(self):
+        """Test successful authorization code exchange for Microsoft."""
+        oauth_state = self.oauth_config.generate_state(
+            user_id="user-msft-123",
+            provider=IntegrationProvider.MICROSOFT,
+            redirect_uri="https://example.com/msft-callback",
+            scopes=["openid", "email", "profile", "offline_access", "https://graph.microsoft.com/User.Read"],
+        )
+
+        mock_response_data = {
+            "access_token": "msft-access-token",
+            "refresh_token": "msft-refresh-token",
+            "expires_in": 3599,
+            "scope": "openid email profile offline_access https://graph.microsoft.com/User.Read",
+            "token_type": "Bearer",
+        }
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = mock_response_data
+        mock_response.raise_for_status = Mock()
+
+        with patch("httpx.AsyncClient") as mock_client_patch:
+            mock_async_client = AsyncMock()
+            mock_async_client.post = AsyncMock(return_value=mock_response)
+            mock_client_patch.return_value.__aenter__.return_value = mock_async_client
+
+            tokens = await self.oauth_config.exchange_code_for_tokens(
+                provider=IntegrationProvider.MICROSOFT,
+                authorization_code="test-msft-auth-code",
+                oauth_state=oauth_state,
+            )
+
+            assert tokens["access_token"] == "msft-access-token"
+            assert tokens["refresh_token"] == "msft-refresh-token"
+            assert tokens["expires_in"] == 3599
+            assert tokens["scope"] == "openid email profile offline_access https://graph.microsoft.com/User.Read"
+
+            expected_token_url = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+            expected_payload = {
+                "client_id": self.settings.azure_ad_client_id,
+                "client_secret": self.settings.azure_ad_client_secret,
+                "code": "test-msft-auth-code",
+                "redirect_uri": "https://example.com/msft-callback",
+                "grant_type": "authorization_code",
+                "code_verifier": oauth_state.pkce_verifier,
+            }
+            mock_async_client.post.assert_called_once_with(
+                expected_token_url, data=expected_payload
+            )
 
     @pytest.mark.asyncio
     async def test_exchange_code_for_tokens_failure(self):
@@ -627,6 +784,42 @@ class TestOAuthConfig:
             assert user_info["id"] == "user123"
             assert user_info["email"] == "user@example.com"
             assert user_info["name"] == "Test User"
+
+    @pytest.mark.asyncio
+    async def test_get_user_info_microsoft_success(self):
+        """Test successful user info retrieval for Microsoft."""
+        mock_user_data = {
+            "id": "msft-user-id-123",
+            "userPrincipalName": "test.user@example.com",
+            "displayName": "Test User Microsoft",
+            "mail": "test.user@example.com", # Sometimes 'mail' is preferred over 'userPrincipalName'
+            "givenName": "Test",
+            "surname": "User",
+        }
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = mock_user_data
+        mock_response.raise_for_status = Mock()
+
+        with patch("httpx.AsyncClient") as mock_client_patch:
+            mock_async_client = AsyncMock()
+            mock_async_client.get = AsyncMock(return_value=mock_response)
+            mock_client_patch.return_value.__aenter__.return_value = mock_async_client
+
+            user_info = await self.oauth_config.get_user_info(
+                provider=IntegrationProvider.MICROSOFT,
+                access_token="test-msft-access-token",
+            )
+
+            assert user_info["id"] == "msft-user-id-123"
+            assert user_info["userPrincipalName"] == "test.user@example.com"
+            assert user_info["displayName"] == "Test User Microsoft"
+
+            expected_userinfo_url = "https://graph.microsoft.com/v1.0/me"
+            expected_headers = {"Authorization": "Bearer test-msft-access-token"}
+            mock_async_client.get.assert_called_once_with(
+                expected_userinfo_url, headers=expected_headers
+            )
 
     @pytest.mark.asyncio
     async def test_get_user_info_failure(self):
