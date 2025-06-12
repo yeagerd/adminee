@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+      args:
+        - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
     volumes:
       - ./frontend:/app:cached
     command: sleep infinity
@@ -15,13 +17,8 @@ services:
       - office-service
     environment:
       # Frontend / Next.js specific vars
-      - NEXTAUTH_URL=${NEXTAUTH_URL} # For NextAuth
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET} # For NextAuth
-      - AZURE_AD_CLIENT_ID=${AZURE_AD_CLIENT_ID} # For NextAuth Microsoft Provider
-      - AZURE_AD_CLIENT_SECRET=${AZURE_AD_CLIENT_SECRET} # For NextAuth Microsoft Provider
-      - AZURE_AD_TENANT_ID=${AZURE_AD_TENANT_ID} # For NextAuth Microsoft Provider
-      - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY} # For Clerk
-      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY} # For Clerk
+      - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY} # For Clerk (client-side)
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY} # For Clerk (server-side API routes)
       # Add other necessary environment variables for the app service
 
   user-management:

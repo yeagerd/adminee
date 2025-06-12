@@ -40,3 +40,6 @@ opentelemetry-instrumentation-fastapi
 opentelemetry-instrumentation-httpx
 opentelemetry-distro
 opentelemetry-exporter-gcp-trace
+
+# GCP Secret Manager
+google-cloud-secret-manager
