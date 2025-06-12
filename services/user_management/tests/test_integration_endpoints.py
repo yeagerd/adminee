@@ -37,30 +37,64 @@ from services.user_management.schemas.integration import (
 )
 
 
-class TestIntegrationListEndpoint:
-    """Test cases for listing user integrations."""
-
+class BaseIntegrationTest:
+    """Base class for integration tests with HTTP call detection."""
+    
     def setup_method(self):
-        self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
+        """Set up test environment with HTTP call detection rakes."""
+        # HTTP Call Detection Rakes - These will fail the test if real HTTP calls are made
+        # We need to be selective to allow TestClient to work but catch real external calls
+        
+        def detect_real_http_call(*args, **kwargs):
+            # Allow TestClient calls (they use testserver URLs)
+            if args and hasattr(args[1], 'host') and args[1].host == 'testserver':
+                # This is a TestClient call, allow it by calling the original method
+                raise AssertionError("TestClient should not reach this point - check mocking")
+            # Block real external HTTP calls
+            raise AssertionError(f"Real HTTP call detected! Args: {args[:2]}, URL: {getattr(args[1], 'url', 'unknown') if len(args) > 1 else 'unknown'}")
+        
+        self.http_patches = [
+            # Patch both sync and async httpx clients
+            patch('httpx.AsyncClient._send_single_request', side_effect=AssertionError("Real HTTP call detected! AsyncClient._send_single_request was called")),
+            patch('httpx.Client._send_single_request', side_effect=AssertionError("Real HTTP call detected! Client._send_single_request was called")),
+            # Also patch the sync client send method
+            patch('httpx.Client.send', side_effect=AssertionError("Real HTTP call detected! Client.send was called")),
+            # Patch requests
+            patch('requests.adapters.HTTPAdapter.send', side_effect=AssertionError("Real HTTP call detected! requests HTTPAdapter.send was called")),
+            # Patch urllib
+            patch('urllib.request.urlopen', side_effect=AssertionError("Real HTTP call detected! urllib.request.urlopen was called")),
+        ]
+        
+        # Start all HTTP detection patches
+        for http_patch in self.http_patches:
+            http_patch.start()
+        
+        # Use in-memory SQLite database instead of temporary files
+        os.environ["DB_URL_USER_MANAGEMENT"] = "sqlite:///:memory:"
         os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
 
+        # Mock database creation to be faster
+        self.db_patcher = patch("services.user_management.database.create_all_tables")
+        self.mock_create_tables = self.db_patcher.start()
+        self.mock_create_tables.return_value = None
 
-        asyncio.run(create_all_tables())
         self.app = app
         self.client = TestClient(app)
         self._override_auth()
 
     def teardown_method(self):
-
+        """Clean up after each test method."""
+        # Stop all patches
+        for http_patch in self.http_patches:
+            http_patch.stop()
+        self.db_patcher.stop()
+        
         self.app.dependency_overrides.clear()
         if hasattr(self, "_patcher"):
             self._patcher.stop()
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
 
     def _override_auth(self):
-
+        """Override authentication for testing."""
         async def mock_get_current_user():
             return "user_123"
 
@@ -75,6 +109,10 @@ class TestIntegrationListEndpoint:
             side_effect=mock_verify_user_ownership,
         )
         self._patcher = patcher.start()
+
+
+class TestIntegrationListEndpoint(BaseIntegrationTest):
+    """Test cases for listing user integrations."""
 
     def test_list_integrations_success(self):
         user_id = "user_123"
@@ -166,44 +204,8 @@ class TestIntegrationListEndpoint:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
-class TestOAuthFlowEndpoints:
+class TestOAuthFlowEndpoints(BaseIntegrationTest):
     """Test cases for OAuth flow management."""
-
-    def setup_method(self):
-        self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
-        os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
-
-
-        asyncio.run(create_all_tables())
-        self.app = app
-        self.client = TestClient(app)
-        self._override_auth()
-
-    def teardown_method(self):
-
-        self.app.dependency_overrides.clear()
-        if hasattr(self, "_patcher"):
-            self._patcher.stop()
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
-
-    def _override_auth(self):
-
-        async def mock_get_current_user():
-            return "user_123"
-
-        async def mock_verify_user_ownership(
-            current_user_id: str, resource_user_id: str
-        ):
-            return None
-
-        self.app.dependency_overrides[get_current_user] = mock_get_current_user
-        patcher = patch(
-            "services.user_management.auth.clerk.verify_user_ownership",
-            side_effect=mock_verify_user_ownership,
-        )
-        self._patcher = patcher.start()
 
     def test_start_oauth_flow_success(self):
         """Test successful OAuth flow initiation."""
@@ -419,44 +421,8 @@ class TestOAuthFlowEndpoints:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
-class TestIntegrationManagementEndpoints:
+class TestIntegrationManagementEndpoints(BaseIntegrationTest):
     """Test cases for integration management operations."""
-
-    def setup_method(self):
-        self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
-        os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
-
-
-        asyncio.run(create_all_tables())
-        self.app = app
-        self.client = TestClient(app)
-        self._override_auth()
-
-    def teardown_method(self):
-
-        self.app.dependency_overrides.clear()
-        if hasattr(self, "_patcher"):
-            self._patcher.stop()
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
-
-    def _override_auth(self):
-
-        async def mock_get_current_user():
-            return "user_123"
-
-        async def mock_verify_user_ownership(
-            current_user_id: str, resource_user_id: str
-        ):
-            return None
-
-        self.app.dependency_overrides[get_current_user] = mock_get_current_user
-        patcher = patch(
-            "services.user_management.auth.clerk.verify_user_ownership",
-            side_effect=mock_verify_user_ownership,
-        )
-        self._patcher = patcher.start()
 
     def test_disconnect_integration_success(self):
         """Test successful integration disconnection."""
@@ -643,44 +609,8 @@ class TestIntegrationManagementEndpoints:
         assert data["by_provider"]["google"] == 1
 
 
-class TestProviderEndpoints:
-    """Test cases for provider information endpoints."""
-
-    def setup_method(self):
-        self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
-        os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
-
-
-        asyncio.run(create_all_tables())
-        self.app = app
-        self.client = TestClient(app)
-        self._override_auth()
-
-    def teardown_method(self):
-
-        self.app.dependency_overrides.clear()
-        if hasattr(self, "_patcher"):
-            self._patcher.stop()
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
-
-    def _override_auth(self):
-
-        async def mock_get_current_user():
-            return "user_123"
-
-        async def mock_verify_user_ownership(
-            current_user_id: str, resource_user_id: str
-        ):
-            return None
-
-        self.app.dependency_overrides[get_current_user] = mock_get_current_user
-        patcher = patch(
-            "services.user_management.auth.clerk.verify_user_ownership",
-            side_effect=mock_verify_user_ownership,
-        )
-        self._patcher = patcher.start()
+class TestProviderEndpoints(BaseIntegrationTest):
+    """Test cases for provider configuration endpoints."""
 
     def test_list_oauth_providers_success(self):
         """Test successful OAuth provider listing."""
@@ -777,26 +707,8 @@ class TestProviderEndpoints:
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
-class TestIntegrationEndpointSecurity:
+class TestIntegrationEndpointSecurity(BaseIntegrationTest):
     """Test cases for integration endpoint security."""
-
-    def setup_method(self):
-        self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
-        os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
-
-
-        asyncio.run(create_all_tables())
-        self.app = app
-        self.client = TestClient(app)
-
-    def teardown_method(self):
-
-        self.app.dependency_overrides.clear()
-        if hasattr(self, "_patcher"):
-            self._patcher.stop()
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
 
     def test_endpoints_require_authentication(self):
         """Test that all integration endpoints require authentication."""

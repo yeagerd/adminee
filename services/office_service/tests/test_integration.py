@@ -7,7 +7,8 @@ endpoints with properly mocked external dependencies.
 
 import tempfile
 import os
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, MagicMock
+import pytest
 
 from fastapi.testclient import TestClient
 from fastapi import status
@@ -17,33 +18,68 @@ from services.office_service.core.token_manager import TokenData
 from services.office_service.app.main import app
 
 
-class TestHealthEndpoints:
-    """Test health and diagnostic endpoints."""
-
+class BaseIntegrationTest:
+    """Base class for integration tests with HTTP call detection."""
+    
     def setup_method(self):
-        """Set up test environment before each test method."""
-        # Create temporary database
-        self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DATABASE_URL"] = f"sqlite:///{self.db_path}"
+        """Set up test environment with HTTP call detection rakes."""
+        # HTTP Call Detection Rakes - These will fail the test if real HTTP calls are made
+        # We need to be selective to allow TestClient to work but catch real external calls
+        
+        def detect_real_http_call(*args, **kwargs):
+            # Allow TestClient calls (they use testserver URLs)
+            if args and hasattr(args[1], 'host') and args[1].host == 'testserver':
+                # This is a TestClient call, allow it by calling the original method
+                raise AssertionError("TestClient should not reach this point - check mocking")
+            # Block real external HTTP calls
+            raise AssertionError(f"Real HTTP call detected! Args: {args[:2]}, URL: {getattr(args[1], 'url', 'unknown') if len(args) > 1 else 'unknown'}")
+        
+        self.http_patches = [
+            # Patch both sync and async httpx clients
+            patch('httpx.AsyncClient._send_single_request', side_effect=AssertionError("Real HTTP call detected! AsyncClient._send_single_request was called")),
+            patch('httpx.Client._send_single_request', side_effect=AssertionError("Real HTTP call detected! Client._send_single_request was called")),
+            # Also patch the sync client send method
+            patch('httpx.Client.send', side_effect=AssertionError("Real HTTP call detected! Client.send was called")),
+            # Patch requests
+            patch('requests.adapters.HTTPAdapter.send', side_effect=AssertionError("Real HTTP call detected! requests HTTPAdapter.send was called")),
+            # Patch urllib
+            patch('urllib.request.urlopen', side_effect=AssertionError("Real HTTP call detected! urllib.request.urlopen was called")),
+        ]
+        
+        # Start all HTTP detection patches
+        for http_patch in self.http_patches:
+            http_patch.start()
+        
+        # Use in-memory SQLite database instead of temporary files
+        os.environ["DATABASE_URL"] = "sqlite:///:memory:"
         os.environ["REDIS_URL"] = "redis://localhost:6379/1"
         
-        # Mock Redis to avoid connection issues
+        # Mock Redis completely to avoid any connection attempts
         self.redis_patcher = patch("services.office_service.core.cache_manager.redis.Redis")
-        self.mock_redis = self.redis_patcher.start()
-        self.mock_redis.return_value.ping.return_value = True
-        self.mock_redis.return_value.get.return_value = None
-        self.mock_redis.return_value.set.return_value = True
+        self.mock_redis_class = self.redis_patcher.start()
+        self.mock_redis_instance = MagicMock()
+        self.mock_redis_class.return_value = self.mock_redis_instance
+        
+        # Configure Redis mock behavior
+        self.mock_redis_instance.ping.return_value = True
+        self.mock_redis_instance.get.return_value = None
+        self.mock_redis_instance.set.return_value = True
+        self.mock_redis_instance.delete.return_value = 1
+        self.mock_redis_instance.exists.return_value = False
         
         # Create test client
         self.client = TestClient(app)
 
     def teardown_method(self):
         """Clean up after each test method."""
-        # Stop Redis patcher
+        # Stop all patches
+        for http_patch in self.http_patches:
+            http_patch.stop()
         self.redis_patcher.stop()
-        # Clean up database
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
+
+
+class TestHealthEndpoints(BaseIntegrationTest):
+    """Test health and diagnostic endpoints."""
 
     def test_health_basic(self):
         """Test basic health check endpoint."""
@@ -117,34 +153,13 @@ class TestHealthEndpoints:
             assert "error" in data["integrations"]["microsoft"]
 
 
-class TestEmailEndpoints:
+class TestEmailEndpoints(BaseIntegrationTest):
     """Test unified email API endpoints."""
 
     def setup_method(self):
         """Set up test environment before each test method."""
-        # Create temporary database
-        self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DATABASE_URL"] = f"sqlite:///{self.db_path}"
-        os.environ["REDIS_URL"] = "redis://localhost:6379/1"
-        
-        # Mock Redis to avoid connection issues
-        self.redis_patcher = patch("services.office_service.core.cache_manager.redis.Redis")
-        self.mock_redis = self.redis_patcher.start()
-        self.mock_redis.return_value.ping.return_value = True
-        self.mock_redis.return_value.get.return_value = None
-        self.mock_redis.return_value.set.return_value = True
-        
-        # Create test client
-        self.client = TestClient(app)
+        super().setup_method()
         self.test_user_id = "test-user@example.com"
-
-    def teardown_method(self):
-        """Clean up after each test method."""
-        # Stop Redis patcher
-        self.redis_patcher.stop()
-        # Clean up database
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
 
     def _get_integration_test_setup(self):
         """Get integration test setup data."""
@@ -335,34 +350,13 @@ class TestEmailEndpoints:
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
-class TestCalendarEndpoints:
-    """Test unified calendar API endpoints."""
+class TestCalendarEndpoints(BaseIntegrationTest):
+    """Test calendar API endpoints."""
 
     def setup_method(self):
         """Set up test environment before each test method."""
-        # Create temporary database
-        self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DATABASE_URL"] = f"sqlite:///{self.db_path}"
-        os.environ["REDIS_URL"] = "redis://localhost:6379/1"
-        
-        # Mock Redis to avoid connection issues
-        self.redis_patcher = patch("services.office_service.core.cache_manager.redis.Redis")
-        self.mock_redis = self.redis_patcher.start()
-        self.mock_redis.return_value.ping.return_value = True
-        self.mock_redis.return_value.get.return_value = None
-        self.mock_redis.return_value.set.return_value = True
-        
-        # Create test client
-        self.client = TestClient(app)
+        super().setup_method()
         self.test_user_id = "test-user@example.com"
-
-    def teardown_method(self):
-        """Clean up after each test method."""
-        # Stop Redis patcher
-        self.redis_patcher.stop()
-        # Clean up database
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
 
     def _get_integration_test_setup(self):
         """Get integration test setup data."""
@@ -478,34 +472,13 @@ class TestCalendarEndpoints:
                 assert data["success"] is True
 
 
-class TestFilesEndpoints:
-    """Test unified files API endpoints."""
+class TestFilesEndpoints(BaseIntegrationTest):
+    """Test files API endpoints."""
 
     def setup_method(self):
         """Set up test environment before each test method."""
-        # Create temporary database
-        self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DATABASE_URL"] = f"sqlite:///{self.db_path}"
-        os.environ["REDIS_URL"] = "redis://localhost:6379/1"
-        
-        # Mock Redis to avoid connection issues
-        self.redis_patcher = patch("services.office_service.core.cache_manager.redis.Redis")
-        self.mock_redis = self.redis_patcher.start()
-        self.mock_redis.return_value.ping.return_value = True
-        self.mock_redis.return_value.get.return_value = None
-        self.mock_redis.return_value.set.return_value = True
-        
-        # Create test client
-        self.client = TestClient(app)
+        super().setup_method()
         self.test_user_id = "test-user@example.com"
-
-    def teardown_method(self):
-        """Clean up after each test method."""
-        # Stop Redis patcher
-        self.redis_patcher.stop()
-        # Clean up database
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
 
     def _get_integration_test_setup(self):
         """Get integration test setup data."""
@@ -602,34 +575,13 @@ class TestFilesEndpoints:
                 assert data["success"] is True
 
 
-class TestErrorScenarios:
+class TestErrorScenarios(BaseIntegrationTest):
     """Test error handling scenarios."""
 
     def setup_method(self):
         """Set up test environment before each test method."""
-        # Create temporary database
-        self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DATABASE_URL"] = f"sqlite:///{self.db_path}"
-        os.environ["REDIS_URL"] = "redis://localhost:6379/1"
-        
-        # Mock Redis to avoid connection issues
-        self.redis_patcher = patch("services.office_service.core.cache_manager.redis.Redis")
-        self.mock_redis = self.redis_patcher.start()
-        self.mock_redis.return_value.ping.return_value = True
-        self.mock_redis.return_value.get.return_value = None
-        self.mock_redis.return_value.set.return_value = True
-        
-        # Create test client
-        self.client = TestClient(app)
+        super().setup_method()
         self.test_user_id = "test-user@example.com"
-
-    def teardown_method(self):
-        """Clean up after each test method."""
-        # Stop Redis patcher
-        self.redis_patcher.stop()
-        # Clean up database
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
 
     def test_provider_api_error_handling(self):
         """Test handling of provider API errors."""
@@ -659,34 +611,13 @@ class TestErrorScenarios:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
-class TestCaching:
+class TestCaching(BaseIntegrationTest):
     """Test caching behavior."""
 
     def setup_method(self):
         """Set up test environment before each test method."""
-        # Create temporary database
-        self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DATABASE_URL"] = f"sqlite:///{self.db_path}"
-        os.environ["REDIS_URL"] = "redis://localhost:6379/1"
-        
-        # Mock Redis to avoid connection issues
-        self.redis_patcher = patch("services.office_service.core.cache_manager.redis.Redis")
-        self.mock_redis = self.redis_patcher.start()
-        self.mock_redis.return_value.ping.return_value = True
-        self.mock_redis.return_value.get.return_value = None
-        self.mock_redis.return_value.set.return_value = True
-        
-        # Create test client
-        self.client = TestClient(app)
+        super().setup_method()
         self.test_user_id = "test-user@example.com"
-
-    def teardown_method(self):
-        """Clean up after each test method."""
-        # Stop Redis patcher
-        self.redis_patcher.stop()
-        # Clean up database
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
 
     def _get_integration_test_setup(self):
         """Get integration test setup data."""
@@ -771,3 +702,37 @@ class TestCaching:
                 
                 assert response1.status_code == status.HTTP_200_OK
                 assert response2.status_code == status.HTTP_200_OK
+
+
+class TestHTTPCallDetection(BaseIntegrationTest):
+    """Test that our HTTP call detection rakes work properly."""
+    
+    def test_http_call_detection_works(self):
+        """Test that real HTTP calls are detected and blocked."""
+        import httpx
+        import requests
+        import urllib.request
+        import asyncio
+        
+        # Test urllib.request.urlopen
+        with pytest.raises(AssertionError, match="Real HTTP call detected"):
+            urllib.request.urlopen("http://example.com")
+        
+        # Test requests.get
+        with pytest.raises(AssertionError, match="Real HTTP call detected"):
+            requests.get("http://example.com")
+        
+        # Test httpx sync client
+        with pytest.raises(AssertionError, match="Real HTTP call detected"):
+            with httpx.Client() as client:
+                client.get("http://example.com")
+        
+        # Test httpx async client
+        async def test_async_httpx():
+            async with httpx.AsyncClient() as client:
+                await client.get("http://example.com")
+        
+        with pytest.raises(AssertionError, match="Real HTTP call detected"):
+            asyncio.run(test_async_httpx())
+            
+        print("All HTTP call detection tests passed!")
