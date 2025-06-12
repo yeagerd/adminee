@@ -134,6 +134,94 @@ app.include_router(webhooks_router)
 app.include_router(internal_router)
 
 
+# Global OAuth callback endpoint
+@app.get("/oauth/callback")
+async def oauth_callback_redirect(
+    request: Request,
+    code: str = None,
+    state: str = None,
+    error: str = None,
+    error_description: str = None,
+):
+    """
+    Global OAuth callback endpoint that handles provider redirects.
+
+    This endpoint receives OAuth callbacks from providers and processes them
+    directly using the integration service.
+
+    The state parameter contains information about the user and provider
+    that allows us to route the callback correctly.
+    """
+    from .integrations.oauth_config import get_oauth_config
+    from .services.integration_service import integration_service
+
+    try:
+        # Get the OAuth config instance
+        oauth_config = get_oauth_config()
+
+        # Get the OAuth state from the stored states
+        if not state or state not in oauth_config._active_states:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Invalid or missing OAuth state parameter"},
+            )
+
+        oauth_state = oauth_config._active_states[state]
+        user_id = oauth_state.user_id
+        provider = oauth_state.provider
+
+        # Handle OAuth errors
+        if error:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "error": f"OAuth error: {error}",
+                    "error_description": error_description or "No description",
+                    "provider": provider.value,
+                },
+            )
+
+        # Validate authorization code is present
+        if not code:
+            return JSONResponse(
+                status_code=400, content={"error": "Missing authorization code"}
+            )
+
+        # Complete the OAuth flow using the integration service
+        result = await integration_service.complete_oauth_flow(
+            user_id=user_id,
+            provider=provider,
+            authorization_code=code,
+            state=state,
+        )
+
+        if result.success:
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "message": f"OAuth flow completed successfully for {provider.value}",
+                    "provider": provider.value,
+                    "status": result.status.value if result.status else None,
+                    "integration_id": result.integration_id,
+                },
+            )
+        else:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "error": f"OAuth flow failed: {result.error}",
+                    "provider": provider.value,
+                },
+            )
+
+    except Exception as e:
+        logger.error(f"OAuth callback error: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Internal server error during OAuth callback: {str(e)}"},
+        )
+
+
 # Specific exception handlers
 @app.exception_handler(UserNotFoundException)
 async def user_not_found_handler(request: Request, exc: UserNotFoundException):

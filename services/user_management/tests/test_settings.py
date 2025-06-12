@@ -99,8 +99,8 @@ class TestSettings:
                 "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
                 "GOOGLE_CLIENT_ID": "test-google-id",
                 "GOOGLE_CLIENT_SECRET": "test-google-secret",
-                "MICROSOFT_CLIENT_ID": "test-microsoft-id",
-                "MICROSOFT_CLIENT_SECRET": "test-microsoft-secret",
+                "AZURE_AD_CLIENT_ID": "test-microsoft-id",
+                "AZURE_AD_CLIENT_SECRET": "test-microsoft-secret",
             },
             clear=True,
         ):
@@ -108,8 +108,8 @@ class TestSettings:
 
             assert settings.google_client_id == "test-google-id"
             assert settings.google_client_secret == "test-google-secret"
-            assert settings.microsoft_client_id == "test-microsoft-id"
-            assert settings.microsoft_client_secret == "test-microsoft-secret"
+            assert settings.azure_ad_client_id == "test-microsoft-id"
+            assert settings.azure_ad_client_secret == "test-microsoft-secret"
 
     def test_redis_and_celery_settings(self):
         """Test Redis and Celery configuration."""
@@ -146,8 +146,8 @@ class TestSettings:
             assert settings.clerk_webhook_secret is None
             assert settings.google_client_id is None
             assert settings.google_client_secret is None
-            assert settings.microsoft_client_id is None
-            assert settings.microsoft_client_secret is None
+            assert settings.azure_ad_client_id is None
+            assert settings.azure_ad_client_secret is None
 
     def test_case_insensitive_environment_variables(self):
         """Test that environment variables are case insensitive."""

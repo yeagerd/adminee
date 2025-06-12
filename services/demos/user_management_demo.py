@@ -25,7 +25,6 @@ import json
 import os
 import sys
 import time
-import webbrowser
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
@@ -41,6 +40,15 @@ except ImportError:
         "❌ demo_jwt_utils not found. Please ensure demo_jwt_utils.py is in the same directory."
     )
     exit(1)
+
+# Import database setup for local testing
+try:
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "user_management"))
+    from database import create_all_tables
+
+    DATABASE_SETUP_AVAILABLE = True
+except ImportError:
+    DATABASE_SETUP_AVAILABLE = False
 
 # Set up logging
 logger = structlog.get_logger(__name__)
@@ -130,6 +138,21 @@ class UserManagementDemo:
             print(f"   Response: {json.dumps(data, indent=2)}")
         except Exception:
             print(f"   Response: {response.text[:200]}...")
+
+    async def initialize_database(self) -> bool:
+        """Initialize database tables if running locally."""
+        if not DATABASE_SETUP_AVAILABLE:
+            print("📝 Database setup not available (running against remote service)")
+            return True
+
+        try:
+            print("🔧 Initializing database tables...")
+            await create_all_tables()
+            print("✅ Database tables initialized successfully")
+            return True
+        except Exception as e:
+            print(f"❌ Failed to initialize database: {e}")
+            return False
 
     async def check_service_health(self) -> bool:
         """Check if the user management service is running."""
@@ -369,13 +392,23 @@ class UserManagementDemo:
             print("🔴 Could not get user Clerk ID")
             return None
 
-        redirect_uri = "http://localhost:8000/oauth/callback"
-        scopes = ["read", "write"] if provider == "google" else ["read"]
+        # Define proper scopes for each provider
+        if provider == "google":
+            scopes = ["read", "write"]
+        elif provider == "microsoft":
+            scopes = [
+                "openid",
+                "email",
+                "profile",
+                "https://graph.microsoft.com/User.Read",
+            ]
+        else:
+            scopes = ["read"]
 
         try:
             response = await self.client.post(
-                f"{self.base_url}/users/{clerk_id}/integrations/{provider}/oauth/start",
-                json={"redirect_uri": redirect_uri, "scopes": scopes},
+                f"{self.base_url}/users/{clerk_id}/integrations/oauth/start",
+                json={"provider": provider, "scopes": scopes},
                 headers={"Authorization": self.auth_token},
             )
 
@@ -388,16 +421,12 @@ class UserManagementDemo:
                 print(f"   Authorization URL: {auth_url}")
                 print(f"   State: {state}")
 
-                # Open browser for OAuth authorization
+                # Provide URL for manual copying instead of opening browser
+                print("\n🔗 Please copy and paste this URL into your browser:")
+                print(f"   {auth_url}")
                 print(
-                    f"\n🌐 Opening browser for {provider.title()} OAuth authorization..."
+                    "\n   After authorization, you'll be redirected back to the service."
                 )
-                print("   Please complete the OAuth flow in your browser.")
-                print(
-                    "   After authorization, you'll be redirected back to the service."
-                )
-
-                webbrowser.open(auth_url)
 
                 # Wait for user to complete OAuth flow
                 input(
@@ -424,7 +453,7 @@ class UserManagementDemo:
 
         try:
             response = await self.client.post(
-                f"{self.base_url}/users/{clerk_id}/integrations/{provider}/oauth/callback",
+                f"{self.base_url}/users/{clerk_id}/integrations/oauth/callback?provider={provider}",
                 json={"code": code, "state": state},
                 headers={"Authorization": self.auth_token},
             )
@@ -455,9 +484,12 @@ class UserManagementDemo:
             print(f"🔴 Failed to get integration status: {e}")
             return None
 
-    async def refresh_integration_token(self, provider: str) -> bool:
+    async def refresh_integration_token(
+        self, provider: str, force: bool = False
+    ) -> bool:
         """Refresh integration token for a provider."""
-        self.print_section(f"Refreshing {provider.title()} Integration Token")
+        action_text = "Force refreshing" if force else "Refreshing"
+        self.print_section(f"{action_text} {provider.title()} Integration Token")
 
         # Get Clerk ID for integrations endpoint (expects string user_id)
         clerk_id = await self.get_user_clerk_id()
@@ -466,8 +498,11 @@ class UserManagementDemo:
             return False
 
         try:
+            # Add force parameter to the request if needed
+            params = {"force": "true"} if force else {}
             response = await self.client.put(
                 f"{self.base_url}/users/{clerk_id}/integrations/{provider}/refresh",
+                params=params,
                 headers={"Authorization": self.auth_token},
             )
             self.print_response(response, f"{provider.title()} token refresh")
@@ -535,9 +570,86 @@ class UserManagementDemo:
             print(f"🔴 Failed to disconnect integration: {e}")
             return False
 
+    async def get_integrations_status(self) -> Optional[Dict[str, Dict]]:
+        """Get status of all integrations for display."""
+        try:
+            # Get Clerk ID for integrations endpoint
+            clerk_id = await self.get_user_clerk_id()
+            if not clerk_id:
+                return None
+
+            response = await self.client.get(
+                f"{self.base_url}/users/{clerk_id}/integrations",
+                headers={"Authorization": self.auth_token},
+            )
+
+            if response.status_code != 200:
+                return None
+
+            data = response.json()
+            integrations = data.get("integrations", [])
+
+            status_dict = {}
+            for integration in integrations:
+                provider = integration.get("provider", "").lower()
+                status_dict[provider] = {
+                    "status": integration.get("status", "unknown"),
+                    "token_expires_at": integration.get("token_expires_at"),
+                    "has_access_token": integration.get("has_access_token", False),
+                    "has_refresh_token": integration.get("has_refresh_token", False),
+                }
+
+            return status_dict
+        except Exception:
+            return None
+
+    async def select_provider(self, action: str) -> Optional[str]:
+        """Let user select a provider with numbered choices."""
+        # Get current integration status
+        integrations_status = await self.get_integrations_status()
+
+        providers = ["google", "microsoft"]
+        print(f"\nSelect provider to {action}:")
+
+        for i, provider in enumerate(providers, 1):
+            status_info = ""
+            if integrations_status and provider in integrations_status:
+                status = integrations_status[provider]["status"]
+                if status == "active":
+                    status_info = " (connected)"
+                elif status == "error":
+                    status_info = " (error)"
+                elif status == "inactive":
+                    status_info = " (disconnected)"
+                else:
+                    status_info = f" ({status})"
+            else:
+                status_info = " (not connected)"
+
+            print(f"{i}. {provider.title()}{status_info}")
+
+        choice = input(f"\nEnter your choice (1-{len(providers)}): ").strip()
+
+        try:
+            choice_num = int(choice)
+            if 1 <= choice_num <= len(providers):
+                return providers[choice_num - 1]
+            else:
+                print("Invalid choice.")
+                return None
+        except ValueError:
+            print("Invalid choice. Please enter a number.")
+            return None
+
     async def run_interactive_demo(self):
         """Run an interactive demo with user choices."""
         self.print_header("User Management Service Interactive Demo")
+
+        # Initialize database if running locally
+        self.print_section("Database Initialization")
+        db_init_success = await self.initialize_database()
+        if not db_init_success:
+            print("❌ Database initialization failed. Demo may not work properly.")
 
         # Check service health
         if not await self.check_service_health():
@@ -568,42 +680,59 @@ class UserManagementDemo:
 
         # Interactive OAuth flow
         while True:
-            print("\n" + "🔗" * 20)
+            # Get current integration status for display
+            integrations_status = await self.get_integrations_status()
+
+            print("\n" + "🔗" * 50)
             print("OAuth Integration Demo")
-            print("🔗" * 20)
-            print("1. Connect Google Integration")
-            print("2. Connect Microsoft Integration")
-            print("3. View Integration Status")
-            print("4. Refresh Integration Token")
+
+            # Show current connections in header
+            if integrations_status:
+                print("Current Connections:")
+                for provider, status in integrations_status.items():
+                    status_text = status.get("status", "unknown")
+                    expiry_text = ""
+                    if status.get("token_expires_at"):
+                        expiry_text = f" (expires: {status['token_expires_at']})"
+                    print(f"  • {provider.title()}: {status_text}{expiry_text}")
+            else:
+                print("Current Connections: None")
+
+            print("🔗" * 50)
+            print("1. Connect Integration")
+            print("2. View Integration Status")
+            print("3. Refresh Integration Token")
+            print("4. Force Refresh Integration Token")
             print("5. Test Internal API")
             print("6. Disconnect Integration")
-            print("7. Skip OAuth Demo")
             print("0. Exit Demo")
 
-            choice = input("\nEnter your choice (0-7): ").strip()
+            choice = input("\nEnter your choice (0-6): ").strip()
 
             if choice == "0":
                 break
             elif choice == "1":
-                await self.demo_oauth_flow("google")
+                provider = await self.select_provider("connect to")
+                if provider:
+                    await self.demo_oauth_flow(provider)
             elif choice == "2":
-                await self.demo_oauth_flow("microsoft")
-            elif choice == "3":
-                provider = input("Enter provider (google/microsoft): ").strip().lower()
-                if provider in ["google", "microsoft"]:
+                provider = await self.select_provider("view status for")
+                if provider:
                     await self.get_integration_status(provider)
+            elif choice == "3":
+                provider = await self.select_provider("refresh tokens for")
+                if provider:
+                    await self.refresh_integration_token(provider, force=False)
             elif choice == "4":
-                provider = input("Enter provider (google/microsoft): ").strip().lower()
-                if provider in ["google", "microsoft"]:
-                    await self.refresh_integration_token(provider)
+                provider = await self.select_provider("force refresh tokens for")
+                if provider:
+                    await self.refresh_integration_token(provider, force=True)
             elif choice == "5":
                 await self.test_internal_api()
             elif choice == "6":
-                provider = input("Enter provider (google/microsoft): ").strip().lower()
-                if provider in ["google", "microsoft"]:
+                provider = await self.select_provider("disconnect")
+                if provider:
                     await self.disconnect_integration(provider)
-            elif choice == "7":
-                break
             else:
                 print("Invalid choice. Please try again.")
 
@@ -613,19 +742,10 @@ class UserManagementDemo:
     async def demo_oauth_flow(self, provider: str):
         """Demo OAuth flow for a provider."""
         print(f"\n🚀 Starting {provider.title()} OAuth Demo")
-        print("This will open your browser for OAuth authorization.")
+        print("This will provide you with an OAuth URL to copy and paste.")
         print("Note: You'll need valid OAuth credentials configured for this to work.")
 
-        proceed = (
-            input(f"Do you want to proceed with {provider.title()} OAuth? (y/n): ")
-            .strip()
-            .lower()
-        )
-        if proceed != "y":
-            print("Skipping OAuth flow.")
-            return
-
-        # Start OAuth flow
+        # Start OAuth flow directly without confirmation
         state = await self.start_oauth_flow(provider)
         if not state:
             print(f"Failed to start {provider.title()} OAuth flow.")
@@ -670,6 +790,12 @@ class UserManagementDemo:
         print("• OAuth flow initiation (without completion)")
         print("• Service-to-service API")
         print()
+
+        # Initialize database if running locally
+        self.print_section("Database Initialization")
+        db_init_success = await self.initialize_database()
+        if not db_init_success:
+            print("❌ Database initialization failed. Demo may not work properly.")
 
         # Check service health
         self.print_section("Service Health Check")

@@ -10,7 +10,9 @@ from typing import Dict, List, Optional
 
 import httpx
 import structlog
+from sqlmodel import select
 
+from ..database import async_session
 from ..exceptions import (
     IntegrationException,
     NotFoundException,
@@ -175,9 +177,14 @@ class TokenService:
                 )
 
             # Get access token record
-            access_token_record = await EncryptedToken.objects.get_or_none(
-                integration=integration, token_type=TokenType.ACCESS
-            )
+            async with async_session() as session:
+                token_result = await session.execute(
+                    select(EncryptedToken).where(
+                        EncryptedToken.integration_id == integration.id,
+                        EncryptedToken.token_type == TokenType.ACCESS,
+                    )
+                )
+                access_token_record = token_result.scalar_one_or_none()
             if not access_token_record:
                 return InternalTokenResponse(
                     success=False,
@@ -202,9 +209,14 @@ class TokenService:
                 )
                 if refresh_result.success:
                     # Get the refreshed access token record
-                    access_token_record = await EncryptedToken.objects.get(
-                        integration=integration, token_type=TokenType.ACCESS
-                    )
+                    async with async_session() as session:
+                        token_result = await session.execute(
+                            select(EncryptedToken).where(
+                                EncryptedToken.integration_id == integration.id,
+                                EncryptedToken.token_type == TokenType.ACCESS,
+                            )
+                        )
+                        access_token_record = token_result.scalar_one()
                 else:
                     return InternalTokenResponse(
                         success=False,
@@ -222,9 +234,14 @@ class TokenService:
 
             # Get refresh token if available
             refresh_token = None
-            refresh_token_record = await EncryptedToken.objects.get_or_none(
-                integration=integration, token_type=TokenType.REFRESH
-            )
+            async with async_session() as session:
+                refresh_result = await session.execute(
+                    select(EncryptedToken).where(
+                        EncryptedToken.integration_id == integration.id,
+                        EncryptedToken.token_type == TokenType.REFRESH,
+                    )
+                )
+                refresh_token_record = refresh_result.scalar_one_or_none()
             if refresh_token_record:
                 refresh_token = self.token_encryption.decrypt_token(
                     encrypted_token=refresh_token_record.encrypted_value,
@@ -352,15 +369,20 @@ class TokenService:
             InternalUserStatusResponse with user status
         """
         try:
-            # Verify user exists
-            user = await User.objects.get_or_none(external_auth_id=user_id)
-            if not user:
-                raise NotFoundException(f"User not found: {user_id}")
+            async with async_session() as session:
+                # Verify user exists
+                user_result = await session.execute(
+                    select(User).where(User.external_auth_id == user_id)
+                )
+                user = user_result.scalar_one_or_none()
+                if not user:
+                    raise NotFoundException(f"User not found: {user_id}")
 
-            # Get all user integrations
-            integrations = await Integration.objects.filter(
-                user__external_auth_id=user_id
-            ).all()
+                # Get all user integrations
+                integrations_result = await session.execute(
+                    select(Integration).where(Integration.user_id == user.id)
+                )
+                integrations = list(integrations_result.scalars().all())
 
             # Calculate statistics
             total_integrations = len(integrations)
@@ -400,9 +422,23 @@ class TokenService:
         self, user_id: str, provider: IntegrationProvider
     ) -> Integration:
         """Get user integration by user ID and provider."""
-        integration = await Integration.objects.select_related("user").get_or_none(
-            user__external_auth_id=user_id, provider=provider
-        )
+        async with async_session() as session:
+            # First get the user
+            user_result = await session.execute(
+                select(User).where(User.external_auth_id == user_id)
+            )
+            user = user_result.scalar_one_or_none()
+            if not user:
+                raise NotFoundException(f"User not found: {user_id}")
+
+            # Then get the integration
+            integration_result = await session.execute(
+                select(Integration).where(
+                    Integration.user_id == user.id, Integration.provider == provider
+                )
+            )
+            integration = integration_result.scalar_one_or_none()
+
         if not integration:
             raise NotFoundException(
                 f"Integration not found for user {user_id} and provider {provider.value}"
@@ -418,29 +454,35 @@ class TokenService:
         scopes: Optional[List[str]],
     ) -> None:
         """Store or update a token record."""
-        # Check if token record exists
-        existing_record = await EncryptedToken.objects.get_or_none(
-            integration=integration, token_type=token_type
-        )
-
-        scopes_dict = {scope: True for scope in scopes} if scopes else None
-
-        if existing_record:
-            await existing_record.update(
-                encrypted_value=encrypted_value,
-                expires_at=expires_at,
-                scopes=scopes_dict,
-                updated_at=datetime.now(timezone.utc),
+        async with async_session() as session:
+            # Check if token record exists
+            existing_result = await session.execute(
+                select(EncryptedToken).where(
+                    EncryptedToken.integration_id == integration.id,
+                    EncryptedToken.token_type == token_type,
+                )
             )
-        else:
-            await EncryptedToken.objects.create(
-                user=integration.user,
-                integration=integration,
-                token_type=token_type,
-                encrypted_value=encrypted_value,
-                expires_at=expires_at,
-                scopes=scopes_dict,
-            )
+            existing_record = existing_result.scalar_one_or_none()
+
+            scopes_dict = {scope: True for scope in scopes} if scopes else None
+
+            if existing_record:
+                existing_record.encrypted_value = encrypted_value
+                existing_record.expires_at = expires_at
+                existing_record.scopes = scopes_dict
+                existing_record.updated_at = datetime.now(timezone.utc)
+                session.add(existing_record)
+                await session.commit()
+            else:
+                new_token = EncryptedToken(
+                    integration_id=integration.id,
+                    token_type=token_type,
+                    encrypted_value=encrypted_value,
+                    expires_at=expires_at,
+                    scopes=scopes_dict,
+                )
+                session.add(new_token)
+                await session.commit()
 
     async def _refresh_token_if_possible(
         self, integration: Integration, user_id: str, provider: IntegrationProvider
@@ -499,12 +541,22 @@ class TokenService:
             integration = await self._get_user_integration(user_id, provider)
 
             # Get tokens to revoke
-            access_token_record = await EncryptedToken.objects.get_or_none(
-                integration=integration, token_type=TokenType.ACCESS
-            )
-            refresh_token_record = await EncryptedToken.objects.get_or_none(
-                integration=integration, token_type=TokenType.REFRESH
-            )
+            async with async_session() as session:
+                access_result = await session.execute(
+                    select(EncryptedToken).where(
+                        EncryptedToken.integration_id == integration.id,
+                        EncryptedToken.token_type == TokenType.ACCESS,
+                    )
+                )
+                access_token_record = access_result.scalar_one_or_none()
+
+                refresh_result = await session.execute(
+                    select(EncryptedToken).where(
+                        EncryptedToken.integration_id == integration.id,
+                        EncryptedToken.token_type == TokenType.REFRESH,
+                    )
+                )
+                refresh_token_record = refresh_result.scalar_one_or_none()
 
             if not access_token_record and not refresh_token_record:
                 return TokenRevocationResponse(
@@ -543,19 +595,22 @@ class TokenService:
                 )
                 revocation_results.append(provider_result)
 
-            # Clean up local token storage
-            if access_token_record:
-                await access_token_record.delete()
-            if refresh_token_record:
-                await refresh_token_record.delete()
+            # Clean up local token storage and update integration status
+            async with async_session() as session:
+                if access_token_record:
+                    await session.delete(access_token_record)
+                if refresh_token_record:
+                    await session.delete(refresh_token_record)
 
-            # Update integration status
-            await integration.update(
-                status=IntegrationStatus.ERROR,  # Use ERROR instead of DISCONNECTED
-                last_error=None,
-                error_count=0,
-                updated_at=datetime.now(timezone.utc),
-            )
+                # Update integration status
+                integration.status = (
+                    IntegrationStatus.ERROR
+                )  # Use ERROR instead of DISCONNECTED
+                integration.last_error = None
+                integration.error_count = 0
+                integration.updated_at = datetime.now(timezone.utc)
+                session.add(integration)
+                await session.commit()
 
             # Determine overall success
             overall_success = any(
@@ -628,9 +683,23 @@ class TokenService:
         """
         try:
             # Get all user integrations
-            integrations = await Integration.objects.filter(
-                user__external_auth_id=user_id
-            ).all()
+            async with async_session() as session:
+                # First get the user
+                user_result = await session.execute(
+                    select(User).where(User.external_auth_id == user_id)
+                )
+                user = user_result.scalar_one_or_none()
+                if not user:
+                    self.logger.warning(
+                        "User not found for token revocation", user_id=user_id
+                    )
+                    return []
+
+                # Get all user integrations
+                integrations_result = await session.execute(
+                    select(Integration).where(Integration.user_id == user.id)
+                )
+                integrations = list(integrations_result.scalars().all())
 
             if not integrations:
                 self.logger.info(
@@ -707,18 +776,30 @@ class TokenService:
         """
         try:
             # Build query based on criteria
-            query = Integration.objects.filter(status=IntegrationStatus.ACTIVE)
+            async with async_session() as session:
+                query = select(Integration).where(
+                    Integration.status == IntegrationStatus.ACTIVE
+                )
 
-            if "provider" in criteria:
-                query = query.filter(provider=criteria["provider"])
-            if "user_ids" in criteria:
-                query = query.filter(user__external_auth_id__in=criteria["user_ids"])
-            if "created_after" in criteria:
-                query = query.filter(created_at__gte=criteria["created_after"])
-            if "last_sync_before" in criteria:
-                query = query.filter(last_sync_at__lte=criteria["last_sync_before"])
+                if "provider" in criteria:
+                    query = query.where(Integration.provider == criteria["provider"])
+                if "user_ids" in criteria:
+                    # Need to join with User table for external_auth_id filtering
+                    user_subquery = select(User.id).where(
+                        User.external_auth_id.in_(criteria["user_ids"])
+                    )
+                    query = query.where(Integration.user_id.in_(user_subquery))
+                if "created_after" in criteria:
+                    query = query.where(
+                        Integration.created_at >= criteria["created_after"]
+                    )
+                if "last_sync_before" in criteria:
+                    query = query.where(
+                        Integration.last_sync_at <= criteria["last_sync_before"]
+                    )
 
-            integrations = await query.all()
+                integrations_result = await session.execute(query)
+                integrations = list(integrations_result.scalars().all())
 
             if not integrations:
                 self.logger.warning(
