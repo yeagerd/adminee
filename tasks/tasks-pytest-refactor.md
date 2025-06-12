@@ -38,10 +38,10 @@
 
 ## User Management Test Files to Refactor
 
-- [ ] test_main.py
-- [ ] test_user_endpoints.py
-- [ ] test_oauth_config.py
-- [ ] test_integration_endpoints.py
+- [x] test_main.py
+- [x] test_user_endpoints.py
+- [x] test_oauth_config.py
+- [x] test_integration_endpoints.py
 - [ ] test_encryption.py
 - [ ] test_settings.py
 - [ ] test_webhook_endpoints.py
@@ -70,3 +70,17 @@
 > **Note:**
 > - All chat service tests that interact with the history database (e.g., via `history_manager.py`) must use local setup/teardown and a unique temporary SQLite DB per test class or method.
 > - Remove or inline any fixtures from `conftest.py` and ensure no global DB state is shared between tests.
+
+## User Management Service Test Files
+
+### Completed ✅
+- [x] `test_main.py` - ✅ **COMPLETED** - Refactored to use local setup/teardown, all tests passing
+- [x] `test_webhook_service.py` - ✅ **COMPLETED** - Refactored to use local setup/teardown, all tests passing  
+- [x] `test_user_endpoints.py` - ✅ **COMPLETED** - Refactored to use local setup/teardown, all tests passing
+- [x] `test_oauth_config.py` - ✅ **COMPLETED** - Refactored to use local setup/teardown, all tests passing
+- [x] `test_integration_endpoints.py` - ✅ **COMPLETED** - Refactored to use local setup/teardown, all tests passing
+
+### Remaining
+- [ ] `test_user_service.py` - Uses database fixtures, needs DB isolation and fixture inlining
+- [ ] `test_integration_service.py` - Uses database fixtures, needs DB isolation and fixture inlining  
+- [ ] `test_audit_service.py` - Uses database fixtures, needs DB isolation and fixture inlining

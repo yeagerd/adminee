@@ -5,6 +5,9 @@ Tests all user CRUD operations including success scenarios,
 error handling, authentication, and authorization.
 """
 
+import os
+os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
+
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -27,6 +30,12 @@ from ..services.user_service import user_service
 
 class TestUserProfileEndpoints:
     """Test cases for user profile endpoints."""
+
+    def setup_method(self):
+        pass
+
+    def teardown_method(self):
+        pass
 
     def create_mock_user(
         self, user_id: int = 1, external_auth_id: str = "user_123"
