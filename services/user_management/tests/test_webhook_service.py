@@ -1,18 +1,22 @@
 """
-Unit tests for the webhook service business logic.
+Unit tests for Webhook Service.
 
-Tests the WebhookService class directly, focusing on idempotency,
+Tests webhook processing, user lifecycle management,
 database operations, and error handling scenarios.
 """
 
+import asyncio
 import os
 import tempfile
+
+# Set required environment variables before any imports
+os.environ.setdefault("TOKEN_ENCRYPTION_SALT", "dGVzdC1zYWx0LTE2Ynl0ZQ==")
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
-from services.user_management.database import get_async_session
+from services.user_management.database import create_all_tables, get_async_session
 from services.user_management.main import app
 from services.user_management.models.user import User
 
@@ -24,6 +28,7 @@ class TestWebhookServiceIntegration:
     def setup_method(self):
         self.db_fd, self.db_path = tempfile.mkstemp()
         os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
+        asyncio.run(create_all_tables())  # Create tables before cleaning
         self.client = TestClient(app)
         self._clean_database()
         self.webhook_service = WebhookService()
