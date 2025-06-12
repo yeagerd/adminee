@@ -50,10 +50,11 @@ class TestTokenEncryption:
 
     def test_initialization_without_settings(self):
         """Test encryption service initialization with default settings."""
+        # conftest.py provides a default salt
         service = TokenEncryption()
         assert service.settings is not None
         assert service._service_salt is not None
-        assert len(service._service_salt) == 16
+        assert service._service_salt.decode("utf-8") == "custom-salt-16byt"
 
     def test_service_salt_from_env(self):
         """Test service salt loading from environment variable."""
@@ -66,14 +67,13 @@ class TestTokenEncryption:
 
     def test_service_salt_default_fallback(self):
         """Test service salt fallback when not provided."""
-        settings = Settings(token_encryption_salt=None)
-        service = TokenEncryption(settings)
-
-        # Should generate deterministic salt from service name
-        expected_salt = "briefly-user-management".encode("utf-8").ljust(16, b"\x00")[
-            :16
-        ]
-        assert service._service_salt == expected_salt
+        settings = Settings()
+        settings.token_encryption_salt = None  # Simulate no salt provided
+        # Expect this to raise due to the missing salt
+        with pytest.raises(EncryptionException):
+            service = TokenEncryption(settings)
+            # for debugging; should not get here:
+            assert service._service_salt.decode("utf-8") == ""
 
     def test_derive_user_key_consistency(self, encryption_service):
         """Test that user key derivation is consistent for same inputs."""
