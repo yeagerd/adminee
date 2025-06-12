@@ -347,10 +347,8 @@ class TestOAuthFlowEndpoints:
         mock_complete_flow.assert_called_once_with(
             user_id=user_id,
             provider=IntegrationProvider.MICROSOFT,
-            code=request_data["code"],
+            authorization_code=request_data["code"],
             state=request_data["state"],
-            error=None,  # Explicitly pass None if not testing error case
-            error_description=None,  # Explicitly pass None
         )
 
     @patch(

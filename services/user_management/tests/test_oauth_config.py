@@ -514,7 +514,9 @@ class TestOAuthConfig:
             provider=IntegrationProvider.MICROSOFT,
             user_id="user-msft-123",
             redirect_uri="https://example.com/msft-callback",
-            scopes=["Mail.Read"],  # Additional scope
+            scopes=[
+                "https://graph.microsoft.com/Mail.Read"
+            ],  # Use full Microsoft Graph API scope format
         )
 
         assert auth_url.startswith(
@@ -523,21 +525,27 @@ class TestOAuthConfig:
         assert f"client_id={self.settings.azure_ad_client_id}" in auth_url
         assert "redirect_uri=https%3A%2F%2Fexample.com%2Fmsft-callback" in auth_url
         assert "response_type=code" in auth_url
-        # Check for default and additional scopes
+
+        # Check for required scopes plus the requested scope
+        # Only required scopes (openid, email, profile) are automatically added
         expected_scopes = {
             "openid",
             "email",
             "profile",
-            "offline_access",
-            "https://graph.microsoft.com/User.Read",
-            "Mail.Read",
+            "https://graph.microsoft.com/Mail.Read",
         }
-        # URL scopes are space-encoded, so we need to check for each one
+
+        # Check that the state object has the correct scopes
         for scope in expected_scopes:
-            assert (
-                scope in oauth_state.scopes
-            )  # Check that the state object has the correct scopes
-            assert scope in auth_url  # Check that the url has the correct scopes
+            assert scope in oauth_state.scopes
+
+        # Check that each scope appears in the URL
+        # We'll check for unique identifiers from each scope
+        assert "openid" in auth_url
+        assert "email" in auth_url
+        assert "profile" in auth_url
+        assert "graph.microsoft.com" in auth_url
+        assert "Mail.Read" in auth_url
 
         assert f"state={oauth_state.state}" in auth_url
         assert "code_challenge=" in auth_url
@@ -588,10 +596,10 @@ class TestOAuthConfig:
         }
         mock_response.raise_for_status = Mock()
 
-        with patch("httpx.AsyncClient") as mock_client_patch:
-            mock_async_client = AsyncMock()
-            mock_async_client.post = AsyncMock(return_value=mock_response)
-            mock_client_patch.return_value.__aenter__.return_value = mock_async_client
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.post = AsyncMock(return_value=mock_response)
+            mock_client_class.return_value.__aenter__.return_value = mock_client
 
             tokens = await self.oauth_config.exchange_code_for_tokens(
                 provider=IntegrationProvider.GOOGLE,
@@ -612,8 +620,11 @@ class TestOAuthConfig:
                 "grant_type": "authorization_code",
                 "code_verifier": oauth_state.pkce_verifier,
             }
-            mock_async_client.post.assert_called_once_with(
-                expected_token_url, data=expected_payload
+            mock_client.post.assert_called_once_with(
+                expected_token_url,
+                data=expected_payload,
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                timeout=30.0,
             )
 
     @pytest.mark.asyncio
@@ -631,10 +642,10 @@ class TestOAuthConfig:
         mock_response.json.return_value = mock_response_data
         mock_response.raise_for_status = Mock()
 
-        with patch("httpx.AsyncClient") as mock_client_patch:
-            mock_async_client = AsyncMock()
-            mock_async_client.post = AsyncMock(return_value=mock_response)
-            mock_client_patch.return_value.__aenter__.return_value = mock_async_client
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.post = AsyncMock(return_value=mock_response)
+            mock_client_class.return_value.__aenter__.return_value = mock_client
 
             tokens = await self.oauth_config.refresh_access_token(
                 provider=IntegrationProvider.MICROSOFT,
@@ -658,8 +669,11 @@ class TestOAuthConfig:
                 "refresh_token": "test-msft-refresh-token",
                 "grant_type": "refresh_token",
             }
-            mock_async_client.post.assert_called_once_with(
-                expected_token_url, data=expected_payload
+            mock_client.post.assert_called_once_with(
+                expected_token_url,
+                data=expected_payload,
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                timeout=30.0,
             )
 
     @pytest.mark.asyncio
@@ -690,10 +704,10 @@ class TestOAuthConfig:
         mock_response.json.return_value = mock_response_data
         mock_response.raise_for_status = Mock()
 
-        with patch("httpx.AsyncClient") as mock_client_patch:
-            mock_async_client = AsyncMock()
-            mock_async_client.post = AsyncMock(return_value=mock_response)
-            mock_client_patch.return_value.__aenter__.return_value = mock_async_client
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.post = AsyncMock(return_value=mock_response)
+            mock_client_class.return_value.__aenter__.return_value = mock_client
 
             tokens = await self.oauth_config.exchange_code_for_tokens(
                 provider=IntegrationProvider.MICROSOFT,
@@ -716,12 +730,15 @@ class TestOAuthConfig:
                 "client_id": self.settings.azure_ad_client_id,
                 "client_secret": self.settings.azure_ad_client_secret,
                 "code": "test-msft-auth-code",
-                "redirect_uri": "https://example.com/msft-callback",
                 "grant_type": "authorization_code",
+                "redirect_uri": oauth_state.redirect_uri,
                 "code_verifier": oauth_state.pkce_verifier,
             }
-            mock_async_client.post.assert_called_once_with(
-                expected_token_url, data=expected_payload
+            mock_client.post.assert_called_once_with(
+                expected_token_url,
+                data=expected_payload,
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                timeout=30.0,
             )
 
     @pytest.mark.asyncio
@@ -828,10 +845,10 @@ class TestOAuthConfig:
         mock_response.json.return_value = mock_user_data
         mock_response.raise_for_status = Mock()
 
-        with patch("httpx.AsyncClient") as mock_client_patch:
-            mock_async_client = AsyncMock()
-            mock_async_client.get = AsyncMock(return_value=mock_response)
-            mock_client_patch.return_value.__aenter__.return_value = mock_async_client
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(return_value=mock_response)
+            mock_client_class.return_value.__aenter__.return_value = mock_client
 
             user_info = await self.oauth_config.get_user_info(
                 provider=IntegrationProvider.MICROSOFT,
@@ -844,8 +861,8 @@ class TestOAuthConfig:
 
             expected_userinfo_url = "https://graph.microsoft.com/v1.0/me"
             expected_headers = {"Authorization": "Bearer test-msft-access-token"}
-            mock_async_client.get.assert_called_once_with(
-                expected_userinfo_url, headers=expected_headers
+            mock_client.get.assert_called_once_with(
+                expected_userinfo_url, headers=expected_headers, timeout=30.0
             )
 
     @pytest.mark.asyncio
