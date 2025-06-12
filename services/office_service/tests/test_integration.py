@@ -5,13 +5,15 @@ These tests verify the complete end-to-end functionality of the API
 endpoints with properly mocked external dependencies.
 """
 
+import os
+from unittest.mock import MagicMock, patch
+
 import pytest
+from fastapi import status
+
 from services.common.test_utils import BaseOfficeServiceIntegrationTest
 from services.office_service.core.exceptions import ProviderAPIError
 from services.office_service.core.token_manager import TokenData
-from fastapi import status
-from unittest.mock import patch, MagicMock
-import os
 
 
 class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
@@ -20,9 +22,18 @@ class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
     def test_health_basic(self):
         """Test basic health check endpoint."""
         # Mock the health check methods directly
-        with patch("services.office_service.api.health.check_database_health", return_value=True):
-            with patch("services.office_service.api.health.check_redis_connection", return_value=True):
-                with patch("services.office_service.api.health.check_service_connection", return_value=True):
+        with patch(
+            "services.office_service.api.health.check_database_health",
+            return_value=True,
+        ):
+            with patch(
+                "services.office_service.api.health.check_redis_connection",
+                return_value=True,
+            ):
+                with patch(
+                    "services.office_service.api.health.check_service_connection",
+                    return_value=True,
+                ):
                     response = self.client.get("/health")
                     assert response.status_code == status.HTTP_200_OK
 
@@ -36,7 +47,7 @@ class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
     def test_health_integrations_success(self):
         """Test integration health check with successful token retrieval."""
         user_id = "test-user@example.com"
-        
+
         # Mock successful token retrieval
         mock_token_data = TokenData(
             access_token="mock-token",
@@ -46,8 +57,11 @@ class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
             provider="google",
             user_id=user_id,
         )
-        
-        with patch("services.office_service.core.token_manager.TokenManager.get_user_token", return_value=mock_token_data):
+
+        with patch(
+            "services.office_service.core.token_manager.TokenManager.get_user_token",
+            return_value=mock_token_data,
+        ):
             response = self.client.get(f"/health/integrations/{user_id}")
             assert response.status_code == status.HTTP_200_OK
 
@@ -74,7 +88,10 @@ class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
                 )
             else:
                 from services.office_service.models import Provider
-                raise ProviderAPIError("Microsoft integration failed", Provider.MICROSOFT)
+
+                raise ProviderAPIError(
+                    "Microsoft integration failed", Provider.MICROSOFT
+                )
 
         with patch(
             "services.office_service.core.token_manager.TokenManager.get_user_token",
@@ -111,7 +128,10 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
             provider="google",
             user_id=self.test_user_id,
         )
-        return patch("services.office_service.core.token_manager.TokenManager.get_user_token", return_value=mock_token_data)
+        return patch(
+            "services.office_service.core.token_manager.TokenManager.get_user_token",
+            return_value=mock_token_data,
+        )
 
     def _setup_mock_api_clients(self):
         """Set up mock API clients for integration tests."""
@@ -127,30 +147,48 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
                             {"name": "Subject", "value": "Test Email 1"},
                             {"name": "From", "value": "sender1@example.com"},
                             {"name": "To", "value": "recipient@example.com"},
-                            {"name": "Date", "value": "Mon, 1 Jan 2023 12:00:00 +0000"}
+                            {"name": "Date", "value": "Mon, 1 Jan 2023 12:00:00 +0000"},
                         ]
                     },
-                    "internalDate": "1672574400000"
+                    "internalDate": "1672574400000",
                 }
             ]
         }
-        
+
         microsoft_response = {
             "value": [
                 {
                     "id": "microsoft-msg-1",
                     "subject": "Test Email 2",
-                    "from": {"emailAddress": {"address": "sender2@example.com", "name": "Sender 2"}},
-                    "toRecipients": [{"emailAddress": {"address": "recipient@example.com", "name": "Recipient"}}],
+                    "from": {
+                        "emailAddress": {
+                            "address": "sender2@example.com",
+                            "name": "Sender 2",
+                        }
+                    },
+                    "toRecipients": [
+                        {
+                            "emailAddress": {
+                                "address": "recipient@example.com",
+                                "name": "Recipient",
+                            }
+                        }
+                    ],
                     "receivedDateTime": "2023-01-01T13:00:00Z",
-                    "bodyPreview": "This is another test email"
+                    "bodyPreview": "This is another test email",
                 }
             ]
         }
-        
-        google_patch = patch("services.office_service.core.clients.google.GoogleAPIClient.get_messages", return_value=google_response)
-        microsoft_patch = patch("services.office_service.core.clients.microsoft.MicrosoftAPIClient.get_messages", return_value=microsoft_response)
-        
+
+        google_patch = patch(
+            "services.office_service.core.clients.google.GoogleAPIClient.get_messages",
+            return_value=google_response,
+        )
+        microsoft_patch = patch(
+            "services.office_service.core.clients.microsoft.MicrosoftAPIClient.get_messages",
+            return_value=microsoft_response,
+        )
+
         return google_patch, microsoft_patch
 
     def test_get_email_messages_success(self):
@@ -192,7 +230,9 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
         with self._setup_mock_token_manager():
             google_patch, microsoft_patch = self._setup_mock_api_clients()
             with google_patch, microsoft_patch:
-                response = self.client.get(f"/email/messages?user_id={user_id}&limit=1&offset=0")
+                response = self.client.get(
+                    f"/email/messages?user_id={user_id}&limit=1&offset=0"
+                )
                 assert response.status_code == status.HTTP_200_OK
 
                 data = response.json()
@@ -221,15 +261,20 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
                     {"name": "Subject", "value": "Test Email"},
                     {"name": "From", "value": "sender@example.com"},
                     {"name": "To", "value": "recipient@example.com"},
-                    {"name": "Date", "value": "Mon, 1 Jan 2023 12:00:00 +0000"}
+                    {"name": "Date", "value": "Mon, 1 Jan 2023 12:00:00 +0000"},
                 ]
             },
-            "internalDate": "1672574400000"
+            "internalDate": "1672574400000",
         }
 
         with self._setup_mock_token_manager():
-            with patch("services.office_service.core.clients.google.GoogleAPIClient.get_message", return_value=mock_message):
-                response = self.client.get(f"/email/messages/{message_id}?user_id={user_id}")
+            with patch(
+                "services.office_service.core.clients.google.GoogleAPIClient.get_message",
+                return_value=mock_message,
+            ):
+                response = self.client.get(
+                    f"/email/messages/{message_id}?user_id={user_id}"
+                )
                 assert response.status_code == status.HTTP_200_OK
 
                 data = response.json()
@@ -264,10 +309,14 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
 
         # Use additional mocking that doesn't interfere with token retrieval
         with self._setup_mock_token_manager():
-            with patch("services.office_service.core.clients.google.GoogleAPIClient.send_message") as mock_send:
+            with patch(
+                "services.office_service.core.clients.google.GoogleAPIClient.send_message"
+            ) as mock_send:
                 mock_send.return_value = {"id": "sent-message-123", "status": "sent"}
 
-                response = self.client.post(f"/email/send?user_id={user_id}", json=email_data)
+                response = self.client.post(
+                    f"/email/send?user_id={user_id}", json=email_data
+                )
                 assert response.status_code == status.HTTP_200_OK
 
                 data = response.json()
@@ -308,7 +357,10 @@ class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
             provider="google",
             user_id=self.test_user_id,
         )
-        return patch("services.office_service.core.token_manager.TokenManager.get_user_token", return_value=mock_token_data)
+        return patch(
+            "services.office_service.core.token_manager.TokenManager.get_user_token",
+            return_value=mock_token_data,
+        )
 
     def test_get_calendar_events_success(self):
         """Test successful retrieval of calendar events."""
@@ -323,13 +375,16 @@ class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
                     "summary": "Test Event",
                     "start": {"dateTime": "2023-01-01T10:00:00Z"},
                     "end": {"dateTime": "2023-01-01T11:00:00Z"},
-                    "creator": {"email": "creator@example.com"}
+                    "creator": {"email": "creator@example.com"},
                 }
             ]
         }
 
         with self._setup_mock_token_manager():
-            with patch("services.office_service.core.clients.google.GoogleAPIClient.get_events", return_value=mock_events):
+            with patch(
+                "services.office_service.core.clients.google.GoogleAPIClient.get_events",
+                return_value=mock_events,
+            ):
                 response = self.client.get(
                     f"/calendar/events?user_id={user_id}",
                     headers={"X-API-Key": "api-frontend-office-key"},
@@ -350,7 +405,10 @@ class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
         mock_events = {"items": []}
 
         with self._setup_mock_token_manager():
-            with patch("services.office_service.core.clients.google.GoogleAPIClient.get_events", return_value=mock_events):
+            with patch(
+                "services.office_service.core.clients.google.GoogleAPIClient.get_events",
+                return_value=mock_events,
+            ):
                 response = self.client.get(
                     f"/calendar/events?user_id={user_id}&start_date=2023-01-01&end_date=2023-01-31",
                     headers={"X-API-Key": "api-frontend-office-key"},
@@ -374,11 +432,14 @@ class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
             "summary": "New Test Event",
             "start": {"dateTime": "2023-01-01T10:00:00Z"},
             "end": {"dateTime": "2023-01-01T11:00:00Z"},
-            "creator": {"email": "creator@example.com"}
+            "creator": {"email": "creator@example.com"},
         }
 
         with self._setup_mock_token_manager():
-            with patch("services.office_service.core.clients.google.GoogleAPIClient.create_event", return_value=mock_created_event):
+            with patch(
+                "services.office_service.core.clients.google.GoogleAPIClient.create_event",
+                return_value=mock_created_event,
+            ):
                 response = self.client.post(
                     f"/calendar/events?user_id={user_id}",
                     json=event_data,
@@ -397,7 +458,10 @@ class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
         event_id = "google_event-123"
 
         with self._setup_mock_token_manager():
-            with patch("services.office_service.core.clients.google.GoogleAPIClient.delete_event", return_value=True):
+            with patch(
+                "services.office_service.core.clients.google.GoogleAPIClient.delete_event",
+                return_value=True,
+            ):
                 response = self.client.delete(
                     f"/calendar/events/{event_id}?user_id={user_id}",
                     headers={"X-API-Key": "api-frontend-office-key"},
@@ -430,7 +494,10 @@ class TestFilesEndpoints(BaseOfficeServiceIntegrationTest):
             provider="google",
             user_id=self.test_user_id,
         )
-        return patch("services.office_service.core.token_manager.TokenManager.get_user_token", return_value=mock_token_data)
+        return patch(
+            "services.office_service.core.token_manager.TokenManager.get_user_token",
+            return_value=mock_token_data,
+        )
 
     def test_get_files_success(self):
         """Test successful retrieval of files."""
@@ -448,13 +515,16 @@ class TestFilesEndpoints(BaseOfficeServiceIntegrationTest):
                     "createdTime": "2023-01-01T10:00:00Z",
                     "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     "webViewLink": "https://drive.google.com/file/d/file-1/view",
-                    "owners": [{"emailAddress": "test@example.com"}]
+                    "owners": [{"emailAddress": "test@example.com"}],
                 }
             ]
         }
 
         with self._setup_mock_token_manager():
-            with patch("services.office_service.core.clients.google.GoogleAPIClient.get_files", return_value=mock_files):
+            with patch(
+                "services.office_service.core.clients.google.GoogleAPIClient.get_files",
+                return_value=mock_files,
+            ):
                 response = self.client.get(
                     f"/files?user_id={user_id}",
                     headers={"X-API-Key": "api-frontend-office-key"},
@@ -474,7 +544,10 @@ class TestFilesEndpoints(BaseOfficeServiceIntegrationTest):
         mock_files = {"files": []}
 
         with self._setup_mock_token_manager():
-            with patch("services.office_service.core.clients.google.GoogleAPIClient.search_files", return_value=mock_files):
+            with patch(
+                "services.office_service.core.clients.google.GoogleAPIClient.search_files",
+                return_value=mock_files,
+            ):
                 response = self.client.get(
                     f"/files/search?user_id={user_id}&q=test",  # Use 'q' parameter instead of 'query'
                     headers={"X-API-Key": "api-frontend-office-key"},
@@ -496,11 +569,14 @@ class TestFilesEndpoints(BaseOfficeServiceIntegrationTest):
             "createdTime": "2023-01-01T10:00:00Z",
             "mimeType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             "webViewLink": "https://drive.google.com/file/d/file-123/view",
-            "owners": [{"emailAddress": "test@example.com"}]
+            "owners": [{"emailAddress": "test@example.com"}],
         }
 
         with self._setup_mock_token_manager():
-            with patch("services.office_service.core.clients.google.GoogleAPIClient.get_file", return_value=mock_file):
+            with patch(
+                "services.office_service.core.clients.google.GoogleAPIClient.get_file",
+                return_value=mock_file,
+            ):
                 response = self.client.get(
                     f"/files/{file_id}?user_id={user_id}",
                     headers={"X-API-Key": "api-frontend-office-key"},
@@ -521,17 +597,24 @@ class TestErrorScenarios(BaseOfficeServiceIntegrationTest):
 
     def test_provider_api_error_handling(self):
         """Test handling of provider API errors."""
+
         def failing_http_side_effect(*args, **kwargs):
             from services.office_service.models import Provider
+
             raise ProviderAPIError("Provider API is down", Provider.GOOGLE)
 
-        with patch("services.office_service.core.token_manager.TokenManager.get_user_token", side_effect=failing_http_side_effect):
+        with patch(
+            "services.office_service.core.token_manager.TokenManager.get_user_token",
+            side_effect=failing_http_side_effect,
+        ):
             response = self.client.get(f"/email/messages?user_id={self.test_user_id}")
-            
+
             # The API handles provider failures gracefully and returns partial results
             assert response.status_code == status.HTTP_200_OK
             data = response.json()
-            assert data["success"] is True  # Should be successful even with provider failures
+            assert (
+                data["success"] is True
+            )  # Should be successful even with provider failures
 
     def test_authentication_failure(self):
         """Test handling of authentication failures."""
@@ -569,7 +652,10 @@ class TestCaching(BaseOfficeServiceIntegrationTest):
             provider="google",
             user_id=self.test_user_id,
         )
-        return patch("services.office_service.core.token_manager.TokenManager.get_user_token", return_value=mock_token_data)
+        return patch(
+            "services.office_service.core.token_manager.TokenManager.get_user_token",
+            return_value=mock_token_data,
+        )
 
     def test_cache_hit_behavior(self):
         """Test cache hit behavior for repeated requests."""
@@ -588,16 +674,19 @@ class TestCaching(BaseOfficeServiceIntegrationTest):
                             {"name": "Subject", "value": "Test"},
                             {"name": "From", "value": "sender@example.com"},
                             {"name": "To", "value": "recipient@example.com"},
-                            {"name": "Date", "value": "Mon, 1 Jan 2023 12:00:00 +0000"}
+                            {"name": "Date", "value": "Mon, 1 Jan 2023 12:00:00 +0000"},
                         ]
                     },
-                    "internalDate": "1672574400000"
+                    "internalDate": "1672574400000",
                 }
             ]
         }
 
         with self._setup_mock_token_manager():
-            with patch("services.office_service.core.clients.google.GoogleAPIClient.get_messages", return_value=mock_messages) as mock_get:
+            with patch(
+                "services.office_service.core.clients.google.GoogleAPIClient.get_messages",
+                return_value=mock_messages,
+            ) as mock_get:
                 # First request
                 response1 = self.client.get(f"/email/messages?user_id={user_id}")
                 assert response1.status_code == status.HTTP_200_OK
@@ -622,110 +711,145 @@ class TestCaching(BaseOfficeServiceIntegrationTest):
                             {"name": "Subject", "value": "Test"},
                             {"name": "From", "value": "sender@example.com"},
                             {"name": "To", "value": "recipient@example.com"},
-                            {"name": "Date", "value": "Mon, 1 Jan 2023 12:00:00 +0000"}
+                            {"name": "Date", "value": "Mon, 1 Jan 2023 12:00:00 +0000"},
                         ]
                     },
-                    "internalDate": "1672574400000"
+                    "internalDate": "1672574400000",
                 }
             ]
         }
 
         with self._setup_mock_token_manager():
-            with patch("services.office_service.core.clients.google.GoogleAPIClient.get_messages", return_value=mock_messages):
+            with patch(
+                "services.office_service.core.clients.google.GoogleAPIClient.get_messages",
+                return_value=mock_messages,
+            ):
                 # Different requests should not hit the same cache
-                response1 = self.client.get(f"/email/messages?user_id={user_id}&limit=10")
-                response2 = self.client.get(f"/email/messages?user_id={user_id}&limit=20")
-                
+                response1 = self.client.get(
+                    f"/email/messages?user_id={user_id}&limit=10"
+                )
+                response2 = self.client.get(
+                    f"/email/messages?user_id={user_id}&limit=20"
+                )
+
                 assert response1.status_code == status.HTTP_200_OK
                 assert response2.status_code == status.HTTP_200_OK
 
 
 class TestHTTPCallDetection(BaseOfficeServiceIntegrationTest):
     """Test that our HTTP call detection rakes work properly."""
-    
+
     def setup_method(self):
         """Set up test environment with FULL HTTP call detection for testing."""
         # Override the selective patches with full detection for this test
         # Stop any existing patches first
-        if hasattr(self, 'http_patches'):
+        if hasattr(self, "http_patches"):
             for http_patch in self.http_patches:
                 http_patch.stop()
-        
+
         # Use full HTTP detection including httpx.Client.send
         self.http_patches = [
             # Patch both sync and async httpx clients
-            patch('httpx.AsyncClient._send_single_request', side_effect=AssertionError("Real HTTP call detected! AsyncClient._send_single_request was called")),
-            patch('httpx.Client._send_single_request', side_effect=AssertionError("Real HTTP call detected! Client._send_single_request was called")),
+            patch(
+                "httpx.AsyncClient._send_single_request",
+                side_effect=AssertionError(
+                    "Real HTTP call detected! AsyncClient._send_single_request was called"
+                ),
+            ),
+            patch(
+                "httpx.Client._send_single_request",
+                side_effect=AssertionError(
+                    "Real HTTP call detected! Client._send_single_request was called"
+                ),
+            ),
             # Also patch the sync client send method
-            patch('httpx.Client.send', side_effect=AssertionError("Real HTTP call detected! Client.send was called")),
+            patch(
+                "httpx.Client.send",
+                side_effect=AssertionError(
+                    "Real HTTP call detected! Client.send was called"
+                ),
+            ),
             # Patch requests
-            patch('requests.adapters.HTTPAdapter.send', side_effect=AssertionError("Real HTTP call detected! requests HTTPAdapter.send was called")),
+            patch(
+                "requests.adapters.HTTPAdapter.send",
+                side_effect=AssertionError(
+                    "Real HTTP call detected! requests HTTPAdapter.send was called"
+                ),
+            ),
             # Patch urllib
-            patch('urllib.request.urlopen', side_effect=AssertionError("Real HTTP call detected! urllib.request.urlopen was called")),
+            patch(
+                "urllib.request.urlopen",
+                side_effect=AssertionError(
+                    "Real HTTP call detected! urllib.request.urlopen was called"
+                ),
+            ),
         ]
-        
+
         # Start all HTTP detection patches
         for http_patch in self.http_patches:
             http_patch.start()
-        
+
         # Use in-memory SQLite database instead of temporary files
         os.environ["DATABASE_URL"] = "sqlite:///:memory:"
         os.environ["REDIS_URL"] = "redis://localhost:6379/1"
-        
+
         # Mock Redis completely to avoid any connection attempts
         self.redis_patcher = patch("redis.Redis")
         self.mock_redis_class = self.redis_patcher.start()
         self.mock_redis_instance = MagicMock()
         self.mock_redis_class.return_value = self.mock_redis_instance
-        
+
         # Configure Redis mock behavior
         self.mock_redis_instance.ping.return_value = True
         self.mock_redis_instance.get.return_value = None
         self.mock_redis_instance.set.return_value = True
         self.mock_redis_instance.delete.return_value = 1
         self.mock_redis_instance.exists.return_value = False
-        
+
         # Office Service specific Redis patching
-        self.office_redis_patcher = patch("services.office_service.core.cache_manager.redis.Redis")
+        self.office_redis_patcher = patch(
+            "services.office_service.core.cache_manager.redis.Redis"
+        )
         self.office_mock_redis_class = self.office_redis_patcher.start()
         self.office_mock_redis_instance = MagicMock()
         self.office_mock_redis_class.return_value = self.office_mock_redis_instance
-        
+
         # Configure Office Service Redis mock behavior
         self.office_mock_redis_instance.ping.return_value = True
         self.office_mock_redis_instance.get.return_value = None
         self.office_mock_redis_instance.set.return_value = True
         self.office_mock_redis_instance.delete.return_value = 1
         self.office_mock_redis_instance.exists.return_value = False
-        
+
         # Note: We don't create a TestClient for this test since it would conflict with our patches
-    
+
     def test_http_call_detection_works(self):
         """Test that real HTTP calls are detected and blocked."""
+        import asyncio
+        import urllib.request
+
         import httpx
         import requests
-        import urllib.request
-        import asyncio
-        
+
         # Test urllib.request.urlopen
         with pytest.raises(AssertionError, match="Real HTTP call detected"):
             urllib.request.urlopen("http://example.com")
-        
+
         # Test requests.get
         with pytest.raises(AssertionError, match="Real HTTP call detected"):
             requests.get("http://example.com")
-        
+
         # Test httpx sync client
         with pytest.raises(AssertionError, match="Real HTTP call detected"):
             with httpx.Client() as client:
                 client.get("http://example.com")
-        
+
         # Test httpx async client
         async def test_async_httpx():
             async with httpx.AsyncClient() as client:
                 await client.get("http://example.com")
-        
+
         with pytest.raises(AssertionError, match="Real HTTP call detected"):
             asyncio.run(test_async_httpx())
-            
+
         print("All HTTP call detection tests passed!")

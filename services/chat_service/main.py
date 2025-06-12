@@ -3,12 +3,13 @@ import sys
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
-from services.chat_service import history_manager
-from services.chat_service.api import router
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-from services.chat_service.settings import settings
 from sqlmodel import select
+
+from services.chat_service import history_manager
+from services.chat_service.api import router
+from services.chat_service.settings import settings
 
 # Configure logging
 logging.basicConfig(

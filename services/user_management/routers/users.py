@@ -11,7 +11,10 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
 from services.user_management.auth import get_current_user
-from services.user_management.exceptions import UserNotFoundException, ValidationException
+from services.user_management.exceptions import (
+    UserNotFoundException,
+    ValidationException,
+)
 from services.user_management.schemas.user import (
     UserDeleteResponse,
     UserListResponse,

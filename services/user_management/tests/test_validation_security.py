@@ -12,14 +12,23 @@ from services.user_management.middleware.sanitization import (
     is_safe_text,
     sanitize_user_input,
 )
-from services.user_management.schemas.integration import OAuthCallbackRequest, OAuthStartRequest
+from services.user_management.schemas.integration import (
+    OAuthCallbackRequest,
+    OAuthStartRequest,
+)
 from services.user_management.schemas.preferences import (
     AIPreferencesSchema,
     NotificationPreferencesSchema,
     PreferencesImportRequest,
 )
-from services.user_management.schemas.user import UserCreate, UserSearchRequest, UserUpdate
-from services.user_management.utils.validation import ValidationError as CustomValidationError
+from services.user_management.schemas.user import (
+    UserCreate,
+    UserSearchRequest,
+    UserUpdate,
+)
+from services.user_management.utils.validation import (
+    ValidationError as CustomValidationError,
+)
 from services.user_management.utils.validation import (
     check_sql_injection_patterns,
     sanitize_text_input,

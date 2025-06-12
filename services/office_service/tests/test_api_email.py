@@ -5,13 +5,12 @@ Tests the unified email API endpoints with proper mocking of external
 dependencies and comprehensive error handling scenarios.
 """
 
-import tempfile
-import os
 from datetime import datetime, timezone
-from unittest.mock import patch, Mock, AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
+
 from services.office_service.app.main import app
 from services.office_service.models import Provider
 from services.office_service.schemas import EmailAddress, EmailMessage, SendEmailRequest
@@ -512,8 +511,9 @@ class TestEmailHelperFunctions:
 
     def test_parse_message_id_invalid_format(self):
         """Test parsing invalid message ID format."""
-        from services.office_service.api.email import parse_message_id
         from fastapi import HTTPException
+
+        from services.office_service.api.email import parse_message_id
 
         with pytest.raises(HTTPException) as exc_info:
             parse_message_id("invalid_format_no_underscore")
@@ -523,8 +523,9 @@ class TestEmailHelperFunctions:
 
     def test_parse_message_id_unknown_provider(self):
         """Test parsing message ID with unknown provider."""
-        from services.office_service.api.email import parse_message_id
         from fastapi import HTTPException
+
+        from services.office_service.api.email import parse_message_id
 
         with pytest.raises(HTTPException) as exc_info:
             parse_message_id("unknown_abc123")

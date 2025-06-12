@@ -9,12 +9,13 @@ import asyncio
 import hashlib
 import json
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any, Dict, Optional
 
 import redis.asyncio as redis
-from services.office_service.core.config import settings
 from redis.asyncio import Redis
+
+from services.office_service.core.config import settings
 
 logger = logging.getLogger(__name__)
 

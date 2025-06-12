@@ -1,6 +1,7 @@
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException
+
 from services.chat_service.llama_manager import ChatAgentManager
 from services.chat_service.models import (
     ChatRequest,

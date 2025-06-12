@@ -11,7 +11,6 @@ from typing import Optional
 from pydantic import BaseModel, Field, field_validator
 
 
-
 class ClerkWebhookEventData(BaseModel):
     """Base class for Clerk webhook event data."""
 

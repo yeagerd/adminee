@@ -4,14 +4,15 @@ Debug script to show Microsoft OAuth scope configuration.
 """
 
 import sys
-from pathlib import Path
 
 # Now import after path modification
 from services.user_management.integrations.oauth_config import (  # noqa: E402
     OAuthConfig,
     reset_oauth_config,
 )
-from services.user_management.models.integration import IntegrationProvider  # noqa: E402
+from services.user_management.models.integration import (  # noqa: E402
+    IntegrationProvider,
+)
 from services.user_management.settings import Settings  # noqa: E402
 
 

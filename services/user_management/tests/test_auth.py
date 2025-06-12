@@ -27,7 +27,10 @@ from services.user_management.auth.service_auth import (
     validate_service_permissions,
     verify_service_authentication,
 )
-from services.user_management.exceptions import AuthenticationException, AuthorizationException
+from services.user_management.exceptions import (
+    AuthenticationException,
+    AuthorizationException,
+)
 
 
 class TestClerkAuthentication:

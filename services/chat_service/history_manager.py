@@ -8,8 +8,8 @@ from typing import List, Optional
 
 from sqlalchemy import Text, UniqueConstraint, func, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, select
 from sqlalchemy.orm import registry
+from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, select
 
 # Import settings to get DATABASE_URL
 try:
@@ -36,9 +36,11 @@ def get_async_database_url(url: str) -> str:
 # Create a separate registry for chat service models to avoid conflicts with other services
 chat_registry = registry()
 
+
 # Create a custom SQLModel base that uses our isolated registry
 class ChatSQLModel(SQLModel, registry=chat_registry):
     pass
+
 
 # Create async engine for database operations
 engine = create_async_engine(get_async_database_url(DATABASE_URL), echo=False)

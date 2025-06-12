@@ -3,6 +3,9 @@ import uuid
 from datetime import datetime, timezone
 
 import httpx
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+
 from services.office_service.api.calendar import router as calendar_router
 from services.office_service.api.email import router as email_router
 from services.office_service.api.files import router as files_router
@@ -16,8 +19,6 @@ from services.office_service.core.exceptions import (
     ValidationError,
 )
 from services.office_service.core.logging_config import setup_logging
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
 from services.office_service.schemas import ApiError
 
 # Initialize logging

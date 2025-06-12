@@ -4,18 +4,20 @@ Unit tests for error handling across the Office Service.
 Tests error scenarios, exception handling, and proper HTTP status codes
 for various failure conditions in the API endpoints.
 """
+
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
+from fastapi import Request
+from fastapi.responses import JSONResponse
+
 from services.office_service.app.main import (
-    app,
     office_service_error_handler,
     provider_api_error_handler,
     rate_limit_error_handler,
     validation_error_handler,
-    general_exception_handler,
 )
 from services.office_service.core.clients.google import GoogleAPIClient
 from services.office_service.core.exceptions import (
@@ -25,8 +27,6 @@ from services.office_service.core.exceptions import (
     ValidationError,
 )
 from services.office_service.models import Provider
-from fastapi import Request
-from fastapi.responses import JSONResponse
 
 
 class TestGlobalExceptionHandlers:
@@ -310,7 +310,9 @@ class TestLoggingIntegration:
             mock_response.raise_for_status.return_value = None
             mock_client.request.return_value = mock_response
 
-            with patch("services.office_service.core.clients.base.logger") as mock_logger:
+            with patch(
+                "services.office_service.core.clients.base.logger"
+            ) as mock_logger:
                 async with google_client:
                     await google_client.get("/test/endpoint")
 
@@ -346,14 +348,16 @@ class TestLoggingIntegration:
                 "Request timed out"
             )
 
-            with patch("services.office_service.core.clients.base.logger") as mock_logger:
+            with patch(
+                "services.office_service.core.clients.base.logger"
+            ) as mock_logger:
                 async with google_client:
                     with pytest.raises(ProviderAPIError):
                         await google_client.get("/test/endpoint")
 
                 # Verify error logging (at least one call, possibly more due to DB issues)
                 assert mock_logger.error.call_count >= 1
-                
+
                 # Find the timeout error log (first call should be the primary error)
                 timeout_error_log = None
                 for call in mock_logger.error.call_args_list:
@@ -361,7 +365,7 @@ class TestLoggingIntegration:
                     if "Timeout error" in log_msg:
                         timeout_error_log = log_msg
                         break
-                
+
                 assert timeout_error_log is not None, "Should find timeout error log"
 
                 # Check log structure

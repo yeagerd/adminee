@@ -1,8 +1,9 @@
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from services.office_service.models import Provider
 from pydantic import BaseModel, EmailStr
+
+from services.office_service.models import Provider
 
 
 # Unified Email Models
@@ -58,7 +59,7 @@ class SendEmailRequest(BaseModel):
 
 class SendEmailResponse(BaseModel):
     """Response model for sending emails."""
-    
+
     success: bool
     data: Optional[Dict[str, Any]] = None
     error: Optional[Dict[str, Any]] = None
@@ -67,7 +68,7 @@ class SendEmailResponse(BaseModel):
 
 class EmailMessageList(BaseModel):
     """Response model for email message lists."""
-    
+
     success: bool
     data: Optional[Dict[str, Any]] = None  # Contains messages, metadata, etc.
     error: Optional[Dict[str, Any]] = None
@@ -132,7 +133,7 @@ class CreateCalendarEventRequest(BaseModel):
 
 class CreateCalendarEventResponse(BaseModel):
     """Response model for creating calendar events."""
-    
+
     success: bool
     data: Optional[CalendarEvent] = None
     error: Optional[Dict[str, Any]] = None
@@ -141,7 +142,7 @@ class CreateCalendarEventResponse(BaseModel):
 
 class CalendarEventList(BaseModel):
     """Response model for calendar event lists."""
-    
+
     success: bool
     data: Optional[List[CalendarEvent]] = None
     error: Optional[Dict[str, Any]] = None
@@ -181,7 +182,7 @@ class DriveFile(BaseModel):
 
 class DriveFileList(BaseModel):
     """Response model for drive file lists."""
-    
+
     success: bool
     data: Optional[List[DriveFile]] = None
     error: Optional[Dict[str, Any]] = None
@@ -220,7 +221,7 @@ class ApiError(BaseModel):
 # Health Check Models
 class HealthCheck(BaseModel):
     """Response model for health checks."""
-    
+
     status: str
     timestamp: datetime
     checks: Dict[str, Any]
@@ -228,6 +229,6 @@ class HealthCheck(BaseModel):
 
 class IntegrationHealthCheck(BaseModel):
     """Response model for integration health checks."""
-    
+
     user_id: str
     integrations: Dict[str, Dict[str, Any]]

@@ -11,7 +11,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, cast
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
+from fastapi import APIRouter, HTTPException, Path, Query
+
 from services.office_service.core.api_client_factory import APIClientFactory
 from services.office_service.core.cache_manager import cache_manager, generate_cache_key
 from services.office_service.core.clients.google import GoogleAPIClient
@@ -20,7 +21,7 @@ from services.office_service.core.normalizer import (
     normalize_google_email,
     normalize_microsoft_email,
 )
-from services.office_service.models import ApiCall, ApiCallStatus, Provider
+from services.office_service.models import Provider
 from services.office_service.schemas import (
     EmailMessage,
     EmailMessageList,

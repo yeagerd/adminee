@@ -12,8 +12,9 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 import httpx
-from services.office_service.core.config import settings
 from pydantic import BaseModel
+
+from services.office_service.core.config import settings
 
 # Configure logging
 logger = logging.getLogger(__name__)

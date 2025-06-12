@@ -7,17 +7,17 @@ including database, Redis, and external integrations.
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 import httpx
-from fastapi import APIRouter, HTTPException, Path, status
+from fastapi import APIRouter, Path
 from fastapi.responses import JSONResponse
+from sqlmodel import select
+
 from services.office_service.core.cache_manager import cache_manager
 from services.office_service.core.config import settings
 from services.office_service.core.token_manager import TokenManager
-from services.office_service.models import ApiCall, async_session, Provider
-from services.office_service.schemas import HealthCheck, IntegrationHealthCheck
-from sqlmodel import select
+from services.office_service.models import ApiCall, async_session
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +94,9 @@ async def health_check():
 
 
 @router.get("/integrations/{user_id}")
-async def integration_health_check(user_id: str = Path(..., description="ID of the user to check integrations for")):
+async def integration_health_check(
+    user_id: str = Path(..., description="ID of the user to check integrations for")
+):
     """
     Check the health of external integrations for a specific user.
 

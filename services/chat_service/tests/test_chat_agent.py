@@ -3,7 +3,6 @@ Tests for the new ModernChatAgent implementation.
 """
 
 import os
-import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -209,6 +208,7 @@ async def test_backward_compatibility_imports():
     assert hasattr(manager, "main_agent")
     assert hasattr(manager, "tools")
     assert hasattr(manager, "subagents")
+
 
 @pytest.mark.asyncio
 @patch("services.chat_service.chat_agent.history_manager.append_message")

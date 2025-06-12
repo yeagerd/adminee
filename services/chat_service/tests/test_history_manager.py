@@ -1,8 +1,6 @@
 # flake8: noqa: E402
 pytest_plugins = ["pytest_asyncio"]
 
-import os
-import sys
 
 import pytest
 

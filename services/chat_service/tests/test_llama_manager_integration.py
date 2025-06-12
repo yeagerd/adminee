@@ -12,7 +12,6 @@ This test suite covers:
 
 import logging
 import os
-import sys
 from unittest.mock import patch
 
 import pytest
@@ -102,7 +101,7 @@ async def test_manager_basic_chat():
     assert response is not None
     assert isinstance(response, str)
     assert len(response) > 0
-    
+
     # With FakeLLM, expect the fake response format
     assert "[FAKE LLM RESPONSE]" in response
     assert user_input in response
@@ -135,7 +134,7 @@ async def test_manager_empty_thread():
 
     assert response is not None
     assert len(response) > 0
-    
+
     # With FakeLLM, expect the fake response format
     assert "[FAKE LLM RESPONSE]" in response
     assert user_input in response
@@ -170,7 +169,7 @@ async def test_manager_multiple_messages_order():
         responses.append(response)
         assert response is not None
         assert len(response) > 0
-        
+
         # With FakeLLM, expect the fake response format
         assert "[FAKE LLM RESPONSE]" in response
         assert msg in response
@@ -206,7 +205,7 @@ async def test_manager_unicode_and_long_message():
 
     assert response is not None
     assert len(response) > 0
-    
+
     # With FakeLLM, expect the fake response format
     assert "[FAKE LLM RESPONSE]" in response
     # Note: FakeLLM might truncate very long inputs, so just check for emoji
@@ -277,7 +276,7 @@ async def test_manager_with_tools():
 
     assert response is not None
     assert manager.main_agent is not None
-    
+
     # With FakeLLM, expect the fake response format
     assert "[FAKE LLM RESPONSE]" in response
     assert "Hello with tools" in response
@@ -403,7 +402,7 @@ async def test_manager_error_handling():
 
     # Should still get a response (thread gets created)
     assert response is not None
-    
+
     # With FakeLLM, expect the fake response format
     assert "[FAKE LLM RESPONSE]" in response
     assert "Test message" in response
@@ -427,7 +426,7 @@ async def test_manager_thread_auto_creation():
 
     assert response is not None
     assert isinstance(response, str)
-    
+
     # With FakeLLM, expect the fake response format
     assert "[FAKE LLM RESPONSE]" in response
     assert "Auto-create thread test" in response

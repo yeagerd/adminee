@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 import httpx
+
 from services.office_service.core.exceptions import ProviderAPIError
 from services.office_service.models import ApiCall, ApiCallStatus, Provider
 

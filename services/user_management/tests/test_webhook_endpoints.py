@@ -14,7 +14,6 @@ os.environ.setdefault("TOKEN_ENCRYPTION_SALT", "dGVzdC1zYWx0LTE2Ynl0ZQ==")
 
 from unittest.mock import AsyncMock, patch
 
-import pytest
 from fastapi.testclient import TestClient
 
 from services.user_management.database import create_all_tables
@@ -90,7 +89,9 @@ class TestClerkWebhookEndpoint:
 
     @patch("services.user_management.auth.webhook_auth.verify_webhook_signature")
     @patch("services.user_management.routers.webhooks.webhook_service")
-    def test_clerk_webhook_user_created_success(self, mock_webhook_service, mock_verify):
+    def test_clerk_webhook_user_created_success(
+        self, mock_webhook_service, mock_verify
+    ):
         """Test successful user.created webhook processing."""
         # Mock signature verification to pass
         mock_verify.return_value = None
@@ -126,7 +127,9 @@ class TestClerkWebhookEndpoint:
 
     @patch("services.user_management.auth.webhook_auth.verify_webhook_signature")
     @patch("services.user_management.routers.webhooks.webhook_service")
-    def test_clerk_webhook_user_updated_success(self, mock_webhook_service, mock_verify):
+    def test_clerk_webhook_user_updated_success(
+        self, mock_webhook_service, mock_verify
+    ):
         """Test successful user.updated webhook processing."""
         # Mock signature verification to pass
         mock_verify.return_value = None
@@ -162,7 +165,9 @@ class TestClerkWebhookEndpoint:
 
     @patch("services.user_management.auth.webhook_auth.verify_webhook_signature")
     @patch("services.user_management.routers.webhooks.webhook_service")
-    def test_clerk_webhook_user_deleted_success(self, mock_webhook_service, mock_verify):
+    def test_clerk_webhook_user_deleted_success(
+        self, mock_webhook_service, mock_verify
+    ):
         """Test successful user.deleted webhook processing."""
         # Mock signature verification to pass
         mock_verify.return_value = None
@@ -200,7 +205,9 @@ class TestClerkWebhookEndpoint:
         """Test webhook signature verification failure."""
         # Send webhook without mocking signature verification
         # This will test the actual verification logic
-        response = self.client.post("/webhooks/clerk", json=self.sample_user_created_payload)
+        response = self.client.post(
+            "/webhooks/clerk", json=self.sample_user_created_payload
+        )
 
         # In test environment, webhook secret is not configured so verification is skipped
         # This test verifies the endpoint exists and handles requests

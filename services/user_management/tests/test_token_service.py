@@ -18,7 +18,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from services.user_management.database import create_all_tables
-from services.user_management.models.integration import Integration, IntegrationProvider, IntegrationStatus
+from services.user_management.models.integration import (
+    Integration,
+    IntegrationProvider,
+    IntegrationStatus,
+)
 from services.user_management.models.user import User
 from services.user_management.services.token_service import TokenService
 
@@ -68,7 +72,9 @@ class TestTokenService:
 
         with (
             patch.object(
-                self.token_service, "_get_user_integration", return_value=self.mock_integration
+                self.token_service,
+                "_get_user_integration",
+                return_value=self.mock_integration,
             ),
             patch.object(self.token_service, "_store_token_record") as mock_store,
             patch(
@@ -92,7 +98,9 @@ class TestTokenService:
         granted_scopes = ["read", "write", "admin"]
         required_scopes = ["read", "write"]
 
-        result = self.token_service._has_required_scopes(granted_scopes, required_scopes)
+        result = self.token_service._has_required_scopes(
+            granted_scopes, required_scopes
+        )
         assert result is True
 
     @pytest.mark.asyncio
@@ -101,7 +109,9 @@ class TestTokenService:
         granted_scopes = ["read"]
         required_scopes = ["read", "write", "admin"]
 
-        result = self.token_service._has_required_scopes(granted_scopes, required_scopes)
+        result = self.token_service._has_required_scopes(
+            granted_scopes, required_scopes
+        )
         assert result is False
 
     @pytest.mark.asyncio

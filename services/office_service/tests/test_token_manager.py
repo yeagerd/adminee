@@ -5,13 +5,12 @@ Tests token storage, retrieval, refresh, and encryption/decryption
 functionality with proper mocking of external dependencies.
 """
 
-import tempfile
-import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
+
 from services.office_service.core.token_manager import TokenData, TokenManager
 
 

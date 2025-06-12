@@ -16,7 +16,6 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
-from services.chat_service import history_manager
 from llama_index.core import StorageContext
 from llama_index.core.agent import ReActAgent
 from llama_index.core.agent.function_calling import FunctionCallingAgent
@@ -33,6 +32,8 @@ from llama_index.core.memory import (
 from llama_index.core.tools import FunctionTool
 from llama_index.core.vector_stores import SimpleVectorStore
 from llama_index.embeddings.openai import OpenAIEmbedding
+
+from services.chat_service import history_manager
 from services.chat_service.llm_manager import FakeLLM, llm_manager
 
 logger = logging.getLogger(__name__)

@@ -7,11 +7,9 @@ the User Management Service for easier development and testing workflows.
 
 import logging
 import os
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Optional
 
-import httpx
-from services.office_service.core.config import settings
+
 from services.office_service.core.token_manager import TokenData, TokenManager
 
 logger = logging.getLogger(__name__)

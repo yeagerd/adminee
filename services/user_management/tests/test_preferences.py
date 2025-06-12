@@ -13,19 +13,16 @@ import tempfile
 os.environ.setdefault("TOKEN_ENCRYPTION_SALT", "dGVzdC1zYWx0LTE2Ynl0ZQ==")
 
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
-from fastapi import status
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from services.user_management.auth.clerk import get_current_user
 from services.user_management.database import create_all_tables
 from services.user_management.exceptions import (
-    PreferencesNotFoundException,
     UserNotFoundException,
-    ValidationException,
 )
 from services.user_management.main import app
 from services.user_management.schemas.preferences import (
@@ -236,7 +233,9 @@ class TestPreferencesService:
     async def test_get_user_preferences_success(self):
         """Test successful retrieval of user preferences."""
         with patch.object(
-            self.preferences_service, "get_user_preferences", return_value=self.mock_preferences
+            self.preferences_service,
+            "get_user_preferences",
+            return_value=self.mock_preferences,
         ) as mock_get:
             result = await self.preferences_service.get_user_preferences("user_123")
 
@@ -258,7 +257,9 @@ class TestPreferencesService:
     async def test_get_user_preferences_create_defaults(self):
         """Test creating default preferences when none exist."""
         with patch.object(
-            self.preferences_service, "get_user_preferences", return_value=self.mock_preferences
+            self.preferences_service,
+            "get_user_preferences",
+            return_value=self.mock_preferences,
         ) as mock_get:
             result = await self.preferences_service.get_user_preferences("user_123")
 
@@ -277,9 +278,13 @@ class TestPreferencesService:
         )
 
         with patch.object(
-            self.preferences_service, "update_user_preferences", return_value=self.mock_preferences
+            self.preferences_service,
+            "update_user_preferences",
+            return_value=self.mock_preferences,
         ) as mock_update:
-            result = await self.preferences_service.update_user_preferences("user_123", update_data)
+            result = await self.preferences_service.update_user_preferences(
+                "user_123", update_data
+            )
 
             mock_update.assert_called_once_with("user_123", update_data)
             assert result == self.mock_preferences
@@ -290,9 +295,13 @@ class TestPreferencesService:
         update_data = UserPreferencesUpdate()  # Empty update
 
         with patch.object(
-            self.preferences_service, "update_user_preferences", return_value=self.mock_preferences
+            self.preferences_service,
+            "update_user_preferences",
+            return_value=self.mock_preferences,
         ) as mock_update:
-            result = await self.preferences_service.update_user_preferences("user_123", update_data)
+            result = await self.preferences_service.update_user_preferences(
+                "user_123", update_data
+            )
 
             mock_update.assert_called_once_with("user_123", update_data)
             assert result == self.mock_preferences
@@ -300,12 +309,18 @@ class TestPreferencesService:
     @pytest.mark.asyncio
     async def test_reset_user_preferences_all_categories(self):
         """Test resetting all preference categories."""
-        reset_request = PreferencesResetRequest(categories=["ui", "notifications", "ai", "integrations", "privacy"])
+        reset_request = PreferencesResetRequest(
+            categories=["ui", "notifications", "ai", "integrations", "privacy"]
+        )
 
         with patch.object(
-            self.preferences_service, "reset_user_preferences", return_value=self.mock_preferences
+            self.preferences_service,
+            "reset_user_preferences",
+            return_value=self.mock_preferences,
         ) as mock_reset:
-            result = await self.preferences_service.reset_user_preferences("user_123", reset_request)
+            result = await self.preferences_service.reset_user_preferences(
+                "user_123", reset_request
+            )
 
             mock_reset.assert_called_once_with("user_123", reset_request)
             assert result == self.mock_preferences
@@ -316,9 +331,13 @@ class TestPreferencesService:
         reset_request = PreferencesResetRequest(categories=["ui", "notifications"])
 
         with patch.object(
-            self.preferences_service, "reset_user_preferences", return_value=self.mock_preferences
+            self.preferences_service,
+            "reset_user_preferences",
+            return_value=self.mock_preferences,
         ) as mock_reset:
-            result = await self.preferences_service.reset_user_preferences("user_123", reset_request)
+            result = await self.preferences_service.reset_user_preferences(
+                "user_123", reset_request
+            )
 
             mock_reset.assert_called_once_with("user_123", reset_request)
             assert result == self.mock_preferences
@@ -366,6 +385,7 @@ class TestPreferencesEndpoints:
 
     def _setup_auth_mock(self):
         """Setup authentication mock."""
+
         async def mock_get_current_user():
             return {
                 "clerk_id": "user_123",
@@ -390,7 +410,7 @@ class TestPreferencesEndpoints:
 
         # Test that the client can be created successfully
         assert self.client is not None
-        
+
         # Test would require actual API routing which is complex to mock
         # The important business logic is tested in TestPreferencesService
         assert True  # Placeholder for API integration test

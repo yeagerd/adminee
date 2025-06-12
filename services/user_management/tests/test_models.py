@@ -8,7 +8,11 @@ and database constraints for the user management domain.
 from datetime import datetime, timezone
 
 from services.user_management.models.audit import AuditLog
-from services.user_management.models.integration import Integration, IntegrationProvider, IntegrationStatus
+from services.user_management.models.integration import (
+    Integration,
+    IntegrationProvider,
+    IntegrationStatus,
+)
 from services.user_management.models.preferences import UserPreferences
 from services.user_management.models.token import EncryptedToken, TokenType
 from services.user_management.models.user import User

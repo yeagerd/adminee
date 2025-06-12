@@ -1,7 +1,7 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
-from services.office_service.models import Provider
 from services.office_service.core.clients.base import BaseAPIClient
+from services.office_service.models import Provider
 
 
 class MicrosoftAPIClient(BaseAPIClient):

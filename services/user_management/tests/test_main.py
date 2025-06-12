@@ -14,7 +14,6 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from services.user_management.database import create_all_tables
-
 from services.user_management.exceptions import (
     AuthenticationException,
     IntegrationNotFoundException,

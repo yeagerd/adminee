@@ -14,7 +14,6 @@ from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 from fastapi import status
-from fastapi.testclient import TestClient
 
 from services.common.test_utils import BaseUserManagementIntegrationTest
 from services.user_management.exceptions import (
@@ -636,20 +635,20 @@ class TestIntegrationEndpointSecurity(BaseUserManagementIntegrationTest):
         """Test that endpoints require proper authentication."""
         # Clear authentication override to test unauthenticated access
         from services.user_management.auth.clerk import get_current_user
-        
+
         if get_current_user in self.app.dependency_overrides:
             del self.app.dependency_overrides[get_current_user]
 
         # Test various endpoints without authentication
         # These endpoints require user_id and authentication
         user_id = "test_user_123"
-        
+
         # Test GET endpoints
         get_endpoints = [
             f"/users/{user_id}/integrations/",
             f"/users/{user_id}/integrations/stats",
         ]
-        
+
         for endpoint in get_endpoints:
             response = self.client.get(endpoint)
             # Should return 401 (Unauthorized), 403 (Forbidden), or 422 (Validation Error)
@@ -658,12 +657,12 @@ class TestIntegrationEndpointSecurity(BaseUserManagementIntegrationTest):
                 403,
                 422,
             ], f"GET endpoint {endpoint} should require authentication, got {response.status_code}"
-        
+
         # Test POST endpoints
         post_endpoints = [
             f"/users/{user_id}/integrations/oauth/start",
         ]
-        
+
         for endpoint in post_endpoints:
             response = self.client.post(endpoint, json={})
             # Should return 401 (Unauthorized), 403 (Forbidden), or 422 (Validation Error)
@@ -676,7 +675,7 @@ class TestIntegrationEndpointSecurity(BaseUserManagementIntegrationTest):
     def test_user_ownership_verification(self):
         """Test that users can only access their own resources."""
         from services.user_management.auth.clerk import get_current_user
-        
+
         # Mock a different user
         async def mock_different_user():
             return "different_user_456"

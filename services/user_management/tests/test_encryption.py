@@ -24,18 +24,22 @@ class TestTokenEncryption:
     def setup_method(self):
         # Set up environment variables before creating services
         os.environ.setdefault("TOKEN_ENCRYPTION_SALT", "dGVzdC1zYWx0LTE2Ynl0ZQ==")
-        
+
         self.db_fd, self.db_path = tempfile.mkstemp()
         os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
         asyncio.run(create_all_tables())
-        
+
         # Mock the salt function and create encryption service
         self.mock_get_token_encryption_salt_patcher = patch(
             "services.user_management.security.encryption.get_token_encryption_salt"
         )
-        self.mock_get_token_encryption_salt = self.mock_get_token_encryption_salt_patcher.start()
-        self.mock_get_token_encryption_salt.return_value = base64.b64encode(b"test-salt-16byte").decode("utf-8")
-        
+        self.mock_get_token_encryption_salt = (
+            self.mock_get_token_encryption_salt_patcher.start()
+        )
+        self.mock_get_token_encryption_salt.return_value = base64.b64encode(
+            b"test-salt-16byte"
+        ).decode("utf-8")
+
         self.encryption_service = TokenEncryption()
         self.sample_tokens = self._get_sample_tokens()
 
@@ -148,7 +152,9 @@ class TestTokenEncryption:
         additional_data = "provider:google"
 
         # Encrypt with AAD
-        encrypted = self.encryption_service.encrypt_token(token, user_id, additional_data)
+        encrypted = self.encryption_service.encrypt_token(
+            token, user_id, additional_data
+        )
 
         # Decrypt with correct AAD
         decrypted = self.encryption_service.decrypt_token(
@@ -286,7 +292,9 @@ class TestTokenEncryption:
         assert not self.encryption_service.is_encrypted(plaintext_token)
 
         # Encrypted token should be detected
-        encrypted_token = self.encryption_service.encrypt_token(plaintext_token, user_id)
+        encrypted_token = self.encryption_service.encrypt_token(
+            plaintext_token, user_id
+        )
         assert self.encryption_service.is_encrypted(encrypted_token)
 
         # Invalid base64 should not be detected as encrypted
@@ -307,6 +315,7 @@ class TestTokenEncryption:
         nonce = os.urandom(12)
 
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
         cipher = AESGCM(key)
         ciphertext = cipher.encrypt(nonce, token.encode("utf-8"), None)
 
@@ -368,7 +377,7 @@ class TestTokenEncryption:
         except Exception:
             # If it fails, that's also acceptable behavior
             pass
-        
+
         # Test that normal operation still works
         normal_key = self.encryption_service.derive_user_key("user_123")
         assert len(normal_key) == 32

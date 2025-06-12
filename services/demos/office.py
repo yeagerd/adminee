@@ -29,7 +29,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "office_service
 
 from services.office_service.core.clients.google import GoogleAPIClient
 from services.office_service.core.clients.microsoft import MicrosoftAPIClient
-from services.office_service.core.normalizer import normalize_google_email, normalize_microsoft_email
+from services.office_service.core.normalizer import (
+    normalize_google_email,
+    normalize_microsoft_email,
+)
 from services.office_service.schemas import EmailMessage
 
 

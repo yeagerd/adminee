@@ -9,18 +9,20 @@ import asyncio
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Path, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
+
 from services.office_service.core.api_client_factory import APIClientFactory
 from services.office_service.core.auth import ServicePermissionRequired
 from services.office_service.core.cache_manager import cache_manager, generate_cache_key
-from services.office_service.core.normalizer import normalize_google_drive_file, normalize_microsoft_drive_file
-from services.office_service.models import ApiCall, ApiCallStatus, Provider
+from services.office_service.core.normalizer import (
+    normalize_google_drive_file,
+    normalize_microsoft_drive_file,
+)
+from services.office_service.models import Provider
 from services.office_service.schemas import (
     ApiResponse,
-    DriveFile,
-    DriveFileList,
 )
 
 logger = logging.getLogger(__name__)
@@ -138,7 +140,9 @@ async def get_files(
 
                 async with client:
                     if provider == "google":
-                        from services.office_service.core.clients.google import GoogleAPIClient
+                        from services.office_service.core.clients.google import (
+                            GoogleAPIClient,
+                        )
 
                         if not isinstance(client, GoogleAPIClient):
                             raise Exception(
@@ -186,7 +190,9 @@ async def get_files(
                         )
 
                     elif provider == "microsoft":
-                        from services.office_service.core.clients.microsoft import MicrosoftAPIClient
+                        from services.office_service.core.clients.microsoft import (
+                            MicrosoftAPIClient,
+                        )
 
                         if not isinstance(client, MicrosoftAPIClient):
                             raise Exception(
@@ -379,7 +385,9 @@ async def search_files(
 
                 async with client:
                     if provider == "google":
-                        from services.office_service.core.clients.google import GoogleAPIClient
+                        from services.office_service.core.clients.google import (
+                            GoogleAPIClient,
+                        )
 
                         if not isinstance(client, GoogleAPIClient):
                             raise Exception(
@@ -417,7 +425,9 @@ async def search_files(
                         )
 
                     elif provider == "microsoft":
-                        from services.office_service.core.clients.microsoft import MicrosoftAPIClient
+                        from services.office_service.core.clients.microsoft import (
+                            MicrosoftAPIClient,
+                        )
 
                         if not isinstance(client, MicrosoftAPIClient):
                             raise Exception(
@@ -550,7 +560,9 @@ async def get_file(
         async with client:
             try:
                 if provider == "google":
-                    from services.office_service.core.clients.google import GoogleAPIClient
+                    from services.office_service.core.clients.google import (
+                        GoogleAPIClient,
+                    )
 
                     if not isinstance(client, GoogleAPIClient):
                         raise Exception(
@@ -564,7 +576,9 @@ async def get_file(
                     normalized_file = normalize_google_drive_file(response, user_id)
 
                 elif provider == "microsoft":
-                    from services.office_service.core.clients.microsoft import MicrosoftAPIClient
+                    from services.office_service.core.clients.microsoft import (
+                        MicrosoftAPIClient,
+                    )
 
                     if not isinstance(client, MicrosoftAPIClient):
                         raise Exception(

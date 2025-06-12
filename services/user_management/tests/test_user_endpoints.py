@@ -10,14 +10,16 @@ import os
 os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
 
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import HTTPException, status
 
+from services.user_management.exceptions import (
+    UserNotFoundException,
+    ValidationException,
+)
 from services.user_management.models.user import User
-
-from services.user_management.exceptions import UserNotFoundException, ValidationException
 from services.user_management.schemas.user import (
     UserCreate,
     UserDeleteResponse,
@@ -430,11 +432,15 @@ class TestUserProfileEndpoints:
     async def test_user_profile_workflow(self):
         """Test complete user profile workflow with mocked service operations."""
         # Create mock user data
-        mock_user = self.create_mock_user(user_id=1, external_auth_id="user_integration_test")
+        mock_user = self.create_mock_user(
+            user_id=1, external_auth_id="user_integration_test"
+        )
         mock_user.email = "integration@test.com"
         mock_user.first_name = "Original"
-        
-        mock_updated_user = self.create_mock_user(user_id=1, external_auth_id="user_integration_test")
+
+        mock_updated_user = self.create_mock_user(
+            user_id=1, external_auth_id="user_integration_test"
+        )
         mock_updated_user.email = "integration@test.com"
         mock_updated_user.first_name = "Updated"
 
@@ -453,10 +459,10 @@ class TestUserProfileEndpoints:
 
             update_data = UserUpdate(first_name="Updated")
             updated_user = await user_service.update_user(1, update_data)
-            
+
             assert updated_user.first_name == "Updated"
             assert updated_user.id == 1
-            
+
             # Verify service calls
             user_service.get_user_by_id.assert_called_once_with(1)
             user_service.update_user.assert_called_once_with(1, update_data)
@@ -484,7 +490,7 @@ class TestUserServiceIntegration:
             # Test getting existing user (should work)
             mock_get_by_id.side_effect = None
             mock_get_by_id.return_value = mock_user
-            
+
             retrieved_user = await user_service.get_user_by_id(1)
             assert retrieved_user.id == 1
 
@@ -495,7 +501,7 @@ class TestUserServiceIntegration:
             mock_create.side_effect = ValidationException(
                 field="external_auth_id",
                 value="existing_user",
-                reason="User with this external_auth_id already exists"
+                reason="User with this external_auth_id already exists",
             )
 
             create_data = UserCreate(
@@ -505,7 +511,7 @@ class TestUserServiceIntegration:
 
             with pytest.raises(ValidationException) as exc_info:
                 await user_service.create_user(create_data)
-            
+
             assert "already exists" in str(exc_info.value)
             mock_create.assert_called_once_with(create_data)
 

@@ -16,7 +16,10 @@ from services.user_management.exceptions import (
     NotFoundException,
     SimpleValidationException,
 )
-from services.user_management.models.integration import IntegrationProvider, IntegrationStatus
+from services.user_management.models.integration import (
+    IntegrationProvider,
+    IntegrationStatus,
+)
 from services.user_management.schemas.integration import (
     IntegrationDisconnectRequest,
     IntegrationDisconnectResponse,
