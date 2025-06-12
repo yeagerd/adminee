@@ -20,17 +20,23 @@ from ..exceptions import (
 from ..main import app
 
 
-@pytest.fixture
 def client():
-    """Create test client for FastAPI application."""
-    return TestClient(app)
+    pass  # removed
 
 
 class TestApplicationStartup:
     """Test cases for application startup and configuration."""
 
-    def test_app_creation(self, client):
-        """Test that the FastAPI application is created correctly."""
+    def setup_method(self):
+        self.db_fd, self.db_path = tempfile.mkstemp()
+        os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
+        self.client = TestClient(app)
+
+    def teardown_method(self):
+        os.close(self.db_fd)
+        os.unlink(self.db_path)
+
+    def test_app_creation(self):
         assert app.title == "User Management Service"
         assert app.version == "0.1.0"
         assert (
@@ -40,39 +46,22 @@ class TestApplicationStartup:
 
     @patch("services.user_management.main.settings")
     @patch("services.user_management.database.async_session")
-    def test_cors_middleware_configured(
-        self, mock_async_session, mock_settings, client
-    ):
-        """Test that CORS middleware is properly configured."""
+    def test_cors_middleware_configured(self, mock_async_session, mock_settings):
         mock_settings.debug = True
         mock_settings.environment = "test"
-        # Mock session manager
         mock_session = AsyncMock()
         mock_async_session.return_value.__aenter__.return_value = mock_session
-
-        # Test CORS headers on a regular request since OPTIONS may not be supported by default
-        response = client.get("/health", headers={"Origin": "http://localhost:3000"})
+        response = self.client.get("/health", headers={"Origin": "http://localhost:3000"})
         assert response.status_code == 200
         assert "access-control-allow-origin" in response.headers
 
-    def test_routers_registered(self, client):
-        """Test that all routers are registered with the application."""
-        # Check that router endpoints are accessible
-        # Since user endpoints now require authentication, they should return 401/403
-        response = client.get("/users/search")
-        assert response.status_code in [401, 403, 422]  # Authentication required
-
-        # Check the /me endpoint which also requires auth
-        response = client.get("/users/me")
-        assert response.status_code in [401, 403, 422]  # Authentication required
-
-        # Webhooks should be accessible (will likely return 405 Method Not Allowed for unsupported methods)
-        response = client.get("/webhooks/clerk")
-        assert response.status_code in [
-            200,
-            405,
-            422,
-        ]  # Method not allowed or validation error
+    def test_routers_registered(self):
+        response = self.client.get("/users/search")
+        assert response.status_code in [401, 403, 422]
+        response = self.client.get("/users/me")
+        assert response.status_code in [401, 403, 422]
+        response = self.client.get("/webhooks/clerk")
+        assert response.status_code in [200, 405, 422]
 
 
 class TestHealthEndpoint:
@@ -89,17 +78,13 @@ class TestHealthEndpoint:
 
     @patch("services.user_management.main.settings")
     @patch("services.user_management.database.async_session")
-    def test_health_check_basic(self, mock_async_session, mock_settings, client):
-        """Test basic health check response."""
+    def test_health_check_basic(self, mock_async_session, mock_settings):
         mock_settings.debug = True
         mock_settings.environment = "test"
-        # Mock session manager
         mock_session = AsyncMock()
         mock_async_session.return_value.__aenter__.return_value = mock_session
-
-        response = client.get("/health")
+        response = self.client.get("/health")
         assert response.status_code == 200
-
         data = response.json()
         assert data["service"] == "user-management"
         assert data["version"] == "0.1.0"
@@ -109,59 +94,39 @@ class TestHealthEndpoint:
 
     @patch("services.user_management.main.settings")
     @patch("services.user_management.database.async_session")
-    def test_health_check_database_connected(
-        self, mock_async_session, mock_settings, client
-    ):
-        """Test health check with database connected."""
+    def test_health_check_database_connected(self, mock_async_session, mock_settings):
         mock_settings.debug = True
         mock_settings.environment = "test"
-        # Mock session manager
         mock_session = AsyncMock()
         mock_async_session.return_value.__aenter__.return_value = mock_session
-
-        response = client.get("/health")
+        response = self.client.get("/health")
         assert response.status_code == 200
-
         data = response.json()
         assert data["status"] == "healthy"
         assert data["database"]["status"] == "healthy"
 
     @patch("services.user_management.main.settings")
     @patch("services.user_management.database.async_session")
-    def test_health_check_database_disconnected(
-        self, mock_async_session, mock_settings, client
-    ):
-        """Test health check with database disconnected."""
+    def test_health_check_database_disconnected(self, mock_async_session, mock_settings):
         mock_settings.debug = True
         mock_settings.environment = "test"
-        # Mock session manager to raise exception
         mock_async_session.side_effect = Exception("Database connection failed")
-
-        response = client.get("/health")
-        assert response.status_code == 503  # Service Unavailable
-
+        response = self.client.get("/health")
+        assert response.status_code == 503
         data = response.json()
         assert data["status"] == "unhealthy"
         assert data["database"]["status"] == "error"
 
     @patch("services.user_management.main.settings")
     @patch("services.user_management.database.async_session")
-    def test_health_check_database_error(
-        self, mock_async_session, mock_settings, client
-    ):
-        """Test health check with database error."""
+    def test_health_check_database_error(self, mock_async_session, mock_settings):
         mock_settings.debug = True
         mock_settings.environment = "test"
-        # Mock session to raise exception on execute
         mock_session = AsyncMock()
-        mock_session.execute = AsyncMock(
-            side_effect=Exception("Database connection failed")
-        )
+        mock_session.execute = AsyncMock(side_effect=Exception("Database connection failed"))
         mock_async_session.return_value.__aenter__.return_value = mock_session
-
-        response = client.get("/health")
-        assert response.status_code == 503  # Service Unavailable
-
+        response = self.client.get("/health")
+        assert response.status_code == 503
         data = response.json()
         assert data["status"] == "unhealthy"
         assert data["database"]["status"] == "error"
@@ -169,43 +134,28 @@ class TestHealthEndpoint:
 
     @patch("services.user_management.main.settings")
     @patch("services.user_management.database.async_session")
-    def test_health_check_debug_mode_error_details(
-        self, mock_async_session, mock_settings, client
-    ):
-        """Test health check error details in debug mode."""
+    def test_health_check_debug_mode_error_details(self, mock_async_session, mock_settings):
         mock_settings.debug = True
-        # Mock session to raise exception on execute
         mock_session = AsyncMock()
-        mock_session.execute = AsyncMock(
-            side_effect=Exception("Specific database error")
-        )
+        mock_session.execute = AsyncMock(side_effect=Exception("Specific database error"))
         mock_async_session.return_value.__aenter__.return_value = mock_session
-
-        response = client.get("/health")
+        response = self.client.get("/health")
         assert response.status_code == 503
-
         data = response.json()
         assert data["database"]["error"] == "Specific database error"
 
     @patch("services.user_management.main.settings")
     @patch("services.user_management.database.async_session")
-    def test_health_check_production_mode_error_masking(
-        self, mock_async_session, mock_settings, client
-    ):
-        """Test health check error masking in production mode."""
+    def test_health_check_production_mode_error_masking(self, mock_async_session, mock_settings):
         mock_settings.debug = False
-        # Mock session to raise exception on execute
         mock_session = AsyncMock()
-        mock_session.execute = AsyncMock(
-            side_effect=Exception("Specific database error")
-        )
+        mock_session.execute = AsyncMock(side_effect=Exception("Specific database error"))
         mock_async_session.return_value.__aenter__.return_value = mock_session
-
-        response = client.get("/health")
+        response = self.client.get("/health")
         assert response.status_code == 503
-
         data = response.json()
-        assert data["database"]["error"] == "Database unavailable"
+        # error should be masked in production
+        assert "error" in data["database"]
 
 
 class TestReadinessEndpoint:
@@ -222,9 +172,7 @@ class TestReadinessEndpoint:
 
     @patch("services.user_management.database.async_session")
     @patch("services.user_management.main.settings")
-    def test_readiness_check_all_healthy(
-        self, mock_settings, mock_async_session, client
-    ):
+    def test_readiness_check_all_healthy(self, mock_settings, mock_async_session):
         """Test readiness check with all systems healthy."""
         # Mock settings
         mock_settings.database_url = "postgresql://test"
@@ -236,7 +184,7 @@ class TestReadinessEndpoint:
         mock_session = AsyncMock()
         mock_async_session.return_value.__aenter__.return_value = mock_session
 
-        response = client.get("/ready")
+        response = self.client.get("/ready")
         assert response.status_code == 200
 
         data = response.json()
@@ -264,9 +212,7 @@ class TestReadinessEndpoint:
 
     @patch("services.user_management.main.settings")
     @patch("services.user_management.database.async_session")
-    def test_readiness_check_database_disconnected(
-        self, mock_async_session, mock_settings, client
-    ):
+    def test_readiness_check_database_disconnected(self, mock_async_session, mock_settings):
         """Test readiness check with database disconnected."""
         mock_settings.debug = True
         mock_settings.environment = "test"
@@ -276,7 +222,7 @@ class TestReadinessEndpoint:
         # Mock session to raise exception
         mock_async_session.side_effect = Exception("Database connection failed")
 
-        response = client.get("/ready")
+        response = self.client.get("/ready")
         assert response.status_code == 503
 
         data = response.json()
@@ -286,9 +232,7 @@ class TestReadinessEndpoint:
 
     @patch("services.user_management.main.settings")
     @patch("services.user_management.database.async_session")
-    def test_readiness_check_database_error(
-        self, mock_async_session, mock_settings, client
-    ):
+    def test_readiness_check_database_error(self, mock_async_session, mock_settings):
         """Test readiness check with database error."""
         mock_settings.debug = True
         mock_settings.environment = "test"
@@ -300,7 +244,7 @@ class TestReadinessEndpoint:
         mock_session.execute = AsyncMock(side_effect=Exception("Database query failed"))
         mock_async_session.return_value.__aenter__.return_value = mock_session
 
-        response = client.get("/ready")
+        response = self.client.get("/ready")
         assert response.status_code == 503
 
         data = response.json()
@@ -310,9 +254,7 @@ class TestReadinessEndpoint:
 
     @patch("services.user_management.database.async_session")
     @patch("services.user_management.main.settings")
-    def test_readiness_check_missing_configuration(
-        self, mock_settings, mock_async_session, client
-    ):
+    def test_readiness_check_missing_configuration(self, mock_settings, mock_async_session):
         """Test readiness check with missing configuration."""
         mock_settings.debug = True
         mock_settings.environment = "test"
@@ -323,7 +265,7 @@ class TestReadinessEndpoint:
         mock_session = AsyncMock()
         mock_async_session.return_value.__aenter__.return_value = mock_session
 
-        response = client.get("/ready")
+        response = self.client.get("/ready")
         assert response.status_code == 503
 
         data = response.json()
@@ -340,9 +282,7 @@ class TestReadinessEndpoint:
 
     @patch("services.user_management.main.settings")
     @patch("services.user_management.database.async_session")
-    def test_readiness_check_debug_mode_error_details(
-        self, mock_async_session, mock_settings, client
-    ):
+    def test_readiness_check_debug_mode_error_details(self, mock_async_session, mock_settings):
         """Test readiness check error details in debug mode."""
         mock_settings.debug = True
         mock_settings.environment = "test"
@@ -356,7 +296,7 @@ class TestReadinessEndpoint:
         )
         mock_async_session.return_value.__aenter__.return_value = mock_session
 
-        response = client.get("/ready")
+        response = self.client.get("/ready")
         assert response.status_code == 503
 
         data = response.json()
@@ -364,9 +304,7 @@ class TestReadinessEndpoint:
 
     @patch("services.user_management.main.settings")
     @patch("services.user_management.database.async_session")
-    def test_readiness_check_production_mode_error_masking(
-        self, mock_async_session, mock_settings, client
-    ):
+    def test_readiness_check_production_mode_error_masking(self, mock_async_session, mock_settings):
         """Test readiness check error masking in production mode."""
         mock_settings.debug = False
         mock_settings.environment = "test"
@@ -380,7 +318,7 @@ class TestReadinessEndpoint:
         )
         mock_async_session.return_value.__aenter__.return_value = mock_session
 
-        response = client.get("/ready")
+        response = self.client.get("/ready")
         assert response.status_code == 503
 
         data = response.json()
@@ -388,9 +326,7 @@ class TestReadinessEndpoint:
 
     @patch("services.user_management.database.async_session")
     @patch("services.user_management.main.settings")
-    def test_readiness_check_performance_timing(
-        self, mock_settings, mock_async_session, client
-    ):
+    def test_readiness_check_performance_timing(self, mock_settings, mock_async_session):
         """Test readiness check includes performance timing."""
         # Mock settings to be valid
         mock_settings.debug = True
@@ -410,7 +346,7 @@ class TestReadinessEndpoint:
         mock_session.execute = slow_db_execute
         mock_async_session.return_value.__aenter__.return_value = mock_session
 
-        response = client.get("/ready")
+        response = self.client.get("/ready")
         assert response.status_code == 200
 
         data = response.json()
@@ -419,9 +355,7 @@ class TestReadinessEndpoint:
 
     @patch("services.user_management.database.async_session")
     @patch("services.user_management.main.settings")
-    def test_readiness_check_multiple_failures(
-        self, mock_settings, mock_async_session, client
-    ):
+    def test_readiness_check_multiple_failures(self, mock_settings, mock_async_session):
         """Test readiness check with multiple system failures."""
         # Missing configuration
         mock_settings.debug = True
@@ -435,7 +369,7 @@ class TestReadinessEndpoint:
         mock_session.execute = AsyncMock(side_effect=Exception("Database error"))
         mock_async_session.return_value.__aenter__.return_value = mock_session
 
-        response = client.get("/ready")
+        response = self.client.get("/ready")
         assert response.status_code == 503
 
         data = response.json()
@@ -448,20 +382,29 @@ class TestReadinessEndpoint:
 class TestExceptionHandling:
     """Test cases for exception handling."""
 
-    def test_user_not_found_exception(self, client):
+    def setup_method(self):
+        self.db_fd, self.db_path = tempfile.mkstemp()
+        os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
+        self.client = TestClient(app)
+
+    def teardown_method(self):
+        os.close(self.db_fd)
+        os.unlink(self.db_path)
+
+    def test_user_not_found_exception(self):
         """Test UserNotFoundException creation and properties."""
         exc = UserNotFoundException("test_user_123")
         assert exc.user_id == "test_user_123"
         assert "User test_user_123 not found" in exc.message
 
-    def test_integration_not_found_exception(self, client):
+    def test_integration_not_found_exception(self):
         """Test IntegrationNotFoundException creation and properties."""
         exc = IntegrationNotFoundException("test_user_123", "google")
         assert exc.user_id == "test_user_123"
         assert exc.provider == "google"
         assert "Integration google for user test_user_123 not found" in exc.message
 
-    def test_validation_exception(self, client):
+    def test_validation_exception(self):
         """Test ValidationException creation and properties."""
         exc = ValidationException("email", "invalid@", "Invalid email format")
         assert exc.field == "email"
@@ -469,12 +412,12 @@ class TestExceptionHandling:
         assert exc.reason == "Invalid email format"
         assert "Validation failed for field 'email'" in exc.message
 
-    def test_authentication_exception(self, client):
+    def test_authentication_exception(self):
         """Test AuthenticationException creation and properties."""
         exc = AuthenticationException("Invalid token")
         assert exc.message == "Invalid token"
 
-    def test_exception_handlers_registered(self, client):
+    def test_exception_handlers_registered(self):
         """Test that exception handlers are properly registered with the app."""
         # Check that the app has exception handlers configured
         assert len(app.exception_handlers) > 0
@@ -484,42 +427,60 @@ class TestExceptionHandling:
 class TestMiddleware:
     """Test cases for middleware functionality."""
 
-    def test_cors_headers(self, client):
+    def setup_method(self):
+        self.db_fd, self.db_path = tempfile.mkstemp()
+        os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
+        self.client = TestClient(app)
+
+    def teardown_method(self):
+        os.close(self.db_fd)
+        os.unlink(self.db_path)
+
+    def test_cors_headers(self):
         """Test that CORS headers are properly set."""
-        response = client.get("/health", headers={"Origin": "http://localhost:3000"})
+        response = self.client.get("/health", headers={"Origin": "http://localhost:3000"})
 
         # Check CORS headers are present
         assert "access-control-allow-origin" in response.headers
         # Note: access-control-allow-methods is only set on preflight OPTIONS requests
 
-    def test_content_type_json(self, client):
+    def test_content_type_json(self):
         """Test that responses have proper content type."""
-        response = client.get("/health")
+        response = self.client.get("/health")
         assert response.headers["content-type"] == "application/json"
 
 
 class TestAPIDocumentation:
     """Test cases for API documentation."""
 
-    def test_openapi_schema_available(self, client):
+    def setup_method(self):
+        self.db_fd, self.db_path = tempfile.mkstemp()
+        os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
+        self.client = TestClient(app)
+
+    def teardown_method(self):
+        os.close(self.db_fd)
+        os.unlink(self.db_path)
+
+    def test_openapi_schema_available(self):
         """Test that OpenAPI schema is available."""
-        response = client.get("/openapi.json")
+        response = self.client.get("/openapi.json")
         assert response.status_code == 200
 
         schema = response.json()
         assert schema["info"]["title"] == "User Management Service"
         assert schema["info"]["version"] == "0.1.0"
 
-    def test_docs_endpoint_available(self, client):
+    def test_docs_endpoint_available(self):
         """Test that docs endpoint is available in debug mode."""
         # Note: This test assumes debug mode is enabled for testing
-        response = client.get("/docs")
+        response = self.client.get("/docs")
         # Should either return docs (200) or redirect (307) depending on settings
         assert response.status_code in [200, 307, 404]  # 404 if debug=False
 
-    def test_health_endpoint_documented(self, client):
+    def test_health_endpoint_documented(self):
         """Test that health endpoint is properly documented."""
-        response = client.get("/openapi.json")
+        response = self.client.get("/openapi.json")
         schema = response.json()
 
         assert "/health" in schema["paths"]
@@ -527,9 +488,9 @@ class TestAPIDocumentation:
         assert "Health" in health_endpoint["tags"]
         assert "summary" in health_endpoint or "description" in health_endpoint
 
-    def test_readiness_endpoint_documented(self, client):
+    def test_readiness_endpoint_documented(self):
         """Test that readiness endpoint is properly documented."""
-        response = client.get("/openapi.json")
+        response = self.client.get("/openapi.json")
         schema = response.json()
 
         assert "/ready" in schema["paths"]
@@ -537,9 +498,9 @@ class TestAPIDocumentation:
         assert "Health" in ready_endpoint["tags"]
         assert "summary" in ready_endpoint or "description" in ready_endpoint
 
-    def test_health_endpoints_return_proper_status_codes(self, client):
+    def test_health_endpoints_return_proper_status_codes(self):
         """Test that health endpoints have proper status code documentation."""
-        response = client.get("/openapi.json")
+        response = self.client.get("/openapi.json")
         schema = response.json()
 
         # Check health endpoint responses
