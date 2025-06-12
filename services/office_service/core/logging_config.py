@@ -1,8 +1,8 @@
 """
 Logging configuration for the Office Service.
 
-Provides structured JSON logging with proper formatting and log levels
-for production and development environments.
+Provides centralized logging setup with structured logging, request IDs,
+and appropriate log levels for different environments.
 """
 
 import json
@@ -12,7 +12,7 @@ import sys
 from datetime import datetime, timezone
 from typing import Any, Dict
 
-from core.config import settings
+from services.office_service.core.config import settings
 
 
 class JSONFormatter(logging.Formatter):

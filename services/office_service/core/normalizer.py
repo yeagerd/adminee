@@ -1,9 +1,8 @@
 """
-Data normalization module for converting provider-specific API responses
-into unified Pydantic models.
+Data normalization utilities for the Office Service.
 
-This module handles the conversion of raw JSON responses from Google and Microsoft APIs
-into standardized data structures that can be consumed by the unified endpoints.
+Provides functions to normalize API responses from different providers
+(Google, Microsoft) into consistent internal data structures.
 """
 
 import logging
@@ -12,8 +11,9 @@ from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from typing import Any, Dict, List, Optional
 
-from models import Provider
-from schemas import (
+from dateutil import parser as date_parser
+from services.office_service.models import Provider
+from services.office_service.schemas import (
     CalendarEvent,
     DriveFile,
     EmailAddress,

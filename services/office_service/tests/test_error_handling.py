@@ -1,22 +1,31 @@
+"""
+Unit tests for error handling across the Office Service.
+
+Tests error scenarios, exception handling, and proper HTTP status codes
+for various failure conditions in the API endpoints.
+"""
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
-from app.main import (
+from services.office_service.app.main import (
+    app,
     office_service_error_handler,
     provider_api_error_handler,
     rate_limit_error_handler,
+    validation_error_handler,
+    general_exception_handler,
 )
-from core.clients.google import GoogleAPIClient
-from core.exceptions import (
+from services.office_service.core.clients.google import GoogleAPIClient
+from services.office_service.core.exceptions import (
     OfficeServiceError,
     ProviderAPIError,
     RateLimitError,
 )
+from services.office_service.models import Provider
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from models import Provider
 
 
 class TestGlobalExceptionHandlers:

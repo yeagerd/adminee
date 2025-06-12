@@ -12,7 +12,7 @@ from typing import Any, Dict, Union
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from ..utils.validation import (
+from services.user_management.utils.validation import (
     check_sql_injection_patterns,
     validate_json_safe_string,
 )

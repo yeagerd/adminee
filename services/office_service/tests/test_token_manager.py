@@ -1,16 +1,17 @@
 """
-Unit tests for TokenManager.
+Unit tests for TokenManager class.
 
-Tests token retrieval, caching, error handling, and HTTP client integration
-for the TokenManager class that fetches tokens from the User Management Service.
+Tests token storage, retrieval, refresh, and encryption/decryption
+functionality with proper mocking of external dependencies.
 """
 
-from datetime import datetime, timezone
+import tempfile
+import os
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
-
 from services.office_service.core.token_manager import TokenData, TokenManager
 
 

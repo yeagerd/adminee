@@ -7,7 +7,7 @@ and standardized error responses.
 
 from typing import Any, Dict, Optional
 
-from models import Provider
+from services.office_service.models import Provider
 
 
 class OfficeServiceError(Exception):

@@ -20,8 +20,8 @@ from services.user_management.database import create_all_tables, get_async_sessi
 from services.user_management.main import app
 from services.user_management.models.user import User
 
-from ..schemas.webhook import ClerkWebhookEventData
-from ..services.webhook_service import WebhookService
+from services.user_management.schemas.webhook import ClerkWebhookEventData
+from services.user_management.services.webhook_service import WebhookService
 
 
 class TestWebhookServiceIntegration:

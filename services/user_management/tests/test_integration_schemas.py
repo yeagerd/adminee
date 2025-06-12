@@ -10,8 +10,8 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 
-from ..models.integration import IntegrationProvider, IntegrationStatus
-from ..schemas.integration import (
+from services.user_management.models.integration import IntegrationProvider, IntegrationStatus
+from services.user_management.schemas.integration import (
     IntegrationDisconnectRequest,
     IntegrationDisconnectResponse,
     IntegrationErrorResponse,

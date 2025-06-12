@@ -1,19 +1,19 @@
 """
-Cache manager module for Redis-based caching functionality.
+Cache Manager for the Office Service.
 
-This module provides a centralized interface for caching API responses and other
-frequently accessed data using Redis as the backend storage.
+Provides Redis-based caching with TTL, key generation, and error handling
+for API responses to improve performance and reduce external API calls.
 """
 
 import asyncio
 import hashlib
 import json
 import logging
-from datetime import datetime
-from typing import Any, Dict, Optional
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
 
 import redis.asyncio as redis
-from core.config import settings
+from services.office_service.core.config import settings
 from redis.asyncio import Redis
 
 logger = logging.getLogger(__name__)

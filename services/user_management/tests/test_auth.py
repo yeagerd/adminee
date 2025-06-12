@@ -12,14 +12,14 @@ import pytest
 from fastapi import HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials
 
-from ..auth.clerk import (
+from services.user_management.auth.clerk import (
     extract_user_id_from_token,
     get_current_user,
     require_user_ownership,
     verify_jwt_token,
     verify_user_ownership,
 )
-from ..auth.service_auth import (
+from services.user_management.auth.service_auth import (
     ServiceAuthRequired,
     get_current_service,
     require_service_auth,
@@ -27,7 +27,7 @@ from ..auth.service_auth import (
     validate_service_permissions,
     verify_service_authentication,
 )
-from ..exceptions import AuthenticationException, AuthorizationException
+from services.user_management.exceptions import AuthenticationException, AuthorizationException
 
 
 class TestClerkAuthentication:
@@ -217,7 +217,7 @@ class TestClerkAuthentication:
         with patch(
             "services.user_management.auth.clerk.verify_user_ownership"
         ) as mock_verify:
-            from ..exceptions import AuthorizationException
+            from services.user_management.exceptions import AuthorizationException
 
             mock_verify.side_effect = AuthorizationException("resource", "action")
 

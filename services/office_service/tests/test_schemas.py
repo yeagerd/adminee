@@ -1,15 +1,16 @@
 """
-Unit tests for Pydantic schema models.
+Unit tests for Pydantic schemas and data models.
 
-Tests validation, serialization, and deserialization of the unified
-data models for emails, calendar events, files, and API responses.
+Tests validation, serialization, and deserialization of API request/response
+models with various valid and invalid data scenarios.
 """
 
+import json
 from datetime import datetime, timezone
+from typing import Dict, List, Optional
 
 import pytest
 from pydantic import ValidationError
-
 from services.office_service.models import Provider
 from services.office_service.schemas import (
     ApiError,

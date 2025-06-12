@@ -1,18 +1,20 @@
 """
-Unit tests for the email API endpoints.
+Unit tests for email API endpoints.
 
-Tests the unified email endpoints with mocked API clients and dependencies
-to ensure proper functionality, error handling, and response formats.
+Tests the unified email API endpoints with proper mocking of external
+dependencies and comprehensive error handling scenarios.
 """
 
+import tempfile
+import os
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch, Mock, AsyncMock
 
 import pytest
-from app.main import app
 from fastapi.testclient import TestClient
-from models import Provider
-from schemas import EmailAddress, EmailMessage, SendEmailRequest
+from services.office_service.app.main import app
+from services.office_service.models import Provider
+from services.office_service.schemas import EmailAddress, EmailMessage, SendEmailRequest
 
 
 @pytest.fixture
@@ -43,7 +45,7 @@ def mock_email_message():
 @pytest.fixture
 def mock_cache_manager():
     """Mock the cache manager."""
-    with patch("api.email.cache_manager") as mock:
+    with patch("services.office_service.api.email.cache_manager") as mock:
         mock.get_from_cache = AsyncMock(return_value=None)
         mock.set_to_cache = AsyncMock()
         yield mock
@@ -52,14 +54,14 @@ def mock_cache_manager():
 @pytest.fixture
 def mock_api_client_factory():
     """Mock the API client factory."""
-    with patch("api.email.api_client_factory") as mock:
+    with patch("services.office_service.api.email.api_client_factory") as mock:
         yield mock
 
 
 class TestEmailMessagesEndpoint:
     """Tests for the GET /email/messages endpoint."""
 
-    @patch("api.email.fetch_provider_emails")
+    @patch("services.office_service.api.email.fetch_provider_emails")
     @pytest.mark.asyncio
     async def test_get_email_messages_success(
         self,
@@ -87,7 +89,7 @@ class TestEmailMessagesEndpoint:
         assert data["data"]["providers_used"] == ["google", "microsoft"]
         assert data["data"]["total_count"] == 2
 
-    @patch("api.email.fetch_provider_emails")
+    @patch("services.office_service.api.email.fetch_provider_emails")
     @pytest.mark.asyncio
     async def test_get_email_messages_with_cache_hit(
         self,
@@ -118,7 +120,7 @@ class TestEmailMessagesEndpoint:
         # Ensure fetch_provider_emails was not called due to cache hit
         mock_fetch_provider_emails.assert_not_called()
 
-    @patch("api.email.fetch_provider_emails")
+    @patch("services.office_service.api.email.fetch_provider_emails")
     @pytest.mark.asyncio
     async def test_get_email_messages_with_provider_errors(
         self,
@@ -162,7 +164,7 @@ class TestEmailMessagesEndpoint:
 class TestEmailMessageDetailEndpoint:
     """Tests for the GET /email/messages/{message_id} endpoint."""
 
-    @patch("api.email.fetch_single_message")
+    @patch("services.office_service.api.email.fetch_single_message")
     @pytest.mark.asyncio
     async def test_get_email_message_success(
         self,
@@ -185,7 +187,7 @@ class TestEmailMessageDetailEndpoint:
         assert data["data"]["message"]["id"] == "gmail_test123"
         assert data["data"]["provider"] == "google"
 
-    @patch("api.email.fetch_single_message")
+    @patch("services.office_service.api.email.fetch_single_message")
     @pytest.mark.asyncio
     async def test_get_email_message_not_found(
         self,
@@ -217,7 +219,7 @@ class TestSendEmailEndpoint:
             provider="google",
         )
 
-    @patch("api.email.api_client_factory.create_client")
+    @patch("services.office_service.api.email.api_client_factory.create_client")
     @pytest.mark.asyncio
     async def test_send_email_google_success(
         self,
@@ -263,7 +265,7 @@ class TestSendEmailEndpoint:
         # Verify API client was created
         mock_create_client.assert_called_once_with("test_user", "google")
 
-    @patch("api.email.api_client_factory.create_client")
+    @patch("services.office_service.api.email.api_client_factory.create_client")
     @pytest.mark.asyncio
     async def test_send_email_microsoft_success(
         self,
@@ -311,7 +313,7 @@ class TestSendEmailEndpoint:
         # Verify API client was created
         mock_create_client.assert_called_once_with("test_user", "microsoft")
 
-    @patch("api.email.api_client_factory.create_client")
+    @patch("services.office_service.api.email.api_client_factory.create_client")
     @pytest.mark.asyncio
     async def test_send_email_default_provider(
         self,
@@ -356,7 +358,7 @@ class TestSendEmailEndpoint:
         assert response.status_code == 400
         assert "Invalid provider" in response.json()["detail"]
 
-    @patch("api.email.api_client_factory.create_client")
+    @patch("services.office_service.api.email.api_client_factory.create_client")
     @pytest.mark.asyncio
     async def test_send_email_no_client_available(
         self,
@@ -402,7 +404,7 @@ class TestSendEmailEndpoint:
 
         assert response.status_code == 422  # Validation error
 
-    @patch("api.email.api_client_factory.create_client")
+    @patch("services.office_service.api.email.api_client_factory.create_client")
     @pytest.mark.asyncio
     async def test_send_email_with_all_fields(
         self,
@@ -534,8 +536,8 @@ class TestEmailHelperFunctions:
 class TestFetchProviderEmails:
     """Tests for the fetch_provider_emails function."""
 
-    @patch("api.email.api_client_factory")
-    @patch("api.email.normalize_google_email")
+    @patch("services.office_service.api.email.api_client_factory")
+    @patch("services.office_service.api.email.normalize_google_email")
     @pytest.mark.asyncio
     async def test_fetch_google_emails_success(
         self, mock_normalize_google_email, mock_api_client_factory, mock_email_message
@@ -561,8 +563,8 @@ class TestFetchProviderEmails:
         assert provider == "google"
         assert messages[0] == mock_email_message
 
-    @patch("api.email.api_client_factory")
-    @patch("api.email.normalize_microsoft_email")
+    @patch("services.office_service.api.email.api_client_factory")
+    @patch("services.office_service.api.email.normalize_microsoft_email")
     @pytest.mark.asyncio
     async def test_fetch_microsoft_emails_success(
         self,
@@ -590,7 +592,7 @@ class TestFetchProviderEmails:
         assert provider == "microsoft"
         assert messages[0] == mock_email_message
 
-    @patch("api.email.api_client_factory")
+    @patch("services.office_service.api.email.api_client_factory")
     @pytest.mark.asyncio
     async def test_fetch_provider_emails_api_client_failure(
         self, mock_api_client_factory
@@ -614,8 +616,8 @@ class TestFetchProviderEmails:
 class TestFetchSingleMessage:
     """Tests for the fetch_single_message function."""
 
-    @patch("api.email.api_client_factory")
-    @patch("api.email.normalize_google_email")
+    @patch("services.office_service.api.email.api_client_factory")
+    @patch("services.office_service.api.email.normalize_google_email")
     @pytest.mark.asyncio
     async def test_fetch_single_google_message_success(
         self, mock_normalize_google_email, mock_api_client_factory, mock_email_message
@@ -638,8 +640,8 @@ class TestFetchSingleMessage:
         assert result == mock_email_message
         mock_client.get_message.assert_called_once_with("test123", format="full")
 
-    @patch("api.email.api_client_factory")
-    @patch("api.email.normalize_microsoft_email")
+    @patch("services.office_service.api.email.api_client_factory")
+    @patch("services.office_service.api.email.normalize_microsoft_email")
     @pytest.mark.asyncio
     async def test_fetch_single_microsoft_message_success(
         self,
@@ -665,7 +667,7 @@ class TestFetchSingleMessage:
         assert result == mock_email_message
         mock_client.get_message.assert_called_once_with("test123")
 
-    @patch("api.email.api_client_factory")
+    @patch("services.office_service.api.email.api_client_factory")
     @pytest.mark.asyncio
     async def test_fetch_single_message_not_found(self, mock_api_client_factory):
         """Test handling of message not found."""

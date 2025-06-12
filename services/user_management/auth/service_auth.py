@@ -16,8 +16,8 @@ from typing import Dict, List, Optional
 
 from fastapi import HTTPException, Request, status
 
-from ..exceptions import AuthenticationException, AuthorizationException
-from ..settings import settings
+from services.user_management.exceptions import AuthenticationException, AuthorizationException
+from services.user_management.settings import settings
 
 logger = logging.getLogger(__name__)
 

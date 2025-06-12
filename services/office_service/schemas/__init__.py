@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from models import Provider
+from services.office_service.models import Provider
 from pydantic import BaseModel, EmailStr
 
 
@@ -54,6 +54,26 @@ class SendEmailRequest(BaseModel):
     reply_to_message_id: Optional[str] = None
     provider: Optional[str] = None  # If not specified, uses user's default preference
     importance: Optional[str] = None  # "high", "normal", "low"
+
+
+class SendEmailResponse(BaseModel):
+    """Response model for sending emails."""
+    
+    success: bool
+    data: Optional[Dict[str, Any]] = None
+    error: Optional[Dict[str, Any]] = None
+    request_id: str
+
+
+class EmailMessageList(BaseModel):
+    """Response model for email message lists."""
+    
+    success: bool
+    data: Optional[Dict[str, Any]] = None  # Contains messages, metadata, etc.
+    error: Optional[Dict[str, Any]] = None
+    cache_hit: bool = False
+    provider_used: Optional[Provider] = None
+    request_id: str
 
 
 # Unified Calendar Models
@@ -110,6 +130,26 @@ class CreateCalendarEventRequest(BaseModel):
     status: Optional[str] = "confirmed"  # confirmed, tentative, cancelled
 
 
+class CreateCalendarEventResponse(BaseModel):
+    """Response model for creating calendar events."""
+    
+    success: bool
+    data: Optional[CalendarEvent] = None
+    error: Optional[Dict[str, Any]] = None
+    request_id: str
+
+
+class CalendarEventList(BaseModel):
+    """Response model for calendar event lists."""
+    
+    success: bool
+    data: Optional[List[CalendarEvent]] = None
+    error: Optional[Dict[str, Any]] = None
+    cache_hit: bool = False
+    provider_used: Optional[Provider] = None
+    request_id: str
+
+
 class FreeBusyInfo(BaseModel):
     calendar_id: str
     busy_times: List[Dict[str, datetime]]  # [{"start": datetime, "end": datetime}]
@@ -139,6 +179,17 @@ class DriveFile(BaseModel):
     account_name: Optional[str] = None  # Display name for the account
 
 
+class DriveFileList(BaseModel):
+    """Response model for drive file lists."""
+    
+    success: bool
+    data: Optional[List[DriveFile]] = None
+    error: Optional[Dict[str, Any]] = None
+    cache_hit: bool = False
+    provider_used: Optional[Provider] = None
+    request_id: str
+
+
 # API Response Models
 class ApiResponse(BaseModel):
     success: bool
@@ -164,3 +215,19 @@ class ApiError(BaseModel):
     provider: Optional[Provider] = None
     retry_after: Optional[int] = None  # seconds
     request_id: str
+
+
+# Health Check Models
+class HealthCheck(BaseModel):
+    """Response model for health checks."""
+    
+    status: str
+    timestamp: datetime
+    checks: Dict[str, Any]
+
+
+class IntegrationHealthCheck(BaseModel):
+    """Response model for integration health checks."""
+    
+    user_id: str
+    integrations: Dict[str, Dict[str, Any]]

@@ -10,14 +10,14 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from ..exceptions import (
+from services.user_management.exceptions import (
     DatabaseException,
     IntegrationException,
     ServiceException,
     TokenNotFoundException,
     UserNotFoundException,
 )
-from ..utils.retry import (
+from services.user_management.utils.retry import (
     RetryError,
     is_transient_error,
     retry_async,

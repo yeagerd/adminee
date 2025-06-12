@@ -8,19 +8,19 @@ including edge cases and malicious input attempts.
 import pytest
 from pydantic import ValidationError as PydanticValidationError
 
-from ..middleware.sanitization import (
+from services.user_management.middleware.sanitization import (
     is_safe_text,
     sanitize_user_input,
 )
-from ..schemas.integration import OAuthCallbackRequest, OAuthStartRequest
-from ..schemas.preferences import (
+from services.user_management.schemas.integration import OAuthCallbackRequest, OAuthStartRequest
+from services.user_management.schemas.preferences import (
     AIPreferencesSchema,
     NotificationPreferencesSchema,
     PreferencesImportRequest,
 )
-from ..schemas.user import UserCreate, UserSearchRequest, UserUpdate
-from ..utils.validation import ValidationError as CustomValidationError
-from ..utils.validation import (
+from services.user_management.schemas.user import UserCreate, UserSearchRequest, UserUpdate
+from services.user_management.utils.validation import ValidationError as CustomValidationError
+from services.user_management.utils.validation import (
     check_sql_injection_patterns,
     sanitize_text_input,
     validate_email_address,

@@ -35,38 +35,6 @@
 - No `conftest.py` is needed for these services. Remove once complete.
 - All tests pass when run individually or as a suite. 
 
-
-## User Management Test Files to Refactor
-
-- [x] test_main.py
-- [x] test_user_endpoints.py
-- [x] test_oauth_config.py
-- [x] test_integration_endpoints.py
-- [ ] test_encryption.py
-- [ ] test_settings.py
-- [ ] test_webhook_endpoints.py
-- [ ] test_preferences.py
-- [ ] test_auth.py
-- [ ] test_audit_service.py
-- [ ] test_token_service.py
-- [ ] test_exception_handling.py
-- [ ] test_models.py
-- [ ] test_validation_security.py
-- [ ] test_internal_endpoints.py
-- [ ] test_retry_utils.py
-- [ ] test_integration_schemas.py
-- [x] test_webhook_service.py
-
-## Chat Service Test Files to Refactor (DB/History Isolation)
-
-- [ ] test_llama_manager.py
-- [ ] test_llama_manager_integration.py
-- [ ] test_llm_tools.py
-- [ ] test_chat_agent.py
-- [ ] test_chat_service_e2e.py
-- [ ] test_history_manager.py
-- [ ] test_hello_pytest.py
-
 > **Note:**
 > - All chat service tests that interact with the history database (e.g., via `history_manager.py`) must use local setup/teardown and a unique temporary SQLite DB per test class or method.
 > - Remove or inline any fixtures from `conftest.py` and ensure no global DB state is shared between tests.
@@ -98,6 +66,7 @@
 ### Remaining Files to Check
 - [ ] `test_user_service.py` - May have database dependencies (if exists)
 - [ ] `test_integration_service.py` - May have database dependencies (if exists)
+- [ ] `test_history_manager.py` - May have database dependencies (if exists)
 
 ## Chat Service Test Files (Database/History Related)
 - [ ] `test_chat_agent.py` - Has pytest fixtures

@@ -15,13 +15,13 @@ from fastapi.testclient import TestClient
 
 from services.user_management.database import create_all_tables
 
-from ..exceptions import (
+from services.user_management.exceptions import (
     AuthenticationException,
     IntegrationNotFoundException,
     UserNotFoundException,
     ValidationException,
 )
-from ..main import app
+from services.user_management.main import app
 
 
 def client():
