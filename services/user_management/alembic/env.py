@@ -5,23 +5,10 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-# Add the current directory to sys.path to import our modules
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(os.path.dirname(current_dir))
-sys.path.insert(0, parent_dir)
-
-# Import settings and database metadata
-try:
-    # Import all models so they are registered with metadata
-    from user_management import models  # noqa: F401
-    from user_management.database import metadata
-    from user_management.settings import settings
-except ImportError:
-    # Fallback for development
-    sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-    import models  # noqa: F401
-    from database import metadata
-    from settings import settings
+# Import all models so they are registered with metadata
+from services.user_management import models  # noqa: F401
+from services.user_management.database import metadata
+from services.user_management.settings import settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

@@ -13,13 +13,12 @@ This test suite covers:
 import logging
 import os
 import sys
+from unittest.mock import patch
 
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-import history_manager
-from llama_manager import ChatAgentManager
+from services.chat_service import history_manager
+from services.chat_service.llama_manager import ChatAgentManager
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +81,7 @@ async def test_manager_build_agent():
 
 
 @pytest.mark.asyncio
+@patch.dict(os.environ, {"OPENAI_API_KEY": ""})  # Force FakeLLM by removing API key
 async def test_manager_basic_chat():
     """Test basic chat functionality through orchestration layer."""
     # Create a thread
@@ -102,6 +102,10 @@ async def test_manager_basic_chat():
     assert response is not None
     assert isinstance(response, str)
     assert len(response) > 0
+    
+    # With FakeLLM, expect the fake response format
+    assert "[FAKE LLM RESPONSE]" in response
+    assert user_input in response
 
     # Check that messages were stored in database
     messages = await history_manager.get_thread_history(thread.id, limit=10)
@@ -113,6 +117,7 @@ async def test_manager_basic_chat():
 
 
 @pytest.mark.asyncio
+@patch.dict(os.environ, {"OPENAI_API_KEY": ""})  # Force FakeLLM by removing API key
 async def test_manager_empty_thread():
     """Test manager with a newly created empty thread."""
     # Create empty thread
@@ -130,6 +135,10 @@ async def test_manager_empty_thread():
 
     assert response is not None
     assert len(response) > 0
+    
+    # With FakeLLM, expect the fake response format
+    assert "[FAKE LLM RESPONSE]" in response
+    assert user_input in response
 
     # Verify message history
     history = await history_manager.get_thread_history(thread.id, limit=5)
@@ -140,6 +149,7 @@ async def test_manager_empty_thread():
 
 
 @pytest.mark.asyncio
+@patch.dict(os.environ, {"OPENAI_API_KEY": ""})  # Force FakeLLM by removing API key
 async def test_manager_multiple_messages_order():
     """Test message ordering with multiple sequential messages."""
     thread = await history_manager.create_thread("order_user", "Order Test Thread")
@@ -160,6 +170,10 @@ async def test_manager_multiple_messages_order():
         responses.append(response)
         assert response is not None
         assert len(response) > 0
+        
+        # With FakeLLM, expect the fake response format
+        assert "[FAKE LLM RESPONSE]" in response
+        assert msg in response
 
     # Check message history
     history = await history_manager.get_thread_history(thread.id, limit=20)
@@ -174,6 +188,7 @@ async def test_manager_multiple_messages_order():
 
 
 @pytest.mark.asyncio
+@patch.dict(os.environ, {"OPENAI_API_KEY": ""})  # Force FakeLLM by removing API key
 async def test_manager_unicode_and_long_message():
     """Test handling of unicode characters and long messages."""
     thread = await history_manager.create_thread("unicode_user", "Unicode Thread")
@@ -191,6 +206,11 @@ async def test_manager_unicode_and_long_message():
 
     assert response is not None
     assert len(response) > 0
+    
+    # With FakeLLM, expect the fake response format
+    assert "[FAKE LLM RESPONSE]" in response
+    # Note: FakeLLM might truncate very long inputs, so just check for emoji
+    assert "🚀" in response
 
     # Check database storage
     history = await history_manager.get_thread_history(thread.id, limit=5)
@@ -231,6 +251,7 @@ async def test_manager_memory_access():
 
 
 @pytest.mark.asyncio
+@patch.dict(os.environ, {"OPENAI_API_KEY": ""})  # Force FakeLLM by removing API key
 async def test_manager_with_tools():
     """Test manager with tools in orchestration setup."""
     thread = await history_manager.create_thread("tool_user", "Tool Test")
@@ -256,6 +277,10 @@ async def test_manager_with_tools():
 
     assert response is not None
     assert manager.main_agent is not None
+    
+    # With FakeLLM, expect the fake response format
+    assert "[FAKE LLM RESPONSE]" in response
+    assert "Hello with tools" in response
 
 
 @pytest.mark.asyncio

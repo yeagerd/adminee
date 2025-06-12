@@ -6,17 +6,13 @@ Debug script to show Microsoft OAuth scope configuration.
 import sys
 from pathlib import Path
 
-# Add the parent directory to Python path to handle relative imports
-parent_dir = Path(__file__).parent.parent
-sys.path.insert(0, str(parent_dir))
-
 # Now import after path modification
-from user_management.integrations.oauth_config import (  # noqa: E402
+from services.user_management.integrations.oauth_config import (  # noqa: E402
     OAuthConfig,
     reset_oauth_config,
 )
-from user_management.models.integration import IntegrationProvider  # noqa: E402
-from user_management.settings import Settings  # noqa: E402
+from services.user_management.models.integration import IntegrationProvider  # noqa: E402
+from services.user_management.settings import Settings  # noqa: E402
 
 
 def debug_microsoft_scopes():

@@ -6,9 +6,7 @@ import sys
 
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-import history_manager as hm
+import services.chat_service.history_manager as hm
 
 
 @pytest.mark.asyncio

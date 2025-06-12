@@ -8,9 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-from chat_agent import ChatAgent, create_chat_agent
+from services.chat_service.chat_agent import ChatAgent, create_chat_agent
 
 
 @pytest.fixture
@@ -197,7 +195,7 @@ async def test_tools_registration():
 async def test_backward_compatibility_imports():
     """Test that backward compatibility imports work."""
     # These should not raise ImportError
-    from llama_manager import (
+    from services.chat_service.llama_manager import (
         ChatAgentManager,
     )
 
