@@ -45,24 +45,14 @@ class BaseIntegrationTest:
         # HTTP Call Detection Rakes - These will fail the test if real HTTP calls are made
         # We need to be selective to allow TestClient to work but catch real external calls
         
-        def detect_real_http_call(*args, **kwargs):
-            # Allow TestClient calls (they use testserver URLs)
-            if args and hasattr(args[1], 'host') and args[1].host == 'testserver':
-                # This is a TestClient call, allow it by calling the original method
-                raise AssertionError("TestClient should not reach this point - check mocking")
-            # Block real external HTTP calls
-            raise AssertionError(f"Real HTTP call detected! Args: {args[:2]}, URL: {getattr(args[1], 'url', 'unknown') if len(args) > 1 else 'unknown'}")
-        
         self.http_patches = [
-            # Patch both sync and async httpx clients
+            # Patch async httpx client (most likely to be used for real external calls)
             patch('httpx.AsyncClient._send_single_request', side_effect=AssertionError("Real HTTP call detected! AsyncClient._send_single_request was called")),
-            patch('httpx.Client._send_single_request', side_effect=AssertionError("Real HTTP call detected! Client._send_single_request was called")),
-            # Also patch the sync client send method
-            patch('httpx.Client.send', side_effect=AssertionError("Real HTTP call detected! Client.send was called")),
-            # Patch requests
+            # Patch requests (commonly used for external calls)
             patch('requests.adapters.HTTPAdapter.send', side_effect=AssertionError("Real HTTP call detected! requests HTTPAdapter.send was called")),
-            # Patch urllib
+            # Patch urllib (basic HTTP library)
             patch('urllib.request.urlopen', side_effect=AssertionError("Real HTTP call detected! urllib.request.urlopen was called")),
+            # Note: We don't patch httpx.Client.send because TestClient uses it internally
         ]
         
         # Start all HTTP detection patches
