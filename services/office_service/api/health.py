@@ -6,7 +6,7 @@ including database, Redis, and external integrations.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict
 
 import httpx
@@ -41,7 +41,7 @@ async def health_check():
     Returns:
         JSONResponse: Health status with individual component checks
     """
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
     checks = {}
 
     try:
@@ -61,7 +61,7 @@ async def health_check():
         status_code = 200 if all_healthy else 503
 
         # Calculate response time
-        end_time = datetime.utcnow()
+        end_time = datetime.now(timezone.utc)
         response_time_ms = int((end_time - start_time).total_seconds() * 1000)
 
         response_data = {
@@ -106,7 +106,7 @@ async def integration_health_check(user_id: str):
     Returns:
         JSONResponse: Integration status for each provider
     """
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
 
     try:
         integration_checks = {}
@@ -124,7 +124,7 @@ async def integration_health_check(user_id: str):
         all_healthy = all(check["healthy"] for check in integration_checks.values())
 
         # Calculate response time
-        end_time = datetime.utcnow()
+        end_time = datetime.now(timezone.utc)
         response_time_ms = int((end_time - start_time).total_seconds() * 1000)
 
         response_data = {
@@ -249,7 +249,7 @@ async def check_user_integration(user_id: str, provider: str) -> Dict[str, Any]:
         "provider": provider,
         "healthy": False,
         "error": None,
-        "last_checked": datetime.utcnow().isoformat(),
+        "last_checked": datetime.now(timezone.utc).isoformat(),
     }
 
     try:
@@ -299,5 +299,5 @@ async def quick_health_check():
         "status": "ok",
         "service": settings.APP_NAME,
         "version": settings.APP_VERSION,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
