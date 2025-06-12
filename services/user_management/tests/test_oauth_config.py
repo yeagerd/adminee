@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import httpx
 import pytest
+import urllib.parse
 
 from ..exceptions import ValidationException
 from ..integrations.oauth_config import (
@@ -553,6 +554,9 @@ class TestOAuthConfig:
         assert oauth_state.provider == IntegrationProvider.MICROSOFT
         assert oauth_state.user_id == "user-msft-123"
 
+        for scope in expected_scopes:
+            assert urllib.parse.quote(scope, safe='') in auth_url
+
     def test_generate_authorization_url_invalid_provider(self):
         """Test authorization URL generation with invalid provider."""
         with patch.object(self.oauth_config, "get_provider_config", return_value=None):
@@ -923,6 +927,25 @@ class TestOAuthConfig:
             )
 
             assert result is False
+
+    def test_microsoft_default_scopes_are_used(self):
+        """Test that Microsoft default scopes are used when no scopes are provided."""
+        auth_url, oauth_state = self.oauth_config.generate_authorization_url(
+            provider=IntegrationProvider.MICROSOFT,
+            user_id="user-msft-123",
+            redirect_uri="https://example.com/msft-callback",
+            scopes=None,  # Explicitly test default
+        )
+        expected_scopes = {
+            "openid",
+            "email",
+            "profile",
+            "offline_access",
+            "https://graph.microsoft.com/User.Read",
+        }
+        assert set(oauth_state.scopes) == expected_scopes
+        for scope in expected_scopes:
+            assert urllib.parse.quote(scope, safe='') in auth_url
 
 
 class TestGlobalOAuthConfig:
