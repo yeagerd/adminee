@@ -176,6 +176,69 @@ class TestOAuthFlowEndpoints:
         assert "state" in data
         assert data["requested_scopes"] == ["email", "profile"]
 
+    def test_start_oauth_flow_microsoft_success(
+        self, client: TestClient, mock_auth_dependencies
+    ):
+        """Test successful OAuth flow initiation for Microsoft."""
+        user_id = "user_123"
+
+        request_data = {
+            "provider": "microsoft",
+            "redirect_uri": "https://app.example.com/oauth/microsoft/callback",
+            "scopes": ["User.Read", "Mail.Read"],  # Example additional scopes
+            "state_data": {"custom_return_url": "/settings/integrations"},
+        }
+
+        mock_response_data = {
+            "authorization_url": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=msft-client-id&state=mock_ms_state&...",
+            "state": "mock_ms_state",
+            "provider": "microsoft",
+            "expires_at": datetime.now(timezone.utc).isoformat(),
+            "requested_scopes": [
+                "openid",
+                "email",
+                "profile",
+                "offline_access",
+                "https://graph.microsoft.com/User.Read",
+                "User.Read",
+                "Mail.Read",
+            ],
+        }
+
+        # Ensure the integration_service path matches your project structure
+        with patch(
+            "services.user_management.services.integration_service.integration_service.start_oauth_flow",
+            new_callable=AsyncMock,  # Use AsyncMock for async methods
+            return_value=mock_response_data,
+        ) as mock_start_flow:
+            response = client.post(
+                f"/users/{user_id}/integrations/oauth/start",
+                json=request_data,
+                headers={
+                    "Authorization": "Bearer valid-token"
+                },  # Handled by mock_auth_dependencies
+            )
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["authorization_url"].startswith(
+            "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
+        )
+        assert data["state"] == "mock_ms_state"
+        assert data["provider"] == "microsoft"
+        assert "User.Read" in data["requested_scopes"]
+        assert "Mail.Read" in data["requested_scopes"]
+
+        # Instead of assert_called_once_with (which is order-sensitive for lists),
+        # check the call arguments and compare scopes as sets
+        mock_start_flow.assert_called_once()
+        args, kwargs = mock_start_flow.call_args
+        assert kwargs["user_id"] == user_id
+        assert kwargs["provider"] == IntegrationProvider.MICROSOFT
+        assert kwargs["redirect_uri"] == request_data["redirect_uri"]
+        assert set(kwargs["scopes"]) == set(request_data["scopes"])
+        assert kwargs["state_data"] == request_data["state_data"]
+
     def test_start_oauth_flow_invalid_provider(self, client: TestClient, mock_auth):
         """Test OAuth flow start with invalid provider."""
         user_id = "user_123"
@@ -229,6 +292,66 @@ class TestOAuthFlowEndpoints:
         assert data["success"] is True
         assert data["integration_id"] == 123
         assert data["provider"] == "google"
+
+    def test_complete_oauth_flow_microsoft_success(
+        self, client: TestClient, mock_auth_dependencies
+    ):
+        """Test successful OAuth flow completion for Microsoft."""
+        user_id = "user_123"
+
+        request_data = {
+            "code": "msft_auth_code_xyz",
+            "state": "mock_ms_state_xyz",
+            # Optional: include error fields if testing error responses from provider
+            # "error": None,
+            # "error_description": None,
+        }
+
+        mock_response_object = OAuthCallbackResponse(
+            success=True,
+            integration_id=456,  # Use an integer for ID
+            provider=IntegrationProvider.MICROSOFT,
+            status=IntegrationStatus.ACTIVE,
+            scopes=[
+                "openid",
+                "email",
+                "profile",
+                "offline_access",
+                "https://graph.microsoft.com/User.Read",
+                "User.Read",
+            ],
+            external_user_info={
+                "userPrincipalName": "user@example.com",
+                "id": "ms-user-guid",
+            },
+            error=None,
+        )
+
+        with patch(
+            "services.user_management.services.integration_service.integration_service.complete_oauth_flow",
+            new_callable=AsyncMock,
+            return_value=mock_response_object,  # Use the Pydantic model instance
+        ) as mock_complete_flow:
+            response = client.post(
+                f"/users/{user_id}/integrations/oauth/callback?provider=microsoft",  # Provider as query param
+                json=request_data,
+                headers={"Authorization": "Bearer valid-token"},
+            )
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["success"] is True
+        assert data["integration_id"] == 456
+        assert data["provider"] == "microsoft"
+        assert data["status"] == "active"
+        assert "User.Read" in data["scopes"]
+
+        mock_complete_flow.assert_called_once_with(
+            user_id=user_id,
+            provider=IntegrationProvider.MICROSOFT,
+            authorization_code=request_data["code"],
+            state=request_data["state"],
+        )
 
     @patch(
         "services.user_management.services.audit_service.audit_logger.log_audit_event"
