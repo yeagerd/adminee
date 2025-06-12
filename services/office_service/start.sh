@@ -5,9 +5,9 @@
 
 cd "$(dirname "$0")/../.."
 
-# Activate the virtual environment if it exists
-if [ -d "services/user_management/venv" ]; then
-    source services/user_management/venv/bin/activate
+# Activate the unified virtual environment if it exists
+if [ -d "venv" ]; then
+    source venv/bin/activate
 fi
 
 # Run uvicorn with proper package path
