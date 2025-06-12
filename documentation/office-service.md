@@ -242,7 +242,7 @@ class TokenManager:
 ### 5.1. SqlModel Models
 
 ```python
-import ormar
+import sqlmodel
 import sqlalchemy
 from typing import Optional, Dict, List, Any, Union
 from datetime import datetime
@@ -253,7 +253,7 @@ DATABASE_URL = "postgresql://user:password@localhost/briefly"
 database = databases.Database(DATABASE_URL)
 metadata = sqlalchemy.MetaData()
 
-class BaseMeta(ormar.ModelMeta):
+class BaseMeta(sqlmodel.SQLModel): # TODO: Check if this is the correct base class
     metadata = metadata
     database = database
 
@@ -268,47 +268,44 @@ class ApiCallStatus(str, Enum):
     TIMEOUT = "timeout"
 
 # API Call Tracking
-class ApiCall(ormar.Model):
-    class Meta(BaseMeta):
-        tablename = "api_calls"
+class ApiCall(sqlmodel.SQLModel, table=True):
+    __tablename__ = "api_calls"
 
-    id: int = ormar.Integer(primary_key=True)
-    user_id: str = ormar.String(max_length=255, index=True)
-    provider: Provider = ormar.String(max_length=20, choices=list(Provider))
-    endpoint: str = ormar.String(max_length=200)
-    method: str = ormar.String(max_length=10)
-    status: ApiCallStatus = ormar.String(max_length=20, choices=list(ApiCallStatus))
-    response_time_ms: Optional[int] = ormar.Integer(nullable=True)
-    error_message: Optional[str] = ormar.Text(nullable=True)
-    created_at: datetime = ormar.DateTime(default=datetime.utcnow, index=True)
+    id: int = sqlmodel.Field(default=None, primary_key=True)
+    user_id: str = sqlmodel.Field(default=None, max_length=255, index=True)
+    provider: Provider = sqlmodel.Field(default=None, max_length=20) # TODO: Check choices=list(Provider)
+    endpoint: str = sqlmodel.Field(default=None, max_length=200)
+    method: str = sqlmodel.Field(default=None, max_length=10)
+    status: ApiCallStatus = sqlmodel.Field(default=None, max_length=20) # TODO: Check choices=list(ApiCallStatus)
+    response_time_ms: Optional[int] = sqlmodel.Field(default=None)
+    error_message: Optional[str] = sqlmodel.Field(default=None)
+    created_at: datetime = sqlmodel.Field(default_factory=datetime.utcnow, index=True)
 
 # Cache Entries
-class CacheEntry(ormar.Model):
-    class Meta(BaseMeta):
-        tablename = "cache_entries"
+class CacheEntry(sqlmodel.SQLModel, table=True):
+    __tablename__ = "cache_entries"
 
-    id: int = ormar.Integer(primary_key=True)
-    cache_key: str = ormar.String(max_length=500, unique=True, index=True)
-    user_id: str = ormar.String(max_length=255, index=True)
-    provider: Provider = ormar.String(max_length=20, choices=list(Provider))
-    endpoint: str = ormar.String(max_length=200)
-    data: Dict[str, Any] = ormar.JSON()
-    expires_at: datetime = ormar.DateTime(index=True)
-    created_at: datetime = ormar.DateTime(default=datetime.utcnow)
-    last_accessed: datetime = ormar.DateTime(default=datetime.utcnow)
+    id: int = sqlmodel.Field(default=None, primary_key=True)
+    cache_key: str = sqlmodel.Field(default=None, max_length=500, unique=True, index=True)
+    user_id: str = sqlmodel.Field(default=None, max_length=255, index=True)
+    provider: Provider = sqlmodel.Field(default=None, max_length=20) # TODO: Check choices=list(Provider)
+    endpoint: str = sqlmodel.Field(default=None, max_length=200)
+    data: Dict[str, Any] = sqlmodel.Field(default_factory=dict) # TODO: Check JSON type
+    expires_at: datetime = sqlmodel.Field(default=None, index=True)
+    created_at: datetime = sqlmodel.Field(default_factory=datetime.utcnow)
+    last_accessed: datetime = sqlmodel.Field(default_factory=datetime.utcnow)
 
 # Rate Limiting
-class RateLimitBucket(ormar.Model):
-    class Meta(BaseMeta):
-        tablename = "rate_limit_buckets"
+class RateLimitBucket(sqlmodel.SQLModel, table=True):
+    __tablename__ = "rate_limit_buckets"
 
-    id: int = ormar.Integer(primary_key=True)
-    user_id: str = ormar.String(max_length=255, index=True)
-    provider: Provider = ormar.String(max_length=20, choices=list(Provider))
-    bucket_type: str = ormar.String(max_length=50)  # "user_hourly", "provider_daily", etc.
-    current_count: int = ormar.Integer(default=0)
-    window_start: datetime = ormar.DateTime(index=True)
-    last_reset: datetime = ormar.DateTime(default=datetime.utcnow)
+    id: int = sqlmodel.Field(default=None, primary_key=True)
+    user_id: str = sqlmodel.Field(default=None, max_length=255, index=True)
+    provider: Provider = sqlmodel.Field(default=None, max_length=20) # TODO: Check choices=list(Provider)
+    bucket_type: str = sqlmodel.Field(default=None, max_length=50)  # "user_hourly", "provider_daily", etc.
+    current_count: int = sqlmodel.Field(default=0)
+    window_start: datetime = sqlmodel.Field(default=None, index=True)
+    last_reset: datetime = sqlmodel.Field(default_factory=datetime.utcnow)
 ```
 
 ### 5.2. Pydantic Response Models
