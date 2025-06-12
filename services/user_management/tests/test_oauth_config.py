@@ -375,7 +375,8 @@ class TestOAuthConfig:
             == "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
         )
         assert (
-            config.token_url == "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+            config.token_url
+            == "https://login.microsoftonline.com/common/oauth2/v2.0/token"
         )
         assert config.userinfo_url == "https://graph.microsoft.com/v1.0/me"
         assert config.client_id == self.settings.azure_ad_client_id
@@ -533,8 +534,10 @@ class TestOAuthConfig:
         }
         # URL scopes are space-encoded, so we need to check for each one
         for scope in expected_scopes:
-            assert scope in oauth_state.scopes # Check that the state object has the correct scopes
-            assert scope in auth_url # Check that the url has the correct scopes
+            assert (
+                scope in oauth_state.scopes
+            )  # Check that the state object has the correct scopes
+            assert scope in auth_url  # Check that the url has the correct scopes
 
         assert f"state={oauth_state.state}" in auth_url
         assert "code_challenge=" in auth_url
@@ -618,7 +621,7 @@ class TestOAuthConfig:
         """Test successful token refresh for Microsoft."""
         mock_response_data = {
             "access_token": "new-msft-access-token",
-            "refresh_token": "new-msft-refresh-token", # Microsoft may return a new refresh token
+            "refresh_token": "new-msft-refresh-token",  # Microsoft may return a new refresh token
             "expires_in": 3599,
             "scope": "openid email profile offline_access https://graph.microsoft.com/User.Read",
             "token_type": "Bearer",
@@ -641,10 +644,14 @@ class TestOAuthConfig:
             assert tokens["access_token"] == "new-msft-access-token"
             assert tokens["refresh_token"] == "new-msft-refresh-token"
             assert tokens["expires_in"] == 3599
-            assert tokens["scope"] == "openid email profile offline_access https://graph.microsoft.com/User.Read"
+            assert (
+                tokens["scope"]
+                == "openid email profile offline_access https://graph.microsoft.com/User.Read"
+            )
 
-
-            expected_token_url = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+            expected_token_url = (
+                "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+            )
             expected_payload = {
                 "client_id": self.settings.azure_ad_client_id,
                 "client_secret": self.settings.azure_ad_client_secret,
@@ -662,7 +669,13 @@ class TestOAuthConfig:
             user_id="user-msft-123",
             provider=IntegrationProvider.MICROSOFT,
             redirect_uri="https://example.com/msft-callback",
-            scopes=["openid", "email", "profile", "offline_access", "https://graph.microsoft.com/User.Read"],
+            scopes=[
+                "openid",
+                "email",
+                "profile",
+                "offline_access",
+                "https://graph.microsoft.com/User.Read",
+            ],
         )
 
         mock_response_data = {
@@ -691,9 +704,14 @@ class TestOAuthConfig:
             assert tokens["access_token"] == "msft-access-token"
             assert tokens["refresh_token"] == "msft-refresh-token"
             assert tokens["expires_in"] == 3599
-            assert tokens["scope"] == "openid email profile offline_access https://graph.microsoft.com/User.Read"
+            assert (
+                tokens["scope"]
+                == "openid email profile offline_access https://graph.microsoft.com/User.Read"
+            )
 
-            expected_token_url = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+            expected_token_url = (
+                "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+            )
             expected_payload = {
                 "client_id": self.settings.azure_ad_client_id,
                 "client_secret": self.settings.azure_ad_client_secret,
@@ -801,7 +819,7 @@ class TestOAuthConfig:
             "id": "msft-user-id-123",
             "userPrincipalName": "test.user@example.com",
             "displayName": "Test User Microsoft",
-            "mail": "test.user@example.com", # Sometimes 'mail' is preferred over 'userPrincipalName'
+            "mail": "test.user@example.com",  # Sometimes 'mail' is preferred over 'userPrincipalName'
             "givenName": "Test",
             "surname": "User",
         }

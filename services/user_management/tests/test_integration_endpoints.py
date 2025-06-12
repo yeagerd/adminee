@@ -185,7 +185,7 @@ class TestOAuthFlowEndpoints:
         request_data = {
             "provider": "microsoft",
             "redirect_uri": "https://app.example.com/oauth/microsoft/callback",
-            "scopes": ["User.Read", "Mail.Read"], # Example additional scopes
+            "scopes": ["User.Read", "Mail.Read"],  # Example additional scopes
             "state_data": {"custom_return_url": "/settings/integrations"},
         }
 
@@ -194,19 +194,29 @@ class TestOAuthFlowEndpoints:
             "state": "mock_ms_state",
             "provider": "microsoft",
             "expires_at": datetime.now(timezone.utc).isoformat(),
-            "requested_scopes": ["openid", "email", "profile", "offline_access", "https://graph.microsoft.com/User.Read", "User.Read", "Mail.Read"],
+            "requested_scopes": [
+                "openid",
+                "email",
+                "profile",
+                "offline_access",
+                "https://graph.microsoft.com/User.Read",
+                "User.Read",
+                "Mail.Read",
+            ],
         }
 
         # Ensure the integration_service path matches your project structure
         with patch(
             "services.user_management.services.integration_service.integration_service.start_oauth_flow",
-            new_callable=AsyncMock, # Use AsyncMock for async methods
+            new_callable=AsyncMock,  # Use AsyncMock for async methods
             return_value=mock_response_data,
         ) as mock_start_flow:
             response = client.post(
                 f"/users/{user_id}/integrations/oauth/start",
                 json=request_data,
-                headers={"Authorization": "Bearer valid-token"}, # Handled by mock_auth_dependencies
+                headers={
+                    "Authorization": "Bearer valid-token"
+                },  # Handled by mock_auth_dependencies
             )
 
         assert response.status_code == status.HTTP_200_OK
@@ -297,21 +307,31 @@ class TestOAuthFlowEndpoints:
 
         mock_response_object = OAuthCallbackResponse(
             success=True,
-            integration_id=456, # Use an integer for ID
+            integration_id=456,  # Use an integer for ID
             provider=IntegrationProvider.MICROSOFT,
             status=IntegrationStatus.ACTIVE,
-            scopes=["openid", "email", "profile", "offline_access", "https://graph.microsoft.com/User.Read", "User.Read"],
-            external_user_info={"userPrincipalName": "user@example.com", "id": "ms-user-guid"},
+            scopes=[
+                "openid",
+                "email",
+                "profile",
+                "offline_access",
+                "https://graph.microsoft.com/User.Read",
+                "User.Read",
+            ],
+            external_user_info={
+                "userPrincipalName": "user@example.com",
+                "id": "ms-user-guid",
+            },
             error=None,
         )
 
         with patch(
             "services.user_management.services.integration_service.integration_service.complete_oauth_flow",
             new_callable=AsyncMock,
-            return_value=mock_response_object, # Use the Pydantic model instance
+            return_value=mock_response_object,  # Use the Pydantic model instance
         ) as mock_complete_flow:
             response = client.post(
-                f"/users/{user_id}/integrations/oauth/callback?provider=microsoft", # Provider as query param
+                f"/users/{user_id}/integrations/oauth/callback?provider=microsoft",  # Provider as query param
                 json=request_data,
                 headers={"Authorization": "Bearer valid-token"},
             )
@@ -329,8 +349,8 @@ class TestOAuthFlowEndpoints:
             provider=IntegrationProvider.MICROSOFT,
             code=request_data["code"],
             state=request_data["state"],
-            error=None, # Explicitly pass None if not testing error case
-            error_description=None, # Explicitly pass None
+            error=None,  # Explicitly pass None if not testing error case
+            error_description=None,  # Explicitly pass None
         )
 
     @patch(
