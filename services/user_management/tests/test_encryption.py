@@ -69,13 +69,9 @@ class TestTokenEncryption:
     def test_service_salt_default_fallback(self):
         """Test service salt fallback when not provided."""
         settings = Settings(encryption_service_salt=None)
-        service = TokenEncryption(settings)
-
-        # Should generate deterministic salt from service name
-        expected_salt = "briefly-user-management".encode("utf-8").ljust(16, b"\x00")[
-            :16
-        ]
-        assert service._service_salt == expected_salt
+        # Expect this to raise due to the missing salt
+        with pytest.raises(EncryptionException):
+            _ = TokenEncryption(settings)
 
     def test_derive_user_key_consistency(self, encryption_service):
         """Test that user key derivation is consistent for same inputs."""

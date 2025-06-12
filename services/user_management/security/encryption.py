@@ -62,19 +62,13 @@ class TokenEncryption:
         Raises:
             EncryptionException: If salt cannot be obtained
         """
+        # In production, this should come from a secure key management service
+        salt_b64 = self.settings.encryption_service_salt
+        if not salt_b64:
+            logger.error("Failed to get service salt")
+            raise EncryptionException("Failed to initialize encryption service")
         try:
-            # In production, this should come from a secure key management service
-            # For now, use environment variable or generate deterministic salt
-            salt_b64 = self.settings.encryption_service_salt
-            if salt_b64:
-                return base64.b64decode(salt_b64)
-
-            # Generate deterministic salt from service name for development
-            # WARNING: This is not secure for production use
-            service_name = "briefly-user-management"
-            return service_name.encode("utf-8").ljust(SALT_LENGTH, b"\x00")[
-                :SALT_LENGTH
-            ]
+            return base64.b64decode(salt_b64)
 
         except Exception as e:
             logger.error("Failed to get service salt", error=str(e))
