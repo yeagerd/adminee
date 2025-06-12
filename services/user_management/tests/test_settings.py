@@ -8,7 +8,7 @@ from unittest.mock import patch
 from services.user_management.settings import Settings
 
 
-class TestableSettings(Settings):
+class _TestableSettings(Settings):
     """Test version of Settings that doesn't load from .env file."""
 
     class Config:
@@ -31,7 +31,7 @@ class TestSettings:
             },
             clear=True,
         ):
-            settings = TestableSettings()
+            settings = _TestableSettings()
 
             # Test default values
             assert settings.service_name == "user-management"
@@ -60,7 +60,7 @@ class TestSettings:
             },
             clear=True,
         ):
-            settings = TestableSettings()
+            settings = _TestableSettings()
 
             assert settings.service_name == "test-service"
             assert settings.host == "127.0.0.1"
@@ -84,7 +84,7 @@ class TestSettings:
             },
             clear=True,
         ):
-            settings = TestableSettings()
+            settings = _TestableSettings()
 
             assert settings.api_frontend_user_key == "test-api-key"
             assert settings.token_encryption_salt == "test-salt"
@@ -104,7 +104,7 @@ class TestSettings:
             },
             clear=True,
         ):
-            settings = TestableSettings()
+            settings = _TestableSettings()
 
             assert settings.google_client_id == "test-google-id"
             assert settings.google_client_secret == "test-google-secret"
@@ -123,7 +123,7 @@ class TestSettings:
             },
             clear=True,
         ):
-            settings = TestableSettings()
+            settings = _TestableSettings()
 
             assert settings.redis_url == "redis://testhost:6380"
             assert settings.celery_broker_url == "redis://testhost:6380/1"
@@ -139,7 +139,7 @@ class TestSettings:
             },
             clear=True,
         ):
-            settings = TestableSettings()
+            settings = _TestableSettings()
 
             assert settings.token_encryption_salt is None
             assert settings.clerk_secret_key is None
@@ -160,7 +160,7 @@ class TestSettings:
             },
             clear=True,
         ):
-            settings = TestableSettings()
+            settings = _TestableSettings()
 
             # Should work with both cases due to case_sensitive = False
             assert settings.service_name == "lowercase-test"
@@ -188,7 +188,7 @@ class TestSettings:
                 },
                 clear=True,
             ):
-                settings = TestableSettings()
+                settings = _TestableSettings()
                 assert settings.debug == expected, f"Failed for {env_value}"
 
     def test_integer_environment_variables(self):
@@ -201,13 +201,13 @@ class TestSettings:
             },
             clear=True,
         ):
-            settings = TestableSettings()
+            settings = _TestableSettings()
             assert settings.port == 8080
             assert isinstance(settings.port, int)
 
     def test_settings_immutability(self):
         """Test that settings behave as expected for configuration."""
-        settings = TestableSettings()
+        settings = _TestableSettings()
         original_port = settings.port
 
         # Settings should maintain their values
