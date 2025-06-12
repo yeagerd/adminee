@@ -247,7 +247,11 @@ async def test_memory_aggregation():
 @patch.dict(os.environ, {"OPENAI_API_KEY": ""})  # Force FakeLLM by removing API key
 async def test_end_to_end_orchestration(mock_history, orchestration_tools):
     """Test end-to-end orchestration flow."""
+    # Properly mock all the async methods
     mock_history.get_thread_history = AsyncMock(return_value=[])
+    mock_history.get_thread = AsyncMock(return_value=MagicMock(id=106))
+    mock_history.create_thread = AsyncMock(return_value=MagicMock(id=106))
+    mock_history.append_message = AsyncMock(return_value=None)
 
     manager = ChatAgentManager(
         thread_id=106,

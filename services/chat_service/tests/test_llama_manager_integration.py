@@ -388,6 +388,7 @@ async def test_manager_property_access():
 
 
 @pytest.mark.asyncio
+@patch.dict(os.environ, {"OPENAI_API_KEY": ""})  # Force FakeLLM by removing API key
 async def test_manager_error_handling():
     """Test error handling in orchestration scenarios."""
     manager = ChatAgentManager(
@@ -402,9 +403,14 @@ async def test_manager_error_handling():
 
     # Should still get a response (thread gets created)
     assert response is not None
+    
+    # With FakeLLM, expect the fake response format
+    assert "[FAKE LLM RESPONSE]" in response
+    assert "Test message" in response
 
 
 @pytest.mark.asyncio
+@patch.dict(os.environ, {"OPENAI_API_KEY": ""})  # Force FakeLLM by removing API key
 async def test_manager_thread_auto_creation():
     """Test automatic thread creation when thread doesn't exist."""
     non_existent_thread_id = 99999
@@ -421,6 +427,10 @@ async def test_manager_thread_auto_creation():
 
     assert response is not None
     assert isinstance(response, str)
+    
+    # With FakeLLM, expect the fake response format
+    assert "[FAKE LLM RESPONSE]" in response
+    assert "Auto-create thread test" in response
 
     # The manager should now have a valid main agent
     assert manager.main_agent is not None
