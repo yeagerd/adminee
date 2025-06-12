@@ -14,9 +14,9 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
+from ...common.secrets import get_token_encryption_salt
 from ..exceptions import EncryptionException
 from ..settings import Settings
-from ...common.secrets import get_token_encryption_salt
 
 # Set up logging
 logger = structlog.get_logger(__name__)

@@ -7,13 +7,12 @@ error handling, and security scenarios.
 
 import base64
 import os
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
 from services.user_management.exceptions import EncryptionException
 from services.user_management.security.encryption import TokenEncryption
-from services.user_management.settings import Settings
 
 
 class TestTokenEncryption:
@@ -22,8 +21,12 @@ class TestTokenEncryption:
     @pytest.fixture
     def mock_get_token_encryption_salt(self):
         """Mock the get_token_encryption_salt function."""
-        with patch('services.user_management.security.encryption.get_token_encryption_salt') as mock_func:
-            mock_func.return_value = base64.b64encode(b"test-salt-16byte").decode("utf-8")
+        with patch(
+            "services.user_management.security.encryption.get_token_encryption_salt"
+        ) as mock_func:
+            mock_func.return_value = base64.b64encode(b"test-salt-16byte").decode(
+                "utf-8"
+            )
             yield mock_func
 
     @pytest.fixture
@@ -59,17 +62,21 @@ class TestTokenEncryption:
     def test_service_salt_from_function(self):
         """Test service salt loading from centralized function."""
         test_salt = base64.b64encode(b"custom-salt-16byt").decode("utf-8")
-        with patch('services.user_management.security.encryption.get_token_encryption_salt') as mock_func:
+        with patch(
+            "services.user_management.security.encryption.get_token_encryption_salt"
+        ) as mock_func:
             mock_func.return_value = test_salt
             service = TokenEncryption()
-            
+
             expected_salt = base64.b64decode(test_salt)
             assert service._service_salt == expected_salt
             mock_func.assert_called_once()
 
     def test_service_salt_error_fallback(self):
         """Test service salt error when function returns empty."""
-        with patch('services.user_management.security.encryption.get_token_encryption_salt') as mock_func:
+        with patch(
+            "services.user_management.security.encryption.get_token_encryption_salt"
+        ) as mock_func:
             mock_func.return_value = ""  # Simulate no salt provided
             # Expect this to raise due to the missing salt
             with pytest.raises(EncryptionException):
@@ -330,7 +337,9 @@ class TestTokenEncryption:
     def test_service_salt_error_handling(self):
         """Test error handling in service salt initialization."""
         # Mock function that returns invalid base64
-        with patch('services.user_management.security.encryption.get_token_encryption_salt') as mock_func:
+        with patch(
+            "services.user_management.security.encryption.get_token_encryption_salt"
+        ) as mock_func:
             mock_func.return_value = "invalid-base64!!!"
 
             with pytest.raises(EncryptionException) as exc_info:
