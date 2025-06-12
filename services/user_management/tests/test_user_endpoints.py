@@ -6,6 +6,7 @@ error handling, authentication, and authorization.
 """
 
 import os
+
 os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
 
 from datetime import datetime, timezone
@@ -14,9 +15,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import HTTPException, status
 
-from ..exceptions import UserNotFoundException, ValidationException
 from services.user_management.models.user import User
-from services.user_management.models.preferences import UserPreferences
+
+from ..exceptions import UserNotFoundException, ValidationException
 from ..schemas.user import (
     UserCreate,
     UserDeleteResponse,

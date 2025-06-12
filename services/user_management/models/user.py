@@ -17,8 +17,8 @@ from services.user_management.models.preferences import UserPreferences
 from services.user_management.models.token import EncryptedToken
 
 if TYPE_CHECKING:
-    from services.user_management.models.integration import Integration
     from services.user_management.models.audit import AuditLog
+    from services.user_management.models.integration import Integration
     from services.user_management.models.preferences import UserPreferences
     from services.user_management.models.token import EncryptedToken
 

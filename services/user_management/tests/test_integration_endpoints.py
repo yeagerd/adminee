@@ -7,32 +7,34 @@ health monitoring, and provider configuration endpoints.
 
 import os
 import tempfile
+
 # Set required environment variables before any imports
 os.environ.setdefault("TOKEN_ENCRYPTION_SALT", "dGVzdC1zYWx0LTE2Ynl0ZQ==")
 
+import asyncio
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
-import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 
 from services.user_management.auth.clerk import get_current_user
+from services.user_management.database import create_all_tables
 from services.user_management.exceptions import (
     IntegrationException,
     NotFoundException,
 )
 from services.user_management.main import app
-from services.user_management.models.integration import IntegrationProvider, IntegrationStatus
+from services.user_management.models.integration import (
+    IntegrationProvider,
+    IntegrationStatus,
+)
 from services.user_management.schemas.integration import (
     IntegrationHealthResponse,
     IntegrationListResponse,
     IntegrationStatsResponse,
     OAuthCallbackResponse,
 )
-from services.user_management.database import create_all_tables
-
-import asyncio
 
 
 class TestIntegrationListEndpoint:
@@ -42,27 +44,31 @@ class TestIntegrationListEndpoint:
         self.db_fd, self.db_path = tempfile.mkstemp()
         os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
         os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
-        from services.user_management.main import app
-        from fastapi.testclient import TestClient
+
+
         asyncio.run(create_all_tables())
         self.app = app
         self.client = TestClient(app)
         self._override_auth()
 
     def teardown_method(self):
-        from services.user_management.auth.clerk import get_current_user
+
         self.app.dependency_overrides.clear()
-        if hasattr(self, '_patcher'):
+        if hasattr(self, "_patcher"):
             self._patcher.stop()
         os.close(self.db_fd)
         os.unlink(self.db_path)
 
     def _override_auth(self):
-        from services.user_management.auth.clerk import get_current_user
+
         async def mock_get_current_user():
             return "user_123"
-        async def mock_verify_user_ownership(current_user_id: str, resource_user_id: str):
+
+        async def mock_verify_user_ownership(
+            current_user_id: str, resource_user_id: str
+        ):
             return None
+
         self.app.dependency_overrides[get_current_user] = mock_get_current_user
         patcher = patch(
             "services.user_management.auth.clerk.verify_user_ownership",
@@ -167,27 +173,31 @@ class TestOAuthFlowEndpoints:
         self.db_fd, self.db_path = tempfile.mkstemp()
         os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
         os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
-        from services.user_management.main import app
-        from fastapi.testclient import TestClient
+
+
         asyncio.run(create_all_tables())
         self.app = app
         self.client = TestClient(app)
         self._override_auth()
 
     def teardown_method(self):
-        from services.user_management.auth.clerk import get_current_user
+
         self.app.dependency_overrides.clear()
-        if hasattr(self, '_patcher'):
+        if hasattr(self, "_patcher"):
             self._patcher.stop()
         os.close(self.db_fd)
         os.unlink(self.db_path)
 
     def _override_auth(self):
-        from services.user_management.auth.clerk import get_current_user
+
         async def mock_get_current_user():
             return "user_123"
-        async def mock_verify_user_ownership(current_user_id: str, resource_user_id: str):
+
+        async def mock_verify_user_ownership(
+            current_user_id: str, resource_user_id: str
+        ):
             return None
+
         self.app.dependency_overrides[get_current_user] = mock_get_current_user
         patcher = patch(
             "services.user_management.auth.clerk.verify_user_ownership",
@@ -416,27 +426,31 @@ class TestIntegrationManagementEndpoints:
         self.db_fd, self.db_path = tempfile.mkstemp()
         os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
         os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
-        from services.user_management.main import app
-        from fastapi.testclient import TestClient
+
+
         asyncio.run(create_all_tables())
         self.app = app
         self.client = TestClient(app)
         self._override_auth()
 
     def teardown_method(self):
-        from services.user_management.auth.clerk import get_current_user
+
         self.app.dependency_overrides.clear()
-        if hasattr(self, '_patcher'):
+        if hasattr(self, "_patcher"):
             self._patcher.stop()
         os.close(self.db_fd)
         os.unlink(self.db_path)
 
     def _override_auth(self):
-        from services.user_management.auth.clerk import get_current_user
+
         async def mock_get_current_user():
             return "user_123"
-        async def mock_verify_user_ownership(current_user_id: str, resource_user_id: str):
+
+        async def mock_verify_user_ownership(
+            current_user_id: str, resource_user_id: str
+        ):
             return None
+
         self.app.dependency_overrides[get_current_user] = mock_get_current_user
         patcher = patch(
             "services.user_management.auth.clerk.verify_user_ownership",
@@ -636,27 +650,31 @@ class TestProviderEndpoints:
         self.db_fd, self.db_path = tempfile.mkstemp()
         os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
         os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
-        from services.user_management.main import app
-        from fastapi.testclient import TestClient
+
+
         asyncio.run(create_all_tables())
         self.app = app
         self.client = TestClient(app)
         self._override_auth()
 
     def teardown_method(self):
-        from services.user_management.auth.clerk import get_current_user
+
         self.app.dependency_overrides.clear()
-        if hasattr(self, '_patcher'):
+        if hasattr(self, "_patcher"):
             self._patcher.stop()
         os.close(self.db_fd)
         os.unlink(self.db_path)
 
     def _override_auth(self):
-        from services.user_management.auth.clerk import get_current_user
+
         async def mock_get_current_user():
             return "user_123"
-        async def mock_verify_user_ownership(current_user_id: str, resource_user_id: str):
+
+        async def mock_verify_user_ownership(
+            current_user_id: str, resource_user_id: str
+        ):
             return None
+
         self.app.dependency_overrides[get_current_user] = mock_get_current_user
         patcher = patch(
             "services.user_management.auth.clerk.verify_user_ownership",
@@ -766,16 +784,16 @@ class TestIntegrationEndpointSecurity:
         self.db_fd, self.db_path = tempfile.mkstemp()
         os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
         os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
-        from services.user_management.main import app
-        from fastapi.testclient import TestClient
+
+
         asyncio.run(create_all_tables())
         self.app = app
         self.client = TestClient(app)
 
     def teardown_method(self):
-        from services.user_management.auth.clerk import get_current_user
+
         self.app.dependency_overrides.clear()
-        if hasattr(self, '_patcher'):
+        if hasattr(self, "_patcher"):
             self._patcher.stop()
         os.close(self.db_fd)
         os.unlink(self.db_path)
@@ -814,7 +832,7 @@ class TestIntegrationEndpointSecurity:
 
     def test_user_ownership_verification(self):
         """Test that users can only access their own integrations."""
-        from services.user_management.auth.clerk import get_current_user
+
         user_id = "user_123"
         other_user_id = "user_456"
 

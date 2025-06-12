@@ -16,8 +16,8 @@ from sqlmodel import Column, DateTime, Field, Relationship, SQLModel
 from services.user_management.models.integration import Integration
 
 if TYPE_CHECKING:
-    from services.user_management.models.user import User
     from services.user_management.models.integration import Integration
+    from services.user_management.models.user import User
 
 
 class TokenType(str, Enum):

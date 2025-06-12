@@ -5,7 +5,7 @@ Provides comprehensive audit logging for compliance and security tracking.
 """
 
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from sqlalchemy import JSON, func
 from sqlmodel import Column, DateTime, Field, Relationship, SQLModel

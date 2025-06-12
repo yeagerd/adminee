@@ -41,7 +41,11 @@ from services.user_management.schemas.user import (
     UserSearchRequest,
     UserUpdate,
 )
-from services.user_management.schemas.webhook import ClerkWebhookEvent, ClerkWebhookEventData, WebhookResponse
+from services.user_management.schemas.webhook import (
+    ClerkWebhookEvent,
+    ClerkWebhookEventData,
+    WebhookResponse,
+)
 
 __all__ = [
     "UserBase",

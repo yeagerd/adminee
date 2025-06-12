@@ -11,7 +11,13 @@ import logging
 import random
 from functools import wraps
 from typing import Any, Callable, List, Optional, Type
-from services.user_management.exceptions import DatabaseException, ServiceException, IntegrationException, TokenNotFoundException
+
+from services.user_management.exceptions import (
+    DatabaseException,
+    IntegrationException,
+    ServiceException,
+    TokenNotFoundException,
+)
 
 logger = logging.getLogger(__name__)
 

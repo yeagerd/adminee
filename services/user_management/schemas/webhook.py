@@ -9,9 +9,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
-from services.user_management.utils.validation import (
-    validate_json_safe_string,
-)
+
 
 
 class ClerkWebhookEventData(BaseModel):

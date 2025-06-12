@@ -17,7 +17,6 @@ from services.user_management.utils.validation import (
     sanitize_text_input,
     validate_enum_value,
     validate_time_format,
-    validate_json_safe_string,
 )
 
 

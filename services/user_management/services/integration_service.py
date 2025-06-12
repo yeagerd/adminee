@@ -18,7 +18,11 @@ from services.user_management.exceptions import (
     SimpleValidationException,
 )
 from services.user_management.integrations.oauth_config import get_oauth_config
-from services.user_management.models.integration import Integration, IntegrationProvider, IntegrationStatus
+from services.user_management.models.integration import (
+    Integration,
+    IntegrationProvider,
+    IntegrationStatus,
+)
 from services.user_management.models.token import EncryptedToken, TokenType
 from services.user_management.models.user import User
 from services.user_management.schemas.integration import (

@@ -7,16 +7,15 @@ database operations, and error handling scenarios.
 
 import os
 import tempfile
+
 import pytest
-from unittest.mock import AsyncMock, patch
 from fastapi.testclient import TestClient
-from services.user_management.main import app
-from services.user_management.models.user import User
-from services.user_management.models.preferences import UserPreferences
-from services.user_management.database import get_async_session, get_engine
 from sqlalchemy import text
 
-from ..exceptions import DatabaseError
+from services.user_management.database import get_async_session
+from services.user_management.main import app
+from services.user_management.models.user import User
+
 from ..schemas.webhook import ClerkWebhookEventData
 from ..services.webhook_service import WebhookService
 
@@ -35,6 +34,7 @@ class TestWebhookServiceIntegration:
 
     def _clean_database(self):
         import asyncio
+
         async def clean():
             async_session = get_async_session()
             async with async_session() as session:
@@ -42,6 +42,7 @@ class TestWebhookServiceIntegration:
                 await session.execute(text("DELETE FROM user_preferences"))
                 await session.execute(text("DELETE FROM users"))
                 await session.commit()
+
         asyncio.run(clean())
 
     def sample_clerk_user_data(self):
@@ -103,6 +104,7 @@ class TestWebhookServiceIntegration:
         async_session = get_async_session()
         async with async_session() as session:
             from sqlmodel import select
+
             user_result = await session.execute(
                 select(User).where(User.external_auth_id == "user_test_123")
             )
@@ -117,7 +119,9 @@ class TestWebhookServiceIntegration:
         # Create same user multiple times
         results = []
         for i in range(3):
-            result = await self.webhook_service._handle_user_created(self.sample_clerk_user_data())
+            result = await self.webhook_service._handle_user_created(
+                self.sample_clerk_user_data()
+            )
             results.append(result)
         # First should create, rest should skip
         assert results[0]["action"] == "user_created"

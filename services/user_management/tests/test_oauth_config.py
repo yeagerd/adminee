@@ -13,7 +13,6 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import httpx
 import pytest
-import urllib.parse
 
 from services.user_management.exceptions import ValidationException
 from services.user_management.integrations.oauth_config import (
@@ -580,7 +579,7 @@ class TestOAuthConfig:
         assert oauth_state.user_id == "user-msft-123"
 
         for scope in expected_scopes:
-            assert urllib.parse.quote(scope, safe='') in auth_url
+            assert urllib.parse.quote(scope, safe="") in auth_url
 
     def test_generate_authorization_url_invalid_provider(self):
         """Test authorization URL generation with invalid provider."""
@@ -970,7 +969,7 @@ class TestOAuthConfig:
         }
         assert set(oauth_state.scopes) == expected_scopes
         for scope in expected_scopes:
-            assert urllib.parse.quote(scope, safe='') in auth_url
+            assert urllib.parse.quote(scope, safe="") in auth_url
 
 
 class TestGlobalOAuthConfig:

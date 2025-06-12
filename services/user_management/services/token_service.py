@@ -16,19 +16,15 @@ from services.user_management.database import get_async_session
 from services.user_management.exceptions import (
     IntegrationException,
     NotFoundException,
-    SimpleValidationException,
 )
-from services.user_management.models.integration import Integration, IntegrationProvider, IntegrationStatus
+from services.user_management.models.integration import (
+    Integration,
+    IntegrationProvider,
+    IntegrationStatus,
+)
 from services.user_management.models.token import EncryptedToken, TokenType
 from services.user_management.models.user import User
 from services.user_management.schemas.integration import (
-    IntegrationHealthResponse,
-    IntegrationListResponse,
-    IntegrationResponse,
-    IntegrationStatsResponse,
-    OAuthCallbackResponse,
-    OAuthStartResponse,
-    TokenRefreshResponse,
     InternalTokenResponse,
     InternalUserStatusResponse,
     TokenRevocationResponse,
@@ -520,7 +516,9 @@ class TokenService:
                 error=str(e),
             )
             # Return a failed response similar to TokenRefreshResponse
-            from services.user_management.schemas.integration import TokenRefreshResponse
+            from services.user_management.schemas.integration import (
+                TokenRefreshResponse,
+            )
 
             return TokenRefreshResponse(
                 success=False,

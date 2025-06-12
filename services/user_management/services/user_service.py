@@ -12,18 +12,17 @@ from sqlmodel import func, select
 
 from services.user_management.database import get_async_session
 from services.user_management.exceptions import (
-    NotFoundException,
     SimpleValidationException,
 )
 from services.user_management.models.user import User
 from services.user_management.schemas.user import (
     UserCreate,
-    UserUpdate,
-    UserResponse,
     UserDeleteResponse,
     UserListResponse,
     UserOnboardingUpdate,
+    UserResponse,
     UserSearchRequest,
+    UserUpdate,
 )
 from services.user_management.services.audit_service import audit_logger
 

@@ -15,7 +15,6 @@ from services.user_management.utils.validation import (
     sanitize_text_input,
     validate_email_address,
     validate_url,
-    validate_json_safe_string,
 )
 
 

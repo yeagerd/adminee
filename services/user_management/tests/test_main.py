@@ -5,14 +5,15 @@ Tests application startup, health endpoints, exception handling,
 and middleware functionality.
 """
 
-from unittest.mock import AsyncMock, patch
+import asyncio
+import importlib
 import os
 import tempfile
-import pytest
+from unittest.mock import patch
+
 from fastapi.testclient import TestClient
-import asyncio
+
 from services.user_management.database import create_all_tables
-import importlib
 
 from ..exceptions import (
     AuthenticationException,
@@ -51,7 +52,9 @@ class TestApplicationStartup:
     def test_cors_middleware_configured(self, mock_settings):
         mock_settings.debug = True
         mock_settings.environment = "test"
-        response = self.client.get("/health", headers={"Origin": "http://localhost:3000"})
+        response = self.client.get(
+            "/health", headers={"Origin": "http://localhost:3000"}
+        )
         assert response.status_code == 200
         assert "access-control-allow-origin" in response.headers
 
@@ -104,6 +107,7 @@ class TestHealthEndpoint:
         importlib.reload(importlib.import_module("services.user_management.database"))
         importlib.reload(importlib.import_module("services.user_management.main"))
         from services.user_management.main import app
+
         self.client = TestClient(app)
         response = self.client.get("/health")
         assert response.status_code == 503
@@ -116,6 +120,7 @@ class TestHealthEndpoint:
         importlib.reload(importlib.import_module("services.user_management.database"))
         importlib.reload(importlib.import_module("services.user_management.main"))
         from services.user_management.main import app
+
         self.client = TestClient(app)
         response = self.client.get("/health")
         assert response.status_code == 503
@@ -129,6 +134,7 @@ class TestHealthEndpoint:
         importlib.reload(importlib.import_module("services.user_management.database"))
         importlib.reload(importlib.import_module("services.user_management.main"))
         from services.user_management.main import app
+
         self.client = TestClient(app)
         response = self.client.get("/health")
         assert response.status_code == 503
@@ -140,6 +146,7 @@ class TestHealthEndpoint:
         importlib.reload(importlib.import_module("services.user_management.database"))
         importlib.reload(importlib.import_module("services.user_management.main"))
         from services.user_management.main import app
+
         self.client = TestClient(app)
         response = self.client.get("/health")
         assert response.status_code == 503
@@ -183,6 +190,7 @@ class TestReadinessEndpoint:
         importlib.reload(importlib.import_module("services.user_management.database"))
         importlib.reload(importlib.import_module("services.user_management.main"))
         from services.user_management.main import app
+
         self.client = TestClient(app)
         response = self.client.get("/ready")
         assert response.status_code == 503
@@ -196,6 +204,7 @@ class TestReadinessEndpoint:
         importlib.reload(importlib.import_module("services.user_management.database"))
         importlib.reload(importlib.import_module("services.user_management.main"))
         from services.user_management.main import app
+
         self.client = TestClient(app)
         response = self.client.get("/ready")
         assert response.status_code == 503
@@ -209,6 +218,7 @@ class TestReadinessEndpoint:
         importlib.reload(importlib.import_module("services.user_management.database"))
         importlib.reload(importlib.import_module("services.user_management.main"))
         from services.user_management.main import app
+
         self.client = TestClient(app)
         response = self.client.get("/ready")
         assert response.status_code == 503
@@ -222,6 +232,7 @@ class TestReadinessEndpoint:
         importlib.reload(importlib.import_module("services.user_management.database"))
         importlib.reload(importlib.import_module("services.user_management.main"))
         from services.user_management.main import app
+
         self.client = TestClient(app)
         response = self.client.get("/ready")
         assert response.status_code == 503
@@ -233,6 +244,7 @@ class TestReadinessEndpoint:
         importlib.reload(importlib.import_module("services.user_management.database"))
         importlib.reload(importlib.import_module("services.user_management.main"))
         from services.user_management.main import app
+
         self.client = TestClient(app)
         response = self.client.get("/ready")
         assert response.status_code == 503
@@ -251,6 +263,7 @@ class TestReadinessEndpoint:
         importlib.reload(importlib.import_module("services.user_management.database"))
         importlib.reload(importlib.import_module("services.user_management.main"))
         from services.user_management.main import app
+
         self.client = TestClient(app)
         response = self.client.get("/ready")
         assert response.status_code == 503
@@ -320,7 +333,9 @@ class TestMiddleware:
 
     def test_cors_headers(self):
         """Test that CORS headers are properly set."""
-        response = self.client.get("/health", headers={"Origin": "http://localhost:3000"})
+        response = self.client.get(
+            "/health", headers={"Origin": "http://localhost:3000"}
+        )
 
         # Check CORS headers are present
         assert "access-control-allow-origin" in response.headers

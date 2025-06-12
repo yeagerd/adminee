@@ -74,13 +74,72 @@
 ## User Management Service Test Files
 
 ### Completed ✅
-- [x] `test_main.py` - ✅ **COMPLETED** - Refactored to use local setup/teardown, all tests passing
-- [x] `test_webhook_service.py` - ✅ **COMPLETED** - Refactored to use local setup/teardown, all tests passing  
-- [x] `test_user_endpoints.py` - ✅ **COMPLETED** - Refactored to use local setup/teardown, all tests passing
-- [x] `test_oauth_config.py` - ✅ **COMPLETED** - Refactored to use local setup/teardown, all tests passing
-- [x] `test_integration_endpoints.py` - ✅ **COMPLETED** - Refactored to use local setup/teardown, all tests passing
+- [x] `test_main.py` - Refactored to use local setup/teardown
+- [x] `test_webhook_service.py` - Refactored to use local setup/teardown  
+- [x] `test_user_endpoints.py` - Refactored to use local setup/teardown
+- [x] `test_oauth_config.py` - Refactored to use local setup/teardown
+- [x] `test_integration_endpoints.py` - Refactored to use local setup/teardown
+- [x] `test_audit_service.py` - Refactored to use local setup/teardown
 
-### Remaining
-- [ ] `test_user_service.py` - Uses database fixtures, needs DB isolation and fixture inlining
-- [ ] `test_integration_service.py` - Uses database fixtures, needs DB isolation and fixture inlining  
-- [ ] `test_audit_service.py` - Uses database fixtures, needs DB isolation and fixture inlining
+### Remaining Files to Refactor
+- [ ] `test_preferences.py` - Uses `async_session` patches extensively
+- [ ] `test_webhook_endpoints.py` - Has pytest fixtures
+- [ ] `test_token_service.py` - Has pytest fixtures
+- [ ] `test_encryption.py` - Has pytest fixtures
+- [ ] `test_internal_endpoints.py` - Has pytest fixtures
+- [ ] `test_auth.py` - Has pytest fixtures with autouse
+- [ ] `test_settings.py` - May need database isolation
+- [ ] `test_models.py` - May need database isolation
+- [ ] `test_exception_handling.py` - May need database isolation
+- [ ] `test_validation_security.py` - May need database isolation
+- [ ] `test_retry_utils.py` - May need database isolation
+- [ ] `test_integration_schemas.py` - May need database isolation
+
+### Files Removed from Original List (Don't Exist)
+- ~~`test_user_service.py`~~ - File doesn't exist
+- ~~`test_integration_service.py`~~ - File doesn't exist
+
+## Chat Service Test Files (Database/History Related)
+- [ ] `test_chat_agent.py` - Has pytest fixtures
+- [ ] `test_llm_tools.py` - Has pytest fixtures with autouse
+- [ ] `test_chat_service_e2e.py` - Has pytest fixtures with autouse
+- [ ] `test_llama_manager.py` - Has pytest fixtures
+
+## Instructions for Each File
+
+For each test file that needs refactoring:
+
+1. **Remove dependencies on `conftest.py`**:
+   - Delete any imports from conftest
+   - Remove fixture arguments from test methods
+
+2. **Add `setup_method`/`teardown_method` to test classes**:
+   ```python
+   def setup_method(self):
+       self.db_fd, self.db_path = tempfile.mkstemp()
+       os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
+       asyncio.run(create_all_tables())
+       # Initialize any other test dependencies
+   
+   def teardown_method(self):
+       os.close(self.db_fd)
+       os.unlink(self.db_path)
+   ```
+
+3. **Inline all fixtures**:
+   - Convert `@pytest.fixture` functions to regular methods
+   - Replace fixture arguments with `self.` references
+   - Ensure all test methods are self-contained
+
+4. **Database isolation**:
+   - Each test class should create its own temporary SQLite database
+   - Clean up database after each test method
+   - Use `asyncio.run(create_all_tables())` to initialize schema
+
+5. **Environment variables**:
+   - Set required environment variables at the top of the file if needed for imports
+   - Example: `os.environ.setdefault("TOKEN_ENCRYPTION_SALT", "dGVzdC1zYWx0LTE2Ynl0ZQ==")`
+
+6. **Test verification**:
+   - Run `python -m pytest tests/test_filename.py -v` to verify all tests pass
+   - Ensure no dependencies on global state or shared fixtures

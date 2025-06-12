@@ -13,7 +13,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
-from services.user_management.database import close_db, create_all_tables, get_async_session
+from services.user_management.database import (
+    close_db,
+    create_all_tables,
+    get_async_session,
+)
 from services.user_management.exceptions import (
     AuditException,
     AuthenticationException,
@@ -34,6 +38,7 @@ from services.user_management.exceptions import (
     ValidationException,
     WebhookValidationException,
 )
+from services.user_management.integrations.oauth_config import get_oauth_config
 from services.user_management.logging_config import setup_logging
 from services.user_management.middleware.sanitization import (
     InputSanitizationMiddleware,
@@ -47,10 +52,8 @@ from services.user_management.routers import (
     users_router,
     webhooks_router,
 )
-from services.user_management.settings import settings, Settings
-
-from services.user_management.integrations.oauth_config import get_oauth_config
 from services.user_management.services.integration_service import integration_service
+from services.user_management.settings import Settings, settings
 
 # Setup structured logging
 setup_logging()

@@ -15,8 +15,8 @@ from sqlalchemy import Text, func
 from sqlmodel import Column, DateTime, Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
-    from services.user_management.models.user import User
     from services.user_management.models.token import EncryptedToken
+    from services.user_management.models.user import User
 
 
 class IntegrationProvider(str, Enum):

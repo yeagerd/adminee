@@ -30,6 +30,7 @@ def get_engine():
         echo=settings.debug,
     )
 
+
 def get_async_session():
     engine = get_engine()
     return async_sessionmaker(

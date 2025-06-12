@@ -11,9 +11,12 @@ from sqlmodel import select
 
 from services.user_management.database import get_async_session
 from services.user_management.exceptions import DatabaseError, WebhookProcessingError
-from services.user_management.models.user import User
 from services.user_management.models.preferences import UserPreferences
-from services.user_management.schemas.webhook import ClerkWebhookEvent, ClerkWebhookEventData
+from services.user_management.models.user import User
+from services.user_management.schemas.webhook import (
+    ClerkWebhookEvent,
+    ClerkWebhookEventData,
+)
 
 logger = logging.getLogger(__name__)
 

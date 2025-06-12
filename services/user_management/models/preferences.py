@@ -5,7 +5,7 @@ Defines comprehensive user preference settings across all categories.
 """
 
 from datetime import datetime, timezone
-from typing import Dict, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, Optional
 
 from sqlalchemy import JSON, func
 from sqlmodel import Column, DateTime, Field, Relationship, SQLModel
