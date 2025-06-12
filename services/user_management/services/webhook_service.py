@@ -47,6 +47,48 @@ class WebhookService:
             logger.error(f"Failed to process webhook event {event.type}: {str(e)}")
             raise WebhookProcessingError(f"Webhook processing failed: {str(e)}")
 
+    async def process_user_created(self, user_data: dict) -> dict:
+        """
+        Process user.created event with raw data.
+
+        Args:
+            user_data: Raw user data from webhook
+
+        Returns:
+            dict: Processing result
+        """
+        # Convert raw data to ClerkWebhookEventData
+        event_data = ClerkWebhookEventData(**user_data)
+        return await self._handle_user_created(event_data)
+
+    async def process_user_updated(self, user_data: dict) -> dict:
+        """
+        Process user.updated event with raw data.
+
+        Args:
+            user_data: Raw user data from webhook
+
+        Returns:
+            dict: Processing result
+        """
+        # Convert raw data to ClerkWebhookEventData
+        event_data = ClerkWebhookEventData(**user_data)
+        return await self._handle_user_updated(event_data)
+
+    async def process_user_deleted(self, user_data: dict) -> dict:
+        """
+        Process user.deleted event with raw data.
+
+        Args:
+            user_data: Raw user data from webhook
+
+        Returns:
+            dict: Processing result
+        """
+        # Convert raw data to ClerkWebhookEventData
+        event_data = ClerkWebhookEventData(**user_data)
+        return await self._handle_user_deleted(event_data)
+
     async def _handle_user_created(self, user_data: ClerkWebhookEventData) -> dict:
         """
         Handle user.created event by creating User and UserPreferences records.

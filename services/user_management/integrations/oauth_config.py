@@ -276,6 +276,7 @@ class OAuthConfig:
 
         # Microsoft OAuth configuration
         microsoft_scopes = [
+            # OpenID Connect scopes (standard for Microsoft)
             OAuthScope(
                 name="openid",
                 description="OpenID Connect authentication",
@@ -291,45 +292,54 @@ class OAuthConfig:
                 description="Access to user's basic profile information",
                 required=True,
             ),
+            # Microsoft Graph API scopes
             OAuthScope(
-                name="https://graph.microsoft.com/mail.read",
+                name="https://graph.microsoft.com/User.Read",
+                description="Read user profile information",
+                required=False,
+            ),
+            OAuthScope(
+                name="https://graph.microsoft.com/Mail.Read",
                 description="Read-only access to Outlook mail",
                 sensitive=True,
             ),
             OAuthScope(
-                name="https://graph.microsoft.com/mail.readwrite",
+                name="https://graph.microsoft.com/Mail.ReadWrite",
                 description="Read and write access to Outlook mail",
                 sensitive=True,
             ),
             OAuthScope(
-                name="https://graph.microsoft.com/calendars.read",
+                name="https://graph.microsoft.com/Calendars.Read",
                 description="Read-only access to Outlook calendar",
                 sensitive=True,
             ),
             OAuthScope(
-                name="https://graph.microsoft.com/calendars.readwrite",
+                name="https://graph.microsoft.com/Calendars.ReadWrite",
                 description="Read and write access to Outlook calendar",
                 sensitive=True,
             ),
             OAuthScope(
-                name="https://graph.microsoft.com/files.read",
+                name="https://graph.microsoft.com/Files.Read",
                 description="Read-only access to OneDrive files",
                 sensitive=True,
             ),
             OAuthScope(
-                name="https://graph.microsoft.com/files.readwrite",
+                name="https://graph.microsoft.com/Files.ReadWrite",
                 description="Read and write access to OneDrive files",
                 sensitive=True,
             ),
         ]
 
+        # Do not use the tenant-specific id, as then the user must be registered in the tenant
+        tenant_id = "common"
+
         providers[IntegrationProvider.MICROSOFT] = OAuthProviderConfig(
             name="Microsoft",
             provider=IntegrationProvider.MICROSOFT,
-            client_id=self.settings.microsoft_client_id,
-            client_secret=self.settings.microsoft_client_secret,
-            authorization_url="https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
-            token_url="https://login.microsoftonline.com/common/oauth2/v2.0/token",
+            client_id=self.settings.azure_ad_client_id,
+            client_secret=self.settings.azure_ad_client_secret,
+            authorization_url=f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/authorize",
+            token_url=f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token",
             userinfo_url="https://graph.microsoft.com/v1.0/me",
             revoke_url=None,  # Microsoft doesn't have a standard revoke endpoint
             scopes=microsoft_scopes,
@@ -365,6 +375,10 @@ class OAuthConfig:
     def is_provider_available(self, provider: IntegrationProvider) -> bool:
         """Check if a provider is available."""
         return provider in self._providers
+
+    def get_default_redirect_uri(self) -> str:
+        """Get the default OAuth redirect URI from settings."""
+        return self.settings.oauth_redirect_uri
 
     def generate_state(
         self,
@@ -481,7 +495,7 @@ class OAuthConfig:
         self,
         provider: IntegrationProvider,
         user_id: str,
-        redirect_uri: str,
+        redirect_uri: Optional[str] = None,
         scopes: Optional[List[str]] = None,
         extra_params: Optional[Dict[str, str]] = None,
     ) -> Tuple[str, OAuthState]:
@@ -494,13 +508,34 @@ class OAuthConfig:
                 "OAuth provider not available or configured",
             )
 
+        # Use default redirect URI if none provided
+        if redirect_uri is None:
+            redirect_uri = self.get_default_redirect_uri()
+
         # Validate and use scopes
         if scopes is None:
             scopes = provider_config.default_scopes.copy()
 
         # Validate requested scopes
         valid_scopes, invalid_scopes = provider_config.validate_scopes(scopes)
+
+        # Debug logging to understand scope validation issues
+        self.logger.debug(
+            "oauth_scope_validation",
+            provider=provider.value,
+            requested_scopes=scopes,
+            valid_scopes=valid_scopes,
+            invalid_scopes=invalid_scopes,
+            available_scopes=[scope.name for scope in provider_config.scopes],
+        )
+
         if invalid_scopes:
+            self.logger.error(
+                "oauth_scope_validation_failed",
+                provider=provider.value,
+                invalid_scopes=invalid_scopes,
+                available_scopes=[scope.name for scope in provider_config.scopes],
+            )
             raise ValidationException(
                 "scopes",
                 invalid_scopes,
@@ -787,7 +822,8 @@ def get_oauth_config(settings: Optional[Settings] = None) -> OAuthConfig:
     """Get global OAuth configuration instance."""
     global _oauth_config
 
-    if _oauth_config is None:
+    # Force reload if settings are provided or if config doesn't exist
+    if _oauth_config is None or settings is not None:
         if settings is None:
             settings = Settings()
         _oauth_config = OAuthConfig(settings)

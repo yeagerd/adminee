@@ -9,7 +9,9 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 import structlog
+from sqlmodel import select
 
+from ..database import async_session
 from ..exceptions import (
     IntegrationException,
     NotFoundException,
@@ -17,7 +19,7 @@ from ..exceptions import (
 )
 from ..integrations.oauth_config import get_oauth_config
 from ..models.integration import Integration, IntegrationProvider, IntegrationStatus
-from ..models.token import EncryptedToken
+from ..models.token import EncryptedToken, TokenType
 from ..models.user import User
 from ..schemas.integration import (
     IntegrationHealthResponse,
@@ -73,55 +75,62 @@ class IntegrationService:
         """
         try:
             # Verify user exists
-            user = await User.objects.get_or_none(external_auth_id=user_id)
-            if not user:
-                raise NotFoundException(f"User not found: {user_id}")
-
-            # Build query
-            query = Integration.objects.select_related("user")
-            query = query.filter(user__external_auth_id=user_id)
-
-            if provider:
-                query = query.filter(provider=provider)
-            if status:
-                query = query.filter(status=status)
-
-            # Get integrations
-            integrations = await query.all()
-
-            # Convert to response models
-            integration_responses = []
-            for integration in integrations:
-                token_info = {}
-                if include_token_info:
-                    token_info = await self._get_token_metadata(integration.id)
-
-                integration_response = IntegrationResponse(
-                    id=integration.id,
-                    user_id=integration.user.external_auth_id,
-                    provider=integration.provider,
-                    status=integration.status,
-                    scopes=(
-                        list(integration.scopes.keys()) if integration.scopes else []
-                    ),
-                    external_user_id=integration.provider_user_id,
-                    external_email=integration.provider_email,
-                    external_name=(
-                        integration.metadata.get("name")
-                        if integration.metadata
-                        else None
-                    ),
-                    has_access_token=token_info.get("has_access_token", False),
-                    has_refresh_token=token_info.get("has_refresh_token", False),
-                    token_expires_at=token_info.get("expires_at"),
-                    token_created_at=token_info.get("created_at"),
-                    last_sync_at=integration.last_sync_at,
-                    last_error=integration.error_message,
-                    error_count=await self._get_error_count(integration.id),
-                    created_at=integration.created_at,
-                    updated_at=integration.updated_at,
+            async with async_session() as session:
+                result = await session.execute(
+                    select(User).where(User.external_auth_id == user_id)
                 )
-                integration_responses.append(integration_response)
+                user = result.scalar_one_or_none()
+                if not user:
+                    raise NotFoundException(f"User not found: {user_id}")
+
+            # Build query for integrations within the same session
+            async with async_session() as session:
+                query = select(Integration).where(Integration.user_id == user.id)
+
+                if provider:
+                    query = query.where(Integration.provider == provider)
+                if status:
+                    query = query.where(Integration.status == status)
+
+                # Get integrations
+                integrations_result = await session.execute(query)
+                integrations = list(integrations_result.scalars().all())
+
+                # Convert to response models
+                integration_responses = []
+                for integration in integrations:
+                    token_info = {}
+                    if include_token_info:
+                        token_info = await self._get_token_metadata(integration.id)
+
+                    integration_response = IntegrationResponse(
+                        id=integration.id,
+                        user_id=user.external_auth_id,  # Use the user from the session
+                        provider=integration.provider,
+                        status=integration.status,
+                        scopes=(
+                            list(integration.scopes.keys())
+                            if integration.scopes
+                            else []
+                        ),
+                        external_user_id=integration.provider_user_id,
+                        external_email=integration.provider_email,
+                        external_name=(
+                            integration.provider_metadata.get("name")
+                            if integration.provider_metadata
+                            else None
+                        ),
+                        has_access_token=token_info.get("has_access_token", False),
+                        has_refresh_token=token_info.get("has_refresh_token", False),
+                        token_expires_at=token_info.get("expires_at"),
+                        token_created_at=token_info.get("created_at"),
+                        last_sync_at=integration.last_sync_at,
+                        last_error=integration.error_message,
+                        error_count=await self._get_error_count(integration.id),
+                        created_at=integration.created_at,
+                        updated_at=integration.updated_at,
+                    )
+                    integration_responses.append(integration_response)
 
             # Calculate statistics
             total = len(integration_responses)
@@ -168,7 +177,7 @@ class IntegrationService:
         self,
         user_id: str,
         provider: IntegrationProvider,
-        redirect_uri: str,
+        redirect_uri: Optional[str] = None,
         scopes: Optional[List[str]] = None,
         state_data: Optional[Dict[str, Any]] = None,
     ) -> OAuthStartResponse:
@@ -178,7 +187,7 @@ class IntegrationService:
         Args:
             user_id: User identifier
             provider: OAuth provider
-            redirect_uri: OAuth callback URL
+            redirect_uri: OAuth callback URL (optional, uses default if not provided)
             scopes: Requested OAuth scopes (optional)
             state_data: Additional state data (optional)
 
@@ -191,28 +200,45 @@ class IntegrationService:
         """
         try:
             # Verify user exists
-            user = await User.objects.get_or_none(external_auth_id=user_id)
-            if not user:
-                raise NotFoundException(f"User not found: {user_id}")
+            async with async_session() as session:
+                result = await session.execute(
+                    select(User).where(User.external_auth_id == user_id)
+                )
+                user = result.scalar_one_or_none()
+                if not user:
+                    raise NotFoundException(f"User not found: {user_id}")
 
             # Check if provider is available
-            # TODO: Implement when OAuth config is ready
-            # if not self.oauth_config.is_provider_available(provider):
-            #     raise SimpleValidationException(f"Provider {provider.value} is not available")
+            if not self.oauth_config.is_provider_available(provider):
+                raise SimpleValidationException(
+                    f"Provider {provider.value} is not available"
+                )
 
-            # TODO: Implement when OAuth config is ready
-            request_scopes = scopes or ["email", "profile"]
+            # Get provider config to validate and use default scopes
+            provider_config = self.oauth_config.get_provider_config(provider)
+            if not provider_config:
+                raise SimpleValidationException(
+                    f"Provider {provider.value} configuration not found"
+                )
 
-            # TODO: Generate real authorization URL
-            oauth_state = type(
-                "OAuthState",
-                (),
-                {
-                    "state": f"temp_state_{user_id}_{provider.value}",
-                    "expires_at": datetime.now(timezone.utc) + timedelta(minutes=10),
-                },
-            )()
-            authorization_url = f"https://oauth.{provider.value}.com/authorize?state={oauth_state.state}"
+            # Use provided scopes or default scopes from provider config
+            request_scopes = scopes or provider_config.default_scopes.copy()
+
+            # Use provided redirect_uri or default from config
+            final_redirect_uri = (
+                redirect_uri or self.oauth_config.get_default_redirect_uri()
+            )
+
+            # Generate real authorization URL using OAuth config
+            authorization_url, oauth_state = (
+                self.oauth_config.generate_authorization_url(
+                    provider=provider,
+                    user_id=user_id,
+                    redirect_uri=final_redirect_uri,
+                    scopes=request_scopes,
+                    extra_params=state_data,
+                )
+            )
 
             # Log the OAuth flow start
             await audit_logger.log_user_action(
@@ -221,7 +247,7 @@ class IntegrationService:
                 resource_type="integration",
                 details={
                     "provider": provider.value,
-                    "redirect_uri": redirect_uri,
+                    "redirect_uri": final_redirect_uri,
                     "scopes": request_scopes,
                     "state": oauth_state.state,
                 },
@@ -242,6 +268,8 @@ class IntegrationService:
                 provider=provider,
                 redirect_uri=redirect_uri,
                 error=str(e),
+                error_type=type(e).__name__,
+                exc_info=True,  # This will include the full traceback
             )
             if isinstance(e, (NotFoundException, SimpleValidationException)):
                 raise
@@ -273,19 +301,24 @@ class IntegrationService:
         """
         try:
             # Verify user exists
-            user = await User.objects.get_or_none(external_auth_id=user_id)
-            if not user:
-                raise NotFoundException(f"User not found: {user_id}")
+            async with async_session() as session:
+                result = await session.execute(
+                    select(User).where(User.external_auth_id == user_id)
+                )
+                user = result.scalar_one_or_none()
+                if not user:
+                    raise NotFoundException(f"User not found: {user_id}")
 
             # Validate OAuth state
-            if not self.oauth_config.is_valid_state(state, user_id, provider):
+            oauth_state = self.oauth_config.validate_state(state, user_id, provider)
+            if not oauth_state:
                 raise SimpleValidationException("Invalid or expired OAuth state")
 
             # Exchange authorization code for tokens
-            tokens = await self.oauth_config.exchange_authorization_code(
+            tokens = await self.oauth_config.exchange_code_for_tokens(
                 provider=provider,
                 authorization_code=authorization_code,
-                state=state,
+                oauth_state=oauth_state,
             )
 
             # Get user info from provider
@@ -308,14 +341,16 @@ class IntegrationService:
             await self._store_encrypted_tokens(integration.id, tokens)
 
             # Update integration status
-            await integration.update(
-                status=IntegrationStatus.ACTIVE,
-                last_sync_at=datetime.now(timezone.utc),
-                error_message=None,
-            )
+            async with async_session() as session:
+                integration.status = IntegrationStatus.ACTIVE
+                integration.last_sync_at = datetime.now(timezone.utc)
+                integration.error_message = None
+                integration.updated_at = datetime.now(timezone.utc)
+                session.add(integration)
+                await session.commit()
 
             # Clean up OAuth state
-            self.oauth_config.cleanup_expired_states()
+            self.oauth_config.remove_state(oauth_state.state)
 
             # Log successful OAuth completion
             await audit_logger.log_user_action(
@@ -409,22 +444,67 @@ class IntegrationService:
             integration = await self._get_user_integration(user_id, provider)
 
             # Get encrypted tokens
-            token_record = await EncryptedToken.objects.get_or_none(
-                integration=integration
-            )
+            async with async_session() as session:
+                token_result = await session.execute(
+                    select(EncryptedToken).where(
+                        EncryptedToken.integration_id == integration.id
+                    )
+                )
+                token_record = token_result.scalar_one_or_none()
             if not token_record:
                 raise IntegrationException("No tokens found for integration")
 
             # Decrypt tokens
-            tokens = self.token_encryption.decrypt_tokens(
-                user_id=user_id,
-                encrypted_data=token_record.encrypted_access_token,
-                refresh_data=token_record.encrypted_refresh_token,
+            access_token = None
+            refresh_token = None
+
+            # Get access token
+            access_token_result = await session.execute(
+                select(EncryptedToken).where(
+                    EncryptedToken.integration_id == integration.id,
+                    EncryptedToken.token_type == TokenType.ACCESS,
+                )
             )
+            access_token_record = access_token_result.scalar_one_or_none()
+            if access_token_record:
+                access_token = self.token_encryption.decrypt_token(
+                    encrypted_token=access_token_record.encrypted_value,
+                    user_id=user_id,
+                )
+
+            # Get refresh token
+            refresh_token_result = await session.execute(
+                select(EncryptedToken).where(
+                    EncryptedToken.integration_id == integration.id,
+                    EncryptedToken.token_type == TokenType.REFRESH,
+                )
+            )
+            refresh_token_record = refresh_token_result.scalar_one_or_none()
+            if refresh_token_record:
+                refresh_token = self.token_encryption.decrypt_token(
+                    encrypted_token=refresh_token_record.encrypted_value,
+                    user_id=user_id,
+                )
+
+            if not access_token:
+                raise IntegrationException("No access token found for integration")
+
+            tokens = {
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "expires_at": (
+                    access_token_record.expires_at.isoformat()
+                    if access_token_record and access_token_record.expires_at
+                    else None
+                ),
+            }
 
             # Check if refresh is needed
             if not force and tokens.get("expires_at"):
                 expires_at = datetime.fromisoformat(tokens["expires_at"])
+                # Ensure expires_at is timezone-aware
+                if expires_at.tzinfo is None:
+                    expires_at = expires_at.replace(tzinfo=timezone.utc)
                 # Refresh if expires within 5 minutes
                 if expires_at > datetime.now(timezone.utc) + timedelta(minutes=5):
                     return TokenRefreshResponse(
@@ -448,12 +528,16 @@ class IntegrationService:
             await self._store_encrypted_tokens(integration.id, new_tokens)
 
             # Update integration
-            await integration.update(
-                status=IntegrationStatus.ACTIVE,
-                last_sync_at=datetime.now(timezone.utc),
-                error_message=None,
-                updated_at=datetime.now(timezone.utc),
-            )
+            async with async_session() as session:
+                await session.execute(
+                    select(Integration).where(Integration.id == integration.id)
+                )
+                integration.status = IntegrationStatus.ACTIVE
+                integration.last_sync_at = datetime.now(timezone.utc)
+                integration.error_message = None
+                integration.updated_at = datetime.now(timezone.utc)
+                session.add(integration)
+                await session.commit()
 
             # Log token refresh
             await audit_logger.log_user_action(
@@ -494,11 +578,12 @@ class IntegrationService:
             # Update integration status on refresh failure
             try:
                 integration = await self._get_user_integration(user_id, provider)
-                await integration.update(
-                    status=IntegrationStatus.ERROR,
-                    error_message=f"Token refresh failed: {str(e)}",
-                    updated_at=datetime.now(timezone.utc),
-                )
+                async with async_session() as session:
+                    integration.status = IntegrationStatus.ERROR
+                    integration.error_message = f"Token refresh failed: {str(e)}"
+                    integration.updated_at = datetime.now(timezone.utc)
+                    session.add(integration)
+                    await session.commit()
             except Exception:
                 pass  # Don't fail if we can't update status
 
@@ -550,44 +635,113 @@ class IntegrationService:
 
             tokens_revoked = False
             if revoke_tokens:
-                try:
-                    # Get and revoke tokens
-                    token_record = await EncryptedToken.objects.get_or_none(
-                        integration=integration
+                # Get and revoke tokens
+                async with async_session() as session:
+                    # Get access token
+                    access_token_result = await session.execute(
+                        select(EncryptedToken).where(
+                            EncryptedToken.integration_id == integration.id,
+                            EncryptedToken.token_type == TokenType.ACCESS,
+                        )
                     )
-                    if token_record:
-                        tokens = self.token_encryption.decrypt_tokens(
-                            user_id=user_id,
-                            encrypted_data=token_record.encrypted_access_token,
-                            refresh_data=token_record.encrypted_refresh_token,
+                    access_token_record = access_token_result.scalar_one_or_none()
+
+                    # Get refresh token
+                    refresh_token_result = await session.execute(
+                        select(EncryptedToken).where(
+                            EncryptedToken.integration_id == integration.id,
+                            EncryptedToken.token_type == TokenType.REFRESH,
+                        )
+                    )
+                    refresh_token_record = refresh_token_result.scalar_one_or_none()
+
+                    # Check if we have any tokens to revoke
+                    if not access_token_record and not refresh_token_record:
+                        raise IntegrationException(
+                            "No tokens found to revoke. You can disconnect without token revocation."
                         )
 
-                        await self.oauth_config.revoke_tokens(
-                            provider=provider,
-                            access_token=tokens.get("access_token"),
-                            refresh_token=tokens.get("refresh_token"),
+                    # Track actual revocation success
+                    access_token_revoked = False
+                    refresh_token_revoked = False
+                    revocation_errors = []
+
+                    # Revoke access token
+                    if access_token_record:
+                        try:
+                            access_token = self.token_encryption.decrypt_token(
+                                encrypted_token=access_token_record.encrypted_value,
+                                user_id=user_id,
+                            )
+                            access_token_revoked = await self.oauth_config.revoke_token(
+                                provider=provider,
+                                token=access_token,
+                                token_type="access_token",
+                            )
+                            if not access_token_revoked:
+                                revocation_errors.append(
+                                    "Access token revocation failed"
+                                )
+                        except Exception as e:
+                            revocation_errors.append(
+                                f"Access token revocation error: {str(e)}"
+                            )
+
+                    # Revoke refresh token if available
+                    if refresh_token_record:
+                        try:
+                            refresh_token = self.token_encryption.decrypt_token(
+                                encrypted_token=refresh_token_record.encrypted_value,
+                                user_id=user_id,
+                            )
+                            refresh_token_revoked = (
+                                await self.oauth_config.revoke_token(
+                                    provider=provider,
+                                    token=refresh_token,
+                                    token_type="refresh_token",
+                                )
+                            )
+                            if not refresh_token_revoked:
+                                revocation_errors.append(
+                                    "Refresh token revocation failed"
+                                )
+                        except Exception as e:
+                            revocation_errors.append(
+                                f"Refresh token revocation error: {str(e)}"
+                            )
+
+                    # Check if any tokens were successfully revoked
+                    tokens_revoked = access_token_revoked or refresh_token_revoked
+
+                    # If revocation was requested but completely failed, raise an error
+                    if not tokens_revoked and revocation_errors:
+                        error_message = "; ".join(revocation_errors)
+                        raise IntegrationException(
+                            f"Token revocation failed: {error_message}. "
+                            "You can retry without token revocation if needed."
                         )
-                        tokens_revoked = True
-                except Exception as e:
-                    self.logger.warning(
-                        "Failed to revoke tokens during disconnect",
-                        user_id=user_id,
-                        provider=provider,
-                        error=str(e),
-                    )
 
             # Delete or deactivate integration
-            if delete_data:
-                # Delete encrypted tokens first
-                await EncryptedToken.objects.filter(integration=integration).delete()
-                # Delete integration
-                await integration.delete()
-            else:
-                # Just mark as inactive
-                await integration.update(
-                    status=IntegrationStatus.INACTIVE,
-                    updated_at=datetime.now(timezone.utc),
-                )
+            async with async_session() as session:
+                if delete_data:
+                    # Delete encrypted tokens first
+                    token_result = await session.execute(
+                        select(EncryptedToken).where(
+                            EncryptedToken.integration_id == integration.id
+                        )
+                    )
+                    tokens_to_delete = token_result.scalars().all()
+                    for token in tokens_to_delete:
+                        await session.delete(token)
+                    # Delete integration
+                    await session.delete(integration)
+                    await session.commit()
+                else:
+                    # Just mark as inactive
+                    integration.status = IntegrationStatus.INACTIVE
+                    integration.updated_at = datetime.now(timezone.utc)
+                    session.add(integration)
+                    await session.commit()
 
             # Log disconnection
             await audit_logger.log_user_action(
@@ -671,34 +825,52 @@ class IntegrationService:
 
             # Check token validity
             if integration.status == IntegrationStatus.ACTIVE:
-                token_record = await EncryptedToken.objects.get_or_none(
-                    integration=integration
-                )
+                async with async_session() as session:
+                    token_result = await session.execute(
+                        select(EncryptedToken).where(
+                            EncryptedToken.integration_id == integration.id
+                        )
+                    )
+                    token_record = token_result.scalar_one_or_none()
                 if not token_record:
                     healthy = False
                     issues.append("No tokens found")
                     recommendations.append("Reconnect the integration")
                 else:
                     try:
-                        tokens = self.token_encryption.decrypt_tokens(
-                            user_id=user_id,
-                            encrypted_data=token_record.encrypted_access_token,
-                            refresh_data=token_record.encrypted_refresh_token,
+                        # Get access token to check expiration
+                        access_token_result = await session.execute(
+                            select(EncryptedToken).where(
+                                EncryptedToken.integration_id == integration.id,
+                                EncryptedToken.token_type == TokenType.ACCESS,
+                            )
                         )
+                        access_token_record = access_token_result.scalar_one_or_none()
 
                         # Check token expiration
-                        if tokens.get("expires_at"):
-                            expires_at = datetime.fromisoformat(tokens["expires_at"])
-                            if expires_at <= datetime.now(timezone.utc):
+                        if access_token_record and access_token_record.expires_at:
+                            if access_token_record.expires_at <= datetime.now(
+                                timezone.utc
+                            ):
                                 issues.append("Access token has expired")
-                                if tokens.get("refresh_token"):
+                                # Check if refresh token exists
+                                refresh_token_result = await session.execute(
+                                    select(EncryptedToken).where(
+                                        EncryptedToken.integration_id == integration.id,
+                                        EncryptedToken.token_type == TokenType.REFRESH,
+                                    )
+                                )
+                                refresh_token_record = (
+                                    refresh_token_result.scalar_one_or_none()
+                                )
+                                if refresh_token_record:
                                     recommendations.append("Refresh the access token")
                                 else:
                                     healthy = False
                                     recommendations.append("Reconnect the integration")
-                            elif expires_at <= datetime.now(timezone.utc) + timedelta(
-                                hours=1
-                            ):
+                            elif access_token_record.expires_at <= datetime.now(
+                                timezone.utc
+                            ) + timedelta(hours=1):
                                 issues.append("Access token expires soon")
                                 recommendations.append("Consider refreshing the token")
 
@@ -751,13 +923,20 @@ class IntegrationService:
             NotFoundException: If user not found
         """
         try:
-            # Verify user exists
-            user = await User.objects.get_or_none(external_auth_id=user_id)
-            if not user:
-                raise NotFoundException(f"User not found: {user_id}")
+            # Verify user exists and get integrations
+            async with async_session() as session:
+                user_result = await session.execute(
+                    select(User).where(User.external_auth_id == user_id)
+                )
+                user = user_result.scalar_one_or_none()
+                if not user:
+                    raise NotFoundException(f"User not found: {user_id}")
 
-            # Get all integrations for user
-            integrations = await Integration.objects.filter(user=user).all()
+                # Get all integrations for user
+                integrations_result = await session.execute(
+                    select(Integration).where(Integration.user_id == user.id)
+                )
+                integrations = list(integrations_result.scalars().all())
 
             # Calculate basic stats
             total = len(integrations)
@@ -834,32 +1013,57 @@ class IntegrationService:
         provider: IntegrationProvider,
     ) -> Integration:
         """Get integration for user and provider."""
-        integration = await Integration.objects.select_related("user").get_or_none(
-            user__external_auth_id=user_id,
-            provider=provider,
-        )
+        async with async_session() as session:
+            # First get the user
+            user_result = await session.execute(
+                select(User).where(User.external_auth_id == user_id)
+            )
+            user = user_result.scalar_one_or_none()
+            if not user:
+                raise NotFoundException(f"User not found: {user_id}")
+
+            # Then get the integration
+            integration_result = await session.execute(
+                select(Integration).where(
+                    Integration.user_id == user.id, Integration.provider == provider
+                )
+            )
+            integration = integration_result.scalar_one_or_none()
+
         if not integration:
             raise NotFoundException(f"Integration not found: {provider.value}")
         return integration
 
     async def _get_token_metadata(self, integration_id: int) -> Dict[str, Any]:
         """Get token metadata without decrypting actual tokens."""
-        token_record = await EncryptedToken.objects.get_or_none(
-            integration_id=integration_id
-        )
-        if not token_record:
-            return {
-                "has_access_token": False,
-                "has_refresh_token": False,
-                "expires_at": None,
-                "created_at": None,
-            }
+        async with async_session() as session:
+            # Get access token record
+            access_token_result = await session.execute(
+                select(EncryptedToken).where(
+                    EncryptedToken.integration_id == integration_id,
+                    EncryptedToken.token_type == TokenType.ACCESS,
+                )
+            )
+            access_token_record = access_token_result.scalar_one_or_none()
+
+            # Get refresh token record
+            refresh_token_result = await session.execute(
+                select(EncryptedToken).where(
+                    EncryptedToken.integration_id == integration_id,
+                    EncryptedToken.token_type == TokenType.REFRESH,
+                )
+            )
+            refresh_token_record = refresh_token_result.scalar_one_or_none()
 
         return {
-            "has_access_token": bool(token_record.encrypted_access_token),
-            "has_refresh_token": bool(token_record.encrypted_refresh_token),
-            "expires_at": token_record.expires_at,
-            "created_at": token_record.created_at,
+            "has_access_token": access_token_record is not None,
+            "has_refresh_token": refresh_token_record is not None,
+            "expires_at": (
+                access_token_record.expires_at if access_token_record else None
+            ),
+            "created_at": (
+                access_token_record.created_at if access_token_record else None
+            ),
         }
 
     async def _get_error_count(self, integration_id: int) -> int:
@@ -867,8 +1071,16 @@ class IntegrationService:
         try:
             # This would typically query audit logs for consecutive errors
             # For now, return a simple count based on status
-            integration = await Integration.objects.get(id=integration_id)
-            return 1 if integration.status == IntegrationStatus.ERROR else 0
+            async with async_session() as session:
+                integration_result = await session.execute(
+                    select(Integration).where(Integration.id == integration_id)
+                )
+                integration = integration_result.scalar_one_or_none()
+                return (
+                    1
+                    if integration and integration.status == IntegrationStatus.ERROR
+                    else 0
+                )
         except Exception:
             return 0
 
@@ -880,38 +1092,47 @@ class IntegrationService:
         user_info: Dict[str, Any],
     ) -> Integration:
         """Create or update integration record."""
-        # Check if integration already exists
-        integration = await Integration.objects.get_or_none(
-            user=user,
-            provider=provider,
-        )
-
-        scopes_dict = {}
-        if tokens.get("scope"):
-            # Convert scope string to dictionary
-            scopes_dict = {scope: True for scope in tokens["scope"].split()}
-
-        integration_data = {
-            "provider_user_id": user_info.get("id"),
-            "provider_email": user_info.get("email"),
-            "scopes": scopes_dict,
-            "metadata": user_info,
-            "last_sync_at": datetime.now(timezone.utc),
-            "error_message": None,
-            "updated_at": datetime.now(timezone.utc),
-        }
-
-        if integration:
-            # Update existing integration
-            await integration.update(**integration_data)
-        else:
-            # Create new integration
-            integration = await Integration.objects.create(
-                user=user,
-                provider=provider,
-                status=IntegrationStatus.PENDING,
-                **integration_data,
+        async with async_session() as session:
+            # Check if integration already exists
+            result = await session.execute(
+                select(Integration).where(
+                    Integration.user_id == user.id, Integration.provider == provider
+                )
             )
+            integration = result.scalar_one_or_none()
+
+            scopes_dict = {}
+            if tokens.get("scope"):
+                # Convert scope string to dictionary
+                scopes_dict = {scope: True for scope in tokens["scope"].split()}
+
+            integration_data = {
+                "provider_user_id": user_info.get("id"),
+                "provider_email": user_info.get("email"),
+                "scopes": scopes_dict,
+                "provider_metadata": user_info,
+                "last_sync_at": datetime.now(timezone.utc),
+                "error_message": None,
+                "updated_at": datetime.now(timezone.utc),
+            }
+
+            if integration:
+                # Update existing integration
+                for key, value in integration_data.items():
+                    setattr(integration, key, value)
+                await session.commit()
+                await session.refresh(integration)
+            else:
+                # Create new integration
+                integration = Integration(
+                    user_id=user.id,
+                    provider=provider,
+                    status=IntegrationStatus.PENDING,
+                    **integration_data,
+                )
+                session.add(integration)
+                await session.commit()
+                await session.refresh(integration)
 
         # Log the integration creation
         await audit_logger.log_user_action(
@@ -934,50 +1155,89 @@ class IntegrationService:
         tokens: Dict[str, Any],
     ) -> None:
         """Store encrypted tokens for integration."""
-        # Get integration to get user_id
-        integration = await Integration.objects.select_related("user").get(
-            id=integration_id
-        )
-        user_id = integration.user.external_auth_id
+        async with async_session() as session:
+            # Get integration to get user_id
+            result = await session.execute(
+                select(Integration).where(Integration.id == integration_id)
+            )
+            integration = result.scalar_one()
 
-        # Encrypt tokens
-        encrypted_access = self.token_encryption.encrypt_token(
-            user_id=user_id,
-            token_data=tokens.get("access_token", ""),
-        )
+            # Get user to get external auth ID
+            user_result = await session.execute(
+                select(User).where(User.id == integration.user_id)
+            )
+            user = user_result.scalar_one()
+            user_id = user.external_auth_id
 
-        encrypted_refresh = None
-        if tokens.get("refresh_token"):
-            encrypted_refresh = self.token_encryption.encrypt_token(
+            # Encrypt tokens
+            encrypted_access = self.token_encryption.encrypt_token(
+                token=tokens.get("access_token", ""),
                 user_id=user_id,
-                token_data=tokens.get("refresh_token", ""),
             )
 
-        # Calculate expiration time
-        expires_at = None
-        if tokens.get("expires_in"):
-            expires_at = datetime.now(timezone.utc) + timedelta(
-                seconds=tokens["expires_in"]
-            )
+            encrypted_refresh = None
+            if tokens.get("refresh_token"):
+                encrypted_refresh = self.token_encryption.encrypt_token(
+                    token=tokens.get("refresh_token", ""),
+                    user_id=user_id,
+                )
 
-        # Store or update token record
-        token_record = await EncryptedToken.objects.get_or_none(
-            integration_id=integration_id
-        )
-        if token_record:
-            await token_record.update(
-                encrypted_access_token=encrypted_access,
-                encrypted_refresh_token=encrypted_refresh,
-                expires_at=expires_at,
-                updated_at=datetime.now(timezone.utc),
+            # Calculate expiration time
+            expires_at = None
+            if tokens.get("expires_in"):
+                expires_at = datetime.now(timezone.utc) + timedelta(
+                    seconds=tokens["expires_in"]
+                )
+
+            # Store access token
+            access_token_result = await session.execute(
+                select(EncryptedToken).where(
+                    EncryptedToken.integration_id == integration_id,
+                    EncryptedToken.token_type == TokenType.ACCESS,
+                )
             )
-        else:
-            await EncryptedToken.objects.create(
-                integration_id=integration_id,
-                encrypted_access_token=encrypted_access,
-                encrypted_refresh_token=encrypted_refresh,
-                expires_at=expires_at,
-            )
+            access_token_record = access_token_result.scalar_one_or_none()
+
+            if access_token_record:
+                access_token_record.encrypted_value = encrypted_access
+                access_token_record.expires_at = expires_at
+                access_token_record.updated_at = datetime.now(timezone.utc)
+                await session.commit()
+            else:
+                new_access_token = EncryptedToken(
+                    user_id=integration.user_id,
+                    integration_id=integration_id,
+                    token_type=TokenType.ACCESS,
+                    encrypted_value=encrypted_access,
+                    expires_at=expires_at,
+                )
+                session.add(new_access_token)
+                await session.commit()
+
+            # Store refresh token if provided
+            if encrypted_refresh:
+                refresh_token_result = await session.execute(
+                    select(EncryptedToken).where(
+                        EncryptedToken.integration_id == integration_id,
+                        EncryptedToken.token_type == TokenType.REFRESH,
+                    )
+                )
+                refresh_token_record = refresh_token_result.scalar_one_or_none()
+
+                if refresh_token_record:
+                    refresh_token_record.encrypted_value = encrypted_refresh
+                    refresh_token_record.updated_at = datetime.now(timezone.utc)
+                    await session.commit()
+                else:
+                    new_refresh_token = EncryptedToken(
+                        user_id=integration.user_id,
+                        integration_id=integration_id,
+                        token_type=TokenType.REFRESH,
+                        encrypted_value=encrypted_refresh,
+                        expires_at=None,  # Refresh tokens usually don't expire
+                    )
+                    session.add(new_refresh_token)
+                    await session.commit()
 
 
 # Global integration service instance

@@ -10,7 +10,9 @@ from typing import Any, Dict, List, Optional
 
 import structlog
 from sqlalchemy.exc import SQLAlchemyError
+from sqlmodel import select
 
+from ..database import async_session
 from ..exceptions import AuditException, DatabaseException
 from ..models.audit import AuditLog
 from ..models.user import User
@@ -142,7 +144,19 @@ class AuditLogger:
             user = None
             if user_id:
                 try:
-                    user = await User.objects.get(id=user_id)
+                    async with async_session() as session:
+                        # Handle both internal ID and external auth ID
+                        if user_id.isdigit():
+                            # Numeric user ID - internal database ID
+                            result = await session.execute(
+                                select(User).where(User.id == int(user_id))
+                            )
+                        else:
+                            # String user ID - external auth ID
+                            result = await session.execute(
+                                select(User).where(User.external_auth_id == user_id)
+                            )
+                        user = result.scalar_one_or_none()
                 except Exception:
                     # User might be deleted, log as system event
                     self.logger.warning(
@@ -151,16 +165,20 @@ class AuditLogger:
                         action=action,
                     )
 
-            # Create database audit log
-            audit_log = await AuditLog.objects.create(
-                user=user,
-                action=action,
-                resource_type=resource_type,
-                resource_id=resource_id,
-                details=details or {},
-                ip_address=ip_address,
-                user_agent=user_agent,
-            )
+            # Create database audit log using async session
+            async with async_session() as session:
+                audit_log = AuditLog(
+                    user_id=user.id if user else None,
+                    action=action,
+                    resource_type=resource_type,
+                    resource_id=resource_id,
+                    details=details or {},
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                )
+                session.add(audit_log)
+                await session.commit()
+                await session.refresh(audit_log)
 
             self.logger.debug(
                 "audit_event_persisted",
@@ -343,26 +361,36 @@ class AuditLogger:
             DatabaseException: If query fails
         """
         try:
-            query = AuditLog.objects.select_related("user")
+            async with async_session() as session:
+                query = select(AuditLog)
 
-            # Apply filters
-            if user_id:
-                query = query.filter(user__id=user_id)
-            if action:
-                query = query.filter(action=action)
-            if resource_type:
-                query = query.filter(resource_type=resource_type)
-            if resource_id:
-                query = query.filter(resource_id=resource_id)
-            if start_date:
-                query = query.filter(created_at__gte=start_date)
-            if end_date:
-                query = query.filter(created_at__lte=end_date)
+                # Apply filters
+                if user_id:
+                    if user_id.isdigit():
+                        query = query.where(AuditLog.user_id == int(user_id))
+                    else:
+                        # Join with user table for external auth ID lookup
+                        query = query.join(User).where(User.external_auth_id == user_id)
+                if action:
+                    query = query.where(AuditLog.action == action)
+                if resource_type:
+                    query = query.where(AuditLog.resource_type == resource_type)
+                if resource_id:
+                    query = query.where(AuditLog.resource_id == resource_id)
+                if start_date:
+                    query = query.where(AuditLog.created_at >= start_date)
+                if end_date:
+                    query = query.where(AuditLog.created_at <= end_date)
 
-            # Order by most recent first and apply pagination
-            audit_logs = (
-                await query.order_by("-created_at").offset(offset).limit(limit).all()
-            )
+                # Order by most recent first and apply pagination
+                query = (
+                    query.order_by(AuditLog.created_at.desc())
+                    .offset(offset)
+                    .limit(limit)
+                )
+
+                result = await session.execute(query)
+                audit_logs = list(result.scalars().all())
 
             self.logger.debug(
                 "audit_query_executed",
@@ -489,31 +517,35 @@ class AuditLogger:
             List of security-related AuditLog records
         """
         try:
-            query = AuditLog.objects.select_related("user")
+            async with async_session() as session:
+                query = select(AuditLog)
 
-            # Filter for security events
-            security_actions = [
-                AuditActions.AUTHENTICATION_FAILED,
-                AuditActions.AUTHORIZATION_FAILED,
-                AuditActions.SUSPICIOUS_ACTIVITY,
-                AuditActions.DATA_BREACH_DETECTED,
-                AuditActions.TOKEN_DECRYPTED,
-                AuditActions.TOKEN_ROTATION,
-            ]
+                # Filter for security events
+                security_actions = [
+                    AuditActions.AUTHENTICATION_FAILED,
+                    AuditActions.AUTHORIZATION_FAILED,
+                    AuditActions.SUSPICIOUS_ACTIVITY,
+                    AuditActions.DATA_BREACH_DETECTED,
+                    AuditActions.TOKEN_DECRYPTED,
+                    AuditActions.TOKEN_ROTATION,
+                ]
 
-            query = query.filter(action__in=security_actions)
+                query = query.where(AuditLog.action.in_(security_actions))
 
-            # Apply date filters
-            if start_date:
-                query = query.filter(created_at__gte=start_date)
-            if end_date:
-                query = query.filter(created_at__lte=end_date)
+                # Apply date filters
+                if start_date:
+                    query = query.where(AuditLog.created_at >= start_date)
+                if end_date:
+                    query = query.where(AuditLog.created_at <= end_date)
 
-            # Filter by severity if specified
-            if severity:
-                query = query.filter(details__severity=severity)
+                # Filter by severity if specified
+                if severity:
+                    # Note: JSON filtering might need adjustment based on database
+                    query = query.where(AuditLog.details["severity"].astext == severity)
 
-            security_events = await query.order_by("-created_at").limit(limit).all()
+                query = query.order_by(AuditLog.created_at.desc()).limit(limit)
+                result = await session.execute(query)
+                security_events = list(result.scalars().all())
 
             self.logger.info(
                 "security_events_retrieved",
@@ -546,18 +578,23 @@ class AuditLogger:
         try:
             cutoff_date = datetime.now(timezone.utc) - timedelta(days=retention_days)
 
-            # Get count before deletion for reporting
-            old_logs = await AuditLog.objects.filter(created_at__lt=cutoff_date).all()
-            count_to_delete = len(old_logs)
+            async with async_session() as session:
+                # Get count before deletion for reporting
+                count_query = select(AuditLog).where(AuditLog.created_at < cutoff_date)
+                result = await session.execute(count_query)
+                old_logs = list(result.scalars().all())
+                count_to_delete = len(old_logs)
 
-            if count_to_delete == 0:
-                self.logger.info(
-                    "audit_cleanup_no_logs_to_delete", retention_days=retention_days
-                )
-                return 0
+                if count_to_delete == 0:
+                    self.logger.info(
+                        "audit_cleanup_no_logs_to_delete", retention_days=retention_days
+                    )
+                    return 0
 
-            # Delete old logs
-            await AuditLog.objects.filter(created_at__lt=cutoff_date).delete()
+                # Delete old logs
+                for log in old_logs:
+                    await session.delete(log)
+                await session.commit()
 
             # Log the cleanup action
             await self.log_system_action(

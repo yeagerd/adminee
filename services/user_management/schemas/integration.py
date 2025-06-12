@@ -105,7 +105,9 @@ class OAuthStartRequest(BaseModel):
     """Request model for starting OAuth flow."""
 
     provider: IntegrationProvider = Field(..., description="OAuth provider")
-    redirect_uri: str = Field(..., description="OAuth callback redirect URI")
+    redirect_uri: Optional[str] = Field(
+        None, description="OAuth callback redirect URI (uses default if not provided)"
+    )
     scopes: Optional[List[str]] = Field(
         None, description="Requested OAuth scopes (uses defaults if not provided)"
     )
@@ -115,8 +117,10 @@ class OAuthStartRequest(BaseModel):
 
     @field_validator("redirect_uri")
     @classmethod
-    def validate_redirect_uri(cls, v: str) -> str:
+    def validate_redirect_uri(cls, v: Optional[str]) -> Optional[str]:
         """Enhanced redirect URI validation."""
+        if v is None:
+            return None
         # Use comprehensive URL validation
         return validate_url(v, allowed_schemes=["http", "https"])
 

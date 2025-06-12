@@ -82,11 +82,25 @@ class Settings(BaseSettings):
     google_client_secret: Optional[str] = Field(
         default=None, description="Google OAuth client secret"
     )
-    microsoft_client_id: Optional[str] = Field(
+    azure_ad_client_id: Optional[str] = Field(
         default=None, description="Microsoft OAuth client ID"
     )
-    microsoft_client_secret: Optional[str] = Field(
+    azure_ad_client_secret: Optional[str] = Field(
         default=None, description="Microsoft OAuth client secret"
+    )
+    azure_ad_tenant_id: Optional[str] = Field(
+        default=None,
+        description="Azure AD tenant ID for tenant-specific OAuth endpoints",
+    )
+
+    # OAuth Redirect Configuration
+    oauth_redirect_uri: str = Field(
+        default="http://localhost:8000/oauth/callback",
+        description="OAuth callback redirect URI for all providers",
+    )
+    oauth_base_url: str = Field(
+        default="http://localhost:8000",
+        description="Base URL for OAuth callbacks (used to construct redirect URI)",
     )
 
     # Logging Configuration
