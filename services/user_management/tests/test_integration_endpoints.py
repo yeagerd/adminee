@@ -229,13 +229,15 @@ class TestOAuthFlowEndpoints:
         assert "User.Read" in data["requested_scopes"]
         assert "Mail.Read" in data["requested_scopes"]
 
-        mock_start_flow.assert_called_once_with(
-            user_id=user_id,
-            provider=IntegrationProvider.MICROSOFT,
-            redirect_uri=request_data["redirect_uri"],
-            scopes=request_data["scopes"],
-            state_data=request_data["state_data"],
-        )
+        # Instead of assert_called_once_with (which is order-sensitive for lists),
+        # check the call arguments and compare scopes as sets
+        mock_start_flow.assert_called_once()
+        args, kwargs = mock_start_flow.call_args
+        assert kwargs["user_id"] == user_id
+        assert kwargs["provider"] == IntegrationProvider.MICROSOFT
+        assert kwargs["redirect_uri"] == request_data["redirect_uri"]
+        assert set(kwargs["scopes"]) == set(request_data["scopes"])
+        assert kwargs["state_data"] == request_data["state_data"]
 
     def test_start_oauth_flow_invalid_provider(self, client: TestClient, mock_auth):
         """Test OAuth flow start with invalid provider."""
