@@ -287,6 +287,13 @@ tox
     -   `tox -e lint` (run ruff linter)
     -   `tox -e typecheck` (run mypy type checks)
 
+
+```bash
+# Find slow tests (from the project root)
+python -m pytest --durations=10 -q -n auto
+```
+
+
 ## Contributing
 
 (To be added: Guidelines for contributing, code style, pull request process, etc.)
