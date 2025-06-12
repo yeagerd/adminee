@@ -20,16 +20,16 @@ class TestTokenEncryption:
     """Test cases for TokenEncryption class."""
 
     @pytest.fixture
-    def settings(self):
-        """Create test settings with encryption configuration."""
-        return Settings(
-            token_encryption_salt=base64.b64encode(b"test-salt-16byte").decode("utf-8")
-        )
+    def mock_get_token_encryption_salt(self):
+        """Mock the get_token_encryption_salt function."""
+        with patch('services.user_management.security.encryption.get_token_encryption_salt') as mock_func:
+            mock_func.return_value = base64.b64encode(b"test-salt-16byte").decode("utf-8")
+            yield mock_func
 
     @pytest.fixture
-    def encryption_service(self, settings):
-        """Create TokenEncryption service with test settings."""
-        return TokenEncryption(settings)
+    def encryption_service(self, mock_get_token_encryption_salt):
+        """Create TokenEncryption service with mocked salt function."""
+        return TokenEncryption()
 
     @pytest.fixture
     def sample_tokens(self):
@@ -41,39 +41,39 @@ class TestTokenEncryption:
             "api_key": "sk-1234567890abcdef",
         }
 
-    def test_initialization_with_settings(self, settings):
-        """Test encryption service initialization with provided settings."""
-        service = TokenEncryption(settings)
-        assert service.settings == settings
-        assert service._service_salt is not None
-        assert len(service._service_salt) == 16
-
-    def test_initialization_without_settings(self):
-        """Test encryption service initialization with default settings."""
-        # conftest.py provides a default salt
+    def test_initialization_with_settings(self, mock_get_token_encryption_salt):
+        """Test encryption service initialization with mocked salt function."""
         service = TokenEncryption()
         assert service.settings is not None
         assert service._service_salt is not None
-        assert service._service_salt.decode("utf-8") == "custom-salt-16byt"
+        assert len(service._service_salt) == 16
+        mock_get_token_encryption_salt.assert_called_once()
 
-    def test_service_salt_from_env(self):
-        """Test service salt loading from environment variable."""
+    def test_initialization_without_settings(self, mock_get_token_encryption_salt):
+        """Test encryption service initialization with default settings."""
+        service = TokenEncryption()
+        assert service.settings is not None
+        assert service._service_salt is not None
+        mock_get_token_encryption_salt.assert_called_once()
+
+    def test_service_salt_from_function(self):
+        """Test service salt loading from centralized function."""
         test_salt = base64.b64encode(b"custom-salt-16byt").decode("utf-8")
-        settings = Settings(token_encryption_salt=test_salt)
-        service = TokenEncryption(settings)
+        with patch('services.user_management.security.encryption.get_token_encryption_salt') as mock_func:
+            mock_func.return_value = test_salt
+            service = TokenEncryption()
+            
+            expected_salt = base64.b64decode(test_salt)
+            assert service._service_salt == expected_salt
+            mock_func.assert_called_once()
 
-        expected_salt = base64.b64decode(test_salt)
-        assert service._service_salt == expected_salt
-
-    def test_service_salt_default_fallback(self):
-        """Test service salt fallback when not provided."""
-        settings = Settings()
-        settings.token_encryption_salt = None  # Simulate no salt provided
-        # Expect this to raise due to the missing salt
-        with pytest.raises(EncryptionException):
-            service = TokenEncryption(settings)
-            # for debugging; should not get here:
-            assert service._service_salt.decode("utf-8") == ""
+    def test_service_salt_error_fallback(self):
+        """Test service salt error when function returns empty."""
+        with patch('services.user_management.security.encryption.get_token_encryption_salt') as mock_func:
+            mock_func.return_value = ""  # Simulate no salt provided
+            # Expect this to raise due to the missing salt
+            with pytest.raises(EncryptionException):
+                TokenEncryption()
 
     def test_derive_user_key_consistency(self, encryption_service):
         """Test that user key derivation is consistent for same inputs."""
@@ -329,14 +329,14 @@ class TestTokenEncryption:
 
     def test_service_salt_error_handling(self):
         """Test error handling in service salt initialization."""
-        # Mock settings that will cause base64 decode error
-        bad_settings = Mock()
-        bad_settings.token_encryption_salt = "invalid-base64!!!"
+        # Mock function that returns invalid base64
+        with patch('services.user_management.security.encryption.get_token_encryption_salt') as mock_func:
+            mock_func.return_value = "invalid-base64!!!"
 
-        with pytest.raises(EncryptionException) as exc_info:
-            TokenEncryption(bad_settings)
+            with pytest.raises(EncryptionException) as exc_info:
+                TokenEncryption()
 
-        assert "Failed to initialize encryption service" in str(exc_info.value)
+            assert "Failed to initialize encryption service" in str(exc_info.value)
 
     def test_key_derivation_error_handling(self, encryption_service):
         """Test error handling in key derivation."""
