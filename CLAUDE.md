@@ -16,8 +16,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Tech**: Python 3.11+, FastAPI, PostgreSQL, Redis, Next.js, Clerk auth, LangChain, OpenAI, Docker
 
 ## Key Commands
+From project root:
 
-### Code Quality (from project root)
+### Test and Code Quality
 ```bash
 tox -e fix           # Auto-fix formatting/linting
 tox -p auto          # Run all checks (format, lint, typecheck, test)
@@ -32,10 +33,8 @@ npm run build        # Production build
 
 ### Backend Services
 ```bash
-./setup-dev.sh       # Set up unified development environment
 source venv/bin/activate
-cd services/{service}/
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+./services/{service}/start.sh
 ```
 
 ### Database
