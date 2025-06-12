@@ -13,10 +13,9 @@ from fastapi.testclient import TestClient
 from services.user_management.main import app
 from services.user_management.models.user import User
 from services.user_management.models.preferences import UserPreferences
-from services.user_management.database import get_async_session
+from services.user_management.database import get_async_session, get_engine
 from sqlalchemy import text
 
-from ..database import engine
 from ..exceptions import DatabaseError
 from ..schemas.webhook import ClerkWebhookEventData
 from ..services.webhook_service import WebhookService
