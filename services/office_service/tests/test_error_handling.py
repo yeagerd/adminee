@@ -54,7 +54,7 @@ class TestGlobalExceptionHandlers:
             details={"endpoint": "/gmail/v1/users/me/messages"},
         )
 
-        with patch("app.main.logger") as mock_logger:
+        with patch("services.office_service.app.main.logger") as mock_logger:
             # Call the handler
             response = await provider_api_error_handler(mock_request, error)
 
@@ -285,7 +285,7 @@ class TestLoggingIntegration:
             mock_response.raise_for_status.return_value = None
             mock_client.request.return_value = mock_response
 
-            with patch("core.clients.base.logger") as mock_logger:
+            with patch("services.office_service.core.clients.base.logger") as mock_logger:
                 async with google_client:
                     await google_client.get("/test/endpoint")
 
@@ -321,7 +321,7 @@ class TestLoggingIntegration:
                 "Request timed out"
             )
 
-            with patch("core.clients.base.logger") as mock_logger:
+            with patch("services.office_service.core.clients.base.logger") as mock_logger:
                 async with google_client:
                     with pytest.raises(ProviderAPIError):
                         await google_client.get("/test/endpoint")
