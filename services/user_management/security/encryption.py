@@ -14,6 +14,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
+from ...common.secrets import get_token_encryption_salt  # type: ignore[misc]
 from ..exceptions import EncryptionException
 from ..settings import Settings
 
@@ -62,12 +63,11 @@ class TokenEncryption:
         Raises:
             EncryptionException: If salt cannot be obtained
         """
-        # In production, this should come from a secure key management service
-        salt_b64 = self.settings.token_encryption_salt
-        if not salt_b64:
-            logger.error("Failed to get service salt")
-            raise EncryptionException("Failed to initialize encryption service")
         try:
+            salt_b64 = get_token_encryption_salt()
+            if not salt_b64:
+                logger.error("Failed to get service salt")
+                raise EncryptionException("Failed to initialize encryption service")
             return base64.b64decode(salt_b64)
 
         except Exception as e:
