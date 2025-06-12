@@ -230,7 +230,7 @@ async def complete_oauth_flow(
             authorization_code=request.code,
             state=request.state,
         )
-        
+
         # If the service returned an error result, still return it as 200 with success=False
         return result
 

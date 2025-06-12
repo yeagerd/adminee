@@ -227,7 +227,7 @@ class TestClerkWebhookEndpoint:
             },
         )
 
-        # Should return 200 with success=false for unsupported/invalid events  
+        # Should return 200 with success=false for unsupported/invalid events
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is False

@@ -230,12 +230,16 @@ class TestOAuthFlowEndpoints:
         assert data["integration_id"] == 123
         assert data["provider"] == "google"
 
-    @patch("services.user_management.services.audit_service.audit_logger.log_audit_event")
-    def test_complete_oauth_flow_with_error(self, mock_audit, client: TestClient, mock_auth):
+    @patch(
+        "services.user_management.services.audit_service.audit_logger.log_audit_event"
+    )
+    def test_complete_oauth_flow_with_error(
+        self, mock_audit, client: TestClient, mock_auth
+    ):
         """Test OAuth flow completion with OAuth error."""
         # Mock audit logging to prevent database errors
         mock_audit.return_value = None
-        
+
         user_id = "user_123"
 
         request_data = {

@@ -69,6 +69,7 @@ class WebhookResponse(BaseModel):
     )
     message: str = Field(..., description="Response message")
     processed_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc), description="Processing timestamp"
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="Processing timestamp",
     )
     event_id: Optional[str] = Field(None, description="ID of the processed event")
