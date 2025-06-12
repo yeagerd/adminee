@@ -23,9 +23,7 @@ class TestTokenEncryption:
     def settings(self):
         """Create test settings with encryption configuration."""
         return Settings(
-            token_encryption_salt=base64.b64encode(b"test-salt-16byte").decode(
-                "utf-8"
-            )
+            token_encryption_salt=base64.b64encode(b"test-salt-16byte").decode("utf-8")
         )
 
     @pytest.fixture
