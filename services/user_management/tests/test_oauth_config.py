@@ -7,6 +7,7 @@ authorization URL generation, token exchange, and user info retrieval.
 
 import base64
 import hashlib
+import urllib.parse
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -385,6 +386,8 @@ class TestOAuthConfig:
             "openid",
             "email",
             "profile",
+            "offline_access",
+            "https://graph.microsoft.com/User.Read",
         }
         assert config.supports_pkce is True
         assert config.pkce_method == PKCEChallengeMethod.S256
@@ -550,6 +553,9 @@ class TestOAuthConfig:
         assert "code_challenge_method=S256" in auth_url
         assert oauth_state.provider == IntegrationProvider.MICROSOFT
         assert oauth_state.user_id == "user-msft-123"
+
+        for scope in expected_scopes:
+            assert urllib.parse.quote(scope, safe="") in auth_url
 
     def test_generate_authorization_url_invalid_provider(self):
         """Test authorization URL generation with invalid provider."""
@@ -921,6 +927,25 @@ class TestOAuthConfig:
             )
 
             assert result is False
+
+    def test_microsoft_default_scopes_are_used(self):
+        """Test that Microsoft default scopes are used when no scopes are provided."""
+        auth_url, oauth_state = self.oauth_config.generate_authorization_url(
+            provider=IntegrationProvider.MICROSOFT,
+            user_id="user-msft-123",
+            redirect_uri="https://example.com/msft-callback",
+            scopes=None,  # Explicitly test default
+        )
+        expected_scopes = {
+            "openid",
+            "email",
+            "profile",
+            "offline_access",
+            "https://graph.microsoft.com/User.Read",
+        }
+        assert set(oauth_state.scopes) == expected_scopes
+        for scope in expected_scopes:
+            assert urllib.parse.quote(scope, safe="") in auth_url
 
 
 class TestGlobalOAuthConfig:
