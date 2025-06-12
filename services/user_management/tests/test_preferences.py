@@ -213,13 +213,14 @@ class TestPreferencesService:
         return prefs
 
     @pytest.mark.asyncio
-    @patch("services.user_management.services.preferences_service.async_session")
+    @patch("services.user_management.database.async_session", new_callable=AsyncMock)
     async def test_get_user_preferences_success(
         self, mock_async_session, mock_user, mock_preferences
     ):
         """Test successful preferences retrieval."""
         # Setup mock session
         mock_session = AsyncMock()
+        mock_session.add = Mock()
         mock_async_session.return_value.__aenter__.return_value = mock_session
 
         # Setup mock query results
@@ -246,7 +247,7 @@ class TestPreferencesService:
         assert result.notifications.email_notifications is True
 
     @pytest.mark.asyncio
-    @patch("services.user_management.services.preferences_service.async_session")
+    @patch("services.user_management.database.async_session", new_callable=AsyncMock)
     async def test_get_user_preferences_user_not_found(self, mock_async_session):
         """Test preferences retrieval when user doesn't exist."""
         # Setup mock session
@@ -264,7 +265,7 @@ class TestPreferencesService:
             await PreferencesService.get_user_preferences("nonexistent")
 
     @pytest.mark.asyncio
-    @patch("services.user_management.services.preferences_service.async_session")
+    @patch("services.user_management.database.async_session", new_callable=AsyncMock)
     async def test_get_user_preferences_create_defaults(
         self, mock_async_session, mock_user
     ):
@@ -316,7 +317,7 @@ class TestPreferencesService:
         mock_session.commit.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("services.user_management.services.preferences_service.async_session")
+    @patch("services.user_management.database.async_session", new_callable=AsyncMock)
     async def test_update_user_preferences_success(
         self, mock_async_session, mock_user, mock_preferences
     ):
@@ -375,7 +376,7 @@ class TestPreferencesService:
             assert mock_session.commit.call_count >= 1
 
     @pytest.mark.asyncio
-    @patch("services.user_management.services.preferences_service.async_session")
+    @patch("services.user_management.database.async_session", new_callable=AsyncMock)
     async def test_update_user_preferences_no_changes(
         self, mock_async_session, mock_user, mock_preferences
     ):
@@ -424,13 +425,14 @@ class TestPreferencesService:
             mock_get.assert_called()
 
     @pytest.mark.asyncio
-    @patch("services.user_management.services.preferences_service.async_session")
+    @patch("services.user_management.database.async_session", new_callable=AsyncMock)
     async def test_reset_user_preferences_all_categories(
         self, mock_async_session, mock_user, mock_preferences
     ):
         """Test resetting all preference categories."""
         # Setup mock session
         mock_session = AsyncMock()
+        mock_session.add = Mock() # Ensure this line is present and correct
         mock_async_session.return_value.__aenter__.return_value = mock_session
 
         # Setup mock query results for both sessions
@@ -477,7 +479,7 @@ class TestPreferencesService:
             assert mock_session.commit.call_count >= 1
 
     @pytest.mark.asyncio
-    @patch("services.user_management.services.preferences_service.async_session")
+    @patch("services.user_management.database.async_session", new_callable=AsyncMock)
     async def test_reset_user_preferences_specific_categories(
         self, mock_async_session, mock_user, mock_preferences
     ):
@@ -533,7 +535,7 @@ class TestPreferencesService:
             assert mock_session.commit.call_count >= 1
 
     @pytest.mark.asyncio
-    @patch("services.user_management.services.preferences_service.async_session")
+    @patch("services.user_management.database.async_session", new_callable=AsyncMock)
     async def test_reset_user_preferences_invalid_category(
         self, mock_async_session, mock_user, mock_preferences
     ):
@@ -642,9 +644,9 @@ class TestPreferencesEndpoints:
             updated_at=datetime.now(timezone.utc),
         )
 
-        with patch(
-            "services.user_management.services.preferences_service.preferences_service.get_user_preferences"
-        ) as mock_service:
+        # Import the instance directly
+        from services.user_management.services import preferences_service
+        with patch.object(preferences_service, "get_user_preferences") as mock_service:
             mock_service.return_value = mock_response
 
             response = client.get(
@@ -660,9 +662,8 @@ class TestPreferencesEndpoints:
 
     def test_get_preferences_not_found(self, client, mock_auth_dependencies):
         """Test preferences not found."""
-        with patch(
-            "services.user_management.services.preferences_service.preferences_service.get_user_preferences"
-        ) as mock_service:
+        from services.user_management.services import preferences_service
+        with patch.object(preferences_service, "get_user_preferences") as mock_service:
             mock_service.side_effect = PreferencesNotFoundException("user_123")
 
             response = client.get(
@@ -685,9 +686,8 @@ class TestPreferencesEndpoints:
             updated_at=datetime.now(timezone.utc),
         )
 
-        with patch(
-            "services.user_management.services.preferences_service.preferences_service.update_user_preferences"
-        ) as mock_service:
+        from services.user_management.services import preferences_service
+        with patch.object(preferences_service, "update_user_preferences") as mock_service:
             mock_service.return_value = mock_response
 
             update_data = {"ui": {"theme": "dark"}}
@@ -704,9 +704,8 @@ class TestPreferencesEndpoints:
 
     def test_update_preferences_validation_error(self, client, mock_auth_dependencies):
         """Test preferences update with validation error."""
-        with patch(
-            "services.user_management.services.preferences_service.preferences_service.update_user_preferences"
-        ) as mock_service:
+        from services.user_management.services import preferences_service
+        with patch.object(preferences_service, "update_user_preferences") as mock_service:
             mock_service.side_effect = ValidationException(
                 "theme", "invalid", "Invalid theme value"
             )
@@ -734,9 +733,8 @@ class TestPreferencesEndpoints:
             updated_at=datetime.now(timezone.utc),
         )
 
-        with patch(
-            "services.user_management.services.preferences_service.preferences_service.reset_user_preferences"
-        ) as mock_service:
+        from services.user_management.services import preferences_service
+        with patch.object(preferences_service, "reset_user_preferences") as mock_service:
             mock_service.return_value = mock_response
 
             reset_data = {"categories": ["ui", "notifications"]}
@@ -753,9 +751,8 @@ class TestPreferencesEndpoints:
 
     def test_reset_preferences_invalid_category(self, client, mock_auth_dependencies):
         """Test preferences reset with invalid category."""
-        with patch(
-            "services.user_management.services.preferences_service.preferences_service.reset_user_preferences"
-        ) as mock_service:
+        from services.user_management.services import preferences_service
+        with patch.object(preferences_service, "reset_user_preferences") as mock_service:
             mock_service.side_effect = ValidationException(
                 "categories", ["invalid"], "Invalid category"
             )
