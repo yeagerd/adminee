@@ -385,6 +385,8 @@ class TestOAuthConfig:
             "openid",
             "email",
             "profile",
+            "offline_access",
+            "https://graph.microsoft.com/User.Read",
         }
         assert config.supports_pkce is True
         assert config.pkce_method == PKCEChallengeMethod.S256

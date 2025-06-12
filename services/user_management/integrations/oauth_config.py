@@ -292,6 +292,12 @@ class OAuthConfig:
                 description="Access to user's basic profile information",
                 required=True,
             ),
+            OAuthScope(
+                name="offline_access",
+                description="Maintain access to data you have given it access to",  # Standard Microsoft description
+                required=False,  # Typically not required, but can be requested
+                sensitive=False,
+            ),
             # Microsoft Graph API scopes
             OAuthScope(
                 name="https://graph.microsoft.com/User.Read",
@@ -343,7 +349,13 @@ class OAuthConfig:
             userinfo_url="https://graph.microsoft.com/v1.0/me",
             revoke_url=None,  # Microsoft doesn't have a standard revoke endpoint
             scopes=microsoft_scopes,
-            default_scopes=["openid", "email", "profile"],
+            default_scopes=[
+                "openid",
+                "email",
+                "profile",
+                "offline_access",
+                "https://graph.microsoft.com/User.Read",
+            ],
             supports_pkce=True,
             pkce_method=PKCEChallengeMethod.S256,
         )
