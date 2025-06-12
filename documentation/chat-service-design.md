@@ -95,7 +95,7 @@ The `chat-service` is a backend microservice responsible for providing conversat
 
 ## 5. ORM and Schema Management
 
-- Use [Ormar](https://collerek.github.io/ormar/) as the ORM for all database models and operations.
+- Use [SqlModel](https://sqlmodel.tiangolo.com/) as the ORM for all database models and operations.
 - Use [Alembic](https://alembic.sqlalchemy.org/) for schema migrations and management.
 
 ---
