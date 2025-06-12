@@ -46,7 +46,7 @@ python user_management_demo.py --help
 cd /Users/yeagerd/github/briefly/services/user_management
 alembic upgrade head
 export JWT_VERIFY_SIGNATURE=false
-export ENCRYPTION_SERVICE_SALT="ZGVtby1lbmNyeXB0aW9uLXNhbHQtZm9yLXRlc3Rpbmc="
+export TOKEN_ENCRYPTION_SALT="ZGVtby1lbmNyeXB0aW9uLXNhbHQtZm9yLXRlc3Rpbmc="
 cd /Users/yeagerd/github/briefly  # Navigate to project root
 uvicorn services.user_management.main:app --reload --port 8000
 ```
@@ -239,7 +239,7 @@ MICROSOFT_CLIENT_SECRET=your_microsoft_client_secret
 # Service Configuration
 DATABASE_URL=postgresql://user:pass@localhost/briefly_user_mgmt
 CLERK_SECRET_KEY=your_clerk_secret_key
-ENCRYPTION_SERVICE_SALT=your_encryption_salt
+TOKEN_ENCRYPTION_SALT=your_encryption_salt
 ```
 
 ### OAuth Provider Setup

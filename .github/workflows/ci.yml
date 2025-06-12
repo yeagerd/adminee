@@ -49,6 +49,7 @@ jobs:
   frontend-quality:
     name: Frontend Code Quality
     runs-on: ubuntu-latest
+    environment: ci
 
     steps:
     - uses: actions/checkout@v4
@@ -72,17 +73,22 @@ jobs:
       working-directory: ./frontend
       run: npx tsc --noEmit
 
-    # - name: Copy .env.example to .env
-    #   working-directory: ./frontend
-    #   run: cp ../.env.example .env
+    - name: Copy .env.example to .env
+      working-directory: ./frontend
+      run: cp ../.env.example .env
 
-    # - name: Build application
-    #   working-directory: ./frontend
-    #   run: npm run build
+    - name: Build application
+      working-directory: ./frontend
+      env:
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          TOKEN_ENCRYPTION_SALT: ${{ secrets.TOKEN_ENCRYPTION_SALT }}
+      run: npm run build
 
   docker-build:
     name: Docker Build Test
     runs-on: ubuntu-latest
+    environment: ci
     needs: [python-quality, frontend-quality]
 
     steps:
@@ -92,13 +98,13 @@ jobs:
       uses: docker/setup-buildx-action@v3
 
     - name: Test Docker Compose build
+      env:
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          TOKEN_ENCRYPTION_SALT: ${{ secrets.TOKEN_ENCRYPTION_SALT }}
       run: |
-        # Create a minimal .env file for testing
-        echo "DATABASE_URL=postgresql://postgres:postgres@db:5432/briefly" > .env
-        echo "PINECONE_API_KEY=test" >> .env
-        echo "PINECONE_ENVIRONMENT=test" >> .env
-        echo "NEXTAUTH_SECRET=test" >> .env
-        echo "NEXTAUTH_URL=http://localhost:3000" >> .env
+        # Create .env file for testing
+        cp .env.example .env
         
         # Test that docker-compose builds successfully
         docker compose config

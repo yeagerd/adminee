@@ -25,6 +25,9 @@ greenlet
 pytest
 pytest-asyncio
 
+# GCP Integration
+google-cloud-secret-manager
+
 # OpenTelemetry
 opentelemetry-api
 opentelemetry-sdk

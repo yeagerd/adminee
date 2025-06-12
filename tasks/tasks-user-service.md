@@ -100,7 +100,7 @@
 - `services/user_management/security/` - Security package for encryption and key management utilities
 - `services/user_management/security/__init__.py` - Security package exports for TokenEncryption class
 - `services/user_management/security/encryption.py` - TokenEncryption class with AES-256-GCM encryption, PBKDF2 key derivation, user-specific keys, and key rotation support
-- `services/user_management/settings.py` - Updated with encryption_service_salt configuration for secure key derivation
+- `services/user_management/settings.py` - Updated with token_encryption_salt configuration for secure key derivation
 - `services/user_management/tests/test_encryption.py` - Comprehensive unit tests for token encryption including security scenarios, error handling, and edge cases
 - `services/user_management/tests/test_settings.py` - Updated settings tests for encryption configuration
 

@@ -210,7 +210,7 @@ class TestReadinessEndpoint:
         # Mock settings
         mock_settings.database_url = "postgresql://test"
         mock_settings.clerk_secret_key = "test_key"
-        mock_settings.encryption_service_salt = "test_salt"
+        mock_settings.token_encryption_salt = "test_salt"
         mock_settings.debug = True
 
         # Mock database session
@@ -253,7 +253,7 @@ class TestReadinessEndpoint:
         mock_settings.environment = "test"
         mock_settings.database_url = "postgresql://test"
         mock_settings.clerk_secret_key = "test_key"
-        mock_settings.encryption_service_salt = "test_salt"
+        mock_settings.token_encryption_salt = "test_salt"
         # Mock session to raise exception
         mock_async_session.side_effect = Exception("Database connection failed")
 
@@ -275,7 +275,7 @@ class TestReadinessEndpoint:
         mock_settings.environment = "test"
         mock_settings.database_url = "postgresql://test"
         mock_settings.clerk_secret_key = "test_key"
-        mock_settings.encryption_service_salt = "test_salt"
+        mock_settings.token_encryption_salt = "test_salt"
         # Mock session to raise exception on execute
         mock_session = AsyncMock()
         mock_session.execute = AsyncMock(side_effect=Exception("Database query failed"))
@@ -299,7 +299,7 @@ class TestReadinessEndpoint:
         mock_settings.environment = "test"
         mock_settings.database_url = None
         mock_settings.clerk_secret_key = None
-        mock_settings.encryption_service_salt = "test_salt"
+        mock_settings.token_encryption_salt = "test_salt"
         # Mock session
         mock_session = AsyncMock()
         mock_async_session.return_value.__aenter__.return_value = mock_session
@@ -329,7 +329,7 @@ class TestReadinessEndpoint:
         mock_settings.environment = "test"
         mock_settings.database_url = "postgresql://test"
         mock_settings.clerk_secret_key = "test_key"
-        mock_settings.encryption_service_salt = "test_salt"
+        mock_settings.token_encryption_salt = "test_salt"
         # Mock session to raise exception on execute
         mock_session = AsyncMock()
         mock_session.execute = AsyncMock(
@@ -353,7 +353,7 @@ class TestReadinessEndpoint:
         mock_settings.environment = "test"
         mock_settings.database_url = "postgresql://test"
         mock_settings.clerk_secret_key = "test_key"
-        mock_settings.encryption_service_salt = "test_salt"
+        mock_settings.token_encryption_salt = "test_salt"
         # Mock session to raise exception on execute
         mock_session = AsyncMock()
         mock_session.execute = AsyncMock(
@@ -378,7 +378,7 @@ class TestReadinessEndpoint:
         mock_settings.environment = "test"
         mock_settings.database_url = "postgresql://test"
         mock_settings.clerk_secret_key = "test_key"
-        mock_settings.encryption_service_salt = "test_salt"
+        mock_settings.token_encryption_salt = "test_salt"
 
         # Mock slow database response
         async def slow_db_execute(*args):
@@ -409,7 +409,7 @@ class TestReadinessEndpoint:
         mock_settings.environment = "test"
         mock_settings.database_url = None
         mock_settings.clerk_secret_key = "test_key"
-        mock_settings.encryption_service_salt = None
+        mock_settings.token_encryption_salt = None
 
         # Database error
         mock_session = AsyncMock()

@@ -26,6 +26,9 @@ msal
 # Caching
 redis
 
+# GCP Integration
+google-cloud-secret-manager
+
 # Development and testing
 pytest
 pytest-asyncio

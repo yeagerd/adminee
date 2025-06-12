@@ -3,14 +3,14 @@
 # Use an official Python runtime as a parent image
 FROM python:3.11-slim-bullseye
 
-# Set environment variables
+# Set environment variables for Python
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # Set the working directory in the container
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies including GCP SDK if needed
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         gcc \
@@ -18,10 +18,8 @@ RUN apt-get update \
         curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements file
+# Copy requirements file and install Python dependencies
 COPY services/user_management/requirements.txt .
-
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the user management service code
@@ -30,7 +28,25 @@ COPY services/user_management/ ./services/user_management/
 # Set Python path to include the services directory
 ENV PYTHONPATH=/app
 
-# API keys will be provided at runtime via docker-compose environment
+# Environment configuration - REQUIRED at build time
+ARG ENVIRONMENT
+ENV ENVIRONMENT=${ENVIRONMENT}
+
+# Validate ENVIRONMENT value
+RUN if [ -z "$ENVIRONMENT" ]; then \
+        echo "ERROR: ENVIRONMENT build arg is required (local|staging|production)" && exit 1; \
+    fi && \
+    if [ "$ENVIRONMENT" != "local" ] && [ "$ENVIRONMENT" != "staging" ] && [ "$ENVIRONMENT" != "production" ]; then \
+        echo "ERROR: ENVIRONMENT must be one of: local, staging, production. Got: $ENVIRONMENT" && exit 1; \
+    fi
+
+# GCP Project ID for Secret Manager (set by Cloud Run automatically)
+ENV GOOGLE_CLOUD_PROJECT=""
+
+# Note: In production, secrets are retrieved via:
+# 1. Secret Manager SDK calls (preferred)
+# 2. Cloud Run secret mounts as environment variables
+# Local development uses docker-compose environment variables
 
 # Expose the port the app runs on
 EXPOSE 8001

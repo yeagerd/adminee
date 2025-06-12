@@ -41,7 +41,7 @@ class Settings(BaseSettings):
         default=None,
         description="Frontend API key to access User Management service",
     )
-    encryption_service_salt: Optional[str] = Field(
+    token_encryption_salt: Optional[str] = Field(
         default=None,
         description="Base64-encoded service salt for token encryption key derivation",
     )

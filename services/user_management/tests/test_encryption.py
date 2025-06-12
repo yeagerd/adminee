@@ -23,9 +23,7 @@ class TestTokenEncryption:
     def settings(self):
         """Create test settings with encryption configuration."""
         return Settings(
-            encryption_service_salt=base64.b64encode(b"test-salt-16byte").decode(
-                "utf-8"
-            )
+            token_encryption_salt=base64.b64encode(b"test-salt-16byte").decode("utf-8")
         )
 
     @pytest.fixture
@@ -60,7 +58,7 @@ class TestTokenEncryption:
     def test_service_salt_from_env(self):
         """Test service salt loading from environment variable."""
         test_salt = base64.b64encode(b"custom-salt-16byt").decode("utf-8")
-        settings = Settings(encryption_service_salt=test_salt)
+        settings = Settings(token_encryption_salt=test_salt)
         service = TokenEncryption(settings)
 
         expected_salt = base64.b64decode(test_salt)
@@ -329,7 +327,7 @@ class TestTokenEncryption:
         """Test error handling in service salt initialization."""
         # Mock settings that will cause base64 decode error
         bad_settings = Mock()
-        bad_settings.encryption_service_salt = "invalid-base64!!!"
+        bad_settings.token_encryption_salt = "invalid-base64!!!"
 
         with pytest.raises(EncryptionException) as exc_info:
             TokenEncryption(bad_settings)
