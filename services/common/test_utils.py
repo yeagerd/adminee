@@ -209,17 +209,21 @@ class BaseUserManagementIntegrationTest(BaseIntegrationTest):
         os.environ["DB_URL_USER_MANAGEMENT"] = "sqlite:///:memory:"
         os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
 
-        # Actually create the database tables for in-memory database
-        from services.user_management.database import create_all_tables
+        # Reload the database module to pick up the new environment variable
+        import importlib
+        import services.user_management.database
+        importlib.reload(services.user_management.database)
 
-        create_all_tables()
+        # Actually create the database tables for in-memory database
+        import asyncio
+        from services.user_management.database import create_all_tables
+        asyncio.run(create_all_tables())
 
         # Import and create test client
         from services.user_management.main import app
-
         self.app = app
         self.client = self.create_test_client(app)
-
+        
         # Set up authentication overrides
         self._override_auth()
 
@@ -228,7 +232,7 @@ class BaseUserManagementIntegrationTest(BaseIntegrationTest):
         # Stop all patches
         for http_patch in self.http_patches:
             http_patch.stop()
-
+        
         self.app.dependency_overrides.clear()
         if hasattr(self, "_patcher"):
             self._patcher.stop()
