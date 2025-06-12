@@ -17,8 +17,9 @@ from fastapi.testclient import TestClient
 if "DB_URL_USER_MANAGEMENT" not in os.environ:
     os.environ["DB_URL_USER_MANAGEMENT"] = "sqlite:///./test_default.db"
 
-if "ENCRYPTION_SERVICE_SALT" not in os.environ:
-    os.environ["ENCRYPTION_SERVICE_SALT"] = base64.b64encode(b"custom-salt-16byt").decode("utf-8")
+os.environ["TOKEN_ENCRYPTION_SALT"] = base64.b64encode(b"custom-salt-16byt").decode(
+    "utf-8"
+)
 
 # Import the application and models for testing
 from ..main import app
