@@ -74,7 +74,7 @@ async def get_files(
         ApiResponse with aggregated files
     """
     request_id = str(uuid.uuid4())
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
 
     logger.info(
         f"[{request_id}] Files request: user_id={user_id}, providers={providers}, limit={limit}"
@@ -268,7 +268,7 @@ async def get_files(
         await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=300)
 
         # Calculate response time
-        end_time = datetime.utcnow()
+        end_time = datetime.now(timezone.utc)
         response_time_ms = int((end_time - start_time).total_seconds() * 1000)
 
         logger.info(
@@ -318,7 +318,7 @@ async def search_files(
         ApiResponse with search results
     """
     request_id = str(uuid.uuid4())
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
 
     logger.info(
         f"[{request_id}] File search request: user_id={user_id}, query='{q}', providers={providers}"
@@ -484,7 +484,7 @@ async def search_files(
         await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=300)
 
         # Calculate response time
-        end_time = datetime.utcnow()
+        end_time = datetime.now(timezone.utc)
         response_time_ms = int((end_time - start_time).total_seconds() * 1000)
 
         logger.info(
@@ -526,7 +526,7 @@ async def get_file(
         ApiResponse with the specific file
     """
     request_id = str(uuid.uuid4())
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
 
     logger.info(
         f"[{request_id}] File detail request: file_id={file_id}, user_id={user_id}"
@@ -590,7 +590,7 @@ async def get_file(
                 }
 
                 # Calculate response time
-                end_time = datetime.utcnow()
+                end_time = datetime.now(timezone.utc)
                 response_time_ms = int((end_time - start_time).total_seconds() * 1000)
 
                 logger.info(

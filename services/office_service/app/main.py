@@ -315,5 +315,5 @@ async def ready_check():
         "status": "ok",
         "service": settings.APP_NAME,
         "version": settings.APP_VERSION,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }

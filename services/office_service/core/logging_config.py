@@ -35,7 +35,7 @@ class JSONFormatter(logging.Formatter):
         """
         # Build base log entry
         log_entry: Dict[str, Any] = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
