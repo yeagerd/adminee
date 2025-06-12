@@ -5,80 +5,16 @@ These tests verify the complete end-to-end functionality of the API
 endpoints with properly mocked external dependencies.
 """
 
-import tempfile
-import os
-from unittest.mock import patch, Mock, MagicMock
 import pytest
-
-from fastapi.testclient import TestClient
-from fastapi import status
-
+from services.common.test_utils import BaseOfficeServiceIntegrationTest
 from services.office_service.core.exceptions import ProviderAPIError
 from services.office_service.core.token_manager import TokenData
-from services.office_service.app.main import app
+from fastapi import status
+from unittest.mock import patch, MagicMock
+import os
 
 
-class BaseIntegrationTest:
-    """Base class for integration tests with HTTP call detection."""
-    
-    def setup_method(self):
-        """Set up test environment with HTTP call detection rakes."""
-        # HTTP Call Detection Rakes - These will fail the test if real HTTP calls are made
-        # We need to be selective to allow TestClient to work but catch real external calls
-        
-        def detect_real_http_call(*args, **kwargs):
-            # Allow TestClient calls (they use testserver URLs)
-            if args and hasattr(args[1], 'host') and args[1].host == 'testserver':
-                # This is a TestClient call, allow it by calling the original method
-                raise AssertionError("TestClient should not reach this point - check mocking")
-            # Block real external HTTP calls
-            raise AssertionError(f"Real HTTP call detected! Args: {args[:2]}, URL: {getattr(args[1], 'url', 'unknown') if len(args) > 1 else 'unknown'}")
-        
-        self.http_patches = [
-            # Patch both sync and async httpx clients
-            patch('httpx.AsyncClient._send_single_request', side_effect=AssertionError("Real HTTP call detected! AsyncClient._send_single_request was called")),
-            patch('httpx.Client._send_single_request', side_effect=AssertionError("Real HTTP call detected! Client._send_single_request was called")),
-            # Also patch the sync client send method
-            patch('httpx.Client.send', side_effect=AssertionError("Real HTTP call detected! Client.send was called")),
-            # Patch requests
-            patch('requests.adapters.HTTPAdapter.send', side_effect=AssertionError("Real HTTP call detected! requests HTTPAdapter.send was called")),
-            # Patch urllib
-            patch('urllib.request.urlopen', side_effect=AssertionError("Real HTTP call detected! urllib.request.urlopen was called")),
-        ]
-        
-        # Start all HTTP detection patches
-        for http_patch in self.http_patches:
-            http_patch.start()
-        
-        # Use in-memory SQLite database instead of temporary files
-        os.environ["DATABASE_URL"] = "sqlite:///:memory:"
-        os.environ["REDIS_URL"] = "redis://localhost:6379/1"
-        
-        # Mock Redis completely to avoid any connection attempts
-        self.redis_patcher = patch("services.office_service.core.cache_manager.redis.Redis")
-        self.mock_redis_class = self.redis_patcher.start()
-        self.mock_redis_instance = MagicMock()
-        self.mock_redis_class.return_value = self.mock_redis_instance
-        
-        # Configure Redis mock behavior
-        self.mock_redis_instance.ping.return_value = True
-        self.mock_redis_instance.get.return_value = None
-        self.mock_redis_instance.set.return_value = True
-        self.mock_redis_instance.delete.return_value = 1
-        self.mock_redis_instance.exists.return_value = False
-        
-        # Create test client
-        self.client = TestClient(app)
-
-    def teardown_method(self):
-        """Clean up after each test method."""
-        # Stop all patches
-        for http_patch in self.http_patches:
-            http_patch.stop()
-        self.redis_patcher.stop()
-
-
-class TestHealthEndpoints(BaseIntegrationTest):
+class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
     """Test health and diagnostic endpoints."""
 
     def test_health_basic(self):
@@ -153,7 +89,7 @@ class TestHealthEndpoints(BaseIntegrationTest):
             assert "error" in data["integrations"]["microsoft"]
 
 
-class TestEmailEndpoints(BaseIntegrationTest):
+class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
     """Test unified email API endpoints."""
 
     def setup_method(self):
@@ -350,7 +286,7 @@ class TestEmailEndpoints(BaseIntegrationTest):
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
-class TestCalendarEndpoints(BaseIntegrationTest):
+class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
     """Test calendar API endpoints."""
 
     def setup_method(self):
@@ -472,7 +408,7 @@ class TestCalendarEndpoints(BaseIntegrationTest):
                 assert data["success"] is True
 
 
-class TestFilesEndpoints(BaseIntegrationTest):
+class TestFilesEndpoints(BaseOfficeServiceIntegrationTest):
     """Test files API endpoints."""
 
     def setup_method(self):
@@ -575,7 +511,7 @@ class TestFilesEndpoints(BaseIntegrationTest):
                 assert data["success"] is True
 
 
-class TestErrorScenarios(BaseIntegrationTest):
+class TestErrorScenarios(BaseOfficeServiceIntegrationTest):
     """Test error handling scenarios."""
 
     def setup_method(self):
@@ -611,7 +547,7 @@ class TestErrorScenarios(BaseIntegrationTest):
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
-class TestCaching(BaseIntegrationTest):
+class TestCaching(BaseOfficeServiceIntegrationTest):
     """Test caching behavior."""
 
     def setup_method(self):
@@ -704,8 +640,65 @@ class TestCaching(BaseIntegrationTest):
                 assert response2.status_code == status.HTTP_200_OK
 
 
-class TestHTTPCallDetection(BaseIntegrationTest):
+class TestHTTPCallDetection(BaseOfficeServiceIntegrationTest):
     """Test that our HTTP call detection rakes work properly."""
+    
+    def setup_method(self):
+        """Set up test environment with FULL HTTP call detection for testing."""
+        # Override the selective patches with full detection for this test
+        # Stop any existing patches first
+        if hasattr(self, 'http_patches'):
+            for http_patch in self.http_patches:
+                http_patch.stop()
+        
+        # Use full HTTP detection including httpx.Client.send
+        self.http_patches = [
+            # Patch both sync and async httpx clients
+            patch('httpx.AsyncClient._send_single_request', side_effect=AssertionError("Real HTTP call detected! AsyncClient._send_single_request was called")),
+            patch('httpx.Client._send_single_request', side_effect=AssertionError("Real HTTP call detected! Client._send_single_request was called")),
+            # Also patch the sync client send method
+            patch('httpx.Client.send', side_effect=AssertionError("Real HTTP call detected! Client.send was called")),
+            # Patch requests
+            patch('requests.adapters.HTTPAdapter.send', side_effect=AssertionError("Real HTTP call detected! requests HTTPAdapter.send was called")),
+            # Patch urllib
+            patch('urllib.request.urlopen', side_effect=AssertionError("Real HTTP call detected! urllib.request.urlopen was called")),
+        ]
+        
+        # Start all HTTP detection patches
+        for http_patch in self.http_patches:
+            http_patch.start()
+        
+        # Use in-memory SQLite database instead of temporary files
+        os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+        os.environ["REDIS_URL"] = "redis://localhost:6379/1"
+        
+        # Mock Redis completely to avoid any connection attempts
+        self.redis_patcher = patch("redis.Redis")
+        self.mock_redis_class = self.redis_patcher.start()
+        self.mock_redis_instance = MagicMock()
+        self.mock_redis_class.return_value = self.mock_redis_instance
+        
+        # Configure Redis mock behavior
+        self.mock_redis_instance.ping.return_value = True
+        self.mock_redis_instance.get.return_value = None
+        self.mock_redis_instance.set.return_value = True
+        self.mock_redis_instance.delete.return_value = 1
+        self.mock_redis_instance.exists.return_value = False
+        
+        # Office Service specific Redis patching
+        self.office_redis_patcher = patch("services.office_service.core.cache_manager.redis.Redis")
+        self.office_mock_redis_class = self.office_redis_patcher.start()
+        self.office_mock_redis_instance = MagicMock()
+        self.office_mock_redis_class.return_value = self.office_mock_redis_instance
+        
+        # Configure Office Service Redis mock behavior
+        self.office_mock_redis_instance.ping.return_value = True
+        self.office_mock_redis_instance.get.return_value = None
+        self.office_mock_redis_instance.set.return_value = True
+        self.office_mock_redis_instance.delete.return_value = 1
+        self.office_mock_redis_instance.exists.return_value = False
+        
+        # Note: We don't create a TestClient for this test since it would conflict with our patches
     
     def test_http_call_detection_works(self):
         """Test that real HTTP calls are detected and blocked."""

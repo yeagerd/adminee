@@ -6,25 +6,21 @@ health monitoring, and provider configuration endpoints.
 """
 
 import os
-import tempfile
 
 # Set required environment variables before any imports
 os.environ.setdefault("TOKEN_ENCRYPTION_SALT", "dGVzdC1zYWx0LTE2Ynl0ZQ==")
 
-import asyncio
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 from fastapi import status
 from fastapi.testclient import TestClient
 
-from services.user_management.auth.clerk import get_current_user
-from services.user_management.database import create_all_tables
+from services.common.test_utils import BaseUserManagementIntegrationTest
 from services.user_management.exceptions import (
     IntegrationException,
     NotFoundException,
 )
-from services.user_management.main import app
 from services.user_management.models.integration import (
     IntegrationProvider,
     IntegrationStatus,
@@ -37,71 +33,7 @@ from services.user_management.schemas.integration import (
 )
 
 
-class BaseIntegrationTest:
-    """Base class for integration tests with HTTP call detection."""
-    
-    def setup_method(self):
-        """Set up test environment with HTTP call detection rakes."""
-        # HTTP Call Detection Rakes - These will fail the test if real HTTP calls are made
-        # We need to be selective to allow TestClient to work but catch real external calls
-        
-        self.http_patches = [
-            # Patch async httpx client (most likely to be used for real external calls)
-            patch('httpx.AsyncClient._send_single_request', side_effect=AssertionError("Real HTTP call detected! AsyncClient._send_single_request was called")),
-            # Patch requests (commonly used for external calls)
-            patch('requests.adapters.HTTPAdapter.send', side_effect=AssertionError("Real HTTP call detected! requests HTTPAdapter.send was called")),
-            # Patch urllib (basic HTTP library)
-            patch('urllib.request.urlopen', side_effect=AssertionError("Real HTTP call detected! urllib.request.urlopen was called")),
-            # Note: We don't patch httpx.Client.send because TestClient uses it internally
-        ]
-        
-        # Start all HTTP detection patches
-        for http_patch in self.http_patches:
-            http_patch.start()
-        
-        # Use in-memory SQLite database instead of temporary files
-        os.environ["DB_URL_USER_MANAGEMENT"] = "sqlite:///:memory:"
-        os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
-
-        # Mock database creation to be faster
-        self.db_patcher = patch("services.user_management.database.create_all_tables")
-        self.mock_create_tables = self.db_patcher.start()
-        self.mock_create_tables.return_value = None
-
-        self.app = app
-        self.client = TestClient(app)
-        self._override_auth()
-
-    def teardown_method(self):
-        """Clean up after each test method."""
-        # Stop all patches
-        for http_patch in self.http_patches:
-            http_patch.stop()
-        self.db_patcher.stop()
-        
-        self.app.dependency_overrides.clear()
-        if hasattr(self, "_patcher"):
-            self._patcher.stop()
-
-    def _override_auth(self):
-        """Override authentication for testing."""
-        async def mock_get_current_user():
-            return "user_123"
-
-        async def mock_verify_user_ownership(
-            current_user_id: str, resource_user_id: str
-        ):
-            return None
-
-        self.app.dependency_overrides[get_current_user] = mock_get_current_user
-        patcher = patch(
-            "services.user_management.auth.clerk.verify_user_ownership",
-            side_effect=mock_verify_user_ownership,
-        )
-        self._patcher = patcher.start()
-
-
-class TestIntegrationListEndpoint(BaseIntegrationTest):
+class TestIntegrationListEndpoint(BaseUserManagementIntegrationTest):
     """Test cases for listing user integrations."""
 
     def test_list_integrations_success(self):
@@ -194,7 +126,7 @@ class TestIntegrationListEndpoint(BaseIntegrationTest):
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
-class TestOAuthFlowEndpoints(BaseIntegrationTest):
+class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
     """Test cases for OAuth flow management."""
 
     def test_start_oauth_flow_success(self):
@@ -411,7 +343,7 @@ class TestOAuthFlowEndpoints(BaseIntegrationTest):
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
-class TestIntegrationManagementEndpoints(BaseIntegrationTest):
+class TestIntegrationManagementEndpoints(BaseUserManagementIntegrationTest):
     """Test cases for integration management operations."""
 
     def test_disconnect_integration_success(self):
@@ -599,7 +531,7 @@ class TestIntegrationManagementEndpoints(BaseIntegrationTest):
         assert data["by_provider"]["google"] == 1
 
 
-class TestProviderEndpoints(BaseIntegrationTest):
+class TestProviderEndpoints(BaseUserManagementIntegrationTest):
     """Test cases for provider configuration endpoints."""
 
     def test_list_oauth_providers_success(self):
@@ -697,7 +629,7 @@ class TestProviderEndpoints(BaseIntegrationTest):
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
-class TestIntegrationEndpointSecurity(BaseIntegrationTest):
+class TestIntegrationEndpointSecurity(BaseUserManagementIntegrationTest):
     """Test cases for integration endpoint security."""
 
     def test_endpoints_require_authentication(self):
