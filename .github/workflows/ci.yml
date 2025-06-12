@@ -93,12 +93,8 @@ jobs:
 
     - name: Test Docker Compose build
       run: |
-        # Create a minimal .env file for testing
-        echo "DATABASE_URL=postgresql://postgres:postgres@db:5432/briefly" > .env
-        echo "PINECONE_API_KEY=test" >> .env
-        echo "PINECONE_ENVIRONMENT=test" >> .env
-        echo "NEXTAUTH_SECRET=test" >> .env
-        echo "NEXTAUTH_URL=http://localhost:3000" >> .env
+        # Create .env file for testing
+        cp .env.example .env
         
         # Test that docker-compose builds successfully
         docker compose config
