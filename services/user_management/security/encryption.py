@@ -65,7 +65,7 @@ class TokenEncryption:
         try:
             # In production, this should come from a secure key management service
             # For now, use environment variable or generate deterministic salt
-            salt_b64 = self.settings.encryption_service_salt
+            salt_b64 = self.settings.token_encryption_salt
             if salt_b64:
                 return base64.b64decode(salt_b64)
 

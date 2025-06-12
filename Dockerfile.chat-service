@@ -13,6 +13,18 @@ WORKDIR /app
 # Set Python path to include the services directory
 ENV PYTHONPATH=/app
 
+# Environment configuration - REQUIRED at build time
+ARG ENVIRONMENT
+ENV ENVIRONMENT=${ENVIRONMENT}
+
+# Validate ENVIRONMENT value
+RUN if [ -z "$ENVIRONMENT" ]; then \
+        echo "ERROR: ENVIRONMENT build arg is required (local|staging|production)" && exit 1; \
+    fi && \
+    if [ "$ENVIRONMENT" != "local" ] && [ "$ENVIRONMENT" != "staging" ] && [ "$ENVIRONMENT" != "production" ]; then \
+        echo "ERROR: ENVIRONMENT must be one of: local, staging, production. Got: $ENVIRONMENT" && exit 1; \
+    fi
+
 # Install system dependencies
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
