@@ -25,12 +25,15 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.user-service
+      args:
+        - ENVIRONMENT=${ENVIRONMENT}
     ports:
       - "8001:8001"
     depends_on:
       - db
       - redis
     environment:
+      - ENVIRONMENT=${ENVIRONMENT}  # Required: local|staging|production
       - DB_URL_USER_MANAGEMENT=${DB_URL_USER_MANAGEMENT}
       - REDIS_URL=redis://redis:6379
       - CELERY_BROKER_URL=redis://redis:6379/0
@@ -51,6 +54,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.office-service
+      args:
+        - ENVIRONMENT=${ENVIRONMENT}
     ports:
       - "8080:8080"
     depends_on:
@@ -58,6 +63,7 @@ services:
       - redis
       - user-management
     environment:
+      - ENVIRONMENT=${ENVIRONMENT}  # Required: local|staging|production
       - DB_URL_OFFICE=${DB_URL_OFFICE}
       - REDIS_URL=redis://redis:6379
       - USER_MANAGEMENT_SERVICE_URL=http://user-management:8001
@@ -71,6 +77,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.chat-service
+      args:
+        - ENVIRONMENT=${ENVIRONMENT}
     ports:
       - "8002:8000" # Changed from 8000 to 8002 to avoid conflict with 'app' service
     depends_on:
@@ -78,6 +86,7 @@ services:
       - user-management # If it needs to authenticate/call user-management
       - office-service # If it needs to call office-service
     environment:
+      - ENVIRONMENT=${ENVIRONMENT}  # Required: local|staging|production
       - DB_URL_CHAT=${DB_URL_CHAT}
       - USER_MANAGEMENT_SERVICE_URL=http://user-management:8001
       - OFFICE_SERVICE_URL=http://office-service:8080
