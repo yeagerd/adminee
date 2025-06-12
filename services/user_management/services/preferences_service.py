@@ -12,16 +12,16 @@ import structlog
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import select
 
-from ..database import async_session
-from ..exceptions import (
+from services.user_management.database import async_session
+from services.user_management.exceptions import (
     DatabaseException,
     PreferencesNotFoundException,
     UserNotFoundException,
     ValidationException,
 )
-from ..models.preferences import UserPreferences
-from ..models.user import User
-from ..schemas.preferences import (
+from services.user_management.models.preferences import UserPreferences
+from services.user_management.models.user import User
+from services.user_management.schemas.preferences import (
     AIPreferencesSchema,
     IntegrationPreferencesSchema,
     NotificationPreferencesSchema,

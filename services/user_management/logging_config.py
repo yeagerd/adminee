@@ -10,7 +10,7 @@ from typing import Any, Dict
 
 import structlog
 
-from .settings import settings
+from services.user_management.settings import settings
 
 
 def configure_logging() -> None:

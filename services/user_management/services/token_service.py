@@ -12,22 +12,30 @@ import httpx
 import structlog
 from sqlmodel import select
 
-from ..database import async_session
-from ..exceptions import (
+from services.user_management.database import async_session
+from services.user_management.exceptions import (
     IntegrationException,
     NotFoundException,
+    SimpleValidationException,
 )
-from ..models.integration import Integration, IntegrationProvider, IntegrationStatus
-from ..models.token import EncryptedToken, TokenType
-from ..models.user import User
-from ..schemas.integration import (
+from services.user_management.models.integration import Integration, IntegrationProvider, IntegrationStatus
+from services.user_management.models.token import EncryptedToken, TokenType
+from services.user_management.models.user import User
+from services.user_management.schemas.integration import (
+    IntegrationHealthResponse,
+    IntegrationListResponse,
+    IntegrationResponse,
+    IntegrationStatsResponse,
+    OAuthCallbackResponse,
+    OAuthStartResponse,
+    TokenRefreshResponse,
     InternalTokenResponse,
     InternalUserStatusResponse,
     TokenRevocationResponse,
 )
-from ..security.encryption import TokenEncryption
-from ..services.audit_service import audit_logger
-from ..services.integration_service import integration_service
+from services.user_management.security.encryption import TokenEncryption
+from services.user_management.services.audit_service import audit_logger
+from services.user_management.services.integration_service import integration_service
 
 # Set up logging
 logger = structlog.get_logger(__name__)
@@ -502,7 +510,7 @@ class TokenService:
                 error=str(e),
             )
             # Return a failed response similar to TokenRefreshResponse
-            from ..schemas.integration import TokenRefreshResponse
+            from services.user_management.schemas.integration import TokenRefreshResponse
 
             return TokenRefreshResponse(
                 success=False,

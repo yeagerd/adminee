@@ -12,10 +12,10 @@ import structlog
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import select
 
-from ..database import async_session
-from ..exceptions import AuditException, DatabaseException
-from ..models.audit import AuditLog
-from ..models.user import User
+from services.user_management.database import async_session
+from services.user_management.exceptions import AuditException, DatabaseException
+from services.user_management.models.audit import AuditLog
+from services.user_management.models.user import User
 
 # Set up logging
 logger = structlog.get_logger(__name__)

@@ -6,7 +6,8 @@ and middleware functionality.
 """
 
 from unittest.mock import AsyncMock, patch
-
+import os
+import tempfile
 import pytest
 from fastapi.testclient import TestClient
 
@@ -76,6 +77,15 @@ class TestApplicationStartup:
 
 class TestHealthEndpoint:
     """Test cases for health check endpoint (liveness probe)."""
+
+    def setup_method(self):
+        self.db_fd, self.db_path = tempfile.mkstemp()
+        os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
+        self.client = TestClient(app)
+
+    def teardown_method(self):
+        os.close(self.db_fd)
+        os.unlink(self.db_path)
 
     @patch("services.user_management.main.settings")
     @patch("services.user_management.database.async_session")
@@ -200,6 +210,15 @@ class TestHealthEndpoint:
 
 class TestReadinessEndpoint:
     """Test cases for readiness check endpoint (readiness probe)."""
+
+    def setup_method(self):
+        self.db_fd, self.db_path = tempfile.mkstemp()
+        os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
+        self.client = TestClient(app)
+
+    def teardown_method(self):
+        os.close(self.db_fd)
+        os.unlink(self.db_path)
 
     @patch("services.user_management.database.async_session")
     @patch("services.user_management.main.settings")

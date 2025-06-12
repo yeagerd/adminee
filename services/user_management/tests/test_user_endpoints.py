@@ -12,7 +12,8 @@ import pytest
 from fastapi import HTTPException, status
 
 from ..exceptions import UserNotFoundException, ValidationException
-from ..models import User
+from services.user_management.models.user import User
+from services.user_management.models.preferences import UserPreferences
 from ..schemas.user import (
     UserCreate,
     UserDeleteResponse,

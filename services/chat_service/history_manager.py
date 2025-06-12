@@ -45,6 +45,7 @@ async_session = async_sessionmaker(
 
 class Thread(SQLModel, table=True):
     __tablename__ = "threads"
+    __table_args__ = {"extend_existing": True}
 
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: str = Field(index=True, max_length=128)
@@ -67,6 +68,7 @@ class Thread(SQLModel, table=True):
 
 class Message(SQLModel, table=True):
     __tablename__ = "messages"
+    __table_args__ = {"extend_existing": True}
 
     id: Optional[int] = Field(default=None, primary_key=True)
     thread_id: int = Field(foreign_key="threads.id")
@@ -89,7 +91,10 @@ class Message(SQLModel, table=True):
 
 class Draft(SQLModel, table=True):
     __tablename__ = "drafts"
-    __table_args__ = (UniqueConstraint("thread_id", "type", name="uq_thread_type"),)
+    __table_args__ = (
+        UniqueConstraint("thread_id", "type", name="uq_thread_type"),
+        {"extend_existing": True},
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     thread_id: int = Field(foreign_key="threads.id")

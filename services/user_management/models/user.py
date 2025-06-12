@@ -11,11 +11,16 @@ from pydantic import EmailStr
 from sqlalchemy import func
 from sqlmodel import Column, DateTime, Field, Relationship, SQLModel
 
+from services.user_management.models.audit import AuditLog
+from services.user_management.models.integration import Integration
+from services.user_management.models.preferences import UserPreferences
+from services.user_management.models.token import EncryptedToken
+
 if TYPE_CHECKING:
-    from .audit import AuditLog
-    from .integration import Integration
-    from .preferences import UserPreferences
-    from .token import EncryptedToken
+    from services.user_management.models.integration import Integration
+    from services.user_management.models.audit import AuditLog
+    from services.user_management.models.preferences import UserPreferences
+    from services.user_management.models.token import EncryptedToken
 
 
 class User(SQLModel, table=True):

@@ -11,17 +11,17 @@ from typing import Any, Dict, List, Optional
 import structlog
 from sqlmodel import select
 
-from ..database import async_session
-from ..exceptions import (
+from services.user_management.database import async_session
+from services.user_management.exceptions import (
     IntegrationException,
     NotFoundException,
     SimpleValidationException,
 )
-from ..integrations.oauth_config import get_oauth_config
-from ..models.integration import Integration, IntegrationProvider, IntegrationStatus
-from ..models.token import EncryptedToken, TokenType
-from ..models.user import User
-from ..schemas.integration import (
+from services.user_management.integrations.oauth_config import get_oauth_config
+from services.user_management.models.integration import Integration, IntegrationProvider, IntegrationStatus
+from services.user_management.models.token import EncryptedToken, TokenType
+from services.user_management.models.user import User
+from services.user_management.schemas.integration import (
     IntegrationHealthResponse,
     IntegrationListResponse,
     IntegrationResponse,
@@ -30,8 +30,8 @@ from ..schemas.integration import (
     OAuthStartResponse,
     TokenRefreshResponse,
 )
-from ..security.encryption import TokenEncryption
-from ..services.audit_service import audit_logger
+from services.user_management.security.encryption import TokenEncryption
+from services.user_management.services.audit_service import audit_logger
 
 # Set up logging
 logger = structlog.get_logger(__name__)

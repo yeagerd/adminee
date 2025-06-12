@@ -12,14 +12,14 @@ import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 
-from ..auth.clerk import get_current_user
-from ..exceptions import (
+from services.user_management.auth.clerk import get_current_user
+from services.user_management.exceptions import (
     IntegrationException,
     NotFoundException,
 )
-from ..main import app
-from ..models.integration import IntegrationProvider, IntegrationStatus
-from ..schemas.integration import (
+from services.user_management.main import app
+from services.user_management.models.integration import IntegrationProvider, IntegrationStatus
+from services.user_management.schemas.integration import (
     IntegrationHealthResponse,
     IntegrationListResponse,
     IntegrationStatsResponse,

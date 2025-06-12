@@ -11,6 +11,7 @@ import logging
 import random
 from functools import wraps
 from typing import Any, Callable, List, Optional, Type
+from services.user_management.exceptions import DatabaseException, ServiceException, IntegrationException, TokenNotFoundException
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +36,6 @@ def is_transient_error(exception: Exception) -> bool:
     Returns:
         True if the error is transient and should be retried
     """
-    from ..exceptions import DatabaseException, ServiceException
-
     # Database connection issues
     if isinstance(exception, DatabaseException):
         return True
@@ -308,8 +307,6 @@ def retry_on_transient_failure(
 # Convenience decorators for common scenarios
 def retry_database_operations(max_attempts: int = 3, base_delay: float = 0.5):
     """Decorator for retrying database operations."""
-    from ..exceptions import DatabaseException
-
     return retry_on_transient_failure(
         max_attempts=max_attempts,
         base_delay=base_delay,
@@ -320,8 +317,6 @@ def retry_database_operations(max_attempts: int = 3, base_delay: float = 0.5):
 
 def retry_external_api_calls(max_attempts: int = 3, base_delay: float = 1.0):
     """Decorator for retrying external API calls."""
-    from ..exceptions import ServiceException
-
     return retry_on_transient_failure(
         max_attempts=max_attempts,
         base_delay=base_delay,
@@ -332,8 +327,6 @@ def retry_external_api_calls(max_attempts: int = 3, base_delay: float = 1.0):
 
 def retry_oauth_operations(max_attempts: int = 2, base_delay: float = 1.0):
     """Decorator for retrying OAuth operations with shorter delays."""
-    from ..exceptions import IntegrationException, TokenNotFoundException
-
     return retry_on_transient_failure(
         max_attempts=max_attempts,
         base_delay=base_delay,

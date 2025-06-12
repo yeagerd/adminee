@@ -10,22 +10,22 @@ from typing import List
 
 from sqlmodel import func, select
 
-from ..database import async_session
-from ..exceptions import (
-    UserNotFoundException,
-    ValidationException,
+from services.user_management.database import async_session
+from services.user_management.exceptions import (
+    NotFoundException,
+    SimpleValidationException,
 )
-from ..models import User
-from ..schemas import (
+from services.user_management.models.user import User
+from services.user_management.schemas.user import (
     UserCreate,
+    UserUpdate,
+    UserResponse,
     UserDeleteResponse,
     UserListResponse,
     UserOnboardingUpdate,
-    UserResponse,
     UserSearchRequest,
-    UserUpdate,
 )
-from .audit_service import audit_logger
+from services.user_management.services.audit_service import audit_logger
 
 logger = audit_logger.logger
 
@@ -130,7 +130,7 @@ class UserService:
                 existing_user = result.scalar_one_or_none()
 
                 if existing_user and existing_user.deleted_at is None:
-                    raise ValidationException(
+                    raise SimpleValidationException(
                         field="external_auth_id",
                         value=user_data.external_auth_id,
                         reason=f"User with {user_data.auth_provider} ID {user_data.external_auth_id} already exists",
@@ -157,11 +157,11 @@ class UserService:
                 )
                 return user
 
-        except ValidationException:
+        except SimpleValidationException:
             raise
         except Exception as e:
             logger.error(f"Error creating user: {e}")
-            raise ValidationException(
+            raise SimpleValidationException(
                 field="user_data",
                 value=str(user_data),
                 reason=f"Failed to create user: {str(e)}",
@@ -217,7 +217,7 @@ class UserService:
             raise
         except Exception as e:
             logger.error(f"Error updating user {user_id}: {e}")
-            raise ValidationException(
+            raise SimpleValidationException(
                 field="user_data",
                 value=str(user_data),
                 reason=f"Failed to update user: {str(e)}",
@@ -264,7 +264,7 @@ class UserService:
             raise
         except Exception as e:
             logger.error(f"Error updating onboarding for user {user_id}: {e}")
-            raise ValidationException(
+            raise SimpleValidationException(
                 field="onboarding_data",
                 value=str(onboarding_data),
                 reason=f"Failed to update onboarding: {str(e)}",
@@ -312,7 +312,7 @@ class UserService:
             raise
         except Exception as e:
             logger.error(f"Error deleting user {user_id}: {e}")
-            raise ValidationException(
+            raise SimpleValidationException(
                 field="user_id",
                 value=user_id,
                 reason=f"Failed to delete user: {str(e)}",
@@ -375,7 +375,7 @@ class UserService:
 
         except Exception as e:
             logger.error(f"Error searching users: {e}")
-            raise ValidationException(
+            raise SimpleValidationException(
                 field="search_request",
                 value=str(search_request),
                 reason=f"Failed to search users: {str(e)}",

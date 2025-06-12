@@ -10,8 +10,8 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from ..models.integration import IntegrationProvider, IntegrationStatus
-from ..utils.validation import (
+from services.user_management.models.integration import IntegrationProvider, IntegrationStatus
+from services.user_management.utils.validation import (
     check_sql_injection_patterns,
     sanitize_text_input,
     validate_json_safe_string,

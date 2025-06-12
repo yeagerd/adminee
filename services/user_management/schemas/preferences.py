@@ -12,11 +12,12 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
-from ..utils.validation import (
+from services.user_management.utils.validation import (
     check_sql_injection_patterns,
     sanitize_text_input,
     validate_enum_value,
     validate_time_format,
+    validate_json_safe_string,
 )
 
 

@@ -13,8 +13,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
-from .database import close_db, create_all_tables
-from .exceptions import (
+from services.user_management.database import close_db, create_all_tables
+from services.user_management.exceptions import (
     AuditException,
     AuthenticationException,
     AuthorizationException,
@@ -34,12 +34,12 @@ from .exceptions import (
     ValidationException,
     WebhookValidationException,
 )
-from .logging_config import setup_logging
-from .middleware.sanitization import (
+from services.user_management.logging_config import setup_logging
+from services.user_management.middleware.sanitization import (
     InputSanitizationMiddleware,
     XSSProtectionMiddleware,
 )
-from .routers import (
+from services.user_management.routers import (
     integrations_router,
     internal_router,
     preferences_router,
@@ -47,7 +47,11 @@ from .routers import (
     users_router,
     webhooks_router,
 )
-from .settings import settings
+from services.user_management.settings import settings
+
+from services.user_management.integrations.oauth_config import get_oauth_config
+from services.user_management.services.integration_service import integration_service
+from services.user_management.database import async_session
 
 # Setup structured logging
 setup_logging()
@@ -152,9 +156,6 @@ async def oauth_callback_redirect(
     The state parameter contains information about the user and provider
     that allows us to route the callback correctly.
     """
-    from .integrations.oauth_config import get_oauth_config
-    from .services.integration_service import integration_service
-
     try:
         # Get the OAuth config instance
         oauth_config = get_oauth_config()
@@ -605,8 +606,6 @@ async def health_check():
 
     # Basic database connectivity check
     try:
-        from .database import async_session
-
         async with async_session() as session:
             # Quick connectivity test
             await session.execute(text("SELECT 1"))
@@ -733,8 +732,6 @@ async def readiness_check():
 
     # Database readiness check
     try:
-        from .database import async_session
-
         async with async_session() as session:
             # More comprehensive database check
             db_start = time.time()

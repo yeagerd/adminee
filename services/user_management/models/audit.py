@@ -5,12 +5,13 @@ Provides comprehensive audit logging for compliance and security tracking.
 """
 
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
 from sqlalchemy import JSON, func
 from sqlmodel import Column, DateTime, Field, Relationship, SQLModel
 
-from .user import User
+if TYPE_CHECKING:
+    from services.user_management.models.user import User
 
 
 class AuditLog(SQLModel, table=True):
