@@ -58,25 +58,50 @@ async def clerk_webhook(
         # Parse the webhook payload
         try:
             webhook_data = await request.json()
-            event_type = webhook_data.get("type")
-            data = webhook_data.get("data", {})
         except Exception as e:
-            logger.error(f"Failed to parse webhook payload: {str(e)}")
+            logger.error(f"Failed to parse webhook payload JSON: {str(e)}")
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid webhook payload format",
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Invalid JSON payload format",
             )
+
+        # Validate required fields for webhook structure
+        if not isinstance(webhook_data, dict):
+            logger.error("Webhook payload is not a JSON object")
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Webhook payload must be a JSON object",
+            )
+
+        # Check for required webhook structure
+        if "type" not in webhook_data:
+            logger.error("Webhook payload missing required 'type' field")
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Webhook payload missing required 'type' field",
+            )
+
+        if "data" not in webhook_data:
+            logger.error("Webhook payload missing required 'data' field")
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Webhook payload missing required 'data' field",
+            )
+
+        event_type = webhook_data.get("type")
+        data = webhook_data.get("data", {})
 
         logger.info(f"Processing Clerk webhook: {event_type} for user {data.get('id')}")
 
         # Process the webhook based on event type
         if event_type == "user.created":
-            result = await webhook_service.process_user_created(data)
+            await webhook_service.process_user_created(data)
         elif event_type == "user.updated":
-            result = await webhook_service.process_user_updated(data)
+            await webhook_service.process_user_updated(data)
         elif event_type == "user.deleted":
-            result = await webhook_service.process_user_deleted(data)
+            await webhook_service.process_user_deleted(data)
         else:
+            # This is a valid webhook structure but unsupported event type
             logger.warning(f"Unsupported webhook event type: {event_type}")
             return WebhookResponse(
                 success=False,

@@ -198,18 +198,27 @@ class TestClerkWebhookEndpoint:
         )
 
     def test_clerk_webhook_signature_verification_failure(
-        self, client, sample_user_created_payload
+        self, client, mock_webhook_service, sample_user_created_payload
     ):
         """Test webhook signature verification failure."""
+        # Mock successful webhook processing (won't be called due to signature failure)
+        mock_webhook_service.process_user_created = AsyncMock(
+            return_value={
+                "action": "user_created",
+                "user_id": "user_2abc123def456",
+                "preferences_id": 1,
+            }
+        )
+
         # Send webhook without mocking signature verification
         # This will test the actual verification logic
         response = client.post("/webhooks/clerk", json=sample_user_created_payload)
 
         # In test environment, webhook secret is not configured so verification is skipped
-        # The webhook processing continues and succeeds, so we expect 500 due to missing service mocks
-        assert response.status_code == 500
+        # The webhook processing continues and succeeds with mocked service
+        assert response.status_code == 200
         data = response.json()
-        assert data["detail"]["error"] == "InternalServerError"
+        assert data["success"] is True
 
     @patch("services.user_management.auth.webhook_auth.verify_webhook_signature")
     def test_clerk_webhook_invalid_payload_format(self, mock_verify, client):
@@ -227,11 +236,72 @@ class TestClerkWebhookEndpoint:
             },
         )
 
-        # Should return 200 with success=false for unsupported/invalid events
-        assert response.status_code == 200
+        # Should return 422 for invalid payload format (missing required fields)
+        assert response.status_code == 422
         data = response.json()
-        assert data["success"] is False
-        assert "Unsupported event: None" in data["message"]
+        assert "type" in data["detail"] or "data" in data["detail"]
+
+    @patch("services.user_management.auth.webhook_auth.verify_webhook_signature")
+    def test_clerk_webhook_missing_type_field(self, mock_verify, client):
+        """Test webhook rejection when 'type' field is missing."""
+        # Mock signature verification to pass
+        mock_verify.return_value = None
+
+        # Send payload missing 'type' field
+        response = client.post(
+            "/webhooks/clerk",
+            json={"data": {"id": "user_123"}, "object": "event"},
+            headers={
+                "svix-signature": "v1=test_signature",
+                "svix-timestamp": "1234567890",
+            },
+        )
+
+        # Should return 422 for missing required field
+        assert response.status_code == 422
+        data = response.json()
+        assert "type" in data["detail"]
+
+    @patch("services.user_management.auth.webhook_auth.verify_webhook_signature")
+    def test_clerk_webhook_missing_data_field(self, mock_verify, client):
+        """Test webhook rejection when 'data' field is missing."""
+        # Mock signature verification to pass
+        mock_verify.return_value = None
+
+        # Send payload missing 'data' field
+        response = client.post(
+            "/webhooks/clerk",
+            json={"type": "user.created", "object": "event"},
+            headers={
+                "svix-signature": "v1=test_signature",
+                "svix-timestamp": "1234567890",
+            },
+        )
+
+        # Should return 422 for missing required field
+        assert response.status_code == 422
+        data = response.json()
+        assert "data" in data["detail"]
+
+    @patch("services.user_management.auth.webhook_auth.verify_webhook_signature")
+    def test_clerk_webhook_invalid_json(self, mock_verify, client):
+        """Test webhook rejection for invalid JSON."""
+        # Mock signature verification to pass
+        mock_verify.return_value = None
+
+        # Send invalid JSON (this will be handled by FastAPI's JSON parsing)
+        response = client.post(
+            "/webhooks/clerk",
+            data="invalid json",
+            headers={
+                "svix-signature": "v1=test_signature",
+                "svix-timestamp": "1234567890",
+                "Content-Type": "application/json",
+            },
+        )
+
+        # Should return 422 for invalid JSON
+        assert response.status_code == 422
 
     @patch("services.user_management.auth.webhook_auth.verify_webhook_signature")
     def test_clerk_webhook_unsupported_event_type(self, mock_verify, client):

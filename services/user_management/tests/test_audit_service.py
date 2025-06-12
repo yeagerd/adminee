@@ -438,8 +438,8 @@ class TestAuditLogger:
 
             # Verify cleanup
             assert deleted_count == 3
-        assert mock_session.delete.call_count == 3
-        mock_session.commit.assert_called_once()
+            assert mock_session.delete.call_count == 3
+            mock_session.commit.assert_called_once()
             mock_log_system.assert_called_once()
 
     @pytest.mark.asyncio
