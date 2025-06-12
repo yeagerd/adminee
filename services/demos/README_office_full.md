@@ -49,9 +49,9 @@ cd services/office_service
 ### Step 2: Run the Full Demo
 
 ```bash
-cd services/chat_service
+# From repository root with unified environment
 source venv/bin/activate
-python ../demos/office_full.py user@example.com
+python services/demos/office_full.py user@example.com
 ```
 
 ## Demo Flow

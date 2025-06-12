@@ -36,29 +36,27 @@ The Office Service is a FastAPI-based microservice that provides unified access 
    cd services/office_service
    ```
 
-2. **Create and activate virtual environment:**
+2. **Set up unified development environment:**
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ./setup-dev.sh
    ```
+   This script will:
+   - Create a unified virtual environment for all services
+   - Install all dependencies from all services
+   - Install shared packages in editable mode
 
-3. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Set up environment variables:**
+3. **Set up environment variables:**
    ```bash
    cp .env.example .env
    # Edit .env with your configuration
    ```
 
-5. **Run database migrations:**
+4. **Run database migrations:**
    ```bash
    alembic upgrade head
    ```
 
-6. **Start the service:**
+5. **Start the service:**
    ```bash
    uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
    ```
@@ -163,7 +161,7 @@ tox -p auto             # Full test matrix
         ```bash
         # Office Service Testing:
         cd services/office_service
-        source venv/bin/activate  # Activate virtual environment
+        # Virtual environment is already activated by setup-dev.sh
         pytest                    # Run all tests
         pytest tests/test_integration.py  # Run integration tests only
         
