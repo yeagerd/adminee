@@ -17,6 +17,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 from fastapi import Request
+from fastapi.responses import JSONResponse
 
 from services.office_service.app.main import (
     office_service_error_handler,
