@@ -234,6 +234,7 @@ ENVIRONMENT=development
 
 * Do not introduce any testconf.py files
 * Do not use relative imports
+* Do not load or create globals on module load
 
 ## Unit Testing
 
