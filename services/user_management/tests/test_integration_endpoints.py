@@ -6,7 +6,7 @@ health monitoring, and provider configuration endpoints.
 """
 
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi import status
 
@@ -57,7 +57,7 @@ class TestIntegrationListEndpoint(BaseUserManagementIntegrationTest):
         with patch(
             "services.user_management.routers.integrations.get_integration_service"
         ) as mock_service:
-            mock_service.return_value.get_user_integrations.return_value = mock_response
+            mock_service.return_value.get_user_integrations = AsyncMock(return_value=mock_response)
             response = self.client.get(
                 f"/users/{user_id}/integrations/",
                 headers={"Authorization": "Bearer valid-token"},
@@ -80,7 +80,7 @@ class TestIntegrationListEndpoint(BaseUserManagementIntegrationTest):
         with patch(
             "services.user_management.routers.integrations.get_integration_service"
         ) as mock_service:
-            mock_service.return_value.get_user_integrations.return_value = mock_response
+            mock_service.return_value.get_user_integrations = AsyncMock(return_value=mock_response)
             response = self.client.get(
                 f"/users/{user_id}/integrations/",
                 params={
@@ -90,7 +90,7 @@ class TestIntegrationListEndpoint(BaseUserManagementIntegrationTest):
                 },
             )
         assert response.status_code == status.HTTP_200_OK
-        mock_service.assert_called_once_with(
+        mock_service.return_value.get_user_integrations.assert_called_once_with(
             user_id=user_id,
             provider=IntegrationProvider.GOOGLE,
             status=IntegrationStatus.ACTIVE,
