@@ -4,6 +4,8 @@ globs: services/**/*.py
 alwaysApply: false
 ---
 General instructions for working in Python in this repo:
+* Do not introduce any testconf.py files
+* Do not use relative imports
 
 Setup:
 * Set up the unified development environment: `./setup-dev.sh`

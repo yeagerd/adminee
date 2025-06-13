@@ -230,6 +230,11 @@ For development, OpenTelemetry runs with basic configuration:
 ENVIRONMENT=development
 ```
 
+## Python Conventions
+
+* Do not introduce any testconf.py files
+* Do not use relative imports
+
 ## Unit Testing
 
 -   Unit tests are co-located with the services or in dedicated test directories (e.g., `services/office-service/tests/`).
