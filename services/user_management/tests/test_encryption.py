@@ -8,7 +8,6 @@ and security features of the TokenEncryption service.
 import asyncio
 import base64
 import os
-import tempfile
 from unittest.mock import patch
 
 import pytest

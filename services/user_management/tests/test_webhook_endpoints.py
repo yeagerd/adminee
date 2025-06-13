@@ -6,11 +6,8 @@ and various webhook event types.
 """
 
 import asyncio
-import os
-import tempfile
 from unittest.mock import AsyncMock, patch
 
-import pytest
 from fastapi.testclient import TestClient
 
 from services.user_management.database import create_all_tables

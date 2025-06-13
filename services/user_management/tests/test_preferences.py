@@ -7,7 +7,6 @@ partial updates, and default value handling.
 
 import asyncio
 import os
-import tempfile
 
 # Set required environment variables before any imports
 os.environ.setdefault("TOKEN_ENCRYPTION_SALT", "dGVzdC1zYWx0LTE2Ynl0ZQ==")

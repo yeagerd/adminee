@@ -6,7 +6,6 @@ Basic tests for internal service-to-service API endpoints.
 
 import asyncio
 import os
-import tempfile
 from unittest.mock import patch
 
 from fastapi import status

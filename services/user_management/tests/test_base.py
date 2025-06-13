@@ -19,13 +19,13 @@ class BaseUserManagementTest:
         """Set up User Management test environment with required variables."""
         # Create temporary database file for tests that need file-based SQLite
         self.db_fd, self.db_path = tempfile.mkstemp(suffix=".db")
-        
+
         # Set required environment variables for User Management service
         os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
         os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
         os.environ["API_FRONTEND_USER_KEY"] = "test-api-key"
         os.environ["CLERK_SECRET_KEY"] = "test-clerk-key"
-        
+
         # Optional environment variables with test defaults
         os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
         os.environ.setdefault("ENVIRONMENT", "test")
@@ -33,9 +33,9 @@ class BaseUserManagementTest:
     def teardown_method(self):
         """Clean up User Management test environment."""
         # Close and remove temporary database file
-        if hasattr(self, 'db_fd'):
+        if hasattr(self, "db_fd"):
             os.close(self.db_fd)
-        if hasattr(self, 'db_path') and os.path.exists(self.db_path):
+        if hasattr(self, "db_path") and os.path.exists(self.db_path):
             os.unlink(self.db_path)
 
 
@@ -46,7 +46,7 @@ class BaseUserManagementIntegrationTest(BaseUserManagementTest):
         """Set up User Management integration test environment."""
         # Call parent setup for environment variables
         super().setup_method()
-        
+
         # Use selective HTTP patches that don't interfere with TestClient
         self.http_patches = [
             # Patch async httpx client (most likely to be used for real external calls)
@@ -79,16 +79,21 @@ class BaseUserManagementIntegrationTest(BaseUserManagementTest):
 
         # Reload the database module to pick up the new environment variable
         import importlib
+
         import services.user_management.database
+
         importlib.reload(services.user_management.database)
 
         # Actually create the database tables
         import asyncio
+
         from services.user_management.database import create_all_tables
+
         asyncio.run(create_all_tables())
 
         # Import and create test client
         from services.user_management.main import app
+
         self.app = app
         self.client = TestClient(app)
 
@@ -98,16 +103,16 @@ class BaseUserManagementIntegrationTest(BaseUserManagementTest):
     def teardown_method(self):
         """Clean up User Management integration test environment."""
         # Stop all patches
-        if hasattr(self, 'http_patches'):
+        if hasattr(self, "http_patches"):
             for http_patch in self.http_patches:
                 http_patch.stop()
 
         # Clear app overrides
-        if hasattr(self, 'app'):
+        if hasattr(self, "app"):
             self.app.dependency_overrides.clear()
         if hasattr(self, "_patcher"):
             self._patcher.stop()
-            
+
         # Call parent teardown
         super().teardown_method()
 
@@ -128,4 +133,4 @@ class BaseUserManagementIntegrationTest(BaseUserManagementTest):
             "services.user_management.auth.clerk.verify_user_ownership",
             side_effect=mock_verify_user_ownership,
         )
-        self._patcher = patcher.start() 
+        self._patcher = patcher.start()
