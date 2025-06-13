@@ -237,7 +237,7 @@ MICROSOFT_CLIENT_ID=your_microsoft_client_id
 MICROSOFT_CLIENT_SECRET=your_microsoft_client_secret
 
 # Service Configuration
-DATABASE_URL=postgresql://user:pass@localhost/briefly_user_mgmt
+DB_URL_USER=postgresql://user:pass@localhost/briefly_user_mgmt
 CLERK_SECRET_KEY=your_clerk_secret_key
 TOKEN_ENCRYPTION_SALT=your_encryption_salt
 ```
@@ -275,7 +275,7 @@ TOKEN_ENCRYPTION_SALT=your_encryption_salt
 ```bash
 🔴 503 Service Unavailable - Database not connected
 ```
-**Solution:** Ensure PostgreSQL is running and DATABASE_URL is configured correctly.
+**Solution:** Ensure PostgreSQL is running and DB_URL_USER is configured correctly.
 
 ### Permission Errors
 ```bash

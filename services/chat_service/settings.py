@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     db_url_chat: str = Field(
         ...,  # Required field - no default to prevent production mistakes
         description="Database connection string",
-        validation_alias=AliasChoices("DB_URL_CHAT", "DATABASE_URL"),
+        validation_alias=AliasChoices("DB_URL_CHAT"),
     )
 
     # Service Configuration

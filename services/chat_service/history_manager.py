@@ -18,24 +18,30 @@ Key Design Decisions:
 """
 
 import datetime
-import os
 from typing import List, Optional
 
-from sqlalchemy import Text, UniqueConstraint, func, text
+from sqlalchemy import Text, UniqueConstraint, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import registry
 from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, select
 
 from services.chat_service.settings import get_settings
 
-# Import settings to get DATABASE_URL
-try:
-    DATABASE_URL = get_settings().db_url_chat
-except ImportError:
-    # Fallback for backwards compatibility
-    DATABASE_URL = os.environ.get(
-        "DATABASE_URL", "sqlite+aiosqlite:///./chat_service.db"
-    )
+
+def get_database_url() -> str:
+    """Get database URL with lazy initialization and proper error handling."""
+    try:
+        settings = get_settings()
+        if not settings.db_url_chat:
+            raise ValueError(
+                "Database URL not configured. Please set DB_URL_CHAT environment variable."
+            )
+        return settings.db_url_chat
+    except Exception as e:
+        raise RuntimeError(
+            f"Failed to get database configuration: {e}. "
+            "Ensure DB_URL_CHAT environment variable is properly set."
+        ) from e
 
 
 def get_async_database_url(url: str) -> str:
@@ -57,15 +63,32 @@ class ChatSQLModel(SQLModel, registry=chat_registry):
     pass
 
 
-# Create async engine for database operations
-engine = create_async_engine(get_async_database_url(DATABASE_URL), echo=False)
+# Global variables for lazy initialization
+_engine = None
+_async_session = None
 
-# Session factory for dependency injection
-async_session = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-)
+
+def get_engine():
+    """Get database engine with lazy initialization."""
+    global _engine
+    if _engine is None:
+        database_url = get_database_url()
+        async_url = get_async_database_url(database_url)
+        _engine = create_async_engine(async_url, echo=False)
+    return _engine
+
+
+def get_async_session_factory():
+    """Get async session factory with lazy initialization."""
+    global _async_session
+    if _async_session is None:
+        engine = get_engine()
+        _async_session = async_sessionmaker(
+            engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+        )
+    return _async_session
 
 
 class Thread(ChatSQLModel, table=True):
@@ -223,7 +246,7 @@ class Draft(ChatSQLModel, table=True):
 
 # Ensure tables are created on import
 async def init_db():
-    async with engine.begin() as conn:
+    async with get_engine().begin() as conn:
         await conn.run_sync(chat_registry.metadata.create_all)
 
 
@@ -251,12 +274,12 @@ def init_db_sync():
 # Utility functions for thread, message, and draft management
 async def get_session():
     """Get async database session."""
-    async with async_session() as session:
+    async with get_async_session_factory()() as session:
         yield session
 
 
 async def create_thread(user_id: str, title: Optional[str] = None) -> Thread:
-    async with async_session() as session:
+    async with get_async_session_factory()() as session:
         thread = Thread(user_id=user_id, title=title)
         session.add(thread)
         await session.commit()
@@ -265,13 +288,13 @@ async def create_thread(user_id: str, title: Optional[str] = None) -> Thread:
 
 
 async def list_threads(user_id: str) -> List[Thread]:
-    async with async_session() as session:
+    async with get_async_session_factory()() as session:
         result = await session.execute(select(Thread).where(Thread.user_id == user_id))
         return list(result.scalars().all())
 
 
 async def append_message(thread_id: int, user_id: str, content: str) -> Message:
-    async with async_session() as session:
+    async with get_async_session_factory()() as session:
         message = Message(thread_id=thread_id, user_id=user_id, content=content)
         session.add(message)
         await session.commit()
@@ -282,11 +305,11 @@ async def append_message(thread_id: int, user_id: str, content: str) -> Message:
 async def get_thread_history(
     thread_id: int, limit: int = 50, offset: int = 0
 ) -> List[Message]:
-    async with async_session() as session:
+    async with get_async_session_factory()() as session:
         result = await session.execute(
             select(Message)
             .where(Message.thread_id == thread_id)
-            .order_by(text("created_at DESC"))
+            .order_by(Message.__table__.c.created_at.desc())  # type: ignore[attr-defined]
             .offset(offset)
             .limit(limit)
         )
@@ -296,7 +319,7 @@ async def get_thread_history(
 async def create_or_update_draft(
     thread_id: int, draft_type: str, content: str
 ) -> Draft:
-    async with async_session() as session:
+    async with get_async_session_factory()() as session:
         # Try to get existing draft
         result = await session.execute(
             select(Draft).where(Draft.thread_id == thread_id, Draft.type == draft_type)
@@ -316,7 +339,7 @@ async def create_or_update_draft(
 
 
 async def delete_draft(thread_id: int, draft_type: str) -> None:
-    async with async_session() as session:
+    async with get_async_session_factory()() as session:
         result = await session.execute(
             select(Draft).where(Draft.thread_id == thread_id, Draft.type == draft_type)
         )
@@ -327,7 +350,7 @@ async def delete_draft(thread_id: int, draft_type: str) -> None:
 
 
 async def get_draft(thread_id: int, draft_type: str) -> Optional[Draft]:
-    async with async_session() as session:
+    async with get_async_session_factory()() as session:
         result = await session.execute(
             select(Draft).where(Draft.thread_id == thread_id, Draft.type == draft_type)
         )
@@ -335,7 +358,7 @@ async def get_draft(thread_id: int, draft_type: str) -> Optional[Draft]:
 
 
 async def list_drafts(thread_id: int) -> List[Draft]:
-    async with async_session() as session:
+    async with get_async_session_factory()() as session:
         result = await session.execute(
             select(Draft).where(Draft.thread_id == thread_id)
         )
@@ -343,6 +366,6 @@ async def list_drafts(thread_id: int) -> List[Draft]:
 
 
 async def get_thread(thread_id: int) -> Optional[Thread]:
-    async with async_session() as session:
+    async with get_async_session_factory()() as session:
         result = await session.execute(select(Thread).where(Thread.id == thread_id))
         return result.scalar_one_or_none()

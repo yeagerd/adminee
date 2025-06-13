@@ -61,7 +61,7 @@ class BaseIntegrationTest:
             http_patch.start()
 
         # Use in-memory SQLite database instead of temporary files
-        os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+        os.environ["DB_URL_OFFICE"] = "sqlite:///:memory:"
         os.environ["REDIS_URL"] = "redis://localhost:6379/1"
 
         # Mock Redis completely to avoid any connection attempts
@@ -125,7 +125,7 @@ class BaseOfficeServiceIntegrationTest(BaseIntegrationTest):
             http_patch.start()
 
         # Use in-memory SQLite database instead of temporary files
-        os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+        os.environ["DB_URL_OFFICE"] = "sqlite:///:memory:"
         os.environ["REDIS_URL"] = "redis://localhost:6379/1"
 
         # Mock Redis completely to avoid any connection attempts
@@ -209,7 +209,7 @@ class BaseSelectiveHTTPIntegrationTest(BaseIntegrationTest):
             http_patch.start()
 
         # Use in-memory SQLite database instead of temporary files
-        os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+        os.environ["DB_URL_OFFICE"] = "sqlite:///:memory:"
         os.environ["REDIS_URL"] = "redis://localhost:6379/1"
 
         # Mock Redis completely to avoid any connection attempts
