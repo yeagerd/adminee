@@ -11,6 +11,11 @@ import os
 import tempfile
 from unittest.mock import patch
 
+# Set required environment variables before any imports
+os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
+os.environ["API_FRONTEND_USER_KEY"] = "test-api-key"
+os.environ["CLERK_SECRET_KEY"] = "test-clerk-key"
+
 from fastapi.testclient import TestClient
 
 from services.user_management.database import create_all_tables
@@ -33,6 +38,10 @@ class TestApplicationStartup:
     def setup_method(self):
         self.db_fd, self.db_path = tempfile.mkstemp()
         os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
+        # Set required environment variables for tests
+        os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
+        os.environ["API_FRONTEND_USER_KEY"] = "test-api-key"
+        os.environ["CLERK_SECRET_KEY"] = "test-clerk-key"
         self.client = TestClient(app)
 
     def teardown_method(self):
@@ -72,6 +81,10 @@ class TestHealthEndpoint:
     def setup_method(self):
         self.db_fd, self.db_path = tempfile.mkstemp()
         os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
+        # Set required environment variables for tests
+        os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
+        os.environ["API_FRONTEND_USER_KEY"] = "test-api-key"
+        os.environ["CLERK_SECRET_KEY"] = "test-clerk-key"
         self.client = TestClient(app)
 
     def teardown_method(self):
@@ -159,6 +172,10 @@ class TestReadinessEndpoint:
     def setup_method(self):
         self.db_fd, self.db_path = tempfile.mkstemp()
         os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
+        # Set required environment variables for tests
+        os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
+        os.environ["API_FRONTEND_USER_KEY"] = "test-api-key"
+        os.environ["CLERK_SECRET_KEY"] = "test-clerk-key"
         self.client = TestClient(app)
         asyncio.run(create_all_tables())
 
@@ -279,6 +296,10 @@ class TestExceptionHandling:
     def setup_method(self):
         self.db_fd, self.db_path = tempfile.mkstemp()
         os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
+        # Set required environment variables for tests
+        os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
+        os.environ["API_FRONTEND_USER_KEY"] = "test-api-key"
+        os.environ["CLERK_SECRET_KEY"] = "test-clerk-key"
         self.client = TestClient(app)
 
     def teardown_method(self):
@@ -324,6 +345,10 @@ class TestMiddleware:
     def setup_method(self):
         self.db_fd, self.db_path = tempfile.mkstemp()
         os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
+        # Set required environment variables for tests
+        os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
+        os.environ["API_FRONTEND_USER_KEY"] = "test-api-key"
+        os.environ["CLERK_SECRET_KEY"] = "test-clerk-key"
         self.client = TestClient(app)
 
     def teardown_method(self):
@@ -352,6 +377,10 @@ class TestAPIDocumentation:
     def setup_method(self):
         self.db_fd, self.db_path = tempfile.mkstemp()
         os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
+        # Set required environment variables for tests
+        os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
+        os.environ["API_FRONTEND_USER_KEY"] = "test-api-key"
+        os.environ["CLERK_SECRET_KEY"] = "test-clerk-key"
         self.client = TestClient(app)
 
     def teardown_method(self):

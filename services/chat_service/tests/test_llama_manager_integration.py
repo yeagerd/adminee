@@ -12,14 +12,45 @@ This test suite covers:
 
 import logging
 import os
+import tempfile
 from unittest.mock import patch
 
 import pytest
+import pytest_asyncio
 
 from services.chat_service import history_manager
 from services.chat_service.llama_manager import ChatAgentManager
 
 logger = logging.getLogger(__name__)
+
+
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def setup_test_database():
+    """Set up test database with proper tables for all tests."""
+    # Create a temporary database file for testing
+    db_fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(db_fd)
+
+    # Set the database URL for testing
+    original_db_url = os.environ.get("DB_URL_CHAT_SERVICE")
+    os.environ["DB_URL_CHAT_SERVICE"] = f"sqlite:///{db_path}"
+
+    try:
+        # Initialize database tables
+        await history_manager.init_db()
+        yield
+    finally:
+        # Cleanup
+        if original_db_url:
+            os.environ["DB_URL_CHAT_SERVICE"] = original_db_url
+        elif "DB_URL_CHAT_SERVICE" in os.environ:
+            del os.environ["DB_URL_CHAT_SERVICE"]
+
+        # Remove temporary database file
+        try:
+            os.unlink(db_path)
+        except OSError:
+            pass
 
 
 class DummyTool:
