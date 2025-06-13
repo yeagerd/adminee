@@ -1,22 +1,15 @@
 """
-Demo Token Manager for Office Service
+Demo Token Manager for development and testing.
 
-This module provides a TokenManager implementation that reads tokens from environment variables
-instead of calling the user management service. This is useful for demos and development.
-
-Usage:
-    Set environment variables:
-    - DEMO_GOOGLE_TOKEN: Google OAuth2 access token
-    - DEMO_MICROSOFT_TOKEN: Microsoft Graph access token
-
-    The demo token manager will return these tokens for any user_id.
+Provides a mock token manager that uses environment variables instead of
+the User Management Service for easier development and testing workflows.
 """
 
 import logging
 import os
 from typing import Optional
 
-from .token_manager import TokenData, TokenManager
+from services.office_service.core.token_manager import TokenData, TokenManager
 
 logger = logging.getLogger(__name__)
 

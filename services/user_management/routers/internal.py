@@ -7,15 +7,15 @@ and integration status with service authentication.
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from ..auth.service_auth import get_current_service
-from ..exceptions import IntegrationException, NotFoundException
-from ..schemas.integration import (
+from services.user_management.auth.service_auth import get_current_service
+from services.user_management.exceptions import IntegrationException, NotFoundException
+from services.user_management.schemas.integration import (
     InternalTokenRefreshRequest,
     InternalTokenRequest,
     InternalTokenResponse,
     InternalUserStatusResponse,
 )
-from ..services.token_service import token_service
+from services.user_management.services.token_service import token_service
 
 router = APIRouter(
     prefix="/internal",

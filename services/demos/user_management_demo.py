@@ -43,8 +43,7 @@ except ImportError:
 
 # Import database setup for local testing
 try:
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "user_management"))
-    from database import create_all_tables
+    from services.user_management.database import create_all_tables
 
     DATABASE_SETUP_AVAILABLE = True
 except ImportError:

@@ -17,9 +17,9 @@ import httpx
 import structlog
 from pydantic import BaseModel, Field, field_validator
 
-from ..exceptions import ValidationException
-from ..models.integration import IntegrationProvider
-from ..settings import Settings
+from services.user_management.exceptions import ValidationException
+from services.user_management.models.integration import IntegrationProvider
+from services.user_management.settings import Settings
 
 # Set up logging
 logger = structlog.get_logger(__name__)

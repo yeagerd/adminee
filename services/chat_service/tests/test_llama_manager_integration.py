@@ -12,16 +12,45 @@ This test suite covers:
 
 import logging
 import os
-import sys
+import tempfile
+from unittest.mock import patch
 
 import pytest
+import pytest_asyncio
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-import history_manager
-from llama_manager import ChatAgentManager
+from services.chat_service import history_manager
+from services.chat_service.llama_manager import ChatAgentManager
 
 logger = logging.getLogger(__name__)
+
+
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def setup_test_database():
+    """Set up test database with proper tables for all tests."""
+    # Create a temporary database file for testing
+    db_fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(db_fd)
+
+    # Set the database URL for testing
+    original_db_url = os.environ.get("DB_URL_CHAT_SERVICE")
+    os.environ["DB_URL_CHAT_SERVICE"] = f"sqlite:///{db_path}"
+
+    try:
+        # Initialize database tables
+        await history_manager.init_db()
+        yield
+    finally:
+        # Cleanup
+        if original_db_url:
+            os.environ["DB_URL_CHAT_SERVICE"] = original_db_url
+        elif "DB_URL_CHAT_SERVICE" in os.environ:
+            del os.environ["DB_URL_CHAT_SERVICE"]
+
+        # Remove temporary database file
+        try:
+            os.unlink(db_path)
+        except OSError:
+            pass
 
 
 class DummyTool:
@@ -82,6 +111,7 @@ async def test_manager_build_agent():
 
 
 @pytest.mark.asyncio
+@patch.dict(os.environ, {"OPENAI_API_KEY": ""})  # Force FakeLLM by removing API key
 async def test_manager_basic_chat():
     """Test basic chat functionality through orchestration layer."""
     # Create a thread
@@ -103,6 +133,10 @@ async def test_manager_basic_chat():
     assert isinstance(response, str)
     assert len(response) > 0
 
+    # With FakeLLM, expect the fake response format
+    assert "[FAKE LLM RESPONSE]" in response
+    assert user_input in response
+
     # Check that messages were stored in database
     messages = await history_manager.get_thread_history(thread.id, limit=10)
     contents = [msg.content for msg in messages]
@@ -113,6 +147,7 @@ async def test_manager_basic_chat():
 
 
 @pytest.mark.asyncio
+@patch.dict(os.environ, {"OPENAI_API_KEY": ""})  # Force FakeLLM by removing API key
 async def test_manager_empty_thread():
     """Test manager with a newly created empty thread."""
     # Create empty thread
@@ -131,6 +166,10 @@ async def test_manager_empty_thread():
     assert response is not None
     assert len(response) > 0
 
+    # With FakeLLM, expect the fake response format
+    assert "[FAKE LLM RESPONSE]" in response
+    assert user_input in response
+
     # Verify message history
     history = await history_manager.get_thread_history(thread.id, limit=5)
     contents = [msg.content for msg in history]
@@ -140,6 +179,7 @@ async def test_manager_empty_thread():
 
 
 @pytest.mark.asyncio
+@patch.dict(os.environ, {"OPENAI_API_KEY": ""})  # Force FakeLLM by removing API key
 async def test_manager_multiple_messages_order():
     """Test message ordering with multiple sequential messages."""
     thread = await history_manager.create_thread("order_user", "Order Test Thread")
@@ -161,6 +201,10 @@ async def test_manager_multiple_messages_order():
         assert response is not None
         assert len(response) > 0
 
+        # With FakeLLM, expect the fake response format
+        assert "[FAKE LLM RESPONSE]" in response
+        assert msg in response
+
     # Check message history
     history = await history_manager.get_thread_history(thread.id, limit=20)
     contents = [msg.content for msg in history]
@@ -174,6 +218,7 @@ async def test_manager_multiple_messages_order():
 
 
 @pytest.mark.asyncio
+@patch.dict(os.environ, {"OPENAI_API_KEY": ""})  # Force FakeLLM by removing API key
 async def test_manager_unicode_and_long_message():
     """Test handling of unicode characters and long messages."""
     thread = await history_manager.create_thread("unicode_user", "Unicode Thread")
@@ -191,6 +236,11 @@ async def test_manager_unicode_and_long_message():
 
     assert response is not None
     assert len(response) > 0
+
+    # With FakeLLM, expect the fake response format
+    assert "[FAKE LLM RESPONSE]" in response
+    # Note: FakeLLM might truncate very long inputs, so just check for emoji
+    assert "🚀" in response
 
     # Check database storage
     history = await history_manager.get_thread_history(thread.id, limit=5)
@@ -231,6 +281,7 @@ async def test_manager_memory_access():
 
 
 @pytest.mark.asyncio
+@patch.dict(os.environ, {"OPENAI_API_KEY": ""})  # Force FakeLLM by removing API key
 async def test_manager_with_tools():
     """Test manager with tools in orchestration setup."""
     thread = await history_manager.create_thread("tool_user", "Tool Test")
@@ -256,6 +307,10 @@ async def test_manager_with_tools():
 
     assert response is not None
     assert manager.main_agent is not None
+
+    # With FakeLLM, expect the fake response format
+    assert "[FAKE LLM RESPONSE]" in response
+    assert "Hello with tools" in response
 
 
 @pytest.mark.asyncio
@@ -363,6 +418,7 @@ async def test_manager_property_access():
 
 
 @pytest.mark.asyncio
+@patch.dict(os.environ, {"OPENAI_API_KEY": ""})  # Force FakeLLM by removing API key
 async def test_manager_error_handling():
     """Test error handling in orchestration scenarios."""
     manager = ChatAgentManager(
@@ -378,8 +434,13 @@ async def test_manager_error_handling():
     # Should still get a response (thread gets created)
     assert response is not None
 
+    # With FakeLLM, expect the fake response format
+    assert "[FAKE LLM RESPONSE]" in response
+    assert "Test message" in response
+
 
 @pytest.mark.asyncio
+@patch.dict(os.environ, {"OPENAI_API_KEY": ""})  # Force FakeLLM by removing API key
 async def test_manager_thread_auto_creation():
     """Test automatic thread creation when thread doesn't exist."""
     non_existent_thread_id = 99999
@@ -396,6 +457,10 @@ async def test_manager_thread_auto_creation():
 
     assert response is not None
     assert isinstance(response, str)
+
+    # With FakeLLM, expect the fake response format
+    assert "[FAKE LLM RESPONSE]" in response
+    assert "Auto-create thread test" in response
 
     # The manager should now have a valid main agent
     assert manager.main_agent is not None

@@ -13,9 +13,11 @@ from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import Text, func
 from sqlmodel import Column, DateTime, Field, Relationship, SQLModel
 
+from services.user_management.models.integration import Integration
+
 if TYPE_CHECKING:
-    from .integration import Integration
-    from .user import User
+    from services.user_management.models.integration import Integration
+    from services.user_management.models.user import User
 
 
 class TokenType(str, Enum):

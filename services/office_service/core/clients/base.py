@@ -1,3 +1,10 @@
+"""
+Base API client for external service integrations.
+
+Provides common functionality for HTTP requests, error handling,
+and authentication across different provider APIs.
+"""
+
 import logging
 import time
 import uuid
@@ -6,8 +13,9 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 import httpx
-from core.exceptions import ProviderAPIError
-from models import ApiCall, ApiCallStatus, Provider
+
+from services.office_service.core.exceptions import ProviderAPIError
+from services.office_service.models import ApiCall, ApiCallStatus, Provider
 
 # Configure logging
 logger = logging.getLogger(__name__)

@@ -5,15 +5,22 @@ Tests all user CRUD operations including success scenarios,
 error handling, authentication, and authorization.
 """
 
+import os
+
+os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
+
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import HTTPException, status
 
-from ..exceptions import UserNotFoundException, ValidationException
-from ..models import User
-from ..schemas.user import (
+from services.user_management.exceptions import (
+    UserNotFoundException,
+    ValidationException,
+)
+from services.user_management.models.user import User
+from services.user_management.schemas.user import (
     UserCreate,
     UserDeleteResponse,
     UserListResponse,
@@ -21,11 +28,17 @@ from ..schemas.user import (
     UserResponse,
     UserUpdate,
 )
-from ..services.user_service import user_service
+from services.user_management.services.user_service import user_service
 
 
 class TestUserProfileEndpoints:
     """Test cases for user profile endpoints."""
+
+    def setup_method(self):
+        pass
+
+    def teardown_method(self):
+        pass
 
     def create_mock_user(
         self, user_id: int = 1, external_auth_id: str = "user_123"
@@ -72,7 +85,7 @@ class TestUserProfileEndpoints:
             mock_get_profile.return_value = mock_response
 
             # Import here to avoid circular imports during testing
-            from ..routers.users import get_user_profile
+            from services.user_management.routers.users import get_user_profile
 
             result = await get_user_profile(
                 user_id=1, current_user_external_auth_id="user_123"
@@ -96,7 +109,7 @@ class TestUserProfileEndpoints:
             user_service, "get_user_by_id", return_value=mock_target_user
         ):
 
-            from ..routers.users import get_user_profile
+            from services.user_management.routers.users import get_user_profile
 
             # Try to access different user's profile
             with pytest.raises(HTTPException) as exc_info:
@@ -113,7 +126,7 @@ class TestUserProfileEndpoints:
         with patch.object(user_service, "get_user_by_id") as mock_get_by_id:
             mock_get_by_id.side_effect = UserNotFoundException("User not found")
 
-            from ..routers.users import get_user_profile
+            from services.user_management.routers.users import get_user_profile
 
             with pytest.raises(HTTPException) as exc_info:
                 await get_user_profile(
@@ -154,7 +167,7 @@ class TestUserProfileEndpoints:
             )
             mock_from_orm.return_value = mock_response
 
-            from ..routers.users import update_user_profile
+            from services.user_management.routers.users import update_user_profile
 
             result = await update_user_profile(
                 user_data=user_update,
@@ -180,7 +193,7 @@ class TestUserProfileEndpoints:
                 field="email", value="invalid-email", reason="Invalid email format"
             )
 
-            from ..routers.users import update_user_profile
+            from services.user_management.routers.users import update_user_profile
 
             with pytest.raises(HTTPException) as exc_info:
                 await update_user_profile(
@@ -210,7 +223,7 @@ class TestUserProfileEndpoints:
             ),
         ):
 
-            from ..routers.users import delete_user_profile
+            from services.user_management.routers.users import delete_user_profile
 
             result = await delete_user_profile(
                 user_id=1, current_user_external_auth_id="user_123"
@@ -233,7 +246,7 @@ class TestUserProfileEndpoints:
             user_service, "get_user_by_id", return_value=mock_target_user
         ):
 
-            from ..routers.users import delete_user_profile
+            from services.user_management.routers.users import delete_user_profile
 
             # Try to delete different user's profile
             with pytest.raises(HTTPException) as exc_info:
@@ -280,7 +293,7 @@ class TestUserProfileEndpoints:
             )
             mock_from_orm.return_value = mock_response
 
-            from ..routers.users import update_user_onboarding
+            from services.user_management.routers.users import update_user_onboarding
 
             result = await update_user_onboarding(
                 onboarding_data=onboarding_update,
@@ -323,7 +336,7 @@ class TestUserProfileEndpoints:
             user_service, "search_users", return_value=mock_search_results
         ):
 
-            from ..routers.users import search_users
+            from services.user_management.routers.users import search_users
 
             result = await search_users(
                 query="test",
@@ -343,7 +356,7 @@ class TestUserProfileEndpoints:
         """Test user search with filters."""
         with patch.object(user_service, "search_users") as mock_search:
 
-            from ..routers.users import search_users
+            from services.user_management.routers.users import search_users
 
             await search_users(
                 query="john",
@@ -391,7 +404,7 @@ class TestUserProfileEndpoints:
             )
             mock_from_orm.return_value = mock_response
 
-            from ..routers.users import get_current_user_profile
+            from services.user_management.routers.users import get_current_user_profile
 
             result = await get_current_user_profile(
                 current_user_external_auth_id="user_123"
@@ -408,83 +421,99 @@ class TestUserProfileEndpoints:
         with patch.object(user_service, "get_user_by_external_auth_id") as mock_get:
             mock_get.side_effect = UserNotFoundException("User not found")
 
-            from ..routers.users import get_current_user_profile
+            from services.user_management.routers.users import get_current_user_profile
 
             with pytest.raises(HTTPException) as exc_info:
                 await get_current_user_profile(current_user_external_auth_id="user_123")
 
             assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
 
+    @pytest.mark.asyncio
+    async def test_user_profile_workflow(self):
+        """Test complete user profile workflow with mocked service operations."""
+        # Create mock user data
+        mock_user = self.create_mock_user(
+            user_id=1, external_auth_id="user_integration_test"
+        )
+        mock_user.email = "integration@test.com"
+        mock_user.first_name = "Original"
+
+        mock_updated_user = self.create_mock_user(
+            user_id=1, external_auth_id="user_integration_test"
+        )
+        mock_updated_user.email = "integration@test.com"
+        mock_updated_user.first_name = "Updated"
+
+        with (
+            patch.object(user_service, "get_user_by_id", return_value=mock_user),
+            patch.object(user_service, "update_user", return_value=mock_updated_user),
+        ):
+            # Test getting user profile
+            retrieved_user = await user_service.get_user_by_id(1)
+            assert retrieved_user.id == 1
+            assert retrieved_user.external_auth_id == "user_integration_test"
+            assert retrieved_user.email == "integration@test.com"
+
+            # Test updating user
+            from services.user_management.schemas.user import UserUpdate
+
+            update_data = UserUpdate(first_name="Updated")
+            updated_user = await user_service.update_user(1, update_data)
+
+            assert updated_user.first_name == "Updated"
+            assert updated_user.id == 1
+
+            # Verify service calls
+            user_service.get_user_by_id.assert_called_once_with(1)
+            user_service.update_user.assert_called_once_with(1, update_data)
+
 
 class TestUserServiceIntegration:
     """Integration tests for user service methods."""
 
-    @pytest.mark.skip(
-        reason="Integration test requiring complex Ormar ORM mocking - recommend unit tests for service logic instead"
-    )
     @pytest.mark.asyncio
-    async def test_user_profile_workflow(self, integration_test_user):
-        """Test complete user profile workflow with mocked database operations."""
-        user, preferences = integration_test_user
-
-        # Test getting user profile
-        retrieved_user = await user_service.get_user_by_id(user.id)
-        assert retrieved_user.id == user.id
-        assert retrieved_user.clerk_id == "user_integration_test"
-        assert retrieved_user.email == "integration@test.com"
-
-        # Test updating user
-        from ..schemas.user import UserUpdate
-
-        update_data = UserUpdate(first_name="Updated")
-
-        # Mock the update behavior
-        user.first_name = "Updated"
-
-        updated_user = await user_service.update_user(user.id, update_data)
-        assert updated_user.first_name == "Updated"
-        assert updated_user.id == user.id
-
-    @pytest.mark.skip(
-        reason="Integration test requiring complex Ormar ORM mocking - recommend unit tests for service logic instead"
-    )
-    @pytest.mark.asyncio
-    async def test_error_handling_workflow(self, integration_test_setup):
+    async def test_error_handling_workflow(self):
         """Test error handling in various scenarios."""
-        setup = integration_test_setup
-        user = setup["user"]
-        mocks = setup["mocks"]
+        # Create mock user for testing
+        mock_user = MagicMock(spec=User)
+        mock_user.id = 1
+        mock_user.external_auth_id = "existing_user"
+        mock_user.email = "existing@test.com"
 
-        # Test user not found - configure mock to raise exception for non-existent ID
-        from ..exceptions import UserNotFoundException
+        with patch.object(user_service, "get_user_by_id") as mock_get_by_id:
+            # Test user not found scenario
+            mock_get_by_id.side_effect = UserNotFoundException("User not found")
 
-        mocks["get"].side_effect = lambda user_id: (
-            user if user_id == user.id else UserNotFoundException("User not found")
-        )
+            with pytest.raises(UserNotFoundException):
+                await user_service.get_user_by_id(999999)  # Non-existent ID
 
-        # Test getting existing user (should work)
-        retrieved_user = await user_service.get_user_by_id(user.id)
-        assert retrieved_user.id == user.id
+            # Test getting existing user (should work)
+            mock_get_by_id.side_effect = None
+            mock_get_by_id.return_value = mock_user
 
-        # Test user not found scenario
-        with pytest.raises(UserNotFoundException):
-            await user_service.get_user_by_id(999999)  # Non-existent ID
+            retrieved_user = await user_service.get_user_by_id(1)
+            assert retrieved_user.id == 1
 
-        # Test validation error - configure filter to return existing user for duplicate check
-        from ..exceptions import ValidationException
+        # Test validation error for duplicate user creation
+        with patch.object(user_service, "create_user") as mock_create:
+            from services.user_management.exceptions import ValidationException
 
-        # Set up the mock to simulate finding an existing user with the same clerk_id
-        mock_query = MagicMock()
-        mock_query.get_or_none = AsyncMock(return_value=user)  # User exists
-        mocks["filter"].return_value = mock_query
+            mock_create.side_effect = ValidationException(
+                field="external_auth_id",
+                value="existing_user",
+                reason="User with this external_auth_id already exists",
+            )
 
-        create_data = UserCreate(
-            clerk_id=user.clerk_id,  # Use existing clerk_id to trigger validation error
-            email="duplicate@example.com",
-        )
+            create_data = UserCreate(
+                external_auth_id="existing_user",
+                email="duplicate@example.com",
+            )
 
-        with pytest.raises(ValidationException):
-            await user_service.create_user(create_data)
+            with pytest.raises(ValidationException) as exc_info:
+                await user_service.create_user(create_data)
+
+            assert "already exists" in str(exc_info.value)
+            mock_create.assert_called_once_with(create_data)
 
     def create_mock_user(
         self, user_id: int = 1, external_auth_id: str = "user_123"

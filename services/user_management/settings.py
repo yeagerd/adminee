@@ -15,7 +15,7 @@ class Settings(BaseSettings):
 
     # Database Configuration
     database_url: str = Field(
-        ...,
+        default="sqlite:///./user_management.db",
         description="PostgreSQL database connection string",
         validation_alias=AliasChoices("DB_URL_USER_MANAGEMENT", "DATABASE_URL"),
     )

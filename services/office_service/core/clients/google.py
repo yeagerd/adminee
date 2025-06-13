@@ -1,8 +1,7 @@
 from typing import Any, Dict, Optional
 
-from models import Provider
-
-from .base import BaseAPIClient
+from services.office_service.core.clients.base import BaseAPIClient
+from services.office_service.models import Provider
 
 
 class GoogleAPIClient(BaseAPIClient):

@@ -9,10 +9,14 @@ from datetime import datetime, timezone
 
 from sqlmodel import select
 
-from ..database import async_session
-from ..exceptions import DatabaseError, WebhookProcessingError
-from ..models import User, UserPreferences
-from ..schemas.webhook import ClerkWebhookEvent, ClerkWebhookEventData
+from services.user_management.database import get_async_session
+from services.user_management.exceptions import DatabaseError, WebhookProcessingError
+from services.user_management.models.preferences import UserPreferences
+from services.user_management.models.user import User
+from services.user_management.schemas.webhook import (
+    ClerkWebhookEvent,
+    ClerkWebhookEventData,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +106,7 @@ class WebhookService:
         logger.info(f"Processing user.created event for user {user_data.id}")
 
         try:
+            async_session = get_async_session()
             async with async_session() as session:
                 # Check if user already exists (idempotency)
                 result = await session.execute(
@@ -180,6 +185,7 @@ class WebhookService:
         logger.info(f"Processing user.updated event for user {user_data.id}")
 
         try:
+            async_session = get_async_session()
             async with async_session() as session:
                 # Find existing user
                 result = await session.execute(
@@ -257,6 +263,7 @@ class WebhookService:
         logger.info(f"Processing user.deleted event for user {user_data.id}")
 
         try:
+            async_session = get_async_session()
             async with async_session() as session:
                 # Find existing user
                 result = await session.execute(

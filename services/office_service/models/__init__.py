@@ -2,12 +2,13 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, AsyncGenerator, Dict, Optional
 
-from core.config import settings
 from sqlalchemy import JSON
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import Text, func
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlmodel import Column, DateTime, Field, SQLModel
+
+from services.office_service.core.config import settings
 
 
 # Create async engine for database operations

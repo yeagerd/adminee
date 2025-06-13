@@ -1,13 +1,8 @@
-import os
-import sys
-
 import pytest
 from fastapi.testclient import TestClient
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-import history_manager
-from main import app
+from services.chat_service import history_manager
+from services.chat_service.main import app
 
 
 async def setup_test_database():
