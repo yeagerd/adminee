@@ -6,7 +6,6 @@ refresh operations, user status tracking, and error handling.
 """
 
 import asyncio
-
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 

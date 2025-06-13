@@ -112,7 +112,9 @@ class TestIntegrationListEndpoint(BaseUserManagementIntegrationTest):
         with patch(
             "services.user_management.routers.integrations.get_integration_service"
         ) as mock_service:
-            mock_service.return_value.get_user_integrations.side_effect = NotFoundException("User not found")
+            mock_service.return_value.get_user_integrations.side_effect = (
+                NotFoundException("User not found")
+            )
             response = self.client.get(
                 f"/users/{user_id}/integrations/",
                 headers={"Authorization": "Bearer valid-token"},
@@ -143,8 +145,6 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
         }
 
         with patch(
-            "services.user_management.routers.integrations.get_integration_service"
-        ) as mock_service:
             "services.user_management.routers.integrations.get_integration_service().start_oauth_flow",
             return_value=mock_response,
         ):

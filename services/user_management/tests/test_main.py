@@ -7,9 +7,10 @@ exception handling, middleware, and API documentation.
 
 import asyncio
 import importlib
-
+import os
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from services.user_management.database import create_all_tables

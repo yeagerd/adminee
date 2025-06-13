@@ -1,5 +1,6 @@
 # Set required environment variables before any imports
 import os
+
 os.environ.setdefault("DB_URL_OFFICE", "sqlite:///test.db")
 os.environ.setdefault("API_OFFICE_USER_KEY", "test-api-key")
 
@@ -11,7 +12,7 @@ for both Google and Microsoft providers with comprehensive error handling.
 """
 
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient

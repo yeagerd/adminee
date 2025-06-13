@@ -53,7 +53,9 @@ from services.user_management.routers import (
     users_router,
     webhooks_router,
 )
-from services.user_management.services.integration_service import get_integration_service
+from services.user_management.services.integration_service import (
+    get_integration_service,
+)
 from services.user_management.settings import Settings, get_settings
 
 # Logger will be initialized in lifespan
@@ -77,7 +79,7 @@ async def lifespan(app: FastAPI):
     setup_logging()
     global logger
     logger = logging.getLogger(__name__)
-    
+
     # Startup
     get_safe_logger().info("Starting User Management Service")
 
@@ -122,6 +124,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
 # Configure docs URLs after app creation to avoid module-level settings access
 @app.on_event("startup")
 async def configure_docs():
@@ -134,15 +137,17 @@ async def configure_docs():
         app.docs_url = None
         app.redoc_url = None
 
+
 # Add security middleware
 app.add_middleware(XSSProtectionMiddleware)
 
+
 # Configure middleware after startup to avoid module-level settings access
-@app.on_event("startup") 
+@app.on_event("startup")
 async def configure_middleware():
     """Configure middleware based on settings."""
     settings = get_settings()
-    
+
     app.add_middleware(
         InputSanitizationMiddleware,
         enabled=True,
@@ -157,6 +162,7 @@ async def configure_middleware():
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["*"],
     )
+
 
 # Register API routers
 app.include_router(users_router)
@@ -279,7 +285,9 @@ async def preferences_not_found_handler(
     request: Request, exc: PreferencesNotFoundException
 ):
     """Handle preferences not found exceptions."""
-    get_safe_logger().info(f"Preferences not found: {exc.message}", extra={"user_id": exc.user_id})
+    get_safe_logger().info(
+        f"Preferences not found: {exc.message}", extra={"user_id": exc.user_id}
+    )
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
         content=exc.to_error_response(),
@@ -646,7 +654,9 @@ async def health_check():
         health_status["database"] = {
             "status": "error",
             "error": (
-                str(e) if getattr(get_settings(), "debug", False) else "Database unavailable"
+                str(e)
+                if getattr(get_settings(), "debug", False)
+                else "Database unavailable"
             ),
         }
         health_status["status"] = "unhealthy"
@@ -801,7 +811,9 @@ async def readiness_check():
             "status": "not_ready",
             "connected": False,
             "error": (
-                str(e) if getattr(get_settings(), "debug", False) else "Database check failed"
+                str(e)
+                if getattr(get_settings(), "debug", False)
+                else "Database check failed"
             ),
         }
         readiness_status["status"] = "not_ready"

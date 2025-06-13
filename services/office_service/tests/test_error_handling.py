@@ -1,5 +1,6 @@
 # Set required environment variables before any imports
 import os
+
 os.environ.setdefault("DB_URL_OFFICE", "sqlite:///test.db")
 os.environ.setdefault("API_OFFICE_USER_KEY", "test-api-key")
 
@@ -11,13 +12,11 @@ for various failure scenarios in the office service.
 """
 
 import json
-
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
-from fastapi import status
-from fastapi.testclient import TestClient
+from fastapi import Request
 
 from services.office_service.app.main import (
     office_service_error_handler,

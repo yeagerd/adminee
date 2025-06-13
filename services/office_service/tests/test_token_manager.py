@@ -1,5 +1,6 @@
 # Set required environment variables before any imports
 import os
+
 os.environ.setdefault("DB_URL_OFFICE", "sqlite:///test.db")
 os.environ.setdefault("API_OFFICE_USER_KEY", "test-api-key")
 
@@ -13,6 +14,7 @@ and lifecycle management for OAuth tokens.
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 
 from services.office_service.core.token_manager import TokenData, TokenManager

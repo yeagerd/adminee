@@ -1,5 +1,6 @@
 # Set required environment variables before any imports
 import os
+
 os.environ.setdefault("DB_URL_OFFICE", "sqlite:///test.db")
 os.environ.setdefault("API_OFFICE_USER_KEY", "test-api-key")
 
@@ -10,12 +11,10 @@ Tests integration management, OAuth flows, token handling,
 and provider-specific integration features.
 """
 
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import status
-from fastapi.testclient import TestClient
 
 from services.common.test_utils import BaseOfficeServiceIntegrationTest
 from services.office_service.core.exceptions import ProviderAPIError

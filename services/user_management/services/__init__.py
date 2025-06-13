@@ -5,8 +5,12 @@ Exports all service modules for easy importing.
 """
 
 from services.user_management.services.audit_service import audit_logger
-from services.user_management.services.integration_service import get_integration_service
-from services.user_management.services.preferences_service import get_preferences_service
+from services.user_management.services.integration_service import (
+    get_integration_service,
+)
+from services.user_management.services.preferences_service import (
+    get_preferences_service,
+)
 from services.user_management.services.token_service import get_token_service
 from services.user_management.services.user_service import get_user_service
 from services.user_management.services.webhook_service import get_webhook_service

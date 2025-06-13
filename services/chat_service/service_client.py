@@ -9,7 +9,8 @@ import logging
 from typing import Any, Dict, List, Optional
 
 import httpx
-from settings import get_settings
+
+from services.chat_service.settings import get_settings
 
 logger = logging.getLogger(__name__)
 

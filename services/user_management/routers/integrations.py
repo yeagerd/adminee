@@ -38,7 +38,9 @@ from services.user_management.schemas.integration import (
     TokenRefreshResponse,
 )
 from services.user_management.services.audit_service import audit_logger
-from services.user_management.services.integration_service import get_integration_service
+from services.user_management.services.integration_service import (
+    get_integration_service,
+)
 
 router = APIRouter(
     prefix="/users/{user_id}/integrations",
@@ -272,7 +274,9 @@ async def get_integration_statistics(
     await verify_user_ownership(current_user, user_id)
 
     try:
-        return await get_integration_service().get_integration_statistics(user_id=user_id)
+        return await get_integration_service().get_integration_statistics(
+            user_id=user_id
+        )
     except NotFoundException as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except IntegrationException as e:

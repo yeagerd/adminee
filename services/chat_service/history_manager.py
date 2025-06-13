@@ -25,7 +25,8 @@ from sqlalchemy import Text, UniqueConstraint, func, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import registry
 from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, select
-from settings import get_settings
+
+from services.chat_service.settings import get_settings
 
 # Import settings to get DATABASE_URL
 try:

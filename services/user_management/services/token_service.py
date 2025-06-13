@@ -31,7 +31,9 @@ from services.user_management.schemas.integration import (
 )
 from services.user_management.security.encryption import TokenEncryption
 from services.user_management.services.audit_service import audit_logger
-from services.user_management.services.integration_service import get_integration_service
+from services.user_management.services.integration_service import (
+    get_integration_service,
+)
 
 # Set up logging
 logger = structlog.get_logger(__name__)

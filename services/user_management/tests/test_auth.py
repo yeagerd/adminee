@@ -5,7 +5,6 @@ Tests Clerk JWT validation, service authentication, user extraction,
 and authorization checks.
 """
 
-import os
 from unittest.mock import MagicMock, Mock, patch
 
 import jwt
@@ -23,8 +22,8 @@ from services.user_management.auth.clerk import (
 from services.user_management.auth.service_auth import (
     ServiceAuthRequired,
     get_current_service,
+    get_service_auth,
     require_service_auth,
-    service_auth,
     validate_service_permissions,
     verify_service_authentication,
 )
@@ -238,30 +237,31 @@ class TestServiceAuthentication:
     def setup_service_auth(self):
         """Set up service auth with test API key."""
         with patch(
-            "services.user_management.auth.service_auth.settings"
+            "services.user_management.auth.service_auth.get_settings"
         ) as mock_settings:
-            mock_settings.api_frontend_user_key = "api-frontend-user-key"
-            mock_settings.api_key_office = None
+            mock_settings.return_value.api_frontend_user_key = "api-frontend-user-key"
+            mock_settings.return_value.api_key_office = None
 
-            # Re-initialize the service auth with mocked settings
+            # Reset the global service auth instance
+            import services.user_management.auth.service_auth as auth_module
 
-            service_auth.__init__()
+            auth_module._service_auth = None
             yield
 
     def test_user_management_api_key_auth_verify_valid_key(self):
         """Test valid API key verification."""
-        service_name = service_auth.verify_api_key_value("api-frontend-user-key")
+        service_name = get_service_auth().verify_api_key_value("api-frontend-user-key")
         assert service_name == "user-management-access"
 
     def test_user_management_api_key_auth_verify_invalid_key(self):
         """Test invalid API key verification."""
-        service_name = service_auth.verify_api_key_value("invalid-key")
+        service_name = get_service_auth().verify_api_key_value("invalid-key")
         assert service_name is None
 
     def test_user_management_api_key_auth_is_valid_service(self):
         """Test service name validation."""
-        assert service_auth.is_valid_service("user-management-access") is True
-        assert service_auth.is_valid_service("invalid-service") is False
+        assert get_service_auth().is_valid_service("user-management-access") is True
+        assert get_service_auth().is_valid_service("invalid-service") is False
 
     @pytest.mark.asyncio
     async def test_verify_service_authentication_success(self):
@@ -396,14 +396,15 @@ class TestAuthenticationIntegration:
     def setup_service_auth(self):
         """Set up service auth with test API key."""
         with patch(
-            "services.user_management.auth.service_auth.settings"
+            "services.user_management.auth.service_auth.get_settings"
         ) as mock_settings:
-            mock_settings.api_frontend_user_key = "api-frontend-user-key"
-            mock_settings.api_key_office = None
+            mock_settings.return_value.api_frontend_user_key = "api-frontend-user-key"
+            mock_settings.return_value.api_key_office = None
 
-            # Re-initialize the service auth with mocked settings
+            # Reset the global service auth instance
+            import services.user_management.auth.service_auth as auth_module
 
-            service_auth.__init__()
+            auth_module._service_auth = None
             yield
 
     @pytest.mark.asyncio

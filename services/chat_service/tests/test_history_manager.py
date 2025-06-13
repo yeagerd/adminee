@@ -3,6 +3,7 @@ pytest_plugins = ["pytest_asyncio"]
 
 # Set required environment variables before any imports
 import os
+
 os.environ.setdefault("DB_URL_CHAT", "sqlite:///test.db")
 
 """

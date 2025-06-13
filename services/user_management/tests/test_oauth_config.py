@@ -7,13 +7,13 @@ state management, and token exchange operations.
 
 import base64
 import hashlib
+import os
 import urllib.parse
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import httpx
 import pytest
-import os
 
 from services.user_management.exceptions import ValidationException
 from services.user_management.integrations.oauth_config import (
@@ -27,7 +27,7 @@ from services.user_management.integrations.oauth_config import (
     reset_oauth_config,
 )
 from services.user_management.models.integration import IntegrationProvider
-from services.user_management.settings import Settings, get_settings
+from services.user_management.settings import get_settings
 
 
 class TestPKCEChallenge:
@@ -363,13 +363,13 @@ class TestOAuthConfig:
         old_google_secret = os.environ.get("GOOGLE_CLIENT_SECRET")
         old_azure_id = os.environ.get("AZURE_AD_CLIENT_ID")
         old_azure_secret = os.environ.get("AZURE_AD_CLIENT_SECRET")
-        
+
         try:
             os.environ.pop("GOOGLE_CLIENT_ID", None)
             os.environ.pop("GOOGLE_CLIENT_SECRET", None)
             os.environ.pop("AZURE_AD_CLIENT_ID", None)
             os.environ.pop("AZURE_AD_CLIENT_SECRET", None)
-            
+
             settings_no_creds = get_settings()
             config = OAuthConfig(settings_no_creds)
 
@@ -1017,7 +1017,7 @@ class TestGlobalOAuthConfig:
         os.environ["CLERK_SECRET_KEY"] = "test-clerk-key"
         os.environ["GOOGLE_CLIENT_ID"] = "custom-google-id"
         os.environ["GOOGLE_CLIENT_SECRET"] = "custom-google-secret"
-        
+
         custom_settings = get_settings()
 
         config = get_oauth_config(custom_settings)

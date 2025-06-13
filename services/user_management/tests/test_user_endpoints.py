@@ -142,7 +142,9 @@ class TestUserProfileEndpoints:
 
         with (
             patch.object(get_user_service(), "get_user_by_id", return_value=mock_user),
-            patch.object(get_user_service(), "update_user", return_value=mock_updated_user),
+            patch.object(
+                get_user_service(), "update_user", return_value=mock_updated_user
+            ),
             patch(
                 "services.user_management.schemas.user.UserResponse.from_orm"
             ) as mock_from_orm,
@@ -267,7 +269,9 @@ class TestUserProfileEndpoints:
         with (
             patch.object(get_user_service(), "get_user_by_id", return_value=mock_user),
             patch.object(
-                get_user_service(), "update_user_onboarding", return_value=mock_updated_user
+                get_user_service(),
+                "update_user_onboarding",
+                return_value=mock_updated_user,
             ),
             patch(
                 "services.user_management.schemas.user.UserResponse.from_orm"
@@ -378,7 +382,9 @@ class TestUserProfileEndpoints:
 
         with (
             patch.object(
-                get_user_service(), "get_user_by_external_auth_id", return_value=mock_user
+                get_user_service(),
+                "get_user_by_external_auth_id",
+                return_value=mock_user,
             ),
             patch(
                 "services.user_management.schemas.user.UserResponse.from_orm"
@@ -414,7 +420,9 @@ class TestUserProfileEndpoints:
     @pytest.mark.asyncio
     async def test_get_current_user_profile_not_found(self):
         """Test current user profile retrieval when user not found."""
-        with patch.object(get_user_service(), "get_user_by_external_auth_id") as mock_get:
+        with patch.object(
+            get_user_service(), "get_user_by_external_auth_id"
+        ) as mock_get:
             mock_get.side_effect = UserNotFoundException("User not found")
 
             from services.user_management.routers.users import get_current_user_profile
@@ -442,7 +450,9 @@ class TestUserProfileEndpoints:
 
         with (
             patch.object(get_user_service(), "get_user_by_id", return_value=mock_user),
-            patch.object(get_user_service(), "update_user", return_value=mock_updated_user),
+            patch.object(
+                get_user_service(), "update_user", return_value=mock_updated_user
+            ),
         ):
             # Test getting user profile
             retrieved_user = await get_user_service().get_user_by_id(1)
