@@ -9,7 +9,6 @@ import logging
 import os
 from typing import Optional
 
-
 from services.office_service.core.token_manager import TokenData, TokenManager
 
 logger = logging.getLogger(__name__)

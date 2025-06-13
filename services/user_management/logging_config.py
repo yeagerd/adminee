@@ -6,7 +6,7 @@ Sets up structured logging using structlog for better observability.
 
 import logging
 import sys
-from typing import Any, Dict
+from typing import Any, Dict, List, Callable
 
 import structlog
 
@@ -24,7 +24,7 @@ def configure_logging() -> None:
     )
 
     # Configure structlog processors
-    processors = [
+    processors: List[Callable[..., Any]] = [
         # Add timestamp
         structlog.stdlib.add_log_level,
         structlog.stdlib.add_logger_name,

@@ -398,16 +398,6 @@ class TestPreferencesEndpoints:
 
     def test_get_preferences_success(self):
         """Test successful preferences retrieval via API."""
-        mock_preferences = {
-            "user_id": "user_123",
-            "version": "1.0",
-            "ui": {"theme": "system", "language": "en"},
-            "notifications": {"email_notifications": True},
-            "ai": {"temperature": 0.7},
-            "integrations": {"auto_sync": True},
-            "privacy": {"analytics": True},
-        }
-
         # Test that the client can be created successfully
         assert self.client is not None
 

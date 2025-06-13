@@ -240,13 +240,6 @@ class TestAuditLogger:
                 user_agent="BadBot/1.0",
             )
 
-            # The actual method adds timestamp and security_event flag
-            expected_details = {
-                "threat_type": "brute_force",
-                "security_event": True,
-                "severity": "high",
-            }
-
             # Check that the call was made with expected parameters (allowing for timestamp)
             mock_log.assert_called_once()
             call_args = mock_log.call_args
@@ -541,3 +534,25 @@ class TestAuditIntegration:
         assert data_access_events == 8  # 5 + 3
         assert authentication_events == 18  # 10 + 8
         assert data_modification_events == 7  # 2 + 5
+
+    @pytest.mark.asyncio
+    async def test_security_event_logging(self):
+        """Test security event logging."""
+        # Test security event logging
+        await audit_logger.log_security_event(
+            user_id="user_123",
+            event_type="threat_detected",
+            threat_type="brute_force",
+            severity="high",
+            details={"ip": "192.168.1.100", "attempts": 5},
+        )
+
+        # Verify the log was created with security event flag
+        logs = await audit_logger.get_user_logs("user_123")
+        assert len(logs) == 1
+
+        log = logs[0]
+        assert log.event_type == "threat_detected"
+        assert log.details["threat_type"] == "brute_force"
+        assert log.details["security_event"] is True
+        assert "timestamp" in log.details

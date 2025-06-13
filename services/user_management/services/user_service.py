@@ -1,8 +1,8 @@
 """
-User service business logic for User Management Service.
+User service for User Management Service.
 
-Handles user profile operations including CRUD operations,
-onboarding management, and user search functionality.
+Provides business logic for user operations including CRUD operations,
+profile management, and user lifecycle management.
 """
 
 from datetime import datetime, timezone
@@ -12,7 +12,9 @@ from sqlmodel import func, select
 
 from services.user_management.database import get_async_session
 from services.user_management.exceptions import (
-    SimpleValidationException,
+    UserAlreadyExistsException,
+    UserNotFoundException,
+    ValidationException,
 )
 from services.user_management.models.user import User
 from services.user_management.schemas.user import (
@@ -132,7 +134,7 @@ class UserService:
                 existing_user = result.scalar_one_or_none()
 
                 if existing_user and existing_user.deleted_at is None:
-                    raise SimpleValidationException(
+                    raise UserAlreadyExistsException(
                         field="external_auth_id",
                         value=user_data.external_auth_id,
                         reason=f"User with {user_data.auth_provider} ID {user_data.external_auth_id} already exists",
@@ -159,11 +161,11 @@ class UserService:
                 )
                 return user
 
-        except SimpleValidationException:
+        except UserAlreadyExistsException:
             raise
         except Exception as e:
             logger.error(f"Error creating user: {e}")
-            raise SimpleValidationException(
+            raise ValidationException(
                 field="user_data",
                 value=str(user_data),
                 reason=f"Failed to create user: {str(e)}",
@@ -220,7 +222,7 @@ class UserService:
             raise
         except Exception as e:
             logger.error(f"Error updating user {user_id}: {e}")
-            raise SimpleValidationException(
+            raise ValidationException(
                 field="user_data",
                 value=str(user_data),
                 reason=f"Failed to update user: {str(e)}",
@@ -268,7 +270,7 @@ class UserService:
             raise
         except Exception as e:
             logger.error(f"Error updating onboarding for user {user_id}: {e}")
-            raise SimpleValidationException(
+            raise ValidationException(
                 field="onboarding_data",
                 value=str(onboarding_data),
                 reason=f"Failed to update onboarding: {str(e)}",
@@ -317,7 +319,7 @@ class UserService:
             raise
         except Exception as e:
             logger.error(f"Error deleting user {user_id}: {e}")
-            raise SimpleValidationException(
+            raise ValidationException(
                 field="user_id",
                 value=user_id,
                 reason=f"Failed to delete user: {str(e)}",
@@ -381,7 +383,7 @@ class UserService:
 
         except Exception as e:
             logger.error(f"Error searching users: {e}")
-            raise SimpleValidationException(
+            raise ValidationException(
                 field="search_request",
                 value=str(search_request),
                 reason=f"Failed to search users: {str(e)}",

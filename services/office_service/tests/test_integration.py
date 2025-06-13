@@ -686,7 +686,7 @@ class TestCaching(BaseOfficeServiceIntegrationTest):
             with patch(
                 "services.office_service.core.clients.google.GoogleAPIClient.get_messages",
                 return_value=mock_messages,
-            ) as mock_get:
+            ):
                 # First request
                 response1 = self.client.get(f"/email/messages?user_id={user_id}")
                 assert response1.status_code == status.HTTP_200_OK

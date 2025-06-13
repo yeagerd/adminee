@@ -1,11 +1,11 @@
 """
-Integrations package for User Management Service.
+User Management Service - Integrations Package
 
-Provides OAuth provider configurations and integration management
-for connecting to external services like Google, Microsoft, and others.
+This package contains OAuth integration configurations and utilities
+for connecting to external providers like Google, Microsoft, and Slack.
 """
 
-from services.user_management.integrations.oauth_config import (
+from .oauth_config import (
     OAuthConfig,
     OAuthProviderConfig,
     OAuthScope,
@@ -22,6 +22,7 @@ __all__ = [
     "OAuthScope",
     "OAuthState",
     "PKCEChallenge",
+    "PKCEChallengeMethod",
     "get_oauth_config",
     "reset_oauth_config",
 ]

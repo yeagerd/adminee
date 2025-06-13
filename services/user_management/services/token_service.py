@@ -96,27 +96,23 @@ class TokenService:
                 )
 
             # Store access token
-            async_session = get_async_session()
-            async with async_session() as session:
-                await self._store_token_record(
-                    integration=integration,
-                    token_type=TokenType.ACCESS,
-                    encrypted_value=encrypted_access,
-                    expires_at=expires_at,
-                    scopes=scopes,
-                )
+            await self._store_token_record(
+                integration=integration,
+                token_type=TokenType.ACCESS,
+                encrypted_value=encrypted_access,
+                expires_at=expires_at,
+                scopes=scopes,
+            )
 
             # Store refresh token if provided
             if encrypted_refresh:
-                async_session = get_async_session()
-                async with async_session() as session:
-                    await self._store_token_record(
-                        integration=integration,
-                        token_type=TokenType.REFRESH,
-                        encrypted_value=encrypted_refresh,
-                        expires_at=None,  # Refresh tokens usually don't expire
-                        scopes=scopes,
-                    )
+                await self._store_token_record(
+                    integration=integration,
+                    token_type=TokenType.REFRESH,
+                    encrypted_value=encrypted_refresh,
+                    expires_at=None,  # Refresh tokens usually don't expire
+                    scopes=scopes,
+                )
 
             await audit_logger.log_user_action(
                 user_id=user_id,
