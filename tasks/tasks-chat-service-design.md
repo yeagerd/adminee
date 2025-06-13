@@ -16,7 +16,7 @@
 - `services/chat-service/tests/test_models.py` - Unit tests for data models.
 - `services/chat-service/Dockerfile` - Containerization for deployment.
 - `services/chat-service/requirements.txt` - Python dependencies for the service.
-- `services/chat-service/.env.example` - Example environment variables (e.g., LLM provider, DB connection).
+- `services/chat-service/.example.env` - Example environment variables (e.g., LLM provider, DB connection).
 
 ### Notes
 
