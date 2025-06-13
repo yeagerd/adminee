@@ -1,8 +1,8 @@
 """
-Unit tests for TokenManager.
+Unit tests for TokenManager class.
 
-Tests token retrieval, caching, error handling, and HTTP client integration
-for the TokenManager class that fetches tokens from the User Management Service.
+Tests token storage, retrieval, refresh, and encryption/decryption
+functionality with proper mocking of external dependencies.
 """
 
 from datetime import datetime, timezone

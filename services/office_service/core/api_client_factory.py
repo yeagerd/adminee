@@ -9,12 +9,12 @@ of token retrieval and client instantiation across multiple OAuth providers.
 import logging
 from typing import Dict, List, Optional, Union
 
-from core.clients.google import GoogleAPIClient
-from core.clients.microsoft import MicrosoftAPIClient
-from core.config import settings
-from core.demo_token_manager import DemoTokenManager
-from core.token_manager import TokenManager
-from models import Provider
+from services.office_service.core.clients.google import GoogleAPIClient
+from services.office_service.core.clients.microsoft import MicrosoftAPIClient
+from services.office_service.core.config import settings
+from services.office_service.core.demo_token_manager import DemoTokenManager
+from services.office_service.core.token_manager import TokenManager
+from services.office_service.models import Provider
 
 # Configure logging
 logger = logging.getLogger(__name__)

@@ -10,14 +10,17 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from ..auth.clerk import get_current_user, verify_user_ownership
-from ..exceptions import (
+from services.user_management.auth.clerk import get_current_user, verify_user_ownership
+from services.user_management.exceptions import (
     IntegrationException,
     NotFoundException,
     SimpleValidationException,
 )
-from ..models.integration import IntegrationProvider, IntegrationStatus
-from ..schemas.integration import (
+from services.user_management.models.integration import (
+    IntegrationProvider,
+    IntegrationStatus,
+)
+from services.user_management.schemas.integration import (
     IntegrationDisconnectRequest,
     IntegrationDisconnectResponse,
     IntegrationHealthResponse,
@@ -34,8 +37,8 @@ from ..schemas.integration import (
     TokenRefreshRequest,
     TokenRefreshResponse,
 )
-from ..services.audit_service import audit_logger
-from ..services.integration_service import integration_service
+from services.user_management.services.audit_service import audit_logger
+from services.user_management.services.integration_service import integration_service
 
 router = APIRouter(
     prefix="/users/{user_id}/integrations",

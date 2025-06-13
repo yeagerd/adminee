@@ -1,12 +1,7 @@
-import os
-import sys
-
 import pytest
 import requests
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-from llm_tools import (
+from services.chat_service.llm_tools import (
     _draft_storage,
     create_draft_calendar_change,
     create_draft_calendar_event,

@@ -10,14 +10,14 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from ..exceptions import (
+from services.user_management.exceptions import (
     DatabaseException,
     IntegrationException,
     ServiceException,
     TokenNotFoundException,
     UserNotFoundException,
 )
-from ..utils.retry import (
+from services.user_management.utils.retry import (
     RetryError,
     is_transient_error,
     retry_async,
@@ -268,7 +268,9 @@ class TestConvenienceDecorators:
         """Test the database operations retry decorator."""
         call_count = 0
 
-        @retry_database_operations(max_attempts=2)
+        @retry_database_operations(
+            max_attempts=2, base_delay=0.01
+        )  # Fast delay for testing
         async def database_operation():
             nonlocal call_count
             call_count += 1
@@ -286,7 +288,9 @@ class TestConvenienceDecorators:
         """Test the external API calls retry decorator."""
         call_count = 0
 
-        @retry_external_api_calls(max_attempts=2)
+        @retry_external_api_calls(
+            max_attempts=2, base_delay=0.01
+        )  # Fast delay for testing
         async def api_call():
             nonlocal call_count
             call_count += 1
@@ -304,7 +308,9 @@ class TestConvenienceDecorators:
         """Test the OAuth operations retry decorator."""
         call_count = 0
 
-        @retry_oauth_operations(max_attempts=2)
+        @retry_oauth_operations(
+            max_attempts=2, base_delay=0.01
+        )  # Fast delay for testing
         async def oauth_operation():
             nonlocal call_count
             call_count += 1

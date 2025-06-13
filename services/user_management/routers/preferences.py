@@ -10,20 +10,20 @@ from typing import Annotated
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from ..auth.clerk import get_current_user, verify_user_ownership
-from ..exceptions import (
+from services.user_management.auth.clerk import get_current_user, verify_user_ownership
+from services.user_management.exceptions import (
     AuthorizationException,
     DatabaseException,
     PreferencesNotFoundException,
     UserNotFoundException,
     ValidationException,
 )
-from ..schemas.preferences import (
+from services.user_management.schemas.preferences import (
     PreferencesResetRequest,
     UserPreferencesResponse,
     UserPreferencesUpdate,
 )
-from ..services import preferences_service
+from services.user_management.services import preferences_service
 
 # Set up logging
 logger = structlog.get_logger(__name__)

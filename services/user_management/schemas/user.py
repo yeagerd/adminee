@@ -10,7 +10,7 @@ from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
-from ..utils.validation import (
+from services.user_management.utils.validation import (
     check_sql_injection_patterns,
     sanitize_text_input,
     validate_email_address,

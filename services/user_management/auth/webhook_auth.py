@@ -11,8 +11,8 @@ from typing import Optional
 
 from fastapi import HTTPException, Request, status
 
-from ..exceptions import WebhookValidationException
-from ..settings import settings
+from services.user_management.exceptions import WebhookValidationException
+from services.user_management.settings import settings
 
 logger = logging.getLogger(__name__)
 

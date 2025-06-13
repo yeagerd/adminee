@@ -10,9 +10,9 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from ..auth.webhook_auth import verify_webhook_signature
-from ..schemas.webhook import ClerkWebhookEvent, WebhookResponse
-from ..services.webhook_service import WebhookService
+from services.user_management.auth.webhook_auth import verify_webhook_signature
+from services.user_management.schemas.webhook import ClerkWebhookEvent, WebhookResponse
+from services.user_management.services.webhook_service import WebhookService
 
 logger = logging.getLogger(__name__)
 

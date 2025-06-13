@@ -4,7 +4,7 @@ Pydantic schemas package for User Management Service.
 Exports all schema models for API request/response validation.
 """
 
-from .integration import (
+from services.user_management.schemas.integration import (
     IntegrationDisconnectRequest,
     IntegrationDisconnectResponse,
     IntegrationErrorResponse,
@@ -31,7 +31,7 @@ from .integration import (
     TokenRefreshRequest,
     TokenRefreshResponse,
 )
-from .user import (
+from services.user_management.schemas.user import (
     UserBase,
     UserCreate,
     UserDeleteResponse,
@@ -41,7 +41,11 @@ from .user import (
     UserSearchRequest,
     UserUpdate,
 )
-from .webhook import ClerkWebhookEvent, ClerkWebhookEventData, WebhookResponse
+from services.user_management.schemas.webhook import (
+    ClerkWebhookEvent,
+    ClerkWebhookEventData,
+    WebhookResponse,
+)
 
 __all__ = [
     "UserBase",

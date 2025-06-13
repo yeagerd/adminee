@@ -8,7 +8,7 @@ and exception hierarchy.
 import uuid
 from datetime import datetime
 
-from ..exceptions import (
+from services.user_management.exceptions import (
     AuditException,
     AuthenticationException,
     AuthorizationException,

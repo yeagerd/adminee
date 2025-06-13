@@ -1,18 +1,49 @@
+"""
+Chat service API endpoints.
+
+This module implements the REST API for the chat service and demonstrates
+the conversion pattern between database models and API response models.
+
+Architectural Pattern - Database to API Model Conversion:
+This module shows how database models (Thread, Message) are converted to
+API response models (ThreadResponse, MessageResponse) to maintain clean
+separation of concerns.
+
+Key Conversion Examples:
+1. Thread (DB) -> ThreadResponse (API):
+   - int ID -> string ID for JSON compatibility
+   - datetime -> string for JSON serialization
+   - Exclude SQLAlchemy relationships
+
+2. Message (DB) -> MessageResponse (API):
+   - int ID -> string ID for JSON compatibility
+   - Add computed fields (llm_generated)
+   - datetime -> string for JSON serialization
+   - Exclude SQLAlchemy relationships
+
+This pattern ensures:
+- Type safety in database operations
+- JSON serialization compatibility in API responses
+- Independent evolution of database schema and API contracts
+- Clean separation between data persistence and API concerns
+"""
+
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException
-from llama_manager import ChatAgentManager
-from models import (
+
+from services.chat_service.llama_manager import ChatAgentManager
+from services.chat_service.models import (
     ChatRequest,
     ChatResponse,
     FeedbackRequest,
     FeedbackResponse,
 )
-from models import Message as PydanticMessage
-from models import (
-    Thread,
+from services.chat_service.models import MessageResponse as PydanticMessage
+from services.chat_service.models import (
+    ThreadResponse,
 )
-from settings import settings
+from services.chat_service.settings import settings
 
 router = APIRouter()
 
@@ -24,16 +55,18 @@ FEEDBACKS: List[FeedbackRequest] = []
 async def chat_endpoint(request: ChatRequest) -> ChatResponse:
     """
     Chat endpoint using llama_manager ChatAgentManager.
+
+    Demonstrates database model to API model conversion pattern.
     """
     from typing import cast
 
-    import history_manager
+    from services.chat_service import history_manager
 
     user_id = request.user_id
     thread_id = request.thread_id
     user_input = request.message
 
-    # Create or get thread
+    # Create or get thread (returns database Thread model)
     thread: Optional[history_manager.Thread]
     if not thread_id:
         # Always create a new thread if no thread_id is provided
@@ -66,13 +99,15 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
     # Actually run the chat and get the agent's response
     agent_response = await agent.chat(user_input)
 
-    # Return just the agent's response as a single message
+    # CONVERSION PATTERN: Create API response model from data
+    # Note: This creates MessageResponse (API model) directly rather than
+    # converting from Message (database model) since this is a new response
     pydantic_messages = [
         PydanticMessage(
             message_id="1",  # Simple counter since we're not fetching from DB
-            thread_id=str(thread.id),
+            thread_id=str(thread.id),  # Convert int to string for JSON
             user_id="assistant",  # Mark as assistant response
-            llm_generated=True,
+            llm_generated=True,  # Computed field not in database model
             content=agent_response,
             created_at="",  # Not needed for this simple response
         )
@@ -82,20 +117,28 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
     )
 
 
-@router.get("/threads", response_model=List[Thread])
-async def list_threads(user_id: str) -> List[Thread]:
+@router.get("/threads", response_model=List[ThreadResponse])
+async def list_threads(user_id: str) -> List[ThreadResponse]:
     """
     List threads for a given user using history_manager.
-    """
-    import history_manager
 
+    CONVERSION PATTERN EXAMPLE: Thread (database) -> ThreadResponse (API)
+    This function demonstrates the standard pattern for converting database
+    models to API response models.
+    """
+    from services.chat_service import history_manager
+
+    # Get database models (Thread objects with int IDs, datetime objects, relationships)
     threads = await history_manager.list_threads(user_id)
+
+    # CONVERSION: Database Thread models -> API ThreadResponse models
     return [
-        Thread(
-            thread_id=str(t.id),
-            user_id=t.user_id,
-            created_at=str(t.created_at),
-            updated_at=str(t.updated_at),
+        ThreadResponse(
+            thread_id=str(t.id),  # CONVERT: int -> str for JSON compatibility
+            user_id=t.user_id,  # DIRECT: string field passes through
+            created_at=str(t.created_at),  # CONVERT: datetime -> str for JSON
+            updated_at=str(t.updated_at),  # CONVERT: datetime -> str for JSON
+            # NOTE: Relationships (messages, drafts) are excluded from API model
         )
         for t in threads
     ]
@@ -105,19 +148,32 @@ async def list_threads(user_id: str) -> List[Thread]:
 async def thread_history(thread_id: str) -> ChatResponse:
     """
     Get chat history for a given thread using history_manager.
-    """
-    import history_manager
-    from models import Message
 
+    CONVERSION PATTERN EXAMPLE: Message (database) -> MessageResponse (API)
+    This function demonstrates the standard pattern for converting database
+    models to API response models with computed fields.
+    """
+    from services.chat_service import history_manager
+    from services.chat_service.models import MessageResponse
+
+    # Get database models (Message objects with int IDs, datetime objects, relationships)
     messages = await history_manager.get_thread_history(int(thread_id), limit=100)
+
+    # CONVERSION: Database Message models -> API MessageResponse models
     chat_messages = [
-        Message(
-            message_id=str(i + 1),
-            thread_id=str(thread_id),
-            user_id=str(m.user_id) if m.user_id is not None else "",
+        MessageResponse(
+            message_id=str(i + 1),  # GENERATE: Create string ID for API
+            thread_id=str(thread_id),  # CONVERT: int -> str for JSON compatibility
+            user_id=(
+                str(m.user_id) if m.user_id is not None else ""
+            ),  # CONVERT: handle nulls
+            # COMPUTED FIELD: Add business logic not present in database model
             llm_generated=(m.user_id != messages[0].user_id if messages else False),
-            content=str(m.content) if m.content is not None else "",
-            created_at=str(m.created_at),
+            content=(
+                str(m.content) if m.content is not None else ""
+            ),  # CONVERT: handle nulls
+            created_at=str(m.created_at),  # CONVERT: datetime -> str for JSON
+            # NOTE: Relationship (thread) is excluded from API model
         )
         for i, m in enumerate(reversed(messages))
     ]

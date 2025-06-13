@@ -11,17 +11,23 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, cast
 
-from core.api_client_factory import APIClientFactory
-from core.cache_manager import cache_manager, generate_cache_key
-from core.clients.google import GoogleAPIClient
-from core.clients.microsoft import MicrosoftAPIClient
-from core.normalizer import (
+from fastapi import APIRouter, HTTPException, Path, Query
+
+from services.office_service.core.api_client_factory import APIClientFactory
+from services.office_service.core.cache_manager import cache_manager, generate_cache_key
+from services.office_service.core.clients.google import GoogleAPIClient
+from services.office_service.core.clients.microsoft import MicrosoftAPIClient
+from services.office_service.core.normalizer import (
     normalize_google_email,
     normalize_microsoft_email,
 )
-from fastapi import APIRouter, HTTPException, Path, Query
-from models import Provider
-from schemas import ApiResponse, EmailMessage, SendEmailRequest
+from services.office_service.models import Provider
+from services.office_service.schemas import (
+    EmailMessage,
+    EmailMessageList,
+    SendEmailRequest,
+    SendEmailResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +38,7 @@ router = APIRouter(prefix="/email", tags=["email"])
 api_client_factory = APIClientFactory()
 
 
-@router.get("/messages", response_model=ApiResponse)
+@router.get("/messages", response_model=EmailMessageList)
 async def get_email_messages(
     user_id: str = Query(..., description="ID of the user to fetch emails for"),
     providers: Optional[List[str]] = Query(
@@ -73,7 +79,7 @@ async def get_email_messages(
         page_token: Pagination token
 
     Returns:
-        ApiResponse with aggregated email messages
+        EmailMessageList with aggregated email messages
     """
     request_id = str(uuid.uuid4())
     start_time = datetime.now(timezone.utc)
@@ -113,7 +119,7 @@ async def get_email_messages(
         cached_result = await cache_manager.get_from_cache(cache_key)
         if cached_result:
             logger.info(f"[{request_id}] Cache hit for email messages")
-            return ApiResponse(
+            return EmailMessageList(
                 success=True, data=cached_result, cache_hit=True, request_id=request_id
             )
 
@@ -194,7 +200,7 @@ async def get_email_messages(
             f"[{request_id}] Email messages request completed in {response_time_ms}ms"
         )
 
-        return ApiResponse(
+        return EmailMessageList(
             success=True,
             data=response_data,
             cache_hit=False,
@@ -213,7 +219,7 @@ async def get_email_messages(
         )
 
 
-@router.get("/messages/{message_id}", response_model=ApiResponse)
+@router.get("/messages/{message_id}", response_model=EmailMessageList)
 async def get_email_message(
     message_id: str = Path(..., description="Message ID (format: provider_originalId)"),
     user_id: str = Query(..., description="ID of the user who owns the message"),
@@ -233,7 +239,7 @@ async def get_email_message(
         include_body: Whether to include full message body
 
     Returns:
-        ApiResponse with the specific email message
+        EmailMessageList with the specific email message
     """
     request_id = str(uuid.uuid4())
     start_time = datetime.now(timezone.utc)
@@ -256,7 +262,7 @@ async def get_email_message(
         cached_result = await cache_manager.get_from_cache(cache_key)
         if cached_result:
             logger.info(f"[{request_id}] Cache hit for message detail")
-            return ApiResponse(
+            return EmailMessageList(
                 success=True, data=cached_result, cache_hit=True, request_id=request_id
             )
 
@@ -292,7 +298,7 @@ async def get_email_message(
             f"[{request_id}] Message detail request completed in {response_time_ms}ms"
         )
 
-        return ApiResponse(
+        return EmailMessageList(
             success=True,
             data=response_data,
             cache_hit=False,
@@ -309,7 +315,7 @@ async def get_email_message(
         )
 
 
-@router.post("/send", response_model=ApiResponse)
+@router.post("/send", response_model=SendEmailResponse)
 async def send_email(
     email_data: SendEmailRequest,
     user_id: str = Query(..., description="ID of the user sending the email"),
@@ -326,7 +332,7 @@ async def send_email(
         user_id: ID of the user sending the email
 
     Returns:
-        ApiResponse with sent message details
+        SendEmailResponse with sent message details
     """
     request_id = str(uuid.uuid4())
     start_time = datetime.now(timezone.utc)
@@ -395,7 +401,7 @@ async def send_email(
             f"[{request_id}] Email sent successfully in {response_time_ms}ms via {provider}"
         )
 
-        return ApiResponse(
+        return SendEmailResponse(
             success=True,
             data=response_data,
             cache_hit=False,

@@ -12,9 +12,9 @@ import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from ..exceptions import AuthenticationException
-from ..logging_config import get_logger
-from ..settings import settings
+from services.user_management.exceptions import AuthenticationException
+from services.user_management.logging_config import get_logger
+from services.user_management.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -349,7 +349,7 @@ async def verify_user_ownership(current_user_id: str, resource_user_id: str) -> 
         logger.warning(
             f"User {current_user_id} attempted to access resource owned by {resource_user_id}"
         )
-        from ..exceptions import AuthorizationException
+        from services.user_management.exceptions import AuthorizationException
 
         raise AuthorizationException(
             resource=f"user_resource:{resource_user_id}", action="access"
@@ -381,7 +381,7 @@ async def require_user_ownership(
 
     except Exception as e:
         # Import here to avoid circular imports
-        from ..exceptions import AuthorizationException
+        from services.user_management.exceptions import AuthorizationException
 
         if isinstance(e, AuthorizationException):
             logger.warning(f"User ownership verification failed: {e.message}")

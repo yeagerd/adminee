@@ -14,8 +14,8 @@ from unittest.mock import AsyncMock, Mock, patch
 import httpx
 import pytest
 
-from ..exceptions import ValidationException
-from ..integrations.oauth_config import (
+from services.user_management.exceptions import ValidationException
+from services.user_management.integrations.oauth_config import (
     OAuthConfig,
     OAuthProviderConfig,
     OAuthScope,
@@ -25,12 +25,18 @@ from ..integrations.oauth_config import (
     get_oauth_config,
     reset_oauth_config,
 )
-from ..models.integration import IntegrationProvider
-from ..settings import Settings
+from services.user_management.models.integration import IntegrationProvider
+from services.user_management.settings import Settings
 
 
 class TestPKCEChallenge:
     """Test PKCE challenge generation and validation."""
+
+    def setup_method(self):
+        pass
+
+    def teardown_method(self):
+        pass
 
     def test_generate_s256_challenge(self):
         """Test S256 PKCE challenge generation."""
@@ -70,6 +76,12 @@ class TestPKCEChallenge:
 class TestOAuthScope:
     """Test OAuth scope configuration."""
 
+    def setup_method(self):
+        pass
+
+    def teardown_method(self):
+        pass
+
     def test_scope_creation(self):
         """Test OAuth scope creation."""
         scope = OAuthScope(
@@ -94,6 +106,12 @@ class TestOAuthScope:
 
 class TestOAuthState:
     """Test OAuth state management."""
+
+    def setup_method(self):
+        pass
+
+    def teardown_method(self):
+        pass
 
     def test_state_creation(self):
         """Test OAuth state creation."""
@@ -183,6 +201,12 @@ class TestOAuthState:
 
 class TestOAuthProviderConfig:
     """Test OAuth provider configuration."""
+
+    def setup_method(self):
+        pass
+
+    def teardown_method(self):
+        pass
 
     def test_provider_config_creation(self):
         """Test OAuth provider configuration creation."""

@@ -9,7 +9,7 @@ from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlmodel import SQLModel
 
-from .settings import settings
+from services.user_management.settings import Settings
 
 
 # Create async engine for database operations
@@ -23,28 +23,34 @@ def get_async_database_url(url: str) -> str:
         return url
 
 
-engine = create_async_engine(
-    get_async_database_url(settings.database_url),
-    echo=settings.debug,
-)
+def get_engine():
+    settings = Settings()
+    return create_async_engine(
+        get_async_database_url(settings.database_url),
+        echo=settings.debug,
+    )
 
-# Session factory for dependency injection
-async_session = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-)
+
+def get_async_session():
+    engine = get_engine()
+    return async_sessionmaker(
+        engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
 
 
 # Database lifecycle management
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     """Get async database session for dependency injection."""
+    async_session = get_async_session()
     async with async_session() as session:
         yield session
 
 
 async def create_all_tables():
     """Create all database tables. Use Alembic migrations in production."""
+    engine = get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
 
@@ -55,4 +61,5 @@ metadata = SQLModel.metadata
 
 async def close_db():
     """Close database connections."""
+    engine = get_engine()
     await engine.dispose()
