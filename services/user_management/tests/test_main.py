@@ -1,22 +1,14 @@
 """
-Unit tests for main FastAPI application.
+Unit tests for main application module.
 
-Tests application startup, health endpoints, exception handling,
-and middleware functionality.
+Tests application startup, health endpoints, readiness checks,
+exception handling, middleware, and API documentation.
 """
 
 import asyncio
 import importlib
-import os
+
 from unittest.mock import patch
-
-import pytest
-
-# Set required environment variables before any imports
-os.environ.setdefault("DB_URL_USER_MANAGEMENT", "sqlite:///test.db")
-os.environ.setdefault("TOKEN_ENCRYPTION_SALT", "dGVzdC1zYWx0LTE2Ynl0ZQ==")
-os.environ.setdefault("API_FRONTEND_USER_KEY", "test-api-key")
-os.environ.setdefault("CLERK_SECRET_KEY", "test-clerk-key")
 
 from fastapi.testclient import TestClient
 

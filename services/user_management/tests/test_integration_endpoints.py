@@ -5,11 +5,6 @@ Tests OAuth flow management, integration status, token operations,
 health monitoring, and provider configuration endpoints.
 """
 
-import os
-
-# Set required environment variables before any imports
-os.environ.setdefault("TOKEN_ENCRYPTION_SALT", "dGVzdC1zYWx0LTE2Ynl0ZQ==")
-
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 

@@ -9,7 +9,7 @@ from sqlmodel import SQLModel
 # Add the parent directory to sys.path to import our models
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 
-from services.office_service.core.config import settings
+from services.office_service.core.config import get_settings
 
 # Import our models to ensure they're registered with SQLModel metadata
 
@@ -18,7 +18,7 @@ from services.office_service.core.config import settings
 config = context.config
 
 # Set the database URL from our settings
-config.set_main_option("sqlalchemy.url", settings.db_url_office)
+config.set_main_option("sqlalchemy.url", get_settings().db_url_office)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

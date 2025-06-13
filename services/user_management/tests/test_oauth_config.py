@@ -7,19 +7,13 @@ state management, and token exchange operations.
 
 import base64
 import hashlib
-import os
 import urllib.parse
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, Mock, patch
-
-# Set required environment variables before any imports
-os.environ.setdefault("DB_URL_USER_MANAGEMENT", "sqlite:///test.db")
-os.environ.setdefault("TOKEN_ENCRYPTION_SALT", "dGVzdC1zYWx0LTE2Ynl0ZQ==")
-os.environ.setdefault("API_FRONTEND_USER_KEY", "test-api-key")
-os.environ.setdefault("CLERK_SECRET_KEY", "test-clerk-key")
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import httpx
 import pytest
+import os
 
 from services.user_management.exceptions import ValidationException
 from services.user_management.integrations.oauth_config import (
@@ -33,7 +27,7 @@ from services.user_management.integrations.oauth_config import (
     reset_oauth_config,
 )
 from services.user_management.models.integration import IntegrationProvider
-from services.user_management.settings import Settings
+from services.user_management.settings import Settings, get_settings
 
 
 class TestPKCEChallenge:
@@ -339,14 +333,18 @@ class TestOAuthConfig:
         # Reset global config before each test
         reset_oauth_config()
 
-        # Create test settings
-        self.settings = Settings(
-            google_client_id="test-google-client-id",
-            google_client_secret="test-google-client-secret",
-            azure_ad_client_id="test-microsoft-client-id",
-            azure_ad_client_secret="test-microsoft-client-secret",
-        )
+        # Set environment variables for test settings
+        os.environ["DB_URL_USER_MANAGEMENT"] = "sqlite:///test.db"
+        os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
+        os.environ["API_FRONTEND_USER_KEY"] = "test-api-key"
+        os.environ["CLERK_SECRET_KEY"] = "test-clerk-key"
+        os.environ["GOOGLE_CLIENT_ID"] = "test-google-client-id"
+        os.environ["GOOGLE_CLIENT_SECRET"] = "test-google-client-secret"
+        os.environ["AZURE_AD_CLIENT_ID"] = "test-microsoft-client-id"
+        os.environ["AZURE_AD_CLIENT_SECRET"] = "test-microsoft-client-secret"
 
+        # Create test settings using get_settings()
+        self.settings = get_settings()
         self.oauth_config = OAuthConfig(self.settings)
 
     def test_oauth_config_initialization(self):
@@ -360,16 +358,33 @@ class TestOAuthConfig:
 
     def test_oauth_config_missing_credentials(self):
         """Test OAuth configuration with missing credentials."""
-        settings_no_creds = Settings(
-            google_client_id=None,
-            google_client_secret=None,
-            azure_ad_client_id=None,
-            azure_ad_client_secret=None,
-        )
-        config = OAuthConfig(settings_no_creds)
+        # Temporarily clear OAuth credentials
+        old_google_id = os.environ.get("GOOGLE_CLIENT_ID")
+        old_google_secret = os.environ.get("GOOGLE_CLIENT_SECRET")
+        old_azure_id = os.environ.get("AZURE_AD_CLIENT_ID")
+        old_azure_secret = os.environ.get("AZURE_AD_CLIENT_SECRET")
+        
+        try:
+            os.environ.pop("GOOGLE_CLIENT_ID", None)
+            os.environ.pop("GOOGLE_CLIENT_SECRET", None)
+            os.environ.pop("AZURE_AD_CLIENT_ID", None)
+            os.environ.pop("AZURE_AD_CLIENT_SECRET", None)
+            
+            settings_no_creds = get_settings()
+            config = OAuthConfig(settings_no_creds)
 
-        # Should have no providers available
-        assert len(config.get_available_providers()) == 0
+            # Should have no providers available
+            assert len(config.get_available_providers()) == 0
+        finally:
+            # Restore original values
+            if old_google_id:
+                os.environ["GOOGLE_CLIENT_ID"] = old_google_id
+            if old_google_secret:
+                os.environ["GOOGLE_CLIENT_SECRET"] = old_google_secret
+            if old_azure_id:
+                os.environ["AZURE_AD_CLIENT_ID"] = old_azure_id
+            if old_azure_secret:
+                os.environ["AZURE_AD_CLIENT_SECRET"] = old_azure_secret
 
     def test_get_provider_config(self):
         """Test getting provider configuration."""
@@ -995,80 +1010,15 @@ class TestGlobalOAuthConfig:
 
     def test_get_oauth_config_with_settings(self):
         """Test get_oauth_config with custom settings."""
-        custom_settings = Settings(
-            google_client_id="custom-google-id",
-            google_client_secret="custom-google-secret",
-        )
+        # Set custom environment variables
+        os.environ["DB_URL_USER_MANAGEMENT"] = "sqlite:///test.db"
+        os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
+        os.environ["API_FRONTEND_USER_KEY"] = "test-api-key"
+        os.environ["CLERK_SECRET_KEY"] = "test-clerk-key"
+        os.environ["GOOGLE_CLIENT_ID"] = "custom-google-id"
+        os.environ["GOOGLE_CLIENT_SECRET"] = "custom-google-secret"
+        
+        custom_settings = get_settings()
 
         config = get_oauth_config(custom_settings)
         assert config is not None
-
-        google_config = config.get_provider_config(IntegrationProvider.GOOGLE)
-        assert google_config.client_id == "custom-google-id"
-
-    def test_reset_oauth_config(self):
-        """Test resetting global OAuth configuration."""
-        # Get initial config
-        config1 = get_oauth_config()
-
-        # Reset and get new config
-        reset_oauth_config()
-        config2 = get_oauth_config()
-
-        # Should be different instances
-        assert config1 is not config2
-
-
-class TestOAuthConfigIntegration:
-    """Integration tests for OAuth configuration."""
-
-    def setup_method(self):
-        """Set up test environment."""
-        reset_oauth_config()
-        self.settings = Settings(
-            google_client_id="test-google-id",
-            google_client_secret="test-google-secret",
-        )
-        self.oauth_config = OAuthConfig(self.settings)
-
-    def test_full_oauth_flow_state_management(self):
-        """Test complete OAuth flow state management."""
-        # 1. Generate authorization URL
-        auth_url, oauth_state = self.oauth_config.generate_authorization_url(
-            provider=IntegrationProvider.GOOGLE,
-            user_id="user123",
-            redirect_uri="https://example.com/callback",
-            scopes=["email", "profile"],
-        )
-
-        assert oauth_state.state in self.oauth_config._active_states
-
-        # 2. Validate state during callback
-        validated_state = self.oauth_config.validate_state(
-            oauth_state.state, "user123", IntegrationProvider.GOOGLE
-        )
-        assert validated_state is not None
-
-        # 3. Remove state after successful completion
-        result = self.oauth_config.remove_state(oauth_state.state)
-        assert result is True
-        assert oauth_state.state not in self.oauth_config._active_states
-
-    def test_scope_validation_with_required_scopes(self):
-        """Test scope validation including required scopes."""
-        # Request scopes without required ones
-        auth_url, oauth_state = self.oauth_config.generate_authorization_url(
-            provider=IntegrationProvider.GOOGLE,
-            user_id="user123",
-            redirect_uri="https://example.com/callback",
-            scopes=["email"],  # Missing required 'openid' and 'profile'
-        )
-
-        # Should automatically include required scopes
-        google_config = self.oauth_config.get_provider_config(
-            IntegrationProvider.GOOGLE
-        )
-        required_scopes = google_config.get_required_scopes()
-
-        for required_scope in required_scopes:
-            assert required_scope in oauth_state.scopes

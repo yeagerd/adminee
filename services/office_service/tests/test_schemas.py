@@ -5,12 +5,8 @@ Tests schema validation, serialization, deserialization,
 and data transformation for office service models.
 """
 
-import os
-
-# Set required environment variables before any imports
-os.environ.setdefault("DB_URL_OFFICE", "sqlite:///test.db")
-
 from datetime import datetime, timezone
+from typing import Dict, List
 
 import pytest
 from pydantic import ValidationError

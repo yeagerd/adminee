@@ -5,11 +5,6 @@ Tests the base API client, provider-specific clients (Google, Microsoft),
 and API client factory with mocked HTTP responses and error handling.
 """
 
-import os
-
-# Set required environment variables before any imports
-os.environ.setdefault("DB_URL_OFFICE", "sqlite:///test.db")
-
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx

@@ -6,17 +6,13 @@ for various failure scenarios in the office service.
 """
 
 import json
-import os
-
-# Set required environment variables before any imports
-os.environ.setdefault("DB_URL_OFFICE", "sqlite:///test.db")
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
-from fastapi import Request
-from fastapi.responses import JSONResponse
+from fastapi import status
+from fastapi.testclient import TestClient
 
 from services.office_service.app.main import (
     office_service_error_handler,

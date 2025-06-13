@@ -8,12 +8,6 @@ and configuration management.
 import os
 from unittest.mock import patch
 
-# Set required environment variables before any imports
-os.environ.setdefault("DB_URL_USER_MANAGEMENT", "sqlite:///test.db")
-os.environ.setdefault("TOKEN_ENCRYPTION_SALT", "dGVzdC1zYWx0LTE2Ynl0ZQ==")
-os.environ.setdefault("API_FRONTEND_USER_KEY", "test-api-key")
-os.environ.setdefault("CLERK_SECRET_KEY", "test-clerk-key")
-
 from services.user_management.settings import Settings
 
 
@@ -217,8 +211,16 @@ class TestSettings:
 
     def test_settings_immutability(self):
         """Test that settings behave as expected for configuration."""
-        settings = _TestableSettings()
-        original_port = settings.port
+        with patch.dict(
+            os.environ,
+            {
+                "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
+                "PORT": "8001",
+            },
+            clear=True,
+        ):
+            settings = _TestableSettings()
+            original_port = settings.port
 
-        # Settings should maintain their values
-        assert settings.port == original_port
+            # Settings should maintain their values
+            assert settings.port == original_port

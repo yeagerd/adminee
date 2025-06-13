@@ -54,7 +54,7 @@ from services.user_management.routers import (
     webhooks_router,
 )
 from services.user_management.services.integration_service import integration_service
-from services.user_management.settings import Settings, settings
+from services.user_management.settings import Settings, get_settings
 
 # Setup structured logging
 setup_logging()
@@ -73,7 +73,7 @@ async def lifespan(app: FastAPI):
     logger.info("Starting User Management Service")
 
     # Validate required configuration
-    if not settings.api_frontend_user_key:
+    if not get_settings().api_frontend_user_key:
         logger.error("API_FRONTEND_USER_KEY is required but not configured")
         logger.error(
             "Set the API_FRONTEND_USER_KEY environment variable or configure it in settings"
@@ -110,8 +110,8 @@ app = FastAPI(
     license_info={
         "name": "Private",
     },
-    docs_url="/docs" if settings.debug else None,
-    redoc_url="/redoc" if settings.debug else None,
+    docs_url="/docs" if get_settings().debug else None,
+    redoc_url="/redoc" if get_settings().debug else None,
     lifespan=lifespan,
 )
 
@@ -120,13 +120,13 @@ app.add_middleware(XSSProtectionMiddleware)
 app.add_middleware(
     InputSanitizationMiddleware,
     enabled=True,
-    strict_mode=settings.debug,  # Use strict mode in development
+    strict_mode=get_settings().debug,  # Use strict mode in development
 )
 
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=get_settings().cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
@@ -604,7 +604,7 @@ async def health_check():
         "service": "user-management",
         "version": "0.1.0",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "environment": str(getattr(settings, "environment", "unknown")),
+        "environment": str(getattr(get_settings(), "environment", "unknown")),
     }
 
     # Basic database connectivity check
@@ -618,7 +618,7 @@ async def health_check():
         health_status["database"] = {
             "status": "error",
             "error": (
-                str(e) if getattr(settings, "debug", False) else "Database unavailable"
+                str(e) if getattr(get_settings(), "debug", False) else "Database unavailable"
             ),
         }
         health_status["status"] = "unhealthy"
@@ -729,7 +729,7 @@ async def readiness_check():
         "service": "user-management",
         "version": "0.1.0",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "environment": str(getattr(settings, "environment", "unknown")),
+        "environment": str(getattr(get_settings(), "environment", "unknown")),
         "checks": {},
     }
 
@@ -773,7 +773,7 @@ async def readiness_check():
             "status": "not_ready",
             "connected": False,
             "error": (
-                str(e) if getattr(settings, "debug", False) else "Database check failed"
+                str(e) if getattr(get_settings(), "debug", False) else "Database check failed"
             ),
         }
         readiness_status["status"] = "not_ready"
@@ -847,6 +847,6 @@ if __name__ == "__main__":
         "main:app",
         host="0.0.0.0",
         port=8001,
-        reload=settings.debug,
-        log_level="info" if not settings.debug else "debug",
+        reload=get_settings().debug,
+        log_level="info" if not get_settings().debug else "debug",
     )

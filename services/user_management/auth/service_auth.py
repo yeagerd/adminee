@@ -20,7 +20,7 @@ from services.user_management.exceptions import (
     AuthenticationException,
     AuthorizationException,
 )
-from services.user_management.settings import settings
+from services.user_management.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -109,8 +109,8 @@ class ServiceAPIKeyAuth:
         self.api_key_value_to_service: Dict[str, str] = {}
 
         # Only register API keys that belong to this service (user-management)
-        if settings.api_frontend_user_key:
-            self.api_key_value_to_service[settings.api_frontend_user_key] = (
+        if get_settings().api_frontend_user_key:
+            self.api_key_value_to_service[get_settings().api_frontend_user_key] = (
                 "user-management-access"
             )
 

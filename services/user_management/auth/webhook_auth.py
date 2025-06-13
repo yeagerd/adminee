@@ -12,7 +12,7 @@ from typing import Optional
 from fastapi import HTTPException, Request, status
 
 from services.user_management.exceptions import WebhookValidationException
-from services.user_management.settings import settings
+from services.user_management.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ class WebhookSignatureVerifier:
         Raises:
             WebhookValidationException: If signature verification fails
         """
-        if not settings.clerk_webhook_secret:
+        if not get_settings().clerk_webhook_secret:
             logger.warning("Clerk webhook secret not configured, skipping verification")
             return
 
@@ -60,7 +60,7 @@ class WebhookSignatureVerifier:
 
             # Verify against each signature
             expected_signature = WebhookSignatureVerifier._compute_clerk_signature(
-                signed_payload, settings.clerk_webhook_secret
+                signed_payload, get_settings().clerk_webhook_secret
             )
 
             signature_valid = any(

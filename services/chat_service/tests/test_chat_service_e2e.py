@@ -5,11 +5,6 @@ Tests the complete chat service functionality including
 message processing, history management, and API endpoints.
 """
 
-import os
-
-# Set required environment variables before any imports
-os.environ.setdefault("DB_URL_CHAT", "sqlite:///test.db")
-
 import asyncio
 
 import pytest
