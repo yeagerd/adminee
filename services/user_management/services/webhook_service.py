@@ -317,5 +317,13 @@ class WebhookService:
         return False
 
 
-# Create service instance
-webhook_service = WebhookService()
+# Global webhook service instance
+_webhook_service: WebhookService | None = None
+
+
+def get_webhook_service() -> WebhookService:
+    """Get the global webhook service instance, creating it if necessary."""
+    global _webhook_service
+    if _webhook_service is None:
+        _webhook_service = WebhookService()
+    return _webhook_service

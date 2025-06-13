@@ -1259,4 +1259,12 @@ class IntegrationService:
 
 
 # Global integration service instance
-integration_service = IntegrationService()
+_integration_service: IntegrationService | None = None
+
+
+def get_integration_service() -> IntegrationService:
+    """Get the global integration service instance, creating it if necessary."""
+    global _integration_service
+    if _integration_service is None:
+        _integration_service = IntegrationService()
+    return _integration_service

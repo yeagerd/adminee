@@ -5,17 +5,17 @@ Exports all service modules for easy importing.
 """
 
 from services.user_management.services.audit_service import audit_logger
-from services.user_management.services.integration_service import integration_service
-from services.user_management.services.preferences_service import preferences_service
-from services.user_management.services.token_service import token_service
-from services.user_management.services.user_service import user_service
-from services.user_management.services.webhook_service import webhook_service
+from services.user_management.services.integration_service import get_integration_service
+from services.user_management.services.preferences_service import get_preferences_service
+from services.user_management.services.token_service import get_token_service
+from services.user_management.services.user_service import get_user_service
+from services.user_management.services.webhook_service import get_webhook_service
 
 __all__ = [
-    "user_service",
-    "preferences_service",
-    "integration_service",
-    "token_service",
-    "webhook_service",
+    "get_user_service",
+    "get_preferences_service",
+    "get_integration_service",
+    "get_token_service",
+    "get_webhook_service",
     "audit_logger",
 ]

@@ -24,7 +24,7 @@ from services.user_management.schemas.user import (
     UserResponse,
     UserUpdate,
 )
-from services.user_management.services.user_service import user_service
+from services.user_management.services.user_service import get_user_service
 
 
 class TestUserProfileEndpoints:
@@ -61,8 +61,8 @@ class TestUserProfileEndpoints:
         mock_user = self.create_mock_user()
 
         with (
-            patch.object(user_service, "get_user_by_id", return_value=mock_user),
-            patch.object(user_service, "get_user_profile") as mock_get_profile,
+            patch.object(get_user_service(), "get_user_by_id", return_value=mock_user),
+            patch.object(get_user_service(), "get_user_profile") as mock_get_profile,
         ):
 
             mock_response = UserResponse(
@@ -102,7 +102,7 @@ class TestUserProfileEndpoints:
         )
 
         with patch.object(
-            user_service, "get_user_by_id", return_value=mock_target_user
+            get_user_service(), "get_user_by_id", return_value=mock_target_user
         ):
 
             from services.user_management.routers.users import get_user_profile
@@ -119,7 +119,7 @@ class TestUserProfileEndpoints:
     @pytest.mark.asyncio
     async def test_get_user_profile_not_found(self):
         """Test user profile retrieval when user not found."""
-        with patch.object(user_service, "get_user_by_id") as mock_get_by_id:
+        with patch.object(get_user_service(), "get_user_by_id") as mock_get_by_id:
             mock_get_by_id.side_effect = UserNotFoundException("User not found")
 
             from services.user_management.routers.users import get_user_profile
@@ -141,8 +141,8 @@ class TestUserProfileEndpoints:
         user_update = UserUpdate(first_name="Updated", last_name="Name")
 
         with (
-            patch.object(user_service, "get_user_by_id", return_value=mock_user),
-            patch.object(user_service, "update_user", return_value=mock_updated_user),
+            patch.object(get_user_service(), "get_user_by_id", return_value=mock_user),
+            patch.object(get_user_service(), "update_user", return_value=mock_updated_user),
             patch(
                 "services.user_management.schemas.user.UserResponse.from_orm"
             ) as mock_from_orm,
@@ -172,7 +172,7 @@ class TestUserProfileEndpoints:
             )
 
             assert result.first_name == "Updated"
-            user_service.update_user.assert_called_once_with(1, user_update)
+            get_user_service().update_user.assert_called_once_with(1, user_update)
 
     @pytest.mark.asyncio
     async def test_update_user_profile_validation_error(self):
@@ -181,8 +181,8 @@ class TestUserProfileEndpoints:
         user_update = UserUpdate(first_name="Updated")
 
         with (
-            patch.object(user_service, "get_user_by_id", return_value=mock_user),
-            patch.object(user_service, "update_user") as mock_update,
+            patch.object(get_user_service(), "get_user_by_id", return_value=mock_user),
+            patch.object(get_user_service(), "update_user") as mock_update,
         ):
 
             mock_update.side_effect = ValidationException(
@@ -213,9 +213,9 @@ class TestUserProfileEndpoints:
         )
 
         with (
-            patch.object(user_service, "get_user_by_id", return_value=mock_user),
+            patch.object(get_user_service(), "get_user_by_id", return_value=mock_user),
             patch.object(
-                user_service, "delete_user", return_value=mock_delete_response
+                get_user_service(), "delete_user", return_value=mock_delete_response
             ),
         ):
 
@@ -227,7 +227,7 @@ class TestUserProfileEndpoints:
 
             assert result.success is True
             assert result.user_id == 1
-            user_service.delete_user.assert_called_once_with(1)
+            get_user_service().delete_user.assert_called_once_with(1)
 
     @pytest.mark.asyncio
     async def test_delete_user_profile_unauthorized(self):
@@ -239,7 +239,7 @@ class TestUserProfileEndpoints:
         )
 
         with patch.object(
-            user_service, "get_user_by_id", return_value=mock_target_user
+            get_user_service(), "get_user_by_id", return_value=mock_target_user
         ):
 
             from services.user_management.routers.users import delete_user_profile
@@ -265,9 +265,9 @@ class TestUserProfileEndpoints:
         )
 
         with (
-            patch.object(user_service, "get_user_by_id", return_value=mock_user),
+            patch.object(get_user_service(), "get_user_by_id", return_value=mock_user),
             patch.object(
-                user_service, "update_user_onboarding", return_value=mock_updated_user
+                get_user_service(), "update_user_onboarding", return_value=mock_updated_user
             ),
             patch(
                 "services.user_management.schemas.user.UserResponse.from_orm"
@@ -298,7 +298,7 @@ class TestUserProfileEndpoints:
             )
 
             assert result.onboarding_completed is True
-            user_service.update_user_onboarding.assert_called_once_with(
+            get_user_service().update_user_onboarding.assert_called_once_with(
                 1, onboarding_update
             )
 
@@ -329,7 +329,7 @@ class TestUserProfileEndpoints:
         )
 
         with patch.object(
-            user_service, "search_users", return_value=mock_search_results
+            get_user_service(), "search_users", return_value=mock_search_results
         ):
 
             from services.user_management.routers.users import search_users
@@ -350,7 +350,7 @@ class TestUserProfileEndpoints:
     @pytest.mark.asyncio
     async def test_search_users_with_filters(self):
         """Test user search with filters."""
-        with patch.object(user_service, "search_users") as mock_search:
+        with patch.object(get_user_service(), "search_users") as mock_search:
 
             from services.user_management.routers.users import search_users
 
@@ -378,7 +378,7 @@ class TestUserProfileEndpoints:
 
         with (
             patch.object(
-                user_service, "get_user_by_external_auth_id", return_value=mock_user
+                get_user_service(), "get_user_by_external_auth_id", return_value=mock_user
             ),
             patch(
                 "services.user_management.schemas.user.UserResponse.from_orm"
@@ -407,14 +407,14 @@ class TestUserProfileEndpoints:
             )
 
             assert result.external_auth_id == "user_123"
-            user_service.get_user_by_external_auth_id.assert_called_once_with(
+            get_user_service().get_user_by_external_auth_id.assert_called_once_with(
                 "user_123"
             )
 
     @pytest.mark.asyncio
     async def test_get_current_user_profile_not_found(self):
         """Test current user profile retrieval when user not found."""
-        with patch.object(user_service, "get_user_by_external_auth_id") as mock_get:
+        with patch.object(get_user_service(), "get_user_by_external_auth_id") as mock_get:
             mock_get.side_effect = UserNotFoundException("User not found")
 
             from services.user_management.routers.users import get_current_user_profile
@@ -441,11 +441,11 @@ class TestUserProfileEndpoints:
         mock_updated_user.first_name = "Updated"
 
         with (
-            patch.object(user_service, "get_user_by_id", return_value=mock_user),
-            patch.object(user_service, "update_user", return_value=mock_updated_user),
+            patch.object(get_user_service(), "get_user_by_id", return_value=mock_user),
+            patch.object(get_user_service(), "update_user", return_value=mock_updated_user),
         ):
             # Test getting user profile
-            retrieved_user = await user_service.get_user_by_id(1)
+            retrieved_user = await get_user_service().get_user_by_id(1)
             assert retrieved_user.id == 1
             assert retrieved_user.external_auth_id == "user_integration_test"
             assert retrieved_user.email == "integration@test.com"
@@ -454,14 +454,14 @@ class TestUserProfileEndpoints:
             from services.user_management.schemas.user import UserUpdate
 
             update_data = UserUpdate(first_name="Updated")
-            updated_user = await user_service.update_user(1, update_data)
+            updated_user = await get_user_service().update_user(1, update_data)
 
             assert updated_user.first_name == "Updated"
             assert updated_user.id == 1
 
             # Verify service calls
-            user_service.get_user_by_id.assert_called_once_with(1)
-            user_service.update_user.assert_called_once_with(1, update_data)
+            get_user_service().get_user_by_id.assert_called_once_with(1)
+            get_user_service().update_user.assert_called_once_with(1, update_data)
 
 
 class TestUserServiceIntegration:
@@ -476,22 +476,22 @@ class TestUserServiceIntegration:
         mock_user.external_auth_id = "existing_user"
         mock_user.email = "existing@test.com"
 
-        with patch.object(user_service, "get_user_by_id") as mock_get_by_id:
+        with patch.object(get_user_service(), "get_user_by_id") as mock_get_by_id:
             # Test user not found scenario
             mock_get_by_id.side_effect = UserNotFoundException("User not found")
 
             with pytest.raises(UserNotFoundException):
-                await user_service.get_user_by_id(999999)  # Non-existent ID
+                await get_user_service().get_user_by_id(999999)  # Non-existent ID
 
             # Test getting existing user (should work)
             mock_get_by_id.side_effect = None
             mock_get_by_id.return_value = mock_user
 
-            retrieved_user = await user_service.get_user_by_id(1)
+            retrieved_user = await get_user_service().get_user_by_id(1)
             assert retrieved_user.id == 1
 
         # Test validation error for duplicate user creation
-        with patch.object(user_service, "create_user") as mock_create:
+        with patch.object(get_user_service(), "create_user") as mock_create:
             from services.user_management.exceptions import ValidationException
 
             mock_create.side_effect = ValidationException(
@@ -506,7 +506,7 @@ class TestUserServiceIntegration:
             )
 
             with pytest.raises(ValidationException) as exc_info:
-                await user_service.create_user(create_data)
+                await get_user_service().create_user(create_data)
 
             assert "already exists" in str(exc_info.value)
             mock_create.assert_called_once_with(create_data)

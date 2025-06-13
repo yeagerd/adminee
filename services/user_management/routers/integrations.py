@@ -38,7 +38,7 @@ from services.user_management.schemas.integration import (
     TokenRefreshResponse,
 )
 from services.user_management.services.audit_service import audit_logger
-from services.user_management.services.integration_service import integration_service
+from services.user_management.services.integration_service import get_integration_service
 
 router = APIRouter(
     prefix="/users/{user_id}/integrations",
@@ -96,7 +96,7 @@ async def list_user_integrations(
     await verify_user_ownership(current_user, user_id)
 
     try:
-        return await integration_service.get_user_integrations(
+        return await get_integration_service().get_user_integrations(
             user_id=user_id,
             provider=provider,
             status=integration_status,
@@ -148,7 +148,7 @@ async def start_oauth_flow(
     await verify_user_ownership(current_user, user_id)
 
     try:
-        return await integration_service.start_oauth_flow(
+        return await get_integration_service().start_oauth_flow(
             user_id=user_id,
             provider=request.provider,
             redirect_uri=request.redirect_uri,
@@ -227,7 +227,7 @@ async def complete_oauth_flow(
             )
 
         # Complete the OAuth flow
-        result = await integration_service.complete_oauth_flow(
+        result = await get_integration_service().complete_oauth_flow(
             user_id=user_id,
             provider=provider,
             authorization_code=request.code,
@@ -272,7 +272,7 @@ async def get_integration_statistics(
     await verify_user_ownership(current_user, user_id)
 
     try:
-        return await integration_service.get_integration_statistics(user_id=user_id)
+        return await get_integration_service().get_integration_statistics(user_id=user_id)
     except NotFoundException as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except IntegrationException as e:
@@ -305,7 +305,7 @@ async def get_specific_integration(
 
     try:
         # Get all integrations and filter for the specific provider
-        integrations_response = await integration_service.get_user_integrations(
+        integrations_response = await get_integration_service().get_user_integrations(
             user_id=user_id,
             provider=provider,
             include_token_info=True,
@@ -363,7 +363,7 @@ async def disconnect_integration(
         request = IntegrationDisconnectRequest()
 
     try:
-        result = await integration_service.disconnect_integration(
+        result = await get_integration_service().disconnect_integration(
             user_id=user_id,
             provider=provider,
             revoke_tokens=request.revoke_tokens,
@@ -409,7 +409,7 @@ async def refresh_integration_tokens(
         request = TokenRefreshRequest()
 
     try:
-        result = await integration_service.refresh_integration_tokens(
+        result = await get_integration_service().refresh_integration_tokens(
             user_id=user_id,
             provider=provider,
             force=request.force,
@@ -458,7 +458,7 @@ async def check_integration_health(
     await verify_user_ownership(current_user, user_id)
 
     try:
-        return await integration_service.check_integration_health(
+        return await get_integration_service().check_integration_health(
             user_id=user_id,
             provider=provider,
         )
@@ -490,7 +490,7 @@ async def list_oauth_providers(
     - Default scope configurations
     """
     try:
-        oauth_config = integration_service.oauth_config
+        oauth_config = get_integration_service().oauth_config
         providers = []
 
         for provider in IntegrationProvider:
@@ -555,7 +555,7 @@ async def validate_oauth_scopes(
     - `warnings`: Validation warnings and recommendations
     """
     try:
-        oauth_config = integration_service.oauth_config
+        oauth_config = get_integration_service().oauth_config
 
         if not oauth_config.is_provider_available(request.provider):
             raise HTTPException(

@@ -31,7 +31,7 @@ from services.user_management.schemas.integration import (
 )
 from services.user_management.security.encryption import TokenEncryption
 from services.user_management.services.audit_service import audit_logger
-from services.user_management.services.integration_service import integration_service
+from services.user_management.services.integration_service import get_integration_service
 
 # Set up logging
 logger = structlog.get_logger(__name__)
@@ -329,7 +329,7 @@ class TokenService:
         """
         try:
             # Use integration service for refresh
-            refresh_result = await integration_service.refresh_integration_tokens(
+            refresh_result = await get_integration_service().refresh_integration_tokens(
                 user_id=user_id,
                 provider=provider,
                 force=force,
@@ -499,7 +499,7 @@ class TokenService:
     ):
         """Refresh token if refresh token is available."""
         try:
-            return await integration_service.refresh_integration_tokens(
+            return await get_integration_service().refresh_integration_tokens(
                 user_id=user_id,
                 provider=provider,
                 force=True,
@@ -979,4 +979,12 @@ class TokenService:
 
 
 # Global token service instance
-token_service = TokenService()
+_token_service: TokenService | None = None
+
+
+def get_token_service() -> TokenService:
+    """Get the global token service instance, creating it if necessary."""
+    global _token_service
+    if _token_service is None:
+        _token_service = TokenService()
+    return _token_service

@@ -53,7 +53,7 @@ from services.user_management.routers import (
     users_router,
     webhooks_router,
 )
-from services.user_management.services.integration_service import integration_service
+from services.user_management.services.integration_service import get_integration_service
 from services.user_management.settings import Settings, get_settings
 
 # Setup structured logging
@@ -192,7 +192,7 @@ async def oauth_callback_redirect(
             )
 
         # Complete the OAuth flow using the integration service
-        result = await integration_service.complete_oauth_flow(
+        result = await get_integration_service().complete_oauth_flow(
             user_id=user_id,
             provider=provider,
             authorization_code=code,

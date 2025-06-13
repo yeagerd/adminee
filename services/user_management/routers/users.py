@@ -23,7 +23,7 @@ from services.user_management.schemas.user import (
     UserSearchRequest,
     UserUpdate,
 )
-from services.user_management.services.user_service import user_service
+from services.user_management.services.user_service import get_user_service
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ async def get_current_user_profile(
     without needing to know their database ID.
     """
     try:
-        current_user = await user_service.get_user_by_external_auth_id(
+        current_user = await get_user_service().get_user_by_external_auth_id(
             current_user_external_auth_id
         )
         user_response = UserResponse.from_orm(current_user)
@@ -102,7 +102,7 @@ async def get_user_profile(
     """
     try:
         # Get the user to verify they exist and check ownership
-        user = await user_service.get_user_by_id(user_id)
+        user = await get_user_service().get_user_by_id(user_id)
 
         # Verify ownership - check if the authenticated user's external auth ID matches
         if current_user_external_auth_id != user.external_auth_id:
@@ -117,7 +117,7 @@ async def get_user_profile(
                 },
             )
 
-        user_profile = await user_service.get_user_profile(user_id)
+        user_profile = await get_user_service().get_user_profile(user_id)
 
         logger.info(f"Retrieved profile for user {user_id}")
         return user_profile
@@ -167,7 +167,7 @@ async def update_user_profile(
     """
     try:
         # Get the user to verify they exist and check ownership
-        user = await user_service.get_user_by_id(user_id)
+        user = await get_user_service().get_user_by_id(user_id)
 
         # Verify ownership
         if current_user_external_auth_id != user.external_auth_id:
@@ -182,7 +182,7 @@ async def update_user_profile(
                 },
             )
 
-        updated_user = await user_service.update_user(user_id, user_data)
+        updated_user = await get_user_service().update_user(user_id, user_data)
         user_response = UserResponse.from_orm(updated_user)
 
         logger.info(f"Updated profile for user {user_id}")
@@ -237,7 +237,7 @@ async def delete_user_profile(
     """
     try:
         # Get the user to verify they exist and check ownership
-        user = await user_service.get_user_by_id(user_id)
+        user = await get_user_service().get_user_by_id(user_id)
 
         # Verify ownership
         if current_user_external_auth_id != user.external_auth_id:
@@ -252,7 +252,7 @@ async def delete_user_profile(
                 },
             )
 
-        delete_response = await user_service.delete_user(user_id)
+        delete_response = await get_user_service().delete_user(user_id)
 
         logger.info(f"Deleted profile for user {user_id}")
         return delete_response
@@ -304,7 +304,7 @@ async def update_user_onboarding(
     """
     try:
         # Get the user to verify they exist and check ownership
-        user = await user_service.get_user_by_id(user_id)
+        user = await get_user_service().get_user_by_id(user_id)
 
         # Verify ownership
         if current_user_external_auth_id != user.external_auth_id:
@@ -319,7 +319,7 @@ async def update_user_onboarding(
                 },
             )
 
-        updated_user = await user_service.update_user_onboarding(
+        updated_user = await get_user_service().update_user_onboarding(
             user_id, onboarding_data
         )
         user_response = UserResponse.from_orm(updated_user)
@@ -392,7 +392,7 @@ async def search_users(
             page_size=page_size,
         )
 
-        search_results = await user_service.search_users(search_request)
+        search_results = await get_user_service().search_users(search_request)
 
         logger.info(
             f"User search performed by {current_user_id}, found {search_results.total} results"
