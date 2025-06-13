@@ -225,7 +225,7 @@ briefly/
 ## Getting Started
 
 1. **Clone the repository**
-2. **Set up environment variables** (copy `.env.example` to `.env`)
+2. **Set up environment variables** (copy `.example.env` to `.env`)
 3. **Start development environment**: `docker compose up --build`
 4. **Access the application**: `http://localhost:3000`
 5. **Run tests**: `tox` (for Python services)

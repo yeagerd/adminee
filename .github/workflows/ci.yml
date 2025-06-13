@@ -73,9 +73,9 @@ jobs:
       working-directory: ./frontend
       run: npx tsc --noEmit
 
-    - name: Copy .env.example to .env
+    - name: Copy .example.env to .env
       working-directory: ./frontend
-      run: cp ../.env.example .env
+      run: cp ../.example.env .env
 
     - name: Build application
       working-directory: ./frontend
@@ -104,7 +104,7 @@ jobs:
           TOKEN_ENCRYPTION_SALT: ${{ secrets.TOKEN_ENCRYPTION_SALT }}
       run: |
         # Create .env file for testing
-        cp .env.example .env
+        cp .example.env .env
         
         # Test that docker-compose builds successfully
         docker compose config

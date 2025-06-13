@@ -4,7 +4,7 @@
 
 ```bash
 ./setup-dev.sh
-cp .env.example .env
+cp .example.env .env
 ```
 
 Populate
