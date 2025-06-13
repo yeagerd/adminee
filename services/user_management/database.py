@@ -9,14 +9,14 @@ from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlmodel import SQLModel
 
-from services.user_management.settings import get_settings
+from services.user_management.models.audit import AuditLog  # noqa: F401
+from services.user_management.models.integration import Integration  # noqa: F401
+from services.user_management.models.preferences import UserPreferences  # noqa: F401
+from services.user_management.models.token import EncryptedToken  # noqa: F401
 
 # Import all models so SQLModel can find them for table creation
 from services.user_management.models.user import User  # noqa: F401
-from services.user_management.models.integration import Integration  # noqa: F401
-from services.user_management.models.token import EncryptedToken  # noqa: F401
-from services.user_management.models.audit import AuditLog  # noqa: F401
-from services.user_management.models.preferences import UserPreferences  # noqa: F401
+from services.user_management.settings import get_settings
 
 
 # Create async engine for database operations

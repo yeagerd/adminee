@@ -5,8 +5,6 @@ Tests application startup, health endpoints, readiness checks,
 exception handling, middleware, and API documentation.
 """
 
-import importlib
-import os
 from unittest.mock import patch
 
 import pytest
@@ -87,7 +85,7 @@ class TestHealthEndpoint(BaseUserManagementIntegrationTest):
         """Test health check with database connection failure."""
         # Mock SQL execution to raise an exception
         mock_text.side_effect = Exception("Database connection failed")
-        
+
         response = self.client.get("/health")
         assert response.status_code == 503
         data = response.json()
@@ -98,7 +96,7 @@ class TestHealthEndpoint(BaseUserManagementIntegrationTest):
     def test_health_check_database_error(self, mock_text):
         """Test health check with database error."""
         mock_text.side_effect = Exception("Database error")
-        
+
         response = self.client.get("/health")
         assert response.status_code == 503
         data = response.json()
@@ -113,7 +111,7 @@ class TestHealthEndpoint(BaseUserManagementIntegrationTest):
         mock_settings = mock_get_settings.return_value
         mock_settings.debug = True
         mock_text.side_effect = Exception("Database error")
-        
+
         response = self.client.get("/health")
         assert response.status_code == 503
         data = response.json()
@@ -121,12 +119,14 @@ class TestHealthEndpoint(BaseUserManagementIntegrationTest):
 
     @patch("services.user_management.main.text")
     @patch("services.user_management.main.get_settings")
-    def test_health_check_production_mode_error_masking(self, mock_get_settings, mock_text):
+    def test_health_check_production_mode_error_masking(
+        self, mock_get_settings, mock_text
+    ):
         """Test health check error masking in production mode."""
         mock_settings = mock_get_settings.return_value
         mock_settings.debug = False
         mock_text.side_effect = Exception("Database error")
-        
+
         response = self.client.get("/health")
         assert response.status_code == 503
         data = response.json()
@@ -158,7 +158,7 @@ class TestReadinessEndpoint(BaseUserManagementIntegrationTest):
     def test_readiness_check_database_disconnected(self, mock_text):
         """Test readiness check with database disconnection."""
         mock_text.side_effect = Exception("Database connection failed")
-        
+
         response = self.client.get("/ready")
         assert response.status_code == 503
         data = response.json()
@@ -170,7 +170,7 @@ class TestReadinessEndpoint(BaseUserManagementIntegrationTest):
     def test_readiness_check_database_error(self, mock_text):
         """Test readiness check with database error."""
         mock_text.side_effect = Exception("Database error")
-        
+
         response = self.client.get("/ready")
         assert response.status_code == 503
         data = response.json()
@@ -183,19 +183,21 @@ class TestReadinessEndpoint(BaseUserManagementIntegrationTest):
         """Test readiness check with missing configuration."""
         mock_settings = mock_get_settings.return_value
         mock_settings.api_frontend_user_key = None  # Missing required config
-        
+
         response = self.client.get("/ready")
         # This might still pass if other configs are valid, so just check it doesn't crash
         assert response.status_code in [200, 503]
 
     @patch("services.user_management.main.text")
     @patch("services.user_management.main.get_settings")
-    def test_readiness_check_debug_mode_error_details(self, mock_get_settings, mock_text):
+    def test_readiness_check_debug_mode_error_details(
+        self, mock_get_settings, mock_text
+    ):
         """Test readiness check error details in debug mode."""
         mock_settings = mock_get_settings.return_value
         mock_settings.debug = True
         mock_text.side_effect = Exception("Database error")
-        
+
         response = self.client.get("/ready")
         assert response.status_code == 503
         data = response.json()
@@ -203,12 +205,14 @@ class TestReadinessEndpoint(BaseUserManagementIntegrationTest):
 
     @patch("services.user_management.main.text")
     @patch("services.user_management.main.get_settings")
-    def test_readiness_check_production_mode_error_masking(self, mock_get_settings, mock_text):
+    def test_readiness_check_production_mode_error_masking(
+        self, mock_get_settings, mock_text
+    ):
         """Test readiness check error masking in production mode."""
         mock_settings = mock_get_settings.return_value
         mock_settings.debug = False
         mock_text.side_effect = Exception("Database error")
-        
+
         response = self.client.get("/ready")
         assert response.status_code == 503
         data = response.json()
@@ -226,7 +230,7 @@ class TestReadinessEndpoint(BaseUserManagementIntegrationTest):
     def test_readiness_check_multiple_failures(self, mock_text):
         """Test readiness check with multiple failures."""
         mock_text.side_effect = Exception("Database error")
-        
+
         response = self.client.get("/ready")
         assert response.status_code == 503
         data = response.json()
@@ -242,7 +246,7 @@ class TestExceptionHandling(BaseUserManagementIntegrationTest):
         exc = UserNotFoundException("test_user_123")
         assert exc.user_id == "test_user_123"
         assert "User test_user_123 not found" in exc.message
-        
+
         # Test that the exception handler is registered
         assert UserNotFoundException in app.exception_handlers
 
@@ -252,7 +256,7 @@ class TestExceptionHandling(BaseUserManagementIntegrationTest):
         assert exc.user_id == "test_user_123"
         assert exc.provider == "google"
         assert "Integration google for user test_user_123 not found" in exc.message
-        
+
         # Test that the exception handler is registered
         assert IntegrationNotFoundException in app.exception_handlers
 
@@ -263,7 +267,7 @@ class TestExceptionHandling(BaseUserManagementIntegrationTest):
         assert exc.value == "invalid@"
         assert exc.reason == "Invalid email format"
         assert "Validation failed for field 'email'" in exc.message
-        
+
         # Test that the exception handler is registered
         assert ValidationException in app.exception_handlers
 
@@ -271,7 +275,7 @@ class TestExceptionHandling(BaseUserManagementIntegrationTest):
         """Test AuthenticationException creation and handler registration."""
         exc = AuthenticationException("Invalid token")
         assert "Invalid token" in exc.message
-        
+
         # Test that the exception handler is registered
         assert AuthenticationException in app.exception_handlers
 
@@ -294,9 +298,13 @@ class TestMiddleware(BaseUserManagementIntegrationTest):
         """Test that CORS headers are properly set."""
         # Make an OPTIONS request to trigger CORS preflight
         response = self.client.options(
-            "/health", headers={"Origin": "http://localhost:3000", "Access-Control-Request-Method": "GET"}
+            "/health",
+            headers={
+                "Origin": "http://localhost:3000",
+                "Access-Control-Request-Method": "GET",
+            },
         )
-        
+
         # Check if CORS is configured (might not show headers on simple GET requests)
         # The important thing is that the request doesn't fail
         assert response.status_code in [200, 204, 405]

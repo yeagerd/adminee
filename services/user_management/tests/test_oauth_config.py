@@ -334,26 +334,30 @@ class TestOAuthConfig:
         """Set up test environment."""
         # Reset global config before each test
         reset_oauth_config()
-        
+
         # Create temporary database file for test isolation
-        self.temp_db = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
+        self.temp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
         self.temp_db.close()
-        
+
         # Mock environment variables instead of modifying os.environ directly
         # This prevents race conditions in parallel execution
-        self.env_patch = patch.dict(os.environ, {
-            'DB_URL_USER_MANAGEMENT': f'sqlite:///{self.temp_db.name}',
-            'TOKEN_ENCRYPTION_SALT': 'dGVzdC1zYWx0LTE2Ynl0ZQ==',
-            'API_FRONTEND_USER_KEY': 'test-api-key',
-            'CLERK_SECRET_KEY': 'test-clerk-key',
-            'GOOGLE_CLIENT_ID': 'test-google-client-id',
-            'GOOGLE_CLIENT_SECRET': 'test-google-client-secret',
-            'AZURE_AD_CLIENT_ID': 'test-microsoft-client-id',
-            'AZURE_AD_CLIENT_SECRET': 'test-microsoft-client-secret',
-            'OAUTH_REDIRECT_URI': 'https://example.com/oauth/callback'
-        }, clear=False)
+        self.env_patch = patch.dict(
+            os.environ,
+            {
+                "DB_URL_USER_MANAGEMENT": f"sqlite:///{self.temp_db.name}",
+                "TOKEN_ENCRYPTION_SALT": "dGVzdC1zYWx0LTE2Ynl0ZQ==",
+                "API_FRONTEND_USER_KEY": "test-api-key",
+                "CLERK_SECRET_KEY": "test-clerk-key",
+                "GOOGLE_CLIENT_ID": "test-google-client-id",
+                "GOOGLE_CLIENT_SECRET": "test-google-client-secret",
+                "AZURE_AD_CLIENT_ID": "test-microsoft-client-id",
+                "AZURE_AD_CLIENT_SECRET": "test-microsoft-client-secret",
+                "OAUTH_REDIRECT_URI": "https://example.com/oauth/callback",
+            },
+            clear=False,
+        )
         self.env_patch.start()
-        
+
         # Create test settings and OAuth config
         self.settings = Settings()
         self.oauth_config = OAuthConfig(self.settings)
@@ -361,13 +365,13 @@ class TestOAuthConfig:
     def teardown_method(self):
         """Clean up test environment."""
         # Stop environment patch
-        if hasattr(self, 'env_patch'):
+        if hasattr(self, "env_patch"):
             self.env_patch.stop()
-        
+
         # Clean up temporary database file
-        if hasattr(self, 'temp_db') and os.path.exists(self.temp_db.name):
+        if hasattr(self, "temp_db") and os.path.exists(self.temp_db.name):
             os.unlink(self.temp_db.name)
-        
+
         # Reset global config after each test
         reset_oauth_config()
 
@@ -383,19 +387,23 @@ class TestOAuthConfig:
     def test_oauth_config_missing_credentials(self):
         """Test OAuth configuration with missing credentials."""
         # Create temporary database for this test
-        temp_db = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
+        temp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
         temp_db.close()
-        
+
         try:
             # Create environment patch with missing OAuth credentials
-            with patch.dict(os.environ, {
-                'DB_URL_USER_MANAGEMENT': f'sqlite:///{temp_db.name}',
-                'TOKEN_ENCRYPTION_SALT': 'dGVzdC1zYWx0LTE2Ynl0ZQ==',
-                'API_FRONTEND_USER_KEY': 'test-api-key',
-                'CLERK_SECRET_KEY': 'test-clerk-key',
-                'OAUTH_REDIRECT_URI': 'https://example.com/oauth/callback'
-                # Missing OAuth credentials - GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, etc.
-            }, clear=True):  # clear=True ensures only our test values are present
+            with patch.dict(
+                os.environ,
+                {
+                    "DB_URL_USER_MANAGEMENT": f"sqlite:///{temp_db.name}",
+                    "TOKEN_ENCRYPTION_SALT": "dGVzdC1zYWx0LTE2Ynl0ZQ==",
+                    "API_FRONTEND_USER_KEY": "test-api-key",
+                    "CLERK_SECRET_KEY": "test-clerk-key",
+                    "OAUTH_REDIRECT_URI": "https://example.com/oauth/callback",
+                    # Missing OAuth credentials - GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, etc.
+                },
+                clear=True,
+            ):  # clear=True ensures only our test values are present
                 settings_no_creds = Settings()
                 config = OAuthConfig(settings_no_creds)
 
@@ -1020,38 +1028,56 @@ class TestGlobalOAuthConfig:
     def setup_method(self):
         """Set up test environment."""
         reset_oauth_config()
-        
+
         # Create temporary database file for test isolation
-        self.temp_db = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
+        self.temp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
         self.temp_db.close()
 
     def teardown_method(self):
         """Clean up test environment."""
         # Clean up temporary database file
-        if hasattr(self, 'temp_db') and os.path.exists(self.temp_db.name):
+        if hasattr(self, "temp_db") and os.path.exists(self.temp_db.name):
             os.unlink(self.temp_db.name)
-        
+
         reset_oauth_config()
 
     def test_get_oauth_config_singleton(self):
         """Test that get_oauth_config returns singleton instance."""
-        config1 = get_oauth_config()
-        config2 = get_oauth_config()
+        # Set up environment for global config creation
+        with patch.dict(
+            os.environ,
+            {
+                "DB_URL_USER_MANAGEMENT": f"sqlite:///{self.temp_db.name}",
+                "TOKEN_ENCRYPTION_SALT": "dGVzdC1zYWx0LTE2Ynl0ZQ==",
+                "API_FRONTEND_USER_KEY": "test-api-key",
+                "CLERK_SECRET_KEY": "test-clerk-key",
+                "GOOGLE_CLIENT_ID": "test-google-client-id",
+                "GOOGLE_CLIENT_SECRET": "test-google-client-secret",
+                "OAUTH_REDIRECT_URI": "https://example.com/oauth/callback",
+            },
+            clear=False,
+        ):
+            config1 = get_oauth_config()
+            config2 = get_oauth_config()
 
-        assert config1 is config2
+            assert config1 is config2
 
     def test_get_oauth_config_with_settings(self):
         """Test get_oauth_config with custom settings."""
         # Create environment patch with custom credentials
-        with patch.dict(os.environ, {
-            'DB_URL_USER_MANAGEMENT': f'sqlite:///{self.temp_db.name}',
-            'TOKEN_ENCRYPTION_SALT': 'dGVzdC1zYWx0LTE2Ynl0ZQ==',
-            'API_FRONTEND_USER_KEY': 'test-api-key',
-            'CLERK_SECRET_KEY': 'test-clerk-key',
-            'GOOGLE_CLIENT_ID': 'custom-google-id',
-            'GOOGLE_CLIENT_SECRET': 'custom-google-secret',
-            'OAUTH_REDIRECT_URI': 'https://example.com/oauth/callback'
-        }, clear=False):
+        with patch.dict(
+            os.environ,
+            {
+                "DB_URL_USER_MANAGEMENT": f"sqlite:///{self.temp_db.name}",
+                "TOKEN_ENCRYPTION_SALT": "dGVzdC1zYWx0LTE2Ynl0ZQ==",
+                "API_FRONTEND_USER_KEY": "test-api-key",
+                "CLERK_SECRET_KEY": "test-clerk-key",
+                "GOOGLE_CLIENT_ID": "custom-google-id",
+                "GOOGLE_CLIENT_SECRET": "custom-google-secret",
+                "OAUTH_REDIRECT_URI": "https://example.com/oauth/callback",
+            },
+            clear=False,
+        ):
             custom_settings = Settings()
             config = get_oauth_config(custom_settings)
             assert config is not None

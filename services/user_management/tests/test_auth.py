@@ -61,7 +61,9 @@ class TestClerkAuthentication:
 
         with (
             patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
-            patch("services.user_management.auth.clerk.get_settings") as mock_get_settings,
+            patch(
+                "services.user_management.auth.clerk.get_settings"
+            ) as mock_get_settings,
         ):
             mock_settings = mock_get_settings.return_value
             mock_settings.jwt_verify_signature = False
@@ -81,7 +83,9 @@ class TestClerkAuthentication:
         """Test JWT token verification with expired token."""
         with (
             patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
-            patch("services.user_management.auth.clerk.get_settings") as mock_get_settings,
+            patch(
+                "services.user_management.auth.clerk.get_settings"
+            ) as mock_get_settings,
         ):
             mock_settings = mock_get_settings.return_value
             mock_settings.jwt_verify_signature = False
@@ -97,7 +101,9 @@ class TestClerkAuthentication:
         """Test JWT token verification with invalid token."""
         with (
             patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
-            patch("services.user_management.auth.clerk.get_settings") as mock_get_settings,
+            patch(
+                "services.user_management.auth.clerk.get_settings"
+            ) as mock_get_settings,
         ):
             mock_settings = mock_get_settings.return_value
             mock_settings.jwt_verify_signature = False
@@ -113,7 +119,9 @@ class TestClerkAuthentication:
         """Test JWT token verification with missing required claims."""
         with (
             patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
-            patch("services.user_management.auth.clerk.get_settings") as mock_get_settings,
+            patch(
+                "services.user_management.auth.clerk.get_settings"
+            ) as mock_get_settings,
         ):
             mock_settings = mock_get_settings.return_value
             mock_settings.jwt_verify_signature = False
@@ -130,7 +138,9 @@ class TestClerkAuthentication:
         base_time = 1640995200  # 2022-01-01 00:00:00 UTC
         with (
             patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
-            patch("services.user_management.auth.clerk.get_settings") as mock_get_settings,
+            patch(
+                "services.user_management.auth.clerk.get_settings"
+            ) as mock_get_settings,
         ):
             mock_settings = mock_get_settings.return_value
             mock_settings.jwt_verify_signature = False
