@@ -271,7 +271,7 @@ class LLMManager:
         if cls._instance is None:
             cls._instance = super(LLMManager, cls).__new__(cls)
             cls._default_provider = os.getenv("LLM_PROVIDER", "openai")
-            cls._default_model = os.getenv("LLM_MODEL", "gpt-4o-mini")
+            cls._default_model = os.getenv("LLM_MODEL", "gpt-4.1-nano")
         return cls._instance
 
     def get_llm(

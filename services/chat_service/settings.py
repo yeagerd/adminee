@@ -56,7 +56,7 @@ class Settings(BaseSettings):
 
     # LLM Configuration
     llm_provider: str = Field(default="openai", description="LLM provider")
-    llm_model: str = Field(default="gpt-4o-mini", description="LLM model")
+    llm_model: str = Field(default="gpt-4.1-nano", description="LLM model")
     openai_api_key: Optional[str] = Field(default=None, description="OpenAI API key")
 
     # Logging Configuration
