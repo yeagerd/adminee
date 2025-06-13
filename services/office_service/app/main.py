@@ -1,16 +1,17 @@
 import logging
 import uuid
 from datetime import datetime, timezone
+from typing import Any, Dict
 
 import httpx
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
 from services.office_service.api.calendar import router as calendar_router
 from services.office_service.api.email import router as email_router
 from services.office_service.api.files import router as files_router
 from services.office_service.api.health import router as health_router
-from services.office_service.core.settings import get_settings
+from services.office_service.core.settings import Settings, get_settings
 from services.office_service.core.exceptions import (
     OfficeServiceError,
     ProviderAPIError,
@@ -18,18 +19,19 @@ from services.office_service.core.exceptions import (
     TokenError,
     ValidationError,
 )
-from services.office_service.core.logging_config import setup_logging
+from services.office_service.core.logging_config import LogContext, setup_logging
 from services.office_service.schemas import ApiError
 
-# Initialize logging
-setup_logging()
+# Initialize settings and logging
+settings = get_settings()
+setup_logging(settings)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    title=get_settings().APP_NAME,
+    title=settings.SERVICE_NAME,
     description="A backend microservice responsible for all external API interactions with Google and Microsoft services",
-    version=get_settings().APP_VERSION,
-    debug=get_settings().DEBUG,
+    version="1.0.0",  # Version should be managed separately (e.g., in pyproject.toml)
+    debug=settings.DEBUG,
 )
 
 
@@ -280,17 +282,21 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
 
 # Startup event
 @app.on_event("startup")
-async def startup_event():
+async def startup_event() -> None:
     """Log application startup."""
-    logger.info(
-        "Office Service starting up",
-        extra={
-            "service": get_settings().APP_NAME,
-            "version": get_settings().APP_VERSION,
-            "environment": get_settings().ENVIRONMENT,
-            "debug": get_settings().DEBUG,
-        },
-    )
+    with LogContext(
+        service=settings.SERVICE_NAME,
+        environment=settings.ENVIRONMENT,
+        debug=settings.DEBUG,
+    ):
+        logger.info(
+            "Starting Office Service",
+            extra={
+                "environment": settings.ENVIRONMENT,
+                "debug": settings.DEBUG,
+                "demo_mode": settings.DEMO_MODE,
+            },
+        )
 
 
 # Include routers
@@ -300,11 +306,19 @@ app.include_router(calendar_router)
 app.include_router(files_router)
 
 
-@app.get("/")
-async def read_root():
-    """Hello World root endpoint"""
-    logger.info("Root endpoint accessed")
-    return {"message": "Hello World", "service": "Office Service"}
+@app.get("/", status_code=status.HTTP_200_OK)
+async def read_root() -> Dict[str, Any]:
+    """Root endpoint with basic service information.
+    
+    Returns:
+        Dict containing service name, version, and status.
+    """
+    return {
+        "service": settings.SERVICE_NAME,
+        "version": "1.0.0",
+        "status": "running",
+        "environment": settings.ENVIRONMENT,
+    }
 
 
 @app.get("/ready")
@@ -314,7 +328,7 @@ async def ready_check():
     """
     return {
         "status": "ok",
-        "service": get_settings().APP_NAME,
-        "version": get_settings().APP_VERSION,
+        "service": settings.SERVICE_NAME,
+        "version": "1.0.0",
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }

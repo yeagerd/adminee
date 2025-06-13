@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from services.user_management.exceptions import ValidationException
 from services.user_management.models.integration import IntegrationProvider
-from services.user_management.settings import Settings, get_settings
+from services.user_management.utils import secrets as user_secrets
 
 # Set up logging
 logger = structlog.get_logger(__name__)
@@ -198,9 +198,8 @@ class OAuthConfig:
     and OAuth flow coordination.
     """
 
-    def __init__(self, settings: Settings):
+    def __init__(self):
         """Initialize OAuth configuration."""
-        self.settings = settings
         self.logger = structlog.get_logger(__name__)
         self._providers = self._initialize_providers()
         self._active_states: Dict[str, OAuthState] = {}
@@ -261,8 +260,8 @@ class OAuthConfig:
         providers[IntegrationProvider.GOOGLE] = OAuthProviderConfig(
             name="Google",
             provider=IntegrationProvider.GOOGLE,
-            client_id=self.settings.google_client_id,
-            client_secret=self.settings.google_client_secret,
+            client_id=user_secrets.get_google_client_id(),
+            client_secret=user_secrets.get_google_client_secret(),
             authorization_url="https://accounts.google.com/o/oauth2/v2/auth",
             token_url="https://oauth2.googleapis.com/token",
             userinfo_url="https://www.googleapis.com/oauth2/v2/userinfo",
@@ -337,13 +336,13 @@ class OAuthConfig:
         ]
 
         # Do not use the tenant-specific id, as then the user must be registered in the tenant
-        tenant_id = "common"
+        tenant_id = user_secrets.get_azure_ad_tenant_id()
 
         providers[IntegrationProvider.MICROSOFT] = OAuthProviderConfig(
             name="Microsoft",
             provider=IntegrationProvider.MICROSOFT,
-            client_id=self.settings.azure_ad_client_id,
-            client_secret=self.settings.azure_ad_client_secret,
+            client_id=user_secrets.get_azure_ad_client_id(),
+            client_secret=user_secrets.get_azure_ad_client_secret(),
             authorization_url=f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/authorize",
             token_url=f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token",
             userinfo_url="https://graph.microsoft.com/v1.0/me",
@@ -390,7 +389,7 @@ class OAuthConfig:
 
     def get_default_redirect_uri(self) -> str:
         """Get the default OAuth redirect URI from settings."""
-        return self.settings.oauth_redirect_uri
+        return user_secrets.get_oauth_redirect_uri()
 
     def generate_state(
         self,
@@ -830,15 +829,13 @@ class OAuthConfig:
 _oauth_config: Optional[OAuthConfig] = None
 
 
-def get_oauth_config(settings: Optional[Settings] = None) -> OAuthConfig:
+def get_oauth_config() -> OAuthConfig:
     """Get global OAuth configuration instance."""
     global _oauth_config
 
     # Force reload if settings are provided or if config doesn't exist
-    if _oauth_config is None or settings is not None:
-        if settings is None:
-            settings = get_settings()
-        _oauth_config = OAuthConfig(settings)
+    if _oauth_config is None:
+        _oauth_config = OAuthConfig()
 
     return _oauth_config
 

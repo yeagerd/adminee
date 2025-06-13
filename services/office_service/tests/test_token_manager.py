@@ -7,17 +7,21 @@ and lifecycle management for OAuth tokens.
 
 # Set required environment variables before any imports
 import os
+from unittest.mock import patch
 
-os.environ.setdefault("DB_URL_OFFICE", "sqlite:///test.db")
-os.environ.setdefault("API_OFFICE_USER_KEY", "test-api-key")
+# Set test environment variables
+os.environ["DB_URL_OFFICE"] = "sqlite:///test.db"
+os.environ["API_OFFICE_USER_KEY"] = "test-api-key"
+os.environ["USER_MANAGEMENT_SERVICE_URL"] = "http://test-user-service"
 
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import datetime, timezone, timedelta
+from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
 
-from services.office_service.core.token_manager import TokenData, TokenManager
+from services.office_service.core.token_manager import TokenData, TokenManager, CachedToken
+from services.office_service.core.secrets import get_user_management_service_url, get_api_office_user_key
 
 
 class TestTokenManager:
@@ -26,10 +30,11 @@ class TestTokenManager:
     @pytest.fixture
     def mock_token_data_dict(self):
         """Mock TokenData response from User Management Service."""
+        future_time = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
         return {
             "access_token": "test_access_token_123",
             "refresh_token": "test_refresh_token",
-            "expires_at": "2023-12-31T23:59:59+00:00",
+            "expires_at": future_time,
             "scopes": ["read", "write"],
             "provider": "google",
             "user_id": "test_user",
@@ -38,16 +43,22 @@ class TestTokenManager:
     @pytest.mark.asyncio
     async def test_get_user_token_success(self, mock_token_data_dict):
         """Test successful token retrieval."""
-        async with TokenManager() as token_manager:
-            with patch.object(
-                token_manager.http_client, "post", new_callable=AsyncMock
-            ) as mock_post:
-                mock_response = MagicMock()
-                mock_response.status_code = 200
-                mock_response.json.return_value = mock_token_data_dict
-                mock_post.return_value = mock_response
+        # Patch the user management service URL and API key
+        with patch('services.office_service.core.secrets.get_user_management_service_url', 
+                 return_value="http://test-user-service"), \
+             patch('services.office_service.core.secrets.get_api_office_user_key', 
+                 return_value="test-api-key"):
+            
+            async with TokenManager() as token_manager:
+                with patch.object(
+                    token_manager.http_client, "post", new_callable=AsyncMock
+                ) as mock_post:
+                    mock_response = MagicMock()
+                    mock_response.status_code = 200
+                    mock_response.json.return_value = mock_token_data_dict
+                    mock_post.return_value = mock_response
 
-                result = await token_manager.get_user_token(
+                    result = await token_manager.get_user_token(
                     "test_user", "google", ["read", "write"]
                 )
 

@@ -10,17 +10,18 @@ from typing import Any, Callable, Dict, List
 
 import structlog
 
-from services.user_management.settings import get_settings
+from services.user_management.utils import secrets as user_secrets
 
 
 def configure_logging() -> None:
     """Configure structured logging with structlog."""
 
     # Configure standard library logging
+    log_level = getattr(logging, user_secrets.get_log_level().upper())
     logging.basicConfig(
         format="%(message)s",
         stream=sys.stdout,
-        level=getattr(logging, get_settings().log_level.upper()),
+        level=log_level,
     )
 
     # Configure structlog processors
@@ -34,7 +35,8 @@ def configure_logging() -> None:
     ]
 
     # Add appropriate renderer based on format setting
-    if get_settings().log_format.lower() == "json":
+    log_format = user_secrets.get_log_format().lower()
+    if log_format == "json":
         processors.append(structlog.processors.JSONRenderer())
     else:
         processors.append(structlog.dev.ConsoleRenderer())

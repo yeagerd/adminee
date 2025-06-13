@@ -1,53 +1,58 @@
 """
-Unit tests for settings configuration.
+Unit tests for secrets configuration.
 
-Tests settings validation, environment variable loading,
+Tests secrets loading, environment variable handling,
 and configuration management.
 """
 
 import os
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
-from services.user_management.settings import Settings
-
-
-class _TestableSettings(Settings):
-    """Test version of Settings that doesn't load from .env file."""
-
-    class Config:
-        env_file = None  # Don't load from .env file in tests
-        env_file_encoding = "utf-8"
-        case_sensitive = False
-        extra = "ignore"
+from services.user_management.utils import secrets as user_secrets
 
 
-class TestSettings:
-    """Test cases for Settings configuration."""
+class TestSecrets:
+    """Test cases for Secrets configuration."""
 
-    def test_default_settings(self):
-        """Test that default settings are loaded correctly."""
-        # Clear environment variables to test defaults
+    def test_get_user_management_database_url(self):
+        """Test getting the user management database URL."""
         with patch.dict(
             os.environ,
-            {
-                "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly"
-            },
+            {"DB_URL_USER_MANAGEMENT": "postgresql://test:test@localhost:5432/testdb"},
             clear=True,
         ):
-            settings = _TestableSettings()
+            user_secrets.clear_cache()
+            assert user_secrets.get_user_management_database_url() == "postgresql://test:test@localhost:5432/testdb"
 
-            # Test default values
-            assert settings.service_name == "user-management"
-            assert settings.host == "0.0.0.0"
-            assert settings.port == 8001
-            assert settings.debug is False
-            assert settings.log_level == "INFO"
-            assert settings.log_format == "json"
-            assert (
-                settings.db_url_user_management
-                == "postgresql://postgres:postgres@localhost:5432/briefly"
-            )
-            assert settings.redis_url == "redis://localhost:6379"
+    def test_get_environment(self):
+        """Test getting the current environment."""
+        with patch.dict(os.environ, {"ENVIRONMENT": "test"}, clear=True):
+            user_secrets.clear_cache()
+            assert user_secrets.get_environment() == "test"
+
+    def test_get_log_level(self):
+        """Test getting the log level."""
+        with patch.dict(os.environ, {"LOG_LEVEL": "DEBUG"}, clear=True):
+            user_secrets.clear_cache()
+            assert user_secrets.get_log_level() == "DEBUG"
+
+    def test_get_log_format(self):
+        """Test getting the log format."""
+        with patch.dict(os.environ, {"LOG_FORMAT": "text"}, clear=True):
+            user_secrets.clear_cache()
+            assert user_secrets.get_log_format() == "text"
+
+    def test_get_debug(self):
+        """Test getting debug mode."""
+        with patch.dict(os.environ, {"DEBUG": "true"}, clear=True):
+            user_secrets.clear_cache()
+            assert user_secrets.get_debug() is True
+
+    def test_get_api_frontend_user_key(self):
+        """Test getting the frontend API key."""
+        with patch.dict(os.environ, {"API_FRONTEND_USER_KEY": "test-key"}, clear=True):
+            user_secrets.clear_cache()
+            assert user_secrets.get_api_frontend_user_key() == "test-key"
 
     def test_environment_variable_override(self):
         """Test that environment variables override default settings."""

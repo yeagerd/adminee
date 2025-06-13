@@ -16,7 +16,7 @@ from services.user_management.models.token import EncryptedToken  # noqa: F401
 
 # Import all models so SQLModel can find them for table creation
 from services.user_management.models.user import User  # noqa: F401
-from services.user_management.settings import get_settings
+from services.user_management.utils import secrets as user_secrets
 
 
 # Create async engine for database operations
@@ -31,10 +31,9 @@ def get_async_database_url(url: str) -> str:
 
 
 def get_engine():
-    settings = get_settings()
     return create_async_engine(
-        get_async_database_url(settings.db_url_user_management),
-        echo=settings.debug,
+        get_async_database_url(user_secrets.get_user_management_database_url()),
+        echo=user_secrets.get_environment() == "development",
     )
 
 

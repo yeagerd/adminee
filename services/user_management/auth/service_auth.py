@@ -20,7 +20,7 @@ from services.user_management.exceptions import (
     AuthenticationException,
     AuthorizationException,
 )
-from services.user_management.settings import get_settings
+from services.user_management.utils import secrets as user_secrets
 
 logger = logging.getLogger(__name__)
 
@@ -109,14 +109,17 @@ class ServiceAPIKeyAuth:
         self.api_key_value_to_service: Dict[str, str] = {}
 
         # Only register API keys that belong to this service (user-management)
-        if get_settings().api_frontend_user_key:
-            self.api_key_value_to_service[get_settings().api_frontend_user_key] = (
-                "user-management-access"
-            )
+        frontend_user_key = user_secrets.get_api_frontend_user_key()
+        if frontend_user_key:
+            self.api_key_value_to_service[frontend_user_key] = "user-management-access"
 
         logger.info(
             f"ServiceAPIKeyAuth initialized with {len(self.api_key_value_to_service)} API keys"
         )
+        if not self.api_key_value_to_service:
+            logger.warning(
+                "No API keys found in secrets. Service authentication will not work!"
+            )
 
     def verify_api_key_value(self, api_key_value: str) -> Optional[str]:
         """

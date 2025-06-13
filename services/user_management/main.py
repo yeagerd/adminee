@@ -56,7 +56,7 @@ from services.user_management.routers import (
 from services.user_management.services.integration_service import (
     get_integration_service,
 )
-from services.user_management.settings import Settings, get_settings
+from services.user_management.utils import secrets as user_secrets
 
 # Logger will be initialized in lifespan
 logger = None
@@ -84,10 +84,10 @@ async def lifespan(app: FastAPI):
     get_safe_logger().info("Starting User Management Service")
 
     # Validate required configuration
-    if not get_settings().api_frontend_user_key:
+    if not user_secrets.get_api_frontend_user_key():
         get_safe_logger().error("API_FRONTEND_USER_KEY is required but not configured")
         get_safe_logger().error(
-            "Set the API_FRONTEND_USER_KEY environment variable or configure it in settings"
+            "Set the API_FRONTEND_USER_KEY environment variable or configure it in secrets"
         )
         raise RuntimeError("API_FRONTEND_USER_KEY is required but not configured")
 
@@ -129,8 +129,7 @@ app = FastAPI(
 @app.on_event("startup")
 async def configure_docs():
     """Configure documentation URLs based on settings."""
-    settings = get_settings()
-    if settings.debug:
+    if user_secrets.get_debug():
         app.docs_url = "/docs"
         app.redoc_url = "/redoc"
     else:
@@ -146,18 +145,17 @@ app.add_middleware(XSSProtectionMiddleware)
 @app.on_event("startup")
 async def configure_middleware():
     """Configure middleware based on settings."""
-    settings = get_settings()
 
     app.add_middleware(
         InputSanitizationMiddleware,
         enabled=True,
-        strict_mode=settings.debug,  # Use strict mode in development
+        strict_mode=user_secrets.get_debug(),  # Use strict mode in development
     )
 
     # Add CORS middleware
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origins,
+        allow_origins=user_secrets.get_cors_origins(),
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["*"],

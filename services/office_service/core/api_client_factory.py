@@ -11,7 +11,7 @@ from typing import Dict, List, Optional, Union
 
 from services.office_service.core.clients.google import GoogleAPIClient
 from services.office_service.core.clients.microsoft import MicrosoftAPIClient
-from services.office_service.core.settings import get_settings
+from services.office_service.core.secrets import get_demo_mode
 from services.office_service.core.demo_token_manager import DemoTokenManager
 from services.office_service.core.token_manager import TokenManager
 from services.office_service.models import Provider
@@ -82,7 +82,7 @@ class APIClientFactory:
         # Use provided token manager or create a new one
         token_manager = self.token_manager
         if token_manager is None:
-            if get_settings().DEMO_MODE:
+            if get_demo_mode():
                 logger.info("Demo mode enabled - using DemoTokenManager")
                 token_manager = DemoTokenManager()
             else:

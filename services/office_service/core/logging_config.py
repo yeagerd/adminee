@@ -1,8 +1,8 @@
 """
 Logging configuration for the Office Service.
 
-Provides centralized logging setup with structured logging, request IDs,
-and appropriate log levels for different environments.
+Provides centralized logging setup with structured logging,
+request IDs, and appropriate log levels for different environments.
 """
 
 import json
@@ -10,9 +10,9 @@ import logging
 import logging.config
 import sys
 from datetime import datetime, timezone
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-from services.office_service.core.settings import get_settings
+from services.office_service.core.settings import Settings, get_settings
 
 
 class JSONFormatter(logging.Formatter):
@@ -33,155 +33,111 @@ class JSONFormatter(logging.Formatter):
         Returns:
             JSON-formatted log string
         """
-        # Build base log entry
         log_entry: Dict[str, Any] = {
             "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
-            "module": record.module,
-            "function": record.funcName,
-            "line": record.lineno,
         }
+
+        # Add module, function, and line number if available
+        if hasattr(record, 'module'):
+            log_entry["module"] = record.module
+        if hasattr(record, 'funcName'):
+            log_entry["function"] = record.funcName
+        if hasattr(record, 'lineno'):
+            log_entry["line"] = record.lineno
 
         # Add exception info if present
         if record.exc_info:
             log_entry["exception"] = self.formatException(record.exc_info)
 
-        # Add extra fields from the record
-        for key, value in record.__dict__.items():
-            if key not in {
-                "name",
-                "msg",
-                "args",
-                "levelname",
-                "levelno",
-                "pathname",
-                "filename",
-                "module",
-                "lineno",
-                "funcName",
-                "created",
-                "msecs",
-                "relativeCreated",
-                "thread",
-                "threadName",
-                "processName",
-                "process",
-                "getMessage",
-                "exc_info",
-                "exc_text",
-                "stack_info",
-            }:
-                log_entry[key] = value
+        # Add any extra attributes
+        if hasattr(record, "__dict__"):
+            for key, value in record.__dict__.items():
+                if key not in ["args", "asctime", "created", "exc_info", "exc_text",
+                             "filename", "funcName", "id", "levelname", "levelno",
+                             "lineno", "module", "msecs", "message", "msg",
+                             "name", "pathname", "process", "processName",
+                             "relativeCreated", "stack_info", "thread", "threadName"]:
+                    log_entry[key] = value
 
         return json.dumps(log_entry, default=str)
 
 
-def setup_logging() -> None:
+def setup_logging(settings: Optional[Settings] = None) -> None:
     """
     Configure structured logging for the application.
 
     Sets up JSON logging with appropriate log levels and handlers
     based on the environment configuration.
-    """
-    # Determine log level from settings
-    log_level = getattr(logging, get_settings().LOG_LEVEL.upper(), logging.INFO)
 
-    # Configure logging
-    logging_config = {
-        "version": 1,
-        "disable_existing_loggers": False,
-        "formatters": {
-            "json": {
-                "()": JSONFormatter,
-            },
-            "simple": {
-                "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            },
-        },
-        "handlers": {
-            "console": {
-                "class": "logging.StreamHandler",
-                "stream": sys.stdout,
-                "formatter": (
-                    "json" if get_settings().ENVIRONMENT == "production" else "simple"
-                ),
-                "level": log_level,
-            },
-        },
-        "loggers": {
-            # Office Service loggers
-            "services.office_service": {
-                "level": log_level,
-                "handlers": ["console"],
-                "propagate": False,
-            },
-            # FastAPI loggers
-            "fastapi": {
-                "level": logging.INFO,
-                "handlers": ["console"],
-                "propagate": False,
-            },
-            "uvicorn": {
-                "level": logging.INFO,
-                "handlers": ["console"],
-                "propagate": False,
-            },
-            "uvicorn.access": {
-                "level": logging.INFO,
-                "handlers": ["console"],
-                "propagate": False,
-            },
-            # HTTP client loggers
-            "httpx": {
-                "level": logging.WARNING,
-                "handlers": ["console"],
-                "propagate": False,
-            },
-            # Database loggers
-            "databases": {
-                "level": logging.WARNING,
-                "handlers": ["console"],
-                "propagate": False,
-            },
-            "ormar": {
-                "level": logging.WARNING,
-                "handlers": ["console"],
-                "propagate": False,
-            },
-            # Redis loggers
-            "redis": {
-                "level": logging.WARNING,
-                "handlers": ["console"],
-                "propagate": False,
-            },
-        },
-        "root": {
-            "level": logging.WARNING,
-            "handlers": ["console"],
-        },
+    Args:
+        settings: Optional settings instance. If not provided, will use get_settings()
+    """
+    if settings is None:
+        settings = get_settings()
+    
+    # Get log level and format from settings
+    log_level = settings.LOG_LEVEL.upper()
+    log_format = settings.LOG_FORMAT.lower()
+    
+    # Convert log level string to logging level
+    numeric_level = getattr(logging, log_level, logging.INFO)
+    if not isinstance(numeric_level, int):
+        numeric_level = logging.INFO
+
+    # Configure root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(numeric_level)
+
+    # Clear existing handlers to avoid duplicate logs
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+        handler.close()
+
+    # Create console handler with appropriate formatter
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(numeric_level)
+
+    if log_format == "json":
+        formatter = JSONFormatter()
+    else:
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
+
+    console_handler.setFormatter(formatter)
+    root_logger.addHandler(console_handler)
+
+    # Configure specific loggers with appropriate levels
+    loggers = {
+        # Application loggers
+        "app": numeric_level,
+        "services": numeric_level,
+        
+        # Framework loggers
+        "uvicorn": logging.INFO,
+        "uvicorn.error": logging.WARNING,
+        "uvicorn.access": logging.WARNING,
+        "fastapi": logging.WARNING,
+        "sqlalchemy.engine": logging.WARNING,
+        "httpx": logging.WARNING,
+        "httpcore": logging.WARNING,
+        "urllib3": logging.WARNING,
     }
 
-    # Apply the configuration
-    logging.config.dictConfig(logging_config)
-
-    # Log startup message
-    logger = logging.getLogger("services.office_service.core.logging_config")
-    logger.info(
-        "Logging configured",
-        extra={
-            "environment": get_settings().ENVIRONMENT,
-            "log_level": get_settings().LOG_LEVEL,
-            "service": get_settings().APP_NAME,
-            "version": get_settings().APP_VERSION,
-        },
-    )
+    for logger_name, level in loggers.items():
+        logger = logging.getLogger(logger_name)
+        logger.setLevel(level)
+        logger.propagate = False
 
 
 def get_logger(name: str) -> logging.Logger:
     """
     Get a logger instance with the specified name.
+
+    This ensures that logging is properly configured before returning the logger.
 
     Args:
         name: The logger name (typically __name__)
@@ -189,6 +145,10 @@ def get_logger(name: str) -> logging.Logger:
     Returns:
         Configured logger instance
     """
+    # Ensure logging is configured
+    if not logging.root.handlers:
+        setup_logging()
+    
     return logging.getLogger(name)
 
 
@@ -212,9 +172,8 @@ class LogContext:
         self.context = context
         self.old_factory = logging.getLogRecordFactory()
 
-    def __enter__(self) -> "LogContext":
+    def __enter__(self) -> None:
         """Enter the context manager."""
-
         def record_factory(*args: Any, **kwargs: Any) -> logging.LogRecord:
             record = self.old_factory(*args, **kwargs)
             for key, value in self.context.items():
@@ -222,7 +181,6 @@ class LogContext:
             return record
 
         logging.setLogRecordFactory(record_factory)
-        return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Exit the context manager."""

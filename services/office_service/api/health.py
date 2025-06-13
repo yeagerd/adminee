@@ -16,6 +16,7 @@ from sqlmodel import select
 
 from services.office_service.core.cache_manager import cache_manager
 from services.office_service.core.settings import get_settings
+from services.office_service.core.secrets import get_user_management_service_url
 from services.office_service.core.token_manager import TokenManager
 from services.office_service.models import ApiCall, async_session
 
@@ -54,7 +55,7 @@ async def health_check():
 
         # Check User Management Service connection
         checks["user_management_service"] = await check_service_connection(
-            get_settings().USER_MANAGEMENT_SERVICE_URL
+            get_user_management_service_url()
         )
 
         # Overall health status
@@ -68,8 +69,8 @@ async def health_check():
         response_data = {
             "status": "healthy" if all_healthy else "unhealthy",
             "timestamp": start_time.isoformat(),
-            "version": get_settings().APP_VERSION,
-            "service": get_settings().APP_NAME,
+            "version": "1.0.0",
+            "service": "office-service",
             "response_time_ms": response_time_ms,
             "checks": checks,
         }
@@ -85,8 +86,8 @@ async def health_check():
             content={
                 "status": "unhealthy",
                 "timestamp": start_time.isoformat(),
-                "version": get_settings().APP_VERSION,
-                "service": get_settings().APP_NAME,
+                "version": "1.0.0",
+                "service": "office-service",
                 "error": str(e),
                 "checks": checks,
             },

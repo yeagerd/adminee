@@ -12,7 +12,7 @@ from typing import Optional
 from fastapi import HTTPException, Request, status
 
 from services.user_management.exceptions import WebhookValidationException
-from services.user_management.settings import get_settings
+from services.user_management.utils import secrets as user_secrets
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +35,9 @@ class WebhookSignatureVerifier:
         Raises:
             WebhookValidationException: If signature verification fails
         """
-        if not get_settings().clerk_webhook_secret:
-            logger.warning("Clerk webhook secret not configured, skipping verification")
+        webhook_secret = user_secrets.get_clerk_webhook_secret()
+        if not webhook_secret:
+            logger.warning("CLERK_WEBHOOK_SECRET not found in secrets, skipping verification")
             return
 
         if not signature_header:
@@ -115,10 +116,11 @@ class WebhookSignatureVerifier:
         """
         import base64
 
-        # Clerk uses base64-encoded secret
-        key = base64.b64decode(secret)
-        signature = hmac.new(key, payload.encode("utf-8"), hashlib.sha256).digest()
-        return base64.b64encode(signature).decode("utf-8")
+        signed_content = f"{payload.split('.')[0]}.{payload.split('.')[1]}"
+        expected_signature = (
+            f"v1,{hmac.new(secret.encode('utf-8'), signed_content.encode(), hashlib.sha256).hexdigest()}"
+        )
+        return expected_signature
 
 
 async def verify_webhook_signature(request: Request) -> None:

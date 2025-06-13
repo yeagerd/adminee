@@ -14,7 +14,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from services.user_management.exceptions import AuthenticationException
 from services.user_management.logging_config import get_logger
-from services.user_management.settings import get_settings
+from services.user_management.utils import secrets as user_secrets
 
 logger = logging.getLogger(__name__)
 
@@ -40,14 +40,21 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
     try:
         logger.info("Using manual JWT verification (signature verification disabled)")
 
-        # For development/demo, we use simplified JWT validation
-        # In production, you should use proper signature verification with JWKS
-        verify_signature = getattr(get_settings(), "jwt_verify_signature", False)
+        # Get JWT verification settings from secrets
+        verify_signature = user_secrets.get_jwt_verify_signature()
         dummy_key = "dummy-key-for-verification-disabled"
+
+        # Get Clerk JWT key from secrets
+        clerk_jwt_key = user_secrets.get_clerk_jwt_key()
+        if not clerk_jwt_key:
+            logger.warning(
+                "CLERK_JWT_KEY not found in secrets - JWT verification will be skipped"
+            )
+            return {}
 
         decoded_token = jwt.decode(
             token,
-            key=dummy_key,
+            key=clerk_jwt_key,
             options={
                 "verify_signature": verify_signature
             },  # Configurable signature verification

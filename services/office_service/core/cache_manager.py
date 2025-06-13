@@ -15,7 +15,7 @@ from typing import Any, Dict, Optional
 import redis.asyncio as redis
 from redis.asyncio import Redis
 
-from services.office_service.core.settings import get_settings
+from services.office_service.core.secrets import get_redis_url
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ class CacheManager:
                 if self._redis is None:
                     try:
                         self._redis = redis.from_url(
-                            get_settings().REDIS_URL,
+                            get_redis_url(),
                             encoding="utf-8",
                             decode_responses=True,
                             socket_timeout=5.0,

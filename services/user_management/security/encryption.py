@@ -16,7 +16,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 from services.common.secrets import get_token_encryption_salt  # type: ignore[misc]
 from services.user_management.exceptions import EncryptionException
-from services.user_management.settings import Settings
+from services.user_management.utils import secrets as user_secrets
 
 # Set up logging
 logger = structlog.get_logger(__name__)
@@ -42,39 +42,19 @@ class TokenEncryption:
     - Secure random salt and nonce generation
     """
 
-    def __init__(self, settings: Optional[Settings] = None):
-        """
-        Initialize the token encryption service.
-
-        Args:
-            settings: Application settings for encryption configuration
-        """
-        self.settings = settings or Settings()
-        self._service_salt = self._get_service_salt()
+    def __init__(self):
+        """Initialize the token encryption service."""
+        self._key_cache: Dict[Tuple[bytes, int], bytes] = {}
+        self.logger = structlog.get_logger(__name__)
         logger.info("Token encryption service initialized", key_version=KEY_VERSION)
 
     def _get_service_salt(self) -> bytes:
-        """
-        Get or generate the service-wide salt for key derivation.
-
-        Returns:
-            Service salt as bytes
-
-        Raises:
-            EncryptionException: If salt cannot be obtained
-        """
-        try:
-            salt_b64 = get_token_encryption_salt()
-            if not salt_b64:
-                logger.error("Failed to get service salt")
-                raise EncryptionException("Failed to initialize encryption service")
-            return base64.b64decode(salt_b64)
-
-        except Exception as e:
-            logger.error("Failed to get service salt", error=str(e))
-            raise EncryptionException(
-                "Failed to initialize encryption service", {"error": str(e)}
-            )
+        """Get the service-wide encryption salt."""
+        # Get encryption key from secrets
+        encryption_key = user_secrets.get_encryption_key()
+        if not encryption_key:
+            raise EncryptionException("No encryption key found in secrets")
+        return encryption_key.encode("utf-8")
 
     def derive_user_key(self, user_id: str, version: int = KEY_VERSION) -> bytes:
         """
@@ -95,7 +75,7 @@ class TokenEncryption:
 
             # Create user-specific salt by combining service salt with user ID and version
             version_bytes = f"{user_id}:{version}".encode("utf-8")
-            user_salt = self._service_salt + version_bytes
+            user_salt = self._get_service_salt() + version_bytes
             # Hash to ensure consistent length and distribution
             import hashlib
 
@@ -268,9 +248,8 @@ class TokenEncryption:
             # Decrypt with old key
             decrypted_token = self.decrypt_token(old_token, user_id)
 
-            # Re-encrypt with new version
-            new_version = KEY_VERSION + 1
-            new_key = self.derive_user_key(user_id, new_version)
+            # Derive new key
+            new_key = self.derive_user_key(user_id, KEY_VERSION + 1)
 
             # Generate new nonce
             nonce = os.urandom(NONCE_LENGTH)
@@ -280,13 +259,13 @@ class TokenEncryption:
             ciphertext = aesgcm.encrypt(nonce, decrypted_token.encode("utf-8"), None)
 
             # Package with new version
-            encrypted_data = bytes([new_version]) + nonce + ciphertext
+            encrypted_data = bytes([KEY_VERSION + 1]) + nonce + ciphertext
             new_encrypted_token = base64.b64encode(encrypted_data).decode("utf-8")
 
             logger.info(
                 "User key rotated successfully",
                 user_id=user_id,
-                new_version=new_version,
+                new_version=KEY_VERSION + 1,
             )
             return new_encrypted_token, new_version
 

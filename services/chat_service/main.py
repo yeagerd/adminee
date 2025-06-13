@@ -9,7 +9,7 @@ from sqlmodel import select
 
 from services.chat_service import history_manager
 from services.chat_service.api import router
-from services.chat_service.settings import get_settings
+from services.chat_service import secrets as chat_secrets
 
 # Configure logging
 logging.basicConfig(
@@ -27,11 +27,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("Starting Chat Service")
 
     # Validate API keys for outgoing service calls (optional - will warn if missing)
-    if not get_settings().api_chat_user_key:
+    if not chat_secrets.get_api_chat_user_key():
         logger.warning(
             "API_CHAT_USER_KEY not configured - user management calls will fail"
         )
-    if not get_settings().api_chat_office_key:
+    if not chat_secrets.get_api_chat_office_key():
         logger.warning(
             "API_CHAT_OFFICE_KEY not configured - office service calls will fail"
         )
