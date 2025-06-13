@@ -1,15 +1,22 @@
 """
-Unit tests for OAuth configuration module.
+Unit tests for OAuth configuration and PKCE functionality.
 
-Tests OAuth provider configurations, state management, PKCE challenges,
-authorization URL generation, token exchange, and user info retrieval.
+Tests OAuth provider configuration, PKCE challenge generation,
+state management, and token exchange operations.
 """
 
 import base64
 import hashlib
+import os
 import urllib.parse
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
+
+# Set required environment variables before any imports
+os.environ.setdefault("DB_URL_USER_MANAGEMENT", "sqlite:///test.db")
+os.environ.setdefault("TOKEN_ENCRYPTION_SALT", "dGVzdC1zYWx0LTE2Ynl0ZQ==")
+os.environ.setdefault("API_FRONTEND_USER_KEY", "test-api-key")
+os.environ.setdefault("CLERK_SECRET_KEY", "test-clerk-key")
 
 import httpx
 import pytest

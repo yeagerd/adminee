@@ -1,3 +1,18 @@
+"""
+End-to-end tests for chat service.
+
+Tests the complete chat service functionality including
+message processing, history management, and API endpoints.
+"""
+
+import os
+
+# Set required environment variables before any imports
+os.environ.setdefault("DB_URL_CHAT", "sqlite:///test.db")
+
+import asyncio
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -17,8 +32,6 @@ def fake_llm_env(monkeypatch):
     # Simulate no OpenAI API key for tests
     monkeypatch.setenv("OPENAI_API_KEY", "")
     # Initialize test database synchronously
-    import asyncio
-
     asyncio.run(setup_test_database())
     yield
 

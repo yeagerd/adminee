@@ -9,7 +9,10 @@ import asyncio
 import os
 
 # Set required environment variables before any imports
+os.environ.setdefault("DB_URL_USER_MANAGEMENT", "sqlite:///test.db")
 os.environ.setdefault("TOKEN_ENCRYPTION_SALT", "dGVzdC1zYWx0LTE2Ynl0ZQ==")
+os.environ.setdefault("API_FRONTEND_USER_KEY", "test-api-key")
+os.environ.setdefault("CLERK_SECRET_KEY", "test-clerk-key")
 
 from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch

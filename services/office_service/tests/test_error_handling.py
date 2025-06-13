@@ -1,15 +1,22 @@
 """
-Unit tests for error handling across the Office Service.
+Unit tests for error handling across the office service.
 
-Tests error scenarios, exception handling, and proper HTTP status codes
-for various failure conditions in the API endpoints.
+Tests error handling, exception propagation, and error response formatting
+for various failure scenarios in the office service.
 """
 
 import json
+import os
+
+# Set required environment variables before any imports
+os.environ.setdefault("DB_URL_OFFICE", "sqlite:///test.db")
+
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
+from fastapi import status
+from fastapi.testclient import TestClient
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
