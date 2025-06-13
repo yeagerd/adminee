@@ -15,7 +15,7 @@ from typing import Any, Dict, Optional
 import redis.asyncio as redis
 from redis.asyncio import Redis
 
-from services.office_service.core.config import get_settings
+from services.office_service.core.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
