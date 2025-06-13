@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 import httpx
 from pydantic import BaseModel
 
-from services.office_service.core.config import settings
+from services.office_service.core.config import get_settings
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -64,8 +64,8 @@ class TokenManager:
         """Async context manager entry"""
         # Use API key for user management service if available
         headers = {}
-        if settings.api_office_user_key:
-            headers["X-API-Key"] = settings.api_office_user_key
+        if get_settings().api_office_user_key:
+            headers["X-API-Key"] = get_settings().api_office_user_key
 
         self.http_client = httpx.AsyncClient(
             timeout=httpx.Timeout(10.0),  # 10 second timeout
@@ -154,7 +154,7 @@ class TokenManager:
             logger.info(f"Requesting token for user {user_id}, provider {provider}")
 
             response = await self.http_client.post(
-                f"{settings.USER_MANAGEMENT_SERVICE_URL}/internal/tokens/get",
+                f"{get_settings().USER_MANAGEMENT_SERVICE_URL}/internal/tokens/get",
                 json={
                     "user_id": user_id,
                     "provider": provider,

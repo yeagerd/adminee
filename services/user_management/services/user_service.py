@@ -476,5 +476,13 @@ class UserService:
             logger.warning(f"Failed to update last login for user {user_id}: {e}")
 
 
-# Global service instance
-user_service = UserService()
+# Global user service instance
+_user_service: UserService | None = None
+
+
+def get_user_service() -> UserService:
+    """Get the global user service instance, creating it if necessary."""
+    global _user_service
+    if _user_service is None:
+        _user_service = UserService()
+    return _user_service

@@ -15,8 +15,8 @@ class Settings(BaseSettings):
     )
 
     # Database configuration
-    DATABASE_URL: str = Field(
-        default="sqlite:///./office_service.db",
+    db_url_office: str = Field(
+        ...,  # Required field - no default to prevent production mistakes
         description="Database connection URL",
         validation_alias=AliasChoices("DB_URL_OFFICE", "DATABASE_URL"),
     )
@@ -76,4 +76,12 @@ class Settings(BaseSettings):
 
 
 # Global settings instance
-settings = Settings()
+_settings: Settings | None = None
+
+
+def get_settings() -> Settings:
+    """Get the global settings instance, creating it if necessary."""
+    global _settings
+    if _settings is None:
+        _settings = Settings()
+    return _settings

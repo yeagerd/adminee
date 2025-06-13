@@ -9,7 +9,7 @@ from sqlmodel import select
 
 from services.chat_service import history_manager
 from services.chat_service.api import router
-from services.chat_service.settings import settings
+from services.chat_service.settings import get_settings
 
 # Configure logging
 logging.basicConfig(
@@ -27,11 +27,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("Starting Chat Service")
 
     # Validate API keys for outgoing service calls (optional - will warn if missing)
-    if not settings.api_chat_user_key:
+    if not get_settings().api_chat_user_key:
         logger.warning(
             "API_CHAT_USER_KEY not configured - user management calls will fail"
         )
-    if not settings.api_chat_office_key:
+    if not get_settings().api_chat_office_key:
         logger.warning(
             "API_CHAT_OFFICE_KEY not configured - office service calls will fail"
         )
@@ -74,13 +74,13 @@ async def health_check() -> JSONResponse:
         # Check service configuration
         config_status = {
             "api_chat_user_key": (
-                "configured" if settings.api_chat_user_key else "missing"
+                "configured" if get_settings().api_chat_user_key else "missing"
             ),
             "api_chat_office_key": (
-                "configured" if settings.api_chat_office_key else "missing"
+                "configured" if get_settings().api_chat_office_key else "missing"
             ),
-            "user_management_service_url": settings.user_management_service_url,
-            "office_service_url": settings.office_service_url,
+            "user_management_service_url": get_settings().user_management_service_url,
+            "office_service_url": get_settings().office_service_url,
         }
 
         return JSONResponse(

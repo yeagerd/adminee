@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # Database Configuration
-    database_url: str = Field(
-        default="sqlite:///./user_management.db",
+    db_url_user_management: str = Field(
+        ...,  # Required field - no default to prevent production mistakes
         description="PostgreSQL database connection string",
         validation_alias=AliasChoices("DB_URL_USER_MANAGEMENT", "DATABASE_URL"),
     )
@@ -115,4 +115,12 @@ class Settings(BaseSettings):
 
 
 # Global settings instance
-settings = Settings()
+_settings: Settings | None = None
+
+
+def get_settings() -> Settings:
+    """Get the global settings instance, creating it if necessary."""
+    global _settings
+    if _settings is None:
+        _settings = Settings()
+    return _settings

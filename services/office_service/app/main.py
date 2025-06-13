@@ -10,7 +10,7 @@ from services.office_service.api.calendar import router as calendar_router
 from services.office_service.api.email import router as email_router
 from services.office_service.api.files import router as files_router
 from services.office_service.api.health import router as health_router
-from services.office_service.core.config import settings
+from services.office_service.core.config import get_settings
 from services.office_service.core.exceptions import (
     OfficeServiceError,
     ProviderAPIError,
@@ -26,10 +26,10 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    title=settings.APP_NAME,
+    title=get_settings().APP_NAME,
     description="A backend microservice responsible for all external API interactions with Google and Microsoft services",
-    version=settings.APP_VERSION,
-    debug=settings.DEBUG,
+    version=get_settings().APP_VERSION,
+    debug=get_settings().DEBUG,
 )
 
 
@@ -268,7 +268,7 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
     error_response = ApiError(
         type="internal_error",
         message="An internal server error occurred",
-        details={"error_type": type(exc).__name__} if settings.DEBUG else {},
+        details={"error_type": type(exc).__name__} if get_settings().DEBUG else {},
         request_id=request_id,
     )
 
@@ -285,10 +285,10 @@ async def startup_event():
     logger.info(
         "Office Service starting up",
         extra={
-            "service": settings.APP_NAME,
-            "version": settings.APP_VERSION,
-            "environment": settings.ENVIRONMENT,
-            "debug": settings.DEBUG,
+            "service": get_settings().APP_NAME,
+            "version": get_settings().APP_VERSION,
+            "environment": get_settings().ENVIRONMENT,
+            "debug": get_settings().DEBUG,
         },
     )
 
@@ -314,7 +314,7 @@ async def ready_check():
     """
     return {
         "status": "ok",
-        "service": settings.APP_NAME,
-        "version": settings.APP_VERSION,
+        "service": get_settings().APP_NAME,
+        "version": get_settings().APP_VERSION,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }

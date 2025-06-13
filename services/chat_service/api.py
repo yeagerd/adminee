@@ -43,7 +43,7 @@ from services.chat_service.models import MessageResponse as PydanticMessage
 from services.chat_service.models import (
     ThreadResponse,
 )
-from services.chat_service.settings import settings
+from services.chat_service.settings import get_settings
 
 router = APIRouter()
 
@@ -93,8 +93,8 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
         tools=[],
         subagents=[],
         # These will use settings
-        llm_model=settings.llm_model,
-        llm_provider=settings.llm_provider,
+        llm_model=get_settings().llm_model,
+        llm_provider=get_settings().llm_provider,
     )
     # Actually run the chat and get the agent's response
     agent_response = await agent.chat(user_input)

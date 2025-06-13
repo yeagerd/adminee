@@ -379,5 +379,13 @@ class PreferencesService:
             raise DatabaseException("Failed to reset preferences")
 
 
-# Create service instance
-preferences_service = PreferencesService()
+# Global preferences service instance
+_preferences_service: PreferencesService | None = None
+
+
+def get_preferences_service() -> PreferencesService:
+    """Get the global preferences service instance, creating it if necessary."""
+    global _preferences_service
+    if _preferences_service is None:
+        _preferences_service = PreferencesService()
+    return _preferences_service

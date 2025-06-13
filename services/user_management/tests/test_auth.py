@@ -22,8 +22,8 @@ from services.user_management.auth.clerk import (
 from services.user_management.auth.service_auth import (
     ServiceAuthRequired,
     get_current_service,
+    get_service_auth,
     require_service_auth,
-    service_auth,
     validate_service_permissions,
     verify_service_authentication,
 )
@@ -61,8 +61,11 @@ class TestClerkAuthentication:
 
         with (
             patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
-            patch("services.user_management.auth.clerk.settings") as mock_settings,
+            patch(
+                "services.user_management.auth.clerk.get_settings"
+            ) as mock_get_settings,
         ):
+            mock_settings = mock_get_settings.return_value
             mock_settings.jwt_verify_signature = False
             mock_decode.return_value = {
                 "sub": "user_123",
@@ -80,8 +83,11 @@ class TestClerkAuthentication:
         """Test JWT token verification with expired token."""
         with (
             patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
-            patch("services.user_management.auth.clerk.settings") as mock_settings,
+            patch(
+                "services.user_management.auth.clerk.get_settings"
+            ) as mock_get_settings,
         ):
+            mock_settings = mock_get_settings.return_value
             mock_settings.jwt_verify_signature = False
             mock_decode.side_effect = jwt.ExpiredSignatureError("Token expired")
 
@@ -95,8 +101,11 @@ class TestClerkAuthentication:
         """Test JWT token verification with invalid token."""
         with (
             patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
-            patch("services.user_management.auth.clerk.settings") as mock_settings,
+            patch(
+                "services.user_management.auth.clerk.get_settings"
+            ) as mock_get_settings,
         ):
+            mock_settings = mock_get_settings.return_value
             mock_settings.jwt_verify_signature = False
             mock_decode.side_effect = jwt.InvalidTokenError("Invalid token")
 
@@ -110,8 +119,11 @@ class TestClerkAuthentication:
         """Test JWT token verification with missing required claims."""
         with (
             patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
-            patch("services.user_management.auth.clerk.settings") as mock_settings,
+            patch(
+                "services.user_management.auth.clerk.get_settings"
+            ) as mock_get_settings,
         ):
+            mock_settings = mock_get_settings.return_value
             mock_settings.jwt_verify_signature = False
             mock_decode.return_value = {"sub": "user_123"}  # Missing required claims
 
@@ -126,8 +138,11 @@ class TestClerkAuthentication:
         base_time = 1640995200  # 2022-01-01 00:00:00 UTC
         with (
             patch("services.user_management.auth.clerk.jwt.decode") as mock_decode,
-            patch("services.user_management.auth.clerk.settings") as mock_settings,
+            patch(
+                "services.user_management.auth.clerk.get_settings"
+            ) as mock_get_settings,
         ):
+            mock_settings = mock_get_settings.return_value
             mock_settings.jwt_verify_signature = False
             mock_decode.return_value = {
                 "sub": "user_123",
@@ -237,30 +252,31 @@ class TestServiceAuthentication:
     def setup_service_auth(self):
         """Set up service auth with test API key."""
         with patch(
-            "services.user_management.auth.service_auth.settings"
+            "services.user_management.auth.service_auth.get_settings"
         ) as mock_settings:
-            mock_settings.api_frontend_user_key = "api-frontend-user-key"
-            mock_settings.api_key_office = None
+            mock_settings.return_value.api_frontend_user_key = "api-frontend-user-key"
+            mock_settings.return_value.api_key_office = None
 
-            # Re-initialize the service auth with mocked settings
+            # Reset the global service auth instance
+            import services.user_management.auth.service_auth as auth_module
 
-            service_auth.__init__()
+            auth_module._service_auth = None
             yield
 
     def test_user_management_api_key_auth_verify_valid_key(self):
         """Test valid API key verification."""
-        service_name = service_auth.verify_api_key_value("api-frontend-user-key")
+        service_name = get_service_auth().verify_api_key_value("api-frontend-user-key")
         assert service_name == "user-management-access"
 
     def test_user_management_api_key_auth_verify_invalid_key(self):
         """Test invalid API key verification."""
-        service_name = service_auth.verify_api_key_value("invalid-key")
+        service_name = get_service_auth().verify_api_key_value("invalid-key")
         assert service_name is None
 
     def test_user_management_api_key_auth_is_valid_service(self):
         """Test service name validation."""
-        assert service_auth.is_valid_service("user-management-access") is True
-        assert service_auth.is_valid_service("invalid-service") is False
+        assert get_service_auth().is_valid_service("user-management-access") is True
+        assert get_service_auth().is_valid_service("invalid-service") is False
 
     @pytest.mark.asyncio
     async def test_verify_service_authentication_success(self):
@@ -395,14 +411,15 @@ class TestAuthenticationIntegration:
     def setup_service_auth(self):
         """Set up service auth with test API key."""
         with patch(
-            "services.user_management.auth.service_auth.settings"
+            "services.user_management.auth.service_auth.get_settings"
         ) as mock_settings:
-            mock_settings.api_frontend_user_key = "api-frontend-user-key"
-            mock_settings.api_key_office = None
+            mock_settings.return_value.api_frontend_user_key = "api-frontend-user-key"
+            mock_settings.return_value.api_key_office = None
 
-            # Re-initialize the service auth with mocked settings
+            # Reset the global service auth instance
+            import services.user_management.auth.service_auth as auth_module
 
-            service_auth.__init__()
+            auth_module._service_auth = None
             yield
 
     @pytest.mark.asyncio

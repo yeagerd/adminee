@@ -12,7 +12,7 @@ import sys
 from datetime import datetime, timezone
 from typing import Any, Dict
 
-from services.office_service.core.config import settings
+from services.office_service.core.config import get_settings
 
 
 class JSONFormatter(logging.Formatter):
@@ -86,7 +86,7 @@ def setup_logging() -> None:
     based on the environment configuration.
     """
     # Determine log level from settings
-    log_level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
+    log_level = getattr(logging, get_settings().LOG_LEVEL.upper(), logging.INFO)
 
     # Configure logging
     logging_config = {
@@ -105,7 +105,7 @@ def setup_logging() -> None:
                 "class": "logging.StreamHandler",
                 "stream": sys.stdout,
                 "formatter": (
-                    "json" if settings.ENVIRONMENT == "production" else "simple"
+                    "json" if get_settings().ENVIRONMENT == "production" else "simple"
                 ),
                 "level": log_level,
             },
@@ -171,10 +171,10 @@ def setup_logging() -> None:
     logger.info(
         "Logging configured",
         extra={
-            "environment": settings.ENVIRONMENT,
-            "log_level": settings.LOG_LEVEL,
-            "service": settings.APP_NAME,
-            "version": settings.APP_VERSION,
+            "environment": get_settings().ENVIRONMENT,
+            "log_level": get_settings().LOG_LEVEL,
+            "service": get_settings().APP_NAME,
+            "version": get_settings().APP_VERSION,
         },
     )
 

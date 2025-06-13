@@ -15,7 +15,7 @@ from services.user_management.schemas.integration import (
     InternalTokenResponse,
     InternalUserStatusResponse,
 )
-from services.user_management.services.token_service import token_service
+from services.user_management.services.token_service import get_token_service
 
 router = APIRouter(
     prefix="/internal",
@@ -60,7 +60,7 @@ async def get_user_tokens(
     - Comprehensive audit logging
     """
     try:
-        return await token_service.get_valid_token(
+        return await get_token_service().get_valid_token(
             user_id=request.user_id,
             provider=request.provider,
             required_scopes=request.required_scopes,
@@ -112,7 +112,7 @@ async def refresh_user_tokens(
     - Returns updated token information
     """
     try:
-        return await token_service.refresh_tokens(
+        return await get_token_service().refresh_tokens(
             user_id=request.user_id,
             provider=request.provider,
             force=request.force,
@@ -162,7 +162,7 @@ async def get_user_status(
     - Track sync activity across services
     """
     try:
-        return await token_service.get_user_status(user_id=user_id)
+        return await get_token_service().get_user_status(user_id=user_id)
     except NotFoundException as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except IntegrationException as e:

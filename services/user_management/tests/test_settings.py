@@ -1,5 +1,8 @@
 """
-Unit tests for settings configuration and environment variable loading.
+Unit tests for settings configuration.
+
+Tests settings validation, environment variable loading,
+and configuration management.
 """
 
 import os
@@ -41,7 +44,7 @@ class TestSettings:
             assert settings.log_level == "INFO"
             assert settings.log_format == "json"
             assert (
-                settings.database_url
+                settings.db_url_user_management
                 == "postgresql://postgres:postgres@localhost:5432/briefly"
             )
             assert settings.redis_url == "redis://localhost:6379"
@@ -68,7 +71,8 @@ class TestSettings:
             assert settings.debug is True
             assert settings.log_level == "DEBUG"
             assert (
-                settings.database_url == "postgresql://test:test@testhost:5432/testdb"
+                settings.db_url_user_management
+                == "postgresql://test:test@testhost:5432/testdb"
             )
 
     def test_security_settings(self):
@@ -207,8 +211,16 @@ class TestSettings:
 
     def test_settings_immutability(self):
         """Test that settings behave as expected for configuration."""
-        settings = _TestableSettings()
-        original_port = settings.port
+        with patch.dict(
+            os.environ,
+            {
+                "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
+                "PORT": "8001",
+            },
+            clear=True,
+        ):
+            settings = _TestableSettings()
+            original_port = settings.port
 
-        # Settings should maintain their values
-        assert settings.port == original_port
+            # Settings should maintain their values
+            assert settings.port == original_port

@@ -5,33 +5,24 @@ Basic tests for internal service-to-service API endpoints.
 """
 
 import asyncio
-import os
-import tempfile
 from unittest.mock import patch
 
 from fastapi import status
 from fastapi.testclient import TestClient
 
-# Set required environment variables before any imports
-os.environ.setdefault("TOKEN_ENCRYPTION_SALT", "dGVzdC1zYWx0LTE2Ynl0ZQ==")
-
 from services.user_management.database import create_all_tables
 from services.user_management.main import app
+from services.user_management.tests.test_base import BaseUserManagementTest
 
 
-class TestInternalAPI:
+class TestInternalAPI(BaseUserManagementTest):
     """Test suite for internal API endpoints."""
 
     def setup_method(self):
-        self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
+        super().setup_method()
         asyncio.run(create_all_tables())
         self.client = TestClient(app)
         self.auth_headers = self._get_auth_headers()
-
-    def teardown_method(self):
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
 
     def _get_auth_headers(self):
         """Provide authentication headers for internal API calls."""

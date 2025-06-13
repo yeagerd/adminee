@@ -6,14 +6,14 @@ from sqlalchemy import engine_from_config, pool
 # Import all models so they are registered with metadata
 from services.user_management import models  # noqa: F401
 from services.user_management.database import metadata
-from services.user_management.settings import settings
+from services.user_management.settings import get_settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
 # Set the database URL from our settings
-config.set_main_option("sqlalchemy.url", settings.database_url)
+config.set_main_option("sqlalchemy.url", get_settings().db_url_user_management)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

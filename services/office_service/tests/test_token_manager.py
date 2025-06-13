@@ -1,9 +1,15 @@
 """
-Unit tests for TokenManager class.
+Unit tests for token management functionality.
 
-Tests token storage, retrieval, refresh, and encryption/decryption
-functionality with proper mocking of external dependencies.
+Tests token storage, retrieval, refresh, validation,
+and lifecycle management for OAuth tokens.
 """
+
+# Set required environment variables before any imports
+import os
+
+os.environ.setdefault("DB_URL_OFFICE", "sqlite:///test.db")
+os.environ.setdefault("API_OFFICE_USER_KEY", "test-api-key")
 
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
