@@ -18,7 +18,6 @@ from services.common import get_secret
 
 # Get any secret by name
 api_key = get_secret('OPENAI_API_KEY')
-database_url = get_secret('DATABASE_URL', default='sqlite:///default.db')
 ```
 
 **Service-specific helpers:**

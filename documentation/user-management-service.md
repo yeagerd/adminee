@@ -172,8 +172,8 @@ from enum import Enum
 from pydantic import EmailStr
 
 # Database and metadata setup
-DATABASE_URL = "postgresql://user:password@localhost/briefly"
-database = databases.Database(DATABASE_URL)
+DB_URL_USER = "postgresql://user:password@localhost/briefly"
+database = databases.Database(DB_URL_USER)
 metadata = sqlalchemy.MetaData()
 
 class BaseMeta(sqlmodel.SQLModel): # TODO: Check if this is the correct base class

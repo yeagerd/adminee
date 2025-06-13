@@ -392,6 +392,7 @@ class TestOAuthConfig:
 
         try:
             # Create environment patch with missing OAuth credentials
+            # Explicitly set all OAuth credentials to empty/None to ensure no providers are available
             with patch.dict(
                 os.environ,
                 {
@@ -400,7 +401,11 @@ class TestOAuthConfig:
                     "API_FRONTEND_USER_KEY": "test-api-key",
                     "CLERK_SECRET_KEY": "test-clerk-key",
                     "OAUTH_REDIRECT_URI": "https://example.com/oauth/callback",
-                    # Missing OAuth credentials - GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, etc.
+                    # Explicitly clear all OAuth credentials
+                    "GOOGLE_CLIENT_ID": "",
+                    "GOOGLE_CLIENT_SECRET": "",
+                    "AZURE_AD_CLIENT_ID": "",
+                    "AZURE_AD_CLIENT_SECRET": "",
                 },
                 clear=True,
             ):  # clear=True ensures only our test values are present

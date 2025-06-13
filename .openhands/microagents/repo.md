@@ -67,8 +67,8 @@ The application follows a microservices architecture with the following componen
 - Git
 
 ### Environment Variables
-Copy `.example.env` to `.env` and configure:
-- `DATABASE_URL` - PostgreSQL connection string
+Copy `.env.example` to `.env` and configure:
+- `DB_URL_*` - PostgreSQL connection string
 - `PINECONE_API_KEY` - Pinecone API key
 - `PINECONE_ENVIRONMENT` - Pinecone environment
 - `AZURE_AD_CLIENT_ID`, `AZURE_AD_CLIENT_SECRET`, `AZURE_AD_TENANT_ID` - Microsoft OAuth

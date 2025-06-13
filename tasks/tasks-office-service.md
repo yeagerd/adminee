@@ -61,7 +61,7 @@ Before committing:
 [x] 1.4 [Create a basic FastAPI application instance in app/main.py with a "Hello World" root endpoint.]
 [x] 1.5 [Implement environment variable loading using Pydantic's BaseSettings to manage configuration from the .env file as specified in Section 9.1.]
 [x] 1.6 [Define the Ormar models (ApiCall, CacheEntry, RateLimitBucket) in a models/ directory as specified in Section 5.1.]
-[x] 1.7 [Configure the database connection using the DATABASE_URL and initialize Alembic for database migrations.]
+[x] 1.7 [Configure the database connection using the DB_URL_OFFICE and initialize Alembic for database migrations.]
 [x] 1.8 [Generate and apply the initial Alembic migration to create the tables for the models defined in step 1.6.]
 [x] 1.9 [Run ./fix to fix lint issues.]
 [x] 1.10 [Run `tox -p auto` and fix any errors.]

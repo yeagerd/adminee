@@ -121,7 +121,7 @@ tox -p auto             # Full test matrix
         ```bash
         cp .env.example .env
         ```
-    -   Open `.env` and fill in the required values for `DATABASE_URL`, `PINECONE_API_KEY`, `PINECONE_ENVIRONMENT`, Microsoft OAuth credentials (`AZURE_AD_CLIENT_ID`, etc.), and ``.
+    -   Open `.env` and fill in the required values for `DB_URL_*`, `PINECONE_API_KEY`, `PINECONE_ENVIRONMENT`, Microsoft OAuth credentials (`AZURE_AD_CLIENT_ID`, etc.), and ``.
 
 3.  **Launch the Development Environment:**
 

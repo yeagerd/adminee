@@ -249,8 +249,8 @@ from datetime import datetime
 from enum import Enum
 from pydantic import BaseModel, EmailStr
 
-DATABASE_URL = "postgresql://user:password@localhost/briefly"
-database = databases.Database(DATABASE_URL)
+DB_URL_OFFICE = "postgresql://user:password@localhost/briefly"
+database = databases.Database(DB_URL_OFFICE)
 metadata = sqlalchemy.MetaData()
 
 class BaseMeta(sqlmodel.SQLModel): # TODO: Check if this is the correct base class
@@ -524,7 +524,7 @@ LOG_LEVEL = "INFO"
 DEBUG = False
 
 # Database
-DATABASE_URL = "postgresql://user:password@host:5432/briefly"
+DB_URL_OFFICE = "postgresql://user:password@host:5432/briefly"
 
 # Redis
 REDIS_URL = "redis://redis:6379/0"

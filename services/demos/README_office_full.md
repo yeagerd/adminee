@@ -38,7 +38,7 @@ export DEMO_GOOGLE_TOKEN="your-google-oauth-token"
 export DEMO_MICROSOFT_TOKEN="your-microsoft-graph-token"
 
 # Optional: Set other service configuration
-export DATABASE_URL="sqlite:///./office_service.db"
+export DB_URL_USER="sqlite:///./office_service.db"
 export REDIS_URL="redis://localhost:6379"
 
 # Start the Office Service (from office service directory)

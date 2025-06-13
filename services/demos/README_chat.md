@@ -26,7 +26,7 @@ python services/demos/chat.py
 
 ## Troubleshooting
 
-* Try `unset DATABASE_URL` to clear the env variable.
+* Try `unset DB_URL_USER` to clear the env variable.
 
 ## Running with Docker and OpenTelemetry
 
