@@ -11,8 +11,8 @@ from typing import Dict, List, Optional, Union
 
 from services.office_service.core.clients.google import GoogleAPIClient
 from services.office_service.core.clients.microsoft import MicrosoftAPIClient
-from services.office_service.core.config import get_settings
 from services.office_service.core.demo_token_manager import DemoTokenManager
+from services.office_service.core.settings import get_settings
 from services.office_service.core.token_manager import TokenManager
 from services.office_service.models import Provider
 
