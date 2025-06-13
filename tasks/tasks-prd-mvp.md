@@ -36,7 +36,7 @@
 - `Dockerfile.user-service` - Dockerfile for user service
 - `package.json` - Project dependencies for Node.js services
 - `requirements.txt` - Python dependencies
-- `.env.example` - Example environment variables
+- `.example.env` - Example environment variables
 
 ### Notes
 
