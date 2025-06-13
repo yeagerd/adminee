@@ -6,7 +6,7 @@ Sets up structured logging using structlog for better observability.
 
 import logging
 import sys
-from typing import Any, Dict, List, Callable
+from typing import Any, Callable, Dict, List
 
 import structlog
 
