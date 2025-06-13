@@ -25,22 +25,18 @@ from services.user_management.models.integration import (
 )
 from services.user_management.models.user import User
 from services.user_management.services.token_service import TokenService
+from services.user_management.tests.test_base import BaseUserManagementTest
 
 
-class TestTokenService:
+class TestTokenService(BaseUserManagementTest):
     """Test suite for TokenService."""
 
     def setup_method(self):
-        self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
+        super().setup_method()
         asyncio.run(create_all_tables())
         self.token_service = TokenService()
         self.mock_user = self._create_mock_user()
         self.mock_integration = self._create_mock_integration()
-
-    def teardown_method(self):
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
 
     def _create_mock_user(self):
         """Create a mock user for testing."""

@@ -29,7 +29,7 @@ from services.user_management.exceptions import (
     ValidationException,
 )
 from services.user_management.main import app
-from .test_base import BaseUserManagementTest
+from services.user_management.tests.test_base import BaseUserManagementTest
 
 
 @pytest.fixture
@@ -155,22 +155,13 @@ class TestHealthEndpoint(BaseUserManagementTest):
         assert "error" in data["database"]
 
 
-class TestReadinessEndpoint:
+class TestReadinessEndpoint(BaseUserManagementTest):
     """Test cases for readiness check endpoint (readiness probe)."""
 
     def setup_method(self):
-        self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
-        # Set required environment variables for tests
-        os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
-        os.environ["API_FRONTEND_USER_KEY"] = "test-api-key"
-        os.environ["CLERK_SECRET_KEY"] = "test-clerk-key"
+        super().setup_method()
         self.client = TestClient(app)
         asyncio.run(create_all_tables())
-
-    def teardown_method(self):
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
 
     def test_readiness_check_all_healthy(self):
         response = self.client.get("/ready")
@@ -279,21 +270,12 @@ class TestReadinessEndpoint:
         assert len(data["checks"]["configuration"]["issues"]) >= 1
 
 
-class TestExceptionHandling:
+class TestExceptionHandling(BaseUserManagementTest):
     """Test cases for exception handling."""
 
     def setup_method(self):
-        self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
-        # Set required environment variables for tests
-        os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
-        os.environ["API_FRONTEND_USER_KEY"] = "test-api-key"
-        os.environ["CLERK_SECRET_KEY"] = "test-clerk-key"
+        super().setup_method()
         self.client = TestClient(app)
-
-    def teardown_method(self):
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
 
     def test_user_not_found_exception(self):
         """Test UserNotFoundException creation and properties."""
@@ -328,21 +310,12 @@ class TestExceptionHandling:
         # The specific handlers are tested through integration tests
 
 
-class TestMiddleware:
+class TestMiddleware(BaseUserManagementTest):
     """Test cases for middleware functionality."""
 
     def setup_method(self):
-        self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
-        # Set required environment variables for tests
-        os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
-        os.environ["API_FRONTEND_USER_KEY"] = "test-api-key"
-        os.environ["CLERK_SECRET_KEY"] = "test-clerk-key"
+        super().setup_method()
         self.client = TestClient(app)
-
-    def teardown_method(self):
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
 
     def test_cors_headers(self):
         """Test that CORS headers are properly set."""
@@ -360,21 +333,13 @@ class TestMiddleware:
         assert response.headers["content-type"] == "application/json"
 
 
-class TestAPIDocumentation:
+class TestAPIDocumentation(BaseUserManagementTest):
     """Test cases for API documentation."""
 
     def setup_method(self):
-        self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
-        # Set required environment variables for tests
-        os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
-        os.environ["API_FRONTEND_USER_KEY"] = "test-api-key"
-        os.environ["CLERK_SECRET_KEY"] = "test-clerk-key"
+        super().setup_method()
         self.client = TestClient(app)
-
-    def teardown_method(self):
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
+        asyncio.run(create_all_tables())
 
     def test_openapi_schema_available(self):
         """Test that OpenAPI schema is available."""

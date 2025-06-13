@@ -27,6 +27,7 @@ from services.user_management.services.audit_service import (
     ResourceTypes,
     audit_logger,
 )
+from services.user_management.tests.test_base import BaseUserManagementTest
 
 
 class TestAuditActions:
@@ -67,20 +68,15 @@ class TestResourceTypes:
         assert ResourceTypes.SYSTEM == "system"
 
 
-class TestAuditLogger:
+class TestAuditLogger(BaseUserManagementTest):
     """Test cases for AuditLogger class."""
 
     def setup_method(self):
-        self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
+        super().setup_method()
         asyncio.run(create_all_tables())
         self.audit_service = AuditLogger()
         self.mock_user = self._create_mock_user()
         self.mock_audit_log = self._create_mock_audit_log()
-
-    def teardown_method(self):
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
 
     def _create_mock_user(self):
         """Create mock user for testing."""

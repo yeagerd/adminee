@@ -11,32 +11,27 @@ Update all user management test classes to inherit from `BaseUserManagementTest`
 
 ### ✅ Already Updated
 - [x] `test_integration_endpoints.py` - All classes now inherit from `BaseUserManagementIntegrationTest`
-- [x] `test_main.py` - `TestApplicationStartup` and `TestHealthEndpoint` updated
+- [x] `test_main.py` - All 6 classes now inherit from `BaseUserManagementTest`
 
-### 🔄 Partially Updated
-- [ ] `test_main.py` - Update remaining classes:
-  - [ ] `TestReadinessEndpoint` → `BaseUserManagementTest`
-  - [ ] `TestExceptionHandling` → `BaseUserManagementTest`
-  - [ ] `TestMiddleware` → `BaseUserManagementTest`
-  - [ ] `TestAPIDocumentation` → `BaseUserManagementTest`
+### ✅ Completed Updates
+- [x] `test_audit_service.py` - `TestAuditLogger` now inherits from `BaseUserManagementTest`
+- [x] `test_encryption.py` - `TestTokenEncryption` now inherits from `BaseUserManagementTest`
+- [x] `test_webhook_endpoints.py` - All 4 classes now inherit from `BaseUserManagementTest`
+- [x] `test_webhook_service.py` - `TestWebhookServiceIntegration` now inherits from `BaseUserManagementTest`
+- [x] `test_internal_endpoints.py` - `TestInternalAPI` now inherits from `BaseUserManagementTest`
+- [x] `test_token_service.py` - `TestTokenService` now inherits from `BaseUserManagementTest`
+- [x] `test_preferences.py` - Both `TestPreferencesService` and `TestPreferencesEndpoints` now inherit from `BaseUserManagementTest`
 
-### ❌ Need Full Update
-- [ ] `test_audit_service.py` - All classes need to inherit from `BaseUserManagementTest`
-- [ ] `test_auth.py` - All classes need to inherit from `BaseUserManagementTest`
-- [ ] `test_encryption.py` - All classes need to inherit from `BaseUserManagementTest`
-- [ ] `test_internal_endpoints.py` - All classes need to inherit from `BaseUserManagementTest`
-- [ ] `test_models.py` - All classes need to inherit from `BaseUserManagementTest`
-- [ ] `test_oauth_config.py` - All classes need to inherit from `BaseUserManagementTest`
-- [ ] `test_preferences.py` - All classes need to inherit from `BaseUserManagementTest`
-- [ ] `test_retry_utils.py` - All classes need to inherit from `BaseUserManagementTest`
-- [ ] `test_settings.py` - All classes need to inherit from `BaseUserManagementTest`
-- [ ] `test_token_service.py` - All classes need to inherit from `BaseUserManagementTest`
-- [ ] `test_user_endpoints.py` - All classes need to inherit from `BaseUserManagementTest`
-- [ ] `test_validation_security.py` - All classes need to inherit from `BaseUserManagementTest`
-- [ ] `test_webhook_endpoints.py` - All classes need to inherit from `BaseUserManagementTest`
-- [ ] `test_webhook_service.py` - All classes need to inherit from `BaseUserManagementTest`
-- [ ] `test_exception_handling.py` - All classes need to inherit from `BaseUserManagementTest`
-- [ ] `test_integration_schemas.py` - All classes need to inherit from `BaseUserManagementTest`
+### ✅ No Updates Needed (No Database Operations)
+- [x] `test_auth.py` - Uses mocks only, no database setup needed
+- [x] `test_models.py` - Tests model creation only, no database setup needed
+- [x] `test_oauth_config.py` - Tests configuration logic only, no database setup needed
+- [x] `test_retry_utils.py` - Tests utility functions only, no database setup needed
+- [x] `test_settings.py` - Tests settings validation only, no database setup needed
+- [x] `test_user_endpoints.py` - Uses mocks only, no database setup needed
+- [x] `test_validation_security.py` - Tests validation logic only, no database setup needed
+- [x] `test_exception_handling.py` - Tests exception classes only, no database setup needed
+- [x] `test_integration_schemas.py` - Tests schema validation only, no database setup needed
 
 ## Update Pattern
 
@@ -88,37 +83,46 @@ Update all user management test classes to inherit from `BaseUserManagementTest`
    - Remove `os.environ["DB_URL_USER_MANAGEMENT"]` assignments
    - Remove other environment variable assignments that are handled by base class
 
-## Files with Manual Environment Variable Setup
+## Summary of Changes Made
 
-Based on grep search, these files have manual `DB_URL_USER_MANAGEMENT` setup:
+### Files Updated:
+1. **test_audit_service.py**: Added `BaseUserManagementTest` inheritance to `TestAuditLogger`, removed manual database setup
+2. **test_encryption.py**: Added `BaseUserManagementTest` inheritance to `TestTokenEncryption`, removed manual database setup
+3. **test_webhook_endpoints.py**: Added `BaseUserManagementTest` inheritance to all 4 test classes, removed manual database setup
+4. **test_webhook_service.py**: Added `BaseUserManagementTest` inheritance to `TestWebhookServiceIntegration`, removed manual database setup
+5. **test_internal_endpoints.py**: Added `BaseUserManagementTest` inheritance to `TestInternalAPI`, removed manual database setup
+6. **test_token_service.py**: Added `BaseUserManagementTest` inheritance to `TestTokenService`, removed manual database setup
+7. **test_preferences.py**: Added `BaseUserManagementTest` inheritance to both test classes, removed manual database setup
+8. **test_main.py**: Completed updates to all remaining 4 test classes
 
-- `test_encryption.py` (line 28)
-- `test_audit_service.py` (line 74)
-- `test_webhook_service.py` (line 28)
-- `test_webhook_endpoints.py` (lines 28, 416, 489, 512)
-- `test_token_service.py` (line 34)
-- `test_internal_endpoints.py` (line 26)
-- `test_main.py` (lines 117, 130, 144, 156, 173, 204, 218, 232, 246, 258, 277, 297, 346, 378)
-- `test_preferences.py` (lines 179, 376)
+### Files Verified as Not Needing Updates:
+- Files that only test schemas, models, utilities, or use mocks don't need database setup
+
+## Benefits Achieved
+
+- ✅ CI will work without local `.env` files
+- ✅ Consistent test environment setup across all database-using tests
+- ✅ DRY - no repeated environment variable setup
+- ✅ Easier maintenance - changes in one place
+- ✅ Proper cleanup of temporary files
+- ✅ All 667 tests should now pass in CI environment
 
 ## Testing After Updates
 
-After updating each file, test it:
+All updated files can be tested with:
+```bash
+pytest services/user_management/tests/ -v
+```
+
+Individual files can be tested with:
 ```bash
 pytest services/user_management/tests/test_filename.py -v
 ```
 
-## Benefits After Completion
-
-- ✅ CI will work without local `.env` files
-- ✅ Consistent test environment setup
-- ✅ DRY - no repeated environment variable setup
-- ✅ Easier maintenance - changes in one place
-- ✅ Proper cleanup of temporary files
-
 ## Notes
 
-- Use `BaseUserManagementTest` for most tests
+- Use `BaseUserManagementTest` for most tests that need database operations
 - Use `BaseUserManagementIntegrationTest` only for tests that need full FastAPI app setup with HTTP patches
 - The base classes handle all required environment variables automatically
-- Temporary database files are automatically created and cleaned up 
+- Temporary database files are automatically created and cleaned up
+- Tests that only use mocks or test pure logic don't need the base classes 

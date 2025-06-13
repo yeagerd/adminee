@@ -38,6 +38,7 @@ from services.user_management.schemas.preferences import (
     UserPreferencesUpdate,
 )
 from services.user_management.services.preferences_service import PreferencesService
+from services.user_management.tests.test_base import BaseUserManagementTest
 
 
 class TestPreferencesSchemas:
@@ -172,20 +173,15 @@ class TestPreferencesSchemas:
         assert response.version == "1.0"  # Default version
 
 
-class TestPreferencesService:
+class TestPreferencesService(BaseUserManagementTest):
     """Test preferences service business logic."""
 
     def setup_method(self):
-        self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
+        super().setup_method()
         asyncio.run(create_all_tables())
         self.preferences_service = PreferencesService()
         self.mock_user = self._create_mock_user()
         self.mock_preferences = self._create_mock_preferences()
-
-    def teardown_method(self):
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
 
     def _create_mock_user(self):
         """Mock user object."""
@@ -369,19 +365,49 @@ class TestPreferencesService:
         assert response.version == "1.0"
 
 
-class TestPreferencesEndpoints:
+class TestPreferencesEndpoints(BaseUserManagementTest):
     """Test preferences API endpoints."""
 
     def setup_method(self):
-        self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
+        super().setup_method()
         asyncio.run(create_all_tables())
         self.client = TestClient(app)
+        self.mock_preferences = self._create_mock_preferences()
         self._setup_auth_mock()
 
-    def teardown_method(self):
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
+    def _create_mock_preferences(self):
+        """Mock preferences object."""
+        prefs = Mock()
+        prefs.user_id = 1
+        prefs.version = "1.0"  # Add version field
+        prefs.ui_preferences = {
+            "theme": "system",
+            "language": "en",
+            "compact_mode": False,
+            "show_tooltips": True,
+            "animations_enabled": True,
+        }
+        prefs.notification_preferences = {
+            "email_notifications": True,
+            "push_notifications": True,
+            "summary_frequency": "daily",
+        }
+        prefs.ai_preferences = {
+            "temperature": 0.7,
+            "max_tokens": 2000,
+            "response_style": "balanced",
+        }
+        prefs.integration_preferences = {
+            "auto_sync": True,
+            "sync_frequency": "hourly",
+        }
+        prefs.privacy_preferences = {
+            "data_sharing": False,
+            "analytics": True,
+        }
+        prefs.created_at = datetime.now(timezone.utc)
+        prefs.updated_at = datetime.now(timezone.utc)
+        return prefs
 
     def _setup_auth_mock(self):
         """Setup authentication mock."""
