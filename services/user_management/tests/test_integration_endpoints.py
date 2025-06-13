@@ -145,9 +145,9 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
         }
 
         with patch(
-            "services.user_management.routers.integrations.get_integration_service().start_oauth_flow",
-            return_value=mock_response,
-        ):
+            "services.user_management.routers.integrations.get_integration_service"
+        ) as mock_service:
+            mock_service.return_value.start_oauth_flow = AsyncMock(return_value=mock_response)
             response = self.client.post(
                 f"/users/{user_id}/integrations/oauth/start",
                 json=request_data,
@@ -186,9 +186,9 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
         }
 
         with patch(
-            "services.user_management.routers.integrations.get_integration_service().start_oauth_flow",
-            return_value=mock_response_data,
-        ):
+            "services.user_management.routers.integrations.get_integration_service"
+        ) as mock_service:
+            mock_service.return_value.start_oauth_flow = AsyncMock(return_value=mock_response_data)
             response = self.client.post(
                 f"/users/{user_id}/integrations/oauth/start",
                 json=request_data,
@@ -233,9 +233,9 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
         )
 
         with patch(
-            "services.user_management.routers.integrations.get_integration_service().complete_oauth_flow",
-            return_value=mock_response,
-        ):
+            "services.user_management.routers.integrations.get_integration_service"
+        ) as mock_service:
+            mock_service.return_value.complete_oauth_flow = AsyncMock(return_value=mock_response)
             response = self.client.post(
                 "/users/user_123/integrations/oauth/callback?provider=google",
                 json={
@@ -268,9 +268,15 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
         )
 
         with patch(
-            "services.user_management.routers.integrations.get_integration_service().complete_oauth_flow",
-            return_value=mock_response,
-        ):
+
+
+            "services.user_management.routers.integrations.get_integration_service"
+
+
+        ) as mock_service:
+
+
+            mock_service.return_value.complete_oauth_flow = AsyncMock(return_value=mock_response)
             response = self.client.post(
                 "/users/user_123/integrations/oauth/callback?provider=microsoft",
                 json={
@@ -304,9 +310,15 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
         )
 
         with patch(
-            "services.user_management.routers.integrations.get_integration_service().complete_oauth_flow",
-            return_value=mock_response,
-        ):
+
+
+            "services.user_management.routers.integrations.get_integration_service"
+
+
+        ) as mock_service:
+
+
+            mock_service.return_value.complete_oauth_flow = AsyncMock(return_value=mock_response)
             response = self.client.post(
                 "/users/user_123/integrations/oauth/callback?provider=google",
                 json={
@@ -324,9 +336,9 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
     def test_complete_oauth_flow_service_error(self):
         """Test OAuth flow completion with service error."""
         with patch(
-            "services.user_management.routers.integrations.get_integration_service().complete_oauth_flow",
-            side_effect=IntegrationException("Service unavailable"),
-        ):
+            "services.user_management.routers.integrations.get_integration_service"
+        ) as mock_service:
+            mock_service.return_value.complete_oauth_flow = AsyncMock(side_effect=IntegrationException("Service unavailable"))
             response = self.client.post(
                 "/users/user_123/integrations/oauth/callback?provider=google",
                 json={
@@ -358,9 +370,15 @@ class TestIntegrationManagementEndpoints(BaseUserManagementIntegrationTest):
         }
 
         with patch(
-            "services.user_management.routers.integrations.get_integration_service().disconnect_integration",
-            return_value=mock_response,
-        ):
+
+
+            "services.user_management.routers.integrations.get_integration_service"
+
+
+        ) as mock_service:
+
+
+            mock_service.return_value.disconnect_integration = AsyncMock(return_value=mock_response)
             response = self.client.delete(
                 f"/users/{user_id}/integrations/{provider}",
                 headers={"Authorization": "Bearer valid-token"},
@@ -378,9 +396,9 @@ class TestIntegrationManagementEndpoints(BaseUserManagementIntegrationTest):
         provider = "google"
 
         with patch(
-            "services.user_management.routers.integrations.get_integration_service().disconnect_integration",
-            side_effect=NotFoundException("Integration not found"),
-        ):
+            "services.user_management.routers.integrations.get_integration_service"
+        ) as mock_service:
+            mock_service.return_value.disconnect_integration = AsyncMock(side_effect=NotFoundException("Integration not found"))
             response = self.client.delete(
                 f"/users/{user_id}/integrations/{provider}",
                 headers={"Authorization": "Bearer valid-token"},
@@ -403,9 +421,15 @@ class TestIntegrationManagementEndpoints(BaseUserManagementIntegrationTest):
         }
 
         with patch(
-            "services.user_management.routers.integrations.get_integration_service().refresh_integration_tokens",
-            return_value=mock_response,
-        ):
+
+
+            "services.user_management.routers.integrations.get_integration_service"
+
+
+        ) as mock_service:
+
+
+            mock_service.return_value.refresh_integration_tokens = AsyncMock(return_value=mock_response)
             response = self.client.put(
                 f"/users/{user_id}/integrations/{provider}/refresh",
                 headers={"Authorization": "Bearer valid-token"},
@@ -431,9 +455,15 @@ class TestIntegrationManagementEndpoints(BaseUserManagementIntegrationTest):
         }
 
         with patch(
-            "services.user_management.routers.integrations.get_integration_service().refresh_integration_tokens",
-            return_value=mock_response,
-        ):
+
+
+            "services.user_management.routers.integrations.get_integration_service"
+
+
+        ) as mock_service:
+
+
+            mock_service.return_value.refresh_integration_tokens = AsyncMock(return_value=mock_response)
             response = self.client.put(
                 f"/users/{user_id}/integrations/{provider}/refresh",
                 headers={"Authorization": "Bearer valid-token"},
@@ -460,9 +490,15 @@ class TestIntegrationManagementEndpoints(BaseUserManagementIntegrationTest):
         )
 
         with patch(
-            "services.user_management.routers.integrations.get_integration_service().check_integration_health",
-            return_value=mock_response,
-        ):
+
+
+            "services.user_management.routers.integrations.get_integration_service"
+
+
+        ) as mock_service:
+
+
+            mock_service.return_value.check_integration_health = AsyncMock(return_value=mock_response)
             response = self.client.get(
                 f"/users/{user_id}/integrations/{provider}/health",
                 headers={"Authorization": "Bearer valid-token"},
@@ -509,9 +545,15 @@ class TestIntegrationManagementEndpoints(BaseUserManagementIntegrationTest):
         )
 
         with patch(
-            "services.user_management.routers.integrations.get_integration_service().get_integration_statistics",
-            return_value=mock_response,
-        ):
+
+
+            "services.user_management.routers.integrations.get_integration_service"
+
+
+        ) as mock_service:
+
+
+            mock_service.return_value.get_integration_statistics = AsyncMock(return_value=mock_response)
             response = self.client.get(
                 f"/users/{user_id}/integrations/stats",
                 headers={"Authorization": "Bearer valid-token"},
@@ -548,9 +590,9 @@ class TestProviderEndpoints(BaseUserManagementIntegrationTest):
         mock_oauth_config.get_provider_config.return_value = mock_provider_config
 
         with patch(
-            "services.user_management.routers.integrations.get_integration_service().oauth_config",
-            mock_oauth_config,
-        ):
+            "services.user_management.routers.integrations.get_integration_service"
+        ) as mock_service:
+            mock_service.return_value.oauth_config = mock_oauth_config
             response = self.client.get(
                 "/integrations/providers",
                 headers={"Authorization": "Bearer valid-token"},
@@ -584,9 +626,9 @@ class TestProviderEndpoints(BaseUserManagementIntegrationTest):
         mock_oauth_config.get_provider_config.return_value = mock_provider_config
 
         with patch(
-            "services.user_management.routers.integrations.get_integration_service().oauth_config",
-            mock_oauth_config,
-        ):
+            "services.user_management.routers.integrations.get_integration_service"
+        ) as mock_service:
+            mock_service.return_value.oauth_config = mock_oauth_config
             response = self.client.post(
                 "/integrations/validate-scopes",
                 json=request_data,
@@ -613,9 +655,9 @@ class TestProviderEndpoints(BaseUserManagementIntegrationTest):
         mock_oauth_config.is_provider_available.return_value = False
 
         with patch(
-            "services.user_management.routers.integrations.get_integration_service().oauth_config",
-            mock_oauth_config,
-        ):
+            "services.user_management.routers.integrations.get_integration_service"
+        ) as mock_service:
+            mock_service.return_value.oauth_config = mock_oauth_config
             response = self.client.post(
                 "/integrations/validate-scopes",
                 json=request_data,
