@@ -1,8 +1,3 @@
-# Set required environment variables before any imports
-import os
-
-os.environ.setdefault("DB_URL_CHAT", "sqlite:///test.db")
-
 """
 Integration tests for ChatAgentManager orchestration layer.
 
@@ -14,6 +9,12 @@ This test suite covers:
 - Tool and subagent orchestration
 - Memory block coordination
 """
+
+# Set required environment variables before any imports
+import os
+
+os.environ.setdefault("DB_URL_CHAT", "sqlite:///test.db")
+
 
 import logging
 import os

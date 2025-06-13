@@ -1,15 +1,16 @@
-# Set required environment variables before any imports
-import os
-
-os.environ.setdefault("DB_URL_OFFICE", "sqlite:///test.db")
-os.environ.setdefault("API_OFFICE_USER_KEY", "test-api-key")
-
 """
 Unit tests for API clients and factory.
 
 Tests the base API client, provider-specific clients (Google, Microsoft),
 and API client factory with mocked HTTP responses and error handling.
 """
+
+# Set required environment variables before any imports
+import os
+
+os.environ.setdefault("DB_URL_OFFICE", "sqlite:///test.db")
+os.environ.setdefault("API_OFFICE_USER_KEY", "test-api-key")
+
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
