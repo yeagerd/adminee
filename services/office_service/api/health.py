@@ -15,7 +15,7 @@ from fastapi.responses import JSONResponse
 from sqlmodel import select
 
 from services.office_service.core.cache_manager import cache_manager
-from services.office_service.core.config import get_settings
+from services.office_service.core.settings import get_settings
 from services.office_service.core.token_manager import TokenManager
 from services.office_service.models import ApiCall, async_session
 

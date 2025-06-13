@@ -10,7 +10,7 @@ from services.office_service.api.calendar import router as calendar_router
 from services.office_service.api.email import router as email_router
 from services.office_service.api.files import router as files_router
 from services.office_service.api.health import router as health_router
-from services.office_service.core.config import get_settings
+from services.office_service.core.settings import get_settings
 from services.office_service.core.exceptions import (
     OfficeServiceError,
     ProviderAPIError,
