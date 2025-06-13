@@ -20,7 +20,7 @@ Key Design Decisions:
 import datetime
 from typing import List, Optional
 
-from sqlalchemy import Text, UniqueConstraint, desc, func
+from sqlalchemy import Text, UniqueConstraint, func
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import registry
 from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, select
