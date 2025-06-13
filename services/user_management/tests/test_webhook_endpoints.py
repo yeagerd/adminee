@@ -1,17 +1,11 @@
 """
 Unit tests for webhook endpoints.
 
-Tests webhook signature verification, event processing,
-and error handling for Clerk webhooks.
+Tests Clerk webhook processing, signature verification, error handling,
+and various webhook event types.
 """
 
 import asyncio
-import os
-import tempfile
-
-# Set required environment variables before any imports
-os.environ.setdefault("TOKEN_ENCRYPTION_SALT", "dGVzdC1zYWx0LTE2Ynl0ZQ==")
-
 from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
@@ -19,23 +13,19 @@ from fastapi.testclient import TestClient
 from services.user_management.database import create_all_tables
 from services.user_management.exceptions import DatabaseError, WebhookProcessingError
 from services.user_management.main import app
+from services.user_management.tests.test_base import BaseUserManagementTest
 
 
-class TestClerkWebhookEndpoint:
+class TestClerkWebhookEndpoint(BaseUserManagementTest):
     """Test cases for Clerk webhook endpoint."""
 
     def setup_method(self):
-        self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
+        super().setup_method()
         asyncio.run(create_all_tables())
         self.client = TestClient(app)
         self.sample_user_created_payload = self._get_sample_user_created_payload()
         self.sample_user_updated_payload = self._get_sample_user_updated_payload()
         self.sample_user_deleted_payload = self._get_sample_user_deleted_payload()
-
-    def teardown_method(self):
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
 
     def _get_sample_user_created_payload(self):
         """Sample Clerk user.created webhook payload."""
@@ -409,19 +399,13 @@ class TestClerkWebhookEndpoint:
         assert "detail" in data  # FastAPI error format
 
 
-class TestClerkTestWebhookEndpoint:
+class TestClerkTestWebhookEndpoint(BaseUserManagementTest):
     """Test cases for Clerk test webhook endpoint."""
 
     def setup_method(self):
-        self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
+        super().setup_method()
         asyncio.run(create_all_tables())
         self.client = TestClient(app)
-        self.sample_user_created_payload = self._get_sample_user_created_payload()
-
-    def teardown_method(self):
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
 
     def _get_sample_user_created_payload(self):
         """Sample Clerk user.created webhook payload."""
@@ -454,7 +438,7 @@ class TestClerkTestWebhookEndpoint:
 
         response = self.client.post(
             "/webhooks/clerk/test",
-            json=self.sample_user_created_payload,
+            json=self._get_sample_user_created_payload(),
         )
 
         # Verify response
@@ -473,7 +457,7 @@ class TestClerkTestWebhookEndpoint:
 
         response = self.client.post(
             "/webhooks/clerk/test",
-            json=self.sample_user_created_payload,
+            json=self._get_sample_user_created_payload(),
         )
 
         # Should return 400 for processing error
@@ -482,18 +466,12 @@ class TestClerkTestWebhookEndpoint:
         assert "detail" in data  # FastAPI error format
 
 
-class TestWebhookHealthEndpoint:
+class TestWebhookHealthEndpoint(BaseUserManagementTest):
     """Test cases for webhook health endpoint."""
 
     def setup_method(self):
-        self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
-        asyncio.run(create_all_tables())
+        super().setup_method()
         self.client = TestClient(app)
-
-    def teardown_method(self):
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
 
     def test_webhook_health(self):
         """Test webhook health endpoint."""
@@ -505,18 +483,12 @@ class TestWebhookHealthEndpoint:
         assert "timestamp" in data
 
 
-class TestOAuthWebhookEndpoint:
+class TestOAuthWebhookEndpoint(BaseUserManagementTest):
     """Test cases for OAuth webhook endpoint."""
 
     def setup_method(self):
-        self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
-        asyncio.run(create_all_tables())
+        super().setup_method()
         self.client = TestClient(app)
-
-    def teardown_method(self):
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
 
     def test_oauth_webhook_placeholder(self):
         """Test OAuth webhook placeholder endpoint."""

@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # Database Configuration
-    database_url: str = Field(
-        default="sqlite+aiosqlite:///./chat_service.db",
+    db_url_chat: str = Field(
+        ...,  # Required field - no default to prevent production mistakes
         description="Database connection string",
         validation_alias=AliasChoices("DB_URL_CHAT", "DATABASE_URL"),
     )
@@ -71,4 +71,12 @@ class Settings(BaseSettings):
 
 
 # Global settings instance
-settings = Settings()
+_settings: Settings | None = None
+
+
+def get_settings() -> Settings:
+    """Get the global settings instance, creating it if necessary."""
+    global _settings
+    if _settings is None:
+        _settings = Settings()
+    return _settings

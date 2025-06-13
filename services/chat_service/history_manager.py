@@ -26,11 +26,11 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.orm import registry
 from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, select
 
+from services.chat_service.settings import get_settings
+
 # Import settings to get DATABASE_URL
 try:
-    from settings import settings
-
-    DATABASE_URL = settings.database_url
+    DATABASE_URL = get_settings().db_url_chat
 except ImportError:
     # Fallback for backwards compatibility
     DATABASE_URL = os.environ.get(

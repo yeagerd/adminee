@@ -1,9 +1,16 @@
 """
-Unit tests for error handling across the Office Service.
+Unit tests for error handling across the office service.
 
-Tests error scenarios, exception handling, and proper HTTP status codes
-for various failure conditions in the API endpoints.
+Tests error handling, exception propagation, and error response formatting
+for various failure scenarios in the office service.
 """
+
+# Set required environment variables before any imports
+import os
+
+os.environ.setdefault("DB_URL_OFFICE", "sqlite:///test.db")
+os.environ.setdefault("API_OFFICE_USER_KEY", "test-api-key")
+
 
 import json
 from unittest.mock import AsyncMock, MagicMock, patch

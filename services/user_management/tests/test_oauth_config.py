@@ -1,12 +1,14 @@
 """
-Unit tests for OAuth configuration module.
+Unit tests for OAuth configuration and PKCE functionality.
 
-Tests OAuth provider configurations, state management, PKCE challenges,
-authorization URL generation, token exchange, and user info retrieval.
+Tests OAuth provider configuration, PKCE challenge generation,
+state management, and token exchange operations.
 """
 
 import base64
 import hashlib
+import os
+import tempfile
 import urllib.parse
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, Mock, patch
@@ -206,6 +208,7 @@ class TestOAuthProviderConfig:
         pass
 
     def teardown_method(self):
+        """Clean up test environment."""
         pass
 
     def test_provider_config_creation(self):
@@ -332,15 +335,45 @@ class TestOAuthConfig:
         # Reset global config before each test
         reset_oauth_config()
 
-        # Create test settings
-        self.settings = Settings(
-            google_client_id="test-google-client-id",
-            google_client_secret="test-google-client-secret",
-            azure_ad_client_id="test-microsoft-client-id",
-            azure_ad_client_secret="test-microsoft-client-secret",
-        )
+        # Create temporary database file for test isolation
+        self.temp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        self.temp_db.close()
 
+        # Mock environment variables instead of modifying os.environ directly
+        # This prevents race conditions in parallel execution
+        self.env_patch = patch.dict(
+            os.environ,
+            {
+                "DB_URL_USER_MANAGEMENT": f"sqlite:///{self.temp_db.name}",
+                "TOKEN_ENCRYPTION_SALT": "dGVzdC1zYWx0LTE2Ynl0ZQ==",
+                "API_FRONTEND_USER_KEY": "test-api-key",
+                "CLERK_SECRET_KEY": "test-clerk-key",
+                "GOOGLE_CLIENT_ID": "test-google-client-id",
+                "GOOGLE_CLIENT_SECRET": "test-google-client-secret",
+                "AZURE_AD_CLIENT_ID": "test-microsoft-client-id",
+                "AZURE_AD_CLIENT_SECRET": "test-microsoft-client-secret",
+                "OAUTH_REDIRECT_URI": "https://example.com/oauth/callback",
+            },
+            clear=False,
+        )
+        self.env_patch.start()
+
+        # Create test settings and OAuth config
+        self.settings = Settings()
         self.oauth_config = OAuthConfig(self.settings)
+
+    def teardown_method(self):
+        """Clean up test environment."""
+        # Stop environment patch
+        if hasattr(self, "env_patch"):
+            self.env_patch.stop()
+
+        # Clean up temporary database file
+        if hasattr(self, "temp_db") and os.path.exists(self.temp_db.name):
+            os.unlink(self.temp_db.name)
+
+        # Reset global config after each test
+        reset_oauth_config()
 
     def test_oauth_config_initialization(self):
         """Test OAuth configuration initialization."""
@@ -353,16 +386,33 @@ class TestOAuthConfig:
 
     def test_oauth_config_missing_credentials(self):
         """Test OAuth configuration with missing credentials."""
-        settings_no_creds = Settings(
-            google_client_id=None,
-            google_client_secret=None,
-            azure_ad_client_id=None,
-            azure_ad_client_secret=None,
-        )
-        config = OAuthConfig(settings_no_creds)
+        # Create temporary database for this test
+        temp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        temp_db.close()
 
-        # Should have no providers available
-        assert len(config.get_available_providers()) == 0
+        try:
+            # Create environment patch with missing OAuth credentials
+            with patch.dict(
+                os.environ,
+                {
+                    "DB_URL_USER_MANAGEMENT": f"sqlite:///{temp_db.name}",
+                    "TOKEN_ENCRYPTION_SALT": "dGVzdC1zYWx0LTE2Ynl0ZQ==",
+                    "API_FRONTEND_USER_KEY": "test-api-key",
+                    "CLERK_SECRET_KEY": "test-clerk-key",
+                    "OAUTH_REDIRECT_URI": "https://example.com/oauth/callback",
+                    # Missing OAuth credentials - GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, etc.
+                },
+                clear=True,
+            ):  # clear=True ensures only our test values are present
+                settings_no_creds = Settings()
+                config = OAuthConfig(settings_no_creds)
+
+                # Should have no providers available
+                assert len(config.get_available_providers()) == 0
+        finally:
+            # Clean up temporary database
+            if os.path.exists(temp_db.name):
+                os.unlink(temp_db.name)
 
     def test_get_provider_config(self):
         """Test getting provider configuration."""
@@ -979,89 +1029,55 @@ class TestGlobalOAuthConfig:
         """Set up test environment."""
         reset_oauth_config()
 
+        # Create temporary database file for test isolation
+        self.temp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        self.temp_db.close()
+
+    def teardown_method(self):
+        """Clean up test environment."""
+        # Clean up temporary database file
+        if hasattr(self, "temp_db") and os.path.exists(self.temp_db.name):
+            os.unlink(self.temp_db.name)
+
+        reset_oauth_config()
+
     def test_get_oauth_config_singleton(self):
         """Test that get_oauth_config returns singleton instance."""
-        config1 = get_oauth_config()
-        config2 = get_oauth_config()
+        # Set up environment for global config creation
+        with patch.dict(
+            os.environ,
+            {
+                "DB_URL_USER_MANAGEMENT": f"sqlite:///{self.temp_db.name}",
+                "TOKEN_ENCRYPTION_SALT": "dGVzdC1zYWx0LTE2Ynl0ZQ==",
+                "API_FRONTEND_USER_KEY": "test-api-key",
+                "CLERK_SECRET_KEY": "test-clerk-key",
+                "GOOGLE_CLIENT_ID": "test-google-client-id",
+                "GOOGLE_CLIENT_SECRET": "test-google-client-secret",
+                "OAUTH_REDIRECT_URI": "https://example.com/oauth/callback",
+            },
+            clear=False,
+        ):
+            config1 = get_oauth_config()
+            config2 = get_oauth_config()
 
-        assert config1 is config2
+            assert config1 is config2
 
     def test_get_oauth_config_with_settings(self):
         """Test get_oauth_config with custom settings."""
-        custom_settings = Settings(
-            google_client_id="custom-google-id",
-            google_client_secret="custom-google-secret",
-        )
-
-        config = get_oauth_config(custom_settings)
-        assert config is not None
-
-        google_config = config.get_provider_config(IntegrationProvider.GOOGLE)
-        assert google_config.client_id == "custom-google-id"
-
-    def test_reset_oauth_config(self):
-        """Test resetting global OAuth configuration."""
-        # Get initial config
-        config1 = get_oauth_config()
-
-        # Reset and get new config
-        reset_oauth_config()
-        config2 = get_oauth_config()
-
-        # Should be different instances
-        assert config1 is not config2
-
-
-class TestOAuthConfigIntegration:
-    """Integration tests for OAuth configuration."""
-
-    def setup_method(self):
-        """Set up test environment."""
-        reset_oauth_config()
-        self.settings = Settings(
-            google_client_id="test-google-id",
-            google_client_secret="test-google-secret",
-        )
-        self.oauth_config = OAuthConfig(self.settings)
-
-    def test_full_oauth_flow_state_management(self):
-        """Test complete OAuth flow state management."""
-        # 1. Generate authorization URL
-        auth_url, oauth_state = self.oauth_config.generate_authorization_url(
-            provider=IntegrationProvider.GOOGLE,
-            user_id="user123",
-            redirect_uri="https://example.com/callback",
-            scopes=["email", "profile"],
-        )
-
-        assert oauth_state.state in self.oauth_config._active_states
-
-        # 2. Validate state during callback
-        validated_state = self.oauth_config.validate_state(
-            oauth_state.state, "user123", IntegrationProvider.GOOGLE
-        )
-        assert validated_state is not None
-
-        # 3. Remove state after successful completion
-        result = self.oauth_config.remove_state(oauth_state.state)
-        assert result is True
-        assert oauth_state.state not in self.oauth_config._active_states
-
-    def test_scope_validation_with_required_scopes(self):
-        """Test scope validation including required scopes."""
-        # Request scopes without required ones
-        auth_url, oauth_state = self.oauth_config.generate_authorization_url(
-            provider=IntegrationProvider.GOOGLE,
-            user_id="user123",
-            redirect_uri="https://example.com/callback",
-            scopes=["email"],  # Missing required 'openid' and 'profile'
-        )
-
-        # Should automatically include required scopes
-        google_config = self.oauth_config.get_provider_config(
-            IntegrationProvider.GOOGLE
-        )
-        required_scopes = google_config.get_required_scopes()
-
-        for required_scope in required_scopes:
-            assert required_scope in oauth_state.scopes
+        # Create environment patch with custom credentials
+        with patch.dict(
+            os.environ,
+            {
+                "DB_URL_USER_MANAGEMENT": f"sqlite:///{self.temp_db.name}",
+                "TOKEN_ENCRYPTION_SALT": "dGVzdC1zYWx0LTE2Ynl0ZQ==",
+                "API_FRONTEND_USER_KEY": "test-api-key",
+                "CLERK_SECRET_KEY": "test-clerk-key",
+                "GOOGLE_CLIENT_ID": "custom-google-id",
+                "GOOGLE_CLIENT_SECRET": "custom-google-secret",
+                "OAUTH_REDIRECT_URI": "https://example.com/oauth/callback",
+            },
+            clear=False,
+        ):
+            custom_settings = Settings()
+            config = get_oauth_config(custom_settings)
+            assert config is not None

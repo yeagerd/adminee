@@ -1,9 +1,16 @@
 """
 Unit tests for email API endpoints.
 
-Tests the unified email API endpoints with proper mocking of external
-dependencies and comprehensive error handling scenarios.
+Tests email listing, searching, sending, and management functionality
+for both Google and Microsoft providers with comprehensive error handling.
 """
+
+# Set required environment variables before any imports
+import os
+
+os.environ.setdefault("DB_URL_OFFICE", "sqlite:///test.db")
+os.environ.setdefault("API_OFFICE_USER_KEY", "test-api-key")
+
 
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch

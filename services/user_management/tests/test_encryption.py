@@ -1,14 +1,13 @@
 """
 Unit tests for token encryption functionality.
 
-Tests cover encryption/decryption operations, key derivation,
-error handling, and security scenarios.
+Tests encryption/decryption, key derivation, user isolation,
+and security features of the TokenEncryption service.
 """
 
 import asyncio
 import base64
 import os
-import tempfile
 from unittest.mock import patch
 
 import pytest
@@ -16,17 +15,14 @@ import pytest
 from services.user_management.database import create_all_tables
 from services.user_management.exceptions import EncryptionException
 from services.user_management.security.encryption import TokenEncryption
+from services.user_management.tests.test_base import BaseUserManagementTest
 
 
-class TestTokenEncryption:
+class TestTokenEncryption(BaseUserManagementTest):
     """Test cases for TokenEncryption class."""
 
     def setup_method(self):
-        # Set up environment variables before creating services
-        os.environ.setdefault("TOKEN_ENCRYPTION_SALT", "dGVzdC1zYWx0LTE2Ynl0ZQ==")
-
-        self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
+        super().setup_method()
         asyncio.run(create_all_tables())
 
         # Mock the salt function and create encryption service
@@ -45,8 +41,7 @@ class TestTokenEncryption:
 
     def teardown_method(self):
         self.mock_get_token_encryption_salt_patcher.stop()
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
+        super().teardown_method()
 
     def _get_sample_tokens(self):
         """Sample tokens for testing."""

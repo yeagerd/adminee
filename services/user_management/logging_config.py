@@ -10,7 +10,7 @@ from typing import Any, Callable, Dict, List
 
 import structlog
 
-from services.user_management.settings import settings
+from services.user_management.settings import get_settings
 
 
 def configure_logging() -> None:
@@ -20,7 +20,7 @@ def configure_logging() -> None:
     logging.basicConfig(
         format="%(message)s",
         stream=sys.stdout,
-        level=getattr(logging, settings.log_level.upper()),
+        level=getattr(logging, get_settings().log_level.upper()),
     )
 
     # Configure structlog processors
@@ -34,7 +34,7 @@ def configure_logging() -> None:
     ]
 
     # Add appropriate renderer based on format setting
-    if settings.log_format.lower() == "json":
+    if get_settings().log_format.lower() == "json":
         processors.append(structlog.processors.JSONRenderer())
     else:
         processors.append(structlog.dev.ConsoleRenderer())

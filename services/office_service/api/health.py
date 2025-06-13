@@ -15,7 +15,7 @@ from fastapi.responses import JSONResponse
 from sqlmodel import select
 
 from services.office_service.core.cache_manager import cache_manager
-from services.office_service.core.config import settings
+from services.office_service.core.config import get_settings
 from services.office_service.core.token_manager import TokenManager
 from services.office_service.models import ApiCall, async_session
 
@@ -54,7 +54,7 @@ async def health_check():
 
         # Check User Management Service connection
         checks["user_management_service"] = await check_service_connection(
-            settings.USER_MANAGEMENT_SERVICE_URL
+            get_settings().USER_MANAGEMENT_SERVICE_URL
         )
 
         # Overall health status
@@ -68,8 +68,8 @@ async def health_check():
         response_data = {
             "status": "healthy" if all_healthy else "unhealthy",
             "timestamp": start_time.isoformat(),
-            "version": settings.APP_VERSION,
-            "service": settings.APP_NAME,
+            "version": get_settings().APP_VERSION,
+            "service": get_settings().APP_NAME,
             "response_time_ms": response_time_ms,
             "checks": checks,
         }
@@ -85,8 +85,8 @@ async def health_check():
             content={
                 "status": "unhealthy",
                 "timestamp": start_time.isoformat(),
-                "version": settings.APP_VERSION,
-                "service": settings.APP_NAME,
+                "version": get_settings().APP_VERSION,
+                "service": get_settings().APP_NAME,
                 "error": str(e),
                 "checks": checks,
             },
@@ -300,7 +300,7 @@ async def quick_health_check():
     """
     return {
         "status": "ok",
-        "service": settings.APP_NAME,
-        "version": settings.APP_VERSION,
+        "service": get_settings().APP_NAME,
+        "version": get_settings().APP_VERSION,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }

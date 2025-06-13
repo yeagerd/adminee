@@ -8,7 +8,7 @@ from sqlalchemy import Text, func
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlmodel import Column, DateTime, Field, SQLModel
 
-from services.office_service.core.config import settings
+from services.office_service.core.config import get_settings
 
 
 # Create async engine for database operations
@@ -23,7 +23,7 @@ def get_async_database_url(url: str) -> str:
 
 
 engine = create_async_engine(
-    get_async_database_url(settings.DATABASE_URL),
+    get_async_database_url(get_settings().db_url_office),
     echo=False,
 )
 

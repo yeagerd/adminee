@@ -1,11 +1,17 @@
 """
-Integration tests for Office Service API endpoints.
+Unit tests for integration functionality.
 
-These tests verify the complete end-to-end functionality of the API
-endpoints with properly mocked external dependencies.
+Tests integration management, OAuth flows, token handling,
+and provider-specific integration features.
 """
 
+# Set required environment variables before any imports
 import os
+
+os.environ.setdefault("DB_URL_OFFICE", "sqlite:///test.db")
+os.environ.setdefault("API_OFFICE_USER_KEY", "test-api-key")
+
+
 from unittest.mock import MagicMock, patch
 
 import pytest

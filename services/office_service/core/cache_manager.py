@@ -15,7 +15,7 @@ from typing import Any, Dict, Optional
 import redis.asyncio as redis
 from redis.asyncio import Redis
 
-from services.office_service.core.config import settings
+from services.office_service.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ class CacheManager:
                 if self._redis is None:
                     try:
                         self._redis = redis.from_url(
-                            settings.REDIS_URL,
+                            get_settings().REDIS_URL,
                             encoding="utf-8",
                             decode_responses=True,
                             socket_timeout=5.0,
@@ -102,7 +102,7 @@ class CacheManager:
 
             # Use default TTL if not specified
             if ttl_seconds is None:
-                ttl_seconds = settings.DEFAULT_CACHE_TTL_SECONDS
+                ttl_seconds = get_settings().DEFAULT_CACHE_TTL_SECONDS
 
             # Set data with TTL
             await redis_client.setex(key, ttl_seconds, serialized_data)

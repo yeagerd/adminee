@@ -10,6 +10,12 @@ This test suite covers:
 - Memory block coordination
 """
 
+# Set required environment variables before any imports
+import os
+
+os.environ.setdefault("DB_URL_CHAT", "sqlite:///test.db")
+
+
 import logging
 import os
 import tempfile
@@ -32,8 +38,8 @@ async def setup_test_database():
     os.close(db_fd)
 
     # Set the database URL for testing
-    original_db_url = os.environ.get("DB_URL_CHAT_SERVICE")
-    os.environ["DB_URL_CHAT_SERVICE"] = f"sqlite:///{db_path}"
+    original_db_url = os.environ.get("DB_URL_CHAT")
+    os.environ["DB_URL_CHAT"] = f"sqlite:///{db_path}"
 
     try:
         # Initialize database tables
@@ -42,9 +48,9 @@ async def setup_test_database():
     finally:
         # Cleanup
         if original_db_url:
-            os.environ["DB_URL_CHAT_SERVICE"] = original_db_url
-        elif "DB_URL_CHAT_SERVICE" in os.environ:
-            del os.environ["DB_URL_CHAT_SERVICE"]
+            os.environ["DB_URL_CHAT"] = original_db_url
+        elif "DB_URL_CHAT" in os.environ:
+            del os.environ["DB_URL_CHAT"]
 
         # Remove temporary database file
         try:

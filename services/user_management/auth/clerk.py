@@ -14,7 +14,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from services.user_management.exceptions import AuthenticationException
 from services.user_management.logging_config import get_logger
-from services.user_management.settings import settings
+from services.user_management.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
 
         # For development/demo, we use simplified JWT validation
         # In production, you should use proper signature verification with JWKS
-        verify_signature = getattr(settings, "jwt_verify_signature", False)
+        verify_signature = getattr(get_settings(), "jwt_verify_signature", False)
         dummy_key = "dummy-key-for-verification-disabled"
 
         decoded_token = jwt.decode(

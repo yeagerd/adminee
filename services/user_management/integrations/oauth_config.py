@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from services.user_management.exceptions import ValidationException
 from services.user_management.models.integration import IntegrationProvider
-from services.user_management.settings import Settings
+from services.user_management.settings import Settings, get_settings
 
 # Set up logging
 logger = structlog.get_logger(__name__)
@@ -837,7 +837,7 @@ def get_oauth_config(settings: Optional[Settings] = None) -> OAuthConfig:
     # Force reload if settings are provided or if config doesn't exist
     if _oauth_config is None or settings is not None:
         if settings is None:
-            settings = Settings()
+            settings = get_settings()
         _oauth_config = OAuthConfig(settings)
 
     return _oauth_config

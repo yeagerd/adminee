@@ -9,7 +9,8 @@ import logging
 from typing import Any, Dict, List, Optional
 
 import httpx
-from settings import settings
+
+from services.chat_service.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -34,10 +35,10 @@ class ServiceClient:
         """Get authentication headers for a specific service."""
         headers = {"Content-Type": "application/json"}
 
-        if service_name == "user-management" and settings.api_chat_user_key:
-            headers["X-API-Key"] = settings.api_chat_user_key
-        elif service_name == "office" and settings.api_chat_office_key:
-            headers["X-API-Key"] = settings.api_chat_office_key
+        if service_name == "user-management" and get_settings().api_chat_user_key:
+            headers["X-API-Key"] = get_settings().api_chat_user_key
+        elif service_name == "office" and get_settings().api_chat_office_key:
+            headers["X-API-Key"] = get_settings().api_chat_office_key
 
         return headers
 
@@ -47,7 +48,7 @@ class ServiceClient:
             headers = self._get_headers_for_service("user-management")
 
             response = await self.http_client.get(
-                f"{settings.user_management_service_url}/users/{user_id}",
+                f"{get_settings().user_management_service_url}/users/{user_id}",
                 headers=headers,
             )
 
@@ -72,7 +73,7 @@ class ServiceClient:
             headers = self._get_headers_for_service("user-management")
 
             response = await self.http_client.get(
-                f"{settings.user_management_service_url}/preferences/{user_id}",
+                f"{get_settings().user_management_service_url}/preferences/{user_id}",
                 headers=headers,
             )
 
@@ -99,7 +100,7 @@ class ServiceClient:
             headers = self._get_headers_for_service("office")
 
             response = await self.http_client.get(
-                f"{settings.office_service_url}/calendar/events?user_id={user_id}&days_ahead={days_ahead}",
+                f"{get_settings().office_service_url}/calendar/events?user_id={user_id}&days_ahead={days_ahead}",
                 headers=headers,
             )
 
@@ -123,7 +124,7 @@ class ServiceClient:
             headers = self._get_headers_for_service("office")
 
             response = await self.http_client.get(
-                f"{settings.office_service_url}/files?user_id={user_id}&limit={limit}",
+                f"{get_settings().office_service_url}/files?user_id={user_id}&limit={limit}",
                 headers=headers,
             )
 
