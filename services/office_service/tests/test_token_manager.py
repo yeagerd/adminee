@@ -1,3 +1,8 @@
+# Set required environment variables before any imports
+import os
+os.environ.setdefault("DB_URL_OFFICE", "sqlite:///test.db")
+os.environ.setdefault("API_OFFICE_USER_KEY", "test-api-key")
+
 """
 Unit tests for token management functionality.
 

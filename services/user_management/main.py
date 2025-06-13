@@ -56,9 +56,13 @@ from services.user_management.routers import (
 from services.user_management.services.integration_service import get_integration_service
 from services.user_management.settings import Settings, get_settings
 
-# Setup structured logging
-setup_logging()
-logger = logging.getLogger(__name__)
+# Logger will be initialized in lifespan
+logger = None
+
+
+def get_safe_logger():
+    """Get a logger that works even if the main logger isn't initialized yet."""
+    return logger or logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -69,33 +73,38 @@ async def lifespan(app: FastAPI):
     Handles startup and shutdown events for database connections
     and other resources.
     """
+    # Setup structured logging
+    setup_logging()
+    global logger
+    logger = logging.getLogger(__name__)
+    
     # Startup
-    logger.info("Starting User Management Service")
+    get_safe_logger().info("Starting User Management Service")
 
     # Validate required configuration
     if not get_settings().api_frontend_user_key:
-        logger.error("API_FRONTEND_USER_KEY is required but not configured")
-        logger.error(
+        get_safe_logger().error("API_FRONTEND_USER_KEY is required but not configured")
+        get_safe_logger().error(
             "Set the API_FRONTEND_USER_KEY environment variable or configure it in settings"
         )
         raise RuntimeError("API_FRONTEND_USER_KEY is required but not configured")
 
     try:
         await create_all_tables()
-        logger.info("Database connected successfully")
+        get_safe_logger().info("Database connected successfully")
     except Exception as e:
-        logger.error(f"Failed to connect to database: {e}")
+        get_safe_logger().error(f"Failed to connect to database: {e}")
         raise
 
     yield
 
     # Shutdown
-    logger.info("Shutting down User Management Service")
+    get_safe_logger().info("Shutting down User Management Service")
     try:
         await close_db()
-        logger.info("Database disconnected successfully")
+        get_safe_logger().info("Database disconnected successfully")
     except Exception as e:
-        logger.error(f"Error during database disconnect: {e}")
+        get_safe_logger().error(f"Error during database disconnect: {e}")
 
 
 # Create FastAPI application with enhanced configuration
@@ -110,27 +119,44 @@ app = FastAPI(
     license_info={
         "name": "Private",
     },
-    docs_url="/docs" if get_settings().debug else None,
-    redoc_url="/redoc" if get_settings().debug else None,
     lifespan=lifespan,
 )
 
+# Configure docs URLs after app creation to avoid module-level settings access
+@app.on_event("startup")
+async def configure_docs():
+    """Configure documentation URLs based on settings."""
+    settings = get_settings()
+    if settings.debug:
+        app.docs_url = "/docs"
+        app.redoc_url = "/redoc"
+    else:
+        app.docs_url = None
+        app.redoc_url = None
+
 # Add security middleware
 app.add_middleware(XSSProtectionMiddleware)
-app.add_middleware(
-    InputSanitizationMiddleware,
-    enabled=True,
-    strict_mode=get_settings().debug,  # Use strict mode in development
-)
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=get_settings().cors_origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-)
+# Configure middleware after startup to avoid module-level settings access
+@app.on_event("startup") 
+async def configure_middleware():
+    """Configure middleware based on settings."""
+    settings = get_settings()
+    
+    app.add_middleware(
+        InputSanitizationMiddleware,
+        enabled=True,
+        strict_mode=settings.debug,  # Use strict mode in development
+    )
+
+    # Add CORS middleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["*"],
+    )
 
 # Register API routers
 app.include_router(users_router)
@@ -219,7 +245,9 @@ async def oauth_callback_redirect(
             )
 
     except Exception as e:
-        logger.error(f"OAuth callback error: {e}")
+        # Use a safe logger that works even if main logger isn't initialized
+        safe_logger = get_safe_logger()
+        safe_logger.error(f"OAuth callback error: {e}")
         return JSONResponse(
             status_code=500,
             content={"error": f"Internal server error during OAuth callback: {str(e)}"},
@@ -230,7 +258,7 @@ async def oauth_callback_redirect(
 @app.exception_handler(UserNotFoundException)
 async def user_not_found_handler(request: Request, exc: UserNotFoundException):
     """Handle user not found exceptions."""
-    logger.info(
+    get_safe_logger().info(
         f"User not found: {exc.message}",
         extra={
             "user_id": exc.user_id,
@@ -251,7 +279,7 @@ async def preferences_not_found_handler(
     request: Request, exc: PreferencesNotFoundException
 ):
     """Handle preferences not found exceptions."""
-    logger.info(f"Preferences not found: {exc.message}", extra={"user_id": exc.user_id})
+    get_safe_logger().info(f"Preferences not found: {exc.message}", extra={"user_id": exc.user_id})
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
         content=exc.to_error_response(),
@@ -263,7 +291,7 @@ async def integration_not_found_handler(
     request: Request, exc: IntegrationNotFoundException
 ):
     """Handle integration not found exceptions."""
-    logger.info(
+    get_safe_logger().info(
         f"Integration not found: {exc.message}",
         extra={"user_id": exc.user_id, "provider": exc.provider},
     )
@@ -276,7 +304,7 @@ async def integration_not_found_handler(
 @app.exception_handler(ValidationException)
 async def validation_exception_handler(request: Request, exc: ValidationException):
     """Handle validation exceptions."""
-    logger.info(
+    get_safe_logger().info(
         f"Validation error: {exc.message}",
         extra={
             "field": exc.field,
@@ -299,7 +327,7 @@ async def authentication_exception_handler(
     request: Request, exc: AuthenticationException
 ):
     """Handle authentication exceptions."""
-    logger.warning(
+    get_safe_logger().warning(
         f"Authentication failed: {exc.message}",
         extra={
             "path": request.url.path,
@@ -322,7 +350,7 @@ async def authorization_exception_handler(
     request: Request, exc: AuthorizationException
 ):
     """Handle authorization exceptions."""
-    logger.warning(
+    get_safe_logger().warning(
         f"Authorization failed: {exc.message}",
         extra={"resource": exc.resource, "action": exc.action},
     )
@@ -337,7 +365,7 @@ async def webhook_validation_exception_handler(
     request: Request, exc: WebhookValidationException
 ):
     """Handle webhook validation exceptions."""
-    logger.warning(
+    get_safe_logger().warning(
         f"Webhook validation failed: {exc.message}",
         extra={"provider": exc.provider, "reason": exc.reason},
     )
@@ -352,7 +380,7 @@ async def user_already_exists_handler(
     request: Request, exc: UserAlreadyExistsException
 ):
     """Handle user already exists exceptions."""
-    logger.info(f"User already exists: {exc.message}")
+    get_safe_logger().info(f"User already exists: {exc.message}")
     return JSONResponse(
         status_code=status.HTTP_409_CONFLICT,
         content=exc.to_error_response(),
@@ -364,7 +392,7 @@ async def integration_already_exists_handler(
     request: Request, exc: IntegrationAlreadyExistsException
 ):
     """Handle integration already exists exceptions."""
-    logger.info(f"Integration already exists: {exc.message}")
+    get_safe_logger().info(f"Integration already exists: {exc.message}")
     return JSONResponse(
         status_code=status.HTTP_409_CONFLICT,
         content=exc.to_error_response(),
@@ -374,7 +402,7 @@ async def integration_already_exists_handler(
 @app.exception_handler(TokenNotFoundException)
 async def token_not_found_handler(request: Request, exc: TokenNotFoundException):
     """Handle token not found exceptions."""
-    logger.info(f"Token not found: {exc.message}")
+    get_safe_logger().info(f"Token not found: {exc.message}")
     return JSONResponse(
         status_code=status.HTTP_404_NOT_FOUND,
         content=exc.to_error_response(),
@@ -384,7 +412,7 @@ async def token_not_found_handler(request: Request, exc: TokenNotFoundException)
 @app.exception_handler(TokenExpiredException)
 async def token_expired_handler(request: Request, exc: TokenExpiredException):
     """Handle token expired exceptions."""
-    logger.info(f"Token expired: {exc.message}")
+    get_safe_logger().info(f"Token expired: {exc.message}")
     return JSONResponse(
         status_code=status.HTTP_401_UNAUTHORIZED,
         content=exc.to_error_response(),
@@ -395,7 +423,7 @@ async def token_expired_handler(request: Request, exc: TokenExpiredException):
 @app.exception_handler(EncryptionException)
 async def encryption_exception_handler(request: Request, exc: EncryptionException):
     """Handle encryption exceptions."""
-    logger.error(
+    get_safe_logger().error(
         f"Encryption error: {exc.message}",
         extra={
             "path": request.url.path,
@@ -415,7 +443,7 @@ async def encryption_exception_handler(request: Request, exc: EncryptionExceptio
 @app.exception_handler(DatabaseException)
 async def database_exception_handler(request: Request, exc: DatabaseException):
     """Handle database exceptions."""
-    logger.error(
+    get_safe_logger().error(
         f"Database error: {exc.message}",
         extra={
             "path": request.url.path,
@@ -436,7 +464,7 @@ async def database_exception_handler(request: Request, exc: DatabaseException):
 @app.exception_handler(ServiceException)
 async def service_exception_handler(request: Request, exc: ServiceException):
     """Handle service exceptions."""
-    logger.error(f"Service error: {exc.message}")
+    get_safe_logger().error(f"Service error: {exc.message}")
     return JSONResponse(
         status_code=status.HTTP_502_BAD_GATEWAY,
         content=exc.to_error_response(),
@@ -446,7 +474,7 @@ async def service_exception_handler(request: Request, exc: ServiceException):
 @app.exception_handler(AuditException)
 async def audit_exception_handler(request: Request, exc: AuditException):
     """Handle audit exceptions."""
-    logger.error(f"Audit error: {exc.message}")
+    get_safe_logger().error(f"Audit error: {exc.message}")
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content=exc.to_error_response(),
@@ -456,7 +484,7 @@ async def audit_exception_handler(request: Request, exc: AuditException):
 @app.exception_handler(IntegrationException)
 async def integration_exception_handler(request: Request, exc: IntegrationException):
     """Handle integration exceptions."""
-    logger.warning(f"Integration error: {exc.message}")
+    get_safe_logger().warning(f"Integration error: {exc.message}")
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content=exc.to_error_response(),
@@ -466,7 +494,7 @@ async def integration_exception_handler(request: Request, exc: IntegrationExcept
 @app.exception_handler(InternalError)
 async def internal_error_handler(request: Request, exc: InternalError):
     """Handle internal errors."""
-    logger.error(f"Internal error: {exc.message}")
+    get_safe_logger().error(f"Internal error: {exc.message}")
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content=exc.to_error_response(),
@@ -478,7 +506,7 @@ async def user_management_exception_handler(
     request: Request, exc: UserManagementException
 ):
     """Handle general user management exceptions."""
-    logger.error(
+    get_safe_logger().error(
         f"User management error: {exc.message}",
         extra={
             "path": request.url.path,
@@ -511,7 +539,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
     request_id = str(uuid.uuid4())
 
-    logger.error(
+    get_safe_logger().error(
         "Unhandled exception occurred",
         extra={
             "path": request.url.path,
@@ -614,7 +642,7 @@ async def health_check():
             await session.execute(text("SELECT 1"))
             health_status["database"] = {"status": "healthy"}
     except Exception as e:
-        logger.warning(f"Database health check failed: {e}")
+        get_safe_logger().warning(f"Database health check failed: {e}")
         health_status["database"] = {
             "status": "error",
             "error": (
@@ -768,7 +796,7 @@ async def readiness_check():
             }
         readiness_status["status"] = "ready"
     except Exception as e:
-        logger.warning(f"Database readiness check failed: {e}")
+        get_safe_logger().warning(f"Database readiness check failed: {e}")
         readiness_status["checks"]["database"] = {
             "status": "not_ready",
             "connected": False,

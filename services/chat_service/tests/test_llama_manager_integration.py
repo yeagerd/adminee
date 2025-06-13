@@ -1,3 +1,7 @@
+# Set required environment variables before any imports
+import os
+os.environ.setdefault("DB_URL_CHAT", "sqlite:///test.db")
+
 """
 Integration tests for ChatAgentManager orchestration layer.
 

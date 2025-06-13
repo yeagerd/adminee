@@ -55,9 +55,9 @@ class TestIntegrationListEndpoint(BaseUserManagementIntegrationTest):
             "error_count": 0,
         }
         with patch(
-            "services.user_management.services.integration_service.integration_service.get_user_integrations",
-            return_value=mock_response,
-        ):
+            "services.user_management.routers.integrations.get_integration_service"
+        ) as mock_service:
+            mock_service.return_value.get_user_integrations.return_value = mock_response
             response = self.client.get(
                 f"/users/{user_id}/integrations/",
                 headers={"Authorization": "Bearer valid-token"},
@@ -78,9 +78,9 @@ class TestIntegrationListEndpoint(BaseUserManagementIntegrationTest):
             error_count=0,
         )
         with patch(
-            "services.user_management.services.integration_service.integration_service.get_user_integrations",
-            return_value=mock_response,
+            "services.user_management.routers.integrations.get_integration_service"
         ) as mock_service:
+            mock_service.return_value.get_user_integrations.return_value = mock_response
             response = self.client.get(
                 f"/users/{user_id}/integrations/",
                 params={
@@ -110,9 +110,9 @@ class TestIntegrationListEndpoint(BaseUserManagementIntegrationTest):
     def test_list_integrations_user_not_found(self):
         user_id = "user_123"
         with patch(
-            "services.user_management.services.integration_service.integration_service.get_user_integrations",
-            side_effect=NotFoundException("User not found"),
-        ):
+            "services.user_management.routers.integrations.get_integration_service"
+        ) as mock_service:
+            mock_service.return_value.get_user_integrations.side_effect = NotFoundException("User not found")
             response = self.client.get(
                 f"/users/{user_id}/integrations/",
                 headers={"Authorization": "Bearer valid-token"},
@@ -143,7 +143,9 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
         }
 
         with patch(
-            "services.user_management.services.integration_service.integration_service.start_oauth_flow",
+            "services.user_management.routers.integrations.get_integration_service"
+        ) as mock_service:
+            "services.user_management.routers.integrations.get_integration_service().start_oauth_flow",
             return_value=mock_response,
         ):
             response = self.client.post(
@@ -184,7 +186,7 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
         }
 
         with patch(
-            "services.user_management.services.integration_service.integration_service.start_oauth_flow",
+            "services.user_management.routers.integrations.get_integration_service().start_oauth_flow",
             return_value=mock_response_data,
         ):
             response = self.client.post(
@@ -231,7 +233,7 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
         )
 
         with patch(
-            "services.user_management.services.integration_service.integration_service.complete_oauth_flow",
+            "services.user_management.routers.integrations.get_integration_service().complete_oauth_flow",
             return_value=mock_response,
         ):
             response = self.client.post(
@@ -266,7 +268,7 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
         )
 
         with patch(
-            "services.user_management.services.integration_service.integration_service.complete_oauth_flow",
+            "services.user_management.routers.integrations.get_integration_service().complete_oauth_flow",
             return_value=mock_response,
         ):
             response = self.client.post(
@@ -302,7 +304,7 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
         )
 
         with patch(
-            "services.user_management.services.integration_service.integration_service.complete_oauth_flow",
+            "services.user_management.routers.integrations.get_integration_service().complete_oauth_flow",
             return_value=mock_response,
         ):
             response = self.client.post(
@@ -322,7 +324,7 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
     def test_complete_oauth_flow_service_error(self):
         """Test OAuth flow completion with service error."""
         with patch(
-            "services.user_management.services.integration_service.integration_service.complete_oauth_flow",
+            "services.user_management.routers.integrations.get_integration_service().complete_oauth_flow",
             side_effect=IntegrationException("Service unavailable"),
         ):
             response = self.client.post(
@@ -356,7 +358,7 @@ class TestIntegrationManagementEndpoints(BaseUserManagementIntegrationTest):
         }
 
         with patch(
-            "services.user_management.services.integration_service.integration_service.disconnect_integration",
+            "services.user_management.routers.integrations.get_integration_service().disconnect_integration",
             return_value=mock_response,
         ):
             response = self.client.delete(
@@ -376,7 +378,7 @@ class TestIntegrationManagementEndpoints(BaseUserManagementIntegrationTest):
         provider = "google"
 
         with patch(
-            "services.user_management.services.integration_service.integration_service.disconnect_integration",
+            "services.user_management.routers.integrations.get_integration_service().disconnect_integration",
             side_effect=NotFoundException("Integration not found"),
         ):
             response = self.client.delete(
@@ -401,7 +403,7 @@ class TestIntegrationManagementEndpoints(BaseUserManagementIntegrationTest):
         }
 
         with patch(
-            "services.user_management.services.integration_service.integration_service.refresh_integration_tokens",
+            "services.user_management.routers.integrations.get_integration_service().refresh_integration_tokens",
             return_value=mock_response,
         ):
             response = self.client.put(
@@ -429,7 +431,7 @@ class TestIntegrationManagementEndpoints(BaseUserManagementIntegrationTest):
         }
 
         with patch(
-            "services.user_management.services.integration_service.integration_service.refresh_integration_tokens",
+            "services.user_management.routers.integrations.get_integration_service().refresh_integration_tokens",
             return_value=mock_response,
         ):
             response = self.client.put(
@@ -458,7 +460,7 @@ class TestIntegrationManagementEndpoints(BaseUserManagementIntegrationTest):
         )
 
         with patch(
-            "services.user_management.services.integration_service.integration_service.check_integration_health",
+            "services.user_management.routers.integrations.get_integration_service().check_integration_health",
             return_value=mock_response,
         ):
             response = self.client.get(
@@ -507,7 +509,7 @@ class TestIntegrationManagementEndpoints(BaseUserManagementIntegrationTest):
         )
 
         with patch(
-            "services.user_management.services.integration_service.integration_service.get_integration_statistics",
+            "services.user_management.routers.integrations.get_integration_service().get_integration_statistics",
             return_value=mock_response,
         ):
             response = self.client.get(
@@ -546,7 +548,7 @@ class TestProviderEndpoints(BaseUserManagementIntegrationTest):
         mock_oauth_config.get_provider_config.return_value = mock_provider_config
 
         with patch(
-            "services.user_management.services.integration_service.integration_service.oauth_config",
+            "services.user_management.routers.integrations.get_integration_service().oauth_config",
             mock_oauth_config,
         ):
             response = self.client.get(
@@ -582,7 +584,7 @@ class TestProviderEndpoints(BaseUserManagementIntegrationTest):
         mock_oauth_config.get_provider_config.return_value = mock_provider_config
 
         with patch(
-            "services.user_management.services.integration_service.integration_service.oauth_config",
+            "services.user_management.routers.integrations.get_integration_service().oauth_config",
             mock_oauth_config,
         ):
             response = self.client.post(
@@ -611,7 +613,7 @@ class TestProviderEndpoints(BaseUserManagementIntegrationTest):
         mock_oauth_config.is_provider_available.return_value = False
 
         with patch(
-            "services.user_management.services.integration_service.integration_service.oauth_config",
+            "services.user_management.routers.integrations.get_integration_service().oauth_config",
             mock_oauth_config,
         ):
             response = self.client.post(

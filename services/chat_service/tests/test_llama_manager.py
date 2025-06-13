@@ -1,3 +1,14 @@
+# Set required environment variables before any imports
+import os
+os.environ.setdefault("DB_URL_CHAT", "sqlite:///test.db")
+
+"""
+Unit tests for Llama manager functionality.
+
+Tests Llama model integration, response generation,
+and model management operations.
+"""
+
 import os
 from unittest.mock import AsyncMock, MagicMock, patch
 

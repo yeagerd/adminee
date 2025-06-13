@@ -147,7 +147,15 @@ class ServiceAPIKeyAuth:
 
 
 # Global service auth instance
-service_auth = ServiceAPIKeyAuth()
+_service_auth: ServiceAPIKeyAuth | None = None
+
+
+def get_service_auth() -> ServiceAPIKeyAuth:
+    """Get the global service auth instance, creating it if necessary."""
+    global _service_auth
+    if _service_auth is None:
+        _service_auth = ServiceAPIKeyAuth()
+    return _service_auth
 
 
 async def get_api_key_value_from_request(request: Request) -> Optional[str]:
@@ -206,7 +214,7 @@ async def verify_service_authentication(request: Request) -> str:
             headers={"WWW-Authenticate": "ApiKey"},
         )
 
-    service_name = service_auth.verify_api_key_value(api_key_value)
+    service_name = get_service_auth().verify_api_key_value(api_key_value)
 
     if not service_name:
         logger.warning(f"Invalid API key value: {api_key_value[:8]}...")
