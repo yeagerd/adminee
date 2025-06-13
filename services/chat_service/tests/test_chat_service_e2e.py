@@ -11,7 +11,6 @@ import os
 os.environ.setdefault("DB_URL_CHAT", "sqlite:///test.db")
 
 import asyncio
-from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient

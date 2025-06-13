@@ -10,7 +10,7 @@ import hashlib
 import os
 import urllib.parse
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 # Set required environment variables before any imports
 os.environ.setdefault("DB_URL_USER_MANAGEMENT", "sqlite:///test.db")

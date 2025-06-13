@@ -11,7 +11,6 @@ import os
 os.environ.setdefault("DB_URL_OFFICE", "sqlite:///test.db")
 
 from datetime import datetime, timezone
-from typing import Dict, List
 
 import pytest
 from pydantic import ValidationError

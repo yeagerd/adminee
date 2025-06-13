@@ -15,7 +15,6 @@ from unittest.mock import MagicMock, patch
 
 from fastapi import status
 
-from services.user_management.tests.test_base import BaseUserManagementIntegrationTest
 from services.user_management.exceptions import (
     IntegrationException,
     NotFoundException,
@@ -30,6 +29,7 @@ from services.user_management.schemas.integration import (
     IntegrationStatsResponse,
     OAuthCallbackResponse,
 )
+from services.user_management.tests.test_base import BaseUserManagementIntegrationTest
 
 
 class TestIntegrationListEndpoint(BaseUserManagementIntegrationTest):
