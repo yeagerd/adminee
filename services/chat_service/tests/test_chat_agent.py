@@ -3,14 +3,11 @@ Tests for the new ModernChatAgent implementation.
 """
 
 import os
-import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-from chat_agent import ChatAgent, create_chat_agent
+from services.chat_service.chat_agent import ChatAgent, create_chat_agent
 
 
 @pytest.fixture
@@ -197,7 +194,7 @@ async def test_tools_registration():
 async def test_backward_compatibility_imports():
     """Test that backward compatibility imports work."""
     # These should not raise ImportError
-    from llama_manager import (
+    from services.chat_service.llama_manager import (
         ChatAgentManager,
     )
 
@@ -218,6 +215,7 @@ async def test_backward_compatibility_imports():
 @patch("services.chat_service.chat_agent.history_manager.create_thread")
 @patch("services.chat_service.chat_agent.history_manager.get_thread")
 @patch("services.chat_service.chat_agent.history_manager.get_thread_history")
+@patch.dict(os.environ, {"OPENAI_API_KEY": ""})  # Force FakeLLM by removing API key
 async def test_chat_with_agent(
     mock_get_thread_history, mock_get_thread, mock_create_thread, mock_append_message
 ):

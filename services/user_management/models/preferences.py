@@ -5,12 +5,13 @@ Defines comprehensive user preference settings across all categories.
 """
 
 from datetime import datetime, timezone
-from typing import Dict, Optional
+from typing import TYPE_CHECKING, Dict, Optional
 
 from sqlalchemy import JSON, func
 from sqlmodel import Column, DateTime, Field, Relationship, SQLModel
 
-from .user import User
+if TYPE_CHECKING:
+    from services.user_management.models.user import User
 
 
 class UserPreferences(SQLModel, table=True):

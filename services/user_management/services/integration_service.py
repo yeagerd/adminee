@@ -11,17 +11,21 @@ from typing import Any, Dict, List, Optional
 import structlog
 from sqlmodel import select
 
-from ..database import async_session
-from ..exceptions import (
+from services.user_management.database import get_async_session
+from services.user_management.exceptions import (
     IntegrationException,
     NotFoundException,
     SimpleValidationException,
 )
-from ..integrations.oauth_config import get_oauth_config
-from ..models.integration import Integration, IntegrationProvider, IntegrationStatus
-from ..models.token import EncryptedToken, TokenType
-from ..models.user import User
-from ..schemas.integration import (
+from services.user_management.integrations.oauth_config import get_oauth_config
+from services.user_management.models.integration import (
+    Integration,
+    IntegrationProvider,
+    IntegrationStatus,
+)
+from services.user_management.models.token import EncryptedToken, TokenType
+from services.user_management.models.user import User
+from services.user_management.schemas.integration import (
     IntegrationHealthResponse,
     IntegrationListResponse,
     IntegrationResponse,
@@ -30,8 +34,8 @@ from ..schemas.integration import (
     OAuthStartResponse,
     TokenRefreshResponse,
 )
-from ..security.encryption import TokenEncryption
-from ..services.audit_service import audit_logger
+from services.user_management.security.encryption import TokenEncryption
+from services.user_management.services.audit_service import audit_logger
 
 # Set up logging
 logger = structlog.get_logger(__name__)
@@ -75,6 +79,7 @@ class IntegrationService:
         """
         try:
             # Verify user exists
+            async_session = get_async_session()
             async with async_session() as session:
                 result = await session.execute(
                     select(User).where(User.external_auth_id == user_id)
@@ -84,6 +89,7 @@ class IntegrationService:
                     raise NotFoundException(f"User not found: {user_id}")
 
             # Build query for integrations within the same session
+            async_session = get_async_session()
             async with async_session() as session:
                 query = select(Integration).where(Integration.user_id == user.id)
 
@@ -200,6 +206,7 @@ class IntegrationService:
         """
         try:
             # Verify user exists
+            async_session = get_async_session()
             async with async_session() as session:
                 result = await session.execute(
                     select(User).where(User.external_auth_id == user_id)
@@ -301,6 +308,7 @@ class IntegrationService:
         """
         try:
             # Verify user exists
+            async_session = get_async_session()
             async with async_session() as session:
                 result = await session.execute(
                     select(User).where(User.external_auth_id == user_id)
@@ -444,6 +452,7 @@ class IntegrationService:
             integration = await self._get_user_integration(user_id, provider)
 
             # Get encrypted tokens
+            async_session = get_async_session()
             async with async_session() as session:
                 token_result = await session.execute(
                     select(EncryptedToken).where(
@@ -636,6 +645,7 @@ class IntegrationService:
             tokens_revoked = False
             if revoke_tokens:
                 # Get and revoke tokens
+                async_session = get_async_session()
                 async with async_session() as session:
                     # Get access token
                     access_token_result = await session.execute(
@@ -722,6 +732,7 @@ class IntegrationService:
                         )
 
             # Delete or deactivate integration
+            async_session = get_async_session()
             async with async_session() as session:
                 if delete_data:
                     # Delete encrypted tokens first
@@ -825,6 +836,7 @@ class IntegrationService:
 
             # Check token validity
             if integration.status == IntegrationStatus.ACTIVE:
+                async_session = get_async_session()
                 async with async_session() as session:
                     token_result = await session.execute(
                         select(EncryptedToken).where(
@@ -924,6 +936,7 @@ class IntegrationService:
         """
         try:
             # Verify user exists and get integrations
+            async_session = get_async_session()
             async with async_session() as session:
                 user_result = await session.execute(
                     select(User).where(User.external_auth_id == user_id)
@@ -1013,6 +1026,7 @@ class IntegrationService:
         provider: IntegrationProvider,
     ) -> Integration:
         """Get integration for user and provider."""
+        async_session = get_async_session()
         async with async_session() as session:
             # First get the user
             user_result = await session.execute(
@@ -1036,6 +1050,7 @@ class IntegrationService:
 
     async def _get_token_metadata(self, integration_id: int) -> Dict[str, Any]:
         """Get token metadata without decrypting actual tokens."""
+        async_session = get_async_session()
         async with async_session() as session:
             # Get access token record
             access_token_result = await session.execute(
@@ -1071,6 +1086,7 @@ class IntegrationService:
         try:
             # This would typically query audit logs for consecutive errors
             # For now, return a simple count based on status
+            async_session = get_async_session()
             async with async_session() as session:
                 integration_result = await session.execute(
                     select(Integration).where(Integration.id == integration_id)
@@ -1092,6 +1108,7 @@ class IntegrationService:
         user_info: Dict[str, Any],
     ) -> Integration:
         """Create or update integration record."""
+        async_session = get_async_session()
         async with async_session() as session:
             # Check if integration already exists
             result = await session.execute(
@@ -1155,6 +1172,7 @@ class IntegrationService:
         tokens: Dict[str, Any],
     ) -> None:
         """Store encrypted tokens for integration."""
+        async_session = get_async_session()
         async with async_session() as session:
             # Get integration to get user_id
             result = await session.execute(
