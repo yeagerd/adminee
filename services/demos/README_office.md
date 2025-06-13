@@ -67,9 +67,10 @@ You can set one or both tokens depending on which services you want to test.
 ### 4. Run the Demo
 
 ```bash
-# From the repository root with unified environment
+# From the repository root
+cd services/chat_service
 source venv/bin/activate
-python services/demos/office.py user@example.com
+python ../demos/office.py user@example.com
 ```
 
 The email address is used as a user identifier for the API calls and logging.

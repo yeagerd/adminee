@@ -19,9 +19,9 @@ cd services/chat_service
 
 Client:
 ```bash
-# From repository root with unified environment
+cd services/chat_service
 source venv/bin/activate
-python services/demos/chat.py
+python ../demos/chat.py
 ```
 
 ## Troubleshooting

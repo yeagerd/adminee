@@ -1,5 +1,8 @@
 {
   "folders": [
-    { "path": "." }
+    { "path": "." },
+    { "path": "services/chat_service" },
+    { "path": "services/office_service" },
+    { "path": "services/user_management" }
   ]
 }
