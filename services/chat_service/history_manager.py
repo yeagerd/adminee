@@ -30,7 +30,7 @@ from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, select
 try:
     from settings import settings
 
-    DATABASE_URL = settings.database_url
+    DATABASE_URL = settings.db_url_chat
 except ImportError:
     # Fallback for backwards compatibility
     DATABASE_URL = os.environ.get(

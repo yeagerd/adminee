@@ -18,7 +18,7 @@ from services.office_service.core.config import settings
 config = context.config
 
 # Set the database URL from our settings
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+config.set_main_option("sqlalchemy.url", settings.db_url_office)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

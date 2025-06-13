@@ -26,7 +26,7 @@ def get_async_database_url(url: str) -> str:
 def get_engine():
     settings = Settings()
     return create_async_engine(
-        get_async_database_url(settings.database_url),
+        get_async_database_url(settings.db_url_user_management),
         echo=settings.debug,
     )
 

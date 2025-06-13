@@ -41,7 +41,7 @@ class TestSettings:
             assert settings.log_level == "INFO"
             assert settings.log_format == "json"
             assert (
-                settings.database_url
+                settings.db_url_user_management
                 == "postgresql://postgres:postgres@localhost:5432/briefly"
             )
             assert settings.redis_url == "redis://localhost:6379"
@@ -68,7 +68,8 @@ class TestSettings:
             assert settings.debug is True
             assert settings.log_level == "DEBUG"
             assert (
-                settings.database_url == "postgresql://test:test@testhost:5432/testdb"
+                settings.db_url_user_management
+                == "postgresql://test:test@testhost:5432/testdb"
             )
 
     def test_security_settings(self):

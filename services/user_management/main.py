@@ -690,7 +690,7 @@ async def health_check():
                             },
                             "configuration": {
                                 "status": "not_ready",
-                                "issues": ["DATABASE_URL not configured"],
+                                "issues": ["DB_URL_USER_MANAGEMENT not configured"],
                             },
                         },
                     }
@@ -781,9 +781,9 @@ async def readiness_check():
     # Configuration check
     config_issues = []
     current_settings = Settings()
-    db_url = getattr(current_settings, "database_url", None)
+    db_url = getattr(current_settings, "db_url_user_management", None)
     if not db_url:
-        config_issues.append("DATABASE_URL not configured")
+        config_issues.append("DB_URL_USER_MANAGEMENT not configured")
 
     # In test environments, be more lenient with configuration requirements
     is_test_env = (

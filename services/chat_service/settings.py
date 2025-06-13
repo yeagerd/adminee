@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # Database Configuration
-    database_url: str = Field(
-        default="sqlite+aiosqlite:///./chat_service.db",
+    db_url_chat: str = Field(
+        ...,  # Required field - no default to prevent production mistakes
         description="Database connection string",
         validation_alias=AliasChoices("DB_URL_CHAT", "DATABASE_URL"),
     )

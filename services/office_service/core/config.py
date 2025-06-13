@@ -15,8 +15,8 @@ class Settings(BaseSettings):
     )
 
     # Database configuration
-    DATABASE_URL: str = Field(
-        default="sqlite:///./office_service.db",
+    db_url_office: str = Field(
+        ...,  # Required field - no default to prevent production mistakes
         description="Database connection URL",
         validation_alias=AliasChoices("DB_URL_OFFICE", "DATABASE_URL"),
     )

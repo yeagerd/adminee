@@ -23,7 +23,7 @@ def get_async_database_url(url: str) -> str:
 
 
 engine = create_async_engine(
-    get_async_database_url(settings.DATABASE_URL),
+    get_async_database_url(settings.db_url_office),
     echo=False,
 )
 
