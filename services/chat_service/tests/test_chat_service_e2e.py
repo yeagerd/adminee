@@ -22,7 +22,7 @@ async def setup_test_database():
 @pytest.fixture(autouse=True)
 def fake_llm_env(monkeypatch):
     # Set shared in-memory SQLite DB for tests
-    monkeypatch.setenv("DATABASE_URL", "sqlite+aiosqlite:///file::memory:?cache=shared")
+    monkeypatch.setenv("DB_URL_CHAT", "sqlite+aiosqlite:///file::memory:?cache=shared")
     # Simulate no OpenAI API key for tests
     monkeypatch.setenv("OPENAI_API_KEY", "")
     # Initialize test database synchronously
