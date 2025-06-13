@@ -9,7 +9,7 @@ from sqlmodel import SQLModel
 # Add the parent directory to sys.path to import our models
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 
-from services.office_service.core.config import get_settings
+from services.office_service.core.settings import get_settings
 
 # Import our models to ensure they're registered with SQLModel metadata
 
