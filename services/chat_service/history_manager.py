@@ -1,5 +1,20 @@
 """
 History manager for chat_service: manages threads, messages, and drafts using SQLModel.
+
+This module defines the database models and data access layer for the chat service.
+It follows a clear architectural pattern where database models are separate from
+API response models to ensure proper separation of concerns.
+
+Database Models vs. API Response Models:
+- Database models (Thread, Message, Draft) use SQLModel for ORM functionality
+- API models (ThreadResponse, MessageResponse) use Pydantic for serialization
+- This separation allows for type safety, field transformation, and independent evolution
+
+Key Design Decisions:
+- Database models use proper types (int IDs, datetime objects)
+- API models use strings for JSON serialization compatibility
+- API models can add computed fields not present in database
+- API models control exactly what data is exposed to clients
 """
 
 import datetime
@@ -54,11 +69,37 @@ async_session = async_sessionmaker(
 
 
 class Thread(ChatSQLModel, table=True):
+    """
+    Database model for chat threads.
+
+    Represents a conversation thread between a user and the AI assistant.
+    This is the database/ORM representation with proper types and relationships.
+
+    Note: This model is separate from ThreadResponse (API model) to maintain
+    clean separation between data persistence and API contracts.
+
+    Database Design:
+    - Uses integer primary key for efficiency
+    - Includes proper datetime objects with timezone support
+    - Has SQLAlchemy relationships to related entities
+    - Optimized for database operations and queries
+
+    API Serialization:
+    - Convert to ThreadResponse for API responses
+    - ThreadResponse uses string types for JSON compatibility
+    - ThreadResponse excludes internal relationships
+    """
+
     __tablename__ = "threads"
     __table_args__ = {"extend_existing": True}
 
+    # Primary key - integer for database efficiency
     id: Optional[int] = Field(default=None, primary_key=True)
+
+    # User identifier - indexed for query performance
     user_id: str = Field(index=True, max_length=128)
+
+    # Timestamps with timezone support and automatic updates
     created_at: datetime.datetime = Field(
         default_factory=lambda: datetime.datetime.now(datetime.timezone.utc),
         sa_column=Column(DateTime(timezone=True), server_default=func.now()),
@@ -69,21 +110,54 @@ class Thread(ChatSQLModel, table=True):
             DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
         ),
     )
+
+    # Optional thread title for organization
     title: Optional[str] = Field(default=None, max_length=256)
 
-    # Relationships
+    # SQLAlchemy relationships - not exposed in API models
     messages: list["Message"] = Relationship(back_populates="thread")
     drafts: list["Draft"] = Relationship(back_populates="thread")
 
 
 class Message(ChatSQLModel, table=True):
+    """
+    Database model for chat messages.
+
+    Represents individual messages within a chat thread, from either user or assistant.
+    This is the database/ORM representation optimized for storage and retrieval.
+
+    Note: This model is separate from MessageResponse (API model) to maintain
+    clean separation between data persistence and API contracts.
+
+    Database Design:
+    - Uses integer primary key and foreign key for efficiency
+    - Stores content in TEXT column for large messages
+    - Includes proper datetime objects with timezone support
+    - Has SQLAlchemy relationship to parent thread
+
+    API Serialization:
+    - Convert to MessageResponse for API responses
+    - MessageResponse adds computed fields like llm_generated
+    - MessageResponse uses string IDs for JSON compatibility
+    - MessageResponse excludes internal relationships
+    """
+
     __tablename__ = "messages"
     __table_args__ = {"extend_existing": True}
 
+    # Primary key - integer for database efficiency
     id: Optional[int] = Field(default=None, primary_key=True)
+
+    # Foreign key to parent thread
     thread_id: int = Field(foreign_key="threads.id")
+
+    # User identifier - indexed for query performance
     user_id: str = Field(index=True, max_length=128)
+
+    # Message content - using TEXT column for large messages
     content: str = Field(sa_column=Column(Text))
+
+    # Timestamps with timezone support and automatic updates
     created_at: datetime.datetime = Field(
         default_factory=lambda: datetime.datetime.now(datetime.timezone.utc),
         sa_column=Column(DateTime(timezone=True), server_default=func.now()),
@@ -95,23 +169,43 @@ class Message(ChatSQLModel, table=True):
         ),
     )
 
-    # Relationship
+    # SQLAlchemy relationship - not exposed in API models
     thread: Optional[Thread] = Relationship(back_populates="messages")
 
 
 class Draft(ChatSQLModel, table=True):
+    """
+    Database model for draft content (emails, calendar events, etc.).
+
+    Represents draft content that the AI assistant has prepared but not yet sent.
+    Enforces one active draft per thread per type through unique constraint.
+
+    Database Design:
+    - Uses integer primary key for efficiency
+    - Enforces unique constraint on (thread_id, type)
+    - Stores draft content in TEXT column
+    - Includes proper datetime objects with timezone support
+    """
+
     __tablename__ = "drafts"
     __table_args__ = (
         UniqueConstraint("thread_id", "type", name="uq_thread_type"),
         {"extend_existing": True},
     )
 
+    # Primary key - integer for database efficiency
     id: Optional[int] = Field(default=None, primary_key=True)
+
+    # Foreign key to parent thread
     thread_id: int = Field(foreign_key="threads.id")
-    type: str = Field(
-        index=True, max_length=64
-    )  # e.g., 'email', 'calendar_event', 'calendar_change'
+
+    # Draft type (e.g., 'email', 'calendar_event', 'calendar_change')
+    type: str = Field(index=True, max_length=64)
+
+    # Draft content - using TEXT column for large content
     content: str = Field(sa_column=Column(Text))
+
+    # Timestamps with timezone support and automatic updates
     created_at: datetime.datetime = Field(
         default_factory=lambda: datetime.datetime.now(datetime.timezone.utc),
         sa_column=Column(DateTime(timezone=True), server_default=func.now()),
@@ -123,7 +217,7 @@ class Draft(ChatSQLModel, table=True):
         ),
     )
 
-    # Relationship
+    # SQLAlchemy relationship - not exposed in API models
     thread: Optional[Thread] = Relationship(back_populates="drafts")
 
 
