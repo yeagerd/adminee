@@ -9,7 +9,10 @@ import asyncio
 import importlib
 import os
 import tempfile
+from datetime import datetime, timezone
 from unittest.mock import patch
+
+import pytest
 
 # Set required environment variables before any imports
 os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
@@ -26,27 +29,21 @@ from services.user_management.exceptions import (
     ValidationException,
 )
 from services.user_management.main import app
+from .test_base import BaseUserManagementTest
 
 
+@pytest.fixture
 def client():
-    pass  # removed
+    return TestClient(app)
 
 
-class TestApplicationStartup:
+class TestApplicationStartup(BaseUserManagementTest):
     """Test cases for application startup and configuration."""
 
     def setup_method(self):
-        self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
-        # Set required environment variables for tests
-        os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
-        os.environ["API_FRONTEND_USER_KEY"] = "test-api-key"
-        os.environ["CLERK_SECRET_KEY"] = "test-clerk-key"
+        """Set up test environment."""
+        super().setup_method()
         self.client = TestClient(app)
-
-    def teardown_method(self):
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
 
     def test_app_creation(self):
         assert app.title == "User Management Service"
@@ -75,21 +72,13 @@ class TestApplicationStartup:
         assert response.status_code in [200, 405, 422]
 
 
-class TestHealthEndpoint:
+class TestHealthEndpoint(BaseUserManagementTest):
     """Test cases for health check endpoint (liveness probe)."""
 
     def setup_method(self):
-        self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
-        # Set required environment variables for tests
-        os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
-        os.environ["API_FRONTEND_USER_KEY"] = "test-api-key"
-        os.environ["CLERK_SECRET_KEY"] = "test-clerk-key"
+        """Set up test environment."""
+        super().setup_method()
         self.client = TestClient(app)
-
-    def teardown_method(self):
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
 
     @patch("services.user_management.main.settings")
     def test_health_check_basic(self, mock_settings):
