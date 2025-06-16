@@ -39,9 +39,9 @@ Update all user management test classes to inherit from `BaseUserManagementTest`
 
 1. **Add import:**
    ```python
-   from services.user_management.tests.test_base import BaseUserManagementTest
+   from services.user.tests.test_base import BaseUserManagementTest
    # or for integration tests:
-   from services.user_management.tests.test_base import BaseUserManagementIntegrationTest
+   from services.user.tests.test_base import BaseUserManagementIntegrationTest
    ```
 
 2. **Update class inheritance:**
@@ -111,12 +111,12 @@ Update all user management test classes to inherit from `BaseUserManagementTest`
 
 All updated files can be tested with:
 ```bash
-pytest services/user_management/tests/ -v
+pytest services/user/tests/ -v
 ```
 
 Individual files can be tested with:
 ```bash
-pytest services/user_management/tests/test_filename.py -v
+pytest services/user/tests/test_filename.py -v
 ```
 
 ## Notes

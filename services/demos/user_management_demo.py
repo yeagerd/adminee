@@ -43,7 +43,7 @@ except ImportError:
 
 # Import database setup for local testing
 try:
-    from services.user_management.database import create_all_tables
+    from services.user.database import create_all_tables
 
     DATABASE_SETUP_AVAILABLE = True
 except ImportError:
@@ -653,9 +653,7 @@ class UserManagementDemo:
         # Check service health
         if not await self.check_service_health():
             print("❌ Service is not running. Please start the service first:")
-            print(
-                "   cd services/user_management && uvicorn main:app --reload --port 8000"
-            )
+            print("   cd services/user && uvicorn main:app --reload --port 8000")
             return False
 
         # Check service readiness
@@ -802,7 +800,7 @@ class UserManagementDemo:
         if not self.test_results["service_health"]:
             print("❌ Service is not running. Please start the service first:")
             print("   cd /Users/yeagerd/github/briefly")
-            print("   uvicorn services.user_management.main:app --reload --port 8000")
+            print("   uvicorn services.user.main:app --reload --port 8000")
             return False
 
         # Check service readiness

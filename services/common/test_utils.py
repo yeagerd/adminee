@@ -143,7 +143,7 @@ class BaseOfficeServiceIntegrationTest(BaseIntegrationTest):
 
         # Office Service specific Redis patching
         self.office_redis_patcher = patch(
-            "services.office_service.core.cache_manager.redis.Redis"
+            "services.office.core.cache_manager.redis.Redis"
         )
         self.office_mock_redis_class = self.office_redis_patcher.start()
         self.office_mock_redis_instance = MagicMock()
@@ -157,7 +157,7 @@ class BaseOfficeServiceIntegrationTest(BaseIntegrationTest):
         self.office_mock_redis_instance.exists.return_value = False
 
         # Import and create test client
-        from services.office_service.app.main import app
+        from services.office.app.main import app
 
         self.client = self.create_test_client(app)
 

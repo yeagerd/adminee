@@ -6,8 +6,8 @@ import sys
 # Add the services directory to the path
 sys.path.insert(0, "services")
 
-from services.chat_service import history_manager
-from services.chat_service.llama_manager import ChatAgentManager
+from services.chat import history_manager
+from services.chat.llama_manager import ChatAgentManager
 
 
 async def test_chat_agent():
@@ -40,8 +40,8 @@ async def test_api_logic():
     """Test the API logic directly without HTTP."""
     print("\n=== Testing API Logic ===")
 
-    from services.chat_service.api import chat_endpoint
-    from services.chat_service.models import ChatRequest
+    from services.chat.api import chat_endpoint
+    from services.chat.models import ChatRequest
 
     # Create a request
     request = ChatRequest(

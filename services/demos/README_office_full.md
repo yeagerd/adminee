@@ -30,7 +30,7 @@ Follow the same process as `office.py` to get your Google and Microsoft tokens:
 
 ```bash
 # Navigate to office service directory
-cd services/office_service
+cd services/office
 
 # Set demo environment variables
 export DEMO_MODE=true
@@ -42,7 +42,7 @@ export DB_URL_USER="sqlite:///./office_service.db"
 export REDIS_URL="redis://localhost:6379"
 
 # Start the Office Service (from office service directory)
-cd services/office_service
+cd services/office
 ./start.sh
 ```
 
@@ -151,7 +151,7 @@ Set `DEMO_MODE=true` in the Office Service environment to enable:
 
 ### Import errors
 - Make sure you're running from the repository root directory
-- Ensure all dependencies are installed: `pip install -r services/office_service/requirements.txt`
+- Ensure all dependencies are installed: `pip install -r services/office/requirements.txt`
 
 ## Production Considerations
 

@@ -9,7 +9,7 @@
 - `services/chat-service/models.py` - SQLAlchemy or Pydantic models for threads, messages, feedback, and usage.
 - `services/chat-service/tests/test_main.py` - API endpoint tests.
 - `services/chat-service/tests/test_history_manager.py` - Unit tests for history manager.
-- `services/chat_service/tests/test_chat_agent.py` - Unit tests for modern chat agents with memory blocks.
+- `services/chat/tests/test_chat_agent.py` - Unit tests for modern chat agents with memory blocks.
 - `services/chat-service/tests/test_llm_tools.py` - Unit tests for LiteLLM tool integration.
 - `services/chat-service/tests/test_llm_usage.py` - Unit tests for LLM usage tracking.
 - `services/chat-service/tests/test_feedback.py` - Unit tests for feedback API.

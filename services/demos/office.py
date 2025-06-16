@@ -27,13 +27,13 @@ from typing import Any, Dict, List, Optional
 # Add the office service to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "office_service"))
 
-from services.office_service.core.clients.google import GoogleAPIClient
-from services.office_service.core.clients.microsoft import MicrosoftAPIClient
-from services.office_service.core.normalizer import (
+from services.office.core.clients.google import GoogleAPIClient
+from services.office.core.clients.microsoft import MicrosoftAPIClient
+from services.office.core.normalizer import (
     normalize_google_email,
     normalize_microsoft_email,
 )
-from services.office_service.schemas import EmailMessage
+from services.office.schemas import EmailMessage
 
 
 class OfficeDemoService:
@@ -424,7 +424,7 @@ Environment Variables:
 
 if __name__ == "__main__":
     # Check if we're running from the correct directory
-    if not os.path.exists("services/office_service"):
+    if not os.path.exists("services/office"):
         print("❌ Please run this demo from the repository root:")
         print("   cd /path/to/briefly")
         print("   python services/demos/office.py your-email@example.com")
