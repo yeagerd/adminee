@@ -22,7 +22,7 @@ import argparse
 
 import requests
 
-from services.chat_service.models import ChatResponse
+from services.chat.models import ChatResponse
 
 
 def print_help():

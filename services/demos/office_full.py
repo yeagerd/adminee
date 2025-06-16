@@ -32,7 +32,7 @@ from typing import Any, Dict, List, Optional
 import httpx
 
 # Import Office Service Pydantic models for proper response parsing
-from services.office_service.schemas import ApiResponse
+from services.office.schemas import ApiResponse
 
 
 class OfficeServiceClient:
