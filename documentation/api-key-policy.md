@@ -154,7 +154,7 @@ Result: 403 Forbidden (lacks write_tokens permission)
 ### Basic Route Protection
 ```python
 from fastapi import Depends
-from services.user_management.auth.service_auth import ServicePermissionRequired
+from services.user.auth.service_auth import ServicePermissionRequired
 
 @app.post("/api/emails/send")
 async def send_email(

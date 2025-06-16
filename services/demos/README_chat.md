@@ -13,7 +13,7 @@ Populate
 
 Server (using repo root .env):
 ```bash
-cd services/chat_service
+cd services/chat
 ./start.sh
 ```
 

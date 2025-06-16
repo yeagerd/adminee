@@ -33,7 +33,7 @@ The Office Service is a FastAPI-based microservice that provides unified access 
 
 1. **Navigate to the service directory:**
    ```bash
-   cd services/office_service
+   cd services/office
    ```
 
 2. **Set up unified development environment:**
@@ -89,7 +89,7 @@ pytest tests/test_api_email.py       # Email API tests
 pytest tests/test_token_manager.py   # Token management tests
 
 # Run with coverage
-pytest --cov=services.office_service
+pytest --cov=services.office
 
 # Type checking
 mypy services/
@@ -160,7 +160,7 @@ tox -p auto             # Full test matrix
     -   To run tests for a specific service, you might execute commands within its container or set up test scripts.
         ```bash
         # Office Service Testing:
-        cd services/office_service
+        cd services/office
         # Virtual environment is already activated by setup-dev.sh
         pytest                    # Run all tests
         pytest tests/test_integration.py  # Run integration tests only

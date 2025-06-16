@@ -112,9 +112,9 @@ To verify the setup works:
 - `services/common/setup.py` (new)
 - `services/vector-db/setup.py` (new)
 - `services/vector-db/__init__.py` (new)
-- `services/office_service/.vscode/settings.json` (updated)
-- `services/chat_service/.vscode/settings.json` (updated)
-- `services/user_management/.vscode/settings.json` (updated)
+- `services/office/.vscode/settings.json` (updated)
+- `services/chat/.vscode/settings.json` (updated)
+- `services/user/.vscode/settings.json` (updated)
 - `setup-dev.sh` (updated - now includes shared package installation)
 - `briefly.code-workspace` (updated - removed vector-db folder, added root)
 
