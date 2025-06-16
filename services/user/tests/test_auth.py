@@ -61,9 +61,7 @@ class TestClerkAuthentication:
 
         with (
             patch("services.user.auth.clerk.jwt.decode") as mock_decode,
-            patch(
-                "services.user.auth.clerk.get_settings"
-            ) as mock_get_settings,
+            patch("services.user.auth.clerk.get_settings") as mock_get_settings,
         ):
             mock_settings = mock_get_settings.return_value
             mock_settings.jwt_verify_signature = False
@@ -83,9 +81,7 @@ class TestClerkAuthentication:
         """Test JWT token verification with expired token."""
         with (
             patch("services.user.auth.clerk.jwt.decode") as mock_decode,
-            patch(
-                "services.user.auth.clerk.get_settings"
-            ) as mock_get_settings,
+            patch("services.user.auth.clerk.get_settings") as mock_get_settings,
         ):
             mock_settings = mock_get_settings.return_value
             mock_settings.jwt_verify_signature = False
@@ -101,9 +97,7 @@ class TestClerkAuthentication:
         """Test JWT token verification with invalid token."""
         with (
             patch("services.user.auth.clerk.jwt.decode") as mock_decode,
-            patch(
-                "services.user.auth.clerk.get_settings"
-            ) as mock_get_settings,
+            patch("services.user.auth.clerk.get_settings") as mock_get_settings,
         ):
             mock_settings = mock_get_settings.return_value
             mock_settings.jwt_verify_signature = False
@@ -119,9 +113,7 @@ class TestClerkAuthentication:
         """Test JWT token verification with missing required claims."""
         with (
             patch("services.user.auth.clerk.jwt.decode") as mock_decode,
-            patch(
-                "services.user.auth.clerk.get_settings"
-            ) as mock_get_settings,
+            patch("services.user.auth.clerk.get_settings") as mock_get_settings,
         ):
             mock_settings = mock_get_settings.return_value
             mock_settings.jwt_verify_signature = False
@@ -138,9 +130,7 @@ class TestClerkAuthentication:
         base_time = 1640995200  # 2022-01-01 00:00:00 UTC
         with (
             patch("services.user.auth.clerk.jwt.decode") as mock_decode,
-            patch(
-                "services.user.auth.clerk.get_settings"
-            ) as mock_get_settings,
+            patch("services.user.auth.clerk.get_settings") as mock_get_settings,
         ):
             mock_settings = mock_get_settings.return_value
             mock_settings.jwt_verify_signature = False
@@ -178,9 +168,7 @@ class TestClerkAuthentication:
             scheme="Bearer", credentials="valid_token"
         )
 
-        with patch(
-            "services.user.auth.clerk.verify_jwt_token"
-        ) as mock_verify:
+        with patch("services.user.auth.clerk.verify_jwt_token") as mock_verify:
             mock_verify.return_value = {"sub": "user_123"}
 
             user_id = await get_current_user(credentials)
@@ -193,9 +181,7 @@ class TestClerkAuthentication:
             scheme="Bearer", credentials="invalid_token"
         )
 
-        with patch(
-            "services.user.auth.clerk.verify_jwt_token"
-        ) as mock_verify:
+        with patch("services.user.auth.clerk.verify_jwt_token") as mock_verify:
             mock_verify.side_effect = AuthenticationException("Invalid token")
 
             with pytest.raises(HTTPException) as exc_info:
@@ -221,9 +207,7 @@ class TestClerkAuthentication:
     @pytest.mark.asyncio
     async def test_require_user_ownership_success(self):
         """Test successful user ownership requirement."""
-        with patch(
-            "services.user.auth.clerk.verify_user_ownership"
-        ) as mock_verify:
+        with patch("services.user.auth.clerk.verify_user_ownership") as mock_verify:
             mock_verify.return_value = True
 
             result = await require_user_ownership("user_123", "user_123")
@@ -232,9 +216,7 @@ class TestClerkAuthentication:
     @pytest.mark.asyncio
     async def test_require_user_ownership_failure(self):
         """Test user ownership requirement failure."""
-        with patch(
-            "services.user.auth.clerk.verify_user_ownership"
-        ) as mock_verify:
+        with patch("services.user.auth.clerk.verify_user_ownership") as mock_verify:
             from services.user.exceptions import AuthorizationException
 
             mock_verify.side_effect = AuthorizationException("resource", "action")
@@ -251,9 +233,7 @@ class TestServiceAuthentication:
     @pytest.fixture(autouse=True)
     def setup_service_auth(self):
         """Set up service auth with test API key."""
-        with patch(
-            "services.user.auth.service_auth.get_settings"
-        ) as mock_settings:
+        with patch("services.user.auth.service_auth.get_settings") as mock_settings:
             mock_settings.return_value.api_frontend_user_key = "api-frontend-user-key"
             mock_settings.return_value.api_key_office = None
 
@@ -410,9 +390,7 @@ class TestAuthenticationIntegration:
     @pytest.fixture(autouse=True)
     def setup_service_auth(self):
         """Set up service auth with test API key."""
-        with patch(
-            "services.user.auth.service_auth.get_settings"
-        ) as mock_settings:
+        with patch("services.user.auth.service_auth.get_settings") as mock_settings:
             mock_settings.return_value.api_frontend_user_key = "api-frontend-user-key"
             mock_settings.return_value.api_key_office = None
 

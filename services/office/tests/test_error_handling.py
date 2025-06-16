@@ -317,9 +317,7 @@ class TestLoggingIntegration:
             mock_response.raise_for_status.return_value = None
             mock_client.request.return_value = mock_response
 
-            with patch(
-                "services.office.core.clients.base.logger"
-            ) as mock_logger:
+            with patch("services.office.core.clients.base.logger") as mock_logger:
                 async with google_client:
                     await google_client.get("/test/endpoint")
 
@@ -355,9 +353,7 @@ class TestLoggingIntegration:
                 "Request timed out"
             )
 
-            with patch(
-                "services.office.core.clients.base.logger"
-            ) as mock_logger:
+            with patch("services.office.core.clients.base.logger") as mock_logger:
                 async with google_client:
                     with pytest.raises(ProviderAPIError):
                         await google_client.get("/test/endpoint")

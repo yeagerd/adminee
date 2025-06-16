@@ -67,9 +67,7 @@ class TestTokenService(BaseUserManagementTest):
                 return_value=self.mock_integration,
             ),
             patch.object(self.token_service, "_store_token_record") as mock_store,
-            patch(
-                "services.user.services.token_service.audit_logger.log_user_action"
-            ),
+            patch("services.user.services.token_service.audit_logger.log_user_action"),
         ):
 
             await self.token_service.store_tokens(

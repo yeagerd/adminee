@@ -26,9 +26,7 @@ from services.user.schemas.user import (
     UserSearchRequest,
     UserUpdate,
 )
-from services.user.utils.validation import (
-    ValidationError as CustomValidationError,
-)
+from services.user.utils.validation import ValidationError as CustomValidationError
 from services.user.utils.validation import (
     check_sql_injection_patterns,
     sanitize_text_input,

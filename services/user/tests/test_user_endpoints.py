@@ -145,9 +145,7 @@ class TestUserProfileEndpoints:
             patch.object(
                 get_user_service(), "update_user", return_value=mock_updated_user
             ),
-            patch(
-                "services.user.schemas.user.UserResponse.from_orm"
-            ) as mock_from_orm,
+            patch("services.user.schemas.user.UserResponse.from_orm") as mock_from_orm,
         ):
 
             mock_response = UserResponse(
@@ -273,9 +271,7 @@ class TestUserProfileEndpoints:
                 "update_user_onboarding",
                 return_value=mock_updated_user,
             ),
-            patch(
-                "services.user.schemas.user.UserResponse.from_orm"
-            ) as mock_from_orm,
+            patch("services.user.schemas.user.UserResponse.from_orm") as mock_from_orm,
         ):
 
             mock_response = UserResponse(
@@ -386,9 +382,7 @@ class TestUserProfileEndpoints:
                 "get_user_by_external_auth_id",
                 return_value=mock_user,
             ),
-            patch(
-                "services.user.schemas.user.UserResponse.from_orm"
-            ) as mock_from_orm,
+            patch("services.user.schemas.user.UserResponse.from_orm") as mock_from_orm,
         ):
 
             mock_response = UserResponse(

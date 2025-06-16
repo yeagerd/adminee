@@ -260,12 +260,8 @@ async def test_graceful_fallback_on_memory_errors():
     """Test that the agent gracefully handles memory block creation errors."""
     with (
         patch("services.chat.chat_agent.llm_manager") as mock_llm_manager,
-        patch(
-            "services.chat.chat_agent.history_manager"
-        ) as mock_history_manager,
-        patch(
-            "services.chat.chat_agent.VectorMemoryBlock"
-        ) as mock_vector_block,
+        patch("services.chat.chat_agent.history_manager") as mock_history_manager,
+        patch("services.chat.chat_agent.VectorMemoryBlock") as mock_vector_block,
     ):
 
         mock_llm = MagicMock()
@@ -293,9 +289,7 @@ async def test_graceful_fallback_on_memory_errors():
 @pytest.mark.asyncio
 async def test_memory_blocks_priority_order():
     """Test that memory blocks are created with correct priority order."""
-    with patch(
-        "services.chat.chat_agent.history_manager"
-    ) as mock_history_manager:
+    with patch("services.chat.chat_agent.history_manager") as mock_history_manager:
 
         mock_history_manager.get_thread_history.return_value = []
 
@@ -323,12 +317,8 @@ async def test_agent_with_tools():
     """Test agent creation with custom tools."""
     with (
         patch("services.chat.chat_agent.llm_manager") as mock_llm_manager,
-        patch(
-            "services.chat.chat_agent.history_manager"
-        ) as mock_history_manager,
-        patch(
-            "services.chat.chat_agent.FunctionCallingAgent"
-        ) as mock_agent_class,
+        patch("services.chat.chat_agent.history_manager") as mock_history_manager,
+        patch("services.chat.chat_agent.FunctionCallingAgent") as mock_agent_class,
     ):
 
         # Create a mock LLM that's compatible with FunctionCallingLLM
