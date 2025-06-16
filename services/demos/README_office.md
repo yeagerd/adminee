@@ -146,5 +146,5 @@ The Office Service unified API is working! 🎉
 
 ### Import errors
 - Make sure you're running from the repository root directory
-- The Office Service code should be in `services/office_service/`
+- The Office Service code should be in `services/office/`
 - Include the email argument: `python services/demos/office.py your-email@example.com` 

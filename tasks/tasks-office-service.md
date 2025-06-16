@@ -55,7 +55,7 @@ Before committing:
 ## Tasks
 [x] 1. Project Scaffolding & Core Dependencies
 
-[x] 1.1 Create a folder for the service in services/office_service.
+[x] 1.1 Create a folder for the service in services/office.
 [x] 1.2 [Install core dependencies: fastapi, uvicorn, pydantic, ormar, alembic, psycopg2-binary, python-dotenv, httpx.]
 [x] 1.3 [Set up the basic project structure with folders for app, core, models, tests, etc.]
 [x] 1.4 [Create a basic FastAPI application instance in app/main.py with a "Hello World" root endpoint.]
@@ -213,40 +213,40 @@ The Office Service is now fully tested, linted, type-checked, and production-rea
 ## Relevant Files
 
 ### Core Infrastructure
-- `services/office_service/app/main.py` - FastAPI application with all routers
-- `services/office_service/core/config.py` - Environment configuration using Pydantic BaseSettings
-- `services/office_service/core/database.py` - Database connection and Ormar configuration
-- `services/office_service/alembic/` - Database migration files and configuration
+- `services/office/app/main.py` - FastAPI application with all routers
+- `services/office/core/config.py` - Environment configuration using Pydantic BaseSettings
+- `services/office/core/database.py` - Database connection and Ormar configuration
+- `services/office/alembic/` - Database migration files and configuration
 
 ### Data Models
-- `services/office_service/models/__init__.py` - Ormar database models (ApiCall, CacheEntry, RateLimitBucket)
-- `services/office_service/schemas/__init__.py` - Pydantic schemas for unified API responses (EmailMessage, CalendarEvent, DriveFile, ApiResponse)
+- `services/office/models/__init__.py` - Ormar database models (ApiCall, CacheEntry, RateLimitBucket)
+- `services/office/schemas/__init__.py` - Pydantic schemas for unified API responses (EmailMessage, CalendarEvent, DriveFile, ApiResponse)
 
 ### Core Modules
-- `services/office_service/core/token_manager.py` - Token retrieval from User Management Service with caching
-- `services/office_service/core/api_client_factory.py` - Factory for creating provider-specific API clients
-- `services/office_service/core/clients/base.py` - Base API client with logging and error handling
-- `services/office_service/core/clients/google.py` - Google API client for Gmail, Calendar, Drive
-- `services/office_service/core/clients/microsoft.py` - Microsoft Graph API client for Outlook, Calendar, OneDrive
-- `services/office_service/core/normalizer.py` - Data normalization functions for unified response format
-- `services/office_service/core/cache_manager.py` - Redis caching with TTL and key generation
+- `services/office/core/token_manager.py` - Token retrieval from User Management Service with caching
+- `services/office/core/api_client_factory.py` - Factory for creating provider-specific API clients
+- `services/office/core/clients/base.py` - Base API client with logging and error handling
+- `services/office/core/clients/google.py` - Google API client for Gmail, Calendar, Drive
+- `services/office/core/clients/microsoft.py` - Microsoft Graph API client for Outlook, Calendar, OneDrive
+- `services/office/core/normalizer.py` - Data normalization functions for unified response format
+- `services/office/core/cache_manager.py` - Redis caching with TTL and key generation
 
 ### API Endpoints
-- `services/office_service/api/health.py` - Health check and diagnostics endpoints
-- `services/office_service/api/email.py` - Unified email endpoints (GET /email/messages, GET /email/messages/{id})
-- `services/office_service/api/calendar.py` - Unified calendar endpoints (GET /calendar/events, GET /calendar/events/{id})
-- `services/office_service/api/files.py` - Unified files endpoints (GET /files/, GET /files/search, GET /files/{id})
+- `services/office/api/health.py` - Health check and diagnostics endpoints
+- `services/office/api/email.py` - Unified email endpoints (GET /email/messages, GET /email/messages/{id})
+- `services/office/api/calendar.py` - Unified calendar endpoints (GET /calendar/events, GET /calendar/events/{id})
+- `services/office/api/files.py` - Unified files endpoints (GET /files/, GET /files/search, GET /files/{id})
 
 ### Dependencies
 - `requirements.txt` - Python package dependencies including FastAPI, Redis, httpx, Ormar 0.20.2, Pydantic 2.x
 
 ### Tests
-- `services/office_service/tests/test_schemas.py` - Unit tests for Pydantic schema models (validation, serialization)
-- `services/office_service/tests/test_token_manager.py` - Unit tests for TokenManager (caching, error handling, HTTP client integration)
-- `services/office_service/tests/test_api_clients.py` - Unit tests for API clients and factory (mocked HTTP responses, error handling)
-- `services/office_service/tests/test_api_email.py` - Unit tests for email API endpoints
-- `services/office_service/tests/test_error_handling.py` - Unit tests for error handling and logging functionality (global exception handlers, API client error handling)
-- `services/office_service/tests/test_integration.py` - Integration tests for all API endpoints (health, email, calendar, files) with full request/response cycle testing
+- `services/office/tests/test_schemas.py` - Unit tests for Pydantic schema models (validation, serialization)
+- `services/office/tests/test_token_manager.py` - Unit tests for TokenManager (caching, error handling, HTTP client integration)
+- `services/office/tests/test_api_clients.py` - Unit tests for API clients and factory (mocked HTTP responses, error handling)
+- `services/office/tests/test_api_email.py` - Unit tests for email API endpoints
+- `services/office/tests/test_error_handling.py` - Unit tests for error handling and logging functionality (global exception handlers, API client error handling)
+- `services/office/tests/test_integration.py` - Integration tests for all API endpoints (health, email, calendar, files) with full request/response cycle testing
 
 Next Steps (After MVP)
 

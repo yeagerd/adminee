@@ -746,6 +746,6 @@ Use the following command to run your service locally with console tracing:
 ```bash
 OTEL_TRACES_EXPORTER=console \
 OTEL_SERVICE_NAME=local-office-service \
-opentelemetry-instrument uvicorn services.office_service.app.main:app --reload --host 0.0.0.0 --port 8080
+opentelemetry-instrument uvicorn services.office.app.main:app --reload --host 0.0.0.0 --port 8080
 ```
 When you make a request to your local service, you will see trace data printed as JSON in your terminal.

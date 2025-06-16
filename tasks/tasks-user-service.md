@@ -38,95 +38,95 @@
 
 ### Phase 1: Project Setup & Foundation
 - `requirements.txt` - Added FastAPI, Ormar, Pydantic, cryptography, clerk-backend-api, celery, structlog dependencies
-- `services/user_management/` - Main service directory with auth, models, routers, services, utils subdirectories
-- `services/user_management/main.py` - FastAPI application entry point with health check endpoint
-- `services/user_management/settings.py` - Pydantic Settings configuration for environment variables
-- `services/user_management/database.py` - Database connection and Ormar configuration with modern OrmarConfig
-- `services/user_management/alembic/` - Alembic migration configuration
-- `services/user_management/logging_config.py` - Structlog configuration for structured logging
+- `services/user/` - Main service directory with auth, models, routers, services, utils subdirectories
+- `services/user/main.py` - FastAPI application entry point with health check endpoint
+- `services/user/settings.py` - Pydantic Settings configuration for environment variables
+- `services/user/database.py` - Database connection and Ormar configuration with modern OrmarConfig
+- `services/user/alembic/` - Alembic migration configuration
+- `services/user/logging_config.py` - Structlog configuration for structured logging
 - `Dockerfile.user-service` - Python/FastAPI Docker configuration
 - `docker-compose.yml` - Updated with user-management service and Redis
-- `services/user_management/tests/test_settings.py` - Unit tests for settings configuration
+- `services/user/tests/test_settings.py` - Unit tests for settings configuration
 
 ### Phase 2: Database Models & Schema
-- `services/user_management/models/user.py` - User model with Clerk ID, email, profile info, onboarding status
-- `services/user_management/models/preferences.py` - UserPreferences model with UI, notification, AI, integration, privacy settings
-- `services/user_management/models/integration.py` - Integration model with provider/status enums, OAuth metadata
-- `services/user_management/models/token.py` - EncryptedToken model for secure OAuth token storage with user-specific encryption
-- `services/user_management/models/audit.py` - AuditLog model for compliance tracking and security monitoring
-- `services/user_management/models/__init__.py` - Model imports and exports for metadata registration
-- `services/user_management/alembic/versions/791881f77389_initial_schema.py` - Auto-generated migration with all tables and performance indexes
-- `services/user_management/tests/test_models.py` - Comprehensive unit tests for all models, validation, and relationships
+- `services/user/models/user.py` - User model with Clerk ID, email, profile info, onboarding status
+- `services/user/models/preferences.py` - UserPreferences model with UI, notification, AI, integration, privacy settings
+- `services/user/models/integration.py` - Integration model with provider/status enums, OAuth metadata
+- `services/user/models/token.py` - EncryptedToken model for secure OAuth token storage with user-specific encryption
+- `services/user/models/audit.py` - AuditLog model for compliance tracking and security monitoring
+- `services/user/models/__init__.py` - Model imports and exports for metadata registration
+- `services/user/alembic/versions/791881f77389_initial_schema.py` - Auto-generated migration with all tables and performance indexes
+- `services/user/tests/test_models.py` - Comprehensive unit tests for all models, validation, and relationships
 
 ### Phase 3: Basic FastAPI Application Structure
-- `services/user_management/main.py` - Enhanced FastAPI application with CORS middleware, exception handlers, database lifecycle, and router registration
-- `services/user_management/settings.py` - Updated with CORS origins and environment configuration
-- `services/user_management/logging_config.py` - Added setup_logging function for main.py import compatibility
-- `services/user_management/exceptions.py` - Comprehensive custom exception classes with HTTP status mappings and structured error responses
-- `services/user_management/routers/users.py` - User profile management router with placeholder endpoints
-- `services/user_management/routers/preferences.py` - User preferences management router with placeholder endpoints
-- `services/user_management/routers/integrations.py` - OAuth integrations management router with placeholder endpoints
-- `services/user_management/routers/webhooks.py` - Webhook handling router for external providers with placeholder endpoints
-- `services/user_management/routers/internal.py` - Internal service-to-service API with secure token retrieval, automatic refresh, scope validation, and comprehensive error handling with service authentication
-- `services/user_management/services/token_service.py` - Dedicated token service for internal API operations with encrypted storage, automatic refresh, scope validation, and user status tracking
-- `services/user_management/routers/__init__.py` - Router package exports for main application registration
-- `services/user_management/tests/test_main.py` - Comprehensive unit tests for application startup, health endpoint, exception handling, and middleware
+- `services/user/main.py` - Enhanced FastAPI application with CORS middleware, exception handlers, database lifecycle, and router registration
+- `services/user/settings.py` - Updated with CORS origins and environment configuration
+- `services/user/logging_config.py` - Added setup_logging function for main.py import compatibility
+- `services/user/exceptions.py` - Comprehensive custom exception classes with HTTP status mappings and structured error responses
+- `services/user/routers/users.py` - User profile management router with placeholder endpoints
+- `services/user/routers/preferences.py` - User preferences management router with placeholder endpoints
+- `services/user/routers/integrations.py` - OAuth integrations management router with placeholder endpoints
+- `services/user/routers/webhooks.py` - Webhook handling router for external providers with placeholder endpoints
+- `services/user/routers/internal.py` - Internal service-to-service API with secure token retrieval, automatic refresh, scope validation, and comprehensive error handling with service authentication
+- `services/user/services/token_service.py` - Dedicated token service for internal API operations with encrypted storage, automatic refresh, scope validation, and user status tracking
+- `services/user/routers/__init__.py` - Router package exports for main application registration
+- `services/user/tests/test_main.py` - Comprehensive unit tests for application startup, health endpoint, exception handling, and middleware
 
 ### Phase 2: User Authentication & Authorization
 - `requirements.txt` - Added PyJWT dependency for JWT token handling
-- `services/user_management/auth/clerk.py` - Clerk JWT token validation with verify_jwt_token, get_current_user, and user ownership verification
-- `services/user_management/auth/service_auth.py` - Service-to-service API key authentication with multiple header format support and permission validation
-- `services/user_management/auth/__init__.py` - Authentication package exports for easy importing
-- `services/user_management/tests/test_auth.py` - Comprehensive unit tests for JWT validation, service authentication, and authorization checks
-- `services/user_management/schemas/user.py` - Pydantic schemas for user CRUD operations with validation and serialization
-- `services/user_management/schemas/__init__.py` - Schema package exports for all user-related request/response models
-- `services/user_management/services/user_service.py` - User service business logic for profile operations, onboarding, and search functionality
-- `services/user_management/routers/users.py` - Enhanced user profile management router with full CRUD operations, authentication, and authorization
-- `services/user_management/tests/test_user_endpoints.py` - Comprehensive unit tests for all user profile endpoints including success and error scenarios
-- `services/user_management/schemas/webhook.py` - Pydantic schemas for Clerk webhook events with validation and email extraction
-- `services/user_management/services/webhook_service.py` - Webhook service business logic for processing Clerk user lifecycle events
-- `services/user_management/auth/webhook_auth.py` - Webhook signature verification for Clerk webhooks with HMAC validation
-- `services/user_management/routers/webhooks.py` - Enhanced webhook router with Clerk event handling, signature verification, and comprehensive error handling
-- `services/user_management/tests/test_webhook_endpoints.py` - Comprehensive unit tests for webhook processing including signature validation and event handling
+- `services/user/auth/clerk.py` - Clerk JWT token validation with verify_jwt_token, get_current_user, and user ownership verification
+- `services/user/auth/service_auth.py` - Service-to-service API key authentication with multiple header format support and permission validation
+- `services/user/auth/__init__.py` - Authentication package exports for easy importing
+- `services/user/tests/test_auth.py` - Comprehensive unit tests for JWT validation, service authentication, and authorization checks
+- `services/user/schemas/user.py` - Pydantic schemas for user CRUD operations with validation and serialization
+- `services/user/schemas/__init__.py` - Schema package exports for all user-related request/response models
+- `services/user/services/user_service.py` - User service business logic for profile operations, onboarding, and search functionality
+- `services/user/routers/users.py` - Enhanced user profile management router with full CRUD operations, authentication, and authorization
+- `services/user/tests/test_user_endpoints.py` - Comprehensive unit tests for all user profile endpoints including success and error scenarios
+- `services/user/schemas/webhook.py` - Pydantic schemas for Clerk webhook events with validation and email extraction
+- `services/user/services/webhook_service.py` - Webhook service business logic for processing Clerk user lifecycle events
+- `services/user/auth/webhook_auth.py` - Webhook signature verification for Clerk webhooks with HMAC validation
+- `services/user/routers/webhooks.py` - Enhanced webhook router with Clerk event handling, signature verification, and comprehensive error handling
+- `services/user/tests/test_webhook_endpoints.py` - Comprehensive unit tests for webhook processing including signature validation and event handling
 
 ### Phase 3: User Preferences Management
-- `services/user_management/schemas/preferences.py` - Comprehensive Pydantic schemas for all preference categories including UI, notification, AI, integration, and privacy settings with validation
-- `services/user_management/routers/preferences.py` - Enhanced preferences router with full CRUD operations, partial updates, reset functionality, authentication, and authorization
-- `services/user_management/services/preferences_service.py` - Preferences service business logic for managing user preferences including default value management and preference validation
-- `services/user_management/services/__init__.py` - Updated services package exports to include preferences service
-- `services/user_management/exceptions.py` - Added DatabaseException class for compatibility with preferences service
-- `services/user_management/tests/test_preferences.py` - Comprehensive unit tests for preferences functionality including validation, partial updates, and default value handling
+- `services/user/schemas/preferences.py` - Comprehensive Pydantic schemas for all preference categories including UI, notification, AI, integration, and privacy settings with validation
+- `services/user/routers/preferences.py` - Enhanced preferences router with full CRUD operations, partial updates, reset functionality, authentication, and authorization
+- `services/user/services/preferences_service.py` - Preferences service business logic for managing user preferences including default value management and preference validation
+- `services/user/services/__init__.py` - Updated services package exports to include preferences service
+- `services/user/exceptions.py` - Added DatabaseException class for compatibility with preferences service
+- `services/user/tests/test_preferences.py` - Comprehensive unit tests for preferences functionality including validation, partial updates, and default value handling
 
 ### Phase 4: Token Encryption & Security
-- `services/user_management/security/` - Security package for encryption and key management utilities
-- `services/user_management/security/__init__.py` - Security package exports for TokenEncryption class
-- `services/user_management/security/encryption.py` - TokenEncryption class with AES-256-GCM encryption, PBKDF2 key derivation, user-specific keys, and key rotation support
-- `services/user_management/settings.py` - Updated with token_encryption_salt configuration for secure key derivation
-- `services/user_management/tests/test_encryption.py` - Comprehensive unit tests for token encryption including security scenarios, error handling, and edge cases
-- `services/user_management/tests/test_settings.py` - Updated settings tests for encryption configuration
+- `services/user/security/` - Security package for encryption and key management utilities
+- `services/user/security/__init__.py` - Security package exports for TokenEncryption class
+- `services/user/security/encryption.py` - TokenEncryption class with AES-256-GCM encryption, PBKDF2 key derivation, user-specific keys, and key rotation support
+- `services/user/settings.py` - Updated with token_encryption_salt configuration for secure key derivation
+- `services/user/tests/test_encryption.py` - Comprehensive unit tests for token encryption including security scenarios, error handling, and edge cases
+- `services/user/tests/test_settings.py` - Updated settings tests for encryption configuration
 
 ### Phase 5: Audit Logging & Compliance
-- `services/user_management/services/audit_service.py` - Comprehensive audit logging service with AuditLogger class, structured logging, database persistence, querying, analytics, and retention policies
-- `services/user_management/exceptions.py` - Added AuditException for audit operation failures
-- `services/user_management/services/__init__.py` - Updated to export audit_logger for easy importing
-- `services/user_management/tests/test_audit_service.py` - Comprehensive unit tests for audit logging covering all functionality including logging, querying, analytics, security tracking, compliance reporting, and data retention policies
+- `services/user/services/audit_service.py` - Comprehensive audit logging service with AuditLogger class, structured logging, database persistence, querying, analytics, and retention policies
+- `services/user/exceptions.py` - Added AuditException for audit operation failures
+- `services/user/services/__init__.py` - Updated to export audit_logger for easy importing
+- `services/user/tests/test_audit_service.py` - Comprehensive unit tests for audit logging covering all functionality including logging, querying, analytics, security tracking, compliance reporting, and data retention policies
 
 ### Phase 6: OAuth Integration Management
-- `services/user_management/integrations/` - OAuth provider configurations and integration management package
-- `services/user_management/integrations/__init__.py` - Integrations package exports for OAuth configuration classes
-- `services/user_management/integrations/oauth_config.py` - Comprehensive OAuth configuration with Google and Microsoft providers, PKCE support, state management, token exchange, user info retrieval, and security features
-- `services/user_management/tests/test_oauth_config.py` - Comprehensive unit tests for OAuth configuration covering PKCE challenges, state validation, provider management, token operations, and integration workflows
-- `services/user_management/routers/integrations.py` - Complete integration router with OAuth flow management (start/callback), CRUD operations (list/disconnect/refresh), health monitoring, and comprehensive authentication/authorization
-- `services/user_management/services/integration_service.py` - Full integration service with OAuth flow handling, token management, refresh operations, health checks, statistics, and encrypted token storage
-- `services/user_management/tests/test_integration_endpoints.py` - Comprehensive test suite covering all 20 integration endpoints including OAuth flows, CRUD operations, authentication, authorization, error handling, and security scenarios
+- `services/user/integrations/` - OAuth provider configurations and integration management package
+- `services/user/integrations/__init__.py` - Integrations package exports for OAuth configuration classes
+- `services/user/integrations/oauth_config.py` - Comprehensive OAuth configuration with Google and Microsoft providers, PKCE support, state management, token exchange, user info retrieval, and security features
+- `services/user/tests/test_oauth_config.py` - Comprehensive unit tests for OAuth configuration covering PKCE challenges, state validation, provider management, token operations, and integration workflows
+- `services/user/routers/integrations.py` - Complete integration router with OAuth flow management (start/callback), CRUD operations (list/disconnect/refresh), health monitoring, and comprehensive authentication/authorization
+- `services/user/services/integration_service.py` - Full integration service with OAuth flow handling, token management, refresh operations, health checks, statistics, and encrypted token storage
+- `services/user/tests/test_integration_endpoints.py` - Comprehensive test suite covering all 20 integration endpoints including OAuth flows, CRUD operations, authentication, authorization, error handling, and security scenarios
 
 ### Phase 8: Error Handling & Validation
-- `services/user_management/utils/retry.py` - Comprehensive retry utilities with exponential backoff, jitter, transient error detection, and convenience decorators for database, API, and OAuth operations
-- `services/user_management/tests/test_retry_utils.py` - Comprehensive unit tests for retry utilities covering all functionality including async/sync retry, decorators, jitter, exponential backoff, and error handling scenarios
-- `services/user_management/tests/test_exception_handling.py` - Complete unit tests for all exception types, error response formatting, user-friendly messages, and exception hierarchy validation
-- `services/user_management/utils/validation.py` - Comprehensive validation utilities with custom validators for email addresses, URLs, timezone strings, phone numbers, and security-focused input validation including SQL injection and XSS protection
-- `services/user_management/middleware/sanitization.py` - Input sanitization middleware for automatic sanitization of all incoming user data to prevent XSS, injection attacks, and other security vulnerabilities with configurable strict mode
-- `services/user_management/tests/test_validation_security.py` - Comprehensive unit tests for validation utilities and security features including edge cases, malicious input attempts, and performance testing
+- `services/user/utils/retry.py` - Comprehensive retry utilities with exponential backoff, jitter, transient error detection, and convenience decorators for database, API, and OAuth operations
+- `services/user/tests/test_retry_utils.py` - Comprehensive unit tests for retry utilities covering all functionality including async/sync retry, decorators, jitter, exponential backoff, and error handling scenarios
+- `services/user/tests/test_exception_handling.py` - Complete unit tests for all exception types, error response formatting, user-friendly messages, and exception hierarchy validation
+- `services/user/utils/validation.py` - Comprehensive validation utilities with custom validators for email addresses, URLs, timezone strings, phone numbers, and security-focused input validation including SQL injection and XSS protection
+- `services/user/middleware/sanitization.py` - Input sanitization middleware for automatic sanitization of all incoming user data to prevent XSS, injection attacks, and other security vulnerabilities with configurable strict mode
+- `services/user/tests/test_validation_security.py` - Comprehensive unit tests for validation utilities and security features including edge cases, malicious input attempts, and performance testing
 
 ### Demo & Testing
 - `services/demos/user_management_demo.py` - Comprehensive interactive demo showcasing all user management features including OAuth flows, profile management, preferences, and service APIs with real browser-based OAuth authorization
@@ -138,7 +138,7 @@
 
 * [x] 1. Project Structure & Environment Setup
 * [x] 1.1 Create new Python project with FastAPI, Ormar, Pydantic dependencies in requirements.txt
-* [x] 1.2 Set up project structure: `services/user_management/{auth,models,routers,services,utils}/__init__.py`
+* [x] 1.2 Set up project structure: `services/user/{auth,models,routers,services,utils}/__init__.py`
 * [x] 1.3 Create `settings.py` using Pydantic Settings for environment variable management
 * [x] 1.4 Configure PostgreSQL connection string and database configuration
 * [x] 1.5 Initialize Alembic with `alembic init alembic` and configure `alembic.ini`

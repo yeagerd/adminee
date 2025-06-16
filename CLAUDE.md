@@ -8,9 +8,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Services & Stack
 - **Frontend**: Next.js 15.2.4 + TypeScript (`/frontend/`)
-- **User Management**: FastAPI for profiles, OAuth tokens (`/services/user_management/`)
-- **Office Service**: Unified Google/Microsoft calendar/email API (`/services/office_service/`)
-- **Chat Service**: AI conversations with LLM integration (`/services/chat_service/`)
+- **User Management**: FastAPI for profiles, OAuth tokens (`/services/user/`)
+- **Office Service**: Unified Google/Microsoft calendar/email API (`/services/office/`)
+- **Chat Service**: AI conversations with LLM integration (`/services/chat/`)
 - **Vector DB**: Pinecone for RAG pipeline (`/services/vector-db/`)
 
 **Tech**: Python 3.11+, FastAPI, PostgreSQL, Redis, Next.js, Clerk auth, LangChain, OpenAI, Docker

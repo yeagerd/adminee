@@ -654,7 +654,7 @@ class UserManagementDemo:
         if not await self.check_service_health():
             print("❌ Service is not running. Please start the service first:")
             print(
-                "   cd services/user_management && uvicorn main:app --reload --port 8000"
+                "   cd services/user && uvicorn main:app --reload --port 8000"
             )
             return False
 

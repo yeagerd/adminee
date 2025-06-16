@@ -11,4 +11,4 @@ if [ -d "venv" ]; then
 fi
 
 # Run uvicorn with proper package path
-python -m uvicorn services.office_service.app.main:app --port 8002 --host 0.0.0.0 --env-file .env "$@" 
+python -m uvicorn services.office.app.main:app --port 8002 --host 0.0.0.0 --env-file .env "$@" 

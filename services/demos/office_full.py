@@ -7,13 +7,13 @@ to a running Office Service instance. It shows the full request/response cycle
 including unified API responses from multiple providers.
 
 Prerequisites:
-1. Office Service must be running (cd services/office_service && uvicorn app.main:app --port 8000 --host 0.0.0.0)
+1. Office Service must be running (cd services/office && uvicorn app.main:app --port 8000 --host 0.0.0.0)
 2. Set demo tokens in environment variables
 3. Set DEMO_MODE=true in the Office Service environment
 
 Setup:
 1. Start the Office Service in demo mode:
-   cd services/office_service
+   cd services/office
        DEMO_MODE=true DEMO_GOOGLE_TOKEN=your-token DEMO_MICROSOFT_TOKEN=your-token uvicorn app.main:app --port 8000 --host 0.0.0.0
 
 2. Run this demo:
@@ -240,7 +240,7 @@ class FullOfficeDemo:
             self.errors.append(error_msg)
             print(f"❌ {error_msg}")
             print(
-                "💡 Try starting the service with: cd services/office_service && uvicorn app.main:app --port 8000 --host 0.0.0.0"
+                "💡 Try starting the service with: cd services/office && uvicorn app.main:app --port 8000 --host 0.0.0.0"
             )
             raise
         except httpx.TimeoutException:
@@ -610,7 +610,7 @@ class FullOfficeDemo:
             if connection_errors:
                 print("\n🔧 To fix connection issues:")
                 print(
-                    "   • Make sure Office Service is running: cd services/office_service && uvicorn app.main:app --port 8000"
+                    "   • Make sure Office Service is running: cd services/office && uvicorn app.main:app --port 8000"
                 )
 
             if token_errors:
@@ -656,7 +656,7 @@ def parse_arguments():
         epilog="""
 Prerequisites:
 1. Start Office Service in demo mode:
-   cd services/office_service
+   cd services/office
        DEMO_MODE=true DEMO_GOOGLE_TOKEN=your-token uvicorn app.main:app --port 8000 --host 0.0.0.0
 
 2. Run this demo:

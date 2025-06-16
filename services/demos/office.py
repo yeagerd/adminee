@@ -424,7 +424,7 @@ Environment Variables:
 
 if __name__ == "__main__":
     # Check if we're running from the correct directory
-    if not os.path.exists("services/office_service"):
+    if not os.path.exists("services/office"):
         print("❌ Please run this demo from the repository root:")
         print("   cd /path/to/briefly")
         print("   python services/demos/office.py your-email@example.com")
