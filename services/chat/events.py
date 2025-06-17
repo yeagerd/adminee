@@ -311,6 +311,95 @@ class ClarificationNeededEvent(BaseWorkflowEvent):
         return self.clarification_request.timeout_seconds is not None
 
 
+class ToolExecutionRequestedEvent(BaseWorkflowEvent):
+    """
+    Event that the planner emits to request tool execution.
+    
+    This is the trigger event that routes from Planner → ToolExecutor.
+    Contains the tools to execute and their parameters.
+    """
+    
+    tools_to_execute: List[Dict[str, Any]]  # List of {tool_name, inputs, execution_group_id}
+    execution_strategy: str  # "parallel" or "sequential"
+    parent_plan_event_id: str
+    priority: str = "medium"  # "high", "medium", "low"
+    timeout_seconds: Optional[int] = None
+    metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
+    
+    @validator('tools_to_execute')
+    def validate_tools(cls, v):
+        if not v or not isinstance(v, list):
+            raise ValueError("tools_to_execute must be a non-empty list")
+        for tool in v:
+            if not isinstance(tool, dict) or 'tool_name' not in tool:
+                raise ValueError("Each tool must be a dict with 'tool_name' key")
+        return v
+    
+    def _get_event_data(self) -> Dict[str, Any]:
+        """Get ToolExecutionRequestedEvent-specific data for serialization."""
+        return {
+            "tools_to_execute": self.tools_to_execute,
+            "execution_strategy": self.execution_strategy,
+            "parent_plan_event_id": self.parent_plan_event_id,
+            "priority": self.priority,
+            "timeout_seconds": self.timeout_seconds,
+            "metadata": self.metadata.dict()
+        }
+    
+    def get_parallel_tools(self) -> List[Dict[str, Any]]:
+        """Get tools that can be executed in parallel."""
+        if self.execution_strategy == "parallel":
+            return self.tools_to_execute
+        return []
+    
+    def should_execute_parallel(self) -> bool:
+        """Check if tools should be executed in parallel."""
+        return self.execution_strategy == "parallel"
+
+
+class ClarificationRequestedEvent(BaseWorkflowEvent):
+    """
+    Event that the planner emits to request user clarification.
+    
+    This is the trigger event that routes from Planner → Clarifier.
+    Contains the clarification questions and context.
+    """
+    
+    clarification_requests: List[ClarificationRequest]
+    parent_plan_event_id: str
+    workflow_context: Dict[str, Any] = Field(default_factory=dict)
+    can_proceed_without: bool = False  # Can workflow continue without clarification
+    metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
+    
+    @validator('clarification_requests')
+    def validate_requests(cls, v):
+        if not v or not isinstance(v, list):
+            raise ValueError("clarification_requests must be a non-empty list")
+        return v
+    
+    def _get_event_data(self) -> Dict[str, Any]:
+        """Get ClarificationRequestedEvent-specific data for serialization."""
+        return {
+            "clarification_requests": [req.dict() for req in self.clarification_requests],
+            "parent_plan_event_id": self.parent_plan_event_id,
+            "workflow_context": self.workflow_context,
+            "can_proceed_without": self.can_proceed_without,
+            "metadata": self.metadata.dict()
+        }
+    
+    def get_blocking_requests(self) -> List[ClarificationRequest]:
+        """Get clarification requests that block execution."""
+        return [req for req in self.clarification_requests if req.blocking]
+    
+    def has_blocking_requests(self) -> bool:
+        """Check if any clarification requests block execution."""
+        return len(self.get_blocking_requests()) > 0
+    
+    def get_all_questions(self) -> List[str]:
+        """Get all clarification questions."""
+        return [req.question for req in self.clarification_requests]
+
+
 # Export base classes for use in concrete event implementations
 __all__ = [
     'BaseWorkflowEvent',
@@ -321,5 +410,7 @@ __all__ = [
     'PlanGeneratedEvent',
     'ToolExecutionStartedEvent',
     'ToolExecutionCompletedEvent',
-    'ClarificationNeededEvent'
+    'ClarificationNeededEvent',
+    'ToolExecutionRequestedEvent',
+    'ClarificationRequestedEvent'
 ] 
