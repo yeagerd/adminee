@@ -107,11 +107,11 @@
     - [x] 3.2.2 Wrap draft creation tools (`create_draft_email`, `create_draft_calendar_event`, etc.)
     - [x] 3.2.3 Add progress streaming hooks to each tool execution
     - [x] 3.2.4 Implement user token passing and service authentication in workflow context
-  - [ ] 3.3 Create tool execution monitoring and metrics
-    - [ ] 3.3.1 Add execution time tracking and performance metrics
-    - [ ] 3.3.2 Implement error rate monitoring and alerting
-    - [ ] 3.3.3 Create tool usage analytics for optimization
-  - [ ] 3.4 Write unit tests for tool integration in `services/chat/tests/test_tool_integration.py`
+  - [x] 3.3 Create tool execution monitoring and metrics
+    - [x] 3.3.1 Add execution time tracking and performance metrics
+    - [x] 3.3.2 Implement error rate monitoring and alerting
+    - [x] 3.3.3 Create tool usage analytics for optimization
+  - [x] 3.4 Write unit tests for tool integration in `services/chat/tests/test_tool_integration.py`
 
 - [ ] 4. Build Streaming Progress and Communication Layer
   - [x] 4.1 Create streaming infrastructure in `services/chat/streaming.py`

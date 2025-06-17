@@ -119,6 +119,16 @@ class EnhancedToolRegistry:
         self._execution_stats: Dict[str, Dict[str, Any]] = {}
         self._active_executions: Dict[str, asyncio.Task] = {}
         
+        # Monitoring and metrics
+        self._performance_metrics: Dict[str, Dict[str, Any]] = {}
+        self._error_tracking: Dict[str, List[Dict[str, Any]]] = {}
+        self._usage_analytics: Dict[str, Dict[str, Any]] = {}
+        self._alert_thresholds = {
+            "error_rate": 0.1,  # 10% error rate threshold
+            "avg_duration": 30.0,  # 30 second average duration threshold
+            "timeout_rate": 0.05  # 5% timeout rate threshold
+        }
+        
         # Initialize default tool metadata
         self._initialize_default_metadata()
     
@@ -579,31 +589,54 @@ class EnhancedToolRegistry:
         return any(pattern.lower() in error_str for pattern in retryable_patterns)
     
     def _update_execution_stats(self, tool_name: str, result: ToolResult) -> None:
-        """Update execution statistics."""
+        """Update execution statistics and monitoring metrics."""
         if tool_name not in self._execution_stats:
             self._execution_stats[tool_name] = {
                 "total_executions": 0,
                 "successful_executions": 0,
                 "failed_executions": 0,
+                "timeout_executions": 0,
                 "total_duration": 0.0,
                 "average_duration": 0.0,
-                "cache_hits": 0
+                "cache_hits": 0,
+                "last_execution": None,
+                "error_rate": 0.0,
+                "timeout_rate": 0.0
             }
         
         stats = self._execution_stats[tool_name]
         stats["total_executions"] += 1
         stats["total_duration"] += result.execution_time
+        stats["last_execution"] = result.timestamp.isoformat()
         
         if result.success:
             stats["successful_executions"] += 1
         else:
             stats["failed_executions"] += 1
+            
+            # Track error details
+            self._track_error(tool_name, result)
+        
+        # Check for timeout errors
+        if result.error_message and "timeout" in result.error_message.lower():
+            stats["timeout_executions"] += 1
         
         if result.cache_hit:
             stats["cache_hits"] += 1
         
-        # Update average
+        # Update calculated metrics
         stats["average_duration"] = stats["total_duration"] / stats["total_executions"]
+        stats["error_rate"] = stats["failed_executions"] / stats["total_executions"]
+        stats["timeout_rate"] = stats["timeout_executions"] / stats["total_executions"]
+        
+        # Update performance metrics
+        self._update_performance_metrics(tool_name, result)
+        
+        # Update usage analytics
+        self._update_usage_analytics(tool_name, result)
+        
+        # Check for alerts
+        self._check_alert_thresholds(tool_name, stats)
     
     def _initialize_default_metadata(self) -> None:
         """Initialize default metadata for common tools."""
@@ -711,4 +744,192 @@ class EnhancedToolRegistry:
                 task.cancel()
                 self.logger.info(f"Cancelled active execution: {execution_id}")
         
-        self._active_executions.clear() 
+        self._active_executions.clear()
+    
+    def _track_error(self, tool_name: str, result: ToolResult) -> None:
+        """Track error details for monitoring."""
+        if tool_name not in self._error_tracking:
+            self._error_tracking[tool_name] = []
+        
+        error_entry = {
+            "timestamp": result.timestamp.isoformat(),
+            "error_message": result.error_message,
+            "execution_time": result.execution_time,
+            "metadata": result.metadata
+        }
+        
+        # Keep only last 100 errors per tool
+        self._error_tracking[tool_name].append(error_entry)
+        if len(self._error_tracking[tool_name]) > 100:
+            self._error_tracking[tool_name] = self._error_tracking[tool_name][-100:]
+    
+    def _update_performance_metrics(self, tool_name: str, result: ToolResult) -> None:
+        """Update performance metrics for monitoring."""
+        if tool_name not in self._performance_metrics:
+            self._performance_metrics[tool_name] = {
+                "min_duration": float('inf'),
+                "max_duration": 0.0,
+                "p95_duration": 0.0,
+                "p99_duration": 0.0,
+                "recent_durations": [],
+                "success_streak": 0,
+                "failure_streak": 0,
+                "last_success": None,
+                "last_failure": None
+            }
+        
+        metrics = self._performance_metrics[tool_name]
+        
+        # Update duration metrics
+        metrics["min_duration"] = min(metrics["min_duration"], result.execution_time)
+        metrics["max_duration"] = max(metrics["max_duration"], result.execution_time)
+        
+        # Track recent durations for percentile calculation
+        metrics["recent_durations"].append(result.execution_time)
+        if len(metrics["recent_durations"]) > 1000:  # Keep last 1000 executions
+            metrics["recent_durations"] = metrics["recent_durations"][-1000:]
+        
+        # Calculate percentiles
+        if len(metrics["recent_durations"]) >= 20:  # Need sufficient data
+            sorted_durations = sorted(metrics["recent_durations"])
+            p95_idx = int(0.95 * len(sorted_durations))
+            p99_idx = int(0.99 * len(sorted_durations))
+            metrics["p95_duration"] = sorted_durations[p95_idx]
+            metrics["p99_duration"] = sorted_durations[p99_idx]
+        
+        # Update success/failure streaks
+        if result.success:
+            metrics["success_streak"] += 1
+            metrics["failure_streak"] = 0
+            metrics["last_success"] = result.timestamp.isoformat()
+        else:
+            metrics["failure_streak"] += 1
+            metrics["success_streak"] = 0
+            metrics["last_failure"] = result.timestamp.isoformat()
+    
+    def _update_usage_analytics(self, tool_name: str, result: ToolResult) -> None:
+        """Update usage analytics for optimization insights."""
+        if tool_name not in self._usage_analytics:
+            self._usage_analytics[tool_name] = {
+                "hourly_usage": {},
+                "daily_usage": {},
+                "cache_effectiveness": 0.0,
+                "parallel_usage_count": 0,
+                "sequential_usage_count": 0,
+                "avg_inputs_size": 0,
+                "total_inputs_processed": 0
+            }
+        
+        analytics = self._usage_analytics[tool_name]
+        
+        # Track hourly usage
+        hour_key = result.timestamp.strftime("%Y-%m-%d-%H")
+        analytics["hourly_usage"][hour_key] = analytics["hourly_usage"].get(hour_key, 0) + 1
+        
+        # Track daily usage
+        day_key = result.timestamp.strftime("%Y-%m-%d")
+        analytics["daily_usage"][day_key] = analytics["daily_usage"].get(day_key, 0) + 1
+        
+        # Update cache effectiveness
+        if result.cache_hit:
+            cache_hits = sum(1 for r in [result] if r.cache_hit)
+            total_executions = 1  # This execution
+            analytics["cache_effectiveness"] = cache_hits / total_executions
+        
+        # Track input size (if available)
+        if "input_size" in result.metadata:
+            input_size = result.metadata["input_size"]
+            analytics["total_inputs_processed"] += input_size
+            analytics["avg_inputs_size"] = analytics["total_inputs_processed"] / analytics.get("executions", 1)
+    
+    def _check_alert_thresholds(self, tool_name: str, stats: Dict[str, Any]) -> None:
+        """Check if any alert thresholds are exceeded."""
+        alerts = []
+        
+        # Check error rate
+        if stats["error_rate"] > self._alert_thresholds["error_rate"]:
+            alerts.append(f"High error rate: {stats['error_rate']:.2%}")
+        
+        # Check average duration
+        if stats["average_duration"] > self._alert_thresholds["avg_duration"]:
+            alerts.append(f"High average duration: {stats['average_duration']:.2f}s")
+        
+        # Check timeout rate
+        if stats["timeout_rate"] > self._alert_thresholds["timeout_rate"]:
+            alerts.append(f"High timeout rate: {stats['timeout_rate']:.2%}")
+        
+        # Log alerts
+        if alerts:
+            self.logger.warning(f"Tool {tool_name} alerts: {', '.join(alerts)}")
+    
+    def get_performance_metrics(self, tool_name: Optional[str] = None) -> Dict[str, Any]:
+        """Get performance metrics for monitoring."""
+        if tool_name:
+            return self._performance_metrics.get(tool_name, {})
+        return self._performance_metrics
+    
+    def get_error_tracking(self, tool_name: Optional[str] = None) -> Dict[str, Any]:
+        """Get error tracking information."""
+        if tool_name:
+            return self._error_tracking.get(tool_name, [])
+        return self._error_tracking
+    
+    def get_usage_analytics(self, tool_name: Optional[str] = None) -> Dict[str, Any]:
+        """Get usage analytics for optimization."""
+        if tool_name:
+            return self._usage_analytics.get(tool_name, {})
+        return self._usage_analytics
+    
+    def get_monitoring_summary(self) -> Dict[str, Any]:
+        """Get comprehensive monitoring summary."""
+        total_executions = sum(stats["total_executions"] for stats in self._execution_stats.values())
+        total_failures = sum(stats["failed_executions"] for stats in self._execution_stats.values())
+        
+        # Find tools with highest error rates
+        high_error_tools = [
+            {"tool": tool, "error_rate": stats["error_rate"]}
+            for tool, stats in self._execution_stats.items()
+            if stats["error_rate"] > self._alert_thresholds["error_rate"]
+        ]
+        
+        # Find slowest tools
+        slow_tools = [
+            {"tool": tool, "avg_duration": stats["average_duration"]}
+            for tool, stats in self._execution_stats.items()
+            if stats["average_duration"] > self._alert_thresholds["avg_duration"]
+        ]
+        
+        return {
+            "total_executions": total_executions,
+            "total_failures": total_failures,
+            "overall_error_rate": total_failures / total_executions if total_executions > 0 else 0.0,
+            "active_executions": len(self._active_executions),
+            "cache_stats": self.get_cache_stats(),
+            "high_error_tools": high_error_tools,
+            "slow_tools": slow_tools,
+            "tools_monitored": len(self._execution_stats)
+        }
+    
+    def set_alert_thresholds(self, thresholds: Dict[str, float]) -> None:
+        """Update alert thresholds for monitoring."""
+        self._alert_thresholds.update(thresholds)
+        self.logger.info(f"Updated alert thresholds: {self._alert_thresholds}")
+    
+    def reset_metrics(self, tool_name: Optional[str] = None) -> None:
+        """Reset metrics for a specific tool or all tools."""
+        if tool_name:
+            if tool_name in self._execution_stats:
+                del self._execution_stats[tool_name]
+            if tool_name in self._performance_metrics:
+                del self._performance_metrics[tool_name]
+            if tool_name in self._error_tracking:
+                del self._error_tracking[tool_name]
+            if tool_name in self._usage_analytics:
+                del self._usage_analytics[tool_name]
+            self.logger.info(f"Reset metrics for tool: {tool_name}")
+        else:
+            self._execution_stats.clear()
+            self._performance_metrics.clear()
+            self._error_tracking.clear()
+            self._usage_analytics.clear()
+            self.logger.info("Reset all tool metrics") 

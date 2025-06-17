@@ -347,4 +347,123 @@ class TestEnhancedToolRegistry:
             
             # Should fail due to timeout
             assert result.success is False
-            assert "timeout" in result.error_message.lower() or "cancelled" in result.error_message.lower() 
+            assert "timeout" in result.error_message.lower() or "cancelled" in result.error_message.lower()
+    
+    def test_performance_metrics_tracking(self, registry):
+        """Test performance metrics tracking."""
+        # Simulate multiple executions
+        results = [
+            ToolResult("test_tool", {"data": "test"}, 1.0, True),
+            ToolResult("test_tool", {"data": "test"}, 2.0, True),
+            ToolResult("test_tool", {"data": "test"}, 0.5, False, "Error"),
+            ToolResult("test_tool", {"data": "test"}, 3.0, True)
+        ]
+        
+        for result in results:
+            registry._update_execution_stats("test_tool", result)
+        
+        # Check performance metrics
+        metrics = registry.get_performance_metrics("test_tool")
+        assert metrics["min_duration"] == 0.5
+        assert metrics["max_duration"] == 3.0
+        assert len(metrics["recent_durations"]) == 4
+        assert metrics["failure_streak"] == 0  # Last execution was successful
+        assert metrics["last_success"] is not None
+        assert metrics["last_failure"] is not None
+    
+    def test_error_tracking(self, registry):
+        """Test error tracking functionality."""
+        # Simulate error
+        error_result = ToolResult(
+            "test_tool", 
+            None, 
+            1.0, 
+            False, 
+            "Connection timeout"
+        )
+        
+        registry._update_execution_stats("test_tool", error_result)
+        
+        # Check error tracking
+        errors = registry.get_error_tracking("test_tool")
+        assert len(errors) == 1
+        assert errors[0]["error_message"] == "Connection timeout"
+        assert "timestamp" in errors[0]
+    
+    def test_usage_analytics(self, registry):
+        """Test usage analytics tracking."""
+        # Simulate executions
+        result = ToolResult("test_tool", {"data": "test"}, 1.0, True)
+        registry._update_execution_stats("test_tool", result)
+        
+        # Check usage analytics
+        analytics = registry.get_usage_analytics("test_tool")
+        assert "hourly_usage" in analytics
+        assert "daily_usage" in analytics
+        
+        # Check that current hour and day are tracked
+        hour_key = result.timestamp.strftime("%Y-%m-%d-%H")
+        day_key = result.timestamp.strftime("%Y-%m-%d")
+        assert analytics["hourly_usage"][hour_key] == 1
+        assert analytics["daily_usage"][day_key] == 1
+    
+    def test_alert_thresholds(self, registry):
+        """Test alert threshold checking."""
+        # Set low thresholds for testing
+        registry.set_alert_thresholds({
+            "error_rate": 0.01,  # 1% error rate
+            "avg_duration": 1.0,  # 1 second
+            "timeout_rate": 0.01  # 1% timeout rate
+        })
+        
+        # Simulate high error rate
+        for i in range(10):
+            result = ToolResult("alert_tool", None, 2.0, i < 2, "Error" if i >= 2 else None)
+            registry._update_execution_stats("alert_tool", result)
+        
+        # Check monitoring summary for alerts
+        summary = registry.get_monitoring_summary()
+        assert len(summary["high_error_tools"]) > 0
+        assert len(summary["slow_tools"]) > 0
+    
+    def test_monitoring_summary(self, registry):
+        """Test comprehensive monitoring summary."""
+        # Add some execution data
+        for i in range(5):
+            result = ToolResult(f"tool_{i % 2}", {"data": i}, 1.0, i % 3 != 0)
+            registry._update_execution_stats(f"tool_{i % 2}", result)
+        
+        summary = registry.get_monitoring_summary()
+        
+        assert "total_executions" in summary
+        assert "total_failures" in summary
+        assert "overall_error_rate" in summary
+        assert "cache_stats" in summary
+        assert "tools_monitored" in summary
+        assert summary["total_executions"] == 5
+        assert summary["tools_monitored"] == 2  # tool_0 and tool_1
+    
+    def test_metrics_reset(self, registry):
+        """Test metrics reset functionality."""
+        # Add some data
+        result = ToolResult("test_tool", {"data": "test"}, 1.0, True)
+        registry._update_execution_stats("test_tool", result)
+        
+        # Verify data exists
+        assert len(registry.get_execution_stats()) > 0
+        assert len(registry.get_performance_metrics()) > 0
+        
+        # Reset specific tool
+        registry.reset_metrics("test_tool")
+        
+        # Check that specific tool data is gone
+        assert "test_tool" not in registry.get_execution_stats()
+        assert "test_tool" not in registry.get_performance_metrics()
+        
+        # Add data again and reset all
+        registry._update_execution_stats("test_tool", result)
+        registry.reset_metrics()  # Reset all
+        
+        # Check that all data is gone
+        assert len(registry.get_execution_stats()) == 0
+        assert len(registry.get_performance_metrics()) == 0 
