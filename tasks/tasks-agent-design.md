@@ -33,25 +33,25 @@
 
 ## Tasks
 
-- [ ] 1. Design and Implement LlamaIndex Workflow Event System (Workflow Triggers Only)
+- [x] 1. Design and Implement LlamaIndex Workflow Event System (Workflow Triggers Only)
   - [x] 1.1 Create event definitions in `services/chat/events.py` with base Event classes
   - [x] 1.2 Define UserInputEvent for workflow entry point with user messages and context
   - [x] 1.3 Define PlanGeneratedEvent containing execution plan from PlannerStep (REMOVED - see 1.11)
   - [x] 1.4 Define ToolExecutionRequestedEvent to trigger ToolExecutorStep (Planner → ToolExecutor)
   - [x] 1.5 Define ClarificationRequestedEvent to trigger ClarifierStep (Planner → Clarifier)
   - [x] 1.6 Define completion events for collect pattern - ToolExecutorCompletedEvent and ClarifierCompletedEvent for LlamaIndex collect to trigger DraftBuilderStep
-  - [ ] 1.7 Add routing flags to request events for sophisticated event routing:
+  - [x] 1.7 Add routing flags to request events for sophisticated event routing:
     - [x] 1.7.1 Add `blocks_planning: bool` flag to ClarificationRequestedEvent (determines if clarification blocks planning)
     - [x] 1.7.2 Add `route_to_planner: bool` flag to ToolExecutionRequestedEvent (determines if results go to planner vs drafter)
-  - [ ] 1.8 Refactor ToolExecutorCompletedEvent into tool routing events:
+  - [x] 1.8 Refactor ToolExecutorCompletedEvent into tool routing events:
     - [x] 1.8.1 Define ToolResultsForPlannerEvent (ToolExecutor → Planner) - tool results trigger re-planning
     - [x] 1.8.2 Define ToolResultsForDrafterEvent (ToolExecutor → DraftBuilder) - tool results ready for drafting
-    - [ ] 1.8.3 Update ToolExecutorStep to check route_to_planner flag and emit appropriate routing event
-  - [ ] 1.9 Refactor ClarifierCompletedEvent into clarification routing events:
+    - [ ] 1.8.3 Update ToolExecutorStep to check route_to_planner flag and emit appropriate routing event (→ Task 2.3.5)
+  - [x] 1.9 Refactor ClarifierCompletedEvent into clarification routing events:
     - [x] 1.9.1 Define ClarificationReplanRequestedEvent (Clarifier → Planner) - user request changed
     - [x] 1.9.2 Define ClarificationPlannerUnblockedEvent (Clarifier → Planner) - planner blockage resolved  
     - [x] 1.9.3 Define ClarificationDraftUnblockedEvent (Clarifier → DraftBuilder) - draft blockage resolved
-    - [ ] 1.9.4 Update ClarifierStep to check blocks_planning flag and analyze clarification for routing
+    - [ ] 1.9.4 Update ClarifierStep to check blocks_planning flag and analyze clarification for routing (→ Task 2.4.4)
   - [x] 1.10 Define DraftCreatedEvent and DraftUpdatedEvent as terminal workflow events
   - [x] 1.11 Define ContextUpdatedEvent for context accumulation across workflow steps
   - [x] 1.12 Remove observability events (ToolExecutionStartedEvent, etc.) - use logging/metrics instead
