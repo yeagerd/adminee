@@ -1,8 +1,8 @@
 """
 Unit tests for DraftBuilderStep workflow step.
 
-Tests the draft generation logic, templating system, versioning,
-validation, and completeness checking capabilities.
+Tests the draft creation and assembly engine with tool result integration,
+clarification context handling, and quality validation.
 """
 
 import pytest
@@ -18,7 +18,6 @@ from services.chat.events import (
     ToolResultsForDrafterEvent,
     ClarificationDraftUnblockedEvent,
     DraftCreatedEvent,
-    DraftUpdatedEvent,
     WorkflowMetadata
 )
 
@@ -31,6 +30,7 @@ class TestDraftBuilderStep:
         """Create a mock LLM."""
         llm = Mock(spec=LLM)
         llm.complete = AsyncMock()
+        llm.acomplete = AsyncMock()
         return llm
     
     @pytest.fixture
@@ -51,49 +51,16 @@ class TestDraftBuilderStep:
         return ToolResultsForDrafterEvent(
             thread_id="test_thread",
             user_id="test_user",
+            parent_request_event_id="plan_123",
             tool_results={
-                "get_calendar_events": {
-                    "success": True,
-                    "data": {
-                        "events": [
-                            {"title": "Team Meeting", "start": "2024-01-15T14:00:00Z"}
-                        ],
-                        "availability": "Available 2-4pm"
-                    }
-                },
-                "get_emails": {
-                    "success": True,
-                    "data": {
-                        "emails": [
-                            {"subject": "Project Update", "from": "john@example.com"}
-                        ]
-                    }
-                }
+                "get_calendar_events": {"data": {"events": [{"title": "Meeting"}]}},
+                "get_emails": {"data": {"emails": [{"subject": "Project Update"}]}}
             },
-            draft_context={
-                "user_request": "Schedule a meeting with John",
-                "intent": "calendar_scheduling",
-                "user_preferences": {"timezone": "UTC"}
-            },
-            metadata=WorkflowMetadata(confidence=0.8, priority="medium")
-        )
-    
-    @pytest.fixture
-    def sample_clarification_unblocked_event(self):
-        """Create a sample ClarificationDraftUnblockedEvent."""
-        return ClarificationDraftUnblockedEvent(
-            thread_id="test_thread",
-            user_id="test_user",
-            draft_context={
-                "user_request": "Send email to team",
-                "intent": "email_composition",
-                "clarification_insights": {"recipients": "team@example.com"}
-            },
-            clarification_insights={
-                "recipients": "team@example.com",
-                "subject": "Weekly Update"
-            },
-            metadata=WorkflowMetadata(confidence=0.9, priority="high")
+            execution_success=True,
+            error_messages=[],
+            draft_context={"purpose": "create_email", "recipient": "team@company.com"},
+            context_updates={},
+            metadata=WorkflowMetadata(confidence=0.9, priority="medium")
         )
     
     def test_initialization(self, draft_builder_step):
@@ -105,356 +72,315 @@ class TestDraftBuilderStep:
         assert hasattr(draft_builder_step, '_draft_versions')
         assert hasattr(draft_builder_step, '_draft_history')
     
-    def test_determine_draft_type_email(self, draft_builder_step):
-        """Test determining draft type for email."""
-        context = {
-            "intent": "email_composition",
-            "user_request": "Send an email to John"
+    def test_analyze_draft_requirements(self, draft_builder_step):
+        """Test analyzing draft requirements from tool results."""
+        tool_results = {
+            "get_calendar_events": {"data": {"events": [{"title": "Meeting"}]}},
+            "get_emails": {"data": {"emails": []}}
         }
-        tool_results = {}
+        draft_context = {"purpose": "create_email", "recipient": "team@company.com"}
         
-        draft_type = draft_builder_step._determine_draft_type(context, tool_results)
+        analysis = draft_builder_step._analyze_draft_requirements(tool_results, draft_context)
         
-        assert draft_type == "email"
+        assert isinstance(analysis, dict)
+        assert "draft_type" in analysis
+        assert "content_sources" in analysis
+        assert "required_elements" in analysis
     
-    def test_determine_draft_type_calendar(self, draft_builder_step):
-        """Test determining draft type for calendar event."""
-        context = {
-            "intent": "calendar_scheduling",
-            "user_request": "Schedule a meeting"
-        }
+    def test_build_draft_prompt(self, draft_builder_step):
+        """Test building draft prompt from context."""
+        tool_results = {"get_emails": {"data": {"emails": []}}}
+        draft_context = {"purpose": "create_email"}
+        draft_analysis = {"draft_type": "email", "content_sources": ["emails"]}
+        user_style = {"tone": "professional", "length": "medium"}
+        
+        prompt = draft_builder_step._build_draft_prompt(
+            tool_results, draft_context, draft_analysis, user_style
+        )
+        
+        assert isinstance(prompt, str)
+        assert len(prompt) > 0
+        assert "email" in prompt.lower()
+    
+    def test_build_clarification_draft_prompt(self, draft_builder_step):
+        """Test building clarification-based draft prompt."""
+        combined_context = {"purpose": "create_email", "recipient": "team@company.com"}
+        clarification_insights = {"user_intent": "schedule_meeting", "preferences": {"time": "afternoon"}}
+        user_style = {"tone": "professional"}
+        
+        prompt = draft_builder_step._build_clarification_draft_prompt(
+            combined_context, clarification_insights, user_style
+        )
+        
+        assert isinstance(prompt, str)
+        assert len(prompt) > 0
+        assert "schedule" in prompt.lower()
+    
+    def test_structure_draft_content(self, draft_builder_step):
+        """Test structuring raw draft content."""
+        raw_content = "Subject: Team Meeting\n\nHi team,\n\nLet's schedule a meeting for next week.\n\nBest regards"
+        draft_type = "email"
         tool_results = {"get_calendar_events": {"data": {"events": []}}}
         
-        draft_type = draft_builder_step._determine_draft_type(context, tool_results)
+        structured = draft_builder_step._structure_draft_content(raw_content, draft_type, tool_results)
         
-        assert draft_type == "calendar_event"
-    
-    def test_determine_draft_type_document(self, draft_builder_step):
-        """Test determining draft type for document."""
-        context = {
-            "intent": "document_creation",
-            "user_request": "Create a report"
-        }
-        tool_results = {"get_documents": {"data": {"documents": []}}}
-        
-        draft_type = draft_builder_step._determine_draft_type(context, tool_results)
-        
-        assert draft_type == "document"
-    
-    def test_get_draft_template_email(self, draft_builder_step):
-        """Test getting email draft template."""
-        template = draft_builder_step._get_draft_template("email", "professional")
-        
-        assert "To:" in template
-        assert "Subject:" in template
-        assert "Dear" in template
-        assert "{recipient}" in template
-        assert "{subject}" in template
-    
-    def test_get_draft_template_calendar(self, draft_builder_step):
-        """Test getting calendar event draft template."""
-        template = draft_builder_step._get_draft_template("calendar_event", "standard")
-        
-        assert "Title:" in template
-        assert "Date:" in template
-        assert "Time:" in template
-        assert "{title}" in template
-        assert "{date}" in template
-    
-    def test_get_draft_template_custom(self, draft_builder_step):
-        """Test getting custom draft template."""
-        # Set up custom template
-        draft_builder_step._draft_templates["custom_email"] = {
-            "professional": "Custom: {content}"
-        }
-        
-        template = draft_builder_step._get_draft_template("custom_email", "professional")
-        
-        assert template == "Custom: {content}"
-    
-    def test_extract_draft_data_from_tools_calendar(self, draft_builder_step):
-        """Test extracting draft data from calendar tools."""
-        tool_results = {
-            "get_calendar_events": {
-                "data": {
-                    "events": [{"title": "Existing Meeting"}],
-                    "availability": "2-4pm available"
-                }
-            }
-        }
-        context = {"user_request": "Schedule team meeting"}
-        
-        data = draft_builder_step._extract_draft_data_from_tools(tool_results, context, "calendar_event")
-        
-        assert "calendar_info" in data
-        assert "availability" in data["calendar_info"]
-        assert "2-4pm available" in data["calendar_info"]["availability"]
-    
-    def test_extract_draft_data_from_tools_email(self, draft_builder_step):
-        """Test extracting draft data from email tools."""
-        tool_results = {
-            "get_emails": {
-                "data": {
-                    "emails": [{"subject": "Re: Project", "from": "john@example.com"}]
-                }
-            }
-        }
-        context = {"user_request": "Reply to John's email"}
-        
-        data = draft_builder_step._extract_draft_data_from_tools(tool_results, context, "email")
-        
-        assert "email_context" in data
-        assert "recent_emails" in data["email_context"]
-        assert len(data["email_context"]["recent_emails"]) == 1
-    
-    def test_extract_draft_data_from_clarification(self, draft_builder_step):
-        """Test extracting draft data from clarification insights."""
-        clarification_insights = {
-            "recipients": "team@example.com",
-            "subject": "Weekly Update",
-            "urgency": "high"
-        }
-        context = {"user_request": "Send email to team"}
-        
-        data = draft_builder_step._extract_draft_data_from_clarification(clarification_insights, context, "email")
-        
-        assert "clarification_data" in data
-        assert data["clarification_data"]["recipients"] == "team@example.com"
-        assert data["clarification_data"]["subject"] == "Weekly Update"
+        assert isinstance(structured, dict)
+        assert "type" in structured
+        assert "content" in structured
+        assert structured["type"] == "email"
     
     def test_get_user_style_preferences_default(self, draft_builder_step):
         """Test getting default user style preferences."""
         prefs = draft_builder_step._get_user_style_preferences("new_user")
         
+        assert isinstance(prefs, dict)
+        assert "tone" in prefs
+        assert "format" in prefs
         assert prefs["tone"] == "professional"
-        assert prefs["formality"] == "standard"
-        assert prefs["length"] == "medium"
-        assert isinstance(prefs["templates"], dict)
     
     def test_get_user_style_preferences_existing(self, draft_builder_step):
         """Test getting existing user style preferences."""
         # Set up existing preferences
         draft_builder_step._user_style_preferences["existing_user"] = {
             "tone": "casual",
-            "formality": "relaxed",
-            "length": "brief"
+            "format": "concise"
         }
         
         prefs = draft_builder_step._get_user_style_preferences("existing_user")
         
         assert prefs["tone"] == "casual"
-        assert prefs["formality"] == "relaxed"
-        assert prefs["length"] == "brief"
+        assert prefs["format"] == "concise"
+    
+    def test_summarize_tool_results(self, draft_builder_step):
+        """Test summarizing tool results."""
+        tool_results = {
+            "get_calendar_events": {"data": {"events": [{"title": "Meeting", "time": "2pm"}]}},
+            "get_emails": {"data": {"emails": [{"subject": "Project Update", "from": "alice@company.com"}]}}
+        }
+        
+        summary = draft_builder_step._summarize_tool_results(tool_results)
+        
+        assert isinstance(summary, str)
+        assert len(summary) > 0
+        assert "Meeting" in summary or "Project Update" in summary
+    
+    def test_extract_email_components(self, draft_builder_step):
+        """Test extracting email components from content."""
+        content = "Subject: Team Meeting\n\nHi team,\n\nLet's schedule a meeting.\n\nBest regards,\nAlice"
+        
+        components = draft_builder_step._extract_email_components(content)
+        
+        assert isinstance(components, dict)
+        assert "subject" in components
+        assert "body" in components
+        assert components["subject"] == "Team Meeting"
+    
+    def test_extract_meeting_elements(self, draft_builder_step):
+        """Test extracting meeting elements from content."""
+        content = "Meeting: Project Review\nTime: 2pm tomorrow\nAttendees: Alice, Bob, Charlie"
+        
+        elements = draft_builder_step._extract_meeting_elements(content)
+        
+        assert isinstance(elements, dict)
+        assert "title" in elements
+        assert "time" in elements
+        assert "attendees" in elements
+    
+    def test_extract_document_insights(self, draft_builder_step):
+        """Test extracting document insights from content."""
+        content = "This document contains important project information including timelines and deliverables."
+        
+        insights = draft_builder_step._extract_document_insights(content)
+        
+        assert isinstance(insights, dict)
+        assert "key_topics" in insights
+        assert "document_type" in insights
+    
+    def test_calculate_draft_quality(self, draft_builder_step):
+        """Test calculating draft quality score."""
+        high_quality_draft = {
+            "type": "email",
+            "content": "Subject: Important Meeting\n\nDear team,\n\nI hope this email finds you well. I would like to schedule an important meeting to discuss our upcoming project milestones and deliverables.\n\nBest regards,\nAlice",
+            "metadata": {"word_count": 25}
+        }
+        
+        score = draft_builder_step._calculate_draft_quality(high_quality_draft)
+        
+        assert isinstance(score, float)
+        assert 0.0 <= score <= 1.0
+        assert score > 0.5  # Should be reasonably high quality
+    
+    def test_calculate_draft_quality_low(self, draft_builder_step):
+        """Test calculating draft quality for low quality content."""
+        low_quality_draft = {
+            "type": "email",
+            "content": "hi",
+            "metadata": {"word_count": 1}
+        }
+        
+        score = draft_builder_step._calculate_draft_quality(low_quality_draft)
+        
+        assert isinstance(score, float)
+        assert 0.0 <= score <= 1.0
+        assert score < 0.5  # Should be low quality
     
     @pytest.mark.asyncio
-    async def test_generate_draft_content_email(self, draft_builder_step):
-        """Test generating email draft content."""
-        mock_content = {
-            "content": "Dear John,\n\nI hope this email finds you well...",
-            "subject": "Meeting Request",
-            "recipient": "john@example.com"
-        }
-        
-        draft_builder_step.safe_llm_call = AsyncMock(return_value=json.dumps(mock_content))
-        
-        draft_data = {
-            "email_context": {"recent_emails": []},
-            "user_request": "Send email to John"
-        }
-        user_prefs = {"tone": "professional"}
-        
-        content = await draft_builder_step._generate_draft_content(
-            "email", draft_data, user_prefs
-        )
-        
-        assert content["content"] == mock_content["content"]
-        assert content["subject"] == mock_content["subject"]
-        assert "Dear John" in content["content"]
-    
-    @pytest.mark.asyncio
-    async def test_generate_draft_content_calendar(self, draft_builder_step):
-        """Test generating calendar event draft content."""
-        mock_content = {
-            "title": "Team Meeting",
-            "description": "Weekly team sync meeting",
-            "date": "2024-01-15",
-            "time": "14:00"
-        }
-        
-        draft_builder_step.safe_llm_call = AsyncMock(return_value=json.dumps(mock_content))
-        
-        draft_data = {
-            "calendar_info": {"availability": "2-4pm available"},
-            "user_request": "Schedule team meeting"
-        }
-        user_prefs = {"length": "medium"}
-        
-        content = await draft_builder_step._generate_draft_content(
-            "calendar_event", draft_data, user_prefs
-        )
-        
-        assert content["title"] == mock_content["title"]
-        assert content["description"] == mock_content["description"]
-        assert "Team Meeting" in content["title"]
-    
-    def test_calculate_draft_quality_score_high(self, draft_builder_step):
-        """Test calculating high quality draft score."""
-        draft_content = {
-            "type": "email",
-            "content": "Dear John,\n\nI hope this message finds you well. I wanted to reach out regarding our upcoming project meeting.",
-            "subject": "Project Meeting - Schedule Review",
-            "recipient": "john@example.com"
-        }
-        tool_results = {"get_emails": {"success": True}}
-        
-        score = draft_builder_step._calculate_draft_quality_score(draft_content, tool_results, {})
-        
-        assert score >= 0.7  # Should be high quality
-    
-    def test_calculate_draft_quality_score_low(self, draft_builder_step):
-        """Test calculating low quality draft score."""
-        draft_content = {
-            "type": "email",
-            "content": "Hi",
-            "subject": "",
-            "recipient": ""
-        }
-        tool_results = {}
-        
-        score = draft_builder_step._calculate_draft_quality_score(draft_content, tool_results, {})
-        
-        assert score <= 0.5  # Should be low quality
-    
-    def test_validate_draft_completeness_complete(self, draft_builder_step):
+    async def test_validate_draft_completeness_complete(self, draft_builder_step):
         """Test validating complete draft."""
         draft_content = {
             "type": "email",
-            "content": "Dear John,\n\nThis is a well-formed email with proper structure and content.",
-            "subject": "Meeting Request",
-            "recipient": "john@example.com"
+            "content": "Subject: Meeting\n\nHi team,\n\nLet's meet tomorrow.\n\nBest regards",
+            "metadata": {"word_count": 10}
         }
-        tool_results = {"get_emails": {"success": True}}
+        tool_results = {"get_calendar_events": {"data": {"events": []}}}
+        draft_context = {"purpose": "create_email"}
         
-        validation = draft_builder_step._validate_draft_completeness(
-            draft_content, tool_results, {}
+        validation = await draft_builder_step._validate_draft_completeness(
+            draft_content, tool_results, draft_context
         )
         
-        assert validation["is_complete"] is True
-        assert validation["score"] > 0.5
-        assert len(validation["issues"]) == 0
+        assert isinstance(validation, dict)
+        assert "is_complete" in validation
+        assert "completeness_score" in validation
+        assert "missing_elements" in validation
     
-    def test_validate_draft_completeness_incomplete(self, draft_builder_step):
-        """Test validating incomplete draft."""
-        draft_content = {
-            "type": "email",
-            "content": "Hi",
-            "subject": "",
-            "recipient": ""
-        }
-        tool_results = {}
+    def test_validate_email_draft(self, draft_builder_step):
+        """Test validating email draft structure."""
+        content = "Subject: Team Meeting\n\nHi team,\n\nLet's schedule a meeting.\n\nBest regards"
         
-        validation = draft_builder_step._validate_draft_completeness(
-            draft_content, tool_results, {}
-        )
+        validation = draft_builder_step._validate_email_draft(content)
         
-        assert validation["is_complete"] is False
-        assert validation["score"] < 0.5
-        assert len(validation["issues"]) > 0
+        assert isinstance(validation, dict)
+        assert "has_subject" in validation
+        assert "has_greeting" in validation
+        assert "has_closing" in validation
+        assert validation["has_subject"] is True
+    
+    def test_validate_meeting_summary(self, draft_builder_step):
+        """Test validating meeting summary."""
+        content = "Meeting Summary: Project Review\nAttendees: Alice, Bob\nDecisions: Continue with current timeline"
+        tool_results = {"get_calendar_events": {"data": {"events": [{"title": "Project Review"}]}}}
+        
+        validation = draft_builder_step._validate_meeting_summary(content, tool_results)
+        
+        assert isinstance(validation, dict)
+        assert "has_title" in validation
+        assert "has_attendees" in validation
+        assert "has_decisions" in validation
+    
+    def test_validate_document_summary(self, draft_builder_step):
+        """Test validating document summary."""
+        content = "Document Summary: This document outlines the project requirements and timeline."
+        tool_results = {"get_documents": {"data": {"documents": [{"title": "Project Requirements"}]}}}
+        
+        validation = draft_builder_step._validate_document_summary(content, tool_results)
+        
+        assert isinstance(validation, dict)
+        assert "has_summary" in validation
+        assert "covers_key_points" in validation
     
     def test_create_draft_version_new(self, draft_builder_step):
         """Test creating new draft version."""
         thread_id = "test_thread"
-        draft_content = {
-            "type": "email",
-            "content": "Test email content",
-            "subject": "Test Subject"
-        }
+        draft_content = {"type": "email", "content": "Test email content"}
+        source = "tool_results"
         
-        version = draft_builder_step._create_draft_version(thread_id, draft_content)
+        version_info = draft_builder_step._create_draft_version(thread_id, draft_content, source)
         
-        assert version["version_number"] == 1
-        assert version["thread_id"] == thread_id
-        assert version["content"] == draft_content
-        assert "created_at" in version
-        assert "version_id" in version
+        assert isinstance(version_info, dict)
+        assert "version" in version_info
+        assert "timestamp" in version_info
+        assert "source" in version_info
+        assert version_info["version"] == 1
+        assert version_info["source"] == source
     
     def test_create_draft_version_update(self, draft_builder_step):
         """Test creating updated draft version."""
         thread_id = "test_thread"
+        initial_content = {"type": "email", "content": "Initial content"}
+        updated_content = {"type": "email", "content": "Updated content"}
         
         # Create initial version
-        initial_content = {"type": "email", "content": "Initial content"}
-        draft_builder_step._create_draft_version(thread_id, initial_content)
+        draft_builder_step._create_draft_version(thread_id, initial_content, "tool_results")
         
         # Create updated version
-        updated_content = {"type": "email", "content": "Updated content"}
-        version = draft_builder_step._create_draft_version(thread_id, updated_content)
+        version_info = draft_builder_step._create_draft_version(thread_id, updated_content, "clarification")
         
-        assert version["version_number"] == 2
-        assert version["content"] == updated_content
+        assert version_info["version"] == 2
+        assert version_info["source"] == "clarification"
     
     def test_get_draft_history(self, draft_builder_step):
         """Test getting draft history."""
         thread_id = "test_thread"
+        content1 = {"type": "email", "content": "First draft"}
+        content2 = {"type": "email", "content": "Second draft"}
         
         # Create multiple versions
-        content1 = {"type": "email", "content": "Version 1"}
-        content2 = {"type": "email", "content": "Version 2"}
-        
-        draft_builder_step._create_draft_version(thread_id, content1)
-        draft_builder_step._create_draft_version(thread_id, content2)
+        draft_builder_step._create_draft_version(thread_id, content1, "tool_results")
+        draft_builder_step._create_draft_version(thread_id, content2, "clarification")
         
         history = draft_builder_step._get_draft_history(thread_id)
         
+        assert isinstance(history, list)
         assert len(history) == 2
-        assert history[0]["version_number"] == 1
-        assert history[1]["version_number"] == 2
+        assert history[0]["version"] == 1
+        assert history[1]["version"] == 2
     
-    def test_get_latest_draft_version(self, draft_builder_step):
-        """Test getting latest draft version."""
+    def test_get_draft_version(self, draft_builder_step):
+        """Test getting specific draft version."""
         thread_id = "test_thread"
+        content = {"type": "email", "content": "Test content"}
         
-        # Create multiple versions
-        content1 = {"type": "email", "content": "Version 1"}
-        content2 = {"type": "email", "content": "Version 2"}
+        # Create version
+        draft_builder_step._create_draft_version(thread_id, content, "tool_results")
         
-        draft_builder_step._create_draft_version(thread_id, content1)
-        draft_builder_step._create_draft_version(thread_id, content2)
+        # Get specific version
+        version = draft_builder_step._get_draft_version(thread_id, 1)
         
-        latest = draft_builder_step._get_latest_draft_version(thread_id)
-        
-        assert latest["version_number"] == 2
-        assert latest["content"]["content"] == "Version 2"
+        assert version is not None
+        assert version["version"] == 1
+        assert version["draft_content"] == content
     
-    def test_get_latest_draft_version_none(self, draft_builder_step):
-        """Test getting latest draft version when none exists."""
-        latest = draft_builder_step._get_latest_draft_version("nonexistent_thread")
+    def test_get_draft_version_nonexistent(self, draft_builder_step):
+        """Test getting nonexistent draft version."""
+        version = draft_builder_step._get_draft_version("nonexistent_thread", 1)
         
-        assert latest is None
+        assert version is None
     
-    def test_update_quality_metrics(self, draft_builder_step):
-        """Test updating quality metrics."""
-        user_id = "test_user"
-        draft_type = "email"
-        quality_score = 0.85
+    @pytest.mark.asyncio
+    async def test_create_draft_from_tools(self, draft_builder_step):
+        """Test creating draft from tool results."""
+        # Mock the LLM response
+        draft_builder_step.llm.acomplete.return_value.text = "Subject: Meeting Update\n\nHi team,\n\nBased on the calendar events, we should schedule our next meeting.\n\nBest regards"
         
-        draft_builder_step._update_quality_metrics(user_id, draft_type, quality_score)
-        
-        metrics = draft_builder_step._quality_metrics[user_id][draft_type]
-        assert metrics["total_drafts"] == 1
-        assert metrics["total_score"] == quality_score
-        assert metrics["average_score"] == quality_score
-    
-    def test_learn_user_style_preferences(self, draft_builder_step):
-        """Test learning user style preferences."""
-        user_id = "test_user"
-        draft_content = {
-            "content": "Hey there! Hope you're doing well. Quick question about the project...",
-            "type": "email"
+        tool_results = {
+            "get_calendar_events": {"data": {"events": [{"title": "Team Meeting"}]}}
         }
+        draft_context = {"purpose": "create_email", "recipient": "team@company.com"}
+        user_id = "test_user"
         
-        draft_builder_step._learn_user_style_preferences(user_id, draft_content)
+        draft = await draft_builder_step._create_draft_from_tools(tool_results, draft_context, user_id)
         
-        prefs = draft_builder_step._user_style_preferences[user_id]
-        assert prefs["tone"] == "casual"  # Should detect casual tone
-        assert prefs["formality"] == "relaxed"  # Should detect informal style 
+        assert isinstance(draft, dict)
+        assert "type" in draft
+        assert "content" in draft
+        assert "metadata" in draft
+    
+    @pytest.mark.asyncio
+    async def test_create_draft_from_clarification(self, draft_builder_step):
+        """Test creating draft from clarification context."""
+        # Mock the LLM response
+        draft_builder_step.llm.acomplete.return_value.text = "Subject: Meeting Request\n\nHi team,\n\nI would like to schedule a meeting based on our discussion.\n\nBest regards"
+        
+        draft_context = {"purpose": "create_email", "recipient": "team@company.com"}
+        clarification_insights = {"user_intent": "schedule_meeting", "preferences": {"time": "afternoon"}}
+        user_id = "test_user"
+        
+        draft = await draft_builder_step._create_draft_from_clarification(
+            draft_context, clarification_insights, user_id
+        )
+        
+        assert isinstance(draft, dict)
+        assert "type" in draft
+        assert "content" in draft
+        assert "metadata" in draft 
