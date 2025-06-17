@@ -50,7 +50,7 @@ class WorkflowChatAgent(Workflow):
         self,
         thread_id: int,
         user_id: str,
-        llm_model: str = "gpt-4o-mini",
+        llm_model: str = "gpt-4.1-nano",
         llm_provider: str = "openai",
         tools: Optional[List] = None,
         **kwargs
