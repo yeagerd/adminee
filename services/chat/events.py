@@ -127,10 +127,40 @@ class ClarificationRequest(BaseModel):
     timeout_seconds: Optional[int] = None
 
 
+class UserInputEvent(BaseWorkflowEvent):
+    """
+    Event representing user input to the workflow system.
+    
+    Contains the user's message along with metadata about the interaction.
+    This is typically the first event in the workflow chain.
+    """
+    
+    message: str
+    metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
+    conversation_history: List[Dict[str, str]] = Field(default_factory=list)
+    user_preferences: Dict[str, Any] = Field(default_factory=dict)
+    
+    @validator('message')
+    def validate_message(cls, v):
+        if not v or not isinstance(v, str) or not v.strip():
+            raise ValueError("Message must be a non-empty string")
+        return v.strip()
+    
+    def _get_event_data(self) -> Dict[str, Any]:
+        """Get UserInputEvent-specific data for serialization."""
+        return {
+            "message": self.message,
+            "metadata": self.metadata.dict(),
+            "conversation_history": self.conversation_history,
+            "user_preferences": self.user_preferences
+        }
+
+
 # Export base classes for use in concrete event implementations
 __all__ = [
     'BaseWorkflowEvent',
     'WorkflowMetadata', 
     'ExecutionPlan',
-    'ClarificationRequest'
+    'ClarificationRequest',
+    'UserInputEvent'
 ] 
