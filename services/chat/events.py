@@ -524,6 +524,83 @@ class DraftUpdatedEvent(Event):
         return f"Updated: {self.update_reason}"
 
 
+class ContextUpdatedEvent(Event):
+    """
+    Event representing context updates that accumulate across workflow steps.
+    
+    This event is used to maintain and update shared context as information
+    is gathered throughout the workflow execution. Steps can emit this event
+    to update the global workflow context.
+    """
+    
+    thread_id: str
+    user_id: str
+    context_updates: Dict[str, Any]  # New context information to merge
+    update_source: str  # Which step/component updated the context
+    update_type: str  # "merge", "replace", "append"
+    priority: str = "medium"  # "high", "medium", "low"
+    context_version: int = 1  # Context version for tracking changes
+    parent_event_id: Optional[str] = None  # Event that triggered this update
+    metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
+    
+    @field_validator('thread_id', 'user_id', 'update_source')
+    @classmethod
+    def validate_required_strings(cls, v):
+        if not v or not isinstance(v, str):
+            raise ValueError("Required string fields must be non-empty")
+        return v
+    
+    @field_validator('update_type')
+    @classmethod
+    def validate_update_type(cls, v):
+        valid_types = ["merge", "replace", "append"]
+        if v not in valid_types:
+            raise ValueError(f"update_type must be one of: {valid_types}")
+        return v
+    
+    @field_validator('priority')
+    @classmethod
+    def validate_priority(cls, v):
+        valid_priorities = ["high", "medium", "low"]
+        if v not in valid_priorities:
+            raise ValueError(f"priority must be one of: {valid_priorities}")
+        return v
+    
+    def is_high_priority(self) -> bool:
+        """Check if this context update is high priority."""
+        return self.priority == "high"
+    
+    def get_context_keys(self) -> List[str]:
+        """Get the keys being updated in the context."""
+        return list(self.context_updates.keys())
+    
+    def has_context_key(self, key: str) -> bool:
+        """Check if a specific context key is being updated."""
+        return key in self.context_updates
+    
+    def merge_with_context(self, existing_context: Dict[str, Any]) -> Dict[str, Any]:
+        """Merge this update with existing context based on update_type."""
+        if self.update_type == "replace":
+            return {**existing_context, **self.context_updates}
+        elif self.update_type == "merge":
+            merged = existing_context.copy()
+            for key, value in self.context_updates.items():
+                if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):
+                    merged[key] = {**merged[key], **value}
+                else:
+                    merged[key] = value
+            return merged
+        elif self.update_type == "append":
+            merged = existing_context.copy()
+            for key, value in self.context_updates.items():
+                if key in merged and isinstance(merged[key], list) and isinstance(value, list):
+                    merged[key] = merged[key] + value
+                else:
+                    merged[key] = value
+            return merged
+        return existing_context
+
+
 # Export event classes and supporting models
 __all__ = [
     'WorkflowMetadata', 
@@ -540,5 +617,6 @@ __all__ = [
     'ClarificationPlannerUnblockedEvent',
     'ClarificationDraftUnblockedEvent',
     'DraftCreatedEvent',
-    'DraftUpdatedEvent'
+    'DraftUpdatedEvent',
+    'ContextUpdatedEvent'
 ] 

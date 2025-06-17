@@ -52,8 +52,8 @@
     - [x] 1.9.2 Define ClarificationPlannerUnblockedEvent (Clarifier → Planner) - planner blockage resolved  
     - [x] 1.9.3 Define ClarificationDraftUnblockedEvent (Clarifier → DraftBuilder) - draft blockage resolved
     - [ ] 1.9.4 Update ClarifierStep to check blocks_planning flag and analyze clarification for routing
-    - [x] 1.10 Define DraftCreatedEvent and DraftUpdatedEvent as terminal workflow events
-  - [ ] 1.11 Define ContextUpdatedEvent for context accumulation across workflow steps
+  - [x] 1.10 Define DraftCreatedEvent and DraftUpdatedEvent as terminal workflow events
+  - [x] 1.11 Define ContextUpdatedEvent for context accumulation across workflow steps
   - [x] 1.12 Remove observability events (ToolExecutionStartedEvent, etc.) - use logging/metrics instead
   - [x] 1.13 Remove user-facing events (ClarificationNeededEvent) - use streaming layer instead
   - [x] 1.14 Remove PlanGeneratedEvent - planner emits trigger events directly (multiple events per step)
