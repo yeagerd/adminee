@@ -44,17 +44,20 @@ class PlannerStep(BaseWorkflowStep):
         self._planning_cache = {}  # Cache for similar requests
         self._user_preferences = {}  # Learned user preferences
     
-    # @step  # Temporarily commented out for testing
-    async def run(self, ctx: Context, **kwargs) -> None:
-        """Execute planning logic based on the incoming event."""
-        if "user_input" in kwargs:
-            await self._handle_user_input(ctx, kwargs["user_input"])
-        elif "clarification_replan_requested" in kwargs:
-            await self._handle_clarification_replan(ctx, kwargs["clarification_replan_requested"])
-        elif "tool_results_for_planner" in kwargs:
-            await self._handle_tool_results_for_planner(ctx, kwargs["tool_results_for_planner"])
-        else:
-            self.logger.warning(f"Unexpected event types in PlannerStep: {list(kwargs.keys())}")
+    @step
+    async def handle_user_input(self, ctx: Context, ev: UserInputEvent) -> None:
+        """Handle user input event."""
+        await self._handle_user_input(ctx, ev)
+
+    @step
+    async def handle_clarification_replan(self, ctx: Context, ev: ClarificationReplanRequestedEvent) -> None:
+        """Handle clarification replan request event."""
+        await self._handle_clarification_replan(ctx, ev)
+
+    @step
+    async def handle_tool_results_for_planner(self, ctx: Context, ev: ToolResultsForPlannerEvent) -> None:
+        """Handle tool results for planner event."""
+        await self._handle_tool_results_for_planner(ctx, ev)
     
     async def _handle_user_input(self, ctx: Context, event: UserInputEvent) -> None:
         """Handle initial user input and create execution plan."""

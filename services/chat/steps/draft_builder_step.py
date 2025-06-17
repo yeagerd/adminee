@@ -44,15 +44,15 @@ class DraftBuilderStep(BaseWorkflowStep):
         self._draft_versions = {}  # Track draft versions per thread
         self._draft_history = {}  # Track draft update history
     
-    # @step  # Temporarily commented out for testing
-    async def run(self, ctx: Context, **kwargs) -> None:
-        """Execute draft building logic based on the incoming event."""
-        if "tool_results_for_drafter" in kwargs:
-            await self._handle_tool_results_for_draft(ctx, kwargs["tool_results_for_drafter"])
-        elif "clarification_draft_unblocked" in kwargs:
-            await self._handle_clarification_draft_unblocked(ctx, kwargs["clarification_draft_unblocked"])
-        else:
-            self.logger.warning(f"Unexpected event types in DraftBuilderStep: {list(kwargs.keys())}")
+    @step
+    async def handle_tool_results_for_draft(self, ctx: Context, ev: ToolResultsForDrafterEvent) -> None:
+        """Handle tool results for draft event."""
+        await self._handle_tool_results_for_draft(ctx, ev)
+
+    @step
+    async def handle_clarification_draft_unblocked(self, ctx: Context, ev: ClarificationDraftUnblockedEvent) -> None:
+        """Handle clarification draft unblocked event."""
+        await self._handle_clarification_draft_unblocked(ctx, ev)
     
     async def _handle_tool_results_for_draft(self, ctx: Context, event: ToolResultsForDrafterEvent) -> None:
         """Handle tool results ready for draft creation."""

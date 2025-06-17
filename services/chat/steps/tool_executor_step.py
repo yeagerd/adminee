@@ -42,13 +42,10 @@ class ToolExecutorStep(BaseWorkflowStep):
         self._execution_cache = {}  # Cache for expensive tool results
         self._tool_dependencies = {}  # Tool dependency mapping
     
-    # @step  # Temporarily commented out for testing
-    async def run(self, ctx: Context, **kwargs) -> None:
-        """Execute tool execution logic based on the incoming event."""
-        if "tool_execution" in kwargs:
-            await self._handle_tool_execution_request(ctx, kwargs["tool_execution"])
-        else:
-            self.logger.warning(f"Unexpected event types in ToolExecutorStep: {list(kwargs.keys())}")
+    @step
+    async def handle_tool_execution(self, ctx: Context, ev: ToolExecutionRequestedEvent) -> None:
+        """Handle tool execution request event."""
+        await self._handle_tool_execution_request(ctx, ev)
     
     async def _handle_tool_execution_request(self, ctx: Context, event: ToolExecutionRequestedEvent) -> None:
         """Handle tool execution request with parallel/sequential execution."""
