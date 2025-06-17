@@ -100,27 +100,49 @@ async def run_workflow_demo(use_mock: bool = True):
                     ]
                 )
                 
-                print(f"✅ Result: {result}")
+                # Check for error conditions
+                error_indicators = [
+                    "I apologize, but I encountered an error",
+                    "events are consumed but never produced",
+                    "workflow failed",
+                    "error while processing your request",
+                    "encountered an issue"
+                ]
                 
-                # Add some analysis of the result
-                if "[DRAFT]" in result:
-                    draft_content = result.replace("[DRAFT] ", "")
-                    print(f"📄 Draft Analysis:")
-                    print(f"   • Length: {len(draft_content)} characters")
-                    print(f"   • Contains emails: {'email' in draft_content.lower()}")
-                    print(f"   • Contains calendar: {'calendar' in draft_content.lower() or 'meeting' in draft_content.lower()}")
-                    print(f"   • Asks for clarification: {'clarification' in draft_content.lower() or '?' in draft_content}")
+                is_error = any(indicator in result.lower() for indicator in error_indicators)
+                
+                if is_error:
+                    print(f"❌ ERROR DETECTED in result: {result}")
+                    print(f"💥 Scenario '{scenario['name']}' FAILED!")
+                    logger.error(f"Workflow error detected: {result}")
+                    # Exit with error code
+                    import sys
+                    sys.exit(1)
+                else:
+                    print(f"✅ Result: {result}")
+                    
+                    # Add some analysis of the result
+                    if "[DRAFT]" in result:
+                        draft_content = result.replace("[DRAFT] ", "")
+                        print(f"📄 Draft Analysis:")
+                        print(f"   • Length: {len(draft_content)} characters")
+                        print(f"   • Contains emails: {'email' in draft_content.lower()}")
+                        print(f"   • Contains calendar: {'calendar' in draft_content.lower() or 'meeting' in draft_content.lower()}")
+                        print(f"   • Asks for clarification: {'clarification' in draft_content.lower() or '?' in draft_content}")
                 
             except Exception as e:
-                print(f"❌ Error in scenario: {e}")
+                print(f"❌ EXCEPTION in scenario: {e}")
                 logger.error(f"Scenario failed: {e}", exc_info=True)
+                # Exit with error code for exceptions too
+                import sys
+                sys.exit(1)
             
             print("-" * 60)
             
             # Add a small delay between scenarios for readability
             await asyncio.sleep(0.5)
         
-        print("\n🎉 Simplified Workflow Demo Complete!")
+        print("\n🎉 ALL SCENARIOS PASSED! Simplified Workflow Demo Complete!")
         print("""
 Key Achievements:
 ✅ Removed complex clarification subsystem
@@ -129,6 +151,7 @@ Key Achievements:
 ✅ Maintains sophisticated tool execution
 ✅ Intelligent draft creation from tool results
 ✅ Realistic mock responses for testing
+✅ All scenarios completed without errors
         """)
         
     except ImportError as e:

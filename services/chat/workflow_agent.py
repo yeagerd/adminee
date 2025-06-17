@@ -205,45 +205,84 @@ class WorkflowChatAgent(Workflow):
             logger.error(f"Tool execution failed: {e}", exc_info=True)
             await self._route_tool_results(ctx, ev, {}, False, [f"Tool execution error: {str(e)}"])
 
-    @step
-    async def handle_tool_results_for_planner(self, ctx: Context, ev: ToolResultsForPlannerEvent) -> None:
-        """
-        Handle tool results that require re-planning.
-        
-        This step processes tool results that may change the planning strategy
-        and creates updated execution plans based on new information. Can also
-        ask for clarification directly if needed.
-        """
-        logger.info("Processing tool results for re-planning")
-        
-        # Analyze tool results for planning insights
-        analysis = await self._analyze_tool_results(
-            ev.tool_results,
-            ev.planning_insights.get("conversation_history", [])
-        )
-        
-        # Get user preferences
-        user_prefs = self._get_user_preferences(ev.user_id)
-        
-        # Create updated execution plan
-        execution_plan = self._create_execution_plan_from_tool_results(analysis, user_prefs)
-        
-        # Check if we need clarification from tool results
-        if analysis.get("confidence", 1.0) < 0.5 or analysis.get("clarification_points"):
-            # Need clarification - create a simple response asking for clarification
-            clarification_question = await self._generate_clarification_question_from_tools(analysis, ev.tool_results)
-            
-            # Create a simple draft with the clarification question
-            draft_content = {
-                "content": clarification_question,
-                "type": "clarification",
-                "requires_user_response": True
-            }
-            
-            await self._emit_draft_created(ctx, ev, draft_content, "tool_clarification")
-        else:
-            # Proceed with additional tool execution or drafting
-            await self._emit_tool_execution_requests_from_results(ctx, ev, execution_plan)
+    # @step
+    # async def handle_tool_results_for_planner(self, ctx: Context, ev: ToolResultsForPlannerEvent) -> None:
+    #     """
+    #     Handle tool results that require planning analysis.
+    #     
+    #     This step processes tool results, aggregates multiple results if needed,
+    #     and decides whether to:
+    #     1. Request more tools (re-planning)
+    #     2. Ask for clarification 
+    #     3. Route to drafter (planning complete)
+    #     """
+    #     logger.info("Processing tool results for planning analysis")
+    #     
+    #     # Store results in planning cache for aggregation
+    #     plan_event_id = ev.parent_request_event_id
+    #     if not hasattr(self, '_tool_results_cache'):
+    #         self._tool_results_cache = {}
+    #     
+    #     if plan_event_id not in self._tool_results_cache:
+    #         self._tool_results_cache[plan_event_id] = {
+    #             "results": {},
+    #             "expected_tools": [],
+    #             "completed_tools": 0,
+    #             "total_tools": 1  # We'll update this as we learn about the plan
+    #         }
+    #     
+    #     # Add these results to the cache
+    #     cache_entry = self._tool_results_cache[plan_event_id]
+    #     cache_entry["results"].update(ev.tool_results)
+    #     cache_entry["completed_tools"] += len(ev.tool_results)
+    #     
+    #     # Analyze aggregated tool results for planning insights
+    #     analysis = await self._analyze_tool_results_for_planning(
+    #         cache_entry["results"],
+    #         ev.planning_insights.get("conversation_history", [])
+    #     )
+    #     
+    #     # Get user preferences
+    #     user_prefs = self._get_user_preferences(ev.user_id)
+    #     
+    #     # Make planning decision based on analysis
+    #     planning_decision = await self._make_planning_decision(analysis, user_prefs, cache_entry["results"])
+    #     
+    #     if planning_decision["action"] == "clarify":
+    #         # Need clarification - create clarification draft
+    #         clarification_question = await self._generate_clarification_question_from_tools(analysis, cache_entry["results"])
+    #         draft_content = {
+    #             "content": clarification_question,
+    #             "type": "clarification",
+    #             "requires_user_response": True
+    #         }
+    #         await self._emit_draft_created(ctx, ev, draft_content, "tool_clarification")
+    #         
+    #     else:  # Always complete planning and route to drafter for simplicity
+    #         # Planning complete - route to drafter with all aggregated results
+    #         logger.info(f"Planning complete, routing {len(cache_entry['results'])} tool results to drafter")
+    #         
+    #         # Create comprehensive drafter event with all results
+    #         drafter_event = ToolResultsForDrafterEvent(
+    #             thread_id=ev.thread_id,
+    #             user_id=ev.user_id,
+    #             parent_request_event_id=plan_event_id,
+    #             tool_results=cache_entry["results"],
+    #             execution_success=ev.execution_success,
+    #             error_messages=ev.error_messages,
+    #             draft_context={
+    #                 "ready_for_draft": True,
+    #                 "planning_complete": True,
+    #                 "analysis_confidence": analysis.get("confidence", 0.8),
+    #                 "total_tools_executed": len(cache_entry["results"])
+    #             },
+    #             metadata=WorkflowMetadata(priority="high")
+    #         )
+    #         
+    #         ctx.send_event(drafter_event)
+    #         
+    #         # Clean up cache entry
+    #         del self._tool_results_cache[plan_event_id]
 
     @step
     async def handle_tool_results_for_draft(self, ctx: Context, ev: ToolResultsForDrafterEvent) -> None:
@@ -494,7 +533,7 @@ Respond in JSON format only."""
                 tools_to_execute=tools_to_execute,
                 execution_strategy="parallel" if task_group.get("can_run_parallel", True) else "sequential",
                 parent_plan_event_id=str(uuid4()),
-                route_to_planner=False,  # Default to drafting
+                route_to_planner=False,  # Temporarily route directly to drafter for simplicity
                 metadata=WorkflowMetadata(priority="high")
             )
             
@@ -703,21 +742,72 @@ Respond in JSON format only."""
             logger.error(f"LLM call failed: {e}")
             return "[FAKE LLM RESPONSE]"  # Fallback for testing
 
-    async def _analyze_tool_results(
+    async def _analyze_tool_results_for_planning(
         self,
         tool_results: Dict[str, Any],
         conversation_history: List[Dict[str, str]]
     ) -> Dict[str, Any]:
-        """Analyze tool results to determine next steps."""
-        # Simple analysis for now
+        """Analyze tool results to determine planning next steps."""
+        # Enhanced analysis for planning decisions
         has_results = bool(tool_results)
+        result_count = len(tool_results)
+        
+        # Check result quality and completeness
+        has_email_results = any("email" in key.lower() for key in tool_results.keys())
+        has_calendar_results = any("calendar" in key.lower() for key in tool_results.keys())
+        
+        # Calculate confidence based on result completeness
         confidence = 0.9 if has_results else 0.3
+        if has_results and result_count >= 2:
+            confidence = min(confidence + 0.1, 1.0)  # Boost for multiple successful tools
+        
+        # Determine if we have sufficient information
+        clarification_points = []
+        if not has_results:
+            clarification_points.append("The tools didn't return expected results. What would you like me to focus on?")
+        elif result_count < 2 and len(conversation_history) > 0:
+            # If we only got partial results, might need more context
+            clarification_points.append("I have some information but may need to explore additional areas.")
         
         return {
             "confidence": confidence,
             "has_results": has_results,
-            "clarification_points": [] if has_results else ["The tools didn't return expected results. What would you like me to focus on?"]
+            "result_count": result_count,
+            "has_email_results": has_email_results,
+            "has_calendar_results": has_calendar_results,
+            "clarification_points": clarification_points,
+            "completeness_score": min(result_count / 2.0, 1.0)  # Assume 2+ tools = complete
         }
+
+    async def _make_planning_decision(
+        self,
+        analysis: Dict[str, Any],
+        user_prefs: Dict[str, Any],
+        tool_results: Dict[str, Any]
+    ) -> Dict[str, str]:
+        """Make intelligent planning decision based on analysis."""
+        
+        # Decision criteria
+        confidence = analysis.get("confidence", 0.5)
+        completeness = analysis.get("completeness_score", 0.5)
+        has_clarification_points = bool(analysis.get("clarification_points"))
+        
+        # Decision logic
+        if confidence < 0.4:
+            # Very low confidence - ask for clarification
+            return {"action": "clarify", "reason": "Low confidence in understanding"}
+        
+        elif completeness < 0.7 and confidence > 0.6:
+            # Good confidence but incomplete - request more tools
+            return {"action": "request_more_tools", "reason": "Need additional information"}
+        
+        elif has_clarification_points and confidence < 0.8:
+            # Some concerns and moderate confidence - clarify
+            return {"action": "clarify", "reason": "Need clarification on specific points"}
+        
+        else:
+            # High confidence and reasonable completeness - proceed to drafting
+            return {"action": "complete", "reason": "Sufficient information to proceed"}
 
     def _create_execution_plan_from_tool_results(
         self,
@@ -739,13 +829,38 @@ Respond in JSON format only."""
         execution_plan: ExecutionPlan
     ) -> None:
         """Emit tool execution requests from results analysis."""
-        # For simplicity, just create a draft saying we processed the results
-        draft_content = {
-            "content": "I've processed the available information. Is there anything specific you'd like me to focus on or help you with next?",
-            "type": "follow_up"
-        }
+        if not execution_plan.task_groups:
+            # No additional tools needed, create a completion draft
+            draft_content = {
+                "content": "I've processed the available information. Is there anything specific you'd like me to focus on or help you with next?",
+                "type": "follow_up"
+            }
+            await self._emit_draft_created(ctx, original_event, draft_content, "follow_up")
+            return
         
-        await self._emit_draft_created(ctx, original_event, draft_content, "follow_up")
+        # Emit tool execution requests for additional tools needed
+        for i, task_group in enumerate(execution_plan.task_groups):
+            tools_to_execute = [
+                {
+                    "tool_name": tool,
+                    "inputs": {"user_id": getattr(original_event, 'user_id', self.user_id), 
+                              "thread_id": getattr(original_event, 'thread_id', str(self.thread_id))},
+                    "execution_group_id": f"followup_group_{i}"
+                }
+                for tool in task_group["tasks"]
+            ]
+            
+            tool_event = ToolExecutionRequestedEvent(
+                thread_id=getattr(original_event, 'thread_id', str(self.thread_id)),
+                user_id=getattr(original_event, 'user_id', self.user_id),
+                tools_to_execute=tools_to_execute,
+                execution_strategy="parallel" if task_group.get("can_run_parallel", True) else "sequential",
+                parent_plan_event_id=str(uuid4()),
+                route_to_planner=False,  # Temporarily route directly to drafter for simplicity
+                metadata=WorkflowMetadata(priority="medium")
+            )
+            
+            ctx.send_event(tool_event)
 
 
 def create_workflow_chat_agent(
