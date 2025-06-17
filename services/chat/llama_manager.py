@@ -47,11 +47,11 @@ class ChatAgentManager:
         self,
         thread_id: int,
         user_id: str,
+        llm_model: str,
+        llm_provider: str,
         max_tokens: int = 2048,
         tools: Optional[List[Callable]] = None,
         subagents: Optional[List[Callable]] = None,
-        llm_model: Optional[str] = None,
-        llm_provider: Optional[str] = None,
         llm_kwargs: Optional[Dict[str, Any]] = None,
     ):
         self.thread_id = thread_id
