@@ -34,7 +34,7 @@ from llama_index.core.vector_stores import SimpleVectorStore
 from llama_index.embeddings.openai import OpenAIEmbedding
 
 from services.chat import history_manager
-from services.chat.llm_manager import FakeLLM, get_llm_manager
+from services.chat.agents.llm_manager import FakeLLM, get_llm_manager
 
 logger = logging.getLogger(__name__)
 

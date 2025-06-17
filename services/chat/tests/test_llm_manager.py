@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # Ensure get_llm_manager is imported correctly
-from services.chat.llm_manager import (
+from services.chat.agents.llm_manager import (
     FakeLLM,
     _LLMManager,
     get_llm_manager,
@@ -43,7 +43,7 @@ def test_get_llm_success_real_provider_with_api_key(llm_manager):
     # We expect this to try to create a LoggingLiteLLM instance.
     # Since LiteLLM might try to make network calls or validate the key,
     # we'll patch LoggingLiteLLM to prevent actual instantiation issues in this unit test.
-    with patch("services.chat.llm_manager.LoggingLiteLLM") as mock_logging_llm:
+    with patch("services.chat.agents.llm_manager.LoggingLiteLLM") as mock_logging_llm:
         mock_logging_llm_instance = MagicMock()
         mock_logging_llm.return_value = mock_logging_llm_instance
 
@@ -73,7 +73,9 @@ def test_get_llm_missing_provider_arg(llm_manager):
 def test_get_model_info_success(llm_manager):
     """Test get_model_info returns correct information."""
     # Mock get_llm_provider from litellm.utils to avoid external calls
-    with patch("services.chat.llm_manager.get_llm_provider") as mock_get_provider:
+    with patch(
+        "services.chat.agents.llm_manager.get_llm_provider"
+    ) as mock_get_provider:
         mock_get_provider.return_value = (
             "openai",
             "gpt-3.5-turbo",

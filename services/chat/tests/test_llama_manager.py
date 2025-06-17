@@ -16,7 +16,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from services.chat.llama_manager import ChatAgentManager
+from services.chat.agents.llama_manager import ChatAgentManager
 
 
 @pytest.fixture
@@ -129,7 +129,7 @@ async def test_orchestration_initialization(orchestration_tools, sample_subagent
 
 
 @pytest.mark.asyncio
-@patch("services.chat.chat_agent.history_manager")
+@patch("services.chat.agents.chat_agent.history_manager")
 async def test_main_agent_creation(mock_history, orchestration_tools):
     """Test that the main agent is created correctly."""
     mock_history.get_thread_history.return_value = []
@@ -156,7 +156,7 @@ async def test_main_agent_creation(mock_history, orchestration_tools):
 
 
 @pytest.mark.asyncio
-@patch("services.chat.chat_agent.history_manager")
+@patch("services.chat.agents.chat_agent.history_manager")
 async def test_subagent_creation(mock_history, orchestration_tools, sample_subagents):
     """Test that sub-agents are created correctly."""
     mock_history.get_thread_history.return_value = []
@@ -189,7 +189,7 @@ async def test_subagent_creation(mock_history, orchestration_tools, sample_subag
 
 
 @pytest.mark.asyncio
-@patch("services.chat.chat_agent.history_manager")
+@patch("services.chat.agents.chat_agent.history_manager")
 async def test_orchestration_build_agent(
     mock_history, orchestration_tools, sample_subagents
 ):
@@ -269,7 +269,7 @@ async def test_memory_aggregation():
 
 
 @pytest.mark.asyncio
-@patch("services.chat.chat_agent.history_manager")
+@patch("services.chat.agents.chat_agent.history_manager")
 @patch.dict(os.environ, {"OPENAI_API_KEY": ""})  # Force FakeLLM by removing API key
 async def test_end_to_end_orchestration(mock_history, orchestration_tools):
     """Test end-to-end orchestration flow."""

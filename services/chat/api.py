@@ -32,7 +32,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException
 
-from services.chat.llama_manager import ChatAgentManager
+from services.chat.agents.llama_manager import ChatAgentManager
 from services.chat.models import (
     ChatRequest,
     ChatResponse,
