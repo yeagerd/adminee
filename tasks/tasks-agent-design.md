@@ -41,8 +41,8 @@
   - [x] 1.5 Define ClarificationRequestedEvent to trigger ClarifierStep (Planner → Clarifier)
   - [x] 1.6 Define completion events for collect pattern - ToolExecutorCompletedEvent and ClarifierCompletedEvent for LlamaIndex collect to trigger DraftBuilderStep
   - [ ] 1.7 Add routing flags to request events for sophisticated event routing:
-    - [ ] 1.7.1 Add `blocks_planning: bool` flag to ClarificationRequestedEvent (determines if clarification blocks planning)
-    - [ ] 1.7.2 Add `route_to_planner: bool` flag to ToolExecutionRequestedEvent (determines if results go to planner vs drafter)
+    - [x] 1.7.1 Add `blocks_planning: bool` flag to ClarificationRequestedEvent (determines if clarification blocks planning)
+    - [x] 1.7.2 Add `route_to_planner: bool` flag to ToolExecutionRequestedEvent (determines if results go to planner vs drafter)
   - [ ] 1.8 Refactor ToolExecutorCompletedEvent into tool routing events:
     - [ ] 1.8.1 Define ToolResultsForPlannerEvent (ToolExecutor → Planner) - tool results trigger re-planning
     - [ ] 1.8.2 Define ToolResultsForDrafterEvent (ToolExecutor → DraftBuilder) - tool results ready for drafting

@@ -114,6 +114,7 @@ class ToolExecutionRequestedEvent(Event):
     parent_plan_event_id: str
     priority: str = "medium"  # "high", "medium", "low"
     timeout_seconds: Optional[int] = None
+    route_to_planner: bool = False  # Whether results should route to planner (True) or drafter (False)
     metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
     
     @field_validator('thread_id', 'user_id')
@@ -158,6 +159,7 @@ class ClarificationRequestedEvent(Event):
     parent_plan_event_id: str
     workflow_context: Dict[str, Any] = Field(default_factory=dict)
     can_proceed_without: bool = False  # Can workflow continue without clarification
+    blocks_planning: bool = True  # Whether this clarification blocks planning vs drafting
     metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
     
     @field_validator('thread_id', 'user_id')
