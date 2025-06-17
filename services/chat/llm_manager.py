@@ -5,7 +5,7 @@ Handles LiteLLM initialization and provides model management.
 
 import logging
 import os
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Union
 
 from litellm.utils import get_llm_provider
 from llama_index.core.llms import ChatMessage, MessageRole
@@ -270,9 +270,7 @@ class _LLMManager:
             cls._instance = super(_LLMManager, cls).__new__(cls)
         return cls._instance
 
-    def get_llm(
-        self, model: str, provider: str, **kwargs
-    ) -> Any:
+    def get_llm(self, model: str, provider: str, **kwargs) -> Any:
         """
         Get an LLM instance with the specified model and provider.
         Returns a LiteLLM instance or FakeLLM if no API key is found.
@@ -290,7 +288,9 @@ class _LLMManager:
 
         # Check if we have the required API key
         api_key_env = f"{provider.upper()}_API_KEY"
-        if not os.getenv(api_key_env): # No need to check provider != "fake" here due to the above
+        if not os.getenv(
+            api_key_env
+        ):  # No need to check provider != "fake" here due to the above
             logger.warning(
                 f"No {api_key_env} environment variable found. "
                 "Falling back to FakeLLM. Set the appropriate API key to use a real LLM."

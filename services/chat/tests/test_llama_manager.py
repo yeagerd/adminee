@@ -54,7 +54,9 @@ def manager(mock_tools, mock_subagents):
 
 
 def test_init_defaults():
-    manager = ChatAgentManager(thread_id=1, user_id="u", llm_model="fake-model", llm_provider="fake")
+    manager = ChatAgentManager(
+        thread_id=1, user_id="u", llm_model="fake-model", llm_provider="fake"
+    )
     assert manager.thread_id == 1
     assert manager.user_id == "u"
     assert manager.max_tokens == 2048

@@ -224,7 +224,9 @@ async def test_backward_compatibility_imports():
     )
 
     # Test that the orchestration layer works
-    manager = ChatAgentManager(thread_id=9, user_id="compat_user", llm_model="fake-model", llm_provider="fake")
+    manager = ChatAgentManager(
+        thread_id=9, user_id="compat_user", llm_model="fake-model", llm_provider="fake"
+    )
 
     # Should have orchestration properties
     assert manager.thread_id == 9
