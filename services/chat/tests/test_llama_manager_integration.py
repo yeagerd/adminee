@@ -25,7 +25,7 @@ import pytest
 import pytest_asyncio
 
 from services.chat import history_manager
-from services.chat.llama_manager import ChatAgentManager
+from services.chat.agents.llama_manager import ChatAgentManager
 
 logger = logging.getLogger(__name__)
 
