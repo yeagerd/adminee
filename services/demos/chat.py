@@ -45,8 +45,8 @@ def main():
     parser.add_argument(
         "--chat-url",
         type=str,
-        default="http://localhost:8000",
-        help="Base URL for the chat service API (default: http://localhost:8000)",
+        default="http://localhost:8001",
+        help="Base URL for the chat service API (default: http://localhost:8001)",
     )
     parser.add_argument(
         "--user-id", type=str, default="user", help="User ID for chat (default: user)"
