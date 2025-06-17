@@ -111,6 +111,7 @@ class WorkflowChatAgent(Workflow):
             )
             
             # Run the workflow with StartEvent containing just the message
+            # The base Workflow.run() method handles StartEvent → StopEvent flow automatically
             result = await self.run(message=user_input)
             
             # Extract response from result (should be from StopEvent)
@@ -122,22 +123,6 @@ class WorkflowChatAgent(Workflow):
         except Exception as e:
             logger.error(f"Error in workflow chat: {e}")
             return f"I apologize, but I encountered an error processing your request: {str(e)}"
-    
-    async def run(self, user_input: Optional[UserInputEvent] = None, **kwargs) -> Any:
-        """
-        Main workflow entry point.
-        
-        This method is called by the LlamaIndex Workflow system and orchestrates
-        the conversation through the various workflow steps.
-        """
-        if user_input:
-            # Full workflow mode with UserInputEvent
-            # The workflow steps will handle the event routing automatically
-            # based on their @step decorators and event type matching
-            return await super().run(user_input=user_input)
-        else:
-            # Simple mode for current production use
-            return await super().run(**kwargs)
 
 
 def create_workflow_chat_agent(
