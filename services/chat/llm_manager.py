@@ -19,8 +19,10 @@ logger = logging.getLogger(__name__)
 class LoggingLiteLLM(LlamaLiteLLM):
     """A wrapper around LlamaLiteLLM that logs all prompts and responses."""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, model: str, **kwargs):
+        if not model:
+            raise ValueError("A 'model' argument is required for LoggingLiteLLM.")
+        super().__init__(model=model, **kwargs)
         self._prompt_logger = logging.getLogger(f"{__name__}.prompts")
 
     def _log_messages(self, messages, method_name: str):
