@@ -52,6 +52,10 @@ class ClarifierStep(BaseWorkflowStep):
         """Handle clarification request event."""
         await self._handle_clarification_request(ctx, ev)
     
+    async def run(self, ctx: Context, **kwargs) -> None:
+        """Legacy run method for backward compatibility with tests. Not used in workflow."""
+        pass
+    
     async def _handle_clarification_request(self, ctx: Context, event: ClarificationRequestedEvent) -> None:
         """Handle clarification request and manage user interaction."""
         self.validate_required_fields(

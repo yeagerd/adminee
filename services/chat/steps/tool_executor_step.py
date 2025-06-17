@@ -47,6 +47,10 @@ class ToolExecutorStep(BaseWorkflowStep):
         """Handle tool execution request event."""
         await self._handle_tool_execution_request(ctx, ev)
     
+    async def run(self, ctx: Context, **kwargs) -> None:
+        """Legacy run method for backward compatibility with tests. Not used in workflow."""
+        pass
+    
     async def _handle_tool_execution_request(self, ctx: Context, event: ToolExecutionRequestedEvent) -> None:
         """Handle tool execution request with parallel/sequential execution."""
         self.validate_required_fields(

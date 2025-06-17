@@ -59,6 +59,10 @@ class PlannerStep(BaseWorkflowStep):
         """Handle tool results for planner event."""
         await self._handle_tool_results_for_planner(ctx, ev)
     
+    async def run(self, ctx: Context, **kwargs) -> None:
+        """Legacy run method for backward compatibility with tests. Not used in workflow."""
+        pass
+    
     async def _handle_user_input(self, ctx: Context, event: UserInputEvent) -> None:
         """Handle initial user input and create execution plan."""
         self.validate_required_fields(event, ["thread_id", "user_id", "message"])

@@ -32,7 +32,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException
 
-from services.chat.llama_manager import ChatAgentManager
+from services.chat.workflow_manager import WorkflowChatAgentManager
 from services.chat.models import (
     ChatRequest,
     ChatResponse,
@@ -86,8 +86,8 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
     # At this point, thread is guaranteed to be not None
     thread = cast(history_manager.Thread, thread)
 
-    # Initialize the agent with LLM from LLMManager
-    agent = ChatAgentManager(
+    # Initialize the workflow agent with LLM from LLMManager
+    agent = WorkflowChatAgentManager(
         thread_id=int(thread.id),
         user_id=user_id,
         tools=[],
