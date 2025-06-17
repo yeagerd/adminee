@@ -34,7 +34,7 @@ from llama_index.core.vector_stores import SimpleVectorStore
 from llama_index.embeddings.openai import OpenAIEmbedding
 
 from services.chat import history_manager
-from services.chat.llm_manager import FakeLLM, get_llm_manager
+from services.chat.llm_manager import FakeLLM, llm_manager
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +87,7 @@ class ChatAgent:
         self.llm_kwargs = llm_kwargs or {}
 
         # Initialize LLM instance
-        self.llm = get_llm_manager().get_llm(
+        self.llm = llm_manager.get_llm(
             model=llm_model, provider=llm_provider, **self.llm_kwargs
         )
 

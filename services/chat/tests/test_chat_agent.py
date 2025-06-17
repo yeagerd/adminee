@@ -35,6 +35,8 @@ async def test_modern_chat_agent_creation():
     agent = ChatAgent(
         thread_id=1,
         user_id="test_user",
+        llm_model="test-model",
+        llm_provider="test-provider",
         enable_fact_extraction=False,
         enable_vector_memory=False,
     )
@@ -50,6 +52,8 @@ async def test_create_chat_agent_factory():
     agent = create_chat_agent(
         thread_id=2,
         user_id="factory_user",
+        llm_model="test-model",
+        llm_provider="test-provider",
         max_tokens=5000,
         enable_fact_extraction=True,
         enable_vector_memory=True,
@@ -67,6 +71,8 @@ async def test_memory_blocks_creation():
     agent = ChatAgent(
         thread_id=3,
         user_id="memory_user",
+        llm_model="test-model",
+        llm_provider="test-provider",
         static_content="Custom system prompt",
         enable_fact_extraction=True,
         enable_vector_memory=True,
@@ -99,6 +105,8 @@ async def test_memory_blocks_creation_minimal():
     agent = ChatAgent(
         thread_id=4,
         user_id="minimal_user",
+        llm_model="test-model",
+        llm_provider="test-provider",
         enable_fact_extraction=False,
         enable_vector_memory=False,
     )
@@ -123,6 +131,8 @@ async def test_build_agent_with_mocked_db(mock_get_thread_history):
     agent = ChatAgent(
         thread_id=5,
         user_id="build_user",
+        llm_model="test-model",
+        llm_provider="test-provider",
         enable_fact_extraction=False,
         enable_vector_memory=False,
     )
@@ -147,6 +157,8 @@ async def test_get_memory_info(mock_history):
     agent = ChatAgent(
         thread_id=6,
         user_id="info_user",
+        llm_model="test-model",
+        llm_provider="test-provider",
         enable_fact_extraction=False,
         enable_vector_memory=False,
     )
@@ -169,6 +181,8 @@ async def test_default_static_content():
     agent = ChatAgent(
         thread_id=7,
         user_id="content_user",
+        llm_model="test-model",
+        llm_provider="test-provider",
         enable_fact_extraction=False,
         enable_vector_memory=False,
     )
@@ -190,6 +204,8 @@ async def test_tools_registration():
     agent = ChatAgent(
         thread_id=8,
         user_id="tools_user",
+        llm_model="test-model",
+        llm_provider="test-provider",
         tools=[test_tool],
         enable_fact_extraction=False,
         enable_vector_memory=False,
@@ -208,7 +224,7 @@ async def test_backward_compatibility_imports():
     )
 
     # Test that the orchestration layer works
-    manager = ChatAgentManager(thread_id=9, user_id="compat_user")
+    manager = ChatAgentManager(thread_id=9, user_id="compat_user", llm_model="test-model", llm_provider="test-provider")
 
     # Should have orchestration properties
     assert manager.thread_id == 9
@@ -238,6 +254,8 @@ async def test_chat_with_agent(
     agent = ChatAgent(
         thread_id=202,
         user_id="test_user5",
+        llm_model="test-model",
+        llm_provider="test-provider",
         enable_fact_extraction=False,  # Disable to avoid mocking complexity
         enable_vector_memory=False,
     )
@@ -259,15 +277,13 @@ async def test_chat_with_agent(
 async def test_graceful_fallback_on_memory_errors():
     """Test that the agent gracefully handles memory block creation errors."""
     with (
-        patch("services.chat.chat_agent.get_llm_manager") as mock_get_llm_manager_func,
+        patch("services.chat.chat_agent.llm_manager") as mock_llm_manager,
         patch("services.chat.chat_agent.history_manager") as mock_history_manager,
         patch("services.chat.chat_agent.VectorMemoryBlock") as mock_vector_block,
     ):
 
         mock_llm = MagicMock()
-        mock_llm_manager_instance = MagicMock()
-        mock_llm_manager_instance.get_llm.return_value = mock_llm
-        mock_get_llm_manager_func.return_value = mock_llm_manager_instance
+        mock_llm_manager.return_value = mock_llm
         mock_history_manager.get_conversation_history = AsyncMock(return_value=[])
 
         # Make VectorMemoryBlock raise an exception
@@ -276,6 +292,8 @@ async def test_graceful_fallback_on_memory_errors():
         agent = ChatAgent(
             thread_id=303,
             user_id="test_user6",
+            llm_model="test-model",
+            llm_provider="test-provider",
             enable_fact_extraction=False,
             enable_vector_memory=True,
         )
@@ -298,6 +316,8 @@ async def test_memory_blocks_priority_order():
         agent = ChatAgent(
             thread_id=404,
             user_id="test_user7",
+            llm_model="test-model",
+            llm_provider="test-provider",
             enable_fact_extraction=True,
             enable_vector_memory=True,
         )
@@ -318,7 +338,7 @@ async def test_memory_blocks_priority_order():
 async def test_agent_with_tools():
     """Test agent creation with custom tools."""
     with (
-        patch("services.chat.chat_agent.get_llm_manager") as mock_get_llm_manager_func,
+        patch("services.chat.chat_agent.llm_manager") as mock_llm_manager,
         patch("services.chat.chat_agent.history_manager") as mock_history_manager,
         patch("services.chat.chat_agent.FunctionCallingAgent") as mock_agent_class,
     ):
@@ -327,9 +347,7 @@ async def test_agent_with_tools():
         mock_llm = MagicMock()
         mock_llm.metadata = MagicMock()
         mock_llm.metadata.is_function_calling_model = True
-        mock_llm_manager_instance = MagicMock()
-        mock_llm_manager_instance.get_llm.return_value = mock_llm
-        mock_get_llm_manager_func.return_value = mock_llm_manager_instance
+        mock_llm_manager.return_value = mock_llm
         mock_history_manager.get_conversation_history = AsyncMock(return_value=[])
 
         # Mock the agent creation
@@ -343,6 +361,8 @@ async def test_agent_with_tools():
         agent = ChatAgent(
             thread_id=505,
             user_id="test_user8",
+            llm_model="test-model",
+            llm_provider="test-provider",
             tools=[dummy_tool],
             enable_fact_extraction=True,
             enable_vector_memory=True,

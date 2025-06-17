@@ -54,7 +54,7 @@ def manager(mock_tools, mock_subagents):
 
 
 def test_init_defaults():
-    manager = ChatAgentManager(thread_id=1, user_id="u")
+    manager = ChatAgentManager(thread_id=1, user_id="u", llm_model="fake-model", llm_provider="test-provider")
     assert manager.thread_id == 1
     assert manager.user_id == "u"
     assert manager.max_tokens == 2048
@@ -100,6 +100,8 @@ async def test_orchestration_initialization(orchestration_tools, sample_subagent
         user_id="orchestration_user",
         tools=orchestration_tools,
         subagents=sample_subagents,
+        llm_model="fake-model",
+        llm_provider="test-provider",
         max_tokens=4096,
     )
 
@@ -133,6 +135,8 @@ async def test_main_agent_creation(mock_history, orchestration_tools):
     manager = ChatAgentManager(
         thread_id=101,
         user_id="main_agent_user",
+        llm_model="fake-model",
+        llm_provider="test-provider",
         tools=orchestration_tools,
     )
 
@@ -158,6 +162,8 @@ async def test_subagent_creation(mock_history, orchestration_tools, sample_subag
     manager = ChatAgentManager(
         thread_id=102,
         user_id="subagent_user",
+        llm_model="fake-model",
+        llm_provider="test-provider",
         tools=orchestration_tools,
         subagents=sample_subagents,
     )
@@ -191,6 +197,8 @@ async def test_orchestration_build_agent(
     manager = ChatAgentManager(
         thread_id=103,
         user_id="build_user",
+        llm_model="fake-model",
+        llm_provider="test-provider",
         tools=orchestration_tools,
         subagents=sample_subagents,
     )
@@ -214,6 +222,8 @@ async def test_query_routing():
     manager = ChatAgentManager(
         thread_id=104,
         user_id="routing_user",
+        llm_model="fake-model",
+        llm_provider="test-provider",
     )
 
     # Test routing (currently always returns "main")
@@ -230,6 +240,8 @@ async def test_memory_aggregation():
     manager = ChatAgentManager(
         thread_id=105,
         user_id="memory_user",
+        llm_model="fake-model",
+        llm_provider="test-provider",
     )
 
     # Mock the main agent
@@ -268,6 +280,8 @@ async def test_end_to_end_orchestration(mock_history, orchestration_tools):
     manager = ChatAgentManager(
         thread_id=106,
         user_id="e2e_user",
+        llm_model="fake-model",
+        llm_provider="test-provider",
         tools=orchestration_tools,
     )
 

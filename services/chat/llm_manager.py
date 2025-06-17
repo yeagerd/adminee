@@ -19,10 +19,8 @@ logger = logging.getLogger(__name__)
 class LoggingLiteLLM(LlamaLiteLLM):
     """A wrapper around LlamaLiteLLM that logs all prompts and responses."""
 
-    def __init__(self, model: str, **kwargs):
-        if not model:
-            raise ValueError("A 'model' argument is required for LoggingLiteLLM.")
-        super().__init__(model=model, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self._prompt_logger = logging.getLogger(f"{__name__}.prompts")
 
     def _log_messages(self, messages, method_name: str):
@@ -260,20 +258,16 @@ class FakeLLM(FunctionCallingLLM):
         yield await self.acomplete(prompt, **kwargs)
 
 
-class _LLMManager:
+class LLMManager:
     """
     Manages LLM instances with LiteLLM, providing a unified interface for different models.
     """
 
     _instance = None
-    _default_provider: str
-    _default_model: str
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super(_LLMManager, cls).__new__(cls)
-            cls._default_provider = os.getenv("LLM_PROVIDER", "openai")
-            cls._default_model = os.getenv("LLM_MODEL", "gpt-4.1-nano")
+            cls._instance = super(LLMManager, cls).__new__(cls)
         return cls._instance
 
     def get_llm(
@@ -315,42 +309,28 @@ class _LLMManager:
         # Return a LoggingLiteLLM instance with language settings for prompt logging
         return LoggingLiteLLM(model=model, **llm_kwargs)
 
-    def get_model_info(self, model: Optional[str] = None) -> Dict[str, Any]:
+    def get_model_info(self, model: str) -> Dict[str, Any]:
         """
         Get information about a specific model.
 
         Args:
-            model: The model name (uses default if not specified)
+            model: The model name
 
         Returns:
             Dictionary containing model information
         """
-        model = model or self._default_model
         try:
             provider, _ = get_llm_provider(model)
             return {
                 "model": model,
                 "provider": provider,
-                "default": model == self._default_model,
             }
         except Exception as e:
             return {
                 "model": model,
                 "error": str(e),
-                "default": model == self._default_model,
             }
 
 
 # Global instance
-_llm_manager_instance: Optional[_LLMManager] = None
-
-
-def get_llm_manager() -> _LLMManager:
-    """
-    Returns a singleton instance of the _LLMManager.
-    Initializes the instance upon first call.
-    """
-    global _llm_manager_instance
-    if _llm_manager_instance is None:
-        _llm_manager_instance = _LLMManager()
-    return _llm_manager_instance
+llm_manager = LLMManager()

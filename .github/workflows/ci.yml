@@ -7,8 +7,8 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  lint:
-    name: Python Linting & Formatting
+  python-quality:
+    name: Python Code Quality
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -36,104 +36,8 @@ jobs:
         pip install -r requirements.txt
         pip install tox tox-gh-actions
 
-    - name: Run tox (format, lint)
-      run: tox -e format,lint -p auto
-
-  typecheck:
-    name: Python Type Checking
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.12"]
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-
-    - name: Cache pip dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install tox tox-gh-actions
-
-    - name: Run tox (typecheck)
-      run: tox -e typecheck -p auto
-
-  test:
-    name: Python Tests
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.12"]
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-
-    - name: Cache pip dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install tox tox-gh-actions
-
-    - name: Run tox (test)
-      run: tox -e test -p auto
-
-  coverage:
-    name: Python Coverage
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.12"]
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-
-    - name: Cache pip dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install tox tox-gh-actions
-
-    - name: Run tox (coverage)
-      run: tox -e cov -p auto
+    - name: Run tox (envlist + coverage)
+      run: tox -e format,lint,typecheck,test,cov -p auto
 
     - name: Upload coverage reports
       uses: codecov/codecov-action@v3
@@ -185,7 +89,7 @@ jobs:
     name: Docker Build Test
     runs-on: ubuntu-latest
     environment: ci
-    needs: [lint, typecheck, test, coverage, frontend-quality]
+    needs: [python-quality, frontend-quality]
 
     steps:
     - uses: actions/checkout@v4

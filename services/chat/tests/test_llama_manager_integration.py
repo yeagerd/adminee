@@ -79,7 +79,7 @@ async def test_manager_initialization():
         tools=[DummyTool()],
         subagents=[],
         llm_model="fake-model",
-        llm_provider="fake",
+        llm_provider="test-provider",
     )
 
     assert manager.thread_id == 1
@@ -99,6 +99,8 @@ async def test_manager_build_agent():
     manager = ChatAgentManager(
         thread_id=thread.id,
         user_id="test_user",
+        llm_model="fake-model",
+        llm_provider="test-provider",
         tools=[],
         subagents=[],
     )
@@ -126,6 +128,8 @@ async def test_manager_basic_chat():
     manager = ChatAgentManager(
         thread_id=thread.id,
         user_id="chat_user",
+        llm_model="fake-model",
+        llm_provider="test-provider",
         tools=[],
         subagents=[],
     )
@@ -162,6 +166,8 @@ async def test_manager_empty_thread():
     manager = ChatAgentManager(
         thread_id=thread.id,
         user_id="empty_user",
+        llm_model="fake-model",
+        llm_provider="test-provider",
         tools=[],
         subagents=[],
     )
@@ -193,6 +199,8 @@ async def test_manager_multiple_messages_order():
     manager = ChatAgentManager(
         thread_id=thread.id,
         user_id="order_user",
+        llm_model="fake-model",
+        llm_provider="test-provider",
         tools=[],
         subagents=[],
     )
@@ -232,6 +240,8 @@ async def test_manager_unicode_and_long_message():
     manager = ChatAgentManager(
         thread_id=thread.id,
         user_id="unicode_user",
+        llm_model="fake-model",
+        llm_provider="test-provider",
         tools=[],
         subagents=[],
     )
@@ -266,6 +276,8 @@ async def test_manager_memory_access():
     manager = ChatAgentManager(
         thread_id=thread.id,
         user_id="memory_user",
+        llm_model="fake-model",
+        llm_provider="test-provider",
         tools=[],
         subagents=[],
     )
@@ -299,6 +311,8 @@ async def test_manager_with_tools():
     manager = ChatAgentManager(
         thread_id=thread.id,
         user_id="tool_user",
+        llm_model="fake-model",
+        llm_provider="test-provider",
         tools=[sample_tool],
         subagents=[],
     )
@@ -332,6 +346,8 @@ async def test_manager_tool_distribution():
     manager = ChatAgentManager(
         thread_id=999,  # Dummy thread_id for this test
         user_id="dist_user",
+        llm_model="fake-model",
+        llm_provider="test-provider",
         tools=[tool1, tool2],
         subagents=[{"name": "specialist"}],
     )
@@ -360,6 +376,8 @@ async def test_manager_with_subagents():
     manager = ChatAgentManager(
         thread_id=thread.id,
         user_id="sub_user",
+        llm_model="fake-model",
+        llm_provider="test-provider",
         tools=[],
         subagents=subagent_configs,
     )
@@ -382,6 +400,8 @@ async def test_manager_query_routing():
     manager = ChatAgentManager(
         thread_id=thread.id,
         user_id="route_user",
+        llm_model="fake-model",
+        llm_provider="test-provider",
         tools=[],
         subagents=[],
     )
@@ -401,6 +421,8 @@ async def test_manager_property_access():
     manager = ChatAgentManager(
         thread_id=thread.id,
         user_id="prop_user",
+        llm_model="fake-model",
+        llm_provider="test-provider",
         tools=[],
         subagents=[],
     )
@@ -430,6 +452,8 @@ async def test_manager_error_handling():
     manager = ChatAgentManager(
         thread_id=99999,  # Non-existent thread
         user_id="error_user",
+        llm_model="fake-model",
+        llm_provider="test-provider",
         tools=[],
         subagents=[],
     )
@@ -454,6 +478,8 @@ async def test_manager_thread_auto_creation():
     manager = ChatAgentManager(
         thread_id=non_existent_thread_id,
         user_id="auto_user",
+        llm_model="fake-model",
+        llm_provider="test-provider",
         tools=[],
         subagents=[],
     )

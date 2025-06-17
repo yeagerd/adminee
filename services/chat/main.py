@@ -42,8 +42,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     # Shutdown: Clean up connections
     logger.info("Shutting down Chat Service")
-    engine = history_manager.get_engine()
-    await engine.dispose()
+    await history_manager.engine.dispose()
 
 
 app = FastAPI(title="Chat Service", version="0.1.0", lifespan=lifespan)
