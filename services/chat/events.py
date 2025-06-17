@@ -99,41 +99,6 @@ class UserInputEvent(Event):
         return v.strip()
 
 
-class PlanGeneratedEvent(Event):
-    """
-    Event representing a generated execution plan from the Planner step.
-    
-    Contains the structured plan with task groups, confidence levels,
-    and execution strategy determined by the planner.
-    """
-    
-    thread_id: str
-    user_id: str
-    execution_plan: ExecutionPlan
-    original_request: str
-    clarifications_needed: List[ClarificationRequest] = Field(default_factory=list)
-    metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
-    
-    @field_validator('thread_id', 'user_id')
-    @classmethod
-    def validate_ids(cls, v):
-        if not v or not isinstance(v, str):
-            raise ValueError("thread_id and user_id must be non-empty strings")
-        return v
-    
-    def requires_clarification(self) -> bool:
-        """Check if this plan requires user clarification before execution."""
-        return len(self.clarifications_needed) > 0
-    
-    def get_blocking_clarifications(self) -> List[ClarificationRequest]:
-        """Get clarifications that block execution."""
-        return [req for req in self.clarifications_needed if req.blocking]
-    
-    def get_non_blocking_clarifications(self) -> List[ClarificationRequest]:
-        """Get clarifications that don't block execution."""
-        return [req for req in self.clarifications_needed if not req.blocking]
-
-
 class ToolExecutionRequestedEvent(Event):
     """
     Event that the planner emits to request tool execution.
@@ -222,13 +187,88 @@ class ClarificationRequestedEvent(Event):
         return [req.question for req in self.clarification_requests]
 
 
+class ToolExecutorCompletedEvent(Event):
+    """
+    Event representing completion of tool execution step.
+    
+    This event is emitted by ToolExecutorStep when all requested tools 
+    have been executed. Used with LlamaIndex collect pattern to trigger
+    DraftBuilderStep when both tool execution and clarification are complete.
+    """
+    
+    thread_id: str
+    user_id: str
+    parent_request_event_id: str  # ID of the ToolExecutionRequestedEvent
+    tool_results: Dict[str, Any]  # Results from all executed tools
+    execution_success: bool
+    error_messages: List[str] = Field(default_factory=list)
+    context_updates: Dict[str, Any] = Field(default_factory=dict)
+    metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
+    
+    @field_validator('thread_id', 'user_id')
+    @classmethod
+    def validate_ids(cls, v):
+        if not v or not isinstance(v, str):
+            raise ValueError("thread_id and user_id must be non-empty strings")
+        return v
+    
+    def has_errors(self) -> bool:
+        """Check if tool execution had any errors."""
+        return not self.execution_success or len(self.error_messages) > 0
+    
+    def get_successful_results(self) -> Dict[str, Any]:
+        """Get results from successfully executed tools."""
+        if self.execution_success:
+            return self.tool_results
+        return {}
+
+
+class ClarifierCompletedEvent(Event):
+    """
+    Event representing completion of clarification step.
+    
+    This event is emitted by ClarifierStep when user clarifications have
+    been processed. Used with LlamaIndex collect pattern to trigger
+    DraftBuilderStep when both tool execution and clarification are complete.
+    """
+    
+    thread_id: str
+    user_id: str
+    parent_request_event_id: str  # ID of the ClarificationRequestedEvent
+    clarification_answers: Dict[str, str]  # Question -> Answer mapping
+    resolution_success: bool
+    unanswered_questions: List[str] = Field(default_factory=list)
+    context_updates: Dict[str, Any] = Field(default_factory=dict)
+    metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
+    
+    @field_validator('thread_id', 'user_id')
+    @classmethod
+    def validate_ids(cls, v):
+        if not v or not isinstance(v, str):
+            raise ValueError("thread_id and user_id must be non-empty strings")
+        return v
+    
+    def has_unanswered_questions(self) -> bool:
+        """Check if there are still unanswered clarification questions."""
+        return len(self.unanswered_questions) > 0
+    
+    def is_complete(self) -> bool:
+        """Check if clarification process is complete."""
+        return self.resolution_success and not self.has_unanswered_questions()
+    
+    def get_answer(self, question: str) -> Optional[str]:
+        """Get the answer for a specific question."""
+        return self.clarification_answers.get(question)
+
+
 # Export event classes and supporting models
 __all__ = [
     'WorkflowMetadata', 
     'ExecutionPlan',
     'ClarificationRequest',
     'UserInputEvent',
-    'PlanGeneratedEvent',
     'ToolExecutionRequestedEvent',
-    'ClarificationRequestedEvent'
+    'ClarificationRequestedEvent',
+    'ToolExecutorCompletedEvent',
+    'ClarifierCompletedEvent'
 ] 
