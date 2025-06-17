@@ -16,7 +16,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from services.chat.chat_agent import ChatAgent, create_chat_agent
+from services.chat.agents.chat_agent import ChatAgent, create_chat_agent
 
 
 @pytest.fixture
