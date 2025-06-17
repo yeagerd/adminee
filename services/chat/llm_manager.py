@@ -260,7 +260,7 @@ class FakeLLM(FunctionCallingLLM):
         yield await self.acomplete(prompt, **kwargs)
 
 
-class LLMManager:
+class _LLMManager:
     """
     Manages LLM instances with LiteLLM, providing a unified interface for different models.
     """
@@ -271,7 +271,7 @@ class LLMManager:
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super(LLMManager, cls).__new__(cls)
+            cls._instance = super(_LLMManager, cls).__new__(cls)
             cls._default_provider = os.getenv("LLM_PROVIDER", "openai")
             cls._default_model = os.getenv("LLM_MODEL", "gpt-4.1-nano")
         return cls._instance
@@ -342,4 +342,15 @@ class LLMManager:
 
 
 # Global instance
-llm_manager = LLMManager()
+_llm_manager_instance: Optional[_LLMManager] = None
+
+
+def get_llm_manager() -> _LLMManager:
+    """
+    Returns a singleton instance of the _LLMManager.
+    Initializes the instance upon first call.
+    """
+    global _llm_manager_instance
+    if _llm_manager_instance is None:
+        _llm_manager_instance = _LLMManager()
+    return _llm_manager_instance

@@ -259,13 +259,15 @@ async def test_chat_with_agent(
 async def test_graceful_fallback_on_memory_errors():
     """Test that the agent gracefully handles memory block creation errors."""
     with (
-        patch("services.chat.chat_agent.llm_manager") as mock_llm_manager,
+        patch("services.chat.chat_agent.get_llm_manager") as mock_get_llm_manager_func,
         patch("services.chat.chat_agent.history_manager") as mock_history_manager,
         patch("services.chat.chat_agent.VectorMemoryBlock") as mock_vector_block,
     ):
 
         mock_llm = MagicMock()
-        mock_llm_manager.return_value = mock_llm
+        mock_llm_manager_instance = MagicMock()
+        mock_llm_manager_instance.get_llm.return_value = mock_llm
+        mock_get_llm_manager_func.return_value = mock_llm_manager_instance
         mock_history_manager.get_conversation_history = AsyncMock(return_value=[])
 
         # Make VectorMemoryBlock raise an exception
@@ -316,7 +318,7 @@ async def test_memory_blocks_priority_order():
 async def test_agent_with_tools():
     """Test agent creation with custom tools."""
     with (
-        patch("services.chat.chat_agent.llm_manager") as mock_llm_manager,
+        patch("services.chat.chat_agent.get_llm_manager") as mock_get_llm_manager_func,
         patch("services.chat.chat_agent.history_manager") as mock_history_manager,
         patch("services.chat.chat_agent.FunctionCallingAgent") as mock_agent_class,
     ):
@@ -325,7 +327,9 @@ async def test_agent_with_tools():
         mock_llm = MagicMock()
         mock_llm.metadata = MagicMock()
         mock_llm.metadata.is_function_calling_model = True
-        mock_llm_manager.return_value = mock_llm
+        mock_llm_manager_instance = MagicMock()
+        mock_llm_manager_instance.get_llm.return_value = mock_llm
+        mock_get_llm_manager_func.return_value = mock_llm_manager_instance
         mock_history_manager.get_conversation_history = AsyncMock(return_value=[])
 
         # Mock the agent creation
