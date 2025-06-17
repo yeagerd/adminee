@@ -40,12 +40,24 @@
   - [x] 1.4 Define ToolExecutionRequestedEvent to trigger ToolExecutorStep (Planner → ToolExecutor)
   - [x] 1.5 Define ClarificationRequestedEvent to trigger ClarifierStep (Planner → Clarifier)
   - [x] 1.6 Define completion events for collect pattern - ToolExecutorCompletedEvent and ClarifierCompletedEvent for LlamaIndex collect to trigger DraftBuilderStep
-  - [ ] 1.7 Define DraftCreatedEvent and DraftUpdatedEvent as terminal workflow events
-  - [ ] 1.8 Define ContextUpdatedEvent for context accumulation across workflow steps
-  - [x] 1.9 Remove observability events (ToolExecutionStartedEvent, etc.) - use logging/metrics instead
-  - [x] 1.10 Remove user-facing events (ClarificationNeededEvent) - use streaming layer instead
-  - [x] 1.11 Remove PlanGeneratedEvent - planner emits trigger events directly (multiple events per step)
-  - [ ] 1.12 Write comprehensive unit tests for all event classes in `services/chat/tests/test_events.py`
+  - [ ] 1.7 Add routing flags to request events for sophisticated event routing:
+    - [ ] 1.7.1 Add `blocks_planning: bool` flag to ClarificationRequestedEvent (determines if clarification blocks planning)
+    - [ ] 1.7.2 Add `route_to_planner: bool` flag to ToolExecutionRequestedEvent (determines if results go to planner vs drafter)
+  - [ ] 1.8 Refactor ToolExecutorCompletedEvent into tool routing events:
+    - [ ] 1.8.1 Define ToolResultsForPlannerEvent (ToolExecutor → Planner) - tool results trigger re-planning
+    - [ ] 1.8.2 Define ToolResultsForDrafterEvent (ToolExecutor → DraftBuilder) - tool results ready for drafting
+    - [ ] 1.8.3 Update ToolExecutorStep to check route_to_planner flag and emit appropriate routing event
+  - [ ] 1.9 Refactor ClarifierCompletedEvent into clarification routing events:
+    - [ ] 1.9.1 Define ClarificationReplanRequestedEvent (Clarifier → Planner) - user request changed
+    - [ ] 1.9.2 Define ClarificationPlannerUnblockedEvent (Clarifier → Planner) - planner blockage resolved  
+    - [ ] 1.9.3 Define ClarificationDraftUnblockedEvent (Clarifier → DraftBuilder) - draft blockage resolved
+    - [ ] 1.9.4 Update ClarifierStep to check blocks_planning flag and analyze clarification for routing
+    - [ ] 1.10 Define DraftCreatedEvent and DraftUpdatedEvent as terminal workflow events
+  - [ ] 1.11 Define ContextUpdatedEvent for context accumulation across workflow steps
+  - [x] 1.12 Remove observability events (ToolExecutionStartedEvent, etc.) - use logging/metrics instead
+  - [x] 1.13 Remove user-facing events (ClarificationNeededEvent) - use streaming layer instead
+  - [x] 1.14 Remove PlanGeneratedEvent - planner emits trigger events directly (multiple events per step)
+  - [ ] 1.15 Write comprehensive unit tests for all event classes in `services/chat/tests/test_events.py`
 
 - [ ] 2. Create Core Workflow Steps Architecture
   - [ ] 2.1 Create base workflow step class with common functionality and error handling
@@ -53,17 +65,30 @@
     - [ ] 2.2.1 Create LLM-based planner that converts user intent into structured execution plans
     - [ ] 2.2.2 Implement confidence assessment and parallel execution strategy analysis
     - [ ] 2.2.3 Add assumption tracking and clarification requirement detection
-    - [ ] 2.2.4 Integrate with user preference learning from chat history
+    - [ ] 2.2.4 Implement routing flag logic for emitted events:
+      - [ ] 2.2.4.1 Set `route_to_planner` flag on ToolExecutionRequestedEvent based on planning needs
+      - [ ] 2.2.4.2 Set `blocks_planning` flag on ClarificationRequestedEvent based on clarification type
+    - [ ] 2.2.5 Handle re-planning from routing events (ClarificationReplanRequestedEvent, ToolResultsForPlannerEvent)
+    - [ ] 2.2.6 Integrate with user preference learning from chat history
   - [ ] 2.3 Implement ToolExecutorStep in `services/chat/steps/tool_executor_step.py`
     - [ ] 2.3.1 Create parallel tool execution engine with asyncio support
     - [ ] 2.3.2 Implement tool result aggregation and error handling
     - [ ] 2.3.3 Add progress streaming during long-running tool operations
     - [ ] 2.3.4 Create tool dependency resolution for sequential vs parallel execution
+    - [ ] 2.3.5 Implement routing logic based on `route_to_planner` flag:
+      - [ ] 2.3.5.1 Emit ToolResultsForPlannerEvent when route_to_planner=True
+      - [ ] 2.3.5.2 Emit ToolResultsForDrafterEvent when route_to_planner=False
   - [ ] 2.4 Implement ClarifierStep in `services/chat/steps/clarifier_step.py`
     - [ ] 2.4.1 Create LLM-based question generation from missing information context
     - [ ] 2.4.2 Implement user response routing back to workflow (not planner)
     - [ ] 2.4.3 Add clarification context accumulation and response validation
-    - [ ] 2.4.4 Create timeout handling and fallback strategies for unanswered questions
+    - [ ] 2.4.4 Implement clarification analysis and routing logic:
+      - [ ] 2.4.4.1 Check `blocks_planning` flag from ClarificationRequestedEvent
+      - [ ] 2.4.4.2 Analyze clarification response to detect user request changes vs simple info provision
+      - [ ] 2.4.4.3 Emit ClarificationReplanRequestedEvent when user request fundamentally changed
+      - [ ] 2.4.4.4 Emit ClarificationPlannerUnblockedEvent when planning blockage resolved (blocks_planning=True)
+      - [ ] 2.4.4.5 Emit ClarificationDraftUnblockedEvent when draft blockage resolved (blocks_planning=False)
+    - [ ] 2.4.5 Create timeout handling and fallback strategies for unanswered questions
   - [ ] 2.5 Implement DraftBuilderStep in `services/chat/steps/draft_builder_step.py`
     - [ ] 2.5.1 Create draft generation logic using accumulated context and tool results
     - [ ] 2.5.2 Implement draft templating system for emails, calendar events, and changes
