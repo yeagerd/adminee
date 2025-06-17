@@ -42,7 +42,7 @@ class ToolExecutorStep(BaseWorkflowStep):
         self._execution_cache = {}  # Cache for expensive tool results
         self._tool_dependencies = {}  # Tool dependency mapping
     
-    @step
+    # @step  # Temporarily commented out for testing
     async def run(self, ctx: Context, **kwargs) -> None:
         """Execute tool execution logic based on the incoming event."""
         if "tool_execution" in kwargs:

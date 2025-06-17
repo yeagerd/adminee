@@ -44,7 +44,7 @@ class DraftBuilderStep(BaseWorkflowStep):
         self._draft_versions = {}  # Track draft versions per thread
         self._draft_history = {}  # Track draft update history
     
-    @step
+    # @step  # Temporarily commented out for testing
     async def run(self, ctx: Context, **kwargs) -> None:
         """Execute draft building logic based on the incoming event."""
         if "tool_results_for_drafter" in kwargs:

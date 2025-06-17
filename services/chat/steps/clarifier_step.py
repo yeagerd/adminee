@@ -47,7 +47,7 @@ class ClarifierStep(BaseWorkflowStep):
         self._clarification_timeouts = {}  # Track clarification timeouts
         self._default_timeout = 300  # 5 minutes default timeout
     
-    @step
+    # @step  # Temporarily commented out for testing
     async def run(self, ctx: Context, **kwargs) -> None:
         """Execute clarification logic based on the incoming event."""
         if "clarification_request" in kwargs:

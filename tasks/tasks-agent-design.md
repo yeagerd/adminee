@@ -94,7 +94,12 @@
     - [x] 2.5.2 Implement draft templating system for emails, calendar events, and changes
     - [x] 2.5.3 Add draft versioning and update tracking
     - [x] 2.5.4 Create draft validation and completeness checking
-  - [ ] 2.6 Write unit tests for all workflow steps in `services/chat/tests/`
+  - [~] 2.6 Write unit tests for all workflow steps in `services/chat/tests/`
+    - [x] 2.6.1 Create test_planner_step.py with comprehensive PlannerStep tests
+    - [~] 2.6.2 Create test_tool_executor_step.py (basic structure created, needs method alignment)
+    - [ ] 2.6.3 Create test_clarifier_step.py for ClarifierStep tests
+    - [ ] 2.6.4 Create test_draft_builder_step.py for DraftBuilderStep tests
+    - [ ] 2.6.5 Fix step decorator compatibility issues for full workflow testing
 
 - [ ] 3. Implement Tool Integration and Execution Engine
   - [x] 3.1 Create enhanced ToolRegistry in `services/chat/tool_integration.py`

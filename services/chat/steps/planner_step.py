@@ -44,7 +44,7 @@ class PlannerStep(BaseWorkflowStep):
         self._planning_cache = {}  # Cache for similar requests
         self._user_preferences = {}  # Learned user preferences
     
-    @step
+    # @step  # Temporarily commented out for testing
     async def run(self, ctx: Context, **kwargs) -> None:
         """Execute planning logic based on the incoming event."""
         if "user_input" in kwargs:

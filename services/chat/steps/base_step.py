@@ -11,9 +11,8 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Type, Union
 
-from llama_index.core.workflow import Event, WorkflowStep, Context
+from llama_index.core.workflow import Event, Context
 from llama_index.core.llms import LLM
-from llama_index.core.llms.llama_cpp import LlamaCPP
 
 from services.chat.events import (
     WorkflowMetadata,
@@ -21,7 +20,7 @@ from services.chat.events import (
 )
 
 
-class BaseWorkflowStep(WorkflowStep, ABC):
+class BaseWorkflowStep(ABC):
     """
     Base class for all workflow steps with common functionality.
     
@@ -36,7 +35,7 @@ class BaseWorkflowStep(WorkflowStep, ABC):
     
     def __init__(self, llm: Optional[LLM] = None, **kwargs):
         """Initialize base workflow step."""
-        super().__init__(**kwargs)
+        super().__init__()
         self.llm = llm
         self.logger = logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__name__}")
         self.step_name = self.__class__.__name__
