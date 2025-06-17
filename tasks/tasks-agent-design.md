@@ -57,7 +57,7 @@
   - [x] 1.12 Remove observability events (ToolExecutionStartedEvent, etc.) - use logging/metrics instead
   - [x] 1.13 Remove user-facing events (ClarificationNeededEvent) - use streaming layer instead
   - [x] 1.14 Remove PlanGeneratedEvent - planner emits trigger events directly (multiple events per step)
-  - [ ] 1.15 Write comprehensive unit tests for all event classes in `services/chat/tests/test_events.py`
+  - [x] 1.15 Write comprehensive unit tests for all event classes in `services/chat/tests/test_events.py`
 
 - [ ] 2. Create Core Workflow Steps Architecture
   - [ ] 2.1 Create base workflow step class with common functionality and error handling
