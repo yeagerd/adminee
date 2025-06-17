@@ -68,8 +68,8 @@
     - [x] 2.2.4 Implement routing flag logic for emitted events:
       - [x] 2.2.4.1 Set `route_to_planner` flag on ToolExecutionRequestedEvent based on planning needs
       - [x] 2.2.4.2 Set `blocks_planning` flag on ClarificationRequestedEvent based on clarification type
-    - [ ] 2.2.5 Handle re-planning from routing events (ClarificationReplanRequestedEvent, ToolResultsForPlannerEvent)
-    - [ ] 2.2.6 Integrate with user preference learning from chat history
+    - [x] 2.2.5 Handle re-planning from routing events (ClarificationReplanRequestedEvent, ToolResultsForPlannerEvent)
+    - [x] 2.2.6 Integrate with user preference learning from chat history
   - [ ] 2.3 Implement ToolExecutorStep in `services/chat/steps/tool_executor_step.py`
     - [ ] 2.3.1 Create parallel tool execution engine with asyncio support
     - [ ] 2.3.2 Implement tool result aggregation and error handling
