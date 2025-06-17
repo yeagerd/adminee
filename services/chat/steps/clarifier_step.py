@@ -7,8 +7,9 @@ resolve planning blockages or draft requirements.
 """
 
 import json
+import asyncio
 from typing import Any, Dict, List, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from llama_index.core.workflow import Context, step
 from llama_index.core.llms import LLM
@@ -43,6 +44,8 @@ class ClarifierStep(BaseWorkflowStep):
         super().__init__(llm=llm, **kwargs)
         self._clarification_history = {}  # Track user clarification patterns
         self._blocking_contexts = {}  # Track what each clarification blocks
+        self._clarification_timeouts = {}  # Track clarification timeouts
+        self._default_timeout = 300  # 5 minutes default timeout
     
     @step
     async def run(self, ctx: Context, **kwargs) -> None:
@@ -82,15 +85,32 @@ class ClarifierStep(BaseWorkflowStep):
             priority="high"
         )
         
-        # For now, simulate user responses (in real implementation, this would be async user interaction)
-        user_responses = await self._simulate_user_responses(event.clarification_requests)
+        # Set up timeout for user responses
+        timeout_seconds = self._get_clarification_timeout(event.clarification_requests)
+        timeout_time = datetime.now() + timedelta(seconds=timeout_seconds)
+        self._clarification_timeouts[event.thread_id] = timeout_time
         
-        # Process user responses and determine routing
-        await self._process_clarification_responses(
-            ctx,
-            event,
-            user_responses
-        )
+        try:
+            # Wait for user responses with timeout
+            user_responses = await asyncio.wait_for(
+                self._wait_for_user_responses(event.clarification_requests),
+                timeout=timeout_seconds
+            )
+            
+            # Process user responses and determine routing
+            await self._process_clarification_responses(
+                ctx,
+                event,
+                user_responses
+            )
+            
+        except asyncio.TimeoutError:
+            # Handle timeout with fallback strategy
+            await self._handle_clarification_timeout(ctx, event)
+        
+        finally:
+            # Clean up timeout tracking
+            self._clarification_timeouts.pop(event.thread_id, None)
     
     async def _simulate_user_responses(self, clarification_requests: List[ClarificationRequest]) -> Dict[str, str]:
         """Simulate user responses to clarification requests (for testing)."""
@@ -452,4 +472,112 @@ Respond only with valid JSON.
             "key_insights": {"user_provided_responses": len(user_responses)},
             "routing_recommendation": "unblock_planning",
             "context_updates": {"fallback_analysis": True}
-        } 
+        }
+    
+    def _get_clarification_timeout(self, clarification_requests: List[ClarificationRequest]) -> int:
+        """Get timeout for clarification requests based on complexity."""
+        base_timeout = self._default_timeout
+        
+        # Adjust timeout based on number and complexity of questions
+        if len(clarification_requests) > 3:
+            base_timeout *= 1.5  # More time for complex clarifications
+        
+        # Check if any questions are marked as critical
+        has_critical = any(req.blocking for req in clarification_requests)
+        if has_critical:
+            base_timeout *= 1.2  # More time for critical questions
+        
+        return int(base_timeout)
+    
+    async def _wait_for_user_responses(self, clarification_requests: List[ClarificationRequest]) -> Dict[str, str]:
+        """Wait for user responses (in real implementation, this would be async user interaction)."""
+        # For now, simulate user responses with delay
+        await asyncio.sleep(0.1)  # Simulate brief delay
+        return await self._simulate_user_responses(clarification_requests)
+    
+    async def _handle_clarification_timeout(self, ctx: Context, event: ClarificationRequestedEvent) -> None:
+        """Handle clarification timeout with fallback strategies."""
+        self.logger.warning(f"Clarification timeout for thread {event.thread_id}")
+        
+        # Update context with timeout information
+        await self.emit_context_update(
+            ctx,
+            event.thread_id,
+            event.user_id,
+            {
+                "clarification_timeout": True,
+                "timeout_timestamp": datetime.now().isoformat(),
+                "fallback_strategy": "proceed_with_assumptions"
+            },
+            priority="high"
+        )
+        
+        # Determine fallback strategy based on blocking context
+        blocking_context = self._blocking_contexts.get(event.thread_id, {})
+        blocks_planning = blocking_context.get("blocks_planning", False)
+        
+        if blocks_planning:
+            # If clarification was blocking planning, proceed with low confidence
+            await self._emit_planning_unblocked_with_timeout(ctx, event)
+        else:
+            # If clarification was for drafting, proceed with available context
+            await self._emit_drafting_unblocked_with_timeout(ctx, event)
+        
+        # Emit completion event with timeout indication
+        await self._emit_timeout_completion_event(ctx, event)
+    
+    async def _emit_planning_unblocked_with_timeout(self, ctx: Context, event: ClarificationRequestedEvent) -> None:
+        """Emit planning unblocked event after timeout."""
+        event_to_emit = ClarificationPlannerUnblockedEvent(
+            thread_id=event.thread_id,
+            user_id=event.user_id,
+            parent_request_event_id=event.parent_plan_event_id,
+            planning_context={"timeout_fallback": True},
+            clarification_insights={"timeout_occurred": True, "assumptions_used": True},
+            confidence_boost=0.3,  # Low confidence due to timeout
+            context_updates={"clarification_timeout": True},
+            metadata=self.create_metadata(
+                confidence=0.3,
+                priority="medium"
+            )
+        )
+        
+        ctx.send_event(event_to_emit)
+        self.logger.info("Emitted planning unblocked event after timeout")
+    
+    async def _emit_drafting_unblocked_with_timeout(self, ctx: Context, event: ClarificationRequestedEvent) -> None:
+        """Emit drafting unblocked event after timeout."""
+        event_to_emit = ClarificationDraftUnblockedEvent(
+            thread_id=event.thread_id,
+            user_id=event.user_id,
+            parent_request_event_id=event.parent_plan_event_id,
+            draft_context={"timeout_fallback": True},
+            clarification_insights={"timeout_occurred": True, "best_effort_draft": True},
+            confidence_boost=0.3,  # Low confidence due to timeout
+            context_updates={"clarification_timeout": True},
+            metadata=self.create_metadata(
+                confidence=0.3,
+                priority="medium"
+            )
+        )
+        
+        ctx.send_event(event_to_emit)
+        self.logger.info("Emitted drafting unblocked event after timeout")
+    
+    async def _emit_timeout_completion_event(self, ctx: Context, event: ClarificationRequestedEvent) -> None:
+        """Emit completion event after timeout."""
+        event_to_emit = ClarifierCompletedEvent(
+            thread_id=event.thread_id,
+            user_id=event.user_id,
+            parent_request_event_id=event.parent_plan_event_id,
+            routing_action="timeout_fallback",
+            clarification_success=False,
+            insights_extracted={"timeout_occurred": True},
+            context_updates={"clarification_timeout": True},
+            metadata=self.create_metadata(
+                confidence=0.3
+            )
+        )
+        
+        ctx.send_event(event_to_emit)
+        self.logger.info("Emitted clarifier timeout completion event") 

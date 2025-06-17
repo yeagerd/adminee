@@ -78,17 +78,17 @@
     - [x] 2.3.5 Implement routing logic based on `route_to_planner` flag:
       - [x] 2.3.5.1 Emit ToolResultsForPlannerEvent when route_to_planner=True
       - [x] 2.3.5.2 Emit ToolResultsForDrafterEvent when route_to_planner=False
-  - [ ] 2.4 Implement ClarifierStep in `services/chat/steps/clarifier_step.py`
-    - [ ] 2.4.1 Create LLM-based question generation from missing information context
-    - [ ] 2.4.2 Implement user response routing back to workflow (not planner)
-    - [ ] 2.4.3 Add clarification context accumulation and response validation
-    - [ ] 2.4.4 Implement clarification analysis and routing logic:
-      - [ ] 2.4.4.1 Check `blocks_planning` flag from ClarificationRequestedEvent
-      - [ ] 2.4.4.2 Analyze clarification response to detect user request changes vs simple info provision
-      - [ ] 2.4.4.3 Emit ClarificationReplanRequestedEvent when user request fundamentally changed
-      - [ ] 2.4.4.4 Emit ClarificationPlannerUnblockedEvent when planning blockage resolved (blocks_planning=True)
-      - [ ] 2.4.4.5 Emit ClarificationDraftUnblockedEvent when draft blockage resolved (blocks_planning=False)
-    - [ ] 2.4.5 Create timeout handling and fallback strategies for unanswered questions
+  - [x] 2.4 Implement ClarifierStep in `services/chat/steps/clarifier_step.py`
+    - [x] 2.4.1 Create LLM-based question generation from missing information context
+    - [x] 2.4.2 Implement user response routing back to workflow (not planner)
+    - [x] 2.4.3 Add clarification context accumulation and response validation
+    - [x] 2.4.4 Implement clarification analysis and routing logic:
+      - [x] 2.4.4.1 Check `blocks_planning` flag from ClarificationRequestedEvent
+      - [x] 2.4.4.2 Analyze clarification response to detect user request changes vs simple info provision
+      - [x] 2.4.4.3 Emit ClarificationReplanRequestedEvent when user request fundamentally changed
+      - [x] 2.4.4.4 Emit ClarificationPlannerUnblockedEvent when planning blockage resolved (blocks_planning=True)
+      - [x] 2.4.4.5 Emit ClarificationDraftUnblockedEvent when draft blockage resolved (blocks_planning=False)
+    - [x] 2.4.5 Create timeout handling and fallback strategies for unanswered questions
   - [ ] 2.5 Implement DraftBuilderStep in `services/chat/steps/draft_builder_step.py`
     - [ ] 2.5.1 Create draft generation logic using accumulated context and tool results
     - [ ] 2.5.2 Implement draft templating system for emails, calendar events, and changes
