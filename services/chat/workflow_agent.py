@@ -116,8 +116,8 @@ class WorkflowChatAgent(Workflow):
             return f"I apologize, but I encountered an error while processing your request: {str(e)}"
 
     @step
-    async def start_workflow(self, ctx: Context, ev: StartEvent) -> StopEvent:
-        """Handle the initial StartEvent and process the chat request."""
+    async def start_workflow(self, ctx: Context, ev: StartEvent) -> None:
+        """Handle the initial StartEvent and emit UserInputEvent."""
         logger.info("Starting workflow execution")
         
         # Extract user input from StartEvent
@@ -126,11 +126,16 @@ class WorkflowChatAgent(Workflow):
         if user_input and isinstance(user_input, UserInputEvent):
             # Emit UserInputEvent to trigger the workflow
             ctx.send_event(user_input)
-            # Return a placeholder - the actual response will come from the workflow
-            return StopEvent(result="[WORKFLOW] Processing your request...")
         else:
-            # Simple mode for backward compatibility
-            return StopEvent(result="[FAKE LLM RESPONSE]")
+            # Create a simple UserInputEvent for backward compatibility
+            simple_input = UserInputEvent(
+                thread_id=str(self.thread_id),
+                user_id=self.user_id,
+                message="Simple request",
+                conversation_history=[],
+                metadata=WorkflowMetadata(priority="low")
+            )
+            ctx.send_event(simple_input)
 
     @step
     async def handle_user_input(self, ctx: Context, ev: UserInputEvent) -> None:
@@ -602,16 +607,63 @@ Respond only with valid JSON.
         thread_id: str,
         user_id: str
     ) -> Tuple[Dict[str, Any], bool, List[str]]:
-        """Execute tools in parallel (simplified implementation)."""
-        # Simplified implementation for now
+        """Execute tools in parallel with realistic mock responses."""
         tool_results = {}
         error_messages = []
         
+        # Mock data for different tools
+        mock_responses = {
+            "get_emails": {
+                "result": [
+                    {"subject": "Quarterly Review Meeting", "from": "manager@company.com", "urgent": True, "date": "2024-01-15"},
+                    {"subject": "Project Update", "from": "team@company.com", "urgent": False, "date": "2024-01-14"},
+                    {"subject": "Budget Approval", "from": "finance@company.com", "urgent": True, "date": "2024-01-13"}
+                ],
+                "count": 3,
+                "urgent_count": 2
+            },
+            "get_calendar_events": {
+                "result": [
+                    {"title": "Team Standup", "time": "2024-01-15 09:00", "attendees": 5, "duration": "30min"},
+                    {"title": "Client Call", "time": "2024-01-15 14:00", "attendees": 3, "duration": "60min"},
+                    {"title": "Project Review", "time": "2024-01-16 10:00", "attendees": 8, "duration": "90min"}
+                ],
+                "total_events": 3,
+                "next_available": "2024-01-15 16:00"
+            },
+            "create_document": {
+                "result": "Document created successfully",
+                "document_id": "doc_12345",
+                "url": "https://docs.company.com/doc_12345",
+                "type": "meeting_agenda"
+            },
+            "send_email": {
+                "result": "Email sent successfully",
+                "message_id": "msg_67890",
+                "recipients": ["team@company.com"],
+                "status": "delivered"
+            }
+        }
+        
         for tool_config in tools_to_execute:
             tool_name = tool_config["tool_name"]
+            inputs = tool_config.get("inputs", {})
+            
             try:
-                # Simulate tool execution
-                tool_results[tool_name] = {"result": f"Simulated result for {tool_name}"}
+                # Use mock response if available, otherwise create generic response
+                if tool_name in mock_responses:
+                    tool_results[tool_name] = mock_responses[tool_name]
+                else:
+                    # Generic mock response
+                    tool_results[tool_name] = {
+                        "result": f"Mock execution of {tool_name}",
+                        "query": inputs.get("query", ""),
+                        "status": "success",
+                        "execution_time": "0.5s"
+                    }
+                    
+                logger.info(f"Mock tool {tool_name} executed successfully")
+                
             except Exception as e:
                 error_messages.append(f"{tool_name}: {str(e)}")
                 tool_results[tool_name] = {"error": str(e)}
@@ -712,20 +764,58 @@ Respond only with valid JSON.
         draft_context: Dict[str, Any],
         user_id: str
     ) -> Dict[str, Any]:
-        """Create draft content from tool results (simplified implementation)."""
-        # Combine tool results into a coherent draft
+        """Create intelligent draft content from tool results."""
+        # Analyze tool results to create a coherent response
         content_parts = []
-        for tool_name, result in tool_results.items():
-            if isinstance(result, dict) and "result" in result:
-                content_parts.append(f"From {tool_name}: {result['result']}")
-            else:
-                content_parts.append(f"From {tool_name}: {str(result)}")
+        draft_type = "summary"
         
+        # Process email results
+        if "get_emails" in tool_results:
+            email_data = tool_results["get_emails"]
+            if isinstance(email_data, dict) and "result" in email_data:
+                urgent_count = email_data.get("urgent_count", 0)
+                total_count = email_data.get("count", 0)
+                content_parts.append(f"📧 Email Summary: Found {total_count} recent emails, {urgent_count} marked as urgent")
+                
+                if urgent_count > 0:
+                    content_parts.append("🚨 Urgent items requiring attention:")
+                    for email in email_data["result"]:
+                        if email.get("urgent"):
+                            content_parts.append(f"   • {email['subject']} from {email['from']}")
+        
+        # Process calendar results
+        if "get_calendar_events" in tool_results:
+            calendar_data = tool_results["get_calendar_events"]
+            if isinstance(calendar_data, dict) and "result" in calendar_data:
+                total_events = calendar_data.get("total_events", 0)
+                next_available = calendar_data.get("next_available", "Unknown")
+                content_parts.append(f"📅 Calendar Summary: {total_events} upcoming events")
+                content_parts.append(f"⏰ Next available time slot: {next_available}")
+        
+        # Process document creation
+        if "create_document" in tool_results:
+            doc_data = tool_results["create_document"]
+            if isinstance(doc_data, dict) and "document_id" in doc_data:
+                doc_type = doc_data.get("type", "document")
+                doc_url = doc_data.get("url", "")
+                content_parts.append(f"📄 Created {doc_type}: {doc_url}")
+                draft_type = "document_creation"
+        
+        # If no specific tools, create generic summary
+        if not content_parts:
+            content_parts = [f"Processed {len(tool_results)} tools successfully"]
+            for tool_name, result in tool_results.items():
+                if isinstance(result, dict) and "result" in result:
+                    content_parts.append(f"• {tool_name}: {result['result']}")
+        
+        # Create the final draft
         draft_content = {
             "content": "\n\n".join(content_parts),
-            "type": "summary",
+            "type": draft_type,
             "source": "tool_results",
-            "confidence": 0.8
+            "confidence": 0.85,
+            "tools_used": list(tool_results.keys()),
+            "summary": f"Analyzed {len(tool_results)} data sources to provide comprehensive response"
         }
         
         return draft_content
