@@ -54,10 +54,6 @@ class DraftBuilderStep(BaseWorkflowStep):
         """Handle clarification draft unblocked event."""
         await self._handle_clarification_draft_unblocked(ctx, ev)
     
-    async def run(self, ctx: Context, **kwargs) -> None:
-        """Legacy run method for backward compatibility with tests. Not used in workflow."""
-        pass
-    
     async def _handle_tool_results_for_draft(self, ctx: Context, event: ToolResultsForDrafterEvent) -> None:
         """Handle tool results ready for draft creation."""
         self.validate_required_fields(

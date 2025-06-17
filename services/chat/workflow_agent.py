@@ -12,10 +12,6 @@ from datetime import datetime
 from llama_index.core.workflow import Workflow, Context, StartEvent, StopEvent, step
 from llama_index.core.llms import LLM
 
-from .steps.planner_step import PlannerStep
-from .steps.tool_executor_step import ToolExecutorStep
-from .steps.clarifier_step import ClarifierStep
-from .steps.draft_builder_step import DraftBuilderStep
 from .events import (
     UserInputEvent,
     DraftCreatedEvent,
@@ -56,17 +52,8 @@ class WorkflowChatAgent(Workflow):
             provider=llm_provider
         )
         
-        # Initialize workflow steps
-        self.planner_step = PlannerStep(llm=self.llm)
-        self.tool_executor_step = ToolExecutorStep(llm=self.llm, tools=tools or [])
-        self.clarifier_step = ClarifierStep(llm=self.llm)
-        self.draft_builder_step = DraftBuilderStep(llm=self.llm)
-        
         # Store tools for future use
         self.tools = tools or []
-        
-        # Note: For now, we'll use a simple workflow implementation
-        # TODO: Integrate with the sophisticated workflow steps
         
         logger.info(f"WorkflowChatAgent initialized for thread_id={thread_id}, user_id={user_id}")
     
@@ -83,6 +70,27 @@ class WorkflowChatAgent(Workflow):
             # Handle case where no user_input is provided
             message = ev.get("message", "Hello")
             return StopEvent(result=f"[FAKE LLM RESPONSE] Workflow response to: {message}")
+    
+    # TODO: Add sophisticated workflow steps as @step decorated methods:
+    # @step
+    # async def plan_user_request(self, ctx: Context, ev: UserInputEvent) -> ToolExecutionRequestedEvent | ClarificationRequestedEvent:
+    #     """Analyze user intent and create execution plan."""
+    #     pass
+    #
+    # @step  
+    # async def execute_tools(self, ctx: Context, ev: ToolExecutionRequestedEvent) -> ToolResultsForDrafterEvent:
+    #     """Execute tools in parallel with intelligent routing."""
+    #     pass
+    #
+    # @step
+    # async def handle_clarification(self, ctx: Context, ev: ClarificationRequestedEvent) -> ClarificationDraftUnblockedEvent:
+    #     """Handle user clarifications with intelligent routing."""
+    #     pass
+    #
+    # @step
+    # async def build_draft(self, ctx: Context, ev: ToolResultsForDrafterEvent | ClarificationDraftUnblockedEvent) -> DraftCreatedEvent:
+    #     """Create final drafts from tool results and context."""
+    #     pass
     
     async def chat(self, user_input: str, conversation_history: Optional[List[Dict[str, str]]] = None) -> str:
         """
