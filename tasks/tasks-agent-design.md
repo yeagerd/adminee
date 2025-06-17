@@ -44,8 +44,8 @@
     - [x] 1.7.1 Add `blocks_planning: bool` flag to ClarificationRequestedEvent (determines if clarification blocks planning)
     - [x] 1.7.2 Add `route_to_planner: bool` flag to ToolExecutionRequestedEvent (determines if results go to planner vs drafter)
   - [ ] 1.8 Refactor ToolExecutorCompletedEvent into tool routing events:
-    - [ ] 1.8.1 Define ToolResultsForPlannerEvent (ToolExecutor → Planner) - tool results trigger re-planning
-    - [ ] 1.8.2 Define ToolResultsForDrafterEvent (ToolExecutor → DraftBuilder) - tool results ready for drafting
+    - [x] 1.8.1 Define ToolResultsForPlannerEvent (ToolExecutor → Planner) - tool results trigger re-planning
+    - [x] 1.8.2 Define ToolResultsForDrafterEvent (ToolExecutor → DraftBuilder) - tool results ready for drafting
     - [ ] 1.8.3 Update ToolExecutorStep to check route_to_planner flag and emit appropriate routing event
   - [ ] 1.9 Refactor ClarifierCompletedEvent into clarification routing events:
     - [ ] 1.9.1 Define ClarificationReplanRequestedEvent (Clarifier → Planner) - user request changed

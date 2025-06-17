@@ -263,6 +263,88 @@ class ClarifierCompletedEvent(Event):
         return self.clarification_answers.get(question)
 
 
+class ToolResultsForPlannerEvent(Event):
+    """
+    Event representing tool execution results that should trigger re-planning.
+    
+    This event is emitted by ToolExecutorStep when route_to_planner=True.
+    Contains tool results that may change the planning strategy or require
+    plan updates based on new information discovered.
+    """
+    
+    thread_id: str
+    user_id: str
+    parent_request_event_id: str  # ID of the ToolExecutionRequestedEvent
+    tool_results: Dict[str, Any]  # Results from all executed tools
+    execution_success: bool
+    error_messages: List[str] = Field(default_factory=list)
+    planning_insights: Dict[str, Any] = Field(default_factory=dict)  # Key insights for re-planning
+    context_updates: Dict[str, Any] = Field(default_factory=dict)
+    metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
+    
+    @field_validator('thread_id', 'user_id')
+    @classmethod
+    def validate_ids(cls, v):
+        if not v or not isinstance(v, str):
+            raise ValueError("thread_id and user_id must be non-empty strings")
+        return v
+    
+    def has_errors(self) -> bool:
+        """Check if tool execution had any errors."""
+        return not self.execution_success or len(self.error_messages) > 0
+    
+    def get_successful_results(self) -> Dict[str, Any]:
+        """Get results from successfully executed tools."""
+        if self.execution_success:
+            return self.tool_results
+        return {}
+    
+    def requires_replanning(self) -> bool:
+        """Check if results indicate need for re-planning."""
+        return self.execution_success and bool(self.planning_insights)
+
+
+class ToolResultsForDrafterEvent(Event):
+    """
+    Event representing tool execution results ready for draft creation.
+    
+    This event is emitted by ToolExecutorStep when route_to_planner=False.
+    Contains tool results that are ready to be used directly for drafting
+    without requiring plan changes.
+    """
+    
+    thread_id: str
+    user_id: str
+    parent_request_event_id: str  # ID of the ToolExecutionRequestedEvent
+    tool_results: Dict[str, Any]  # Results from all executed tools
+    execution_success: bool
+    error_messages: List[str] = Field(default_factory=list)
+    draft_context: Dict[str, Any] = Field(default_factory=dict)  # Context for draft creation
+    context_updates: Dict[str, Any] = Field(default_factory=dict)
+    metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
+    
+    @field_validator('thread_id', 'user_id')
+    @classmethod
+    def validate_ids(cls, v):
+        if not v or not isinstance(v, str):
+            raise ValueError("thread_id and user_id must be non-empty strings")
+        return v
+    
+    def has_errors(self) -> bool:
+        """Check if tool execution had any errors."""
+        return not self.execution_success or len(self.error_messages) > 0
+    
+    def get_successful_results(self) -> Dict[str, Any]:
+        """Get results from successfully executed tools."""
+        if self.execution_success:
+            return self.tool_results
+        return {}
+    
+    def is_ready_for_draft(self) -> bool:
+        """Check if results are ready for draft creation."""
+        return self.execution_success and bool(self.tool_results)
+
+
 # Export event classes and supporting models
 __all__ = [
     'WorkflowMetadata', 
@@ -272,5 +354,7 @@ __all__ = [
     'ToolExecutionRequestedEvent',
     'ClarificationRequestedEvent',
     'ToolExecutorCompletedEvent',
-    'ClarifierCompletedEvent'
+    'ClarifierCompletedEvent',
+    'ToolResultsForPlannerEvent',
+    'ToolResultsForDrafterEvent'
 ] 
