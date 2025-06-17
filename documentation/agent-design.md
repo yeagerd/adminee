@@ -12,17 +12,17 @@
 
 🧭 Planner
 Converts user intent + context into a plan: sequence of actions (tool calls + clarifications)
+Handles user clarifications directly when needed
+Can wait for tool results that block planning before asking for clarification
 
 ⚙️ ToolExecutor
 Executes planner’s actions
 Hands off to:
 Query tools (query_calendar, etc.)
-Clarifier when clarify(...) is returned in the plan
 Aggregates responses
+Routes results back to Planner when route_to_planner=True
 
-💬 Clarifier
-A lightweight LLM call that generates human-readable questions based on missing info
-Sends to user, collects answer, and passes it back to the planner or context
+
 🧺 Context Accumulator
 Tracks all relevant knowledge gathered: query results, user clarifications, prior drafts, etc.
 
@@ -51,17 +51,17 @@ Batch plan (multi-step upfront), then loop only if a step fails or context updat
          (Plan = actions)     │              │
          e.g.,                ▼              │
      - query_calendar        [Step N]        │
-     - clarify            ┌────────────┐     │
-     - create_draft/edit  │ ToolExecutor│────┘
-                          └────┬───────┬┘
-          ┌────────────────────┘       │
-     ┌────▼────┐           ┌───────────▼────────────┐
-     │ Query   │           │     Clarifier LLM      │
-     │ Tools   │           └───────────┬────────────┘
-     └────┬────┘                       │
-          │                      ┌────▼────┐
+     - create_draft/edit  ┌────────────┐     │
+                          │ ToolExecutor│────┘
+                          └────┬───────┘
+          ┌────────────────────┘
+     ┌────▼────┐           
+     │ Query   │           
+     │ Tools   │           
+     └────┬────┘                       
+          │                      ┌─────────┐
           └─────────────────────▶│  User   │◀────┐
-                                 │         │     │
+                                 │(Clarify)│     │
                                  └────┬─────┘     │
                                       │           │
                         (Clarified input/data)    │
@@ -87,15 +87,17 @@ Batch plan (multi-step upfront), then loop only if a step fails or context updat
 
 User Input → "Schedule meeting with Arjun"
 
-Planner → plan: [query_calendar, clarify_missing_info, create_draft]
+Planner → plan: [query_calendar, create_draft]
 
 ToolExecutor → calls query_calendar
 
-→ Result not enough → calls clarify(missing_time)
+→ Result not enough → routes back to Planner with route_to_planner=True
+
+Planner → asks user: "What time works for you and Arjun?"
 
 → User responds: "Thursday at 3 works"
 
-Context updated, Draft Builder generates meeting draft
+Context updated, Planner creates new plan: [create_draft]
 
 ToolExecutor → calls create_draft(...)
 

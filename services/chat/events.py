@@ -5,7 +5,6 @@ This module defines all events used in the workflow orchestration, including:
 - Base event classes with common functionality
 - User interaction events
 - Tool execution events
-- Clarification events
 - Draft lifecycle events
 - Streaming status events
 
@@ -57,16 +56,6 @@ class ExecutionPlan(BaseModel):
             "estimated_duration": estimated_duration
         })
 
-
-class ClarificationRequest(BaseModel):
-    """Represents a clarification request to the user."""
-    
-    question: str
-    blocking: bool = True  # Whether this blocks execution
-    confidence_impact: float = Field(default=0.0, ge=0.0, le=1.0)
-    context: Dict[str, Any] = Field(default_factory=dict)
-    suggested_answers: Optional[List[str]] = None
-    timeout_seconds: Optional[int] = None
 
 
 class UserInputEvent(Event):
@@ -145,48 +134,6 @@ class ToolExecutionRequestedEvent(Event):
         return self.execution_strategy == "parallel"
 
 
-class ClarificationRequestedEvent(Event):
-    """
-    Event that the planner emits to request user clarification.
-    
-    This is the trigger event that routes from Planner → Clarifier.
-    Contains the clarification questions and context.
-    """
-    
-    thread_id: str
-    user_id: str
-    clarification_requests: List[ClarificationRequest]
-    parent_plan_event_id: str
-    workflow_context: Dict[str, Any] = Field(default_factory=dict)
-    can_proceed_without: bool = False  # Can workflow continue without clarification
-    blocks_planning: bool = True  # Whether this clarification blocks planning vs drafting
-    metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
-    
-    @field_validator('thread_id', 'user_id')
-    @classmethod
-    def validate_ids(cls, v):
-        if not v or not isinstance(v, str):
-            raise ValueError("thread_id and user_id must be non-empty strings")
-        return v
-    
-    @field_validator('clarification_requests')
-    @classmethod
-    def validate_requests(cls, v):
-        if not v or not isinstance(v, list):
-            raise ValueError("clarification_requests must be a non-empty list")
-        return v
-    
-    def get_blocking_requests(self) -> List[ClarificationRequest]:
-        """Get clarification requests that block execution."""
-        return [req for req in self.clarification_requests if req.blocking]
-    
-    def has_blocking_requests(self) -> bool:
-        """Check if any clarification requests block execution."""
-        return len(self.get_blocking_requests()) > 0
-    
-    def get_all_questions(self) -> List[str]:
-        """Get all clarification questions."""
-        return [req.question for req in self.clarification_requests]
 
 
 class ToolExecutorCompletedEvent(Event):
@@ -194,8 +141,7 @@ class ToolExecutorCompletedEvent(Event):
     Event representing completion of tool execution step.
     
     This event is emitted by handle_tool_execution_request() when all requested tools 
-    have been executed. Used with LlamaIndex collect pattern to trigger
-    handle_tool_results_for_draft() when both tool execution and clarification are complete.
+    have been executed. Can be used to trigger follow-up actions in the workflow.
     """
     
     thread_id: str
@@ -225,42 +171,7 @@ class ToolExecutorCompletedEvent(Event):
         return {}
 
 
-class ClarifierCompletedEvent(Event):
-    """
-    Event representing completion of clarification step.
-    
-    This event is emitted by handle_clarification_request() when user clarifications have
-    been processed. Used with LlamaIndex collect pattern to trigger
-    handle_tool_results_for_draft() when both tool execution and clarification are complete.
-    """
-    
-    thread_id: str
-    user_id: str
-    parent_request_event_id: str  # ID of the ClarificationRequestedEvent
-    clarification_answers: Dict[str, str]  # Question -> Answer mapping
-    resolution_success: bool
-    unanswered_questions: List[str] = Field(default_factory=list)
-    context_updates: Dict[str, Any] = Field(default_factory=dict)
-    metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
-    
-    @field_validator('thread_id', 'user_id')
-    @classmethod
-    def validate_ids(cls, v):
-        if not v or not isinstance(v, str):
-            raise ValueError("thread_id and user_id must be non-empty strings")
-        return v
-    
-    def has_unanswered_questions(self) -> bool:
-        """Check if there are still unanswered clarification questions."""
-        return len(self.unanswered_questions) > 0
-    
-    def is_complete(self) -> bool:
-        """Check if clarification process is complete."""
-        return self.resolution_success and not self.has_unanswered_questions()
-    
-    def get_answer(self, question: str) -> Optional[str]:
-        """Get the answer for a specific question."""
-        return self.clarification_answers.get(question)
+
 
 
 class ToolResultsForPlannerEvent(Event):
@@ -345,89 +256,7 @@ class ToolResultsForDrafterEvent(Event):
         return self.execution_success and bool(self.tool_results)
 
 
-class ClarificationReplanRequestedEvent(Event):
-    """
-    Event representing that user clarification indicates the original request changed.
-    
-    This event is emitted by handle_clarification_request() when analysis determines the user
-    has fundamentally changed their request, requiring complete re-planning.
-    """
-    
-    thread_id: str
-    user_id: str
-    parent_request_event_id: str  # ID of the ClarificationRequestedEvent
-    original_request: str
-    updated_request: str  # User's clarified/changed request
-    clarification_context: Dict[str, Any] = Field(default_factory=dict)
-    change_analysis: Dict[str, Any] = Field(default_factory=dict)  # What changed and why
-    metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
-    
-    @field_validator('thread_id', 'user_id')
-    @classmethod
-    def validate_ids(cls, v):
-        if not v or not isinstance(v, str):
-            raise ValueError("thread_id and user_id must be non-empty strings")
-        return v
-    
-    def get_change_summary(self) -> str:
-        """Get a summary of what changed in the user's request."""
-        return self.change_analysis.get('summary', 'User request fundamentally changed')
 
-
-class ClarificationPlannerUnblockedEvent(Event):
-    """
-    Event representing that clarification resolved a planning blockage.
-    
-    This event is emitted by handle_clarification_request() when blocks_planning=True and the
-    clarification provides missing information needed for planning.
-    """
-    
-    thread_id: str
-    user_id: str
-    parent_request_event_id: str  # ID of the ClarificationRequestedEvent
-    clarification_answers: Dict[str, str]  # Question -> Answer mapping
-    resolved_blockages: List[str] = Field(default_factory=list)  # What was unblocked
-    planning_context: Dict[str, Any] = Field(default_factory=dict)  # New info for planning
-    metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
-    
-    @field_validator('thread_id', 'user_id')
-    @classmethod
-    def validate_ids(cls, v):
-        if not v or not isinstance(v, str):
-            raise ValueError("thread_id and user_id must be non-empty strings")
-        return v
-    
-    def get_planning_updates(self) -> Dict[str, Any]:
-        """Get the new planning context provided by clarification."""
-        return self.planning_context
-
-
-class ClarificationDraftUnblockedEvent(Event):
-    """
-    Event representing that clarification resolved a draft creation blockage.
-    
-    This event is emitted by handle_clarification_request() when blocks_planning=False and the
-    clarification provides missing information needed for draft creation.
-    """
-    
-    thread_id: str
-    user_id: str
-    parent_request_event_id: str  # ID of the ClarificationRequestedEvent
-    clarification_answers: Dict[str, str]  # Question -> Answer mapping
-    resolved_blockages: List[str] = Field(default_factory=list)  # What was unblocked
-    draft_context: Dict[str, Any] = Field(default_factory=dict)  # New info for drafting
-    metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
-    
-    @field_validator('thread_id', 'user_id')
-    @classmethod
-    def validate_ids(cls, v):
-        if not v or not isinstance(v, str):
-            raise ValueError("thread_id and user_id must be non-empty strings")
-        return v
-    
-    def get_draft_updates(self) -> Dict[str, Any]:
-        """Get the new draft context provided by clarification."""
-        return self.draft_context
 
 
 class DraftCreatedEvent(Event):

@@ -1,12 +1,11 @@
 """
-Workflow-based chat agent implementation using LlamaIndex Workflow system.
+LlamaIndex Workflow-based chat agent implementation.
 
-This module implements a modern chat agent using the LlamaIndex Workflow architecture
-with event-driven step orchestration for sophisticated conversation handling.
+This module provides a sophisticated chat agent built on LlamaIndex Workflow
+for event-driven orchestration of planning, tool execution, and draft creation.
 """
 
 import asyncio
-import json
 import logging
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
@@ -18,16 +17,11 @@ from llama_index.core.llms import LLM
 from .events import (
     UserInputEvent,
     ToolExecutionRequestedEvent,
-    ClarificationRequestedEvent,
     ToolResultsForPlannerEvent,
     ToolResultsForDrafterEvent,
-    ClarificationReplanRequestedEvent,
-    ClarificationPlannerUnblockedEvent,
-    ClarificationDraftUnblockedEvent,
     DraftCreatedEvent,
     WorkflowMetadata,
-    ExecutionPlan,
-    ClarificationRequest
+    ExecutionPlan
 )
 from .llm_manager import get_llm_manager
 
@@ -39,9 +33,8 @@ class WorkflowChatAgent(Workflow):
     LlamaIndex Workflow-based chat agent with sophisticated event-driven orchestration.
     
     This workflow implements a complete chat agent system with:
-    - Intelligent planning based on user input
+    - Intelligent planning based on user input (with direct clarification handling)
     - Parallel/sequential tool execution
-    - Smart clarification handling
     - Context-aware draft creation
     - Event-driven step coordination
     """
@@ -50,7 +43,7 @@ class WorkflowChatAgent(Workflow):
         self,
         thread_id: int,
         user_id: str,
-        llm_model: str = "gpt-4.1-nano",
+        llm_model: str = "gpt-4o-mini",
         llm_provider: str = "openai",
         tools: Optional[List] = None,
         **kwargs
@@ -73,7 +66,6 @@ class WorkflowChatAgent(Workflow):
         self._planning_cache = {}
         self._user_preferences = {}
         self._execution_cache = {}
-        self._clarification_history = {}
         self._draft_templates = {}
         self._user_style_preferences = {}
         
@@ -142,8 +134,8 @@ class WorkflowChatAgent(Workflow):
         """
         Handle initial user input and create execution plan.
         
-        This is the main planning step that analyzes user intent and determines
-        the appropriate workflow path (tool execution, clarification, or direct response).
+        This is the main planning step that analyzes user intent, handles clarifications
+        directly, and determines the appropriate workflow path.
         """
         logger.info(f"Processing user input: {ev.message[:50]}...")
         
@@ -168,12 +160,19 @@ class WorkflowChatAgent(Workflow):
         # Create execution plan
         execution_plan = self._create_execution_plan(analysis)
         
-        # Determine if clarification is needed
-        clarification_requests = self._identify_clarification_needs(analysis, execution_plan)
-        
-        if clarification_requests:
-            # Emit clarification request
-            await self._emit_clarification_request(ctx, ev, clarification_requests, execution_plan)
+        # Check if we need clarification - if so, ask user directly
+        if analysis.get("confidence", 1.0) < 0.5 or analysis.get("clarification_points"):
+            # Need clarification - create a simple response asking for clarification
+            clarification_question = await self._generate_clarification_question(analysis, ev.message)
+            
+            # Create a simple draft with the clarification question
+            draft_content = {
+                "content": clarification_question,
+                "type": "clarification",
+                "requires_user_response": True
+            }
+            
+            await self._emit_draft_created(ctx, ev, draft_content, "clarification")
         else:
             # Proceed with tool execution
             await self._emit_tool_execution_requests(ctx, ev, execution_plan)
@@ -207,39 +206,13 @@ class WorkflowChatAgent(Workflow):
             await self._route_tool_results(ctx, ev, {}, False, [f"Tool execution error: {str(e)}"])
 
     @step
-    async def handle_clarification_request(self, ctx: Context, ev: ClarificationRequestedEvent) -> None:
-        """
-        Handle clarification requests and manage user interaction.
-        
-        This step processes clarification questions, waits for user responses,
-        and routes the results to appropriate next steps.
-        """
-        logger.info(f"Processing {len(ev.clarification_requests)} clarification requests")
-        
-        try:
-            # Set up timeout for user responses
-            timeout_seconds = self._get_clarification_timeout(ev.clarification_requests)
-            
-            # Wait for user responses with timeout
-            user_responses = await asyncio.wait_for(
-                self._wait_for_user_responses(ev.clarification_requests),
-                timeout=timeout_seconds
-            )
-            
-            # Process user responses and determine routing
-            await self._process_clarification_responses(ctx, ev, user_responses)
-            
-        except asyncio.TimeoutError:
-            # Handle timeout with fallback strategy
-            await self._handle_clarification_timeout(ctx, ev)
-
-    @step
     async def handle_tool_results_for_planner(self, ctx: Context, ev: ToolResultsForPlannerEvent) -> None:
         """
         Handle tool results that require re-planning.
         
         This step processes tool results that may change the planning strategy
-        and creates updated execution plans based on new information.
+        and creates updated execution plans based on new information. Can also
+        ask for clarification directly if needed.
         """
         logger.info("Processing tool results for re-planning")
         
@@ -255,12 +228,19 @@ class WorkflowChatAgent(Workflow):
         # Create updated execution plan
         execution_plan = self._create_execution_plan_from_tool_results(analysis, user_prefs)
         
-        # Determine if more clarification is needed
-        clarification_requests = self._identify_clarification_needs_from_tools(analysis, execution_plan)
-        
-        if clarification_requests:
-            # Emit clarification request
-            await self._emit_clarification_request_from_tools(ctx, ev, clarification_requests, execution_plan)
+        # Check if we need clarification from tool results
+        if analysis.get("confidence", 1.0) < 0.5 or analysis.get("clarification_points"):
+            # Need clarification - create a simple response asking for clarification
+            clarification_question = await self._generate_clarification_question_from_tools(analysis, ev.tool_results)
+            
+            # Create a simple draft with the clarification question
+            draft_content = {
+                "content": clarification_question,
+                "type": "clarification",
+                "requires_user_response": True
+            }
+            
+            await self._emit_draft_created(ctx, ev, draft_content, "tool_clarification")
         else:
             # Proceed with additional tool execution or drafting
             await self._emit_tool_execution_requests_from_results(ctx, ev, execution_plan)
@@ -271,7 +251,7 @@ class WorkflowChatAgent(Workflow):
         Handle tool results ready for draft creation.
         
         This step creates drafts from tool results without requiring
-        additional planning or clarification.
+        additional planning.
         """
         logger.info(f"Creating draft from {len(ev.tool_results)} tool results")
         
@@ -289,83 +269,6 @@ class WorkflowChatAgent(Workflow):
         except Exception as e:
             logger.error(f"Draft creation from tools failed: {e}", exc_info=True)
             await self._emit_error_draft(ctx, ev, f"Failed to create draft: {str(e)}")
-
-    @step
-    async def handle_clarification_replan_request(self, ctx: Context, ev: ClarificationReplanRequestedEvent) -> None:
-        """
-        Handle requests to replan based on clarification responses.
-        
-        This step processes user clarifications that indicate a fundamental
-        change in the request, requiring complete re-planning.
-        """
-        logger.info("Re-planning based on clarification responses")
-        
-        # Create new UserInputEvent with updated request
-        updated_input = UserInputEvent(
-            thread_id=ev.thread_id,
-            user_id=ev.user_id,
-            message=ev.updated_request,
-            conversation_history=ev.clarification_context.get("conversation_history", []),
-            metadata=WorkflowMetadata(priority="high", parent_event_id=ev.parent_request_event_id)
-        )
-        
-        # Process as new user input
-        await self.handle_user_input(ctx, updated_input)
-
-    @step
-    async def handle_clarification_planner_unblocked(self, ctx: Context, ev: ClarificationPlannerUnblockedEvent) -> None:
-        """
-        Handle clarification that unblocks planning.
-        
-        This step processes clarification responses that provide missing
-        information needed to continue with planning and tool execution.
-        """
-        logger.info("Processing clarification that unblocked planning")
-        
-        # Get the original planning context
-        planning_context = ev.planning_context
-        
-        # Create execution plan with clarification insights
-        user_prefs = self._get_user_preferences(ev.user_id)
-        analysis = planning_context.get("analysis", {})
-        analysis.update({"clarification_insights": ev.clarification_answers})
-        
-        execution_plan = self._create_execution_plan(analysis)
-        
-        # Proceed with tool execution
-        original_event = UserInputEvent(
-            thread_id=ev.thread_id,
-            user_id=ev.user_id,
-            message=planning_context.get("original_message", ""),
-            conversation_history=planning_context.get("conversation_history", [])
-        )
-        
-        await self._emit_tool_execution_requests(ctx, original_event, execution_plan)
-
-    @step
-    async def handle_clarification_draft_unblocked(self, ctx: Context, ev: ClarificationDraftUnblockedEvent) -> None:
-        """
-        Handle clarification that unblocks draft creation.
-        
-        This step processes clarification responses that provide missing
-        information needed for draft creation.
-        """
-        logger.info("Creating draft from clarification context")
-        
-        try:
-            # Create draft from clarification context
-            draft_content = await self._create_draft_from_clarification(
-                ev.draft_context,
-                ev.clarification_answers,
-                ev.user_id
-            )
-            
-            # Emit draft created event
-            await self._emit_draft_created(ctx, ev, draft_content, "clarification")
-            
-        except Exception as e:
-            logger.error(f"Draft creation from clarification failed: {e}", exc_info=True)
-            await self._emit_error_draft(ctx, ev, f"Failed to create draft from clarification: {str(e)}")
 
     @step
     async def handle_draft_created(self, ctx: Context, ev: DraftCreatedEvent) -> StopEvent:
@@ -435,142 +338,128 @@ class WorkflowChatAgent(Workflow):
             for turn in conversation_history[-5:]  # Last 5 turns
         ])
         
-        prompt = f"""
-Analyze the user's intent and provide a structured response.
+        # Create analysis prompt
+        prompt = f"""Analyze the user's intent and requirements from their message.
+        
+Context from recent conversation:
+{context}
 
 User Message: "{message}"
 
-Conversation Context:
-{context}
-
 User Preferences:
-{json.dumps(user_prefs, indent=2)}
+- Communication Style: {user_prefs.get('communication_style', 'professional')}
+- Urgency Preference: {user_prefs.get('urgency_preference', 'medium')}
+- Detail Level: {user_prefs.get('detail_level', 'standard')}
 
-Analyze and respond with a JSON object containing:
-- "intent": Brief description of what the user wants
-- "confidence": Float between 0.0-1.0 for analysis confidence  
-- "entities": Dict of extracted entities (names, dates, topics, etc.)
-- "requires_tools": Boolean if external tools are needed
-- "complexity": "low", "medium", or "high"
-- "suggested_tools": List of tool names that might be needed
-- "assumptions": List of assumptions made about the request
+Analyze and provide:
+- "intent": Main user intention (email, calendar, document, etc.)
+- "confidence": Confidence level 0.0-1.0 in understanding the request
+- "required_tools": List of tools needed ["get_emails", "get_calendar", etc.]
+- "execution_strategy": "parallel" or "sequential"
 - "clarification_points": List of things that need clarification
+- "urgency": "low", "medium", or "high"
+- "scope": Brief description of what needs to be done
 
-Respond only with valid JSON.
-"""
-        
+Respond in JSON format only."""
+
         try:
-            response = await self._safe_llm_call(prompt, max_tokens=1000, temperature=0.1)
-            analysis = json.loads(response)
+            response = await self._safe_llm_call(prompt, max_tokens=300)
+            # Try to parse JSON response
+            import json
+            analysis = json.loads(response.strip())
             
-            # Validate analysis structure
-            required_keys = ["intent", "confidence", "entities", "requires_tools"]
-            for key in required_keys:
-                if key not in analysis:
-                    analysis[key] = self._get_default_analysis_value(key)
+            # Validate and provide defaults
+            analysis["confidence"] = analysis.get("confidence", 0.8)
+            analysis["required_tools"] = analysis.get("required_tools", [])
+            analysis["execution_strategy"] = analysis.get("execution_strategy", "parallel")
+            analysis["clarification_points"] = analysis.get("clarification_points", [])
+            analysis["urgency"] = analysis.get("urgency", "medium")
+            analysis["scope"] = analysis.get("scope", "Process user request")
             
             return analysis
             
-        except (json.JSONDecodeError, Exception) as e:
-            logger.warning(f"Failed to parse intent analysis: {e}")
+        except Exception as e:
+            logger.warning(f"Intent analysis failed, using fallback: {e}")
             return self._get_fallback_analysis(message)
 
-    def _get_default_analysis_value(self, key: str) -> Any:
-        """Get default value for missing analysis keys."""
-        defaults = {
-            "intent": "General assistance request",
-            "confidence": 0.5,
-            "entities": {},
-            "requires_tools": False,
-            "complexity": "medium",
-            "suggested_tools": [],
-            "assumptions": [],
-            "clarification_points": []
-        }
-        return defaults.get(key, None)
-
     def _get_fallback_analysis(self, message: str) -> Dict[str, Any]:
-        """Get fallback analysis when LLM parsing fails."""
+        """Provide fallback analysis when LLM analysis fails."""
+        # Simple keyword-based analysis
+        message_lower = message.lower()
+        
+        if "email" in message_lower:
+            intent = "email_management"
+            tools = ["get_emails", "search_emails"]
+        elif "calendar" in message_lower or "meeting" in message_lower:
+            intent = "calendar_management"
+            tools = ["get_calendar_events", "search_calendar"]
+        elif "document" in message_lower or "file" in message_lower:
+            intent = "document_management"
+            tools = ["get_documents", "search_documents"]
+        else:
+            intent = "general_assistance"
+            tools = ["get_emails", "get_calendar_events"]
+        
         return {
-            "intent": f"Process user request: {message[:50]}...",
-            "confidence": 0.3,
-            "entities": {},
-            "requires_tools": False,
-            "complexity": "medium",
-            "suggested_tools": [],
-            "assumptions": ["Using fallback analysis due to parsing error"],
-            "clarification_points": []
+            "intent": intent,
+            "confidence": 0.6,
+            "required_tools": tools,
+            "execution_strategy": "parallel",
+            "clarification_points": [],
+            "urgency": "medium",
+            "scope": f"Handle {intent} request"
         }
 
     def _create_execution_plan(self, analysis: Dict[str, Any]) -> ExecutionPlan:
-        """Create execution plan from intent analysis."""
+        """Create execution plan from analysis."""
         plan = ExecutionPlan(
-            goal=analysis.get("intent", "Process user request"),
-            confidence=analysis.get("confidence", 0.5),
-            execution_strategy="parallel_preferred" if analysis.get("complexity") != "high" else "sequential_required",
-            assumptions=analysis.get("assumptions", [])
+            goal=analysis.get("scope", "Process user request"),
+            confidence=analysis.get("confidence", 0.8),
+            execution_strategy=analysis.get("execution_strategy", "parallel"),
+            assumptions=[f"User intent: {analysis.get('intent', 'general')}"]
         )
         
-        # Add task groups based on suggested tools
-        suggested_tools = analysis.get("suggested_tools", [])
-        if suggested_tools:
-            plan.add_task_group(suggested_tools, can_run_parallel=True)
+        # Add task groups based on required tools
+        required_tools = analysis.get("required_tools", [])
+        if required_tools:
+            plan.add_task_group(
+                tasks=required_tools,
+                can_run_parallel=(analysis.get("execution_strategy") == "parallel"),
+                estimated_duration="30-60 seconds"
+            )
         
         return plan
 
-    def _identify_clarification_needs(
-        self,
-        analysis: Dict[str, Any],
-        execution_plan: ExecutionPlan
-    ) -> List[ClarificationRequest]:
-        """Identify clarification needs from analysis."""
-        clarification_requests = []
-        
-        # Check for explicit clarification points
+    async def _generate_clarification_question(self, analysis: Dict[str, Any], original_message: str) -> str:
+        """Generate a clarification question based on analysis."""
         clarification_points = analysis.get("clarification_points", [])
-        for point in clarification_points:
-            clarification_requests.append(
-                ClarificationRequest(
-                    question=point,
-                    blocking=True,
-                    confidence_impact=0.3
-                )
-            )
         
-        # Check for low confidence requiring clarification
-        if analysis.get("confidence", 1.0) < 0.6:
-            clarification_requests.append(
-                ClarificationRequest(
-                    question="Could you provide more details about what you'd like me to help you with?",
-                    blocking=True,
-                    confidence_impact=0.4
-                )
-            )
-        
-        return clarification_requests
+        if clarification_points:
+            questions = []
+            for i, point in enumerate(clarification_points[:3], 1):  # Limit to 3 questions
+                questions.append(f"{i}. {point}")
+            
+            question_list = "\n".join(questions)
+            return f"I need some clarification to help you better:\n\n{question_list}\n\nCould you provide more details on these points?"
+        else:
+            # Generic clarification based on low confidence
+            return f"I want to make sure I understand your request correctly. You mentioned: '{original_message}'\n\nCould you provide a bit more detail about what specifically you'd like me to help you with?"
 
-    async def _emit_clarification_request(
-        self,
-        ctx: Context,
-        original_event: UserInputEvent,
-        clarification_requests: List[ClarificationRequest],
-        execution_plan: ExecutionPlan
-    ) -> None:
-        """Emit clarification request event."""
-        event = ClarificationRequestedEvent(
-            thread_id=original_event.thread_id,
-            user_id=original_event.user_id,
-            clarification_requests=clarification_requests,
-            parent_plan_event_id=str(uuid4()),
-            workflow_context={
-                "original_message": original_event.message,
-                "conversation_history": original_event.conversation_history,
-                "execution_plan": execution_plan.dict()
-            },
-            blocks_planning=True
-        )
+    async def _generate_clarification_question_from_tools(self, analysis: Dict[str, Any], tool_results: Dict[str, Any]) -> str:
+        """Generate clarification question based on tool results analysis."""
+        clarification_points = analysis.get("clarification_points", [])
         
-        ctx.send_event(event)
+        if clarification_points:
+            questions = []
+            for i, point in enumerate(clarification_points[:3], 1):
+                questions.append(f"{i}. {point}")
+            
+            question_list = "\n".join(questions)
+            return f"Based on the information I found, I need some clarification:\n\n{question_list}\n\nCould you help me with these details?"
+        else:
+            # Generic clarification for tool results
+            available_info = ", ".join(tool_results.keys()) if tool_results else "limited information"
+            return f"I found {available_info}, but I need a bit more guidance on how you'd like me to proceed. Could you provide more specific direction?"
 
     async def _emit_tool_execution_requests(
         self,
@@ -578,28 +467,38 @@ Respond only with valid JSON.
         original_event: UserInputEvent,
         execution_plan: ExecutionPlan
     ) -> None:
-        """Emit tool execution request events."""
-        # For now, create a simple tool execution request
-        tools_to_execute = []
-        for task_group in execution_plan.task_groups:
-            for task in task_group.get("tasks", []):
-                tools_to_execute.append({
-                    "tool_name": task,
-                    "inputs": {"query": original_event.message},
-                    "execution_group_id": str(uuid4())
-                })
+        """Emit tool execution requests based on execution plan."""
+        if not execution_plan.task_groups:
+            # No tools to execute, go straight to draft creation
+            draft_content = {
+                "content": "I understand your request, but I don't have specific tools to help with this. Could you provide more details or try a different request?",
+                "type": "response"
+            }
+            await self._emit_draft_created(ctx, original_event, draft_content, "no_tools")
+            return
         
-        if tools_to_execute:
-            event = ToolExecutionRequestedEvent(
+        # Emit tool execution request
+        for i, task_group in enumerate(execution_plan.task_groups):
+            tools_to_execute = [
+                {
+                    "tool_name": tool,
+                    "inputs": {"user_id": original_event.user_id, "thread_id": original_event.thread_id},
+                    "execution_group_id": f"group_{i}"
+                }
+                for tool in task_group["tasks"]
+            ]
+            
+            tool_event = ToolExecutionRequestedEvent(
                 thread_id=original_event.thread_id,
                 user_id=original_event.user_id,
                 tools_to_execute=tools_to_execute,
-                execution_strategy=execution_plan.execution_strategy.replace("_preferred", "").replace("_required", ""),
+                execution_strategy="parallel" if task_group.get("can_run_parallel", True) else "sequential",
                 parent_plan_event_id=str(uuid4()),
-                route_to_planner=False  # Route to drafter for now
+                route_to_planner=False,  # Default to drafting
+                metadata=WorkflowMetadata(priority="high")
             )
             
-            ctx.send_event(event)
+            ctx.send_event(tool_event)
 
     async def _execute_tools_parallel(
         self,
@@ -607,69 +506,55 @@ Respond only with valid JSON.
         thread_id: str,
         user_id: str
     ) -> Tuple[Dict[str, Any], bool, List[str]]:
-        """Execute tools in parallel with realistic mock responses."""
-        tool_results = {}
-        error_messages = []
+        """Execute tools in parallel."""
+        logger.info(f"Executing {len(tools_to_execute)} tools in parallel")
         
-        # Mock data for different tools
-        mock_responses = {
-            "get_emails": {
-                "result": [
-                    {"subject": "Quarterly Review Meeting", "from": "manager@company.com", "urgent": True, "date": "2024-01-15"},
-                    {"subject": "Project Update", "from": "team@company.com", "urgent": False, "date": "2024-01-14"},
-                    {"subject": "Budget Approval", "from": "finance@company.com", "urgent": True, "date": "2024-01-13"}
-                ],
-                "count": 3,
-                "urgent_count": 2
-            },
-            "get_calendar_events": {
-                "result": [
-                    {"title": "Team Standup", "time": "2024-01-15 09:00", "attendees": 5, "duration": "30min"},
-                    {"title": "Client Call", "time": "2024-01-15 14:00", "attendees": 3, "duration": "60min"},
-                    {"title": "Project Review", "time": "2024-01-16 10:00", "attendees": 8, "duration": "90min"}
-                ],
-                "total_events": 3,
-                "next_available": "2024-01-15 16:00"
-            },
-            "create_document": {
-                "result": "Document created successfully",
-                "document_id": "doc_12345",
-                "url": "https://docs.company.com/doc_12345",
-                "type": "meeting_agenda"
-            },
-            "send_email": {
-                "result": "Email sent successfully",
-                "message_id": "msg_67890",
-                "recipients": ["team@company.com"],
-                "status": "delivered"
-            }
-        }
+        # Mock implementation - replace with actual tool execution
+        results = {}
+        errors = []
         
         for tool_config in tools_to_execute:
-            tool_name = tool_config["tool_name"]
-            inputs = tool_config.get("inputs", {})
+            tool_name = tool_config.get("tool_name", "unknown")
             
-            try:
-                # Use mock response if available, otherwise create generic response
-                if tool_name in mock_responses:
-                    tool_results[tool_name] = mock_responses[tool_name]
-                else:
-                    # Generic mock response
-                    tool_results[tool_name] = {
-                        "result": f"Mock execution of {tool_name}",
-                        "query": inputs.get("query", ""),
-                        "status": "success",
-                        "execution_time": "0.5s"
-                    }
-                    
-                logger.info(f"Mock tool {tool_name} executed successfully")
-                
-            except Exception as e:
-                error_messages.append(f"{tool_name}: {str(e)}")
-                tool_results[tool_name] = {"error": str(e)}
+            # Simulate tool execution with realistic mock data
+            if "email" in tool_name.lower():
+                results[tool_name] = {
+                    "emails": [
+                        {
+                            "id": f"email_{i}",
+                            "from": f"sender{i}@example.com",
+                            "subject": f"Important Email {i}",
+                            "body": f"This is email content {i}",
+                            "date": "2024-01-15",
+                            "urgent": i == 1
+                        }
+                        for i in range(1, 4)
+                    ],
+                    "total_count": 3
+                }
+            elif "calendar" in tool_name.lower():
+                results[tool_name] = {
+                    "events": [
+                        {
+                            "id": f"event_{i}",
+                            "title": f"Meeting {i}",
+                            "start_time": f"2024-01-1{5+i} 10:00:00",
+                            "end_time": f"2024-01-1{5+i} 11:00:00",
+                            "attendees": [f"attendee{i}@example.com"],
+                            "location": f"Conference Room {i}"
+                        }
+                        for i in range(1, 3)
+                    ],
+                    "total_count": 2
+                }
+            else:
+                results[tool_name] = {
+                    "status": "success",
+                    "data": f"Mock result for {tool_name}",
+                    "timestamp": datetime.now().isoformat()
+                }
         
-        execution_success = len(error_messages) == 0
-        return tool_results, execution_success, error_messages
+        return results, True, errors
 
     async def _execute_tools_sequential(
         self,
@@ -677,8 +562,10 @@ Respond only with valid JSON.
         thread_id: str,
         user_id: str
     ) -> Tuple[Dict[str, Any], bool, List[str]]:
-        """Execute tools sequentially (simplified implementation)."""
-        # For now, use the same logic as parallel
+        """Execute tools sequentially."""
+        logger.info(f"Executing {len(tools_to_execute)} tools sequentially")
+        
+        # For simplicity, use the same mock as parallel execution
         return await self._execute_tools_parallel(tools_to_execute, thread_id, user_id)
 
     async def _route_tool_results(
@@ -689,7 +576,7 @@ Respond only with valid JSON.
         execution_success: bool,
         error_messages: List[str]
     ) -> None:
-        """Route tool results to appropriate next step."""
+        """Route tool results based on the route_to_planner flag."""
         if original_event.route_to_planner:
             # Route to planner for re-planning
             event = ToolResultsForPlannerEvent(
@@ -699,7 +586,8 @@ Respond only with valid JSON.
                 tool_results=tool_results,
                 execution_success=execution_success,
                 error_messages=error_messages,
-                planning_insights={"requires_replanning": not execution_success}
+                planning_insights={"needs_replanning": not execution_success},
+                metadata=WorkflowMetadata(priority="high")
             )
         else:
             # Route to drafter for draft creation
@@ -710,53 +598,11 @@ Respond only with valid JSON.
                 tool_results=tool_results,
                 execution_success=execution_success,
                 error_messages=error_messages,
-                draft_context={"ready_for_draft": execution_success}
+                draft_context={"ready_for_draft": execution_success},
+                metadata=WorkflowMetadata(priority="high")
             )
         
         ctx.send_event(event)
-
-    async def _wait_for_user_responses(self, clarification_requests: List[ClarificationRequest]) -> Dict[str, str]:
-        """Wait for user responses to clarification requests (simplified implementation)."""
-        # Simulate user responses for now
-        responses = {}
-        for i, request in enumerate(clarification_requests):
-            if "details" in request.question.lower():
-                responses[f"response_{i}"] = "I need help with scheduling a meeting for next week"
-            elif "preferences" in request.question.lower():
-                responses[f"response_{i}"] = "Please use a professional tone and include agenda items"
-            else:
-                responses[f"response_{i}"] = "Yes, please proceed with the suggested approach"
-        
-        return responses
-
-    async def _process_clarification_responses(
-        self,
-        ctx: Context,
-        original_event: ClarificationRequestedEvent,
-        user_responses: Dict[str, str]
-    ) -> None:
-        """Process user responses and determine routing (simplified implementation)."""
-        # For now, assume responses unblock planning
-        event = ClarificationPlannerUnblockedEvent(
-            thread_id=original_event.thread_id,
-            user_id=original_event.user_id,
-            parent_request_event_id=original_event.parent_plan_event_id,
-            clarification_answers=user_responses,
-            resolved_blockages=["planning_blocked"],
-            planning_context=original_event.workflow_context
-        )
-        
-        ctx.send_event(event)
-
-    def _get_clarification_timeout(self, clarification_requests: List[ClarificationRequest]) -> int:
-        """Get timeout for clarification requests."""
-        return 300  # 5 minutes default
-
-    async def _handle_clarification_timeout(self, ctx: Context, event: ClarificationRequestedEvent) -> None:
-        """Handle clarification timeout with fallback strategy."""
-        # For now, proceed with default responses
-        default_responses = {f"response_{i}": "Proceed with default approach" for i in range(len(event.clarification_requests))}
-        await self._process_clarification_responses(ctx, event, default_responses)
 
     async def _create_draft_from_tools(
         self,
@@ -764,82 +610,47 @@ Respond only with valid JSON.
         draft_context: Dict[str, Any],
         user_id: str
     ) -> Dict[str, Any]:
-        """Create intelligent draft content from tool results."""
-        # Analyze tool results to create a coherent response
-        content_parts = []
-        draft_type = "summary"
+        """Create draft from tool results."""
+        logger.info("Creating draft from tool results")
         
-        # Process email results
-        if "get_emails" in tool_results:
-            email_data = tool_results["get_emails"]
-            if isinstance(email_data, dict) and "result" in email_data:
-                urgent_count = email_data.get("urgent_count", 0)
-                total_count = email_data.get("count", 0)
-                content_parts.append(f"📧 Email Summary: Found {total_count} recent emails, {urgent_count} marked as urgent")
+        # Analyze tool results to create coherent draft
+        content_parts = []
+        
+        for tool_name, result in tool_results.items():
+            if "email" in tool_name.lower() and "emails" in result:
+                emails = result["emails"]
+                urgent_emails = [e for e in emails if e.get("urgent", False)]
                 
-                if urgent_count > 0:
-                    content_parts.append("🚨 Urgent items requiring attention:")
-                    for email in email_data["result"]:
-                        if email.get("urgent"):
-                            content_parts.append(f"   • {email['subject']} from {email['from']}")
+                if urgent_emails:
+                    content_parts.append("🚨 **Urgent Emails:**")
+                    for email in urgent_emails:
+                        content_parts.append(f"• **{email['subject']}** from {email['from']}")
+                
+                if len(emails) > len(urgent_emails):
+                    regular_emails = [e for e in emails if not e.get("urgent", False)]
+                    content_parts.append(f"\n📧 **Other Emails ({len(regular_emails)}):**")
+                    for email in regular_emails[:3]:  # Show first 3
+                        content_parts.append(f"• {email['subject']} from {email['from']}")
+                        
+            elif "calendar" in tool_name.lower() and "events" in result:
+                events = result["events"]
+                content_parts.append(f"\n📅 **Upcoming Events ({len(events)}):**")
+                for event in events:
+                    content_parts.append(f"• **{event['title']}** - {event['start_time']}")
+                    if event.get('location'):
+                        content_parts.append(f"  📍 {event['location']}")
         
-        # Process calendar results
-        if "get_calendar_events" in tool_results:
-            calendar_data = tool_results["get_calendar_events"]
-            if isinstance(calendar_data, dict) and "result" in calendar_data:
-                total_events = calendar_data.get("total_events", 0)
-                next_available = calendar_data.get("next_available", "Unknown")
-                content_parts.append(f"📅 Calendar Summary: {total_events} upcoming events")
-                content_parts.append(f"⏰ Next available time slot: {next_available}")
-        
-        # Process document creation
-        if "create_document" in tool_results:
-            doc_data = tool_results["create_document"]
-            if isinstance(doc_data, dict) and "document_id" in doc_data:
-                doc_type = doc_data.get("type", "document")
-                doc_url = doc_data.get("url", "")
-                content_parts.append(f"📄 Created {doc_type}: {doc_url}")
-                draft_type = "document_creation"
-        
-        # If no specific tools, create generic summary
         if not content_parts:
-            content_parts = [f"Processed {len(tool_results)} tools successfully"]
-            for tool_name, result in tool_results.items():
-                if isinstance(result, dict) and "result" in result:
-                    content_parts.append(f"• {tool_name}: {result['result']}")
+            content_parts = ["I found some information, but need clarification on how to proceed."]
         
-        # Create the final draft
-        draft_content = {
-            "content": "\n\n".join(content_parts),
-            "type": draft_type,
-            "source": "tool_results",
-            "confidence": 0.85,
-            "tools_used": list(tool_results.keys()),
-            "summary": f"Analyzed {len(tool_results)} data sources to provide comprehensive response"
-        }
+        draft_content = "\n".join(content_parts)
         
-        return draft_content
-
-    async def _create_draft_from_clarification(
-        self,
-        draft_context: Dict[str, Any],
-        clarification_insights: Dict[str, str],
-        user_id: str
-    ) -> Dict[str, Any]:
-        """Create draft content from clarification context (simplified implementation)."""
-        # Combine clarification insights into a draft
-        content_parts = []
-        for question, answer in clarification_insights.items():
-            content_parts.append(f"Regarding: {answer}")
-        
-        draft_content = {
-            "content": "\n\n".join(content_parts),
-            "type": "clarification_summary",
-            "source": "clarification",
+        return {
+            "content": draft_content,
+            "type": "summary",
+            "word_count": len(draft_content.split()),
             "confidence": 0.9
         }
-        
-        return draft_content
 
     async def _emit_draft_created(
         self,
@@ -850,13 +661,14 @@ Respond only with valid JSON.
     ) -> None:
         """Emit draft created event."""
         event = DraftCreatedEvent(
-            thread_id=getattr(original_event, 'thread_id', ''),
-            user_id=getattr(original_event, 'user_id', ''),
+            thread_id=getattr(original_event, 'thread_id', str(self.thread_id)),
+            user_id=getattr(original_event, 'user_id', self.user_id),
             draft_content=draft_content.get("content", ""),
-            draft_type=draft_content.get("type", "unknown"),
-            source_events=[getattr(original_event, 'parent_request_event_id', '')],
-            draft_metadata=draft_content,
-            confidence_score=draft_content.get("confidence", 0.5)
+            draft_type=draft_content.get("type", "response"),
+            confidence_score=draft_content.get("confidence", 0.8),
+            word_count=draft_content.get("word_count"),
+            source_events=[source],
+            metadata=WorkflowMetadata(priority="high")
         )
         
         ctx.send_event(event)
@@ -867,14 +679,17 @@ Respond only with valid JSON.
         original_event,
         error_message: str
     ) -> None:
-        """Emit error draft event."""
+        """Emit error draft when something goes wrong."""
+        draft_content = f"I apologize, but I encountered an issue: {error_message}"
+        
         event = DraftCreatedEvent(
-            thread_id=getattr(original_event, 'thread_id', ''),
-            user_id=getattr(original_event, 'user_id', ''),
-            draft_content=f"Error: {error_message}",
+            thread_id=getattr(original_event, 'thread_id', str(self.thread_id)),
+            user_id=getattr(original_event, 'user_id', self.user_id),
+            draft_content=draft_content,
             draft_type="error",
-            source_events=[getattr(original_event, 'parent_request_event_id', '')],
-            confidence_score=0.0
+            confidence_score=0.1,
+            word_count=len(draft_content.split()),
+            metadata=WorkflowMetadata(priority="high")
         )
         
         ctx.send_event(event)
@@ -882,23 +697,26 @@ Respond only with valid JSON.
     async def _safe_llm_call(self, prompt: str, max_tokens: int = 500, temperature: float = 0.1) -> str:
         """Make a safe LLM call with error handling."""
         try:
-            # For testing, return a simple response
-            return '{"intent": "test", "confidence": 0.8, "entities": {}, "requires_tools": false}'
+            response = await self.llm.acomplete(prompt, max_tokens=max_tokens, temperature=temperature)
+            return response.text if hasattr(response, 'text') else str(response)
         except Exception as e:
             logger.error(f"LLM call failed: {e}")
-            return '{"intent": "fallback", "confidence": 0.1, "entities": {}, "requires_tools": false}'
+            return "[FAKE LLM RESPONSE]"  # Fallback for testing
 
-    # Additional helper methods for tool results processing
     async def _analyze_tool_results(
         self,
         tool_results: Dict[str, Any],
         conversation_history: List[Dict[str, str]]
     ) -> Dict[str, Any]:
-        """Analyze tool results for planning insights (simplified implementation)."""
+        """Analyze tool results to determine next steps."""
+        # Simple analysis for now
+        has_results = bool(tool_results)
+        confidence = 0.9 if has_results else 0.3
+        
         return {
-            "results_summary": f"Processed {len(tool_results)} tool results",
-            "requires_additional_tools": False,
-            "confidence": 0.8
+            "confidence": confidence,
+            "has_results": has_results,
+            "clarification_points": [] if has_results else ["The tools didn't return expected results. What would you like me to focus on?"]
         }
 
     def _create_execution_plan_from_tool_results(
@@ -908,35 +726,11 @@ Respond only with valid JSON.
     ) -> ExecutionPlan:
         """Create execution plan from tool results analysis."""
         return ExecutionPlan(
-            goal="Process tool results",
+            goal="Process tool results and continue workflow",
             confidence=analysis.get("confidence", 0.8),
-            execution_strategy="parallel_preferred"
+            execution_strategy="sequential",
+            assumptions=["Tool results available for processing"]
         )
-
-    def _identify_clarification_needs_from_tools(
-        self,
-        analysis: Dict[str, Any],
-        execution_plan: ExecutionPlan
-    ) -> List[ClarificationRequest]:
-        """Identify clarification needs from tool results."""
-        return []  # No additional clarification needed for now
-
-    async def _emit_clarification_request_from_tools(
-        self,
-        ctx: Context,
-        original_event,
-        clarification_requests: List[ClarificationRequest],
-        execution_plan: ExecutionPlan
-    ) -> None:
-        """Emit clarification request from tool results."""
-        # For now, just emit a simple draft since we don't have actual clarification
-        draft_content = {
-            "content": "Tool results processed, no clarification needed",
-            "type": "tool_summary",
-            "source": "tool_results",
-            "confidence": 0.7
-        }
-        await self._emit_draft_created(ctx, original_event, draft_content, "tool_results")
 
     async def _emit_tool_execution_requests_from_results(
         self,
@@ -945,14 +739,13 @@ Respond only with valid JSON.
         execution_plan: ExecutionPlan
     ) -> None:
         """Emit tool execution requests from results analysis."""
-        # For now, just emit a draft since we don't have additional tools to execute
+        # For simplicity, just create a draft saying we processed the results
         draft_content = {
-            "content": "Analysis complete, no additional tools needed",
-            "type": "analysis_summary", 
-            "source": "analysis",
-            "confidence": 0.8
+            "content": "I've processed the available information. Is there anything specific you'd like me to focus on or help you with next?",
+            "type": "follow_up"
         }
-        await self._emit_draft_created(ctx, original_event, draft_content, "analysis")
+        
+        await self._emit_draft_created(ctx, original_event, draft_content, "follow_up")
 
 
 def create_workflow_chat_agent(
@@ -964,15 +757,15 @@ def create_workflow_chat_agent(
     **kwargs
 ) -> WorkflowChatAgent:
     """
-    Factory function to create a WorkflowChatAgent instance.
+    Factory function to create a WorkflowChatAgent.
     
     Args:
         thread_id: Thread identifier
         user_id: User identifier
         llm_model: LLM model to use
         llm_provider: LLM provider to use
-        tools: List of tools available to the agent
-        **kwargs: Additional arguments
+        tools: Optional list of tools
+        **kwargs: Additional arguments for the workflow
         
     Returns:
         Configured WorkflowChatAgent instance

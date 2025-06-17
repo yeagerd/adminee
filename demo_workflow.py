@@ -1,225 +1,166 @@
 #!/usr/bin/env python3
 """
-Demo script for the sophisticated WorkflowChatAgent.
+Demo script for the simplified LlamaIndex Workflow-based chat agent.
 
-This demo shows off the complete workflow capabilities including:
-- Intent analysis and planning
-- Tool execution simulation
-- Clarification handling
-- Draft creation
-- Event-driven orchestration
-
-Run with actual LLM: python demo_workflow.py
-Run with mock responses: python demo_workflow.py --mock
+This script demonstrates the workflow capabilities with realistic scenarios.
+No longer includes separate clarification steps - the planner handles clarifications directly.
 """
 
 import asyncio
-import sys
-import os
+import argparse
+import logging
 from typing import Dict, Any
 
-# Add the project root to the path
-sys.path.insert(0, os.path.abspath('.'))
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-from services.chat.workflow_agent import create_workflow_chat_agent
+def show_architecture_overview():
+    """Display the simplified workflow architecture."""
+    print("""
+🏗️  SIMPLIFIED WORKFLOW ARCHITECTURE
+=====================================
 
-async def demo_workflow_capabilities():
-    """Demo the sophisticated workflow capabilities."""
-    print("🚀 Starting WorkflowChatAgent Demo")
+Workflow Steps:
+1️⃣  start_workflow() → UserInputEvent
+2️⃣  handle_user_input() → Planning + Direct Clarification OR ToolExecutionRequestedEvent  
+3️⃣  handle_tool_execution_request() → ToolResultsForDrafterEvent OR ToolResultsForPlannerEvent
+4️⃣  handle_tool_results_for_planner() → ToolExecutionRequestedEvent OR DraftCreatedEvent (clarification)
+5️⃣  handle_tool_results_for_draft() → DraftCreatedEvent
+6️⃣  handle_draft_created() → StopEvent (final response)
+
+Key Simplifications:
+✅ Planner handles clarifications directly (no separate clarification step)
+✅ Cleaner event flow without clarification events
+✅ Tool results route to planner when route_to_planner=True
+✅ Direct path from planning to tools to drafting
+
+Event Flow:
+StartEvent → UserInputEvent → [Planning] → ToolExecutionRequestedEvent → ToolResultsForDrafterEvent → DraftCreatedEvent → StopEvent
+""")
+
+async def run_workflow_demo(use_mock: bool = True):
+    """Run comprehensive workflow demo scenarios."""
+    try:
+        # Import here to avoid issues if modules aren't available
+        from services.chat.workflow_agent import WorkflowChatAgent
+        from services.chat.events import UserInputEvent, WorkflowMetadata
+        
+        print("🚀 Starting Simplified Workflow Demo\n")
+        show_architecture_overview()
+        
+        # Initialize the workflow agent
+        agent = WorkflowChatAgent(
+            thread_id=12345,
+            user_id="demo_user",
+            llm_model="fake-model" if use_mock else "gpt-4o-mini",
+            llm_provider="openai"
+        )
+        
+        print(f"Agent initialized with LLM model: {'fake-model (mock)' if use_mock else 'gpt-4o-mini'}")
+        print("=" * 60)
+        
+        # Demo scenarios
+        scenarios = [
+            {
+                "name": "📧 Email Management Request",
+                "message": "Show me my urgent emails and recent important messages",
+                "description": "Tests email tool execution and intelligent draft creation"
+            },
+            {
+                "name": "📅 Calendar Coordination",
+                "message": "What meetings do I have today and when am I free for a call?",
+                "description": "Tests calendar tools and availability analysis"
+            },
+            {
+                "name": "🤔 Low Confidence Request (Triggers Clarification)",
+                "message": "Help me with that thing",
+                "description": "Tests direct clarification handling by planner"
+            },
+            {
+                "name": "⚡ Mixed Request",
+                "message": "Check my emails and calendar, then help me prepare for the team meeting",
+                "description": "Tests multi-tool execution and complex draft creation"
+            }
+        ]
+        
+        for i, scenario in enumerate(scenarios, 1):
+            print(f"\n🎬 SCENARIO {i}: {scenario['name']}")
+            print(f"Description: {scenario['description']}")
+            print(f"Input: \"{scenario['message']}\"")
+            print("-" * 60)
+            
+            try:
+                # Run the chat workflow
+                result = await agent.chat(
+                    message=scenario['message'],
+                    conversation_history=[
+                        {"role": "user", "content": "Hi there"},
+                        {"role": "assistant", "content": "Hello! I'm here to help you manage your work."}
+                    ]
+                )
+                
+                print(f"✅ Result: {result}")
+                
+                # Add some analysis of the result
+                if "[DRAFT]" in result:
+                    draft_content = result.replace("[DRAFT] ", "")
+                    print(f"📄 Draft Analysis:")
+                    print(f"   • Length: {len(draft_content)} characters")
+                    print(f"   • Contains emails: {'email' in draft_content.lower()}")
+                    print(f"   • Contains calendar: {'calendar' in draft_content.lower() or 'meeting' in draft_content.lower()}")
+                    print(f"   • Asks for clarification: {'clarification' in draft_content.lower() or '?' in draft_content}")
+                
+            except Exception as e:
+                print(f"❌ Error in scenario: {e}")
+                logger.error(f"Scenario failed: {e}", exc_info=True)
+            
+            print("-" * 60)
+            
+            # Add a small delay between scenarios for readability
+            await asyncio.sleep(0.5)
+        
+        print("\n🎉 Simplified Workflow Demo Complete!")
+        print("""
+Key Achievements:
+✅ Removed complex clarification subsystem
+✅ Planner handles clarifications directly  
+✅ Cleaner event-driven architecture
+✅ Maintains sophisticated tool execution
+✅ Intelligent draft creation from tool results
+✅ Realistic mock responses for testing
+        """)
+        
+    except ImportError as e:
+        print(f"❌ Import error: {e}")
+        print("Make sure you're running from the repository root and have installed dependencies.")
+    except Exception as e:
+        print(f"❌ Demo failed: {e}")
+        logger.error(f"Demo failed with error: {e}", exc_info=True)
+
+def main():
+    """Main entry point for the demo."""
+    parser = argparse.ArgumentParser(description="Simplified LlamaIndex Workflow Chat Agent Demo")
+    parser.add_argument(
+        "--mock", 
+        action="store_true", 
+        help="Use mock LLM responses instead of real API calls"
+    )
+    
+    args = parser.parse_args()
+    
+    print("🤖 Simplified LlamaIndex Workflow Chat Agent Demo")
     print("=" * 50)
     
-    # Check if we should use mock responses
-    use_mock = "--mock" in sys.argv or "fake" in sys.argv
-    
-    if use_mock:
-        print("📝 Using mock responses (fake-model)")
-        llm_model = "fake-model"
-        llm_provider = "fake"
+    if args.mock:
+        print("Using mock LLM responses (no API calls)")
     else:
-        print("🤖 Using actual LLM calls (gpt-4o-mini)")
-        llm_model = "gpt-4o-mini"
-        llm_provider = "openai"
+        print("Using real LLM API calls (requires API key)")
     
-    # Create the workflow agent
-    try:
-        agent = create_workflow_chat_agent(
-            thread_id=12345,
-            user_id="demo-user",
-            llm_model=llm_model,
-            llm_provider=llm_provider,
-            tools=["get_emails", "get_calendar_events", "create_document"]
-        )
-        print("✅ WorkflowChatAgent created successfully")
-    except Exception as e:
-        print(f"❌ Failed to create agent: {e}")
-        return False
-    
-    # Demo scenarios
-    scenarios = [
-        {
-            "name": "Simple Request",
-            "message": "Hello, can you help me?",
-            "description": "Basic greeting to test simple workflow path"
-        },
-        {
-            "name": "Complex Planning Request", 
-            "message": "I need to schedule a meeting with my team next week about the quarterly review. Can you help me find available times, draft an agenda, and send invitations?",
-            "description": "Multi-step request requiring planning, tool execution, and drafting"
-        },
-        {
-            "name": "Ambiguous Request",
-            "message": "I need help with my project",
-            "description": "Vague request that should trigger clarification workflow"
-        },
-        {
-            "name": "Email Analysis Request",
-            "message": "Can you check my recent emails and summarize any urgent items?",
-            "description": "Tool-heavy request for email processing"
-        }
-    ]
-    
-    for i, scenario in enumerate(scenarios, 1):
-        print(f"\n📋 Scenario {i}: {scenario['name']}")
-        print(f"Description: {scenario['description']}")
-        print(f"User Message: \"{scenario['message']}\"")
-        print("-" * 40)
-        
-        try:
-            # Test the workflow
-            response = await agent.chat(
-                message=scenario['message'],
-                conversation_history=[
-                    {"role": "assistant", "content": "Hello! I'm ready to help you."},
-                    {"role": "user", "content": "Thanks, I have a few tasks to work on."}
-                ]
-            )
-            
-            print(f"🎯 Agent Response:")
-            print(f"   {response}")
-            
-            # Analyze the response
-            if "WORKFLOW" in response:
-                print("✅ Sophisticated workflow processing detected")
-            elif "FAKE LLM RESPONSE" in response:
-                print("✅ Simple workflow path used")
-            elif "DRAFT" in response:
-                print("✅ Draft creation workflow completed")
-            else:
-                print("⚠️  Unexpected response format")
-                
-        except Exception as e:
-            print(f"❌ Scenario failed: {e}")
-            import traceback
-            traceback.print_exc()
-        
-        print()
-    
-    return True
-
-async def demo_mock_tool_responses():
-    """Demo mock tool responses when using fake model."""
-    print("\n🔧 Mock Tool Response Demo")
-    print("=" * 30)
-    
-    # Simulate different tool responses
-    mock_tools = {
-        "get_emails": {
-            "result": [
-                {"subject": "Quarterly Review Meeting", "from": "manager@company.com", "urgent": True},
-                {"subject": "Project Update", "from": "team@company.com", "urgent": False},
-                {"subject": "Budget Approval", "from": "finance@company.com", "urgent": True}
-            ]
-        },
-        "get_calendar_events": {
-            "result": [
-                {"title": "Team Standup", "time": "2024-01-15 09:00", "attendees": 5},
-                {"title": "Client Call", "time": "2024-01-15 14:00", "attendees": 3}
-            ]
-        },
-        "create_document": {
-            "result": "Document created successfully with ID: doc_12345"
-        }
-    }
-    
-    for tool_name, mock_result in mock_tools.items():
-        print(f"🔨 {tool_name}:")
-        print(f"   Mock Result: {mock_result}")
-    
-    print("\n💡 In fake-model mode, these mock responses would be used")
-    print("   to simulate realistic tool execution results.")
-
-def print_workflow_architecture():
-    """Print the workflow architecture overview."""
-    print("\n🏗️  Workflow Architecture Overview")
-    print("=" * 40)
-    
-    workflow_steps = [
-        "StartEvent → UserInputEvent",
-        "UserInputEvent → PlannerStep",
-        "PlannerStep → ToolExecutionRequestedEvent | ClarificationRequestedEvent", 
-        "ToolExecutionRequestedEvent → ToolExecutorStep",
-        "ToolExecutorStep → ToolResultsForDrafterEvent | ToolResultsForPlannerEvent",
-        "ClarificationRequestedEvent → ClarifierStep",
-        "ClarifierStep → ClarificationPlannerUnblockedEvent | ClarificationDraftUnblockedEvent",
-        "ToolResultsForDrafterEvent → DraftBuilderStep",
-        "DraftBuilderStep → DraftCreatedEvent",
-        "DraftCreatedEvent → StopEvent (Final Response)"
-    ]
-    
-    for step in workflow_steps:
-        print(f"  {step}")
-    
-    print(f"\n📊 Total @step methods: 9")
-    print(f"📊 Total event types: 12")
-    print(f"📊 Workflow complexity: Sophisticated multi-path orchestration")
-
-async def main():
-    """Main demo function."""
-    print("🎭 WorkflowChatAgent Sophisticated Demo")
-    print("🎯 Showcasing LlamaIndex Workflow-based Agent Architecture")
-    print("=" * 60)
-    
-    # Print architecture overview
-    print_workflow_architecture()
-    
-    # Run workflow demo
-    success = await demo_workflow_capabilities()
-    
-    # Show mock tool demo
-    if "--mock" in sys.argv or "fake" in sys.argv:
-        await demo_mock_tool_responses()
-    
-    # Summary
-    print("\n" + "=" * 60)
-    if success:
-        print("🎉 Demo completed successfully!")
-        print("✨ The WorkflowChatAgent demonstrates:")
-        print("   • Sophisticated intent analysis and planning")
-        print("   • Event-driven workflow orchestration") 
-        print("   • Multi-step tool execution simulation")
-        print("   • Intelligent clarification handling")
-        print("   • Context-aware draft creation")
-        print("   • Production-ready LlamaIndex Workflow architecture")
-    else:
-        print("💥 Demo encountered issues")
-    
-    print(f"\n🔍 To explore the code:")
-    print(f"   • Workflow: services/chat/workflow_agent.py")
-    print(f"   • Events: services/chat/events.py") 
-    print(f"   • Manager: services/chat/workflow_manager.py")
-
-if __name__ == "__main__":
-    print("Usage:")
-    print("  python demo_workflow.py        # Use actual LLM calls")
-    print("  python demo_workflow.py --mock # Use mock responses")
     print()
     
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print("\n👋 Demo interrupted by user")
-    except Exception as e:
-        print(f"\n💥 Demo failed: {e}")
-        import traceback
-        traceback.print_exc()
-        sys.exit(1) 
+    # Run the demo
+    asyncio.run(run_workflow_demo(use_mock=args.mock))
+
+if __name__ == "__main__":
+    main() 
