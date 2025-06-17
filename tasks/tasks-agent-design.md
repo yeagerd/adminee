@@ -38,8 +38,8 @@
   - [x] 1.2 Define UserInputEvent for incoming user messages with thread_id, user_id, message, and metadata
   - [x] 1.3 Define PlanGeneratedEvent containing execution plan with task groups and confidence levels
   - [x] 1.4 Define ToolExecutionStartedEvent and ToolExecutionCompletedEvent for tool lifecycle tracking
-  - [ ] 1.5 Define ClarificationNeededEvent for routing questions to users
-  - [ ] 1.6 Define ClarificationReceivedEvent for routing user answers back to clarifier
+  - [x] 1.5 Define ClarificationNeededEvent for routing questions to clarifier
+  - [ ] 1.6 Define ClarificationReceivedEvent for routing user answers back to planner
   - [ ] 1.7 Define DraftCreatedEvent and DraftUpdatedEvent for draft lifecycle management
   - [ ] 1.8 Define StreamingStatusEvent for progress updates ("Retrieving calendar availability", etc.)
   - [ ] 1.9 Create event validation and serialization methods for persistence and debugging

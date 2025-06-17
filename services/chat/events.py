@@ -270,6 +270,47 @@ class ToolExecutionCompletedEvent(BaseWorkflowEvent):
         return not self.success or self.error_message is not None
 
 
+class ClarificationNeededEvent(BaseWorkflowEvent):
+    """
+    Event representing the need for user clarification.
+    
+    Routes questions to the user interface and tracks the clarification
+    context for proper answer routing back to the workflow.
+    """
+    
+    clarification_request: ClarificationRequest
+    parent_plan_event_id: str
+    workflow_state: Dict[str, Any] = Field(default_factory=dict)  # Current workflow state
+    blocking_execution: bool = True  # Whether this blocks workflow continuation
+    metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
+    
+    def _get_event_data(self) -> Dict[str, Any]:
+        """Get ClarificationNeededEvent-specific data for serialization."""
+        return {
+            "clarification_request": self.clarification_request.dict(),
+            "parent_plan_event_id": self.parent_plan_event_id,
+            "workflow_state": self.workflow_state,
+            "blocking_execution": self.blocking_execution,
+            "metadata": self.metadata.dict()
+        }
+    
+    def is_blocking(self) -> bool:
+        """Check if this clarification blocks workflow execution."""
+        return self.blocking_execution and self.clarification_request.blocking
+    
+    def get_question(self) -> str:
+        """Get the clarification question for display."""
+        return self.clarification_request.question
+    
+    def get_suggested_answers(self) -> Optional[List[str]]:
+        """Get suggested answers if available."""
+        return self.clarification_request.suggested_answers
+    
+    def has_timeout(self) -> bool:
+        """Check if this clarification has a timeout."""
+        return self.clarification_request.timeout_seconds is not None
+
+
 # Export base classes for use in concrete event implementations
 __all__ = [
     'BaseWorkflowEvent',
@@ -279,5 +320,6 @@ __all__ = [
     'UserInputEvent',
     'PlanGeneratedEvent',
     'ToolExecutionStartedEvent',
-    'ToolExecutionCompletedEvent'
+    'ToolExecutionCompletedEvent',
+    'ClarificationNeededEvent'
 ] 
