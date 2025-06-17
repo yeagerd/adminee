@@ -101,6 +101,8 @@ async def test_manager_build_agent():
         user_id="test_user",
         tools=[],
         subagents=[],
+        llm_model="fake-model",
+        llm_provider="fake",
     )
 
     # Build agent system
@@ -128,6 +130,8 @@ async def test_manager_basic_chat():
         user_id="chat_user",
         tools=[],
         subagents=[],
+        llm_model="fake-model",
+        llm_provider="fake",
     )
 
     # Send a message
@@ -164,6 +168,8 @@ async def test_manager_empty_thread():
         user_id="empty_user",
         tools=[],
         subagents=[],
+        llm_model="fake-model",
+        llm_provider="fake",
     )
 
     user_input = "Is anyone here?"
@@ -195,6 +201,8 @@ async def test_manager_multiple_messages_order():
         user_id="order_user",
         tools=[],
         subagents=[],
+        llm_model="fake-model",
+        llm_provider="fake",
     )
 
     # Send multiple messages in sequence
@@ -234,6 +242,8 @@ async def test_manager_unicode_and_long_message():
         user_id="unicode_user",
         tools=[],
         subagents=[],
+        llm_model="fake-model",
+        llm_provider="fake",
     )
 
     # Test with unicode and long content
@@ -268,6 +278,8 @@ async def test_manager_memory_access():
         user_id="memory_user",
         tools=[],
         subagents=[],
+        llm_model="fake-model",
+        llm_provider="fake",
     )
 
     # Build agent first
@@ -301,6 +313,8 @@ async def test_manager_with_tools():
         user_id="tool_user",
         tools=[sample_tool],
         subagents=[],
+        llm_model="fake-model",
+        llm_provider="fake",
     )
 
     # Should initialize with tools
@@ -334,6 +348,8 @@ async def test_manager_tool_distribution():
         user_id="dist_user",
         tools=[tool1, tool2],
         subagents=[{"name": "specialist"}],
+        llm_model="fake-model",
+        llm_provider="fake",
     )
 
     # Check tool distribution
@@ -362,6 +378,8 @@ async def test_manager_with_subagents():
         user_id="sub_user",
         tools=[],
         subagents=subagent_configs,
+        llm_model="fake-model",
+        llm_provider="fake",
     )
 
     assert len(manager.subagents) == 2
@@ -384,6 +402,8 @@ async def test_manager_query_routing():
         user_id="route_user",
         tools=[],
         subagents=[],
+        llm_model="fake-model",
+        llm_provider="fake",
     )
 
     # Test routing decision
@@ -403,6 +423,8 @@ async def test_manager_property_access():
         user_id="prop_user",
         tools=[],
         subagents=[],
+        llm_model="fake-model",
+        llm_provider="fake",
     )
 
     # Before building - properties should handle None gracefully
@@ -432,6 +454,8 @@ async def test_manager_error_handling():
         user_id="error_user",
         tools=[],
         subagents=[],
+        llm_model="fake-model",
+        llm_provider="fake",
     )
 
     # Should handle non-existent thread gracefully
@@ -456,6 +480,8 @@ async def test_manager_thread_auto_creation():
         user_id="auto_user",
         tools=[],
         subagents=[],
+        llm_model="fake-model",
+        llm_provider="fake",
     )
 
     # This should work by creating a new thread

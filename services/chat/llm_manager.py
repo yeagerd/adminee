@@ -264,18 +264,14 @@ class _LLMManager:
     """
 
     _instance = None
-    _default_provider: str
-    _default_model: str
 
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(_LLMManager, cls).__new__(cls)
-            cls._default_provider = os.getenv("LLM_PROVIDER", "openai")
-            cls._default_model = os.getenv("LLM_MODEL", "gpt-4.1-nano")
         return cls._instance
 
     def get_llm(
-        self, model: Optional[str] = None, provider: Optional[str] = None, **kwargs
+        self, model: str, provider: str, **kwargs
     ) -> Any:
         """
         Get an LLM instance with the specified model and provider.
@@ -289,12 +285,12 @@ class _LLMManager:
         Returns:
             A LiteLLM instance, or FakeLLM if no API key is found
         """
-        model = model or self._default_model
-        provider = provider or self._default_provider
+        if provider == "fake":
+            return FakeLLM()
 
         # Check if we have the required API key
         api_key_env = f"{provider.upper()}_API_KEY"
-        if not os.getenv(api_key_env) and provider != "fake":
+        if not os.getenv(api_key_env): # No need to check provider != "fake" here due to the above
             logger.warning(
                 f"No {api_key_env} environment variable found. "
                 "Falling back to FakeLLM. Set the appropriate API key to use a real LLM."
@@ -302,6 +298,7 @@ class _LLMManager:
             return FakeLLM()
 
         # Create a LiteLLM compatible model string
+        # Provider will not be "fake" here, so this logic is fine.
         if "/" not in model and provider:
             model = f"{provider}/{model}"
 
@@ -313,34 +310,29 @@ class _LLMManager:
         # Return a LoggingLiteLLM instance with language settings for prompt logging
         return LoggingLiteLLM(model=model, **llm_kwargs)
 
-    def get_model_info(self, model: Optional[str] = None) -> Dict[str, Any]:
+    def get_model_info(self, model: str) -> Dict[str, Any]:
         """
         Get information about a specific model.
 
         Args:
-            model: The model name (uses default if not specified)
+            model: The model name
 
         Returns:
             Dictionary containing model information
         """
-        model = model or self._default_model
         try:
             provider, _ = get_llm_provider(model)
             return {
                 "model": model,
                 "provider": provider,
-                "default": model == self._default_model,
+                "default": False,
             }
         except Exception as e:
             return {
                 "model": model,
                 "error": str(e),
-                "default": model == self._default_model,
+                "default": False,
             }
-
-
-# Global instance
-_llm_manager_instance: Optional[_LLMManager] = None
 
 
 def get_llm_manager() -> _LLMManager:
@@ -348,7 +340,4 @@ def get_llm_manager() -> _LLMManager:
     Returns a singleton instance of the _LLMManager.
     Initializes the instance upon first call.
     """
-    global _llm_manager_instance
-    if _llm_manager_instance is None:
-        _llm_manager_instance = _LLMManager()
-    return _llm_manager_instance
+    return _LLMManager()
