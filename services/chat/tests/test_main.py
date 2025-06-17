@@ -1,4 +1,3 @@
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -19,7 +18,10 @@ async def test_lifespan_disposes_engine():
     mock_history_manager.get_engine.return_value = mock_engine
 
     # Patch history_manager and its functions used within lifespan
-    with patch("services.chat.main.history_manager", mock_history_manager),          patch("services.chat.main.get_settings", MagicMock()): # Patch get_settings to avoid SettingsNotConfiguredError
+    with (
+        patch("services.chat.main.history_manager", mock_history_manager),
+        patch("services.chat.main.get_settings", MagicMock()),
+    ):  # Patch get_settings to avoid SettingsNotConfiguredError
         # Create a dummy FastAPI app instance
         app = FastAPI()
 
