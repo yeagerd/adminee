@@ -56,6 +56,12 @@ class WorkflowChatAgent(Workflow):
             provider=llm_provider
         )
         
+        # Initialize workflow steps
+        self.planner_step = PlannerStep(llm=self.llm)
+        self.tool_executor_step = ToolExecutorStep(llm=self.llm, tools=tools or [])
+        self.clarifier_step = ClarifierStep(llm=self.llm)
+        self.draft_builder_step = DraftBuilderStep(llm=self.llm)
+        
         # Store tools for future use
         self.tools = tools or []
         
@@ -77,8 +83,6 @@ class WorkflowChatAgent(Workflow):
             # Handle case where no user_input is provided
             message = ev.get("message", "Hello")
             return StopEvent(result=f"[FAKE LLM RESPONSE] Workflow response to: {message}")
-    
-
     
     async def chat(self, user_input: str, conversation_history: Optional[List[Dict[str, str]]] = None) -> str:
         """
@@ -119,7 +123,21 @@ class WorkflowChatAgent(Workflow):
             logger.error(f"Error in workflow chat: {e}")
             return f"I apologize, but I encountered an error processing your request: {str(e)}"
     
-
+    async def run(self, user_input: Optional[UserInputEvent] = None, **kwargs) -> Any:
+        """
+        Main workflow entry point.
+        
+        This method is called by the LlamaIndex Workflow system and orchestrates
+        the conversation through the various workflow steps.
+        """
+        if user_input:
+            # Full workflow mode with UserInputEvent
+            # The workflow steps will handle the event routing automatically
+            # based on their @step decorators and event type matching
+            return await super().run(user_input=user_input)
+        else:
+            # Simple mode for current production use
+            return await super().run(**kwargs)
 
 
 def create_workflow_chat_agent(
