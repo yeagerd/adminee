@@ -89,11 +89,11 @@
       - [x] 2.4.4.4 Emit ClarificationPlannerUnblockedEvent when planning blockage resolved (blocks_planning=True)
       - [x] 2.4.4.5 Emit ClarificationDraftUnblockedEvent when draft blockage resolved (blocks_planning=False)
     - [x] 2.4.5 Create timeout handling and fallback strategies for unanswered questions
-  - [ ] 2.5 Implement DraftBuilderStep in `services/chat/steps/draft_builder_step.py`
-    - [ ] 2.5.1 Create draft generation logic using accumulated context and tool results
-    - [ ] 2.5.2 Implement draft templating system for emails, calendar events, and changes
-    - [ ] 2.5.3 Add draft versioning and update tracking
-    - [ ] 2.5.4 Create draft validation and completeness checking
+  - [x] 2.5 Implement DraftBuilderStep in `services/chat/steps/draft_builder_step.py`
+    - [x] 2.5.1 Create draft generation logic using accumulated context and tool results
+    - [x] 2.5.2 Implement draft templating system for emails, calendar events, and changes
+    - [x] 2.5.3 Add draft versioning and update tracking
+    - [x] 2.5.4 Create draft validation and completeness checking
   - [ ] 2.6 Write unit tests for all workflow steps in `services/chat/tests/`
 
 - [ ] 3. Implement Tool Integration and Execution Engine

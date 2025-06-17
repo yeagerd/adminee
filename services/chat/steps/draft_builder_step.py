@@ -41,6 +41,8 @@ class DraftBuilderStep(BaseWorkflowStep):
         self._draft_templates = {}  # Template library for different draft types
         self._user_style_preferences = {}  # Learned user writing style preferences
         self._quality_metrics = {}  # Track draft quality scores
+        self._draft_versions = {}  # Track draft versions per thread
+        self._draft_history = {}  # Track draft update history
     
     @step
     async def run(self, ctx: Context, **kwargs) -> None:
@@ -82,6 +84,21 @@ class DraftBuilderStep(BaseWorkflowStep):
                 event.user_id
             )
             
+            # Validate draft completeness and quality
+            validation_result = await self._validate_draft_completeness(
+                draft_content,
+                event.tool_results,
+                event.draft_context
+            )
+            
+            # Add versioning information
+            version_info = self._create_draft_version(
+                event.thread_id,
+                draft_content,
+                "tool_results"
+            )
+            draft_content.update(version_info)
+            
             # Update context with draft completion
             await self.emit_context_update(
                 ctx,
@@ -91,6 +108,8 @@ class DraftBuilderStep(BaseWorkflowStep):
                     "draft_created_from_tools": True,
                     "draft_length": len(draft_content.get("content", "")),
                     "draft_type": draft_content.get("type", "unknown"),
+                    "draft_version": draft_content.get("version", 1),
+                    "validation_score": validation_result.get("score", 0.0),
                     "completion_timestamp": datetime.now().isoformat()
                 }
             )
@@ -146,6 +165,21 @@ class DraftBuilderStep(BaseWorkflowStep):
                 event.user_id
             )
             
+            # Validate draft completeness and quality
+            validation_result = await self._validate_draft_completeness(
+                draft_content,
+                {},  # No tool results for clarification-based drafts
+                event.draft_context
+            )
+            
+            # Add versioning information
+            version_info = self._create_draft_version(
+                event.thread_id,
+                draft_content,
+                "clarification"
+            )
+            draft_content.update(version_info)
+            
             # Update context with draft completion
             await self.emit_context_update(
                 ctx,
@@ -155,6 +189,8 @@ class DraftBuilderStep(BaseWorkflowStep):
                     "draft_created_from_clarification": True,
                     "draft_length": len(draft_content.get("content", "")),
                     "draft_type": draft_content.get("type", "unknown"),
+                    "draft_version": draft_content.get("version", 1),
+                    "validation_score": validation_result.get("score", 0.0),
                     "completion_timestamp": datetime.now().isoformat()
                 }
             )
@@ -532,4 +568,200 @@ Response:
                 base_score += 0.1
         
         # Ensure score is within valid range
-        return max(0.0, min(1.0, base_score)) 
+        return max(0.0, min(1.0, base_score))
+    
+    async def _validate_draft_completeness(
+        self,
+        draft_content: Dict[str, Any],
+        tool_results: Dict[str, Any],
+        draft_context: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Validate draft completeness and quality."""
+        validation_result = {
+            "score": 0.0,
+            "issues": [],
+            "suggestions": [],
+            "is_complete": False
+        }
+        
+        content = draft_content.get("content", "")
+        draft_type = draft_content.get("type", "")
+        
+        # Basic content validation
+        if len(content.strip()) < 10:
+            validation_result["issues"].append("Draft content is too short")
+            validation_result["suggestions"].append("Add more detail to the response")
+        else:
+            validation_result["score"] += 0.3
+        
+        # Type-specific validation
+        if draft_type == "email_draft":
+            validation_result.update(self._validate_email_draft(content))
+        elif draft_type == "meeting_summary":
+            validation_result.update(self._validate_meeting_summary(content, tool_results))
+        elif draft_type == "document_summary":
+            validation_result.update(self._validate_document_summary(content, tool_results))
+        else:
+            validation_result["score"] += 0.4  # Generic content gets base score
+        
+        # Check if all tool results were utilized
+        if tool_results:
+            utilized_tools = sum(1 for tool in tool_results.keys() 
+                               if tool.lower() in content.lower())
+            utilization_ratio = utilized_tools / len(tool_results)
+            validation_result["score"] += utilization_ratio * 0.3
+            
+            if utilization_ratio < 0.5:
+                validation_result["suggestions"].append("Consider incorporating more of the available information")
+        
+        # Determine completeness
+        validation_result["is_complete"] = (
+            validation_result["score"] >= 0.7 and 
+            len(validation_result["issues"]) == 0
+        )
+        
+        # Ensure score is within valid range
+        validation_result["score"] = max(0.0, min(1.0, validation_result["score"]))
+        
+        return validation_result
+    
+    def _validate_email_draft(self, content: str) -> Dict[str, Any]:
+        """Validate email draft specific requirements."""
+        result = {"score": 0.0, "issues": [], "suggestions": []}
+        
+        # Check for greeting
+        if any(greeting in content.lower() for greeting in ["dear", "hello", "hi"]):
+            result["score"] += 0.15
+        else:
+            result["suggestions"].append("Consider adding a greeting")
+        
+        # Check for closing
+        if any(closing in content.lower() for closing in ["regards", "sincerely", "best"]):
+            result["score"] += 0.15
+        else:
+            result["suggestions"].append("Consider adding a professional closing")
+        
+        # Check for clear purpose
+        if any(purpose in content.lower() for purpose in ["request", "inform", "follow up", "schedule"]):
+            result["score"] += 0.1
+        
+        return result
+    
+    def _validate_meeting_summary(self, content: str, tool_results: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate meeting summary specific requirements."""
+        result = {"score": 0.0, "issues": [], "suggestions": []}
+        
+        # Check for key meeting elements
+        has_date_time = any(word in content.lower() for word in ["date", "time", "when"])
+        has_attendees = any(word in content.lower() for word in ["attendees", "participants"])
+        has_agenda = any(word in content.lower() for word in ["agenda", "topics"])
+        
+        if has_date_time:
+            result["score"] += 0.1
+        else:
+            result["suggestions"].append("Include meeting date and time")
+        
+        if has_attendees:
+            result["score"] += 0.1
+        else:
+            result["suggestions"].append("Include meeting attendees")
+        
+        if has_agenda:
+            result["score"] += 0.2
+        else:
+            result["suggestions"].append("Include meeting agenda or topics")
+        
+        return result
+    
+    def _validate_document_summary(self, content: str, tool_results: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate document summary specific requirements."""
+        result = {"score": 0.0, "issues": [], "suggestions": []}
+        
+        # Check for summary elements
+        has_summary = "summary" in content.lower()
+        has_key_points = any(word in content.lower() for word in ["key points", "highlights"])
+        has_conclusions = any(word in content.lower() for word in ["conclusion", "findings"])
+        
+        if has_summary:
+            result["score"] += 0.15
+        else:
+            result["suggestions"].append("Include a clear summary section")
+        
+        if has_key_points:
+            result["score"] += 0.15
+        else:
+            result["suggestions"].append("Highlight key points from the documents")
+        
+        if has_conclusions:
+            result["score"] += 0.1
+        else:
+            result["suggestions"].append("Include conclusions or findings")
+        
+        return result
+    
+    def _create_draft_version(
+        self,
+        thread_id: str,
+        draft_content: Dict[str, Any],
+        source: str
+    ) -> Dict[str, Any]:
+        """Create version information for draft tracking."""
+        # Initialize thread versioning if not exists
+        if thread_id not in self._draft_versions:
+            self._draft_versions[thread_id] = {
+                "current_version": 0,
+                "versions": []
+            }
+        
+        # Increment version
+        self._draft_versions[thread_id]["current_version"] += 1
+        current_version = self._draft_versions[thread_id]["current_version"]
+        
+        # Create version info
+        version_info = {
+            "version": current_version,
+            "created_at": datetime.now().isoformat(),
+            "source": source,
+            "parent_version": current_version - 1 if current_version > 1 else None
+        }
+        
+        # Store version in history
+        version_record = {
+            "version": current_version,
+            "content_hash": hash(draft_content.get("content", "")),
+            "metadata": draft_content.get("metadata", {}),
+            "source": source,
+            "created_at": version_info["created_at"]
+        }
+        
+        self._draft_versions[thread_id]["versions"].append(version_record)
+        
+        # Track in draft history
+        if thread_id not in self._draft_history:
+            self._draft_history[thread_id] = []
+        
+        self._draft_history[thread_id].append({
+            "action": "created",
+            "version": current_version,
+            "source": source,
+            "timestamp": version_info["created_at"],
+            "changes": "Initial draft creation" if current_version == 1 else "Draft updated"
+        })
+        
+        return version_info
+    
+    def _get_draft_history(self, thread_id: str) -> List[Dict[str, Any]]:
+        """Get draft history for a thread."""
+        return self._draft_history.get(thread_id, [])
+    
+    def _get_draft_version(self, thread_id: str, version: int) -> Optional[Dict[str, Any]]:
+        """Get specific draft version."""
+        if thread_id not in self._draft_versions:
+            return None
+        
+        versions = self._draft_versions[thread_id]["versions"]
+        for version_record in versions:
+            if version_record["version"] == version:
+                return version_record
+        
+        return None 
