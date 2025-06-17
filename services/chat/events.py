@@ -13,71 +13,12 @@ Events are used to communicate between workflow steps and maintain
 state throughout the agent execution process.
 """
 
-import json
-from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 from llama_index.core.workflow import Event
-from pydantic import BaseModel, Field, validator
-
-
-class BaseWorkflowEvent(Event, ABC):
-    """
-    Base class for all workflow events with common functionality.
-    
-    Provides:
-    - Event ID generation and tracking
-    - Timestamp management
-    - Serialization/deserialization
-    - Event validation
-    """
-    
-    event_id: str = Field(default_factory=lambda: str(uuid4()))
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
-    thread_id: str
-    user_id: str
-    
-    def __init__(self, **data):
-        super().__init__(**data)
-    
-    @validator('thread_id', 'user_id')
-    def validate_ids(cls, v):
-        if not v or not isinstance(v, str):
-            raise ValueError("thread_id and user_id must be non-empty strings")
-        return v
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert event to dictionary for serialization."""
-        return {
-            "event_type": self.__class__.__name__,
-            "event_id": self.event_id,
-            "timestamp": self.timestamp.isoformat(),
-            "thread_id": self.thread_id,
-            "user_id": self.user_id,
-            **self._get_event_data()
-        }
-    
-    def to_json(self) -> str:
-        """Serialize event to JSON string."""
-        return json.dumps(self.to_dict(), default=str)
-    
-    @abstractmethod
-    def _get_event_data(self) -> Dict[str, Any]:
-        """Get event-specific data for serialization."""
-        pass
-    
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'BaseWorkflowEvent':
-        """Create event from dictionary."""
-        # Convert timestamp back to datetime if it's a string
-        if isinstance(data.get('timestamp'), str):
-            data['timestamp'] = datetime.fromisoformat(data['timestamp'])
-        return cls(**data)
-    
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(event_id={self.event_id}, thread_id={self.thread_id})"
+from pydantic import BaseModel, Field, field_validator
 
 
 class WorkflowMetadata(BaseModel):
@@ -89,7 +30,8 @@ class WorkflowMetadata(BaseModel):
     parent_event_id: Optional[str] = None
     context: Dict[str, Any] = Field(default_factory=dict)
     
-    @validator('confidence')
+    @field_validator('confidence')
+    @classmethod
     def validate_confidence(cls, v):
         if v is not None and (v < 0.0 or v > 1.0):
             raise ValueError("Confidence must be between 0.0 and 1.0")
@@ -127,7 +69,7 @@ class ClarificationRequest(BaseModel):
     timeout_seconds: Optional[int] = None
 
 
-class UserInputEvent(BaseWorkflowEvent):
+class UserInputEvent(Event):
     """
     Event representing user input to the workflow system.
     
@@ -135,28 +77,29 @@ class UserInputEvent(BaseWorkflowEvent):
     This is typically the first event in the workflow chain.
     """
     
+    thread_id: str
+    user_id: str
     message: str
     metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
     conversation_history: List[Dict[str, str]] = Field(default_factory=list)
     user_preferences: Dict[str, Any] = Field(default_factory=dict)
     
-    @validator('message')
+    @field_validator('thread_id', 'user_id')
+    @classmethod
+    def validate_ids(cls, v):
+        if not v or not isinstance(v, str):
+            raise ValueError("thread_id and user_id must be non-empty strings")
+        return v
+    
+    @field_validator('message')
+    @classmethod
     def validate_message(cls, v):
         if not v or not isinstance(v, str) or not v.strip():
             raise ValueError("Message must be a non-empty string")
         return v.strip()
-    
-    def _get_event_data(self) -> Dict[str, Any]:
-        """Get UserInputEvent-specific data for serialization."""
-        return {
-            "message": self.message,
-            "metadata": self.metadata.dict(),
-            "conversation_history": self.conversation_history,
-            "user_preferences": self.user_preferences
-        }
 
 
-class PlanGeneratedEvent(BaseWorkflowEvent):
+class PlanGeneratedEvent(Event):
     """
     Event representing a generated execution plan from the Planner step.
     
@@ -164,19 +107,19 @@ class PlanGeneratedEvent(BaseWorkflowEvent):
     and execution strategy determined by the planner.
     """
     
+    thread_id: str
+    user_id: str
     execution_plan: ExecutionPlan
     original_request: str
     clarifications_needed: List[ClarificationRequest] = Field(default_factory=list)
     metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
     
-    def _get_event_data(self) -> Dict[str, Any]:
-        """Get PlanGeneratedEvent-specific data for serialization."""
-        return {
-            "execution_plan": self.execution_plan.dict(),
-            "original_request": self.original_request,
-            "clarifications_needed": [req.dict() for req in self.clarifications_needed],
-            "metadata": self.metadata.dict()
-        }
+    @field_validator('thread_id', 'user_id')
+    @classmethod
+    def validate_ids(cls, v):
+        if not v or not isinstance(v, str):
+            raise ValueError("thread_id and user_id must be non-empty strings")
+        return v
     
     def requires_clarification(self) -> bool:
         """Check if this plan requires user clarification before execution."""
@@ -191,7 +134,7 @@ class PlanGeneratedEvent(BaseWorkflowEvent):
         return [req for req in self.clarifications_needed if not req.blocking]
 
 
-class ToolExecutionRequestedEvent(BaseWorkflowEvent):
+class ToolExecutionRequestedEvent(Event):
     """
     Event that the planner emits to request tool execution.
     
@@ -199,6 +142,8 @@ class ToolExecutionRequestedEvent(BaseWorkflowEvent):
     Contains the tools to execute and their parameters.
     """
     
+    thread_id: str
+    user_id: str
     tools_to_execute: List[Dict[str, Any]]  # List of {tool_name, inputs, execution_group_id}
     execution_strategy: str  # "parallel" or "sequential"
     parent_plan_event_id: str
@@ -206,7 +151,15 @@ class ToolExecutionRequestedEvent(BaseWorkflowEvent):
     timeout_seconds: Optional[int] = None
     metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
     
-    @validator('tools_to_execute')
+    @field_validator('thread_id', 'user_id')
+    @classmethod
+    def validate_ids(cls, v):
+        if not v or not isinstance(v, str):
+            raise ValueError("thread_id and user_id must be non-empty strings")
+        return v
+    
+    @field_validator('tools_to_execute')
+    @classmethod
     def validate_tools(cls, v):
         if not v or not isinstance(v, list):
             raise ValueError("tools_to_execute must be a non-empty list")
@@ -214,17 +167,6 @@ class ToolExecutionRequestedEvent(BaseWorkflowEvent):
             if not isinstance(tool, dict) or 'tool_name' not in tool:
                 raise ValueError("Each tool must be a dict with 'tool_name' key")
         return v
-    
-    def _get_event_data(self) -> Dict[str, Any]:
-        """Get ToolExecutionRequestedEvent-specific data for serialization."""
-        return {
-            "tools_to_execute": self.tools_to_execute,
-            "execution_strategy": self.execution_strategy,
-            "parent_plan_event_id": self.parent_plan_event_id,
-            "priority": self.priority,
-            "timeout_seconds": self.timeout_seconds,
-            "metadata": self.metadata.dict()
-        }
     
     def get_parallel_tools(self) -> List[Dict[str, Any]]:
         """Get tools that can be executed in parallel."""
@@ -237,7 +179,7 @@ class ToolExecutionRequestedEvent(BaseWorkflowEvent):
         return self.execution_strategy == "parallel"
 
 
-class ClarificationRequestedEvent(BaseWorkflowEvent):
+class ClarificationRequestedEvent(Event):
     """
     Event that the planner emits to request user clarification.
     
@@ -245,27 +187,27 @@ class ClarificationRequestedEvent(BaseWorkflowEvent):
     Contains the clarification questions and context.
     """
     
+    thread_id: str
+    user_id: str
     clarification_requests: List[ClarificationRequest]
     parent_plan_event_id: str
     workflow_context: Dict[str, Any] = Field(default_factory=dict)
     can_proceed_without: bool = False  # Can workflow continue without clarification
     metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
     
-    @validator('clarification_requests')
+    @field_validator('thread_id', 'user_id')
+    @classmethod
+    def validate_ids(cls, v):
+        if not v or not isinstance(v, str):
+            raise ValueError("thread_id and user_id must be non-empty strings")
+        return v
+    
+    @field_validator('clarification_requests')
+    @classmethod
     def validate_requests(cls, v):
         if not v or not isinstance(v, list):
             raise ValueError("clarification_requests must be a non-empty list")
         return v
-    
-    def _get_event_data(self) -> Dict[str, Any]:
-        """Get ClarificationRequestedEvent-specific data for serialization."""
-        return {
-            "clarification_requests": [req.dict() for req in self.clarification_requests],
-            "parent_plan_event_id": self.parent_plan_event_id,
-            "workflow_context": self.workflow_context,
-            "can_proceed_without": self.can_proceed_without,
-            "metadata": self.metadata.dict()
-        }
     
     def get_blocking_requests(self) -> List[ClarificationRequest]:
         """Get clarification requests that block execution."""
@@ -280,9 +222,8 @@ class ClarificationRequestedEvent(BaseWorkflowEvent):
         return [req.question for req in self.clarification_requests]
 
 
-# Export base classes for use in concrete event implementations
+# Export event classes and supporting models
 __all__ = [
-    'BaseWorkflowEvent',
     'WorkflowMetadata', 
     'ExecutionPlan',
     'ClarificationRequest',
