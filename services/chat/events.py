@@ -345,6 +345,91 @@ class ToolResultsForDrafterEvent(Event):
         return self.execution_success and bool(self.tool_results)
 
 
+class ClarificationReplanRequestedEvent(Event):
+    """
+    Event representing that user clarification indicates the original request changed.
+    
+    This event is emitted by ClarifierStep when analysis determines the user
+    has fundamentally changed their request, requiring complete re-planning.
+    """
+    
+    thread_id: str
+    user_id: str
+    parent_request_event_id: str  # ID of the ClarificationRequestedEvent
+    original_request: str
+    updated_request: str  # User's clarified/changed request
+    clarification_context: Dict[str, Any] = Field(default_factory=dict)
+    change_analysis: Dict[str, Any] = Field(default_factory=dict)  # What changed and why
+    metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
+    
+    @field_validator('thread_id', 'user_id')
+    @classmethod
+    def validate_ids(cls, v):
+        if not v or not isinstance(v, str):
+            raise ValueError("thread_id and user_id must be non-empty strings")
+        return v
+    
+    def get_change_summary(self) -> str:
+        """Get a summary of what changed in the user's request."""
+        return self.change_analysis.get('summary', 'User request fundamentally changed')
+
+
+class ClarificationPlannerUnblockedEvent(Event):
+    """
+    Event representing that clarification resolved a planning blockage.
+    
+    This event is emitted by ClarifierStep when blocks_planning=True and the
+    clarification provides missing information needed for planning.
+    """
+    
+    thread_id: str
+    user_id: str
+    parent_request_event_id: str  # ID of the ClarificationRequestedEvent
+    clarification_answers: Dict[str, str]  # Question -> Answer mapping
+    resolved_blockages: List[str] = Field(default_factory=list)  # What was unblocked
+    planning_context: Dict[str, Any] = Field(default_factory=dict)  # New info for planning
+    metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
+    
+    @field_validator('thread_id', 'user_id')
+    @classmethod
+    def validate_ids(cls, v):
+        if not v or not isinstance(v, str):
+            raise ValueError("thread_id and user_id must be non-empty strings")
+        return v
+    
+    def get_planning_updates(self) -> Dict[str, Any]:
+        """Get the new planning context provided by clarification."""
+        return self.planning_context
+
+
+class ClarificationDraftUnblockedEvent(Event):
+    """
+    Event representing that clarification resolved a draft creation blockage.
+    
+    This event is emitted by ClarifierStep when blocks_planning=False and the
+    clarification provides missing information needed for draft creation.
+    """
+    
+    thread_id: str
+    user_id: str
+    parent_request_event_id: str  # ID of the ClarificationRequestedEvent
+    clarification_answers: Dict[str, str]  # Question -> Answer mapping
+    resolved_blockages: List[str] = Field(default_factory=list)  # What was unblocked
+    draft_context: Dict[str, Any] = Field(default_factory=dict)  # New info for drafting
+    metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
+    
+    @field_validator('thread_id', 'user_id')
+    @classmethod
+    def validate_ids(cls, v):
+        if not v or not isinstance(v, str):
+            raise ValueError("thread_id and user_id must be non-empty strings")
+        return v
+    
+    def get_draft_updates(self) -> Dict[str, Any]:
+        """Get the new draft context provided by clarification."""
+        return self.draft_context
+
+
 # Export event classes and supporting models
 __all__ = [
     'WorkflowMetadata', 
@@ -356,5 +441,8 @@ __all__ = [
     'ToolExecutorCompletedEvent',
     'ClarifierCompletedEvent',
     'ToolResultsForPlannerEvent',
-    'ToolResultsForDrafterEvent'
+    'ToolResultsForDrafterEvent',
+    'ClarificationReplanRequestedEvent',
+    'ClarificationPlannerUnblockedEvent',
+    'ClarificationDraftUnblockedEvent'
 ] 

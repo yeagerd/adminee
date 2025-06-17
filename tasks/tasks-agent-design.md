@@ -48,9 +48,9 @@
     - [x] 1.8.2 Define ToolResultsForDrafterEvent (ToolExecutor → DraftBuilder) - tool results ready for drafting
     - [ ] 1.8.3 Update ToolExecutorStep to check route_to_planner flag and emit appropriate routing event
   - [ ] 1.9 Refactor ClarifierCompletedEvent into clarification routing events:
-    - [ ] 1.9.1 Define ClarificationReplanRequestedEvent (Clarifier → Planner) - user request changed
-    - [ ] 1.9.2 Define ClarificationPlannerUnblockedEvent (Clarifier → Planner) - planner blockage resolved  
-    - [ ] 1.9.3 Define ClarificationDraftUnblockedEvent (Clarifier → DraftBuilder) - draft blockage resolved
+    - [x] 1.9.1 Define ClarificationReplanRequestedEvent (Clarifier → Planner) - user request changed
+    - [x] 1.9.2 Define ClarificationPlannerUnblockedEvent (Clarifier → Planner) - planner blockage resolved  
+    - [x] 1.9.3 Define ClarificationDraftUnblockedEvent (Clarifier → DraftBuilder) - draft blockage resolved
     - [ ] 1.9.4 Update ClarifierStep to check blocks_planning flag and analyze clarification for routing
     - [ ] 1.10 Define DraftCreatedEvent and DraftUpdatedEvent as terminal workflow events
   - [ ] 1.11 Define ContextUpdatedEvent for context accumulation across workflow steps
