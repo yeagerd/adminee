@@ -7,7 +7,7 @@ import sys
 sys.path.insert(0, "services")
 
 from services.chat import history_manager
-from services.chat.llama_manager import ChatAgentManager
+from services.chat.agents.llama_manager import ChatAgentManager
 
 
 async def test_chat_agent():
