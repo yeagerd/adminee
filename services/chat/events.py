@@ -430,6 +430,100 @@ class ClarificationDraftUnblockedEvent(Event):
         return self.draft_context
 
 
+class DraftCreatedEvent(Event):
+    """
+    Terminal event representing successful draft creation.
+    
+    This event marks the completion of the workflow when DraftBuilderStep
+    successfully creates a draft from the gathered information.
+    """
+    
+    thread_id: str
+    user_id: str
+    draft_content: str
+    draft_type: str  # "email", "document", "summary", etc.
+    source_events: List[str] = Field(default_factory=list)  # IDs of events that contributed
+    draft_metadata: Dict[str, Any] = Field(default_factory=dict)
+    confidence_score: float = 1.0  # 0.0-1.0 confidence in draft quality
+    word_count: Optional[int] = None
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
+    
+    @field_validator('thread_id', 'user_id')
+    @classmethod
+    def validate_ids(cls, v):
+        if not v or not isinstance(v, str):
+            raise ValueError("thread_id and user_id must be non-empty strings")
+        return v
+    
+    @field_validator('confidence_score')
+    @classmethod
+    def validate_confidence(cls, v):
+        if not 0.0 <= v <= 1.0:
+            raise ValueError("confidence_score must be between 0.0 and 1.0")
+        return v
+    
+    def is_high_confidence(self) -> bool:
+        """Check if the draft was created with high confidence."""
+        return self.confidence_score >= 0.8
+    
+    def get_content_preview(self, max_chars: int = 200) -> str:
+        """Get a preview of the draft content."""
+        if len(self.draft_content) <= max_chars:
+            return self.draft_content
+        return self.draft_content[:max_chars] + "..."
+
+
+class DraftUpdatedEvent(Event):
+    """
+    Terminal event representing successful draft update/refinement.
+    
+    This event is emitted when DraftBuilderStep refines or updates an existing
+    draft based on new information or user feedback.
+    """
+    
+    thread_id: str
+    user_id: str
+    updated_draft_content: str
+    original_draft_content: str
+    update_reason: str  # Why the draft was updated
+    draft_type: str  # "email", "document", "summary", etc.
+    source_events: List[str] = Field(default_factory=list)  # IDs of events that triggered update
+    update_metadata: Dict[str, Any] = Field(default_factory=dict)
+    confidence_score: float = 1.0  # 0.0-1.0 confidence in updated draft quality
+    word_count: Optional[int] = None
+    updated_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
+    
+    @field_validator('thread_id', 'user_id')
+    @classmethod
+    def validate_ids(cls, v):
+        if not v or not isinstance(v, str):
+            raise ValueError("thread_id and user_id must be non-empty strings")
+        return v
+    
+    @field_validator('confidence_score')
+    @classmethod
+    def validate_confidence(cls, v):
+        if not 0.0 <= v <= 1.0:
+            raise ValueError("confidence_score must be between 0.0 and 1.0")
+        return v
+    
+    def is_high_confidence(self) -> bool:
+        """Check if the updated draft was created with high confidence."""
+        return self.confidence_score >= 0.8
+    
+    def get_content_preview(self, max_chars: int = 200) -> str:
+        """Get a preview of the updated draft content."""
+        if len(self.updated_draft_content) <= max_chars:
+            return self.updated_draft_content
+        return self.updated_draft_content[:max_chars] + "..."
+    
+    def get_changes_summary(self) -> str:
+        """Get a summary of what changed in the draft."""
+        return f"Updated: {self.update_reason}"
+
+
 # Export event classes and supporting models
 __all__ = [
     'WorkflowMetadata', 
@@ -444,5 +538,7 @@ __all__ = [
     'ToolResultsForDrafterEvent',
     'ClarificationReplanRequestedEvent',
     'ClarificationPlannerUnblockedEvent',
-    'ClarificationDraftUnblockedEvent'
+    'ClarificationDraftUnblockedEvent',
+    'DraftCreatedEvent',
+    'DraftUpdatedEvent'
 ] 
