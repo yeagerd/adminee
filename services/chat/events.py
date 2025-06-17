@@ -193,9 +193,9 @@ class ToolExecutorCompletedEvent(Event):
     """
     Event representing completion of tool execution step.
     
-    This event is emitted by ToolExecutorStep when all requested tools 
+    This event is emitted by handle_tool_execution_request() when all requested tools 
     have been executed. Used with LlamaIndex collect pattern to trigger
-    DraftBuilderStep when both tool execution and clarification are complete.
+    handle_tool_results_for_draft() when both tool execution and clarification are complete.
     """
     
     thread_id: str
@@ -229,9 +229,9 @@ class ClarifierCompletedEvent(Event):
     """
     Event representing completion of clarification step.
     
-    This event is emitted by ClarifierStep when user clarifications have
+    This event is emitted by handle_clarification_request() when user clarifications have
     been processed. Used with LlamaIndex collect pattern to trigger
-    DraftBuilderStep when both tool execution and clarification are complete.
+    handle_tool_results_for_draft() when both tool execution and clarification are complete.
     """
     
     thread_id: str
@@ -267,7 +267,7 @@ class ToolResultsForPlannerEvent(Event):
     """
     Event representing tool execution results that should trigger re-planning.
     
-    This event is emitted by ToolExecutorStep when route_to_planner=True.
+    This event is emitted by handle_tool_execution_request() when route_to_planner=True.
     Contains tool results that may change the planning strategy or require
     plan updates based on new information discovered.
     """
@@ -308,7 +308,7 @@ class ToolResultsForDrafterEvent(Event):
     """
     Event representing tool execution results ready for draft creation.
     
-    This event is emitted by ToolExecutorStep when route_to_planner=False.
+    This event is emitted by handle_tool_execution_request() when route_to_planner=False.
     Contains tool results that are ready to be used directly for drafting
     without requiring plan changes.
     """
@@ -349,7 +349,7 @@ class ClarificationReplanRequestedEvent(Event):
     """
     Event representing that user clarification indicates the original request changed.
     
-    This event is emitted by ClarifierStep when analysis determines the user
+    This event is emitted by handle_clarification_request() when analysis determines the user
     has fundamentally changed their request, requiring complete re-planning.
     """
     
@@ -378,7 +378,7 @@ class ClarificationPlannerUnblockedEvent(Event):
     """
     Event representing that clarification resolved a planning blockage.
     
-    This event is emitted by ClarifierStep when blocks_planning=True and the
+    This event is emitted by handle_clarification_request() when blocks_planning=True and the
     clarification provides missing information needed for planning.
     """
     
@@ -406,7 +406,7 @@ class ClarificationDraftUnblockedEvent(Event):
     """
     Event representing that clarification resolved a draft creation blockage.
     
-    This event is emitted by ClarifierStep when blocks_planning=False and the
+    This event is emitted by handle_clarification_request() when blocks_planning=False and the
     clarification provides missing information needed for draft creation.
     """
     
@@ -434,7 +434,7 @@ class DraftCreatedEvent(Event):
     """
     Terminal event representing successful draft creation.
     
-    This event marks the completion of the workflow when DraftBuilderStep
+    This event marks the completion of the workflow when handle_tool_results_for_draft()
     successfully creates a draft from the gathered information.
     """
     
@@ -478,7 +478,7 @@ class DraftUpdatedEvent(Event):
     """
     Terminal event representing successful draft update/refinement.
     
-    This event is emitted when DraftBuilderStep refines or updates an existing
+    This event is emitted when handle_tool_results_for_draft() refines or updates an existing
     draft based on new information or user feedback.
     """
     

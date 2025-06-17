@@ -255,10 +255,10 @@ class ProgressTracker:
         self._step_progress: Dict[str, Dict[str, Any]] = {}  # thread_id -> step progress
         self._overall_progress: Dict[str, float] = {}  # thread_id -> overall progress
         self._step_weights: Dict[str, float] = {
-            "PlannerStep": 0.1,
-            "ToolExecutorStep": 0.6,
-            "ClarifierStep": 0.1,
-            "DraftBuilderStep": 0.2
+                    "handle_user_input": 0.1,
+        "handle_tool_execution_request": 0.6,
+        "handle_clarification_request": 0.1,
+        "handle_tool_results_for_draft": 0.2
         }
     
     async def update_step_progress(
