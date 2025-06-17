@@ -33,17 +33,18 @@
 
 ## Tasks
 
-- [ ] 1. Design and Implement LlamaIndex Workflow Event System
+- [ ] 1. Design and Implement LlamaIndex Workflow Event System (Workflow Triggers Only)
   - [x] 1.1 Create event definitions in `services/chat/events.py` with base Event classes
-  - [x] 1.2 Define UserInputEvent for incoming user messages with thread_id, user_id, message, and metadata
-  - [x] 1.3 Define PlanGeneratedEvent containing execution plan with task groups and confidence levels
-  - [x] 1.4 Define ToolExecutionStartedEvent and ToolExecutionCompletedEvent for tool lifecycle tracking
-  - [x] 1.5 Define ClarificationNeededEvent for routing questions to clarifier
-  - [ ] 1.6 Define ClarificationReceivedEvent for routing user answers back to planner
-  - [ ] 1.7 Define DraftCreatedEvent and DraftUpdatedEvent for draft lifecycle management
-  - [ ] 1.8 Define StreamingStatusEvent for progress updates ("Retrieving calendar availability", etc.)
-  - [ ] 1.9 Create event validation and serialization methods for persistence and debugging
-  - [ ] 1.10 Write comprehensive unit tests for all event classes in `services/chat/tests/test_events.py`
+  - [x] 1.2 Define UserInputEvent for workflow entry point with user messages and context
+  - [x] 1.3 Define PlanGeneratedEvent containing execution plan from PlannerStep
+  - [x] 1.4 Define ToolExecutionRequestedEvent to trigger ToolExecutorStep (Planner → ToolExecutor)
+  - [x] 1.5 Define ClarificationRequestedEvent to trigger ClarifierStep (Planner → Clarifier)
+  - [ ] 1.6 Define DraftBuildRequestedEvent to trigger DraftBuilderStep (ToolExecutor/Clarifier → DraftBuilder)
+  - [ ] 1.7 Define DraftCreatedEvent and DraftUpdatedEvent as terminal workflow events
+  - [ ] 1.8 Define ContextUpdatedEvent for context accumulation across workflow steps
+  - [x] 1.9 Remove observability events (ToolExecutionStartedEvent, etc.) - use logging/metrics instead
+  - [x] 1.10 Remove user-facing events (ClarificationNeededEvent) - use streaming layer instead
+  - [ ] 1.11 Write comprehensive unit tests for all event classes in `services/chat/tests/test_events.py`
 
 - [ ] 2. Create Core Workflow Steps Architecture
   - [ ] 2.1 Create base workflow step class with common functionality and error handling
