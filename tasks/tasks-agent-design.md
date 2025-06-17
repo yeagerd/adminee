@@ -37,7 +37,7 @@
   - [x] 1.1 Create event definitions in `services/chat/events.py` with base Event classes
   - [x] 1.2 Define UserInputEvent for incoming user messages with thread_id, user_id, message, and metadata
   - [x] 1.3 Define PlanGeneratedEvent containing execution plan with task groups and confidence levels
-  - [ ] 1.4 Define ToolExecutionStartedEvent and ToolExecutionCompletedEvent for tool lifecycle tracking
+  - [x] 1.4 Define ToolExecutionStartedEvent and ToolExecutionCompletedEvent for tool lifecycle tracking
   - [ ] 1.5 Define ClarificationNeededEvent for routing questions to users
   - [ ] 1.6 Define ClarificationReceivedEvent for routing user answers back to clarifier
   - [ ] 1.7 Define DraftCreatedEvent and DraftUpdatedEvent for draft lifecycle management

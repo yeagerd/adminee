@@ -191,6 +191,85 @@ class PlanGeneratedEvent(BaseWorkflowEvent):
         return [req for req in self.clarifications_needed if not req.blocking]
 
 
+class ToolExecutionStartedEvent(BaseWorkflowEvent):
+    """
+    Event representing the start of tool execution.
+    
+    Tracks when tools begin executing, including parallel execution
+    coordination and progress monitoring.
+    """
+    
+    tool_name: str
+    tool_inputs: Dict[str, Any]
+    execution_group_id: str  # For tracking parallel executions
+    parent_plan_event_id: str
+    metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
+    
+    @validator('tool_name')
+    def validate_tool_name(cls, v):
+        if not v or not isinstance(v, str):
+            raise ValueError("Tool name must be a non-empty string")
+        return v
+    
+    def _get_event_data(self) -> Dict[str, Any]:
+        """Get ToolExecutionStartedEvent-specific data for serialization."""
+        return {
+            "tool_name": self.tool_name,
+            "tool_inputs": self.tool_inputs,
+            "execution_group_id": self.execution_group_id,
+            "parent_plan_event_id": self.parent_plan_event_id,
+            "metadata": self.metadata.dict()
+        }
+
+
+class ToolExecutionCompletedEvent(BaseWorkflowEvent):
+    """
+    Event representing the completion of tool execution.
+    
+    Contains results, errors, and execution metrics for completed tools.
+    """
+    
+    tool_name: str
+    tool_inputs: Dict[str, Any]
+    tool_outputs: Dict[str, Any]
+    execution_group_id: str
+    parent_plan_event_id: str
+    execution_time_seconds: float
+    success: bool
+    error_message: Optional[str] = None
+    metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
+    
+    @validator('tool_name')
+    def validate_tool_name(cls, v):
+        if not v or not isinstance(v, str):
+            raise ValueError("Tool name must be a non-empty string")
+        return v
+    
+    @validator('execution_time_seconds')
+    def validate_execution_time(cls, v):
+        if v < 0:
+            raise ValueError("Execution time must be non-negative")
+        return v
+    
+    def _get_event_data(self) -> Dict[str, Any]:
+        """Get ToolExecutionCompletedEvent-specific data for serialization."""
+        return {
+            "tool_name": self.tool_name,
+            "tool_inputs": self.tool_inputs,
+            "tool_outputs": self.tool_outputs,
+            "execution_group_id": self.execution_group_id,
+            "parent_plan_event_id": self.parent_plan_event_id,
+            "execution_time_seconds": self.execution_time_seconds,
+            "success": self.success,
+            "error_message": self.error_message,
+            "metadata": self.metadata.dict()
+        }
+    
+    def has_error(self) -> bool:
+        """Check if tool execution resulted in an error."""
+        return not self.success or self.error_message is not None
+
+
 # Export base classes for use in concrete event implementations
 __all__ = [
     'BaseWorkflowEvent',
@@ -198,5 +277,7 @@ __all__ = [
     'ExecutionPlan',
     'ClarificationRequest',
     'UserInputEvent',
-    'PlanGeneratedEvent'
+    'PlanGeneratedEvent',
+    'ToolExecutionStartedEvent',
+    'ToolExecutionCompletedEvent'
 ] 
