@@ -342,6 +342,7 @@ class _LLMManager:
 # Global instance
 _llm_manager_instance: Optional[_LLMManager] = None
 
+
 def get_llm_manager() -> _LLMManager:
     """
     Returns a singleton instance of the _LLMManager.
