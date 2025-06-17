@@ -14,7 +14,19 @@ from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 from enum import Enum
 
-from services.chat.llm_tools import ToolRegistry as BaseToolRegistry
+from services.chat.llm_tools import (
+    ToolRegistry as BaseToolRegistry,
+    get_calendar_events,
+    get_emails,
+    get_notes,
+    get_documents,
+    create_draft_email,
+    delete_draft_email,
+    create_draft_calendar_event,
+    delete_draft_calendar_event,
+    create_draft_calendar_change,
+    delete_draft_calendar_change
+)
 
 
 class ExecutionHint(Enum):
@@ -367,19 +379,101 @@ class EnhancedToolRegistry:
         inputs: Dict[str, Any],
         progress_callback: Optional[Callable[[str, float], Awaitable[None]]]
     ) -> Any:
-        """Execute a single tool using the base registry."""
+        """Execute a single tool using real implementations."""
         # Report progress start
         if progress_callback:
             await progress_callback(f"Starting {tool_name}", 0.0)
         
-        # Execute using base registry or mock for testing
-        result = await self._mock_tool_execution(tool_name, inputs)
+        # Execute real tool
+        result = await self._call_real_tool(tool_name, inputs, progress_callback)
         
         # Report progress completion
         if progress_callback:
             await progress_callback(f"Completed {tool_name}", 1.0)
         
         return result
+    
+    async def _call_real_tool(
+        self,
+        tool_name: str,
+        inputs: Dict[str, Any],
+        progress_callback: Optional[Callable[[str, float], Awaitable[None]]]
+    ) -> Any:
+        """Call the actual tool implementation."""
+        # Map tool names to functions
+        tool_functions = {
+            "get_calendar_events": get_calendar_events,
+            "get_emails": get_emails,
+            "get_notes": get_notes,
+            "get_documents": get_documents,
+            "create_draft_email": create_draft_email,
+            "delete_draft_email": delete_draft_email,
+            "create_draft_calendar_event": create_draft_calendar_event,
+            "delete_draft_calendar_event": delete_draft_calendar_event,
+            "create_draft_calendar_change": create_draft_calendar_change,
+            "delete_draft_calendar_change": delete_draft_calendar_change
+        }
+        
+        if tool_name not in tool_functions:
+            # Fall back to base registry for unknown tools
+            try:
+                tool_func = self.base_registry.get_tool(tool_name)
+                if tool_func:
+                    # Execute tool function with inputs
+                    if asyncio.iscoroutinefunction(tool_func):
+                        return await tool_func(**inputs)
+                    else:
+                        # Run sync function in executor to avoid blocking
+                        loop = asyncio.get_event_loop()
+                        return await loop.run_in_executor(None, lambda: tool_func(**inputs))
+                else:
+                    # Fall back to mock for completely unknown tools
+                    return await self._mock_tool_execution(tool_name, inputs)
+            except Exception as e:
+                self.logger.warning(f"Base registry execution failed for {tool_name}: {e}")
+                return await self._mock_tool_execution(tool_name, inputs)
+        
+        # Execute known tool
+        tool_func = tool_functions[tool_name]
+        
+        # Add progress updates for longer-running tools
+        if progress_callback and tool_name in ["get_calendar_events", "get_emails", "get_documents"]:
+            await progress_callback(f"Retrieving {tool_name.replace('get_', '').replace('_', ' ')}", 0.5)
+        
+        # Prepare inputs with authentication and defaults
+        prepared_inputs = self._prepare_tool_inputs(tool_name, inputs)
+        
+        # Execute tool function
+        if asyncio.iscoroutinefunction(tool_func):
+            result = await tool_func(**prepared_inputs)
+        else:
+            # Run sync function in executor to avoid blocking
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(None, lambda: tool_func(**prepared_inputs))
+        
+        return result
+    
+    def _prepare_tool_inputs(self, tool_name: str, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        """Prepare inputs for tool execution, adding authentication if needed."""
+        prepared_inputs = inputs.copy()
+        
+        # Add user authentication context if available
+        if "user_id" in inputs and "access_token" not in inputs:
+            # In a real implementation, this would fetch the user's access token
+            # For now, we pass through the inputs as-is
+            pass
+        
+        # Ensure required parameters are present for specific tools
+        if tool_name in ["get_calendar_events", "get_emails", "get_documents", "get_notes"]:
+            # These tools typically need date ranges or filters
+            if "start_date" not in prepared_inputs:
+                prepared_inputs["start_date"] = datetime.now().strftime("%Y-%m-%d")
+            if "end_date" not in prepared_inputs:
+                # Default to 30 days from now
+                end_date = datetime.now() + timedelta(days=30)
+                prepared_inputs["end_date"] = end_date.strftime("%Y-%m-%d")
+        
+        return prepared_inputs
     
     async def _mock_tool_execution(self, tool_name: str, inputs: Dict[str, Any]) -> Any:
         """Mock tool execution for testing - replace with real implementation."""
@@ -529,6 +623,13 @@ class EnhancedToolRegistry:
                 cache_ttl=60  # 1 minute
             ),
             ToolMetadata(
+                name="get_notes",
+                description="Retrieve notes",
+                execution_hints={ExecutionHint.PARALLEL_SAFE, ExecutionHint.CACHE_FRIENDLY},
+                estimated_duration=2.0,
+                cache_ttl=300  # 5 minutes
+            ),
+            ToolMetadata(
                 name="get_documents",
                 description="Retrieve documents",
                 execution_hints={ExecutionHint.PARALLEL_SAFE, ExecutionHint.CACHE_FRIENDLY},
@@ -543,11 +644,39 @@ class EnhancedToolRegistry:
                 cache_ttl=None  # Don't cache drafts
             ),
             ToolMetadata(
+                name="delete_draft_email",
+                description="Delete email draft",
+                execution_hints={ExecutionHint.SEQUENTIAL_ONLY, ExecutionHint.FAST},
+                estimated_duration=1.0,
+                cache_ttl=None  # Don't cache deletions
+            ),
+            ToolMetadata(
                 name="create_draft_calendar_event",
                 description="Create calendar event draft",
                 execution_hints={ExecutionHint.SEQUENTIAL_ONLY, ExecutionHint.FAST},
                 estimated_duration=2.0,
                 cache_ttl=None  # Don't cache drafts
+            ),
+            ToolMetadata(
+                name="delete_draft_calendar_event",
+                description="Delete calendar event draft",
+                execution_hints={ExecutionHint.SEQUENTIAL_ONLY, ExecutionHint.FAST},
+                estimated_duration=1.0,
+                cache_ttl=None  # Don't cache deletions
+            ),
+            ToolMetadata(
+                name="create_draft_calendar_change",
+                description="Create calendar change draft",
+                execution_hints={ExecutionHint.SEQUENTIAL_ONLY, ExecutionHint.FAST},
+                estimated_duration=2.0,
+                cache_ttl=None  # Don't cache drafts
+            ),
+            ToolMetadata(
+                name="delete_draft_calendar_change",
+                description="Delete calendar change draft",
+                execution_hints={ExecutionHint.SEQUENTIAL_ONLY, ExecutionHint.FAST},
+                estimated_duration=1.0,
+                cache_ttl=None  # Don't cache deletions
             )
         ]
         

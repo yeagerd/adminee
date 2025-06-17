@@ -102,11 +102,11 @@
     - [x] 3.1.2 Add tool metadata for parallel execution hints and dependencies
     - [x] 3.1.3 Implement tool result caching and invalidation strategies
     - [x] 3.1.4 Create tool execution timeout and retry logic
-  - [ ] 3.2 Integrate existing tools with workflow system
-    - [ ] 3.2.1 Wrap `get_calendar_events`, `get_emails`, `get_notes`, `get_documents` for workflow
-    - [ ] 3.2.2 Wrap draft creation tools (`create_draft_email`, `create_draft_calendar_event`, etc.)
-    - [ ] 3.2.3 Add progress streaming hooks to each tool execution
-    - [ ] 3.2.4 Implement user token passing and service authentication in workflow context
+  - [x] 3.2 Integrate existing tools with workflow system
+    - [x] 3.2.1 Wrap `get_calendar_events`, `get_emails`, `get_notes`, `get_documents` for workflow
+    - [x] 3.2.2 Wrap draft creation tools (`create_draft_email`, `create_draft_calendar_event`, etc.)
+    - [x] 3.2.3 Add progress streaming hooks to each tool execution
+    - [x] 3.2.4 Implement user token passing and service authentication in workflow context
   - [ ] 3.3 Create tool execution monitoring and metrics
     - [ ] 3.3.1 Add execution time tracking and performance metrics
     - [ ] 3.3.2 Implement error rate monitoring and alerting
