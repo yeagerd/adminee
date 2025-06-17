@@ -46,12 +46,12 @@
   - [x] 1.8 Refactor ToolExecutorCompletedEvent into tool routing events:
     - [x] 1.8.1 Define ToolResultsForPlannerEvent (ToolExecutor → Planner) - tool results trigger re-planning
     - [x] 1.8.2 Define ToolResultsForDrafterEvent (ToolExecutor → DraftBuilder) - tool results ready for drafting
-    - [ ] 1.8.3 Update ToolExecutorStep to check route_to_planner flag and emit appropriate routing event (→ Task 2.3.5)
+    - [x] 1.8.3 Update ToolExecutorStep to check route_to_planner flag and emit appropriate routing event (→ Task 2.3.5)
   - [x] 1.9 Refactor ClarifierCompletedEvent into clarification routing events:
     - [x] 1.9.1 Define ClarificationReplanRequestedEvent (Clarifier → Planner) - user request changed
     - [x] 1.9.2 Define ClarificationPlannerUnblockedEvent (Clarifier → Planner) - planner blockage resolved  
     - [x] 1.9.3 Define ClarificationDraftUnblockedEvent (Clarifier → DraftBuilder) - draft blockage resolved
-    - [ ] 1.9.4 Update ClarifierStep to check blocks_planning flag and analyze clarification for routing (→ Task 2.4.4)
+    - [x] 1.9.4 Update ClarifierStep to check blocks_planning flag and analyze clarification for routing (→ Task 2.4.4)
   - [x] 1.10 Define DraftCreatedEvent and DraftUpdatedEvent as terminal workflow events
   - [x] 1.11 Define ContextUpdatedEvent for context accumulation across workflow steps
   - [x] 1.12 Remove observability events (ToolExecutionStartedEvent, etc.) - use logging/metrics instead
@@ -60,14 +60,14 @@
   - [x] 1.15 Write comprehensive unit tests for all event classes in `services/chat/tests/test_events.py`
 
 - [ ] 2. Create Core Workflow Steps Architecture
-  - [ ] 2.1 Create base workflow step class with common functionality and error handling
-  - [ ] 2.2 Implement PlannerStep in `services/chat/steps/planner_step.py`
-    - [ ] 2.2.1 Create LLM-based planner that converts user intent into structured execution plans
-    - [ ] 2.2.2 Implement confidence assessment and parallel execution strategy analysis
-    - [ ] 2.2.3 Add assumption tracking and clarification requirement detection
-    - [ ] 2.2.4 Implement routing flag logic for emitted events:
-      - [ ] 2.2.4.1 Set `route_to_planner` flag on ToolExecutionRequestedEvent based on planning needs
-      - [ ] 2.2.4.2 Set `blocks_planning` flag on ClarificationRequestedEvent based on clarification type
+  - [x] 2.1 Create base workflow step class with common functionality and error handling
+  - [x] 2.2 Implement PlannerStep in `services/chat/steps/planner_step.py`
+    - [x] 2.2.1 Create LLM-based planner that converts user intent into structured execution plans
+    - [x] 2.2.2 Implement confidence assessment and parallel execution strategy analysis
+    - [x] 2.2.3 Add assumption tracking and clarification requirement detection
+    - [x] 2.2.4 Implement routing flag logic for emitted events:
+      - [x] 2.2.4.1 Set `route_to_planner` flag on ToolExecutionRequestedEvent based on planning needs
+      - [x] 2.2.4.2 Set `blocks_planning` flag on ClarificationRequestedEvent based on clarification type
     - [ ] 2.2.5 Handle re-planning from routing events (ClarificationReplanRequestedEvent, ToolResultsForPlannerEvent)
     - [ ] 2.2.6 Integrate with user preference learning from chat history
   - [ ] 2.3 Implement ToolExecutorStep in `services/chat/steps/tool_executor_step.py`
@@ -97,11 +97,11 @@
   - [ ] 2.6 Write unit tests for all workflow steps in `services/chat/tests/`
 
 - [ ] 3. Implement Tool Integration and Execution Engine
-  - [ ] 3.1 Create enhanced ToolRegistry in `services/chat/tool_integration.py`
-    - [ ] 3.1.1 Extend existing ToolRegistry from `llm_tools.py` with workflow-specific features
-    - [ ] 3.1.2 Add tool metadata for parallel execution hints and dependencies
-    - [ ] 3.1.3 Implement tool result caching and invalidation strategies
-    - [ ] 3.1.4 Create tool execution timeout and retry logic
+  - [x] 3.1 Create enhanced ToolRegistry in `services/chat/tool_integration.py`
+    - [x] 3.1.1 Extend existing ToolRegistry from `llm_tools.py` with workflow-specific features
+    - [x] 3.1.2 Add tool metadata for parallel execution hints and dependencies
+    - [x] 3.1.3 Implement tool result caching and invalidation strategies
+    - [x] 3.1.4 Create tool execution timeout and retry logic
   - [ ] 3.2 Integrate existing tools with workflow system
     - [ ] 3.2.1 Wrap `get_calendar_events`, `get_emails`, `get_notes`, `get_documents` for workflow
     - [ ] 3.2.2 Wrap draft creation tools (`create_draft_email`, `create_draft_calendar_event`, etc.)
@@ -114,26 +114,26 @@
   - [ ] 3.4 Write unit tests for tool integration in `services/chat/tests/test_tool_integration.py`
 
 - [ ] 4. Build Streaming Progress and Communication Layer
-  - [ ] 4.1 Create streaming infrastructure in `services/chat/streaming.py`
-    - [ ] 4.1.1 Implement WebSocket or SSE connection management for real-time updates
-    - [ ] 4.1.2 Create message routing system for progress updates vs clarification questions
-    - [ ] 4.1.3 Add message queuing and delivery confirmation
-    - [ ] 4.1.4 Implement connection recovery and message replay on reconnect
-  - [ ] 4.2 Create progress update system
-    - [ ] 4.2.1 Define standard progress messages ("Retrieving calendar availability", "Looking up emails", etc.)
-    - [ ] 4.2.2 Implement progress percentage tracking for multi-step operations
-    - [ ] 4.2.3 Add estimated time remaining calculations
-    - [ ] 4.2.4 Create progress update aggregation for parallel operations
-  - [ ] 4.3 Implement bidirectional clarification routing
-    - [ ] 4.3.1 Route clarification questions to user interface without interrupting workflow
-    - [ ] 4.3.2 Route user clarification responses back to ClarifierStep (not PlannerStep)
-    - [ ] 4.3.3 Add question context preservation and response validation
-    - [ ] 4.3.4 Implement multi-turn clarification conversations
-  - [ ] 4.4 Create context manager in `services/chat/context_manager.py`
-    - [ ] 4.4.1 Implement conversation context accumulation across workflow steps
-    - [ ] 4.4.2 Add user preference tracking and learning
-    - [ ] 4.4.3 Create context persistence and recovery mechanisms
-    - [ ] 4.4.4 Implement context cleanup and memory management
+  - [x] 4.1 Create streaming infrastructure in `services/chat/streaming.py`
+    - [x] 4.1.1 Implement WebSocket or SSE connection management for real-time updates
+    - [x] 4.1.2 Create message routing system for progress updates vs clarification questions
+    - [x] 4.1.3 Add message queuing and delivery confirmation
+    - [x] 4.1.4 Implement connection recovery and message replay on reconnect
+  - [x] 4.2 Create progress update system
+    - [x] 4.2.1 Define standard progress messages ("Retrieving calendar availability", "Looking up emails", etc.)
+    - [x] 4.2.2 Implement progress percentage tracking for multi-step operations
+    - [x] 4.2.3 Add estimated time remaining calculations
+    - [x] 4.2.4 Create progress update aggregation for parallel operations
+  - [x] 4.3 Implement bidirectional clarification routing
+    - [x] 4.3.1 Route clarification questions to user interface without interrupting workflow
+    - [x] 4.3.2 Route user clarification responses back to ClarifierStep (not PlannerStep)
+    - [x] 4.3.3 Add question context preservation and response validation
+    - [x] 4.3.4 Implement multi-turn clarification conversations
+  - [x] 4.4 Create context manager in `services/chat/context_manager.py`
+    - [x] 4.4.1 Implement conversation context accumulation across workflow steps
+    - [x] 4.4.2 Add user preference tracking and learning
+    - [x] 4.4.3 Create context persistence and recovery mechanisms
+    - [x] 4.4.4 Implement context cleanup and memory management
   - [ ] 4.5 Integration test streaming with `services/demos/chat.py`
   - [ ] 4.6 Write unit tests for streaming and context management
 
