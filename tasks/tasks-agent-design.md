@@ -70,14 +70,14 @@
       - [x] 2.2.4.2 Set `blocks_planning` flag on ClarificationRequestedEvent based on clarification type
     - [x] 2.2.5 Handle re-planning from routing events (ClarificationReplanRequestedEvent, ToolResultsForPlannerEvent)
     - [x] 2.2.6 Integrate with user preference learning from chat history
-  - [ ] 2.3 Implement ToolExecutorStep in `services/chat/steps/tool_executor_step.py`
-    - [ ] 2.3.1 Create parallel tool execution engine with asyncio support
-    - [ ] 2.3.2 Implement tool result aggregation and error handling
-    - [ ] 2.3.3 Add progress streaming during long-running tool operations
-    - [ ] 2.3.4 Create tool dependency resolution for sequential vs parallel execution
-    - [ ] 2.3.5 Implement routing logic based on `route_to_planner` flag:
-      - [ ] 2.3.5.1 Emit ToolResultsForPlannerEvent when route_to_planner=True
-      - [ ] 2.3.5.2 Emit ToolResultsForDrafterEvent when route_to_planner=False
+  - [x] 2.3 Implement ToolExecutorStep in `services/chat/steps/tool_executor_step.py`
+    - [x] 2.3.1 Create parallel tool execution engine with asyncio support
+    - [x] 2.3.2 Implement tool result aggregation and error handling
+    - [x] 2.3.3 Add progress streaming during long-running tool operations
+    - [x] 2.3.4 Create tool dependency resolution for sequential vs parallel execution
+    - [x] 2.3.5 Implement routing logic based on `route_to_planner` flag:
+      - [x] 2.3.5.1 Emit ToolResultsForPlannerEvent when route_to_planner=True
+      - [x] 2.3.5.2 Emit ToolResultsForDrafterEvent when route_to_planner=False
   - [ ] 2.4 Implement ClarifierStep in `services/chat/steps/clarifier_step.py`
     - [ ] 2.4.1 Create LLM-based question generation from missing information context
     - [ ] 2.4.2 Implement user response routing back to workflow (not planner)

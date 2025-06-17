@@ -19,15 +19,7 @@ from services.chat.events import (
     ToolResultsForDrafterEvent,
     ToolExecutorCompletedEvent
 )
-
-
-class MockToolRegistry:
-    """Mock tool registry for testing - will be replaced with real ToolRegistry."""
-    
-    async def execute_tool(self, tool_name: str, inputs: Dict[str, Any]) -> Any:
-        """Mock tool execution."""
-        await asyncio.sleep(0.1)  # Simulate tool execution time
-        return {"tool": tool_name, "result": f"Mock result for {tool_name}", "inputs": inputs}
+from services.chat.tool_integration import EnhancedToolRegistry
 
 
 class ToolExecutorStep(BaseWorkflowStep):
@@ -46,7 +38,7 @@ class ToolExecutorStep(BaseWorkflowStep):
     def __init__(self, tool_registry=None, **kwargs):
         """Initialize the tool executor step."""
         super().__init__(**kwargs)
-        self.tool_registry = tool_registry or MockToolRegistry()
+        self.tool_registry = tool_registry or EnhancedToolRegistry()
         self._execution_cache = {}  # Cache for expensive tool results
         self._tool_dependencies = {}  # Tool dependency mapping
     
@@ -142,11 +134,14 @@ class ToolExecutorStep(BaseWorkflowStep):
         """Execute tools in parallel using asyncio."""
         self.logger.info(f"Starting parallel execution of {len(tools_to_execute)} tools")
         
+        # Create progress callback for streaming updates
+        progress_callback = self._create_progress_callback(thread_id, user_id, len(tools_to_execute))
+        
         # Create coroutines for each tool
         tool_coroutines = []
         tool_names = []
         
-        for tool_config in tools_to_execute:
+        for i, tool_config in enumerate(tools_to_execute):
             tool_name = tool_config["tool_name"]
             tool_inputs = tool_config.get("inputs", {})
             
@@ -158,8 +153,13 @@ class ToolExecutorStep(BaseWorkflowStep):
                 "execution_group_id": tool_config.get("execution_group_id")
             }
             
+            # Create tool-specific progress callback
+            tool_progress_callback = self._create_tool_progress_callback(
+                progress_callback, tool_name, i, len(tools_to_execute)
+            )
+            
             # Create coroutine for tool execution
-            coroutine = self._execute_single_tool(tool_name, enhanced_inputs)
+            coroutine = self._execute_single_tool(tool_name, enhanced_inputs, tool_progress_callback)
             tool_coroutines.append(coroutine)
             tool_names.append(tool_name)
         
@@ -208,10 +208,13 @@ class ToolExecutorStep(BaseWorkflowStep):
         """Execute tools sequentially with dependency handling."""
         self.logger.info(f"Starting sequential execution of {len(tools_to_execute)} tools")
         
+        # Create progress callback for streaming updates
+        progress_callback = self._create_progress_callback(thread_id, user_id, len(tools_to_execute))
+        
         tool_results = {}
         error_messages = []
         
-        for tool_config in tools_to_execute:
+        for i, tool_config in enumerate(tools_to_execute):
             tool_name = tool_config["tool_name"]
             tool_inputs = tool_config.get("inputs", {})
             
@@ -225,7 +228,12 @@ class ToolExecutorStep(BaseWorkflowStep):
             }
             
             try:
-                result = await self._execute_single_tool(tool_name, enhanced_inputs)
+                # Create tool-specific progress callback
+                tool_progress_callback = self._create_tool_progress_callback(
+                    progress_callback, tool_name, i, len(tools_to_execute)
+                )
+                
+                result = await self._execute_single_tool(tool_name, enhanced_inputs, tool_progress_callback)
                 tool_results[tool_name] = result
                 
                 self.logger.debug(f"Sequential tool {tool_name} completed successfully")
@@ -251,52 +259,25 @@ class ToolExecutorStep(BaseWorkflowStep):
         
         return tool_results, execution_success, error_messages
     
-    async def _execute_single_tool(self, tool_name: str, inputs: Dict[str, Any]) -> Any:
-        """Execute a single tool with caching and error handling."""
-        # Check cache first
-        cache_key = self._create_cache_key(tool_name, inputs)
-        if cache_key in self._execution_cache:
-            cache_result = self._execution_cache[cache_key]
-            # Check if cache is still valid (e.g., within 5 minutes for dynamic data)
-            if self._is_cache_valid(cache_result):
-                self.logger.debug(f"Using cached result for {tool_name}")
-                return cache_result["data"]
+    async def _execute_single_tool(
+        self, 
+        tool_name: str, 
+        inputs: Dict[str, Any],
+        progress_callback=None
+    ) -> Any:
+        """Execute a single tool using the enhanced registry."""
+        # Use the enhanced registry's built-in caching and retry logic
+        result = await self.tool_registry.execute_tool(
+            tool_name,
+            inputs,
+            use_cache=True,
+            progress_callback=progress_callback
+        )
         
-        # Execute tool with retry logic
-        start_time = time.time()
-        
-        async def execute_tool():
-            return await self.tool_registry.execute_tool(tool_name, inputs)
-        
-        try:
-            result = await self.execute_with_retry(
-                execute_tool,
-                max_retries=2,
-                operation_name=f"tool_{tool_name}"
-            )
-            
-            execution_time = time.time() - start_time
-            
-            # Cache result if appropriate
-            if self._should_cache_result(tool_name, result):
-                self._execution_cache[cache_key] = {
-                    "data": result,
-                    "timestamp": datetime.now(),
-                    "execution_time": execution_time
-                }
-            
-            self.logger.debug(
-                f"Tool {tool_name} executed in {execution_time:.2f}s"
-            )
-            
-            return result
-            
-        except Exception as e:
-            execution_time = time.time() - start_time
-            self.logger.error(
-                f"Tool {tool_name} failed after {execution_time:.2f}s: {e}"
-            )
-            raise
+        if result.success:
+            return result.data
+        else:
+            raise Exception(result.error_message or f"Tool {tool_name} failed")
     
     async def _route_tool_results(
         self,
@@ -510,4 +491,58 @@ class ToolExecutorStep(BaseWorkflowStep):
         if isinstance(result, dict):
             return {k: v for k, v in result.items() 
                    if not k.startswith("_") and k != "auth_token"}
-        return result 
+        return result
+    
+    def _create_progress_callback(self, thread_id: str, user_id: str, total_tools: int):
+        """Create progress callback for streaming updates."""
+        async def progress_callback(message: str, progress: float):
+            """Progress callback that can be used for streaming."""
+            # This would integrate with the streaming system
+            # For now, just log the progress
+            self.logger.info(f"Tool execution progress: {message} ({progress:.1%})")
+            
+            # In a real implementation, this would emit progress events
+            # to the streaming system for real-time user updates
+            
+        return progress_callback
+    
+    def _create_tool_progress_callback(
+        self, 
+        main_callback, 
+        tool_name: str, 
+        tool_index: int, 
+        total_tools: int
+    ):
+        """Create tool-specific progress callback."""
+        async def tool_progress_callback(message: str, tool_progress: float):
+            """Tool-specific progress callback."""
+            # Calculate overall progress
+            base_progress = tool_index / total_tools
+            tool_contribution = (1.0 / total_tools) * tool_progress
+            overall_progress = base_progress + tool_contribution
+            
+            # Create tool-specific message
+            tool_message = f"{tool_name}: {message}"
+            
+            # Call main progress callback
+            await main_callback(tool_message, overall_progress)
+            
+        return tool_progress_callback
+    
+    async def _stream_progress_update(
+        self,
+        thread_id: str,
+        user_id: str,
+        step_name: str,
+        progress: float,
+        message: str
+    ) -> None:
+        """Stream progress update to user (placeholder for streaming integration)."""
+        # This would integrate with the streaming system
+        # For now, just log the progress
+        self.logger.info(f"Progress update for {thread_id}: {step_name} - {message} ({progress:.1%})")
+        
+        # In a real implementation, this would:
+        # 1. Get streaming orchestrator from context
+        # 2. Send progress update to user via WebSocket/SSE
+        # 3. Update progress tracking state 
