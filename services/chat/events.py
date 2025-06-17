@@ -156,11 +156,47 @@ class UserInputEvent(BaseWorkflowEvent):
         }
 
 
+class PlanGeneratedEvent(BaseWorkflowEvent):
+    """
+    Event representing a generated execution plan from the Planner step.
+    
+    Contains the structured plan with task groups, confidence levels,
+    and execution strategy determined by the planner.
+    """
+    
+    execution_plan: ExecutionPlan
+    original_request: str
+    clarifications_needed: List[ClarificationRequest] = Field(default_factory=list)
+    metadata: WorkflowMetadata = Field(default_factory=WorkflowMetadata)
+    
+    def _get_event_data(self) -> Dict[str, Any]:
+        """Get PlanGeneratedEvent-specific data for serialization."""
+        return {
+            "execution_plan": self.execution_plan.dict(),
+            "original_request": self.original_request,
+            "clarifications_needed": [req.dict() for req in self.clarifications_needed],
+            "metadata": self.metadata.dict()
+        }
+    
+    def requires_clarification(self) -> bool:
+        """Check if this plan requires user clarification before execution."""
+        return len(self.clarifications_needed) > 0
+    
+    def get_blocking_clarifications(self) -> List[ClarificationRequest]:
+        """Get clarifications that block execution."""
+        return [req for req in self.clarifications_needed if req.blocking]
+    
+    def get_non_blocking_clarifications(self) -> List[ClarificationRequest]:
+        """Get clarifications that don't block execution."""
+        return [req for req in self.clarifications_needed if not req.blocking]
+
+
 # Export base classes for use in concrete event implementations
 __all__ = [
     'BaseWorkflowEvent',
     'WorkflowMetadata', 
     'ExecutionPlan',
     'ClarificationRequest',
-    'UserInputEvent'
+    'UserInputEvent',
+    'PlanGeneratedEvent'
 ] 
