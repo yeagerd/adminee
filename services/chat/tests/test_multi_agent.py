@@ -151,13 +151,15 @@ async def test_multi_agent_chat_flow(multi_agent_workflow, mock_history_manager)
         ) as mock_history:
             mock_history.return_value = []
 
-            # Test chat
-            response = await multi_agent_workflow.chat("Hello")
+            # Mock the history_manager module import within the chat method
+            with patch("services.chat.history_manager", mock_history_manager):
+                # Test chat
+                response = await multi_agent_workflow.chat("Hello")
 
-            assert response == mock_response
+                assert response == mock_response
 
-            # Verify database calls
-            assert mock_history_manager.append_message.call_count == 2
+                # Verify database calls (user message + assistant response)
+                assert mock_history_manager.append_message.call_count == 2
 
 
 def test_agent_handoff_capabilities():

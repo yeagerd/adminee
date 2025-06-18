@@ -23,9 +23,59 @@ Conversion Pattern:
 - See api.py for examples of this conversion pattern
 """
 
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from pydantic import BaseModel
+
+
+class DraftEmail(BaseModel):
+    """Draft email data structure."""
+
+    type: str = "email"
+    to: Optional[str] = None
+    cc: Optional[str] = None
+    bcc: Optional[str] = None
+    subject: Optional[str] = None
+    body: Optional[str] = None
+    thread_id: str
+    created_at: str
+    updated_at: Optional[str] = None
+
+
+class DraftCalendarEvent(BaseModel):
+    """Draft calendar event data structure."""
+
+    type: str = "calendar_event"
+    title: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    attendees: Optional[str] = None
+    location: Optional[str] = None
+    description: Optional[str] = None
+    thread_id: str
+    created_at: str
+    updated_at: Optional[str] = None
+
+
+class DraftCalendarChange(BaseModel):
+    """Draft calendar change data structure."""
+
+    type: str = "calendar_change"
+    event_id: Optional[str] = None
+    change_type: Optional[str] = None
+    new_title: Optional[str] = None
+    new_start_time: Optional[str] = None
+    new_end_time: Optional[str] = None
+    new_attendees: Optional[str] = None
+    new_location: Optional[str] = None
+    new_description: Optional[str] = None
+    thread_id: str
+    created_at: str
+    updated_at: Optional[str] = None
+
+
+# Union type for all draft types
+DraftData = Union[DraftEmail, DraftCalendarEvent, DraftCalendarChange]
 
 
 class ChatRequest(BaseModel):
@@ -50,7 +100,7 @@ class ChatResponse(BaseModel):
 
     thread_id: str  # String for JSON compatibility
     messages: List["MessageResponse"]
-    draft: Optional[dict] = None  # Placeholder for draft email/calendar event
+    drafts: Optional[List[DraftData]] = None  # Structured draft data
 
 
 class ThreadResponse(BaseModel):

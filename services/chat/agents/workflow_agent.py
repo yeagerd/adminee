@@ -191,7 +191,7 @@ class WorkflowAgent:
         """Create specialized agents for multi-agent mode."""
         agents = {}
 
-        # Create all specialized agents
+        # Create all specialized agents with thread_id
         agents["Coordinator"] = CoordinatorAgent(
             llm_model=self.llm_model, llm_provider=self.llm_provider, **self.llm_kwargs
         )
@@ -203,9 +203,7 @@ class WorkflowAgent:
         )
 
         agents["EmailAgent"] = EmailAgent(
-            llm_model=self.llm_model,
-            llm_provider=self.llm_provider,
-            **self.llm_kwargs,
+            llm_model=self.llm_model, llm_provider=self.llm_provider, **self.llm_kwargs
         )
 
         agents["DocumentAgent"] = DocumentAgent(
@@ -215,7 +213,10 @@ class WorkflowAgent:
         )
 
         agents["DraftAgent"] = DraftAgent(
-            llm_model=self.llm_model, llm_provider=self.llm_provider, **self.llm_kwargs
+            llm_model=self.llm_model,
+            llm_provider=self.llm_provider,
+            thread_id=self.thread_id,  # Pass thread_id directly
+            **self.llm_kwargs,
         )
 
         logger.info(f"Created {len(agents)} specialized agents")
@@ -359,18 +360,64 @@ class WorkflowAgent:
         except Exception as e:
             logger.warning(f"Failed to load conversation history: {e}")
 
+    async def _extract_draft_data(self) -> List[Dict[str, Any]]:
+        """Extract structured draft data from the workflow context."""
+        drafts = []
+        try:
+            # Access the actual draft storage to get full data
+            from services.chat.agents.llm_tools import _draft_storage
+
+            # Check for drafts in the storage for this thread
+            thread_prefix = f"{self.thread_id}_"
+            for draft_key, draft_data in _draft_storage.items():
+                if draft_key.startswith(thread_prefix):
+                    draft_copy = draft_data.copy()
+                    draft_copy["thread_id"] = str(self.thread_id)
+                    drafts.append(draft_copy)
+                    logger.info(
+                        f"📝 Found draft in storage: {draft_key} -> {draft_copy}"
+                    )
+
+            # Also check the workflow context state (legacy/backup check)
+            if self.context:
+                # Get current state to check for draft info
+                get_method = getattr(self.context, "get", None)
+                if get_method:
+                    state_result = get_method("state", {})
+                    # Handle both sync and async get methods
+                    if hasattr(state_result, "__await__"):
+                        state = await state_result
+                    else:
+                        state = state_result
+
+                    draft_info = state.get("draft_info", {})
+                    if draft_info:
+                        logger.info("🎯 DRAFT CREATED - Context state has draft_info:")
+                        for draft_type, info in draft_info.items():
+                            logger.info(f"  📝 {draft_type.upper()}: {info}")
+                    else:
+                        logger.info("📝 No draft_info found in context state")
+
+        except Exception as draft_error:
+            logger.warning(f"Failed to extract draft data: {draft_error}")
+
+        logger.info(f"📋 Total drafts extracted: {len(drafts)}")
+        return drafts
+
     async def chat(self, user_input: str) -> str:
         """
-        Process user input through the agent workflow.
+        Chat with the multi-agent workflow.
 
         Args:
             user_input: The user's message
 
         Returns:
-            The agent's response
+            The agent's response content (without draft prose)
         """
         if not self.agent_workflow or not self.context:
             await self.build_agent(user_input)
+
+        from services.chat import history_manager
 
         try:
             # Save user message to database
@@ -380,60 +427,20 @@ class WorkflowAgent:
                 content=user_input,
             )
 
-            # Run the workflow
-            logger.debug(
-                f"Starting workflow.run with user_msg='{user_input}' and context={self.context}"
+            # Run the multi-agent workflow
+            response = await self.agent_workflow.run(
+                user_msg=user_input, ctx=self.context
             )
-            try:
-                response = await self.agent_workflow.run(
-                    user_msg=user_input, ctx=self.context
-                )
-                logger.debug(
-                    f"Workflow.run completed successfully with response: {response}"
-                )
-            except Exception as workflow_error:
-                logger.error(f"Workflow.run failed: {workflow_error}")
-                logger.error("Workflow error traceback:", exc_info=True)
-                raise
 
-            # Extract response content
+            # Convert response to string
             response_content = (
                 str(response)
                 if response
                 else "I'm sorry, I couldn't process your request."
             )
 
-            # Check for draft information in the workflow context and display it
-            try:
-                if self.context:
-                    # Get current state to check for draft info
-                    get_method = getattr(self.context, "get", None)
-                    if get_method:
-                        state_result = get_method("state", {})
-                        # Handle both sync and async get methods
-                        if hasattr(state_result, "__await__"):
-                            state = await state_result
-                        else:
-                            state = state_result
-
-                        draft_info = state.get("draft_info", {})
-                        if draft_info:
-                            logger.info("🎯 DRAFT CREATED - Content visible to client:")
-                            draft_summary = []
-                            for draft_type, info in draft_info.items():
-                                logger.info(f"  📝 {draft_type.upper()}: {info}")
-                                draft_summary.append(
-                                    f"• {draft_type.replace('_', ' ').title()}: {info}"
-                                )
-
-                            # Add draft summary to response if drafts were created
-                            if draft_summary:
-                                response_content += (
-                                    "\n\n📋 **Drafts Created:**\n"
-                                    + "\n".join(draft_summary)
-                                )
-            except Exception as draft_error:
-                logger.warning(f"Failed to extract draft information: {draft_error}")
+            # Note: Draft data is now extracted separately via get_draft_data()
+            # The response content no longer includes draft prose
 
             # Save assistant response to database
             await history_manager.append_message(
@@ -465,6 +472,15 @@ class WorkflowAgent:
                 pass  # Don't fail on database save errors
 
             return error_response
+
+    async def get_draft_data(self) -> List[Dict[str, Any]]:
+        """
+        Get structured draft data created during the conversation.
+
+        Returns:
+            List of draft dictionaries with structured data
+        """
+        return await self._extract_draft_data()
 
     async def stream_chat(self, user_input: str):
         """

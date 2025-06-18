@@ -35,7 +35,12 @@ from typing import Optional
 # Add the services directory to the path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
+import httpx
 import requests
+
+# Set environment variables to disable cost tracking
+os.environ["LITELLM_LOG"] = "WARNING"  # Set LiteLLM log level to WARNING
+os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "False")  # Disable local cost map
 
 from services.chat.agents.workflow_agent import WorkflowAgent
 from services.chat.models import ChatResponse
@@ -66,6 +71,13 @@ logging.getLogger("llama_index").setLevel(logging.WARNING)  # Reduce LlamaIndex 
 logging.getLogger("LiteLLM").setLevel(
     logging.WARNING
 )  # Only show warnings/errors from LiteLLM
+# Suppress cost calculation and model selection messages
+logging.getLogger("litellm").setLevel(logging.WARNING)
+logging.getLogger("litellm.cost_calculator").setLevel(logging.ERROR)
+logging.getLogger("litellm.utils").setLevel(logging.WARNING)
+# Additional suppression based on GitHub issue #9815
+logging.getLogger("litellm.cost_calculation").setLevel(logging.ERROR)
+logging.getLogger("litellm._logging").setLevel(logging.WARNING)
 
 
 def print_help():
@@ -219,6 +231,13 @@ class ChatDemo:
         try:
             # Get response from the agent (backend logs will show details)
             response = await self.agent.chat(message)
+
+            # Get structured draft data and render as text for the demo
+            draft_data = await self.agent.get_draft_data()
+            if draft_data:
+                draft_text = self._render_drafts_as_text(draft_data)
+                response += f"\n\n{draft_text}"
+
             return response
 
         except Exception as e:
@@ -228,6 +247,71 @@ class ChatDemo:
 
             traceback.print_exc()
             return error_msg
+
+    def _render_drafts_as_text(self, drafts):
+        """Render structured draft data as text for the demo."""
+        if not drafts:
+            return ""
+
+        lines = ["📋 **Drafts Created:**"]
+
+        for draft in drafts:
+            draft_type = draft.get("type", "unknown")
+
+            if draft_type == "email":
+                title = "Email Draft"
+                details = []
+                if draft.get("to"):
+                    details.append(f"To: {draft['to']}")
+                if draft.get("cc"):
+                    details.append(f"CC: {draft['cc']}")
+                if draft.get("subject"):
+                    details.append(f"Subject: {draft['subject']}")
+                if draft.get("body"):
+                    body_preview = (
+                        draft["body"][:100] + "..."
+                        if len(draft["body"]) > 100
+                        else draft["body"]
+                    )
+                    details.append(f"Body: {body_preview}")
+                lines.append(
+                    f"• {title}: {', '.join(details) if details else 'Created'}"
+                )
+
+            elif draft_type == "calendar_event":
+                title = "Calendar Event Draft"
+                details = []
+                if draft.get("title"):
+                    details.append(f"Title: {draft['title']}")
+                if draft.get("start_time"):
+                    details.append(f"Start: {draft['start_time']}")
+                if draft.get("end_time"):
+                    details.append(f"End: {draft['end_time']}")
+                if draft.get("location"):
+                    details.append(f"Location: {draft['location']}")
+                lines.append(
+                    f"• {title}: {', '.join(details) if details else 'Created'}"
+                )
+
+            elif draft_type == "calendar_change":
+                title = "Calendar Change Draft"
+                details = []
+                if draft.get("event_id"):
+                    details.append(f"Event ID: {draft['event_id']}")
+                if draft.get("change_type"):
+                    details.append(f"Change: {draft['change_type']}")
+                if draft.get("new_title"):
+                    details.append(f"New Title: {draft['new_title']}")
+                if draft.get("new_start_time"):
+                    details.append(f"New Start: {draft['new_start_time']}")
+                lines.append(
+                    f"• {title}: {', '.join(details) if details else 'Created'}"
+                )
+
+            else:
+                lines.append(f"• {draft_type.replace('_', ' ').title()}: Created")
+
+        return "\n".join(lines)
 
     def send_message_api(self, message: str):
         """Send a message using the chat service API."""
@@ -247,8 +331,14 @@ class ChatDemo:
             if messages:
                 latest_message = messages[-1]
                 response = latest_message.content
-                if chat_resp.draft:
-                    response += f"\n\nDraft:\n{chat_resp.draft}"
+
+                # Render structured draft data as text for the demo
+                if chat_resp.drafts:
+                    draft_text = self._render_drafts_as_text(
+                        [draft.model_dump() for draft in chat_resp.drafts]
+                    )
+                    response += f"\n\n{draft_text}"
+
                 return response
             else:
                 return "No response received."
@@ -440,7 +530,6 @@ class ChatDemo:
 
     async def _stream_api_response(self, message: str):
         """Stream response from the chat service API using Server-Sent Events."""
-        import httpx
 
         payload = {"user_id": self.user_id, "message": message}
         if self.active_thread:
