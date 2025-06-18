@@ -39,9 +39,9 @@ def test_workflow_agent_initialization(workflow_agent):
     assert workflow_agent.max_tokens == 1000
 
     # Check that components are None initially
-    assert workflow_agent.function_agent is None
     assert workflow_agent.agent_workflow is None
     assert workflow_agent.context is None
+    assert workflow_agent.specialized_agents == {}
 
     # Check that ChatAgent is created
     assert workflow_agent.chat_agent is not None
@@ -86,9 +86,9 @@ async def test_build_agent(workflow_agent, mock_history_manager):
     await workflow_agent.build_agent("test input")
 
     # Check that components are initialized
-    assert workflow_agent.function_agent is not None
     assert workflow_agent.agent_workflow is not None
     assert workflow_agent.context is not None
+    assert len(workflow_agent.specialized_agents) > 0
 
     # Check that ChatAgent was built
     workflow_agent.chat_agent.build_agent.assert_called_once_with("test input")
@@ -159,10 +159,6 @@ def test_llm_property(workflow_agent):
 
 def test_compatibility_properties(workflow_agent):
     """Test properties for compatibility with existing code."""
-    # Test agent property
-    agent = workflow_agent.agent
-    assert agent is workflow_agent.function_agent
-
     # Test memory property
     memory = workflow_agent.memory
     assert memory is workflow_agent.chat_agent.memory

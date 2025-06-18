@@ -1,10 +1,10 @@
-# Interactive Chat Demo
+# Multi-Agent Chat Demo
 
-A simple command-line interface for testing and demonstrating the WorkflowAgent system.
+A simple command-line interface for testing and demonstrating the consolidated multi-agent WorkflowAgent system.
 
 ## Usage
 
-### Basic Chat Demo
+### Basic Multi-Agent Chat Demo
 
 ```bash
 python services/demos/chat-simple.py
@@ -18,62 +18,84 @@ python services/demos/chat-simple.py --streaming
 
 ## Features
 
-### Mode Selection
-- **Multi-Agent Mode**: Uses specialized agents (CoordinatorAgent, CalendarAgent, EmailAgent, DocumentAgent, DraftAgent)
-- **Single-Agent Mode**: Uses one agent with all tools combined
+### Multi-Agent Architecture
+- **CoordinatorAgent**: Orchestrates tasks and delegates to specialized agents
+- **CalendarAgent**: Handles calendar queries and scheduling operations
+- **EmailAgent**: Manages email operations and searches
+- **DocumentAgent**: Finds and manages documents and notes
+- **DraftAgent**: Creates drafts of emails and content
 
 ### Interactive Commands
-- `help` - Show available commands and example prompts
-- `switch` - Switch between single-agent and multi-agent modes
+- `help` - Show available commands, agents, and example prompts
 - `clear` - Clear conversation history and start fresh
 - `quit` or `exit` - Exit the demo
 
 ### Example Prompts
 
-Try these prompts to see the multi-agent system in action:
+Try these prompts to see different agents in action:
 
-#### Calendar Queries
+#### Calendar Operations
 - "What meetings do I have this week?"
 - "Show me my calendar for tomorrow"
 - "Do I have any conflicts on Friday?"
+- "When is my next appointment?"
 
-#### Email Queries  
+#### Email Management  
 - "Show me my unread emails from today"
 - "Find emails about the project planning"
 - "What's in my inbox?"
+- "Find emails from john@example.com"
 
-#### Document Queries
+#### Document Operations
 - "Find my notes about the quarterly planning"
 - "Search for documents about the budget"
 - "Show me my recent notes"
+- "Find documents related to the project"
 
-#### Drafting Tasks
+#### Content Creation
 - "Draft an email to john@example.com about the meeting"
 - "Create a calendar event for team standup"
 - "Draft a follow-up email for the board meeting"
+- "Help me write a project update"
 
-#### Complex Multi-Agent Tasks
+#### Complex Multi-Agent Coordination
 - "Help me prepare for tomorrow's board meeting"
 - "Organize my day by checking calendar and emails"
 - "Find everything related to the quarterly planning project"
+- "Schedule follow-up meetings and draft summary emails"
+
+## How It Works
+
+1. **User Input**: You provide a request or question
+2. **Coordinator Analysis**: The CoordinatorAgent analyzes your request and determines which specialized agents to involve
+3. **Agent Delegation**: Tasks are delegated to appropriate specialized agents
+4. **Information Gathering**: Specialized agents use their tools to gather relevant information
+5. **Context Sharing**: Agents record their findings for other agents to access
+6. **Coordination**: The CoordinatorAgent synthesizes results from all agents
+7. **Agent Handoffs**: Agents can hand off control to others as needed for complex workflows
+8. **Final Response**: A comprehensive response is provided to the user
 
 ## Demo Flow
 
-1. **Welcome Screen**: Shows introduction and commands
-2. **Mode Selection**: Choose between multi-agent (default) or single-agent
-3. **Agent Initialization**: Creates and builds the WorkflowAgent
-4. **Interactive Chat**: Chat loop with command processing
-5. **Graceful Exit**: Clean shutdown on quit/exit
+1. **Welcome Screen**: Shows introduction, available agents, and example prompts
+2. **Agent Initialization**: Creates and builds the multi-agent WorkflowAgent system
+3. **Interactive Chat**: Chat loop with command processing and agent coordination
+4. **Graceful Exit**: Clean shutdown on quit/exit
 
 ## Sample Session
 
 ```
 ============================================================
-🚀 Welcome to the Interactive WorkflowAgent Demo!
+🚀 Welcome to the Multi-Agent WorkflowAgent Demo!
 ============================================================
 
-This demo lets you chat with the WorkflowAgent system.
-You can test both single-agent and multi-agent modes.
+This demo lets you chat with the multi-agent WorkflowAgent system.
+Features specialized agents for different tasks:
+  • CoordinatorAgent - Orchestrates and delegates tasks
+  • CalendarAgent - Manages calendar and scheduling
+  • EmailAgent - Handles email operations
+  • DocumentAgent - Manages documents and notes
+  • DraftAgent - Creates drafts and content
 
 📋 Example prompts to try:
   • 'What meetings do I have this week?'
@@ -84,11 +106,8 @@ You can test both single-agent and multi-agent modes.
 
 💡 Commands:
   • 'quit' or 'exit' - Exit the demo
-  • 'switch' - Switch between single and multi-agent modes
   • 'help' - Show this help message
   • 'clear' - Clear the conversation history
-
-Choose mode (1=Multi-Agent, 2=Single-Agent, default=1): 
 
 🤖 Creating Multi-Agent WorkflowAgent...
 ✅ Multi-Agent system ready with 5 specialized agents:
@@ -98,28 +117,49 @@ Choose mode (1=Multi-Agent, 2=Single-Agent, default=1):
    • DocumentAgent
    • DraftAgent
 
-💬 Chat started! (Current mode: Multi-Agent)
+💬 Multi-Agent chat started!
 Type 'help' for commands or start chatting!
 
-You: What meetings do I have today?
-🤖 Briefly: Let me check your calendar for today's meetings...
+You: Help me prepare for tomorrow's board meeting
+🤖 Briefly: I'll help you prepare for tomorrow's board meeting. Let me coordinate with the specialized agents to gather everything you need.
 
-[CalendarAgent searches calendar events]
-[Coordinator synthesizes response]
+[CoordinatorAgent delegates to CalendarAgent]
+[CalendarAgent retrieves meeting details and records calendar info]
+[CoordinatorAgent delegates to EmailAgent] 
+[EmailAgent searches for related emails and records findings]
+[CoordinatorAgent delegates to DocumentAgent]
+[DocumentAgent finds relevant documents and notes]
+[CoordinatorAgent synthesizes all information]
 
-I found 3 meetings scheduled for today:
-1. Team Standup at 9:00 AM
-2. Project Review at 2:00 PM  
-3. One-on-one with Sarah at 4:30 PM
+I've gathered everything for your board meeting preparation:
 
-You: switch
+**Meeting Details:**
+- Tomorrow at 2:00 PM - 3:30 PM
+- Board Room A, attendees: CEO, CFO, and 5 board members
 
-🔄 Switching from Multi-Agent to Single-Agent mode...
+**Related Communications:**
+- 3 emails about quarterly results
+- 2 emails about budget proposals  
+- 1 email with agenda items
 
-🤖 Creating Single-Agent WorkflowAgent...
-✅ Single-Agent system ready
+**Relevant Documents:**
+- Q3 Financial Report
+- Budget Proposal 2024
+- Strategic Planning Notes
 
-💬 Switched to Single-Agent mode. Continue chatting!
+Would you like me to draft talking points or create follow-up reminders?
+
+You: clear
+
+🧹 Clearing conversation history...
+✅ Multi-Agent system ready with 5 specialized agents:
+   • Coordinator
+   • CalendarAgent
+   • EmailAgent
+   • DocumentAgent
+   • DraftAgent
+
+💬 History cleared. Continue chatting!
 
 You: quit
 
@@ -139,7 +179,6 @@ agent = WorkflowAgent(
     llm_model="gpt-4",  # Change model here
     llm_provider="openai",  # Change provider here
     max_tokens=2000,
-    use_multi_agent=use_multi_agent,
     office_service_url="http://localhost:8001",
 )
 ```
@@ -154,6 +193,7 @@ The demo includes comprehensive error handling:
 - LLM errors are caught and displayed gracefully
 - Keyboard interrupts (Ctrl+C) exit cleanly
 - Invalid commands show helpful messages
+- Agent coordination failures are handled gracefully
 - Connection issues are reported clearly
 
 ## Advanced Usage
@@ -166,19 +206,52 @@ Use `--streaming` flag to see real-time response generation:
 python services/demos/chat-simple.py --streaming
 ```
 
-This shows how the agent generates responses token by token, which is useful for understanding the workflow progression in multi-agent mode.
+This shows how the multi-agent system generates responses in real-time, including:
+- Agent handoffs and coordination
+- Tool usage by specialized agents
+- Context sharing between agents
+- Final response synthesis
 
 ### Testing Different Scenarios
 
-1. **Start in Multi-Agent mode** - Test complex workflows
-2. **Switch to Single-Agent mode** - Compare performance
-3. **Use 'clear'** - Test conversation memory reset
-4. **Try example prompts** - Explore different agent capabilities
+1. **Simple single-agent queries** - Test individual agent capabilities
+2. **Complex multi-agent workflows** - Test agent coordination
+3. **Use 'clear'** - Test conversation memory reset across agents
+4. **Try various example prompts** - Explore different agent specializations
+
+## Agent Specializations
+
+### CoordinatorAgent
+- Analyzes user requests
+- Delegates to appropriate specialized agents
+- Synthesizes results from multiple agents
+- Handles complex workflow orchestration
+
+### CalendarAgent
+- Retrieves calendar events and scheduling information
+- Searches by date ranges and criteria
+- Records calendar findings for other agents
+
+### EmailAgent
+- Manages email operations and searches
+- Finds relevant communications
+- Records email findings for coordination
+
+### DocumentAgent
+- Searches and manages documents and notes
+- Finds relevant information across document types
+- Records document findings for other agents
+
+### DraftAgent
+- Creates drafts of emails and content
+- Generates various types of written content
+- Integrates information from other agents
 
 ## Development
 
-The demo is designed to be easily extensible:
-- Add new commands by extending the command handling logic
-- Customize the welcome message and examples
-- Add new agent configurations or testing scenarios
-- Integrate with different LLM providers 
+The demo showcases the consolidated multi-agent architecture:
+- Single entry point with multi-agent coordination
+- Context sharing and state management across agents
+- Agent handoff capabilities
+- Extensible architecture for additional specialized agents
+- Integration with existing LLM providers and office services 

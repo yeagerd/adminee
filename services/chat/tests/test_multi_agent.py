@@ -25,43 +25,24 @@ def mock_history_manager():
 
 @pytest.fixture
 def multi_agent_workflow(mock_history_manager):
-    """Create a WorkflowAgent instance with multi-agent mode enabled."""
+    """Create a WorkflowAgent instance for multi-agent testing."""
     return WorkflowAgent(
         thread_id=123,
         user_id="test_user",
         llm_model="fake-model",
         llm_provider="fake",
         max_tokens=1000,
-        use_multi_agent=True,
     )
 
 
-@pytest.fixture
-def single_agent_workflow(mock_history_manager):
-    """Create a WorkflowAgent instance with single-agent mode."""
-    return WorkflowAgent(
-        thread_id=124,
-        user_id="test_user",
-        llm_model="fake-model",
-        llm_provider="fake",
-        max_tokens=1000,
-        use_multi_agent=False,
-    )
+
 
 
 def test_multi_agent_initialization(multi_agent_workflow):
-    """Test that multi-agent mode initializes correctly."""
-    assert multi_agent_workflow.use_multi_agent is True
+    """Test that multi-agent WorkflowAgent initializes correctly."""
     assert multi_agent_workflow.specialized_agents == {}  # Empty until built
     assert multi_agent_workflow.thread_id == 123
     assert multi_agent_workflow.user_id == "test_user"
-
-
-def test_single_agent_initialization(single_agent_workflow):
-    """Test that single-agent mode initializes correctly."""
-    assert single_agent_workflow.use_multi_agent is False
-    assert single_agent_workflow.specialized_agents == {}
-    assert single_agent_workflow.function_agent is None  # Not built yet
 
 
 @pytest.mark.asyncio
@@ -95,24 +76,7 @@ async def test_multi_agent_build(multi_agent_workflow, mock_history_manager):
     multi_agent_workflow.chat_agent.build_agent.assert_called_once_with("test input")
 
 
-@pytest.mark.asyncio
-async def test_single_agent_build(single_agent_workflow, mock_history_manager):
-    """Test building single-agent workflow."""
-    # Mock the ChatAgent build_agent method
-    single_agent_workflow.chat_agent.build_agent = AsyncMock()
-    single_agent_workflow.chat_agent._load_chat_history_from_db = AsyncMock(
-        return_value=[]
-    )
 
-    await single_agent_workflow.build_agent("test input")
-
-    # Check that single function agent was created
-    assert single_agent_workflow.function_agent is not None
-    assert len(single_agent_workflow.specialized_agents) == 0  # No specialized agents
-
-    # Check that workflow and context are initialized
-    assert single_agent_workflow.agent_workflow is not None
-    assert single_agent_workflow.context is not None
 
 
 def test_coordinator_agent_creation():
@@ -217,41 +181,33 @@ def test_agent_handoff_capabilities():
     document_agent = DocumentAgent(llm_model="fake-model", llm_provider="fake")
     draft_agent = DraftAgent(llm_model="fake-model", llm_provider="fake")
 
-    # Check handoff configurations
+    # Check handoff configurations - Coordinator can hand off to all specialized agents
     assert "CalendarAgent" in coordinator.can_handoff_to
     assert "EmailAgent" in coordinator.can_handoff_to
     assert "DocumentAgent" in coordinator.can_handoff_to
     assert "DraftAgent" in coordinator.can_handoff_to
 
-    assert "DraftAgent" in calendar_agent.can_handoff_to
-    assert "DraftAgent" in email_agent.can_handoff_to
-    assert "DraftAgent" in document_agent.can_handoff_to
+    # All specialized agents hand off back to CoordinatorAgent only
+    assert calendar_agent.can_handoff_to == ["CoordinatorAgent"]
+    assert email_agent.can_handoff_to == ["CoordinatorAgent"]
+    assert document_agent.can_handoff_to == ["CoordinatorAgent"]
+    assert draft_agent.can_handoff_to == ["CoordinatorAgent"]
 
 
 def test_default_system_prompts():
-    """Test that system prompts are different for single vs multi-agent mode."""
-    single_agent = WorkflowAgent(
-        thread_id=1,
-        user_id="test",
-        llm_model="fake-model",
-        llm_provider="fake",
-        use_multi_agent=False,
-    )
-
+    """Test that multi-agent system prompt is properly configured."""
     multi_agent = WorkflowAgent(
         thread_id=2,
         user_id="test",
         llm_model="fake-model",
         llm_provider="fake",
-        use_multi_agent=True,
     )
 
-    single_prompt = single_agent._get_default_system_prompt()
     multi_prompt = multi_agent._get_default_system_prompt()
 
-    assert single_prompt != multi_prompt
+    # Check that the multi-agent prompt contains coordinator-specific language
     assert "coordinator" in multi_prompt.lower()
-    assert "tools" in single_prompt.lower()
+    assert "specialized agents" in multi_prompt.lower()
 
 
 @pytest.mark.asyncio

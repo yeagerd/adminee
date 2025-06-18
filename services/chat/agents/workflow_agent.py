@@ -1,19 +1,26 @@
 """
-LlamaIndex AgentWorkflow implementation for chat_service.
+LlamaIndex Multi-Agent Workflow implementation for chat_service.
 
-This module provides a workflow-based agent architecture using LlamaIndex's AgentWorkflow
-and FunctionAgent. It integrates with the existing ChatAgent and LLM manager infrastructure
-while providing modern workflow capabilities including:
+This module provides a specialized multi-agent architecture using LlamaIndex's AgentWorkflow
+with domain-specific agents. It integrates with the existing ChatAgent and LLM manager 
+infrastructure while providing modern workflow capabilities including:
 
-- AgentWorkflow orchestration
-- Context and state management
+- Multi-agent orchestration with specialized agents
+- Context and state management across agents
 - Streaming support
 - Human-in-the-loop capabilities
 - Tool integration from existing llm_tools
 - Memory persistence through history_manager
-- Multi-agent support with specialized agents
+- Agent handoff and coordination
 
-This will eventually supersede the llama_manager.py orchestration layer.
+Specialized agents include:
+- CoordinatorAgent: Orchestrates tasks and handles handoffs
+- CalendarAgent: Calendar and scheduling operations
+- EmailAgent: Email management operations
+- DocumentAgent: Document and note operations
+- DraftAgent: Content creation and drafting
+
+This supersedes single-agent approaches with a focused multi-agent architecture.
 """
 
 import logging
@@ -43,15 +50,16 @@ logger = logging.getLogger(__name__)
 
 class WorkflowAgent:
     """
-    LlamaIndex AgentWorkflow-based chat agent.
+    LlamaIndex Multi-Agent Workflow chat agent.
 
-    This class provides a modern workflow-based architecture that:
-    - Uses AgentWorkflow for orchestration
+    This class provides a specialized multi-agent architecture that:
+    - Uses AgentWorkflow for multi-agent orchestration
     - Integrates with existing ChatAgent for memory management
-    - Supports context persistence and state management
+    - Supports context persistence and state management across agents
     - Provides streaming and human-in-the-loop capabilities
     - Uses existing LLM manager and tools
-    - Supports both single-agent and multi-agent modes
+    - Coordinates between specialized domain agents
+    - Handles agent handoffs and task delegation
     """
 
     def __init__(
@@ -70,7 +78,6 @@ class WorkflowAgent:
         enable_vector_memory: bool = True,
         max_facts: int = 50,
         office_service_url: str = "http://localhost:8001",
-        use_multi_agent: bool = False,
     ):
         self.thread_id = thread_id
         self.user_id = user_id
@@ -78,7 +85,6 @@ class WorkflowAgent:
         self.chat_history_token_ratio = chat_history_token_ratio
         self.token_flush_size = token_flush_size
         self.office_service_url = office_service_url
-        self.use_multi_agent = use_multi_agent
 
         # Agent configuration
         self.static_content = static_content
@@ -96,7 +102,7 @@ class WorkflowAgent:
             model=llm_model, provider=llm_provider, **self.llm_kwargs
         )
 
-        # Initialize tools (for single-agent mode)
+        # Initialize tools (legacy parameter, not used in multi-agent mode)
         self.tools = self._prepare_tools(tools)
 
         # Initialize tool registry for additional office tools
@@ -120,7 +126,6 @@ class WorkflowAgent:
         )
 
         # Workflow components (initialized during build)
-        self.function_agent: Optional[FunctionAgent] = None
         self.agent_workflow: Optional[AgentWorkflow] = None
         self.context: Optional[Context] = None
 
@@ -130,7 +135,7 @@ class WorkflowAgent:
         logger.info(
             f"WorkflowAgent initialized for user_id={self.user_id}, "
             f"thread_id={self.thread_id}, tools_count={len(self.tools)}, "
-            f"multi_agent={self.use_multi_agent}"
+            "mode=multi_agent"
         )
 
     def _prepare_tools(
@@ -154,20 +159,12 @@ class WorkflowAgent:
         return prepared_tools
 
     def _get_default_system_prompt(self) -> str:
-        """Get default system prompt for the workflow agent."""
-        if self.use_multi_agent:
-            return (
-                f"You are a helpful AI assistant coordinator. You are conversing with user {self.user_id}. "
-                "You coordinate between specialized agents to help with various tasks including email, calendar, "
-                "and document management. Always be helpful, accurate, and professional."
-            )
-        else:
-            return (
-                f"You are a helpful AI assistant. You are conversing with user {self.user_id}. "
-                "You have access to tools and can help with various tasks including email, calendar, "
-                "and document management. Always be helpful, accurate, and professional. "
-                "When using tools, provide clear explanations of what you're doing and why."
-            )
+        """Get default system prompt for the multi-agent workflow."""
+        return (
+            f"You are a helpful AI assistant coordinator. You are conversing with user {self.user_id}. "
+            "You coordinate between specialized agents to help with various tasks including email, calendar, "
+            "and document management. Always be helpful, accurate, and professional."
+        )
 
     def _create_specialized_agents(self) -> Dict[str, FunctionAgent]:
         """Create specialized agents for multi-agent mode."""
@@ -208,11 +205,11 @@ class WorkflowAgent:
 
     async def build_agent(self, user_input: str = "") -> None:
         """
-        Build the agent workflow components.
+        Build the multi-agent workflow components.
 
         This method initializes:
         - The underlying ChatAgent for memory management
-        - FunctionAgent(s) with tools and LLM
+        - Specialized agents for different domains
         - AgentWorkflow for orchestration
         - Context for state management
         """
@@ -220,56 +217,26 @@ class WorkflowAgent:
             # Build the underlying ChatAgent for memory management
             await self.chat_agent.build_agent(user_input)
 
-            if self.use_multi_agent:
-                # Multi-agent mode: create specialized agents
-                self.specialized_agents = self._create_specialized_agents()
+            # Create specialized agents
+            self.specialized_agents = self._create_specialized_agents()
 
-                # Create AgentWorkflow with specialized agents
-                agents_list = list(self.specialized_agents.values())
-                self.agent_workflow = AgentWorkflow(
-                    agents=agents_list,
-                    root_agent="Coordinator",  # Coordinator starts first
-                    initial_state={
-                        "thread_id": str(self.thread_id),
-                        "user_id": self.user_id,
-                        "conversation_history": [],
-                        "calendar_info": {},
-                        "email_info": {},
-                        "document_info": {},
-                        "draft_info": {},
-                    },
-                )
+            # Create AgentWorkflow with specialized agents
+            agents_list = list(self.specialized_agents.values())
+            self.agent_workflow = AgentWorkflow(
+                agents=agents_list,
+                root_agent="Coordinator",  # Coordinator starts first
+                initial_state={
+                    "thread_id": str(self.thread_id),
+                    "user_id": self.user_id,
+                    "conversation_history": [],
+                    "calendar_info": {},
+                    "email_info": {},
+                    "document_info": {},
+                    "draft_info": {},
+                },
+            )
 
-                logger.info("Multi-agent workflow created with specialized agents")
-
-            else:
-                # Single-agent mode: create one FunctionAgent with all tools
-                all_tools = self.tools.copy()
-
-                # Add office service tools from the registry
-                office_tools = list(self.tool_registry._tools.values())
-                all_tools.extend(office_tools)
-
-                # Create FunctionAgent with all tools
-                system_prompt = self.static_content or self._get_default_system_prompt()
-
-                self.function_agent = FunctionAgent(
-                    tools=all_tools,
-                    llm=self._llm,
-                    system_prompt=system_prompt,
-                )
-
-                # Create AgentWorkflow with the single FunctionAgent
-                self.agent_workflow = AgentWorkflow(
-                    agents=[self.function_agent],
-                    initial_state={
-                        "thread_id": str(self.thread_id),
-                        "user_id": self.user_id,
-                        "conversation_history": [],
-                    },
-                )
-
-                logger.info("Single-agent workflow created")
+            logger.info("Multi-agent workflow created with specialized agents")
 
             # Create context for state management
             if self.agent_workflow is None:
@@ -506,8 +473,8 @@ class WorkflowAgent:
 
     @property
     def agent(self):
-        """Access to the function agent."""
-        return self.function_agent
+        """Access to the coordinator agent."""
+        return self.specialized_agents.get("Coordinator")
 
     @property
     def memory(self):

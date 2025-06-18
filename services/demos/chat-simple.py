@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Interactive Chat Demo for WorkflowAgent.
+Interactive Multi-Agent Chat Demo for WorkflowAgent.
 
 This script provides a simple command-line interface to chat with the WorkflowAgent
-in both single-agent and multi-agent modes. Great for testing and demonstration.
+multi-agent system. Features specialized agents for calendar, email, documents, and drafting.
 
 Usage:
     python services/demos/chat-simple.py
@@ -29,16 +29,16 @@ logger = logging.getLogger(__name__)
 
 
 class ChatDemo:
-    """Interactive chat demo for WorkflowAgent."""
+    """Interactive multi-agent chat demo for WorkflowAgent."""
 
     def __init__(self):
         self.agent: Optional[WorkflowAgent] = None
         self.thread_id = 1
         self.user_id = "demo_user"
 
-    async def create_agent(self, use_multi_agent: bool = True) -> WorkflowAgent:
-        """Create and initialize a WorkflowAgent."""
-        print(f"\n🤖 Creating {'Multi-Agent' if use_multi_agent else 'Single-Agent'} WorkflowAgent...")
+    async def create_agent(self) -> WorkflowAgent:
+        """Create and initialize a multi-agent WorkflowAgent."""
+        print("\n🤖 Creating Multi-Agent WorkflowAgent...")
         
         agent = WorkflowAgent(
             thread_id=self.thread_id,
@@ -46,30 +46,31 @@ class ChatDemo:
             llm_model="gpt-3.5-turbo",  # You can change this to your preferred model
             llm_provider="openai",
             max_tokens=2000,
-            use_multi_agent=use_multi_agent,
             office_service_url="http://localhost:8001",
         )
         
         # Build the agent (this initializes the workflow)
         await agent.build_agent("Hello, I'm ready to help!")
         
-        if use_multi_agent:
-            print(f"✅ Multi-Agent system ready with {len(agent.specialized_agents)} specialized agents:")
-            for agent_name in agent.specialized_agents.keys():
-                print(f"   • {agent_name}")
-        else:
-            print("✅ Single-Agent system ready")
+        print(f"✅ Multi-Agent system ready with {len(agent.specialized_agents)} specialized agents:")
+        for agent_name in agent.specialized_agents.keys():
+            print(f"   • {agent_name}")
         
         return agent
 
     def show_welcome(self):
         """Show welcome message and instructions."""
         print("=" * 60)
-        print("🚀 Welcome to the Interactive WorkflowAgent Demo!")
+        print("🚀 Welcome to the Multi-Agent WorkflowAgent Demo!")
         print("=" * 60)
         print()
-        print("This demo lets you chat with the WorkflowAgent system.")
-        print("You can test both single-agent and multi-agent modes.")
+        print("This demo lets you chat with the multi-agent WorkflowAgent system.")
+        print("Features specialized agents for different tasks:")
+        print("  • CoordinatorAgent - Orchestrates and delegates tasks")
+        print("  • CalendarAgent - Manages calendar and scheduling")
+        print("  • EmailAgent - Handles email operations")
+        print("  • DocumentAgent - Manages documents and notes")
+        print("  • DraftAgent - Creates drafts and content")
         print()
         print("📋 Example prompts to try:")
         print("  • 'What meetings do I have this week?'")
@@ -80,7 +81,6 @@ class ChatDemo:
         print()
         print("💡 Commands:")
         print("  • 'quit' or 'exit' - Exit the demo")
-        print("  • 'switch' - Switch between single and multi-agent modes")
         print("  • 'help' - Show this help message")
         print("  • 'clear' - Clear the conversation history")
         print()
@@ -88,11 +88,17 @@ class ChatDemo:
     def show_help(self):
         """Show help message."""
         print("\n📋 Available Commands:")
-        print("  • Type any message to chat with the agent")
+        print("  • Type any message to chat with the multi-agent system")
         print("  • 'quit' or 'exit' - Exit the demo")
-        print("  • 'switch' - Switch between single and multi-agent modes")
         print("  • 'help' - Show this help message")
         print("  • 'clear' - Clear the conversation history")
+        print()
+        print("🤖 Specialized Agents:")
+        print("  • CoordinatorAgent - Orchestrates tasks and delegates to other agents")
+        print("  • CalendarAgent - Handles calendar queries and scheduling")
+        print("  • EmailAgent - Manages email operations and searches")
+        print("  • DocumentAgent - Finds and manages documents and notes")
+        print("  • DraftAgent - Creates drafts of emails and content")
         print()
         print("📋 Example prompts:")
         print("  • 'What meetings do I have this week?'")
@@ -102,19 +108,7 @@ class ChatDemo:
         print("  • 'Help me organize my calendar for tomorrow'")
         print()
 
-    async def switch_mode(self):
-        """Switch between single-agent and multi-agent modes."""
-        if self.agent is None:
-            return
-        
-        current_mode = "Multi-Agent" if self.agent.use_multi_agent else "Single-Agent"
-        new_mode = not self.agent.use_multi_agent
-        
-        print(f"\n🔄 Switching from {current_mode} to {'Multi-Agent' if new_mode else 'Single-Agent'} mode...")
-        
-        # Increment thread ID to start fresh
-        self.thread_id += 1
-        self.agent = await self.create_agent(use_multi_agent=new_mode)
+
 
     async def clear_history(self):
         """Clear the conversation history by creating a new agent."""
@@ -125,29 +119,16 @@ class ChatDemo:
         
         # Increment thread ID to start fresh
         self.thread_id += 1
-        current_mode = self.agent.use_multi_agent
-        self.agent = await self.create_agent(use_multi_agent=current_mode)
+        self.agent = await self.create_agent()
 
     async def chat_loop(self):
         """Main chat loop."""
         self.show_welcome()
         
-        # Ask user to choose mode
-        while True:
-            mode_choice = input("Choose mode (1=Multi-Agent, 2=Single-Agent, default=1): ").strip()
-            if mode_choice in ["", "1"]:
-                use_multi_agent = True
-                break
-            elif mode_choice == "2":
-                use_multi_agent = False
-                break
-            else:
-                print("Please enter 1, 2, or press Enter for default.")
+        # Create the multi-agent system
+        self.agent = await self.create_agent()
         
-        # Create the agent
-        self.agent = await self.create_agent(use_multi_agent=use_multi_agent)
-        
-        print(f"\n💬 Chat started! (Current mode: {'Multi-Agent' if self.agent.use_multi_agent else 'Single-Agent'})")
+        print(f"\n💬 Multi-Agent chat started!")
         print("Type 'help' for commands or start chatting!\n")
         
         while True:
@@ -168,10 +149,7 @@ class ChatDemo:
                     self.show_help()
                     continue
                 
-                elif user_input.lower() == "switch":
-                    await self.switch_mode()
-                    print(f"💬 Switched to {'Multi-Agent' if self.agent.use_multi_agent else 'Single-Agent'} mode. Continue chatting!\n")
-                    continue
+
                 
                 elif user_input.lower() == "clear":
                     await self.clear_history()
@@ -202,11 +180,11 @@ class ChatDemo:
                 print("Type 'quit' to exit or continue chatting.\n")
 
     async def run_streaming_demo(self):
-        """Demo streaming chat (if you want to show streaming responses)."""
-        print("\n🌊 Streaming Demo Mode")
-        print("This shows how responses are generated in real-time.\n")
+        """Demo streaming chat (shows how responses are generated in real-time)."""
+        print("\n🌊 Multi-Agent Streaming Demo")
+        print("This shows how the multi-agent system generates responses in real-time.\n")
         
-        self.agent = await self.create_agent(use_multi_agent=True)
+        self.agent = await self.create_agent()
         
         while True:
             try:
