@@ -193,7 +193,10 @@ class WorkflowAgent:
 
         # Create all specialized agents with thread_id
         agents["CoordinatorAgent"] = CoordinatorAgent(
-            llm_model=self.llm_model, llm_provider=self.llm_provider, **self.llm_kwargs
+            thread_id=self.thread_id,  # Pass thread_id for draft context awareness
+            llm_model=self.llm_model,
+            llm_provider=self.llm_provider,
+            **self.llm_kwargs,
         )
 
         agents["CalendarAgent"] = CalendarAgent(

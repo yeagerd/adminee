@@ -232,7 +232,6 @@ class TestDraftAgentTools:
         expected_new_tools = [
             "edit_existing_calendar_event",
             "delete_draft_calendar_edit",
-            "check_draft_conflicts",
             "clear_all_drafts",
         ]
 
@@ -243,5 +242,5 @@ class TestDraftAgentTools:
 
         # Check total number of tools (should be more than before)
         assert (
-            len(tool_names) >= 8
-        ), f"Expected at least 8 tools, got {len(tool_names)}: {tool_names}"
+            len(tool_names) >= 7
+        ), f"Expected at least 7 tools, got {len(tool_names)}: {tool_names}"

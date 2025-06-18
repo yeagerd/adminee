@@ -73,6 +73,7 @@ async def test_multi_agent_build(multi_agent_workflow, mock_history_manager):
 def test_coordinator_agent_creation():
     """Test that CoordinatorAgent can be created."""
     agent = CoordinatorAgent(
+        thread_id=123,  # Add required thread_id parameter
         llm_model="fake-model",
         llm_provider="fake",
     )
@@ -167,7 +168,9 @@ async def test_multi_agent_chat_flow(multi_agent_workflow, mock_history_manager)
 def test_agent_handoff_capabilities():
     """Test that agents have proper handoff capabilities."""
     # Create all agents
-    coordinator = CoordinatorAgent(llm_model="fake-model", llm_provider="fake")
+    coordinator = CoordinatorAgent(
+        thread_id=123, llm_model="fake-model", llm_provider="fake"
+    )
     calendar_agent = CalendarAgent(llm_model="fake-model", llm_provider="fake")
     email_agent = EmailAgent(llm_model="fake-model", llm_provider="fake")
     document_agent = DocumentAgent(llm_model="fake-model", llm_provider="fake")

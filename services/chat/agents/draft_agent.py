@@ -18,6 +18,7 @@ from llama_index.core.workflow import Context
 
 from services.chat.agents.llm_manager import get_llm_manager
 from services.chat.agents.llm_tools import (
+    _draft_storage,
     clear_all_drafts,
     create_draft_calendar_change,
     create_draft_calendar_event,
@@ -25,10 +26,6 @@ from services.chat.agents.llm_tools import (
     delete_draft_calendar_edit,
     delete_draft_calendar_event,
     delete_draft_email,
-    get_draft_calendar_edit,
-    get_draft_calendar_event,
-    has_draft_calendar_edit,
-    has_draft_calendar_event,
 )
 
 logger = logging.getLogger(__name__)
@@ -52,9 +49,93 @@ class DraftAgent(FunctionAgent):
     - Create and manage draft emails
     - Create and manage draft calendar events
     - Record draft information for other agents
+    - Enforce one active draft per conversation
 
     Thread ID is managed programmatically - no complex context lookups required.
     """
+
+    @staticmethod
+    def _get_existing_drafts(thread_id: str) -> dict:
+        """Get all existing drafts for a thread."""
+        drafts = {}
+
+        # Check for email draft
+        email_key = f"{thread_id}_email"
+        if email_key in _draft_storage:
+            drafts["email"] = _draft_storage[email_key]
+
+        # Check for calendar event draft
+        calendar_key = f"{thread_id}_calendar_event"
+        if calendar_key in _draft_storage:
+            drafts["calendar_event"] = _draft_storage[calendar_key]
+
+        # Check for calendar edit draft
+        calendar_edit_key = f"{thread_id}_calendar_edit"
+        if calendar_edit_key in _draft_storage:
+            drafts["calendar_edit"] = _draft_storage[calendar_edit_key]
+
+        return drafts
+
+    @staticmethod
+    def _has_any_draft(thread_id: str) -> bool:
+        """Check if there are any existing drafts for this thread."""
+        return len(DraftAgent._get_existing_drafts(thread_id)) > 0
+
+    @staticmethod
+    def _create_context_aware_prompt(thread_id: str) -> str:
+        """Create a context-aware system prompt based on existing drafts."""
+        base_prompt = (
+            "You are the DraftAgent, an internal agent specialized in creating and managing drafts. "
+            "You work behind the scenes and communicate through the CoordinatorAgent, never directly with users. "
+            "You can create draft emails and calendar events, and edit existing calendar events. "
+        )
+
+        existing_drafts = DraftAgent._get_existing_drafts(thread_id)
+
+        if existing_drafts:
+            # There are existing drafts - provide context for internal decision making
+            draft_descriptions = []
+            for draft_type, draft_data in existing_drafts.items():
+                if draft_type == "email":
+                    desc = f"Email draft (To: {draft_data.get('to', 'Not set')}, Subject: {draft_data.get('subject', 'Not set')})"
+                elif draft_type == "calendar_event":
+                    desc = f"Calendar event draft ('{draft_data.get('title', 'Untitled')}' at {draft_data.get('start_time', 'No time set')})"
+                elif draft_type == "calendar_edit":
+                    desc = f"Calendar edit draft (Event ID: {draft_data.get('event_id', 'Unknown')})"
+                draft_descriptions.append(desc)
+
+            context_prompt = (
+                f"EXISTING DRAFT CONTEXT:\n"
+                f"Current active draft(s) in this conversation ({len(existing_drafts)}):\n"
+                f"{''.join([f'- {desc}' for desc in draft_descriptions])}\n\n"
+                f"INTERNAL DRAFT POLICY:\n"
+                f"- You can modify/update existing drafts using appropriate tools\n"
+                f"- If asked to create a new draft of a different type, you should note potential conflicts\n"
+                f"- The CoordinatorAgent will handle one-draft policy enforcement with users\n"
+                f"- Focus on executing draft operations as requested\n\n"
+            )
+        else:
+            # No existing drafts - clean state for operations
+            context_prompt = (
+                "CLEAN SLATE CONTEXT:\n"
+                "No active drafts in this conversation.\n"
+                "You can create any type of draft as requested.\n\n"
+                "DRAFT CREATION:\n"
+                "- Execute draft creation operations as requested\n"
+                "- Gather all necessary details for complete drafts\n"
+                "- Pass results to CoordinatorAgent for user communication\n\n"
+            )
+
+        common_rules = (
+            "OPERATIONAL GUIDELINES:\n"
+            "- For calendar draft updates: Use 'create_draft_calendar_event' (it updates existing drafts)\n"
+            "- For existing calendar events in user's calendar: Use 'edit_existing_calendar_event'\n"
+            "- Execute requested operations and return results to CoordinatorAgent\n"
+            "- Do not communicate directly with users - hand off to CoordinatorAgent\n"
+            "- Provide clear status information about draft operations"
+        )
+
+        return base_prompt + context_prompt + common_rules
 
     def __init__(
         self,
@@ -73,33 +154,18 @@ class DraftAgent(FunctionAgent):
         thread_id_str = str(thread_id)
         tools = self._create_draft_tools(thread_id_str)
 
+        # Create context-aware system prompt based on existing drafts
+        context_aware_prompt = self._create_context_aware_prompt(thread_id_str)
+
         # Initialize FunctionAgent first
         super().__init__(
             name="DraftAgent",
             description=(
                 "Specialized agent for creating and managing drafts. Can create draft emails "
-                "and calendar events. Use this agent when users need to "
-                "compose, draft, or modify emails and calendar items."
+                "and calendar events. Enforces one active draft per conversation. "
+                "Use this agent when users need to compose, draft, or modify emails and calendar items."
             ),
-            system_prompt=(
-                "You are the DraftAgent, specialized in creating and managing drafts in the current conversation. "
-                "You can create draft emails and calendar events, and edit existing calendar events. "
-                "SMART CONTEXT RESOLUTION RULES:\n"
-                "- If user says 'change the time to 3pm' with no specific context:\n"
-                "  * If a calendar event draft exists: Update the draft using 'create_draft_calendar_event'\n"
-                "  * If no draft exists: Ask for clarification about which calendar event to edit\n"
-                "DRAFT CONFLICT PREVENTION:\n"
-                "- Only ONE calendar event draft allowed per conversation\n"
-                "- If user wants to create a new calendar event but a draft already exists:\n"
-                "  * Return error: 'You already have a calendar event draft. Please delete it first or specify you want to edit the existing draft.'\n"
-                "  * Suggest using 'delete_draft_calendar_event' to clear the existing draft\n"
-                "IMPORTANT: When users want to modify or update existing calendar event drafts (like changing time, location, attendees), "
-                "always use the 'create_draft_calendar_event' tool - it will automatically update the existing draft with new values. "
-                "When creating drafts, be thorough and ask for all necessary details. "
-                "Use the available tools to create, update, or delete drafts as needed. "
-                "Record draft information for other agents to reference. "
-                "Finally, hand off to the CoordinatorAgent to take the next action."
-            ),
+            system_prompt=context_aware_prompt,
             llm=llm,
             tools=tools,
             can_handoff_to=["CoordinatorAgent"],
@@ -191,28 +257,6 @@ class DraftAgent(FunctionAgent):
             logger.info(
                 f"📅 DraftAgent: Creating calendar event draft - Title: {title}, Start: {start_time}, Thread: {thread_id}"
             )
-
-            # Check if this is an update to existing draft or a new creation
-            existing_draft = get_draft_calendar_event(thread_id)
-            is_update = existing_draft is not None
-
-            # If no existing draft and user is clearly creating something new, check for conflicts
-            if not is_update and title is not None:
-                logger.info(
-                    "🔍 DraftAgent: New calendar event creation detected, checking for conflicts"
-                )
-                if has_draft_calendar_event(thread_id):
-                    existing_draft = get_draft_calendar_event(thread_id)
-                    conflict_msg = (
-                        f"❌ CONFLICT: You already have a calendar event draft in this conversation. "
-                        f"Current draft: '{existing_draft.get('title', 'Untitled')}' "
-                        f"at {existing_draft.get('start_time', 'No time set')}. "
-                        f"Please delete it first using 'delete_draft_calendar_event' or specify that you want to edit the existing draft."
-                    )
-                    logger.warning(
-                        f"❌ DraftAgent: Draft conflict detected - {conflict_msg}"
-                    )
-                    return conflict_msg
 
             result = create_draft_calendar_event(
                 thread_id,
@@ -337,52 +381,7 @@ class DraftAgent(FunctionAgent):
         )
         tools.append(delete_calendar_edit_draft_tool)
 
-        # Draft management and conflict prevention tools
-        def check_draft_conflicts(ctx: Context, operation: str) -> str:
-            """Check for draft conflicts before creating new drafts."""
-            logger.info(
-                f"🔍 DraftAgent: Checking draft conflicts for operation: {operation}"
-            )
-
-            if operation == "create_calendar_event":
-                if has_draft_calendar_event(thread_id):
-                    existing_draft = get_draft_calendar_event(thread_id)
-                    return (
-                        f"❌ CONFLICT: You already have a calendar event draft in this conversation. "
-                        f"Current draft: '{existing_draft.get('title', 'Untitled')}' "
-                        f"at {existing_draft.get('start_time', 'No time set')}. "
-                        f"Please delete it first using 'delete_draft_calendar_event' or specify that you want to edit the existing draft."
-                    )
-
-                if has_draft_calendar_edit(thread_id):
-                    existing_edit = get_draft_calendar_edit(thread_id)
-                    return (
-                        f"❌ CONFLICT: You already have a calendar event edit draft in this conversation. "
-                        f"Current edit draft for event: {existing_edit.get('event_id', 'Unknown')}. "
-                        f"Please delete it first using 'delete_draft_calendar_edit' or complete the existing edit."
-                    )
-
-            elif operation == "edit_calendar_event":
-                if has_draft_calendar_event(thread_id):
-                    existing_draft = get_draft_calendar_event(thread_id)
-                    return (
-                        f"❌ CONFLICT: You have a calendar event draft that needs to be handled first. "
-                        f"Current draft: '{existing_draft.get('title', 'Untitled')}' "
-                        f"at {existing_draft.get('start_time', 'No time set')}. "
-                        f"Please delete it using 'delete_draft_calendar_event' or create it first."
-                    )
-
-            return "✅ No conflicts detected. You can proceed with the operation."
-
-        check_conflicts_tool = FunctionTool.from_defaults(
-            fn=check_draft_conflicts,
-            name="check_draft_conflicts",
-            description=(
-                "Check for draft conflicts before creating new drafts. "
-                "Use this when user wants to create a new calendar event to ensure no existing draft conflicts."
-            ),
-        )
-        tools.append(check_conflicts_tool)
+        # Draft management tools
 
         def clear_all_conversation_drafts(ctx: Context) -> str:
             """Clear all drafts in the current conversation."""

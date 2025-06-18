@@ -364,7 +364,7 @@ def create_draft_calendar_change(
         draft_key = f"{thread_id}_calendar_edit"
 
         # Build the edit draft with only provided fields
-        edit_draft = {
+        edit_draft: Dict[str, Any] = {
             "type": "calendar_event_edit",
             "thread_id": thread_id,
             "event_id": event_id.strip(),

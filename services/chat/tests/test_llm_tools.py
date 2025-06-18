@@ -6,7 +6,7 @@ from services.chat.agents.llm_tools import (
     create_draft_calendar_change,
     create_draft_calendar_event,
     create_draft_email,
-    delete_draft_calendar_change,
+    delete_draft_calendar_edit,
     delete_draft_calendar_event,
     delete_draft_email,
     get_calendar_events,
@@ -221,9 +221,12 @@ def test_create_draft_calendar_change():
 
 def test_delete_draft_calendar_change():
     create_draft_calendar_change(
-        thread_id="thread123", event_id="event456", change_type="cancel"
+        thread_id="thread123",
+        event_id="event456",
+        change_type="cancel",
+        new_title="Updated Meeting",
     )
-    result = delete_draft_calendar_change(thread_id="thread123")
+    result = delete_draft_calendar_edit(thread_id="thread123")
     assert result["success"] is True
     assert "deleted" in result["message"]
 
