@@ -491,7 +491,7 @@ async def update_calendar_event(
                 )
             elif provider == "microsoft":
                 microsoft_client = cast(MicrosoftAPIClient, client)
-                updated_event_data = await update_microsoft_event(
+                await update_microsoft_event(
                     request_id, microsoft_client, original_event_id, event_data
                 )
 
