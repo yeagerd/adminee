@@ -402,8 +402,10 @@ def make_tools() -> Dict[str, FunctionTool]:
 
 
 class ToolRegistry:
-    def __init__(self):
-        self.office_service_url = get_settings().office_service_url
+    def __init__(self, office_service_url: Optional[str] = None):
+        self.office_service_url = (
+            office_service_url or get_settings().office_service_url
+        )
         self._tools = make_tools()
 
     def get_tool(self, tool_name: str):
@@ -457,8 +459,8 @@ class ToolRegistry:
 _tool_registry: Optional[ToolRegistry] = None
 
 
-def get_tool_registry() -> ToolRegistry:
+def get_tool_registry(office_service_url: Optional[str] = None) -> ToolRegistry:
     global _tool_registry
     if _tool_registry is None:
-        _tool_registry = ToolRegistry()
+        _tool_registry = ToolRegistry(office_service_url=office_service_url)
     return _tool_registry
