@@ -19,14 +19,16 @@ from llama_index.core.workflow import Context
 from services.chat.agents.llm_manager import get_llm_manager
 from services.chat.agents.llm_tools import (
     clear_all_drafts,
+    create_draft_calendar_change,
     create_draft_calendar_event,
     create_draft_email,
+    delete_draft_calendar_edit,
     delete_draft_calendar_event,
     delete_draft_email,
     get_draft_calendar_event,
     get_draft_email,
-    has_draft_calendar_event,
     has_draft_calendar_edit,
+    has_draft_calendar_event,
     has_draft_email,
 )
 
@@ -95,24 +97,24 @@ class DraftAgent(FunctionAgent):
         """Create a context-aware system prompt based on existing drafts."""
         # Get existing drafts info
         existing_drafts = DraftAgent._get_existing_drafts(thread_id)
-        
+
         # Build draft context
         draft_descriptions = []
-        
+
         if existing_drafts.get("email", False):
             # Get the actual email draft data
             draft_data = get_draft_email(thread_id)
             if draft_data:
                 desc = f"Email draft (To: {draft_data.get('to', 'Not set')}, Subject: {draft_data.get('subject', 'Not set')})"
                 draft_descriptions.append(desc)
-        
+
         if existing_drafts.get("calendar_event", False):
-            # Get the actual calendar draft data  
+            # Get the actual calendar draft data
             draft_data = get_draft_calendar_event(thread_id)
             if draft_data:
                 desc = f"Calendar event draft (Title: {draft_data.get('title', 'Not set')}, Start: {draft_data.get('start_time', 'Not set')})"
                 draft_descriptions.append(desc)
-        
+
         if existing_drafts.get("calendar_edit", False):
             # Calendar edit drafts don't have a get function, so just note their existence
             draft_descriptions.append("Calendar edit draft (modifying existing event)")
@@ -125,9 +127,9 @@ class DraftAgent(FunctionAgent):
 
         if draft_descriptions:
             draft_context = (
-                "CURRENT DRAFTS:\n" + 
-                "\n".join(f"- {desc}" for desc in draft_descriptions) +
-                "\n\nYou can edit these existing drafts or help the user finalize them.\n\n"
+                "CURRENT DRAFTS:\n"
+                + "\n".join(f"- {desc}" for desc in draft_descriptions)
+                + "\n\nYou can edit these existing drafts or help the user finalize them.\n\n"
             )
         else:
             draft_context = "CLEAN STATE: No active drafts - ready to create new drafts as requested.\n\n"
@@ -139,7 +141,6 @@ class DraftAgent(FunctionAgent):
             "- Modify existing calendar events (with event_id)\n"
             "- Clear all drafts when requested\n"
             "- Help users finalize and send/schedule their drafts\n\n"
-            
             "WORKFLOW:\n"
             "- Always ask for clarification if draft requirements are unclear\n"
             "- Provide helpful suggestions for improving drafts\n"
