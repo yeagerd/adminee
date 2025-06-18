@@ -326,8 +326,8 @@ class WorkflowAgent:
                 # Add conversation history
                 state["conversation_history"] = [
                     {
-                        "role": str(msg.role).lower(),
-                        "content": msg.content,
+                        "role": str(msg['role']).lower(),
+                        "content": msg['content'],
                     }
                     for msg in chat_history
                 ]
