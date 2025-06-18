@@ -163,6 +163,26 @@ class GoogleAPIClient(BaseAPIClient):
         )
         return response.json()
 
+    async def update_event(
+        self, calendar_id: str, event_id: str, event_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Update a calendar event.
+
+        Args:
+            calendar_id: Calendar ID containing the event
+            event_id: Event ID to update
+            event_data: Updated event data in Google Calendar API format
+
+        Returns:
+            Dictionary containing updated event details
+        """
+        response = await self.put(
+            f"/calendar/v3/calendars/{calendar_id}/events/{event_id}",
+            json_data=event_data,
+        )
+        return response.json()
+
     async def delete_event(self, calendar_id: str, event_id: str) -> None:
         """
         Delete a calendar event.
