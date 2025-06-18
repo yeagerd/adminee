@@ -4,6 +4,8 @@ import requests
 from llama_index.core.tools import FunctionTool
 from llama_index.core.tools.types import ToolOutput
 
+from services.chat.settings import get_settings
+
 
 def get_calendar_events(
     user_token: str,
@@ -11,7 +13,6 @@ def get_calendar_events(
     end_date: Optional[str] = None,
     user_timezone: Optional[str] = None,
     provider_type: Optional[str] = None,
-    office_service_url: str = "http://localhost:8001",
 ) -> Dict[str, Any]:
     headers = {"Authorization": f"Bearer {user_token}"}
     params = {}
@@ -24,6 +25,7 @@ def get_calendar_events(
     if provider_type:
         params["provider_type"] = provider_type
     try:
+        office_service_url = get_settings().office_service_url
         response = requests.get(
             f"{office_service_url}/events",
             headers=headers,
@@ -50,7 +52,6 @@ def get_emails(
     unread_only: Optional[bool] = None,
     folder: Optional[str] = None,
     max_results: Optional[int] = None,
-    office_service_url: str = "http://localhost:8001",
 ) -> Dict[str, Any]:
     headers = {"Authorization": f"Bearer {user_token}"}
     params = {}
@@ -65,6 +66,7 @@ def get_emails(
     if max_results:
         params["max_results"] = str(max_results)
     try:
+        office_service_url = get_settings().office_service_url
         response = requests.get(
             f"{office_service_url}/emails",
             headers=headers,
@@ -90,7 +92,6 @@ def get_notes(
     tags: Optional[str] = None,
     search_query: Optional[str] = None,
     max_results: Optional[int] = None,
-    office_service_url: str = "http://localhost:8001",
 ) -> Dict[str, Any]:
     headers = {"Authorization": f"Bearer {user_token}"}
     params = {}
@@ -103,6 +104,7 @@ def get_notes(
     if max_results:
         params["max_results"] = str(max_results)
     try:
+        office_service_url = get_settings().office_service_url
         response = requests.get(
             f"{office_service_url}/notes",
             headers=headers,
@@ -129,7 +131,6 @@ def get_documents(
     end_date: Optional[str] = None,
     search_query: Optional[str] = None,
     max_results: Optional[int] = None,
-    office_service_url: str = "http://localhost:8001",
 ) -> Dict[str, Any]:
     headers = {"Authorization": f"Bearer {user_token}"}
     params = {}
@@ -144,6 +145,7 @@ def get_documents(
     if max_results:
         params["max_results"] = str(max_results)
     try:
+        office_service_url = get_settings().office_service_url
         response = requests.get(
             f"{office_service_url}/documents",
             headers=headers,
@@ -332,29 +334,25 @@ def delete_draft_calendar_change(thread_id: str) -> Dict[str, Any]:
 # --- Tool Registry ---
 
 
-def make_tools(
-    office_service_url: str = "http://localhost:8001",
-) -> Dict[str, FunctionTool]:
-    # Each FunctionTool is partially applied with the office_service_url if needed
-    from functools import partial
-
+def make_tools() -> Dict[str, FunctionTool]:
+    # Create tools without partial application since office_service_url is now from settings
     get_calendar_events_tool = FunctionTool.from_defaults(
-        fn=partial(get_calendar_events, office_service_url=office_service_url),
+        fn=get_calendar_events,
         name="get_calendar_events",
         description="Retrieve calendar events from office service.",
     )
     get_emails_tool = FunctionTool.from_defaults(
-        fn=partial(get_emails, office_service_url=office_service_url),
+        fn=get_emails,
         name="get_emails",
         description="Retrieve emails from office service.",
     )
     get_notes_tool = FunctionTool.from_defaults(
-        fn=partial(get_notes, office_service_url=office_service_url),
+        fn=get_notes,
         name="get_notes",
         description="Retrieve notes from office service.",
     )
     get_documents_tool = FunctionTool.from_defaults(
-        fn=partial(get_documents, office_service_url=office_service_url),
+        fn=get_documents,
         name="get_documents",
         description="Retrieve documents from office service.",
     )
@@ -404,9 +402,11 @@ def make_tools(
 
 
 class ToolRegistry:
-    def __init__(self, office_service_url: str = "http://localhost:8001"):
-        self.office_service_url = office_service_url
-        self._tools = make_tools(office_service_url)
+    def __init__(self, office_service_url: Optional[str] = None):
+        self.office_service_url = (
+            office_service_url or get_settings().office_service_url
+        )
+        self._tools = make_tools()
 
     def get_tool(self, tool_name: str):
         return self._tools.get(tool_name)
@@ -459,10 +459,8 @@ class ToolRegistry:
 _tool_registry: Optional[ToolRegistry] = None
 
 
-def get_tool_registry(
-    office_service_url: str = "http://localhost:8001",
-) -> ToolRegistry:
+def get_tool_registry(office_service_url: Optional[str] = None) -> ToolRegistry:
     global _tool_registry
     if _tool_registry is None:
-        _tool_registry = ToolRegistry(office_service_url)
+        _tool_registry = ToolRegistry(office_service_url=office_service_url)
     return _tool_registry
