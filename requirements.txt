@@ -2,6 +2,7 @@
 black
 isort
 ruff
+tox==4.20.0
 pytest
 pytest-asyncio
 pytest-mock
@@ -9,4 +10,7 @@ mypy
 types-requests
 types-pytz
 pytest-xdist
-pytest-asyncio
+
+# Compatibility
+pyproject-api==1.8.0
+packaging==24.2
