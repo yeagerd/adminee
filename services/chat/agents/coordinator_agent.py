@@ -115,36 +115,12 @@ class CoordinatorAgent(FunctionAgent):
     @staticmethod
     def _create_context_aware_prompt(thread_id: str) -> str:
         """Create a context-aware system prompt based on existing drafts."""
+        # Common prefix that can be cached
         base_prompt = (
             "You are Briefly, a personal assistant and coordinator of specialized agents. "
             "Your role is to analyze user requests, coordinate between agents as needed, "
             "and synthesize comprehensive responses.\n\n"
         )
-
-        existing_drafts = CoordinatorAgent._get_existing_drafts(thread_id)
-        has_drafts = len(existing_drafts) > 0
-
-        if has_drafts:
-            # Static prompt for when drafts exist
-            draft_context = (
-                "🚨 ACTIVE DRAFTS DETECTED:\n"
-                "This conversation has active drafts that need attention.\n\n"
-                "ONE-DRAFT POLICY:\n"
-                "- Only one active draft per conversation to prevent confusion\n"
-                "- If user wants to create a different type of draft:\n"
-                "  * Suggest completing or deleting existing draft first\n"
-                "  * Guide them to use DraftAgent's delete tools or 'clear_all_drafts'\n"
-                "- If user wants to MODIFY existing drafts:\n"
-                "  * This is encouraged and allowed - hand off to DraftAgent\n"
-                "- Be helpful but firm about the one-draft policy\n"
-                "- Explain that this prevents confusion and ensures focus\n\n"
-            )
-        else:
-            # Static prompt for clean state
-            draft_context = (
-                "✅ CLEAN DRAFT STATE:\n"
-                "No active drafts in this conversation - you can create any type of draft as requested.\n\n"
-            )
 
         coordination_principles = (
             "COORDINATION PRINCIPLES:\n"
@@ -163,10 +139,36 @@ class CoordinatorAgent(FunctionAgent):
             "- Use analyze_user_request to record your analysis\n"
             "- Hand off to appropriate agents based on what information is needed\n"
             "- Coordinate between agents when multiple steps are required\n"
-            "- Use summarize_findings to create comprehensive final responses\n"
+            "- Use summarize_findings to create comprehensive final responses\n\n"
         )
 
-        return base_prompt + draft_context + coordination_principles
+        # Variable suffix based on draft state
+        existing_drafts = CoordinatorAgent._get_existing_drafts(thread_id)
+        has_drafts = len(existing_drafts) > 0
+
+        if has_drafts:
+            # Static prompt for when drafts exist
+            draft_context = (
+                "🚨 ACTIVE DRAFTS DETECTED:\n"
+                "This conversation has active drafts that need attention.\n\n"
+                "ONE-DRAFT POLICY:\n"
+                "- Only one active draft per conversation to prevent confusion\n"
+                "- If user wants to create a different type of draft:\n"
+                "  * Suggest completing or deleting existing draft first\n"
+                "  * Inform that they can complete/edit/delete draft in the UI or asking you to do it\n"
+                "- If user wants to MODIFY existing drafts:\n"
+                "  * This is encouraged and allowed - hand off to DraftAgent\n"
+                "- Be helpful but firm about the one-draft policy\n"
+                "- Explain that this prevents confusion and ensures focus"
+            )
+        else:
+            # Static prompt for clean state
+            draft_context = (
+                "✅ CLEAN DRAFT STATE:\n"
+                "No active drafts in this conversation - you can create any type of draft as requested."
+            )
+
+        return base_prompt + coordination_principles + draft_context
 
     def __init__(
         self,
