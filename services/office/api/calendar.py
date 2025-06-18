@@ -480,7 +480,7 @@ async def update_calendar_event(
                 "User may not have connected this provider.",
             )
 
-        # Update event based on provider
+        # Update event based on provider and capture the updated data
         updated_event_data = None
 
         async with client:
@@ -491,16 +491,57 @@ async def update_calendar_event(
                 )
             elif provider == "microsoft":
                 microsoft_client = cast(MicrosoftAPIClient, client)
-                await update_microsoft_event(
+                ms_updated_data = await update_microsoft_event(
                     request_id, microsoft_client, original_event_id, event_data
                 )
+                # Convert Microsoft format to Google format for consistency
+                updated_event_data = convert_microsoft_event_to_google_format(
+                    ms_updated_data
+                )
 
-        # Build response
+        # Extract actual updated values from the provider response
+        actual_title = (
+            updated_event_data.get("summary", event_data.title)
+            if updated_event_data
+            else event_data.title
+        )
+        actual_location = (
+            updated_event_data.get("location", event_data.location)
+            if updated_event_data
+            else event_data.location
+        )
+        actual_description = (
+            updated_event_data.get("description", event_data.description)
+            if updated_event_data
+            else event_data.description
+        )
+
+        # Extract datetime values, handling different formats
+        actual_start_time = event_data.start_time.isoformat()
+        actual_end_time = event_data.end_time.isoformat()
+
+        if updated_event_data:
+            start_data = updated_event_data.get("start", {})
+            end_data = updated_event_data.get("end", {})
+
+            if isinstance(start_data, dict) and "dateTime" in start_data:
+                actual_start_time = start_data["dateTime"]
+            if isinstance(end_data, dict) and "dateTime" in end_data:
+                actual_end_time = end_data["dateTime"]
+
+        # Build response with actual updated data
         response_data = {
             "event_id": event_id,
             "provider": provider,
             "status": "updated",
             "updated_at": datetime.now(timezone.utc).isoformat(),
+            "event_data": {
+                "title": actual_title,
+                "start_time": actual_start_time,
+                "end_time": actual_end_time,
+                "location": actual_location,
+                "description": actual_description,
+            },
             "request_metadata": {
                 "user_id": user_id,
                 "event_id": event_id,
