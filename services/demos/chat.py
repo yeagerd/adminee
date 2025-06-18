@@ -100,7 +100,6 @@ class ChatDemo:
             llm_model="gpt-4.1-nano",  # You can change this to your preferred model
             llm_provider="openai",
             max_tokens=2000,
-            office_service_url="http://localhost:8001",
         )
 
         # Build the agent (this initializes the workflow)

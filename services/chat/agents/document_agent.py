@@ -11,7 +11,6 @@ Part of the multi-agent workflow system.
 """
 
 import logging
-from functools import partial
 from typing import List
 
 from llama_index.core.agent.workflow import FunctionAgent
@@ -51,7 +50,6 @@ class DocumentAgent(FunctionAgent):
         self,
         llm_model: str = "gpt-4.1-nano",
         llm_provider: str = "openai",
-        office_service_url: str = "http://localhost:8001",
         **llm_kwargs,
     ):
         # Get LLM instance
@@ -60,7 +58,7 @@ class DocumentAgent(FunctionAgent):
         )
 
         # Create document-specific tools
-        tools = self._create_document_tools(office_service_url)
+        tools = self._create_document_tools()
 
         # Initialize FunctionAgent
         super().__init__(
@@ -86,13 +84,13 @@ class DocumentAgent(FunctionAgent):
 
         logger.info("DocumentAgent initialized with document and note tools")
 
-    def _create_document_tools(self, office_service_url: str) -> List[FunctionTool]:
+    def _create_document_tools(self) -> List[FunctionTool]:
         """Create document-specific tools."""
         tools = []
 
         # Document retrieval tool
         get_documents_tool = FunctionTool.from_defaults(
-            fn=partial(get_documents, office_service_url=office_service_url),
+            fn=get_documents,
             name="get_documents",
             description=(
                 "Retrieve documents from the office service. "
@@ -103,7 +101,7 @@ class DocumentAgent(FunctionAgent):
 
         # Notes retrieval tool
         get_notes_tool = FunctionTool.from_defaults(
-            fn=partial(get_notes, office_service_url=office_service_url),
+            fn=get_notes,
             name="get_notes",
             description=(
                 "Retrieve notes from the office service. "
@@ -129,7 +127,6 @@ class DocumentAgent(FunctionAgent):
 def create_document_agent(
     llm_model: str = "gpt-4.1-nano",
     llm_provider: str = "openai",
-    office_service_url: str = "http://localhost:8001",
     **llm_kwargs,
 ) -> DocumentAgent:
     """
@@ -138,7 +135,6 @@ def create_document_agent(
     Args:
         llm_model: LLM model name
         llm_provider: LLM provider name
-        office_service_url: URL for office service integration
         **llm_kwargs: Additional LLM configuration
 
     Returns:
@@ -147,6 +143,5 @@ def create_document_agent(
     return DocumentAgent(
         llm_model=llm_model,
         llm_provider=llm_provider,
-        office_service_url=office_service_url,
         **llm_kwargs,
     )

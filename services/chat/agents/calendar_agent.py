@@ -10,7 +10,6 @@ Part of the multi-agent workflow system.
 """
 
 import logging
-from functools import partial
 from typing import List
 
 from llama_index.core.agent.workflow import FunctionAgent
@@ -55,7 +54,6 @@ class CalendarAgent(FunctionAgent):
         self,
         llm_model: str = "gpt-4.1-nano",
         llm_provider: str = "openai",
-        office_service_url: str = "http://localhost:8001",
         **llm_kwargs,
     ):
         # Get LLM instance
@@ -64,7 +62,7 @@ class CalendarAgent(FunctionAgent):
         )
 
         # Create calendar-specific tools
-        tools = self._create_calendar_tools(office_service_url)
+        tools = self._create_calendar_tools()
 
         # Initialize FunctionAgent
         super().__init__(
@@ -89,13 +87,13 @@ class CalendarAgent(FunctionAgent):
 
         logger.info("CalendarAgent initialized with calendar tools")
 
-    def _create_calendar_tools(self, office_service_url: str) -> List[FunctionTool]:
+    def _create_calendar_tools(self) -> List[FunctionTool]:
         """Create calendar-specific tools."""
         tools = []
 
         # Calendar events retrieval tool
         get_calendar_events_tool = FunctionTool.from_defaults(
-            fn=partial(get_calendar_events, office_service_url=office_service_url),
+            fn=get_calendar_events,
             name="get_calendar_events",
             description=(
                 "Retrieve calendar events from the office service. "
@@ -122,7 +120,6 @@ class CalendarAgent(FunctionAgent):
 def create_calendar_agent(
     llm_model: str = "gpt-4.1-nano",
     llm_provider: str = "openai",
-    office_service_url: str = "http://localhost:8001",
     **llm_kwargs,
 ) -> CalendarAgent:
     """
@@ -131,7 +128,6 @@ def create_calendar_agent(
     Args:
         llm_model: LLM model name
         llm_provider: LLM provider name
-        office_service_url: URL for office service integration
         **llm_kwargs: Additional LLM configuration
 
     Returns:
@@ -140,6 +136,5 @@ def create_calendar_agent(
     return CalendarAgent(
         llm_model=llm_model,
         llm_provider=llm_provider,
-        office_service_url=office_service_url,
         **llm_kwargs,
     )

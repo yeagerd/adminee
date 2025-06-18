@@ -111,7 +111,7 @@ async def demo_office_tools():
         llm_model="fake-model",
         llm_provider="fake",
         max_tokens=2000,
-        office_service_url="http://localhost:8001",
+
     )
 
     # Get available office tools

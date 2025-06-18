@@ -90,7 +90,6 @@ def test_calendar_agent_creation():
     agent = CalendarAgent(
         llm_model="fake-model",
         llm_provider="fake",
-        office_service_url="http://localhost:8001",
     )
 
     assert agent.name == "CalendarAgent"
@@ -103,7 +102,6 @@ def test_email_agent_creation():
     agent = EmailAgent(
         llm_model="fake-model",
         llm_provider="fake",
-        office_service_url="http://localhost:8001",
     )
 
     assert agent.name == "EmailAgent"
@@ -116,7 +114,6 @@ def test_document_agent_creation():
     agent = DocumentAgent(
         llm_model="fake-model",
         llm_provider="fake",
-        office_service_url="http://localhost:8001",
     )
 
     assert agent.name == "DocumentAgent"

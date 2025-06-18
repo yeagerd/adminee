@@ -76,14 +76,12 @@ class WorkflowAgent:
         enable_fact_extraction: bool = True,
         enable_vector_memory: bool = True,
         max_facts: int = 50,
-        office_service_url: str = "http://localhost:8001",
     ):
         self.thread_id = thread_id
         self.user_id = user_id
         self.max_tokens = max_tokens
         self.chat_history_token_ratio = chat_history_token_ratio
         self.token_flush_size = token_flush_size
-        self.office_service_url = office_service_url
 
         # Agent configuration
         self.static_content = static_content
@@ -105,7 +103,7 @@ class WorkflowAgent:
         self.tools = self._prepare_tools(tools)
 
         # Initialize tool registry for additional office tools
-        self.tool_registry = get_tool_registry(office_service_url=office_service_url)
+        self.tool_registry = get_tool_registry()
 
         # Store configuration for direct database operations (no ChatAgent needed)
         self.max_tokens = max_tokens
@@ -200,21 +198,18 @@ class WorkflowAgent:
         agents["CalendarAgent"] = CalendarAgent(
             llm_model=self.llm_model,
             llm_provider=self.llm_provider,
-            office_service_url=self.office_service_url,
             **self.llm_kwargs,
         )
 
         agents["EmailAgent"] = EmailAgent(
             llm_model=self.llm_model,
             llm_provider=self.llm_provider,
-            office_service_url=self.office_service_url,
             **self.llm_kwargs,
         )
 
         agents["DocumentAgent"] = DocumentAgent(
             llm_model=self.llm_model,
             llm_provider=self.llm_provider,
-            office_service_url=self.office_service_url,
             **self.llm_kwargs,
         )
 

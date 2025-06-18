@@ -95,7 +95,6 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
         llm_model=get_settings().llm_model,
         llm_provider=get_settings().llm_provider,
         max_tokens=get_settings().max_tokens,
-        office_service_url=get_settings().office_service_url,
     )
 
     # Build the agent workflow if not already built
@@ -168,7 +167,6 @@ async def chat_stream_endpoint(request: ChatRequest) -> StreamingResponse:
                 llm_model=get_settings().llm_model,
                 llm_provider=get_settings().llm_provider,
                 max_tokens=get_settings().max_tokens,
-                office_service_url=get_settings().office_service_url,
             )
 
             # Build the agent workflow if not already built

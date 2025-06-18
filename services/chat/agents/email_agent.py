@@ -11,7 +11,6 @@ Part of the multi-agent workflow system.
 """
 
 import logging
-from functools import partial
 from typing import List
 
 from llama_index.core.agent.workflow import FunctionAgent
@@ -54,7 +53,6 @@ class EmailAgent(FunctionAgent):
         self,
         llm_model: str = "gpt-4.1-nano",
         llm_provider: str = "openai",
-        office_service_url: str = "http://localhost:8001",
         **llm_kwargs,
     ):
         # Get LLM instance
@@ -63,7 +61,7 @@ class EmailAgent(FunctionAgent):
         )
 
         # Create email-specific tools
-        tools = self._create_email_tools(office_service_url)
+        tools = self._create_email_tools()
 
         # Initialize FunctionAgent
         super().__init__(
@@ -89,13 +87,13 @@ class EmailAgent(FunctionAgent):
 
         logger.info("EmailAgent initialized with email tools")
 
-    def _create_email_tools(self, office_service_url: str) -> List[FunctionTool]:
+    def _create_email_tools(self) -> List[FunctionTool]:
         """Create email-specific tools."""
         tools = []
 
         # Email retrieval tool
         get_emails_tool = FunctionTool.from_defaults(
-            fn=partial(get_emails, office_service_url=office_service_url),
+            fn=get_emails,
             name="get_emails",
             description=(
                 "Retrieve emails from the office service. "
@@ -121,7 +119,6 @@ class EmailAgent(FunctionAgent):
 def create_email_agent(
     llm_model: str = "gpt-4.1-nano",
     llm_provider: str = "openai",
-    office_service_url: str = "http://localhost:8001",
     **llm_kwargs,
 ) -> EmailAgent:
     """
@@ -130,7 +127,6 @@ def create_email_agent(
     Args:
         llm_model: LLM model name
         llm_provider: LLM provider name
-        office_service_url: URL for office service integration
         **llm_kwargs: Additional LLM configuration
 
     Returns:
@@ -139,6 +135,5 @@ def create_email_agent(
     return EmailAgent(
         llm_model=llm_model,
         llm_provider=llm_provider,
-        office_service_url=office_service_url,
         **llm_kwargs,
     )
