@@ -69,7 +69,7 @@ class ChatDemo:
         agent = WorkflowAgent(
             thread_id=self.thread_id,
             user_id=self.user_id,
-            llm_model="gpt-3.5-turbo",  # You can change this to your preferred model
+            llm_model="gpt-4.1-nano",  # You can change this to your preferred model
             llm_provider="openai",
             max_tokens=2000,
             office_service_url="http://localhost:8001",

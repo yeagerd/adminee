@@ -158,7 +158,7 @@ class CoordinatorAgent(FunctionAgent):
 
 
 def create_coordinator_agent(
-    llm_model: str = "gpt-3.5-turbo", llm_provider: str = "openai", **llm_kwargs
+    llm_model: str = "gpt-4.1-nano", llm_provider: str = "openai", **llm_kwargs
 ) -> CoordinatorAgent:
     """
     Factory function to create a CoordinatorAgent instance.

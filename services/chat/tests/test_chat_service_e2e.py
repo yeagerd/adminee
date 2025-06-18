@@ -26,7 +26,7 @@ def fake_llm_env(monkeypatch):
     # Set a test OpenAI API key for the multi-agent workflow
     monkeypatch.setenv("OPENAI_API_KEY", "test-key-for-multi-agent")
     # Set test LLM model
-    monkeypatch.setenv("LLM_MODEL", "gpt-3.5-turbo")
+    monkeypatch.setenv("LLM_MODEL", "gpt-4.1-nano")
     monkeypatch.setenv("LLM_PROVIDER", "openai")
     # Initialize test database synchronously
     asyncio.run(setup_test_database())

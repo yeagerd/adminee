@@ -49,7 +49,7 @@ class DocumentAgent(FunctionAgent):
 
     def __init__(
         self,
-        llm_model: str = "gpt-3.5-turbo",
+        llm_model: str = "gpt-4.1-nano",
         llm_provider: str = "openai",
         office_service_url: str = "http://localhost:8001",
         **llm_kwargs,
@@ -127,7 +127,7 @@ class DocumentAgent(FunctionAgent):
 
 
 def create_document_agent(
-    llm_model: str = "gpt-3.5-turbo",
+    llm_model: str = "gpt-4.1-nano",
     llm_provider: str = "openai",
     office_service_url: str = "http://localhost:8001",
     **llm_kwargs,

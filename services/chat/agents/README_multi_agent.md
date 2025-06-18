@@ -79,7 +79,7 @@ from services.chat.agents.workflow_agent import WorkflowAgent
 agent = WorkflowAgent(
     thread_id=123,
     user_id="user123",
-    llm_model="gpt-3.5-turbo",
+    llm_model="gpt-4.1-nano",
     llm_provider="openai",
     use_multi_agent=True,  # Enable multi-agent mode
 )
@@ -98,7 +98,7 @@ response = await agent.chat(
 agent = WorkflowAgent(
     thread_id=123,
     user_id="user123",
-    llm_model="gpt-3.5-turbo",
+    llm_model="gpt-4.1-nano",
     llm_provider="openai",
     use_multi_agent=False,  # Single-agent mode
 )
@@ -117,30 +117,30 @@ from services.chat.agents.coordinator_agent import CoordinatorAgent
 
 # Create individual specialized agents
 calendar_agent = CalendarAgent(
-    llm_model="gpt-3.5-turbo",
+    llm_model="gpt-4.1-nano",
     llm_provider="openai",
     office_service_url="http://localhost:8001"
 )
 
 email_agent = EmailAgent(
-    llm_model="gpt-3.5-turbo", 
+    llm_model="gpt-4.1-nano", 
     llm_provider="openai",
     office_service_url="http://localhost:8001"
 )
 
 document_agent = DocumentAgent(
-    llm_model="gpt-3.5-turbo",
+    llm_model="gpt-4.1-nano",
     llm_provider="openai", 
     office_service_url="http://localhost:8001"
 )
 
 draft_agent = DraftAgent(
-    llm_model="gpt-3.5-turbo",
+    llm_model="gpt-4.1-nano",
     llm_provider="openai"
 )
 
 coordinator = CoordinatorAgent(
-    llm_model="gpt-3.5-turbo",
+    llm_model="gpt-4.1-nano",
     llm_provider="openai"
 )
 ```

@@ -56,7 +56,7 @@ class Settings(BaseSettings):
 
     # LLM Configuration
     llm_provider: str = Field(default="openai", description="LLM provider")
-    llm_model: str = Field(default="gpt-3.5-turbo", description="LLM model")
+    llm_model: str = Field(default="gpt-4.1-nano", description="LLM model")
     max_tokens: int = Field(
         default=2000, description="Maximum tokens for LLM responses"
     )

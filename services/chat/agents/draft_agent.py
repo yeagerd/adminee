@@ -157,7 +157,7 @@ class DraftAgent(FunctionAgent):
 
     def __init__(
         self,
-        llm_model: str = "gpt-3.5-turbo",
+        llm_model: str = "gpt-4.1-nano",
         llm_provider: str = "openai",
         **llm_kwargs,
     ):
@@ -256,7 +256,7 @@ class DraftAgent(FunctionAgent):
 
 
 def create_draft_agent(
-    llm_model: str = "gpt-3.5-turbo", llm_provider: str = "openai", **llm_kwargs
+    llm_model: str = "gpt-4.1-nano", llm_provider: str = "openai", **llm_kwargs
 ) -> DraftAgent:
     """
     Factory function to create a DraftAgent instance.

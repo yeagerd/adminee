@@ -21,7 +21,7 @@ from services.chat.agents.workflow_agent import WorkflowAgent
 agent = WorkflowAgent(
     thread_id=123,
     user_id="user123",
-    llm_model="gpt-3.5-turbo",
+    llm_model="gpt-4.1-nano",
     llm_provider="openai",
     max_tokens=2000,
 )
@@ -67,7 +67,7 @@ context_data = await agent.save_context()
 new_agent = WorkflowAgent(
     thread_id=123,
     user_id="user123",
-    llm_model="gpt-3.5-turbo",
+    llm_model="gpt-4.1-nano",
     llm_provider="openai",
 )
 await new_agent.load_context(context_data)
