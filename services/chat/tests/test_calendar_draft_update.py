@@ -6,7 +6,6 @@ using the create_draft_calendar_event function, which should be used
 for both creating and updating drafts.
 """
 
-
 from services.chat.agents.llm_tools import (
     _draft_storage,
     create_draft_calendar_event,
