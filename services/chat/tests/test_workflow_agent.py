@@ -165,3 +165,76 @@ def test_compatibility_properties(workflow_agent):
     # Test agent property - should return None until built
     agent = workflow_agent.agent
     assert agent is None  # Coordinator agent is None until build_agent is called
+
+
+@pytest.mark.asyncio
+async def test_load_conversation_history(workflow_agent, mock_history_manager):
+    """Test loading conversation history into workflow context."""
+    # 1. Setup mock context
+    mock_context = MagicMock()
+    mock_context.get = AsyncMock(return_value={})  # Simulate current state is empty
+    mock_context.set = AsyncMock()
+    workflow_agent.context = mock_context
+
+    # 2. Mock _load_chat_history_from_db
+    # The method expects a list of objects that can be accessed with msg['role'] and msg['content']
+    mock_db_history = [
+        {
+            "role": "USER",
+            "content": "Hello there!",
+            "user_id": "test_user",
+            "created_at": "2023-01-01T10:00:00",
+        },
+        {
+            "role": "ASSISTANT",
+            "content": "Hi, how can I help?",
+            "user_id": "assistant",
+            "created_at": "2023-01-01T10:00:30",
+        },
+        {
+            "role": "User",
+            "content": "Tell me a joke.",
+            "user_id": "test_user",
+            "created_at": "2023-01-01T10:01:00",
+        },
+    ]
+    workflow_agent._load_chat_history_from_db = AsyncMock(return_value=mock_db_history)
+
+    # 3. Call the method
+    await workflow_agent._load_conversation_history()
+
+    # 4. Assertions
+    workflow_agent._load_chat_history_from_db.assert_called_once()
+
+    # Assert context.get was called to fetch the current state
+    mock_context.get.assert_called_once_with("state", {})
+
+    # Assert context.set was called with the correctly formatted history
+    expected_formatted_history = [
+        {"role": "user", "content": "Hello there!"},
+        {"role": "assistant", "content": "Hi, how can I help?"},
+        {"role": "user", "content": "Tell me a joke."},
+    ]
+
+    # The actual call to set will be like: mock_context.set('state', {'conversation_history': [...]})
+    # We need to check the arguments of the call
+    args, kwargs = mock_context.set.call_args
+    assert args[0] == "state"  # First positional argument is 'state'
+    assert (
+        "conversation_history" in args[1]
+    )  # Second positional argument is the state dictionary
+    actual_history_set = args[1]["conversation_history"]
+
+    assert actual_history_set == expected_formatted_history
+    mock_context.set.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_load_conversation_history_no_context(workflow_agent):
+    """Test _load_conversation_history when context is None."""
+    workflow_agent.context = None
+    workflow_agent._load_chat_history_from_db = AsyncMock()
+
+    await workflow_agent._load_conversation_history()
+
+    workflow_agent._load_chat_history_from_db.assert_not_called()
