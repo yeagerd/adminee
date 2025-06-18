@@ -425,12 +425,12 @@ async def create_draft_email_with_thread_id(
                 f"📝 Draft Email Content:\n  To: {to}\n  Subject: {subject}\n  Body: {body[:200]}{'...' if len(body) > 200 else ''}"
             )
 
-        # MANUALLY TRIGGER HANDOFF BACK TO COORDINATOR
-        logger.info("🔄 DraftAgent: Manually triggering handoff to Coordinator")
-        await ctx.set("next_agent", "CoordinatorAgent")
-
     else:
         logger.warning(f"❌ DraftAgent: Failed to create email draft - {result}")
+
+    # MANUALLY TRIGGER HANDOFF BACK TO COORDINATOR
+    logger.info("🔄 DraftAgent: Manually triggering handoff to Coordinator")
+    await ctx.set("next_agent", "CoordinatorAgent")
 
     return str(result)
 
@@ -474,14 +474,14 @@ async def create_draft_calendar_event_with_thread_id(
             f"📝 Draft Calendar Event:\n  Title: {title}\n  Start: {start_time}\n  End: {end_time}\n  Location: {location}"
         )
 
-        # MANUALLY TRIGGER HANDOFF BACK TO COORDINATOR
-        logger.info("🔄 DraftAgent: Manually triggering handoff to Coordinator")
-        await ctx.set("next_agent", "CoordinatorAgent")
-
     else:
         logger.warning(
             f"❌ DraftAgent: Failed to create calendar event draft - {result}"
         )
+
+    # MANUALLY TRIGGER HANDOFF BACK TO COORDINATOR
+    logger.info("🔄 DraftAgent: Manually triggering handoff to Coordinator")
+    await ctx.set("next_agent", "CoordinatorAgent")
 
     return str(result)
 
@@ -509,6 +509,10 @@ async def create_draft_calendar_change_with_thread_id(
 ) -> str:
     """Create or update draft calendar change using the provided thread_id."""
     actual_thread_id = thread_id or "default_thread"
+    logger.info(
+        f"📅 DraftAgent: Creating calendar change draft - Event ID: {event_id}, Type: {change_type}, Thread: {actual_thread_id}"
+    )
+
     result = create_draft_calendar_change(
         actual_thread_id,
         event_id,
@@ -525,6 +529,16 @@ async def create_draft_calendar_change_with_thread_id(
     if result.get("success"):
         draft_info = f"Calendar change draft created/updated - Event ID: {event_id}, Type: {change_type}"
         await record_draft_info(ctx, draft_info, "calendar_change")
+        logger.info("✅ DraftAgent: Calendar change draft created successfully")
+
+    else:
+        logger.warning(
+            f"❌ DraftAgent: Failed to create calendar change draft - {result}"
+        )
+
+    # MANUALLY TRIGGER HANDOFF BACK TO COORDINATOR
+    logger.info("🔄 DraftAgent: Manually triggering handoff to CoordinatorAgent")
+    await ctx.set("next_agent", "CoordinatorAgent")
 
     return str(result)
 
