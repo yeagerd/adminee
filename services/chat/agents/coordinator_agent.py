@@ -126,25 +126,21 @@ class CoordinatorAgent(FunctionAgent):
             "COORDINATION PRINCIPLES:\n"
             "- Think about what information is needed to fulfill the user's request\n"
             "- Coordinate multiple agents when necessary (e.g., check availability before scheduling)\n"
-            "- CalendarAgent is READ-ONLY (view/search only) - use DraftAgent for creation/editing\n"
-            "- For calendar edits: get event_id from CalendarAgent first, then use DraftAgent\n"
-            "- If context is unclear, ask for clarification\n"
-            "- Always ensure user requests are fully satisfied\n\n"
-            "AGENT CAPABILITIES:\n"
-            "- CalendarAgent: View calendars, find events, check availability\n"
-            "- EmailAgent: Search and retrieve emails\n"
-            "- DocumentAgent: Search documents and files\n"
-            "- DraftAgent: Create/edit drafts for new emails, new events, and modifying events\n\n"
-            "WORKFLOW PROCESS:\n"
-            "- Use analyze_user_request to record your analysis\n"
-            "- Hand off to appropriate agents based on what information is needed\n"
-            "- Coordinate between agents when multiple steps are required\n"
-            "- Use summarize_findings to create comprehensive final responses\n\n"
+            "- Use appropriate agents for their specialized capabilities\n"
+            "- Synthesize responses from multiple agents into coherent answers\n"
+            "- Always maintain context and provide helpful, actionable responses\n\n"
+            "AVAILABLE AGENTS:\n"
+            "- CalendarAgent: Calendar operations, availability checking, event management\n"
+            "- EmailAgent: Email composition, sending, and management\n"
+            "- DocumentAgent: Document creation, editing, note-taking\n"
+            "- DraftAgent: Draft management (email/calendar), editing, completion\n\n"
         )
 
-        # Variable suffix based on draft state
-        existing_drafts = CoordinatorAgent._get_existing_drafts(thread_id)
-        has_drafts = len(existing_drafts) > 0
+        # Import here to avoid circular dependency
+        from services.chat.agents.draft_agent import DraftAgent
+
+        # Check for existing drafts using the helper
+        has_drafts = bool(DraftAgent._get_existing_drafts(thread_id))
 
         if has_drafts:
             # Static prompt for when drafts exist
@@ -155,15 +151,14 @@ class CoordinatorAgent(FunctionAgent):
                 "- If user refers to 'the draft', 'the event', 'the meeting', or similar generic terms → likely referring to ACTIVE DRAFT\n"
                 "- If user uses vague edit requests like 'change the time', 'update the title' → likely about ACTIVE DRAFT\n"
                 "- If user specifies existing events with details like 'my 3pm meeting', 'tomorrow's call with John' → existing calendar event\n"
-                "- When in doubt, ask for clarification: 'Are you referring to the active draft or an existing calendar event?'\n\n"
-                "ROUTING DECISIONS:\n"
-                "- Active draft modifications → Hand off to DraftAgent immediately\n"
-                "- Existing event edits → Apply one-draft policy guidance below\n\n"
-                "ONE-DRAFT POLICY:\n"
+                "- If user wants to schedule/create something new while drafts exist → apply one-draft policy\n\n"
+                "ONE-DRAFT POLICY (STRICTLY ENFORCED):\n"
                 "- Only one active draft per conversation to prevent confusion\n"
-                "- If user wants to create a different type of draft:\n"
-                "  * Suggest completing or deleting existing draft first\n"
-                "  * Inform that they can complete/edit/delete draft in the UI or asking you to do it\n"
+                "- DraftAgent will return an ERROR if trying to create a different draft type\n"
+                "- If user wants to create a DIFFERENT type of draft:\n"
+                "  * Explain the one-draft policy and the error from DraftAgent\n"
+                "  * Ask: 'Would you like me to delete the current draft and create a new one instead?'\n"
+                "  * Only proceed after explicit user confirmation\n"
                 "- If user wants to MODIFY existing drafts:\n"
                 "  * This is encouraged and allowed - hand off to DraftAgent\n"
                 "- Be helpful but firm about the one-draft policy\n"
@@ -171,8 +166,8 @@ class CoordinatorAgent(FunctionAgent):
         else:
             # Static prompt for clean state
             draft_context = (
-                "✅ CLEAN DRAFT STATE:\n"
-                "No active drafts in this conversation - you can create any type of draft as requested."
+                "✅ CLEAN STATE:\n"
+                "No active drafts in this conversation - you can create any type of draft as requested.\n"
             )
 
         return base_prompt + coordination_principles + draft_context

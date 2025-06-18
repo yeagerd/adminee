@@ -10,7 +10,7 @@ Part of the multi-agent workflow system.
 """
 
 import logging
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from llama_index.core.agent.workflow import FunctionAgent
 from llama_index.core.tools import FunctionTool
@@ -18,14 +18,16 @@ from llama_index.core.workflow import Context
 
 from services.chat.agents.llm_manager import get_llm_manager
 from services.chat.agents.llm_tools import (
-    _draft_storage,
     clear_all_drafts,
-    create_draft_calendar_change,
     create_draft_calendar_event,
     create_draft_email,
-    delete_draft_calendar_edit,
     delete_draft_calendar_event,
     delete_draft_email,
+    get_draft_calendar_event,
+    get_draft_email,
+    has_draft_calendar_event,
+    has_draft_calendar_edit,
+    has_draft_email,
 )
 
 logger = logging.getLogger(__name__)
@@ -55,26 +57,33 @@ class DraftAgent(FunctionAgent):
     """
 
     @staticmethod
-    def _get_existing_drafts(thread_id: str) -> dict:
-        """Get all existing drafts for a thread."""
-        drafts = {}
+    def _get_existing_drafts(thread_id: str) -> Dict[str, bool]:
+        """Get information about existing drafts for the thread."""
+        return {
+            "email": has_draft_email(thread_id),
+            "calendar_event": has_draft_calendar_event(thread_id),
+            "calendar_edit": has_draft_calendar_edit(thread_id),
+        }
 
-        # Check for email draft
-        email_key = f"{thread_id}_email"
-        if email_key in _draft_storage:
-            drafts["email"] = _draft_storage[email_key]
+    @staticmethod
+    def _get_other_drafts(thread_id: str, besides: str) -> List[str]:
+        """Get list of existing draft types other than the specified one.
 
-        # Check for calendar event draft
-        calendar_key = f"{thread_id}_calendar_event"
-        if calendar_key in _draft_storage:
-            drafts["calendar_event"] = _draft_storage[calendar_key]
+        Args:
+            thread_id: The thread ID to check
+            besides: The draft type to exclude (e.g., "email", "calendar_event", "calendar_edit")
 
-        # Check for calendar edit draft
-        calendar_edit_key = f"{thread_id}_calendar_edit"
-        if calendar_edit_key in _draft_storage:
-            drafts["calendar_edit"] = _draft_storage[calendar_edit_key]
+        Returns:
+            List of draft type names that exist (excluding the 'besides' type)
+        """
+        existing_drafts = DraftAgent._get_existing_drafts(thread_id)
+        other_drafts = []
 
-        return drafts
+        for draft_type, exists in existing_drafts.items():
+            if draft_type != besides and exists:
+                other_drafts.append(draft_type)
+
+        return other_drafts
 
     @staticmethod
     def _has_any_draft(thread_id: str) -> bool:
@@ -84,58 +93,61 @@ class DraftAgent(FunctionAgent):
     @staticmethod
     def _create_context_aware_prompt(thread_id: str) -> str:
         """Create a context-aware system prompt based on existing drafts."""
+        # Get existing drafts info
+        existing_drafts = DraftAgent._get_existing_drafts(thread_id)
+        
+        # Build draft context
+        draft_descriptions = []
+        
+        if existing_drafts.get("email", False):
+            # Get the actual email draft data
+            draft_data = get_draft_email(thread_id)
+            if draft_data:
+                desc = f"Email draft (To: {draft_data.get('to', 'Not set')}, Subject: {draft_data.get('subject', 'Not set')})"
+                draft_descriptions.append(desc)
+        
+        if existing_drafts.get("calendar_event", False):
+            # Get the actual calendar draft data  
+            draft_data = get_draft_calendar_event(thread_id)
+            if draft_data:
+                desc = f"Calendar event draft (Title: {draft_data.get('title', 'Not set')}, Start: {draft_data.get('start_time', 'Not set')})"
+                draft_descriptions.append(desc)
+        
+        if existing_drafts.get("calendar_edit", False):
+            # Calendar edit drafts don't have a get function, so just note their existence
+            draft_descriptions.append("Calendar edit draft (modifying existing event)")
+
+        # Build the prompt based on draft state
         base_prompt = (
-            "You are the DraftAgent, an internal agent specialized in creating and managing drafts. "
-            "You work behind the scenes and communicate through the CoordinatorAgent, never directly with users. "
-            "You can create draft emails and calendar events, and edit existing calendar events. "
+            "You are the DraftAgent, responsible for creating and managing drafts of emails and calendar events. "
+            "Your role is to help users create, edit, and finalize drafts before they are sent or scheduled.\n\n"
         )
 
-        existing_drafts = DraftAgent._get_existing_drafts(thread_id)
-
-        if existing_drafts:
-            # There are existing drafts - provide context for internal decision making
-            draft_descriptions = []
-            for draft_type, draft_data in existing_drafts.items():
-                if draft_type == "email":
-                    desc = f"Email draft (To: {draft_data.get('to', 'Not set')}, Subject: {draft_data.get('subject', 'Not set')})"
-                elif draft_type == "calendar_event":
-                    desc = f"Calendar event draft ('{draft_data.get('title', 'Untitled')}' at {draft_data.get('start_time', 'No time set')})"
-                elif draft_type == "calendar_edit":
-                    desc = f"Calendar edit draft (Event ID: {draft_data.get('event_id', 'Unknown')})"
-                draft_descriptions.append(desc)
-
-            context_prompt = (
-                f"EXISTING DRAFT CONTEXT:\n"
-                f"Current active draft(s) in this conversation ({len(existing_drafts)}):\n"
-                f"{''.join([f'- {desc}' for desc in draft_descriptions])}\n\n"
-                f"INTERNAL DRAFT POLICY:\n"
-                f"- You can modify/update existing drafts using appropriate tools\n"
-                f"- If asked to create a new draft of a different type, you should note potential conflicts\n"
-                f"- The CoordinatorAgent will handle one-draft policy enforcement with users\n"
-                f"- Focus on executing draft operations as requested\n\n"
+        if draft_descriptions:
+            draft_context = (
+                "CURRENT DRAFTS:\n" + 
+                "\n".join(f"- {desc}" for desc in draft_descriptions) +
+                "\n\nYou can edit these existing drafts or help the user finalize them.\n\n"
             )
         else:
-            # No existing drafts - clean state for operations
-            context_prompt = (
-                "CLEAN SLATE CONTEXT:\n"
-                "No active drafts in this conversation.\n"
-                "You can create any type of draft as requested.\n\n"
-                "DRAFT CREATION:\n"
-                "- Execute draft creation operations as requested\n"
-                "- Gather all necessary details for complete drafts\n"
-                "- Pass results to CoordinatorAgent for user communication\n\n"
-            )
+            draft_context = "CLEAN STATE: No active drafts - ready to create new drafts as requested.\n\n"
 
-        common_rules = (
-            "OPERATIONAL GUIDELINES:\n"
-            "- For calendar draft updates: Use 'create_draft_calendar_event' (it updates existing drafts)\n"
-            "- For existing calendar events in user's calendar: Use 'edit_existing_calendar_event'\n"
-            "- Execute requested operations and return results to CoordinatorAgent\n"
-            "- Do not communicate directly with users - hand off to CoordinatorAgent\n"
-            "- Provide clear status information about draft operations"
+        capabilities = (
+            "CAPABILITIES:\n"
+            "- Create and edit email drafts\n"
+            "- Create and edit calendar event drafts\n"
+            "- Modify existing calendar events (with event_id)\n"
+            "- Clear all drafts when requested\n"
+            "- Help users finalize and send/schedule their drafts\n\n"
+            
+            "WORKFLOW:\n"
+            "- Always ask for clarification if draft requirements are unclear\n"
+            "- Provide helpful suggestions for improving drafts\n"
+            "- Confirm before making significant changes to existing drafts\n"
+            "- Be proactive about suggesting next steps (review, send, schedule)\n"
         )
 
-        return base_prompt + context_prompt + common_rules
+        return base_prompt + draft_context + capabilities
 
     def __init__(
         self,
@@ -189,8 +201,6 @@ class DraftAgent(FunctionAgent):
         def create_email_draft(
             ctx: Context,
             to: Optional[str] = None,
-            cc: Optional[str] = None,
-            bcc: Optional[str] = None,
             subject: Optional[str] = None,
             body: Optional[str] = None,
         ) -> str:
@@ -199,7 +209,13 @@ class DraftAgent(FunctionAgent):
                 f"📧 DraftAgent: Creating email draft - To: {to}, Subject: {subject}, Thread: {thread_id}"
             )
 
-            result = create_draft_email(thread_id, to, cc, bcc, subject, body)
+            # Check for conflicting draft types and return error instead of auto-deleting
+            other_drafts = DraftAgent._get_other_drafts(thread_id, besides="email")
+            if other_drafts:
+                draft_types = ", ".join(other_drafts)
+                return f"Error: Cannot create email draft - {draft_types} draft(s) already exist. Please complete, delete, or cancel the existing draft(s) first."
+
+            result = create_draft_email(thread_id, to, subject, body)
 
             # Record the draft info and log the result
             if result.get("success"):
@@ -209,10 +225,9 @@ class DraftAgent(FunctionAgent):
                 logger.info(f"📝 DraftAgent: {draft_info}")
                 logger.info("✅ DraftAgent: Email draft created successfully")
                 # Log the draft content for visibility
-                if body:
-                    logger.info(
-                        f"📝 Draft Email Content:\n  To: {to}\n  Subject: {subject}\n  Body: {body[:200]}{'...' if len(body) > 200 else ''}"
-                    )
+                logger.info(
+                    f"📝 Draft Email Content:\n  To: {to}\n  Subject: {subject}\n  Body: {body}"
+                )
             else:
                 logger.warning(
                     f"❌ DraftAgent: Failed to create email draft - {result}"
@@ -257,6 +272,14 @@ class DraftAgent(FunctionAgent):
             logger.info(
                 f"📅 DraftAgent: Creating calendar event draft - Title: {title}, Start: {start_time}, Thread: {thread_id}"
             )
+
+            # Check for conflicting draft types and return error instead of auto-deleting
+            other_drafts = DraftAgent._get_other_drafts(
+                thread_id, besides="calendar_event"
+            )
+            if other_drafts:
+                draft_types = ", ".join(other_drafts)
+                return f"Error: Cannot create calendar event draft - {draft_types} draft(s) already exist. Please complete, delete, or cancel the existing draft(s) first."
 
             result = create_draft_calendar_event(
                 thread_id,
