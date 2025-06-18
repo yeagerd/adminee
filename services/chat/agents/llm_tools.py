@@ -169,6 +169,59 @@ def get_documents(
 _draft_storage: Dict[str, Dict[str, Any]] = {}
 
 
+def has_draft_calendar_event(thread_id: str) -> bool:
+    """Check if a calendar event draft exists for the given thread."""
+    draft_key = f"{thread_id}_calendar_event"
+    return draft_key in _draft_storage
+
+
+def has_draft_email(thread_id: str) -> bool:
+    """Check if an email draft exists for the given thread."""
+    draft_key = f"{thread_id}_email"
+    return draft_key in _draft_storage
+
+
+def get_draft_calendar_event(thread_id: str) -> Optional[Dict[str, Any]]:
+    """Get the calendar event draft for the given thread, if it exists."""
+    draft_key = f"{thread_id}_calendar_event"
+    return _draft_storage.get(draft_key)
+
+
+def get_draft_email(thread_id: str) -> Optional[Dict[str, Any]]:
+    """Get the email draft for the given thread, if it exists."""
+    draft_key = f"{thread_id}_email"
+    return _draft_storage.get(draft_key)
+
+
+def clear_all_drafts(thread_id: str) -> Dict[str, Any]:
+    """Clear all drafts for the given thread."""
+    cleared_drafts = []
+
+    # Clear calendar event draft
+    calendar_key = f"{thread_id}_calendar_event"
+    if calendar_key in _draft_storage:
+        del _draft_storage[calendar_key]
+        cleared_drafts.append("calendar_event")
+
+    # Clear calendar event edit draft
+    calendar_edit_key = f"{thread_id}_calendar_edit"
+    if calendar_edit_key in _draft_storage:
+        del _draft_storage[calendar_edit_key]
+        cleared_drafts.append("calendar_edit")
+
+    # Clear email draft
+    email_key = f"{thread_id}_email"
+    if email_key in _draft_storage:
+        del _draft_storage[email_key]
+        cleared_drafts.append("email")
+
+    return {
+        "success": True,
+        "message": f"Cleared {len(cleared_drafts)} draft(s): {', '.join(cleared_drafts)}",
+        "cleared_drafts": cleared_drafts,
+    }
+
+
 def create_draft_email(
     thread_id: str,
     to: Optional[str] = None,
@@ -261,14 +314,14 @@ def delete_draft_calendar_event(thread_id: str) -> Dict[str, Any]:
         draft_key = f"{thread_id}_calendar_event"
         if draft_key in _draft_storage:
             del _draft_storage[draft_key]
-            return {"success": True, "message": "Draft calendar event deleted"}
+            return {"success": True, "message": "Calendar event draft deleted"}
         else:
-            return {
-                "success": False,
-                "message": "No draft calendar event found for this thread",
-            }
+            return {"success": False, "message": "No calendar event draft found"}
     except Exception as e:
-        return {"error": f"Failed to delete draft: {str(e)}"}
+        return {
+            "success": False,
+            "message": f"Error deleting calendar event draft: {str(e)}",
+        }
 
 
 def create_draft_calendar_change(
@@ -282,53 +335,111 @@ def create_draft_calendar_change(
     new_location: Optional[str] = None,
     new_description: Optional[str] = None,
 ) -> Dict[str, Any]:
-    try:
-        draft_key = f"{thread_id}_calendar_change"
-        draft = (
-            _draft_storage[draft_key].copy()
-            if draft_key in _draft_storage
-            else {
-                "type": "calendar_change",
-                "thread_id": thread_id,
-                "created_at": "2025-06-07T00:00:00Z",
-            }
-        )
-        if event_id is not None:
-            draft["event_id"] = event_id
-        if change_type is not None:
-            draft["change_type"] = change_type
-        if new_title is not None:
-            draft["new_title"] = new_title
-        if new_start_time is not None:
-            draft["new_start_time"] = new_start_time
-        if new_end_time is not None:
-            draft["new_end_time"] = new_end_time
-        if new_attendees is not None:
-            draft["new_attendees"] = new_attendees
-        if new_location is not None:
-            draft["new_location"] = new_location
-        if new_description is not None:
-            draft["new_description"] = new_description
-        draft["updated_at"] = "2025-06-07T00:00:00Z"
-        _draft_storage[draft_key] = draft
-        return {"success": True, "draft": draft}
-    except Exception as e:
-        return {"error": f"Failed to create/update draft: {str(e)}"}
+    """
+    Create a draft for editing an existing calendar event.
+    This creates a local draft that will be sent to the client for execution.
 
+    Args:
+        thread_id: Thread ID for the conversation
+        event_id: ID of the calendar event to edit (format: provider_originalId) - REQUIRED
+        change_type: Type of change (update, reschedule, etc.)
+        new_title: New event title
+        new_start_time: New start time (ISO format)
+        new_end_time: New end time (ISO format)
+        new_attendees: New attendees (comma-separated email addresses)
+        new_location: New location
+        new_description: New description
 
-def delete_draft_calendar_change(thread_id: str) -> Dict[str, Any]:
+    Returns:
+        Dictionary with success status and draft details
+    """
     try:
-        draft_key = f"{thread_id}_calendar_change"
-        if draft_key in _draft_storage:
-            del _draft_storage[draft_key]
-            return {"success": True, "message": "Draft calendar change deleted"}
-        else:
+        # Validate required parameters
+        if not event_id or not event_id.strip():
             return {
                 "success": False,
-                "message": "No draft calendar change found for this thread",
+                "message": "event_id is required and cannot be empty",
             }
+
+        draft_key = f"{thread_id}_calendar_edit"
+
+        # Build the edit draft with only provided fields
+        edit_draft = {
+            "type": "calendar_event_edit",
+            "thread_id": thread_id,
+            "event_id": event_id.strip(),
+            "change_type": change_type or "update",
+            "created_at": "2025-06-07T00:00:00Z",
+            "changes": {},
+        }
+
+        # Add only the fields that were provided
+        if new_title is not None:
+            edit_draft["changes"]["title"] = new_title
+        if new_start_time is not None:
+            edit_draft["changes"]["start_time"] = new_start_time
+        if new_end_time is not None:
+            edit_draft["changes"]["end_time"] = new_end_time
+        if new_location is not None:
+            edit_draft["changes"]["location"] = new_location
+        if new_description is not None:
+            edit_draft["changes"]["description"] = new_description
+
+        # Handle attendees - convert comma-separated string to list
+        if new_attendees is not None:
+            attendee_list = []
+            for email in new_attendees.split(","):
+                email = email.strip()
+                if email:
+                    attendee_list.append({"email": email, "name": email})
+            edit_draft["changes"]["attendees"] = attendee_list
+
+        if not edit_draft["changes"]:
+            return {"success": False, "message": "No changes provided to edit"}
+
+        # Store the edit draft
+        _draft_storage[draft_key] = edit_draft
+
+        return {
+            "success": True,
+            "message": f"Calendar event edit draft created for event {event_id}",
+            "draft": edit_draft,
+            "changes_count": len(edit_draft["changes"]),
+        }
+
     except Exception as e:
-        return {"error": f"Failed to delete draft: {str(e)}"}
+        return {
+            "success": False,
+            "message": f"Error creating calendar event edit draft: {str(e)}",
+        }
+
+
+def delete_draft_calendar_edit(thread_id: str) -> Dict[str, Any]:
+    """Delete the draft calendar event edit for the given thread."""
+    try:
+        draft_key = f"{thread_id}_calendar_edit"
+        if draft_key in _draft_storage:
+            del _draft_storage[draft_key]
+            return {"success": True, "message": "Calendar event edit draft deleted"}
+        else:
+            return {"success": False, "message": "No calendar event edit draft found"}
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Error deleting calendar event edit draft: {str(e)}",
+        }
+
+
+def get_draft_calendar_edit(thread_id: str) -> Optional[Dict[str, Any]]:
+    """Get the calendar event edit draft for the given thread, if it exists."""
+    draft_key = f"{thread_id}_calendar_edit"
+    return _draft_storage.get(draft_key)
+
+
+def has_draft_calendar_edit(thread_id: str) -> bool:
+    """Check if a calendar event edit draft exists for the given thread."""
+    draft_key = f"{thread_id}_calendar_edit"
+    return draft_key in _draft_storage
 
 
 # --- Tool Registry ---
