@@ -102,7 +102,6 @@ class CalendarAgent(FunctionAgent):
             description=(
                 "Retrieve calendar events from the office service. "
                 "Can filter by date range, timezone, and provider type. "
-                "Requires user_token for authentication."
             ),
         )
         tools.append(get_calendar_events_tool)
