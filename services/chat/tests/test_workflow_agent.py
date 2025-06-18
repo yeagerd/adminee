@@ -179,9 +179,24 @@ async def test_load_conversation_history(workflow_agent, mock_history_manager):
     # 2. Mock _load_chat_history_from_db
     # The method expects a list of objects that can be accessed with msg['role'] and msg['content']
     mock_db_history = [
-        {"role": "USER", "content": "Hello there!", "user_id": "test_user", "created_at": "2023-01-01T10:00:00"},
-        {"role": "ASSISTANT", "content": "Hi, how can I help?", "user_id": "assistant", "created_at": "2023-01-01T10:00:30"},
-        {"role": "User", "content": "Tell me a joke.", "user_id": "test_user", "created_at": "2023-01-01T10:01:00"},
+        {
+            "role": "USER",
+            "content": "Hello there!",
+            "user_id": "test_user",
+            "created_at": "2023-01-01T10:00:00",
+        },
+        {
+            "role": "ASSISTANT",
+            "content": "Hi, how can I help?",
+            "user_id": "assistant",
+            "created_at": "2023-01-01T10:00:30",
+        },
+        {
+            "role": "User",
+            "content": "Tell me a joke.",
+            "user_id": "test_user",
+            "created_at": "2023-01-01T10:01:00",
+        },
     ]
     workflow_agent._load_chat_history_from_db = AsyncMock(return_value=mock_db_history)
 
@@ -205,7 +220,9 @@ async def test_load_conversation_history(workflow_agent, mock_history_manager):
     # We need to check the arguments of the call
     args, kwargs = mock_context.set.call_args
     assert args[0] == "state"  # First positional argument is 'state'
-    assert "conversation_history" in args[1] # Second positional argument is the state dictionary
+    assert (
+        "conversation_history" in args[1]
+    )  # Second positional argument is the state dictionary
     actual_history_set = args[1]["conversation_history"]
 
     assert actual_history_set == expected_formatted_history
