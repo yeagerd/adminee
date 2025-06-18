@@ -129,10 +129,7 @@ class DraftAgent(FunctionAgent):
                 draft_info = (
                     f"Email draft created/updated - To: {to}, Subject: {subject}"
                 )
-                # Use asyncio.run for the async record_draft_info call
-                import asyncio
-
-                asyncio.create_task(record_draft_info(ctx, draft_info, "email"))
+                logger.info(f"📝 DraftAgent: {draft_info}")
                 logger.info("✅ DraftAgent: Email draft created successfully")
                 # Log the draft content for visibility
                 if body:
@@ -197,12 +194,10 @@ class DraftAgent(FunctionAgent):
             # Record the draft info and log the result
             if result.get("success"):
                 draft_info = f"Calendar event draft created/updated - Title: {title}, Start: {start_time}"
-                import asyncio
-
-                asyncio.create_task(
-                    record_draft_info(ctx, draft_info, "calendar_event")
+                logger.info(f"📝 DraftAgent: {draft_info}")
+                logger.info(
+                    "✅ DraftAgent: Calendar event draft created/updated successfully"
                 )
-                logger.info("✅ DraftAgent: Calendar event draft created successfully")
                 # Log the draft content for visibility
                 logger.info(
                     f"📝 Draft Calendar Event:\n  Title: {title}\n  Start: {start_time}\n  End: {end_time}\n  Location: {location}"
@@ -270,13 +265,11 @@ class DraftAgent(FunctionAgent):
 
             # Record the draft info
             if result.get("success"):
-                draft_info = f"Calendar change draft created/updated - Event ID: {event_id}, Type: {change_type}"
-                import asyncio
-
-                asyncio.create_task(
-                    record_draft_info(ctx, draft_info, "calendar_change")
+                draft_info = f"Calendar event edit draft created for event {event_id}"
+                logger.info(f"📝 DraftAgent: {draft_info}")
+                logger.info(
+                    "✅ DraftAgent: Calendar event edit draft created successfully"
                 )
-                logger.info("✅ DraftAgent: Calendar change draft created successfully")
             else:
                 logger.warning(
                     f"❌ DraftAgent: Failed to create calendar change draft - {result}"
