@@ -121,6 +121,7 @@ def test_document_agent_creation():
 def test_draft_agent_creation():
     """Test that DraftAgent can be created."""
     agent = DraftAgent(
+        thread_id=123,
         llm_model="fake-model",
         llm_provider="fake",
     )
@@ -128,6 +129,7 @@ def test_draft_agent_creation():
     assert agent.name == "DraftAgent"
     assert "draft" in agent.description.lower()
     assert len(agent.tools) > 0  # Should have drafting tools
+    assert agent.thread_id == "123"  # Verify thread_id is stored correctly
 
 
 @pytest.mark.asyncio
@@ -169,7 +171,7 @@ def test_agent_handoff_capabilities():
     calendar_agent = CalendarAgent(llm_model="fake-model", llm_provider="fake")
     email_agent = EmailAgent(llm_model="fake-model", llm_provider="fake")
     document_agent = DocumentAgent(llm_model="fake-model", llm_provider="fake")
-    draft_agent = DraftAgent(llm_model="fake-model", llm_provider="fake")
+    draft_agent = DraftAgent(thread_id=123, llm_model="fake-model", llm_provider="fake")
 
     # Check handoff configurations - Coordinator can hand off to all specialized agents
     assert "CalendarAgent" in coordinator.can_handoff_to

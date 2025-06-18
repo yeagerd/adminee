@@ -55,9 +55,9 @@ class DraftAgent(FunctionAgent):
 
     def __init__(
         self,
+        thread_id: int,
         llm_model: str = "gpt-4.1-nano",
         llm_provider: str = "openai",
-        thread_id: Optional[int] = None,
         **llm_kwargs,
     ):
         # Get LLM instance
@@ -67,7 +67,7 @@ class DraftAgent(FunctionAgent):
 
         # Create draft-specific tools - create them first before we store thread_id
         # We'll pass the thread_id to the tool creation method
-        thread_id_str = str(thread_id) if thread_id is not None else "default_thread"
+        thread_id_str = str(thread_id)
         tools = self._create_draft_tools(thread_id_str)
 
         # Initialize FunctionAgent first
@@ -99,7 +99,7 @@ class DraftAgent(FunctionAgent):
     @property
     def thread_id(self) -> str:
         """Get the thread_id for this agent."""
-        return getattr(self, "_thread_id", "default_thread")
+        return getattr(self, "_thread_id")
 
     def _create_draft_tools(self, thread_id: str) -> List[FunctionTool]:
         """Create draft-specific tools that use the stored thread_id directly."""
@@ -310,26 +310,26 @@ class DraftAgent(FunctionAgent):
 
 
 def create_draft_agent(
+    thread_id: int,
     llm_model: str = "gpt-4.1-nano",
     llm_provider: str = "openai",
-    thread_id: Optional[int] = None,
     **llm_kwargs,
 ) -> DraftAgent:
     """
     Factory function to create a DraftAgent instance.
 
     Args:
+        thread_id: Thread ID for draft operations (required)
         llm_model: LLM model to use
         llm_provider: LLM provider to use
-        thread_id: Thread ID for draft operations
         **llm_kwargs: Additional LLM arguments
 
     Returns:
         DraftAgent instance
     """
     return DraftAgent(
+        thread_id=thread_id,
         llm_model=llm_model,
         llm_provider=llm_provider,
-        thread_id=thread_id,
         **llm_kwargs,
     )
