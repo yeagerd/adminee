@@ -100,9 +100,7 @@ async def test_chat_basic_flow(workflow_agent, mock_history_manager):
     # Mock the agent workflow
     mock_response = "Test response"
 
-    with patch.object(
-        workflow_agent, "build_agent", new_callable=AsyncMock
-    ) as mock_build:
+    with patch.object(workflow_agent, "build_agent", new_callable=AsyncMock):
         # Create mock workflow and context
         mock_workflow = AsyncMock()
         mock_workflow.run = AsyncMock(return_value=mock_response)

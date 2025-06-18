@@ -139,9 +139,7 @@ async def test_multi_agent_chat_flow(multi_agent_workflow, mock_history_manager)
     # Mock the agent workflow
     mock_response = "Multi-agent response"
 
-    with patch.object(
-        multi_agent_workflow, "build_agent", new_callable=AsyncMock
-    ) as mock_build:
+    with patch.object(multi_agent_workflow, "build_agent", new_callable=AsyncMock):
         # Create mock workflow and context
         mock_workflow = AsyncMock()
         mock_workflow.run = AsyncMock(return_value=mock_response)

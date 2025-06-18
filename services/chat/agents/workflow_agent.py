@@ -461,7 +461,7 @@ class WorkflowAgent:
                     user_id="assistant",
                     content=error_response,
                 )
-            except:
+            except Exception:
                 pass  # Don't fail on database save errors
 
             return error_response
@@ -525,7 +525,7 @@ class WorkflowAgent:
                     user_id="assistant",
                     content=error_response,
                 )
-            except:
+            except Exception:
                 pass
 
             # Yield error event
