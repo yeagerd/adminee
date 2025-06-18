@@ -78,7 +78,7 @@ def actor(message):
 class ChatDemo:
     """Interactive chat demo supporting both direct multi-agent and API modes."""
 
-    def __init__(self, use_api: bool = False, chat_url: str = "http://localhost:8000", user_id: str = "demo_user"):
+    def __init__(self, use_api: bool, chat_url: str, user_id: str = "demo_user"):
         self.use_api = use_api
         self.chat_url = chat_url.rstrip("/")
         self.user_id = user_id
@@ -489,8 +489,8 @@ Examples:
     parser.add_argument(
         "--chat-url",
         type=str,
-        default="http://localhost:8000",
-        help="Base URL for the chat service API (default: http://localhost:8000)",
+        default="http://localhost:8001",
+        help="Base URL for the chat service API (default: http://localhost:8001)",
     )
     
     parser.add_argument(
