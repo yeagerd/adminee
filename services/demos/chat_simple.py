@@ -20,12 +20,21 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 
 from services.chat.agents.workflow_agent import WorkflowAgent
 
-# Configure logging (quieter for interactive use)
+# Configure logging (verbose for debugging)
 logging.basicConfig(
-    level=logging.WARNING,  # Only show warnings and errors
+    level=logging.DEBUG,  # Show all logs including debug
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+# Set specific loggers to be more verbose
+logging.getLogger("services.chat.agents.workflow_agent").setLevel(logging.DEBUG)
+logging.getLogger("services.chat.agents.coordinator_agent").setLevel(logging.DEBUG)
+logging.getLogger("services.chat.agents.calendar_agent").setLevel(logging.DEBUG)
+logging.getLogger("services.chat.agents.email_agent").setLevel(logging.DEBUG)
+logging.getLogger("services.chat.agents.document_agent").setLevel(logging.DEBUG)
+logging.getLogger("services.chat.agents.draft_agent").setLevel(logging.DEBUG)
+logging.getLogger("llama_index").setLevel(logging.INFO)  # LlamaIndex logs at INFO level
 
 
 class ChatDemo:
@@ -160,13 +169,15 @@ class ChatDemo:
                 print("🤖 Briefly:", end=" ", flush=True)
                 
                 try:
-                    # Get response from the agent
+                    # Get response from the agent (backend logs will show details)
                     response = await self.agent.chat(user_input)
                     print(response)
                     
                 except Exception as e:
                     print(f"Sorry, I encountered an error: {str(e)}")
                     logger.error(f"Chat error: {e}")
+                    import traceback
+                    traceback.print_exc()
                 
                 print()  # Add a blank line for readability
                 

@@ -7,13 +7,13 @@ A simple command-line interface for testing and demonstrating the consolidated m
 ### Basic Multi-Agent Chat Demo
 
 ```bash
-python services/demos/chat-simple.py
+python services/demos/chat_simple.py
 ```
 
 ### Streaming Demo
 
 ```bash
-python services/demos/chat-simple.py --streaming
+python services/demos/chat_simple.py --streaming
 ```
 
 ## Features
@@ -170,7 +170,7 @@ You: quit
 
 ### LLM Settings
 
-Edit the `create_agent` method in `chat-simple.py` to customize:
+Edit the `create_agent` method in `chat_simple.py` to customize:
 
 ```python
 agent = WorkflowAgent(
@@ -203,7 +203,7 @@ The demo includes comprehensive error handling:
 Use `--streaming` flag to see real-time response generation:
 
 ```bash
-python services/demos/chat-simple.py --streaming
+python services/demos/chat_simple.py --streaming
 ```
 
 This shows how the multi-agent system generates responses in real-time, including:
