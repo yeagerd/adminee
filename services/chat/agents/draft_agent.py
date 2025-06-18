@@ -4,7 +4,6 @@ DraftAgent - Specialized agent for drafting operations.
 This agent handles all drafting operations including:
 - Creating draft emails
 - Creating draft calendar events
-- Creating draft calendar changes
 - Managing drafts (delete, update)
 
 Part of the multi-agent workflow system.
@@ -19,10 +18,8 @@ from llama_index.core.workflow import Context
 
 from services.chat.agents.llm_manager import get_llm_manager
 from services.chat.agents.llm_tools import (
-    create_draft_calendar_change,
     create_draft_calendar_event,
     create_draft_email,
-    delete_draft_calendar_change,
     delete_draft_calendar_event,
     delete_draft_email,
 )
@@ -47,7 +44,6 @@ class DraftAgent(FunctionAgent):
     This agent can:
     - Create and manage draft emails
     - Create and manage draft calendar events
-    - Create and manage draft calendar changes
     - Record draft information for other agents
 
     Thread ID is managed programmatically - no complex context lookups required.
@@ -74,8 +70,8 @@ class DraftAgent(FunctionAgent):
         super().__init__(
             name="DraftAgent",
             description=(
-                "Specialized agent for creating and managing drafts. Can create draft emails, "
-                "calendar events, and calendar changes. Use this agent when users need to "
+                "Specialized agent for creating and managing drafts. Can create draft emails "
+                "and calendar events. Use this agent when users need to "
                 "compose, draft, or modify emails and calendar items."
             ),
             system_prompt=(
@@ -238,76 +234,6 @@ class DraftAgent(FunctionAgent):
             description="Delete the draft calendar event in the current conversation.",
         )
         tools.append(delete_calendar_event_draft_tool)
-
-        # Calendar change drafting tools
-        def create_calendar_change_draft(
-            ctx: Context,
-            event_id: Optional[str] = None,
-            change_type: Optional[str] = None,
-            new_title: Optional[str] = None,
-            new_start_time: Optional[str] = None,
-            new_end_time: Optional[str] = None,
-            new_attendees: Optional[str] = None,
-            new_location: Optional[str] = None,
-            new_description: Optional[str] = None,
-        ) -> str:
-            """Create or update a draft calendar change using the agent's thread_id."""
-            logger.info(
-                f"📅 DraftAgent: Creating calendar change draft - Event: {event_id}, Type: {change_type}, Thread: {thread_id}"
-            )
-
-            result = create_draft_calendar_change(
-                thread_id,
-                event_id,
-                change_type,
-                new_title,
-                new_start_time,
-                new_end_time,
-                new_attendees,
-                new_location,
-                new_description,
-            )
-
-            # Record the draft info
-            if result.get("success"):
-                draft_info = f"Calendar change draft created/updated - Event ID: {event_id}, Type: {change_type}"
-                import asyncio
-
-                asyncio.create_task(
-                    record_draft_info(ctx, draft_info, "calendar_change")
-                )
-                logger.info("✅ DraftAgent: Calendar change draft created successfully")
-            else:
-                logger.warning(
-                    f"❌ DraftAgent: Failed to create calendar change draft - {result}"
-                )
-
-            return str(result)
-
-        create_calendar_change_draft_tool = FunctionTool.from_defaults(
-            fn=create_calendar_change_draft,
-            name="create_draft_calendar_change",
-            description=(
-                "Create or update a draft calendar change. Provide event_id, change_type, and any "
-                "new values to change. The thread_id is automatically handled by the agent."
-            ),
-        )
-        tools.append(create_calendar_change_draft_tool)
-
-        def delete_calendar_change_draft(ctx: Context) -> str:
-            """Delete the draft calendar change for this thread."""
-            logger.info(
-                f"🗑️ DraftAgent: Deleting calendar change draft for thread {thread_id}"
-            )
-            result = delete_draft_calendar_change(thread_id)
-            return str(result)
-
-        delete_calendar_change_draft_tool = FunctionTool.from_defaults(
-            fn=delete_calendar_change_draft,
-            name="delete_draft_calendar_change",
-            description="Delete the draft calendar change for the current thread.",
-        )
-        tools.append(delete_calendar_change_draft_tool)
 
         return tools
 
