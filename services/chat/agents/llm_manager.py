@@ -257,6 +257,29 @@ class FakeLLM(FunctionCallingLLM):
         """Async fake stream complete method."""
         yield await self.acomplete(prompt, **kwargs)
 
+    async def astream_chat_with_tools(
+        self, tools=None, chat_history=None, allow_parallel_tool_calls=True, **kwargs
+    ):
+        """Async fake stream chat with tools method that yields ChatResponse."""
+        # Use chat_history as messages if provided, otherwise use kwargs
+        messages = chat_history or kwargs.get("messages", [])
+
+        # For fake LLM, create a mock response and yield it
+        from llama_index.core.base.llms.types import ChatResponse
+
+        # Create a fake response
+        response_message = await self.achat(messages, **kwargs)
+
+        # Create ChatResponse object that mimics real LLM behavior
+        response = ChatResponse(
+            message=response_message,
+            delta=response_message.content,
+            raw={"model": "fake-model", "usage": {"total_tokens": 0}},
+            logprobs=None,
+        )
+
+        yield response
+
 
 class _LLMManager:
     """
