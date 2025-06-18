@@ -101,3 +101,4 @@ DraftAgent(thread_id=123)  # Thread ID stored directly, no context lookup needed
 - **Backward compatible**: Old async `get_draft_data()` method preserved
 - **Tests passing**: All existing tests continue to work
 - **Demo updated**: New demo shows programmatic draft tracking
+- **Pydantic compatible**: Thread ID storage uses `object.__setattr__` to avoid Pydantic field validation conflicts
