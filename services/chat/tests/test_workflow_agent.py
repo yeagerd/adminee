@@ -43,10 +43,8 @@ def test_workflow_agent_initialization(workflow_agent):
     assert workflow_agent.context is None
     assert workflow_agent.specialized_agents == {}
 
-    # Check that ChatAgent is created
-    assert workflow_agent.chat_agent is not None
-    assert workflow_agent.chat_agent.thread_id == 123
-    assert workflow_agent.chat_agent.user_id == "test_user"
+    # Check that LLM is created
+    assert workflow_agent._llm is not None
 
 
 def test_prepare_tools(workflow_agent):
@@ -79,19 +77,18 @@ def test_prepare_tools(workflow_agent):
 @pytest.mark.asyncio
 async def test_build_agent(workflow_agent, mock_history_manager):
     """Test agent building process."""
-    # Mock the ChatAgent build_agent method
-    workflow_agent.chat_agent.build_agent = AsyncMock()
-    workflow_agent.chat_agent._load_chat_history_from_db = AsyncMock(return_value=[])
+    # Mock the database history loading
+    with patch.object(
+        workflow_agent, "_load_chat_history_from_db", new_callable=AsyncMock
+    ) as mock_history:
+        mock_history.return_value = []
 
-    await workflow_agent.build_agent("test input")
+        await workflow_agent.build_agent("test input")
 
-    # Check that components are initialized
-    assert workflow_agent.agent_workflow is not None
-    assert workflow_agent.context is not None
-    assert len(workflow_agent.specialized_agents) > 0
-
-    # Check that ChatAgent was built
-    workflow_agent.chat_agent.build_agent.assert_called_once_with("test input")
+        # Check that components are initialized
+        assert workflow_agent.agent_workflow is not None
+        assert workflow_agent.context is not None
+        assert len(workflow_agent.specialized_agents) > 0
 
 
 @pytest.mark.asyncio
@@ -109,39 +106,39 @@ async def test_chat_basic_flow(workflow_agent, mock_history_manager):
         mock_context = MagicMock()
         workflow_agent.context = mock_context
 
-        # Mock chat agent memory
-        workflow_agent.chat_agent.memory = AsyncMock()
-        workflow_agent.chat_agent.memory.put_messages = AsyncMock()
+        # Mock database history loading
+        with patch.object(
+            workflow_agent, "_load_chat_history_from_db", new_callable=AsyncMock
+        ) as mock_history:
+            mock_history.return_value = []
 
-        # Test chat
-        response = await workflow_agent.chat("Hello")
+            # Test chat
+            response = await workflow_agent.chat("Hello")
 
-        assert response == mock_response
+            assert response == mock_response
 
-        # Verify database calls
-        assert mock_history_manager.append_message.call_count == 2
-        mock_history_manager.append_message.assert_any_call(
-            thread_id=123, user_id="test_user", content="Hello"
-        )
-        mock_history_manager.append_message.assert_any_call(
-            thread_id=123, user_id="assistant", content=mock_response
-        )
+            # Verify database calls
+            assert mock_history_manager.append_message.call_count == 2
+            mock_history_manager.append_message.assert_any_call(
+                thread_id=123, user_id="test_user", content="Hello"
+            )
+            mock_history_manager.append_message.assert_any_call(
+                thread_id=123, user_id="assistant", content=mock_response
+            )
 
 
 @pytest.mark.asyncio
 async def test_memory_methods(workflow_agent):
     """Test memory-related methods."""
-    # Mock ChatAgent memory methods
-    workflow_agent.chat_agent.get_memory_info = AsyncMock(return_value={"test": "info"})
-    workflow_agent.chat_agent.reset_memory = AsyncMock()
-
-    # Test get_memory_info
+    # Test get_memory_info - should return workflow state info
     info = await workflow_agent.get_memory_info()
-    assert info == {"test": "info"}
+    assert isinstance(info, dict)
+    assert "workflow_context" in info
+    assert "specialized_agents" in info
 
-    # Test reset_memory
+    # Test reset_memory - should reset workflow state
     await workflow_agent.reset_memory()
-    workflow_agent.chat_agent.reset_memory.assert_called_once()
+    # Should complete without error
 
 
 def test_llm_property(workflow_agent):
@@ -157,6 +154,10 @@ def test_llm_property(workflow_agent):
 
 def test_compatibility_properties(workflow_agent):
     """Test properties for compatibility with existing code."""
-    # Test memory property
+    # Test memory property - should return workflow context (None until built)
     memory = workflow_agent.memory
-    assert memory is workflow_agent.chat_agent.memory
+    assert memory is None  # Context is None until build_agent is called
+
+    # Test agent property - should return None until built
+    agent = workflow_agent.agent
+    assert agent is None  # Coordinator agent is None until build_agent is called

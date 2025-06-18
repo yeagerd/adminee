@@ -45,32 +45,29 @@ def test_multi_agent_initialization(multi_agent_workflow):
 @pytest.mark.asyncio
 async def test_multi_agent_build(multi_agent_workflow, mock_history_manager):
     """Test building multi-agent workflow."""
-    # Mock the ChatAgent build_agent method
-    multi_agent_workflow.chat_agent.build_agent = AsyncMock()
-    multi_agent_workflow.chat_agent._load_chat_history_from_db = AsyncMock(
-        return_value=[]
-    )
+    # Mock the database history loading
+    with patch.object(
+        multi_agent_workflow, "_load_chat_history_from_db", new_callable=AsyncMock
+    ) as mock_history:
+        mock_history.return_value = []
 
-    await multi_agent_workflow.build_agent("test input")
+        await multi_agent_workflow.build_agent("test input")
 
-    # Check that specialized agents were created
-    assert len(multi_agent_workflow.specialized_agents) == 5
-    expected_agents = [
-        "Coordinator",
-        "CalendarAgent",
-        "EmailAgent",
-        "DocumentAgent",
-        "DraftAgent",
-    ]
-    for agent_name in expected_agents:
-        assert agent_name in multi_agent_workflow.specialized_agents
+        # Check that specialized agents were created
+        assert len(multi_agent_workflow.specialized_agents) == 5
+        expected_agents = [
+            "Coordinator",
+            "CalendarAgent",
+            "EmailAgent",
+            "DocumentAgent",
+            "DraftAgent",
+        ]
+        for agent_name in expected_agents:
+            assert agent_name in multi_agent_workflow.specialized_agents
 
-    # Check that workflow and context are initialized
-    assert multi_agent_workflow.agent_workflow is not None
-    assert multi_agent_workflow.context is not None
-
-    # Check that ChatAgent was built
-    multi_agent_workflow.chat_agent.build_agent.assert_called_once_with("test input")
+        # Check that workflow and context are initialized
+        assert multi_agent_workflow.agent_workflow is not None
+        assert multi_agent_workflow.context is not None
 
 
 def test_coordinator_agent_creation():
@@ -148,17 +145,19 @@ async def test_multi_agent_chat_flow(multi_agent_workflow, mock_history_manager)
         mock_context = MagicMock()
         multi_agent_workflow.context = mock_context
 
-        # Mock chat agent memory
-        multi_agent_workflow.chat_agent.memory = AsyncMock()
-        multi_agent_workflow.chat_agent.memory.put_messages = AsyncMock()
+        # Mock database history loading
+        with patch.object(
+            multi_agent_workflow, "_load_chat_history_from_db", new_callable=AsyncMock
+        ) as mock_history:
+            mock_history.return_value = []
 
-        # Test chat
-        response = await multi_agent_workflow.chat("Hello")
+            # Test chat
+            response = await multi_agent_workflow.chat("Hello")
 
-        assert response == mock_response
+            assert response == mock_response
 
-        # Verify database calls
-        assert mock_history_manager.append_message.call_count == 2
+            # Verify database calls
+            assert mock_history_manager.append_message.call_count == 2
 
 
 def test_agent_handoff_capabilities():
@@ -202,22 +201,22 @@ def test_default_system_prompts():
 @pytest.mark.asyncio
 async def test_context_state_initialization(multi_agent_workflow, mock_history_manager):
     """Test that multi-agent context has proper initial state."""
-    # Mock the ChatAgent build_agent method
-    multi_agent_workflow.chat_agent.build_agent = AsyncMock()
-    multi_agent_workflow.chat_agent._load_chat_history_from_db = AsyncMock(
-        return_value=[]
-    )
+    # Mock the database history loading
+    with patch.object(
+        multi_agent_workflow, "_load_chat_history_from_db", new_callable=AsyncMock
+    ) as mock_history:
+        mock_history.return_value = []
 
-    await multi_agent_workflow.build_agent("test input")
+        await multi_agent_workflow.build_agent("test input")
 
-    # The initial state should include keys for each agent type
-    initial_state = multi_agent_workflow.agent_workflow.initial_state
+        # The initial state should include keys for each agent type
+        initial_state = multi_agent_workflow.agent_workflow.initial_state
 
-    assert "thread_id" in initial_state
-    assert "user_id" in initial_state
-    assert "calendar_info" in initial_state
-    assert "email_info" in initial_state
-    assert "document_info" in initial_state
-    assert "draft_info" in initial_state
-    assert initial_state["thread_id"] == str(multi_agent_workflow.thread_id)
-    assert initial_state["user_id"] == multi_agent_workflow.user_id
+        assert "thread_id" in initial_state
+        assert "user_id" in initial_state
+        assert "calendar_info" in initial_state
+        assert "email_info" in initial_state
+        assert "document_info" in initial_state
+        assert "draft_info" in initial_state
+        assert initial_state["thread_id"] == str(multi_agent_workflow.thread_id)
+        assert initial_state["user_id"] == multi_agent_workflow.user_id
