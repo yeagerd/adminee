@@ -359,32 +359,27 @@ def make_tools() -> Dict[str, FunctionTool]:
     create_draft_email_tool = FunctionTool.from_defaults(
         fn=create_draft_email,
         name="create_draft_email",
-        description="Create or update draft email for a thread.",
+        description="Create or update draft email in the current conversation.",
     )
     delete_draft_email_tool = FunctionTool.from_defaults(
         fn=delete_draft_email,
         name="delete_draft_email",
-        description="Delete draft email for a thread.",
+        description="Delete draft email in the current conversation.",
     )
     create_draft_calendar_event_tool = FunctionTool.from_defaults(
         fn=create_draft_calendar_event,
         name="create_draft_calendar_event",
-        description="Create or update draft calendar event for a thread.",
+        description="Create or update a draft calendar event in the current conversation. Use this tool for both creating new calendar event drafts AND modifying existing calendar event drafts (e.g., changing time, location, attendees, etc.). If a draft already exists, it will be updated with the new values.",
     )
     delete_draft_calendar_event_tool = FunctionTool.from_defaults(
         fn=delete_draft_calendar_event,
         name="delete_draft_calendar_event",
-        description="Delete draft calendar event for a thread.",
+        description="Delete draft calendar event in the current conversation.",
     )
     create_draft_calendar_change_tool = FunctionTool.from_defaults(
         fn=create_draft_calendar_change,
         name="create_draft_calendar_change",
-        description="Create or update draft calendar change for a thread.",
-    )
-    delete_draft_calendar_change_tool = FunctionTool.from_defaults(
-        fn=delete_draft_calendar_change,
-        name="delete_draft_calendar_change",
-        description="Delete draft calendar change for a thread.",
+        description="[DEPRECATED] Create or update draft calendar change in the current conversation. Use create_draft_calendar_event instead for all calendar draft operations.",
     )
 
     return {
@@ -397,7 +392,6 @@ def make_tools() -> Dict[str, FunctionTool]:
         "create_draft_calendar_event": create_draft_calendar_event_tool,
         "delete_draft_calendar_event": delete_draft_calendar_event_tool,
         "create_draft_calendar_change": create_draft_calendar_change_tool,
-        "delete_draft_calendar_change": delete_draft_calendar_change_tool,
     }
 
 
