@@ -259,54 +259,71 @@ class ChatDemo:
             draft_type = draft.get("type", "unknown")
 
             if draft_type == "email":
-                title = "Email Draft"
-                details = []
-                if draft.get("to"):
-                    details.append(f"To: {draft['to']}")
-                if draft.get("cc"):
-                    details.append(f"CC: {draft['cc']}")
-                if draft.get("subject"):
-                    details.append(f"Subject: {draft['subject']}")
-                if draft.get("body"):
-                    body_preview = (
-                        draft["body"][:100] + "..."
-                        if len(draft["body"]) > 100
-                        else draft["body"]
-                    )
-                    details.append(f"Body: {body_preview}")
-                lines.append(
-                    f"• {title}: {', '.join(details) if details else 'Created'}"
-                )
+                lines.append("• Email Draft:")
+                # Display all non-empty email fields
+                for field, label in [
+                    ("to", "To"),
+                    ("cc", "CC"),
+                    ("bcc", "BCC"),
+                    ("subject", "Subject"),
+                    ("body", "Body"),
+                ]:
+                    value = draft.get(field)
+                    if value:
+                        if field == "body":
+                            # Truncate body for readability
+                            body_preview = (
+                                value[:100] + "..." if len(value) > 100 else value
+                            )
+                            lines.append(f"  {label}: {body_preview}")
+                        else:
+                            lines.append(f"  {label}: {value}")
 
             elif draft_type == "calendar_event":
-                title = "Calendar Event Draft"
-                details = []
-                if draft.get("title"):
-                    details.append(f"Title: {draft['title']}")
-                if draft.get("start_time"):
-                    details.append(f"Start: {draft['start_time']}")
-                if draft.get("end_time"):
-                    details.append(f"End: {draft['end_time']}")
-                if draft.get("location"):
-                    details.append(f"Location: {draft['location']}")
-                lines.append(
-                    f"• {title}: {', '.join(details) if details else 'Created'}"
-                )
+                lines.append("• Calendar Event Draft:")
+                # Display all non-empty calendar event fields
+                for field, label in [
+                    ("title", "Title"),
+                    ("start_time", "Start"),
+                    ("end_time", "End"),
+                    ("attendees", "Attendees"),
+                    ("location", "Location"),
+                    ("description", "Description"),
+                ]:
+                    value = draft.get(field)
+                    if value:
+                        if field == "description":
+                            # Truncate description for readability
+                            desc_preview = (
+                                value[:100] + "..." if len(value) > 100 else value
+                            )
+                            lines.append(f"  {label}: {desc_preview}")
+                        else:
+                            lines.append(f"  {label}: {value}")
 
             elif draft_type == "calendar_change":
-                title = "Calendar Change Draft"
-                details = []
-                if draft.get("event_id"):
-                    details.append(f"Event ID: {draft['event_id']}")
-                if draft.get("change_type"):
-                    details.append(f"Change: {draft['change_type']}")
-                if draft.get("new_title"):
-                    details.append(f"New Title: {draft['new_title']}")
-                if draft.get("new_start_time"):
-                    details.append(f"New Start: {draft['new_start_time']}")
-                lines.append(
-                    f"• {title}: {', '.join(details) if details else 'Created'}"
-                )
+                lines.append("• Calendar Change Draft:")
+                # Display all non-empty calendar change fields
+                for field, label in [
+                    ("event_id", "Event ID"),
+                    ("change_type", "Change Type"),
+                    ("new_title", "New Title"),
+                    ("new_start_time", "New Start"),
+                    ("new_end_time", "New End"),
+                    ("new_attendees", "New Attendees"),
+                    ("new_location", "New Location"),
+                    ("new_description", "New Description"),
+                ]:
+                    value = draft.get(field)
+                    if value:
+                        if field == "new_description":
+                            # Truncate description for readability
+                            desc_preview = (
+                                value[:100] + "..." if len(value) > 100 else value
+                            )
+                            lines.append(f"  {label}: {desc_preview}")
+                        else:
+                            lines.append(f"  {label}: {value}")
 
             else:
                 lines.append(f"• {draft_type.replace('_', ' ').title()}: Created")
