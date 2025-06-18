@@ -13,7 +13,7 @@ from services.chat.agents.workflow_agent import WorkflowAgent
 def mock_history_manager():
     """Mock the history manager."""
     with patch("services.chat.agents.workflow_agent.history_manager") as mock:
-        mock.save_message = AsyncMock()
+        mock.append_message = AsyncMock()
         mock.get_thread_history = AsyncMock(return_value=[])
         yield mock
 
@@ -121,12 +121,12 @@ async def test_chat_basic_flow(workflow_agent, mock_history_manager):
         assert response == mock_response
 
         # Verify database calls
-        assert mock_history_manager.save_message.call_count == 2
-        mock_history_manager.save_message.assert_any_call(
-            thread_id=123, user_id="test_user", content="Hello", role="user"
+        assert mock_history_manager.append_message.call_count == 2
+        mock_history_manager.append_message.assert_any_call(
+            thread_id=123, user_id="test_user", content="Hello"
         )
-        mock_history_manager.save_message.assert_any_call(
-            thread_id=123, user_id="assistant", content=mock_response, role="assistant"
+        mock_history_manager.append_message.assert_any_call(
+            thread_id=123, user_id="assistant", content=mock_response
         )
 
 

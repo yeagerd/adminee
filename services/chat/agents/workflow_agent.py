@@ -272,7 +272,14 @@ class WorkflowAgent:
                 logger.info("Single-agent workflow created")
 
             # Create context for state management
+            if self.agent_workflow is None:
+                raise ValueError("AgentWorkflow is None, cannot create Context")
+            
             self.context = Context(self.agent_workflow)
+
+            # Verify context was created successfully
+            if self.context is None:
+                raise ValueError("Failed to create Context object")
 
             # Load conversation history into context state
             await self._load_conversation_history()
@@ -293,17 +300,21 @@ class WorkflowAgent:
             chat_history = await self.chat_agent._load_chat_history_from_db()
 
             # Store in workflow context state
-            state = await self.context.get("state", {})
-            state["conversation_history"] = [
-                {
-                    "role": str(msg.role).lower(),
-                    "content": msg.content,
-                }
-                for msg in chat_history
-            ]
-            await self.context.set("state", state)
+            # Add additional check to ensure context methods are properly available
+            if hasattr(self.context, 'get') and hasattr(self.context, 'set'):
+                state = await self.context.get("state", {})
+                state["conversation_history"] = [
+                    {
+                        "role": str(msg.role).lower(),
+                        "content": msg.content,
+                    }
+                    for msg in chat_history
+                ]
+                await self.context.set("state", state)
 
-            logger.debug(f"Loaded {len(chat_history)} messages into workflow context")
+                logger.debug(f"Loaded {len(chat_history)} messages into workflow context")
+            else:
+                logger.warning("Context object does not have get/set methods available")
 
         except Exception as e:
             logger.warning(f"Failed to load conversation history: {e}")
@@ -323,11 +334,10 @@ class WorkflowAgent:
 
         try:
             # Save user message to database
-            await history_manager.save_message(
+            await history_manager.append_message(
                 thread_id=self.thread_id,
                 user_id=self.user_id,
                 content=user_input,
-                role="user",
             )
 
             # Run the workflow
@@ -343,11 +353,10 @@ class WorkflowAgent:
             )
 
             # Save assistant response to database
-            await history_manager.save_message(
+            await history_manager.append_message(
                 thread_id=self.thread_id,
                 user_id="assistant",  # Assistant messages use "assistant" as user_id
                 content=response_content,
-                role="assistant",
             )
 
             # Update ChatAgent memory with the new exchange
@@ -371,11 +380,10 @@ class WorkflowAgent:
 
             # Still save the error interaction to maintain conversation continuity
             try:
-                await history_manager.save_message(
+                await history_manager.append_message(
                     thread_id=self.thread_id,
                     user_id="assistant",
                     content=error_response,
-                    role="assistant",
                 )
             except:
                 pass  # Don't fail on database save errors
@@ -397,11 +405,10 @@ class WorkflowAgent:
 
         try:
             # Save user message to database
-            await history_manager.save_message(
+            await history_manager.append_message(
                 thread_id=self.thread_id,
                 user_id=self.user_id,
                 content=user_input,
-                role="user",
             )
 
             # Run workflow with streaming
@@ -420,11 +427,10 @@ class WorkflowAgent:
                 full_response = str(final_response)
 
             # Save assistant response to database
-            await history_manager.save_message(
+            await history_manager.append_message(
                 thread_id=self.thread_id,
                 user_id="assistant",
                 content=full_response,
-                role="assistant",
             )
 
             # Update ChatAgent memory
@@ -445,11 +451,10 @@ class WorkflowAgent:
 
             # Save error response
             try:
-                await history_manager.save_message(
+                await history_manager.append_message(
                     thread_id=self.thread_id,
                     user_id="assistant",
                     content=error_response,
-                    role="assistant",
                 )
             except:
                 pass
