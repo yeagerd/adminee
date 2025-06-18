@@ -60,18 +60,17 @@ class DraftAgent(FunctionAgent):
         thread_id: Optional[int] = None,
         **llm_kwargs,
     ):
-        # Store thread_id directly - this is the source of truth
-        self.thread_id = str(thread_id) if thread_id is not None else "default_thread"
-
         # Get LLM instance
         llm = get_llm_manager().get_llm(
             model=llm_model, provider=llm_provider, **llm_kwargs
         )
 
-        # Create draft-specific tools
-        tools = self._create_draft_tools()
+        # Create draft-specific tools - create them first before we store thread_id
+        # We'll pass the thread_id to the tool creation method
+        thread_id_str = str(thread_id) if thread_id is not None else "default_thread"
+        tools = self._create_draft_tools(thread_id_str)
 
-        # Initialize FunctionAgent
+        # Initialize FunctionAgent first
         super().__init__(
             name="DraftAgent",
             description=(
@@ -92,9 +91,17 @@ class DraftAgent(FunctionAgent):
             can_handoff_to=["CoordinatorAgent"],
         )
 
-        logger.info(f"DraftAgent initialized with thread_id={self.thread_id}")
+        # Store thread_id using object.__setattr__ to bypass Pydantic validation
+        object.__setattr__(self, "_thread_id", thread_id_str)
 
-    def _create_draft_tools(self) -> List[FunctionTool]:
+        logger.info(f"DraftAgent initialized with thread_id={self._thread_id}")
+
+    @property
+    def thread_id(self) -> str:
+        """Get the thread_id for this agent."""
+        return getattr(self, "_thread_id", "default_thread")
+
+    def _create_draft_tools(self, thread_id: str) -> List[FunctionTool]:
         """Create draft-specific tools that use the stored thread_id directly."""
         tools = []
 
@@ -109,10 +116,10 @@ class DraftAgent(FunctionAgent):
         ) -> str:
             """Create or update a draft email using the agent's thread_id."""
             logger.info(
-                f"📧 DraftAgent: Creating email draft - To: {to}, Subject: {subject}, Thread: {self.thread_id}"
+                f"📧 DraftAgent: Creating email draft - To: {to}, Subject: {subject}, Thread: {thread_id}"
             )
 
-            result = create_draft_email(self.thread_id, to, cc, bcc, subject, body)
+            result = create_draft_email(thread_id, to, cc, bcc, subject, body)
 
             # Record the draft info and log the result
             if result.get("success"):
@@ -148,10 +155,8 @@ class DraftAgent(FunctionAgent):
 
         def delete_email_draft(ctx: Context) -> str:
             """Delete the draft email for this thread."""
-            logger.info(
-                f"🗑️ DraftAgent: Deleting email draft for thread {self.thread_id}"
-            )
-            result = delete_draft_email(self.thread_id)
+            logger.info(f"🗑️ DraftAgent: Deleting email draft for thread {thread_id}")
+            result = delete_draft_email(thread_id)
             return str(result)
 
         delete_email_draft_tool = FunctionTool.from_defaults(
@@ -173,11 +178,11 @@ class DraftAgent(FunctionAgent):
         ) -> str:
             """Create or update a draft calendar event using the agent's thread_id."""
             logger.info(
-                f"📅 DraftAgent: Creating calendar event draft - Title: {title}, Start: {start_time}, Thread: {self.thread_id}"
+                f"📅 DraftAgent: Creating calendar event draft - Title: {title}, Start: {start_time}, Thread: {thread_id}"
             )
 
             result = create_draft_calendar_event(
-                self.thread_id,
+                thread_id,
                 title,
                 start_time,
                 end_time,
@@ -219,9 +224,9 @@ class DraftAgent(FunctionAgent):
         def delete_calendar_event_draft(ctx: Context) -> str:
             """Delete the draft calendar event for this thread."""
             logger.info(
-                f"🗑️ DraftAgent: Deleting calendar event draft for thread {self.thread_id}"
+                f"🗑️ DraftAgent: Deleting calendar event draft for thread {thread_id}"
             )
-            result = delete_draft_calendar_event(self.thread_id)
+            result = delete_draft_calendar_event(thread_id)
             return str(result)
 
         delete_calendar_event_draft_tool = FunctionTool.from_defaults(
@@ -245,11 +250,11 @@ class DraftAgent(FunctionAgent):
         ) -> str:
             """Create or update a draft calendar change using the agent's thread_id."""
             logger.info(
-                f"📅 DraftAgent: Creating calendar change draft - Event: {event_id}, Type: {change_type}, Thread: {self.thread_id}"
+                f"📅 DraftAgent: Creating calendar change draft - Event: {event_id}, Type: {change_type}, Thread: {thread_id}"
             )
 
             result = create_draft_calendar_change(
-                self.thread_id,
+                thread_id,
                 event_id,
                 change_type,
                 new_title,
@@ -289,9 +294,9 @@ class DraftAgent(FunctionAgent):
         def delete_calendar_change_draft(ctx: Context) -> str:
             """Delete the draft calendar change for this thread."""
             logger.info(
-                f"🗑️ DraftAgent: Deleting calendar change draft for thread {self.thread_id}"
+                f"🗑️ DraftAgent: Deleting calendar change draft for thread {thread_id}"
             )
-            result = delete_draft_calendar_change(self.thread_id)
+            result = delete_draft_calendar_change(thread_id)
             return str(result)
 
         delete_calendar_change_draft_tool = FunctionTool.from_defaults(
