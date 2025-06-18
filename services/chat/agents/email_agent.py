@@ -39,6 +39,11 @@ async def record_email_info(ctx: Context, email_info: str, info_title: str) -> s
     logger.info(
         f"✅ EmailAgent: Email information '{info_title}' recorded successfully"
     )
+
+    # MANUALLY TRIGGER HANDOFF BACK TO COORDINATOR
+    logger.info("🔄 EmailAgent: Manually triggering handoff to CoordinatorAgent")
+    await ctx.set("next_agent", "CoordinatorAgent")
+
     return f"Email information '{info_title}' recorded successfully."
 
 

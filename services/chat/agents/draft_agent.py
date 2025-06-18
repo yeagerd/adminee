@@ -424,6 +424,11 @@ async def create_draft_email_with_thread_id(
             logger.info(
                 f"📝 Draft Email Content:\n  To: {to}\n  Subject: {subject}\n  Body: {body[:200]}{'...' if len(body) > 200 else ''}"
             )
+
+        # MANUALLY TRIGGER HANDOFF BACK TO COORDINATOR
+        logger.info("🔄 DraftAgent: Manually triggering handoff to Coordinator")
+        await ctx.set("next_agent", "CoordinatorAgent")
+
     else:
         logger.warning(f"❌ DraftAgent: Failed to create email draft - {result}")
 
@@ -468,6 +473,11 @@ async def create_draft_calendar_event_with_thread_id(
         logger.info(
             f"📝 Draft Calendar Event:\n  Title: {title}\n  Start: {start_time}\n  End: {end_time}\n  Location: {location}"
         )
+
+        # MANUALLY TRIGGER HANDOFF BACK TO COORDINATOR
+        logger.info("🔄 DraftAgent: Manually triggering handoff to Coordinator")
+        await ctx.set("next_agent", "CoordinatorAgent")
+
     else:
         logger.warning(
             f"❌ DraftAgent: Failed to create calendar event draft - {result}"

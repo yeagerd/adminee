@@ -40,6 +40,11 @@ async def record_calendar_info(
     logger.info(
         f"✅ CalendarAgent: Calendar information '{info_title}' recorded successfully"
     )
+
+    # MANUALLY TRIGGER HANDOFF BACK TO COORDINATOR
+    logger.info("🔄 CalendarAgent: Manually triggering handoff to CoordinatorAgent")
+    await ctx.set("next_agent", "CoordinatorAgent")
+
     return f"Calendar information '{info_title}' recorded successfully."
 
 

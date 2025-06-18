@@ -27,11 +27,25 @@ async def record_document_info(
     ctx: Context, document_info: str, info_title: str
 ) -> str:
     """Record document information to the workflow state for other agents to use."""
+    logger.info(f"📄 DocumentAgent: Recording document info - {info_title}")
+    logger.info(
+        f"📋 Document data: {document_info[:300]}{'...' if len(document_info) > 300 else ''}"
+    )
+
     current_state = await ctx.get("state", {})
     if "document_info" not in current_state:
         current_state["document_info"] = {}
     current_state["document_info"][info_title] = document_info
     await ctx.set("state", current_state)
+
+    logger.info(
+        f"✅ DocumentAgent: Document information '{info_title}' recorded successfully"
+    )
+
+    # MANUALLY TRIGGER HANDOFF BACK TO COORDINATOR
+    logger.info("🔄 DocumentAgent: Manually triggering handoff to CoordinatorAgent")
+    await ctx.set("next_agent", "CoordinatorAgent")
+
     return f"Document information '{info_title}' recorded successfully."
 
 
