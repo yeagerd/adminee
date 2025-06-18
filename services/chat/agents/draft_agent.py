@@ -79,7 +79,6 @@ class DraftAgent(FunctionAgent):
                 "You can create draft emails and calendar events. "
                 "IMPORTANT: When users want to modify or update existing calendar event drafts (like changing time, location, attendees), "
                 "always use the 'create_draft_calendar_event' tool - it will automatically update the existing draft with new values. "
-                "Do NOT create separate 'calendar change' drafts for updates. "
                 "When creating drafts, be thorough and ask for all necessary details. "
                 "Use the available tools to create, update, or delete drafts as needed. "
                 "Record draft information for other agents to reference. "
