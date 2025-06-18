@@ -151,6 +151,14 @@ class CoordinatorAgent(FunctionAgent):
             draft_context = (
                 "🚨 ACTIVE DRAFTS DETECTED:\n"
                 "This conversation has active drafts that need attention.\n\n"
+                "DISAMBIGUATION LOGIC:\n"
+                "- If user refers to 'the draft', 'the event', 'the meeting', or similar generic terms → likely referring to ACTIVE DRAFT\n"
+                "- If user uses vague edit requests like 'change the time', 'update the title' → likely about ACTIVE DRAFT\n"
+                "- If user specifies existing events with details like 'my 3pm meeting', 'tomorrow's call with John' → existing calendar event\n"
+                "- When in doubt, ask for clarification: 'Are you referring to the active draft or an existing calendar event?'\n\n"
+                "ROUTING DECISIONS:\n"
+                "- Active draft modifications → Hand off to DraftAgent immediately\n"
+                "- Existing event edits → Apply one-draft policy guidance below\n\n"
                 "ONE-DRAFT POLICY:\n"
                 "- Only one active draft per conversation to prevent confusion\n"
                 "- If user wants to create a different type of draft:\n"
@@ -159,7 +167,6 @@ class CoordinatorAgent(FunctionAgent):
                 "- If user wants to MODIFY existing drafts:\n"
                 "  * This is encouraged and allowed - hand off to DraftAgent\n"
                 "- Be helpful but firm about the one-draft policy\n"
-                "- Explain that this prevents confusion and ensures focus"
             )
         else:
             # Static prompt for clean state
