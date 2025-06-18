@@ -361,7 +361,12 @@ class WorkflowAgent:
             logger.warning(f"Failed to load conversation history: {e}")
 
     async def _extract_draft_data(self) -> List[Dict[str, Any]]:
-        """Extract structured draft data from the workflow context."""
+        """
+        Extract structured draft data programmatically.
+
+        This method accesses the draft storage directly rather than relying on
+        LLM context, making draft tracking more reliable and programmatic.
+        """
         drafts = []
         try:
             # Access the actual draft storage to get full data
@@ -378,31 +383,84 @@ class WorkflowAgent:
                         f"📝 Found draft in storage: {draft_key} -> {draft_copy}"
                     )
 
-            # Also check the workflow context state (legacy/backup check)
-            if self.context:
-                # Get current state to check for draft info
-                get_method = getattr(self.context, "get", None)
-                if get_method:
-                    state_result = get_method("state", {})
-                    # Handle both sync and async get methods
-                    if hasattr(state_result, "__await__"):
-                        state = await state_result
-                    else:
-                        state = state_result
-
-                    draft_info = state.get("draft_info", {})
-                    if draft_info:
-                        logger.info("🎯 DRAFT CREATED - Context state has draft_info:")
-                        for draft_type, info in draft_info.items():
-                            logger.info(f"  📝 {draft_type.upper()}: {info}")
-                    else:
-                        logger.info("📝 No draft_info found in context state")
+            logger.info(
+                f"📋 Programmatically found {len(drafts)} drafts for thread {self.thread_id}"
+            )
 
         except Exception as draft_error:
             logger.warning(f"Failed to extract draft data: {draft_error}")
 
-        logger.info(f"📋 Total drafts extracted: {len(drafts)}")
         return drafts
+
+    def get_current_drafts(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Get current draft data synchronously and programmatically.
+
+        Returns a dictionary with draft types as keys and draft data as values.
+        This is a synchronous method for easier programmatic access.
+
+        Returns:
+            Dict with keys like 'email', 'calendar_event', 'calendar_change'
+        """
+        current_drafts = {}
+        try:
+            from services.chat.agents.llm_tools import _draft_storage
+
+            # Check for drafts in the storage for this thread
+            thread_prefix = f"{self.thread_id}_"
+            for draft_key, draft_data in _draft_storage.items():
+                if draft_key.startswith(thread_prefix):
+                    # Extract draft type from key (e.g., "123_email" -> "email")
+                    draft_type = draft_key[len(thread_prefix) :]
+                    current_drafts[draft_type] = draft_data.copy()
+
+            logger.info(
+                f"📋 Current drafts for thread {self.thread_id}: {list(current_drafts.keys())}"
+            )
+
+        except Exception as e:
+            logger.warning(f"Failed to get current drafts: {e}")
+
+        return current_drafts
+
+    def has_drafts(self) -> bool:
+        """
+        Check if there are any drafts for this thread.
+
+        Returns:
+            True if drafts exist, False otherwise
+        """
+        return len(self.get_current_drafts()) > 0
+
+    def clear_all_drafts(self) -> bool:
+        """
+        Clear all drafts for this thread programmatically.
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            from services.chat.agents.llm_tools import _draft_storage
+
+            # Find all draft keys for this thread
+            thread_prefix = f"{self.thread_id}_"
+            keys_to_remove = [
+                key for key in _draft_storage.keys() if key.startswith(thread_prefix)
+            ]
+
+            # Remove all drafts for this thread
+            for key in keys_to_remove:
+                del _draft_storage[key]
+                logger.info(f"🗑️ Cleared draft: {key}")
+
+            logger.info(
+                f"✅ Cleared {len(keys_to_remove)} drafts for thread {self.thread_id}"
+            )
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to clear drafts: {e}")
+            return False
 
     async def chat(self, user_input: str) -> str:
         """

@@ -10,7 +10,6 @@ This agent handles all drafting operations including:
 Part of the multi-agent workflow system.
 """
 
-import asyncio
 import logging
 from typing import List, Optional
 
@@ -41,171 +40,6 @@ async def record_draft_info(ctx: Context, draft_info: str, draft_type: str) -> s
     return f"Draft information for '{draft_type}' recorded successfully."
 
 
-async def get_thread_id_from_context(ctx: Context) -> str:
-    """Helper function to get thread_id from context state."""
-    try:
-        # Try to get from the context state first
-        current_state = await ctx.get("state", {})
-        logger.info(f"🔍 DraftAgent: Context state: {current_state}")
-
-        thread_id = current_state.get("thread_id")
-        if thread_id:
-            logger.info(f"🔍 DraftAgent: Found thread_id in state: {thread_id}")
-            return thread_id
-
-        # Try to get from root context or initial state
-        if hasattr(ctx, "workflow") and hasattr(ctx.workflow, "initial_state"):
-            initial_state = ctx.workflow.initial_state
-            logger.info(f"🔍 DraftAgent: Initial state: {initial_state}")
-            thread_id = initial_state.get("thread_id")
-            if thread_id:
-                logger.info(
-                    f"🔍 DraftAgent: Found thread_id in initial state: {thread_id}"
-                )
-                return thread_id
-
-        # Try to get from any other context attributes
-        for attr_name in dir(ctx):
-            if "thread" in attr_name.lower():
-                attr_value = getattr(ctx, attr_name, None)
-                logger.info(
-                    f"🔍 DraftAgent: Found thread-related attribute {attr_name}: {attr_value}"
-                )
-                if (
-                    isinstance(attr_value, (str, int))
-                    and str(attr_value) != "default_thread"
-                ):
-                    return str(attr_value)
-
-        logger.warning("🔍 DraftAgent: No thread_id found in context, using default")
-        return "default_thread"
-
-    except Exception as e:
-        logger.warning(f"🔍 DraftAgent: Failed to get thread_id from context: {e}")
-        return "default_thread"
-
-
-# Context-aware wrapper functions for draft operations
-async def create_draft_email_with_context(
-    ctx: Context,
-    to: Optional[str] = None,
-    cc: Optional[str] = None,
-    bcc: Optional[str] = None,
-    subject: Optional[str] = None,
-    body: Optional[str] = None,
-) -> str:
-    """Create or update draft email using thread_id from context."""
-    thread_id = await get_thread_id_from_context(ctx)
-    logger.info(f"📧 DraftAgent: Creating email draft - To: {to}, Subject: {subject}")
-
-    result = create_draft_email(thread_id, to, cc, bcc, subject, body)
-
-    # Record the draft info and log the result
-    if result.get("success"):
-        draft_info = f"Email draft created/updated - To: {to}, Subject: {subject}"
-        await record_draft_info(ctx, draft_info, "email")
-        logger.info("✅ DraftAgent: Email draft created successfully")
-        # Log the draft content for visibility
-        if body:
-            logger.info(
-                f"📝 Draft Email Content:\n  To: {to}\n  Subject: {subject}\n  Body: {body[:200]}{'...' if len(body) > 200 else ''}"
-            )
-    else:
-        logger.warning(f"❌ DraftAgent: Failed to create email draft - {result}")
-
-    return str(result)
-
-
-async def delete_draft_email_with_context(ctx: Context) -> str:
-    """Delete draft email using thread_id from context."""
-    thread_id = await get_thread_id_from_context(ctx)
-    result = delete_draft_email(thread_id)
-    return str(result)
-
-
-async def create_draft_calendar_event_with_context(
-    ctx: Context,
-    title: Optional[str] = None,
-    start_time: Optional[str] = None,
-    end_time: Optional[str] = None,
-    attendees: Optional[str] = None,
-    location: Optional[str] = None,
-    description: Optional[str] = None,
-) -> str:
-    """Create or update draft calendar event using thread_id from context."""
-    thread_id = await get_thread_id_from_context(ctx)
-    logger.info(
-        f"📅 DraftAgent: Creating calendar event draft - Title: {title}, Start: {start_time}"
-    )
-
-    result = create_draft_calendar_event(
-        thread_id, title, start_time, end_time, attendees, location, description
-    )
-
-    # Record the draft info and log the result
-    if result.get("success"):
-        draft_info = f"Calendar event draft created/updated - Title: {title}, Start: {start_time}"
-        await record_draft_info(ctx, draft_info, "calendar_event")
-        logger.info("✅ DraftAgent: Calendar event draft created successfully")
-        # Log the draft content for visibility
-        logger.info(
-            f"📝 Draft Calendar Event:\n  Title: {title}\n  Start: {start_time}\n  End: {end_time}\n  Location: {location}"
-        )
-    else:
-        logger.warning(
-            f"❌ DraftAgent: Failed to create calendar event draft - {result}"
-        )
-
-    return str(result)
-
-
-async def delete_draft_calendar_event_with_context(ctx: Context) -> str:
-    """Delete draft calendar event using thread_id from context."""
-    thread_id = await get_thread_id_from_context(ctx)
-    result = delete_draft_calendar_event(thread_id)
-    return str(result)
-
-
-async def create_draft_calendar_change_with_context(
-    ctx: Context,
-    event_id: Optional[str] = None,
-    change_type: Optional[str] = None,
-    new_title: Optional[str] = None,
-    new_start_time: Optional[str] = None,
-    new_end_time: Optional[str] = None,
-    new_attendees: Optional[str] = None,
-    new_location: Optional[str] = None,
-    new_description: Optional[str] = None,
-) -> str:
-    """Create or update draft calendar change using thread_id from context."""
-    thread_id = await get_thread_id_from_context(ctx)
-    result = create_draft_calendar_change(
-        thread_id,
-        event_id,
-        change_type,
-        new_title,
-        new_start_time,
-        new_end_time,
-        new_attendees,
-        new_location,
-        new_description,
-    )
-
-    # Record the draft info
-    if result.get("success"):
-        draft_info = f"Calendar change draft created/updated - Event ID: {event_id}, Type: {change_type}"
-        await record_draft_info(ctx, draft_info, "calendar_change")
-
-    return str(result)
-
-
-async def delete_draft_calendar_change_with_context(ctx: Context) -> str:
-    """Delete draft calendar change using thread_id from context."""
-    thread_id = await get_thread_id_from_context(ctx)
-    result = delete_draft_calendar_change(thread_id)
-    return str(result)
-
-
 class DraftAgent(FunctionAgent):
     """
     Specialized agent for drafting operations.
@@ -215,6 +49,8 @@ class DraftAgent(FunctionAgent):
     - Create and manage draft calendar events
     - Create and manage draft calendar changes
     - Record draft information for other agents
+
+    Thread ID is managed programmatically - no complex context lookups required.
     """
 
     def __init__(
@@ -224,13 +60,16 @@ class DraftAgent(FunctionAgent):
         thread_id: Optional[int] = None,
         **llm_kwargs,
     ):
+        # Store thread_id directly - this is the source of truth
+        self.thread_id = str(thread_id) if thread_id is not None else "default_thread"
+
         # Get LLM instance
         llm = get_llm_manager().get_llm(
             model=llm_model, provider=llm_provider, **llm_kwargs
         )
 
-        # Create draft-specific tools with thread_id closure
-        tools = self._create_draft_tools(thread_id)
+        # Create draft-specific tools
+        tools = self._create_draft_tools()
 
         # Initialize FunctionAgent
         super().__init__(
@@ -253,19 +92,14 @@ class DraftAgent(FunctionAgent):
             can_handoff_to=["CoordinatorAgent"],
         )
 
-        logger.info(
-            f"DraftAgent initialized with drafting tools, thread_id={thread_id}"
-        )
+        logger.info(f"DraftAgent initialized with thread_id={self.thread_id}")
 
-    def _create_draft_tools(
-        self, thread_id: Optional[int] = None
-    ) -> List[FunctionTool]:
-        """Create draft-specific tools with thread_id closure."""
+    def _create_draft_tools(self) -> List[FunctionTool]:
+        """Create draft-specific tools that use the stored thread_id directly."""
         tools = []
-        thread_id_str = str(thread_id) if thread_id is not None else None
 
-        # Email drafting tools - create closures that capture thread_id
-        def create_email_draft_bound(
+        # Email drafting tools
+        def create_email_draft(
             ctx: Context,
             to: Optional[str] = None,
             cc: Optional[str] = None,
@@ -273,34 +107,62 @@ class DraftAgent(FunctionAgent):
             subject: Optional[str] = None,
             body: Optional[str] = None,
         ) -> str:
-            return asyncio.run(
-                create_draft_email_with_thread_id(
-                    ctx, thread_id_str, to, cc, bcc, subject, body
-                )
+            """Create or update a draft email using the agent's thread_id."""
+            logger.info(
+                f"📧 DraftAgent: Creating email draft - To: {to}, Subject: {subject}, Thread: {self.thread_id}"
             )
 
+            result = create_draft_email(self.thread_id, to, cc, bcc, subject, body)
+
+            # Record the draft info and log the result
+            if result.get("success"):
+                draft_info = (
+                    f"Email draft created/updated - To: {to}, Subject: {subject}"
+                )
+                # Use asyncio.run for the async record_draft_info call
+                import asyncio
+
+                asyncio.create_task(record_draft_info(ctx, draft_info, "email"))
+                logger.info("✅ DraftAgent: Email draft created successfully")
+                # Log the draft content for visibility
+                if body:
+                    logger.info(
+                        f"📝 Draft Email Content:\n  To: {to}\n  Subject: {subject}\n  Body: {body[:200]}{'...' if len(body) > 200 else ''}"
+                    )
+            else:
+                logger.warning(
+                    f"❌ DraftAgent: Failed to create email draft - {result}"
+                )
+
+            return str(result)
+
         create_email_draft_tool = FunctionTool.from_defaults(
-            fn=create_email_draft_bound,
+            fn=create_email_draft,
             name="create_draft_email",
             description=(
                 "Create or update a draft email. Provide to, cc, bcc, subject, and body. "
-                "The thread_id is automatically obtained from the agent instance."
+                "The thread_id is automatically handled by the agent."
             ),
         )
         tools.append(create_email_draft_tool)
 
-        def delete_email_draft_bound(ctx: Context) -> str:
-            return asyncio.run(delete_draft_email_with_thread_id(ctx, thread_id_str))
+        def delete_email_draft(ctx: Context) -> str:
+            """Delete the draft email for this thread."""
+            logger.info(
+                f"🗑️ DraftAgent: Deleting email draft for thread {self.thread_id}"
+            )
+            result = delete_draft_email(self.thread_id)
+            return str(result)
 
         delete_email_draft_tool = FunctionTool.from_defaults(
-            fn=delete_email_draft_bound,
+            fn=delete_email_draft,
             name="delete_draft_email",
             description="Delete the draft email for the current thread.",
         )
         tools.append(delete_email_draft_tool)
 
         # Calendar event drafting tools
-        def create_calendar_event_draft_bound(
+        def create_calendar_event_draft(
             ctx: Context,
             title: Optional[str] = None,
             start_time: Optional[str] = None,
@@ -309,43 +171,68 @@ class DraftAgent(FunctionAgent):
             location: Optional[str] = None,
             description: Optional[str] = None,
         ) -> str:
-            return asyncio.run(
-                create_draft_calendar_event_with_thread_id(
-                    ctx,
-                    thread_id_str,
-                    title,
-                    start_time,
-                    end_time,
-                    attendees,
-                    location,
-                    description,
-                )
+            """Create or update a draft calendar event using the agent's thread_id."""
+            logger.info(
+                f"📅 DraftAgent: Creating calendar event draft - Title: {title}, Start: {start_time}, Thread: {self.thread_id}"
             )
 
+            result = create_draft_calendar_event(
+                self.thread_id,
+                title,
+                start_time,
+                end_time,
+                attendees,
+                location,
+                description,
+            )
+
+            # Record the draft info and log the result
+            if result.get("success"):
+                draft_info = f"Calendar event draft created/updated - Title: {title}, Start: {start_time}"
+                import asyncio
+
+                asyncio.create_task(
+                    record_draft_info(ctx, draft_info, "calendar_event")
+                )
+                logger.info("✅ DraftAgent: Calendar event draft created successfully")
+                # Log the draft content for visibility
+                logger.info(
+                    f"📝 Draft Calendar Event:\n  Title: {title}\n  Start: {start_time}\n  End: {end_time}\n  Location: {location}"
+                )
+            else:
+                logger.warning(
+                    f"❌ DraftAgent: Failed to create calendar event draft - {result}"
+                )
+
+            return str(result)
+
         create_calendar_event_draft_tool = FunctionTool.from_defaults(
-            fn=create_calendar_event_draft_bound,
+            fn=create_calendar_event_draft,
             name="create_draft_calendar_event",
             description=(
                 "Create or update a draft calendar event. Provide title, start_time, end_time, "
-                "attendees, location, and description. The thread_id is automatically obtained from the agent instance."
+                "attendees, location, and description. The thread_id is automatically handled by the agent."
             ),
         )
         tools.append(create_calendar_event_draft_tool)
 
-        def delete_calendar_event_draft_bound(ctx: Context) -> str:
-            return asyncio.run(
-                delete_draft_calendar_event_with_thread_id(ctx, thread_id_str)
+        def delete_calendar_event_draft(ctx: Context) -> str:
+            """Delete the draft calendar event for this thread."""
+            logger.info(
+                f"🗑️ DraftAgent: Deleting calendar event draft for thread {self.thread_id}"
             )
+            result = delete_draft_calendar_event(self.thread_id)
+            return str(result)
 
         delete_calendar_event_draft_tool = FunctionTool.from_defaults(
-            fn=delete_calendar_event_draft_bound,
+            fn=delete_calendar_event_draft,
             name="delete_draft_calendar_event",
             description="Delete the draft calendar event for the current thread.",
         )
         tools.append(delete_calendar_event_draft_tool)
 
         # Calendar change drafting tools
-        def create_calendar_change_draft_bound(
+        def create_calendar_change_draft(
             ctx: Context,
             event_id: Optional[str] = None,
             change_type: Optional[str] = None,
@@ -356,186 +243,65 @@ class DraftAgent(FunctionAgent):
             new_location: Optional[str] = None,
             new_description: Optional[str] = None,
         ) -> str:
-            return asyncio.run(
-                create_draft_calendar_change_with_thread_id(
-                    ctx,
-                    thread_id_str,
-                    event_id,
-                    change_type,
-                    new_title,
-                    new_start_time,
-                    new_end_time,
-                    new_attendees,
-                    new_location,
-                    new_description,
-                )
+            """Create or update a draft calendar change using the agent's thread_id."""
+            logger.info(
+                f"📅 DraftAgent: Creating calendar change draft - Event: {event_id}, Type: {change_type}, Thread: {self.thread_id}"
             )
 
+            result = create_draft_calendar_change(
+                self.thread_id,
+                event_id,
+                change_type,
+                new_title,
+                new_start_time,
+                new_end_time,
+                new_attendees,
+                new_location,
+                new_description,
+            )
+
+            # Record the draft info
+            if result.get("success"):
+                draft_info = f"Calendar change draft created/updated - Event ID: {event_id}, Type: {change_type}"
+                import asyncio
+
+                asyncio.create_task(
+                    record_draft_info(ctx, draft_info, "calendar_change")
+                )
+                logger.info("✅ DraftAgent: Calendar change draft created successfully")
+            else:
+                logger.warning(
+                    f"❌ DraftAgent: Failed to create calendar change draft - {result}"
+                )
+
+            return str(result)
+
         create_calendar_change_draft_tool = FunctionTool.from_defaults(
-            fn=create_calendar_change_draft_bound,
+            fn=create_calendar_change_draft,
             name="create_draft_calendar_change",
             description=(
                 "Create or update a draft calendar change. Provide event_id, change_type, and any "
-                "new values to change. The thread_id is automatically obtained from the agent instance."
+                "new values to change. The thread_id is automatically handled by the agent."
             ),
         )
         tools.append(create_calendar_change_draft_tool)
 
-        def delete_calendar_change_draft_bound(ctx: Context) -> str:
-            return asyncio.run(
-                delete_draft_calendar_change_with_thread_id(ctx, thread_id_str)
+        def delete_calendar_change_draft(ctx: Context) -> str:
+            """Delete the draft calendar change for this thread."""
+            logger.info(
+                f"🗑️ DraftAgent: Deleting calendar change draft for thread {self.thread_id}"
             )
+            result = delete_draft_calendar_change(self.thread_id)
+            return str(result)
 
         delete_calendar_change_draft_tool = FunctionTool.from_defaults(
-            fn=delete_calendar_change_draft_bound,
+            fn=delete_calendar_change_draft,
             name="delete_draft_calendar_change",
             description="Delete the draft calendar change for the current thread.",
         )
         tools.append(delete_calendar_change_draft_tool)
 
         return tools
-
-
-# New functions that accept thread_id directly
-async def create_draft_email_with_thread_id(
-    ctx: Context,
-    thread_id: Optional[str],
-    to: Optional[str] = None,
-    cc: Optional[str] = None,
-    bcc: Optional[str] = None,
-    subject: Optional[str] = None,
-    body: Optional[str] = None,
-) -> str:
-    """Create or update draft email using the provided thread_id."""
-    actual_thread_id = thread_id or "default_thread"
-    logger.info(
-        f"📧 DraftAgent: Creating email draft - To: {to}, Subject: {subject}, Thread: {actual_thread_id}"
-    )
-
-    result = create_draft_email(actual_thread_id, to, cc, bcc, subject, body)
-
-    # Record the draft info and log the result
-    if result.get("success"):
-        draft_info = f"Email draft created/updated - To: {to}, Subject: {subject}"
-        await record_draft_info(ctx, draft_info, "email")
-        logger.info("✅ DraftAgent: Email draft created successfully")
-        # Log the draft content for visibility
-        if body:
-            logger.info(
-                f"📝 Draft Email Content:\n  To: {to}\n  Subject: {subject}\n  Body: {body[:200]}{'...' if len(body) > 200 else ''}"
-            )
-
-        # MANUALLY TRIGGER HANDOFF BACK TO COORDINATOR
-        logger.info("🔄 DraftAgent: Manually triggering handoff to Coordinator")
-        await ctx.set("next_agent", "CoordinatorAgent")
-
-    else:
-        logger.warning(f"❌ DraftAgent: Failed to create email draft - {result}")
-
-    return str(result)
-
-
-async def delete_draft_email_with_thread_id(
-    ctx: Context, thread_id: Optional[str]
-) -> str:
-    """Delete draft email using the provided thread_id."""
-    actual_thread_id = thread_id or "default_thread"
-    result = delete_draft_email(actual_thread_id)
-    return str(result)
-
-
-async def create_draft_calendar_event_with_thread_id(
-    ctx: Context,
-    thread_id: Optional[str],
-    title: Optional[str] = None,
-    start_time: Optional[str] = None,
-    end_time: Optional[str] = None,
-    attendees: Optional[str] = None,
-    location: Optional[str] = None,
-    description: Optional[str] = None,
-) -> str:
-    """Create or update draft calendar event using the provided thread_id."""
-    actual_thread_id = thread_id or "default_thread"
-    logger.info(
-        f"📅 DraftAgent: Creating calendar event draft - Title: {title}, Start: {start_time}, Thread: {actual_thread_id}"
-    )
-
-    result = create_draft_calendar_event(
-        actual_thread_id, title, start_time, end_time, attendees, location, description
-    )
-
-    # Record the draft info and log the result
-    if result.get("success"):
-        draft_info = f"Calendar event draft created/updated - Title: {title}, Start: {start_time}"
-        await record_draft_info(ctx, draft_info, "calendar_event")
-        logger.info("✅ DraftAgent: Calendar event draft created successfully")
-        # Log the draft content for visibility
-        logger.info(
-            f"📝 Draft Calendar Event:\n  Title: {title}\n  Start: {start_time}\n  End: {end_time}\n  Location: {location}"
-        )
-
-        # MANUALLY TRIGGER HANDOFF BACK TO COORDINATOR
-        logger.info("🔄 DraftAgent: Manually triggering handoff to Coordinator")
-        await ctx.set("next_agent", "CoordinatorAgent")
-
-    else:
-        logger.warning(
-            f"❌ DraftAgent: Failed to create calendar event draft - {result}"
-        )
-
-    return str(result)
-
-
-async def delete_draft_calendar_event_with_thread_id(
-    ctx: Context, thread_id: Optional[str]
-) -> str:
-    """Delete draft calendar event using the provided thread_id."""
-    actual_thread_id = thread_id or "default_thread"
-    result = delete_draft_calendar_event(actual_thread_id)
-    return str(result)
-
-
-async def create_draft_calendar_change_with_thread_id(
-    ctx: Context,
-    thread_id: Optional[str],
-    event_id: Optional[str] = None,
-    change_type: Optional[str] = None,
-    new_title: Optional[str] = None,
-    new_start_time: Optional[str] = None,
-    new_end_time: Optional[str] = None,
-    new_attendees: Optional[str] = None,
-    new_location: Optional[str] = None,
-    new_description: Optional[str] = None,
-) -> str:
-    """Create or update draft calendar change using the provided thread_id."""
-    actual_thread_id = thread_id or "default_thread"
-    result = create_draft_calendar_change(
-        actual_thread_id,
-        event_id,
-        change_type,
-        new_title,
-        new_start_time,
-        new_end_time,
-        new_attendees,
-        new_location,
-        new_description,
-    )
-
-    # Record the draft info
-    if result.get("success"):
-        draft_info = f"Calendar change draft created/updated - Event ID: {event_id}, Type: {change_type}"
-        await record_draft_info(ctx, draft_info, "calendar_change")
-
-    return str(result)
-
-
-async def delete_draft_calendar_change_with_thread_id(
-    ctx: Context, thread_id: Optional[str]
-) -> str:
-    """Delete draft calendar change using the provided thread_id."""
-    actual_thread_id = thread_id or "default_thread"
-    result = delete_draft_calendar_change(actual_thread_id)
-    return str(result)
 
 
 def create_draft_agent(
