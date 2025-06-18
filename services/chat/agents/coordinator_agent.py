@@ -104,7 +104,7 @@ class CoordinatorAgent(FunctionAgent):
 
         # Initialize FunctionAgent
         super().__init__(
-            name="Coordinator",
+            name="CoordinatorAgent",
             description=(
                 "Main coordinator agent that manages the workflow between specialized agents. "
                 "Handles user requests, coordinates between CalendarAgent, EmailAgent, "

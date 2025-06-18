@@ -56,7 +56,7 @@ async def test_multi_agent_build(multi_agent_workflow, mock_history_manager):
         # Check that specialized agents were created
         assert len(multi_agent_workflow.specialized_agents) == 5
         expected_agents = [
-            "Coordinator",
+            "CoordinatorAgent",
             "CalendarAgent",
             "EmailAgent",
             "DocumentAgent",
@@ -77,7 +77,7 @@ def test_coordinator_agent_creation():
         llm_provider="fake",
     )
 
-    assert agent.name == "Coordinator"
+    assert agent.name == "CoordinatorAgent"
     assert "coordinator" in agent.description.lower()
     assert len(agent.tools) > 0  # Should have coordination tools
 

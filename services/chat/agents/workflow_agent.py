@@ -192,7 +192,7 @@ class WorkflowAgent:
         agents = {}
 
         # Create all specialized agents with thread_id
-        agents["Coordinator"] = CoordinatorAgent(
+        agents["CoordinatorAgent"] = CoordinatorAgent(
             llm_model=self.llm_model, llm_provider=self.llm_provider, **self.llm_kwargs
         )
 
@@ -240,7 +240,7 @@ class WorkflowAgent:
             agents_list = list(self.specialized_agents.values())
             self.agent_workflow = AgentWorkflow(
                 agents=agents_list,
-                root_agent="Coordinator",  # Coordinator starts first
+                root_agent="CoordinatorAgent",  # Coordinator starts first
                 initial_state={
                     "thread_id": str(self.thread_id),
                     "user_id": self.user_id,
@@ -613,7 +613,7 @@ class WorkflowAgent:
     @property
     def agent(self):
         """Access to the coordinator agent."""
-        return self.specialized_agents.get("Coordinator")
+        return self.specialized_agents.get("CoordinatorAgent")
 
     @property
     def memory(self):
