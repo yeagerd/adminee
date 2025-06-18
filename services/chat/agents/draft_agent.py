@@ -95,10 +95,25 @@ class DraftAgent(FunctionAgent):
     @staticmethod
     def _create_context_aware_prompt(thread_id: str) -> str:
         """Create a context-aware system prompt based on existing drafts."""
-        # Get existing drafts info
-        existing_drafts = DraftAgent._get_existing_drafts(thread_id)
+        # Common prefix that can be cached
+        base_prompt = (
+            "You are the DraftAgent, responsible for creating and managing drafts of emails and calendar events. "
+            "Your role is to help users create, edit, and finalize drafts before they are sent or scheduled.\n\n"
+        )
 
-        # Build draft context
+        capabilities = (
+            "CAPABILITIES:\n"
+            "- Create and edit email drafts\n"
+            "- Create and edit calendar event drafts\n"
+            "- Modify existing calendar events (with event_id)\n"
+            "- Delete current active draft upon request\n"
+            "WORKFLOW:\n"
+            "- Always ask for clarification if draft requirements are unclear\n"
+            "- Provide helpful suggestions for improving drafts\n"
+        )
+
+        # Draft-specific context at the end (varies based on state)
+        existing_drafts = DraftAgent._get_existing_drafts(thread_id)
         draft_descriptions = []
 
         if existing_drafts.get("email", False):
@@ -119,36 +134,16 @@ class DraftAgent(FunctionAgent):
             # Calendar edit drafts don't have a get function, so just note their existence
             draft_descriptions.append("Calendar edit draft (modifying existing event)")
 
-        # Build the prompt based on draft state
-        base_prompt = (
-            "You are the DraftAgent, responsible for creating and managing drafts of emails and calendar events. "
-            "Your role is to help users create, edit, and finalize drafts before they are sent or scheduled.\n\n"
-        )
-
         if draft_descriptions:
             draft_context = (
                 "CURRENT DRAFTS:\n"
                 + "\n".join(f"- {desc}" for desc in draft_descriptions)
-                + "\n\nYou can edit these existing drafts or help the user finalize them.\n\n"
+                + "\n\nYou can edit these existing drafts or help the user finalize them."
             )
         else:
-            draft_context = "CLEAN STATE: No active drafts - ready to create new drafts as requested.\n\n"
+            draft_context = "CLEAN STATE: No active drafts - ready to create new drafts as requested."
 
-        capabilities = (
-            "CAPABILITIES:\n"
-            "- Create and edit email drafts\n"
-            "- Create and edit calendar event drafts\n"
-            "- Modify existing calendar events (with event_id)\n"
-            "- Clear all drafts when requested\n"
-            "- Help users finalize and send/schedule their drafts\n\n"
-            "WORKFLOW:\n"
-            "- Always ask for clarification if draft requirements are unclear\n"
-            "- Provide helpful suggestions for improving drafts\n"
-            "- Confirm before making significant changes to existing drafts\n"
-            "- Be proactive about suggesting next steps (review, send, schedule)\n"
-        )
-
-        return base_prompt + draft_context + capabilities
+        return base_prompt + capabilities + draft_context
 
     def __init__(
         self,
