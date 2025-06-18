@@ -374,7 +374,7 @@ class ChatDemo:
                         # Erase the previous input line (prompt + user input)
                         print("\033[F\033[K", end="")  # Move cursor up and clear line
                         print(f"💬 {self.user_id}: {user_input}")
-                        
+
                         response = self.send_message_api(user_input)
                         print(f"✨ Briefly: {response}")
                     else:
