@@ -25,6 +25,7 @@ def get_calendar_events(
     if provider_type:
         params["provider_type"] = provider_type
     try:
+        office_service_url = get_settings().office_service_url
         response = requests.get(
             f"{office_service_url}/events",
             headers=headers,
