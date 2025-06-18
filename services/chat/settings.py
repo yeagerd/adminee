@@ -50,13 +50,16 @@ class Settings(BaseSettings):
         description="User Management service URL",
     )
     office_service_url: str = Field(
-        default="http://localhost:8080",
+        default="http://localhost:8001",
         description="Office service URL",
     )
 
     # LLM Configuration
     llm_provider: str = Field(default="openai", description="LLM provider")
     llm_model: str = Field(default="gpt-4.1-nano", description="LLM model")
+    max_tokens: int = Field(
+        default=2000, description="Maximum tokens for LLM responses"
+    )
     openai_api_key: Optional[str] = Field(default=None, description="OpenAI API key")
 
     # Logging Configuration

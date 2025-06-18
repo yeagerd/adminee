@@ -33,7 +33,7 @@ def test_get_llm_success_fake_provider(llm_manager):
 @patch.dict(os.environ, {}, clear=True)  # Ensure no API keys are present
 def test_get_llm_fallback_to_fake_llm_if_api_key_missing(llm_manager):
     """Test get_llm falls back to FakeLLM if API key is missing for a real provider."""
-    llm = llm_manager.get_llm(model="gpt-3.5-turbo", provider="openai")
+    llm = llm_manager.get_llm(model="gpt-4.1-nano", provider="openai")
     assert isinstance(llm, FakeLLM)
 
 
@@ -47,9 +47,9 @@ def test_get_llm_success_real_provider_with_api_key(llm_manager):
         mock_logging_llm_instance = MagicMock()
         mock_logging_llm.return_value = mock_logging_llm_instance
 
-        llm = llm_manager.get_llm(model="gpt-3.5-turbo", provider="openai")
+        llm = llm_manager.get_llm(model="gpt-4.1-nano", provider="openai")
         mock_logging_llm.assert_called_once_with(
-            model="openai/gpt-3.5-turbo", language="en"
+            model="openai/gpt-4.1-nano", language="en"
         )
         assert llm is mock_logging_llm_instance
 
@@ -78,11 +78,11 @@ def test_get_model_info_success(llm_manager):
     ) as mock_get_provider:
         mock_get_provider.return_value = (
             "openai",
-            "gpt-3.5-turbo",
+            "gpt-4.1-nano",
         )  # provider, model_name
-        info = llm_manager.get_model_info(model="openai/gpt-3.5-turbo")
+        info = llm_manager.get_model_info(model="openai/gpt-4.1-nano")
 
-    assert info["model"] == "openai/gpt-3.5-turbo"
+    assert info["model"] == "openai/gpt-4.1-nano"
     assert info["provider"] == "openai"
     assert info["default"] is False  # Default is now always False
 

@@ -276,7 +276,7 @@ class _LLMManager:
         Returns a LiteLLM instance or FakeLLM if no API key is found.
 
         Args:
-            model: The model name (e.g., 'gpt-3.5-turbo')
+            model: The model name (e.g., 'gpt-4.1-nano')
             provider: The provider name (e.g., 'openai', 'anthropic')
             **kwargs: Additional arguments to pass to the LLM
 

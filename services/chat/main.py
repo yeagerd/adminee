@@ -24,7 +24,7 @@ logger.info("Logging is configured")
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Startup: Ensure the database is created and tables exist
-    logger.info("Starting Chat Service")
+    logger.info("Starting Chat Service with Multi-Agent Workflow")
 
     # Validate API keys for outgoing service calls (optional - will warn if missing)
     if not get_settings().api_chat_user_key:
@@ -88,6 +88,7 @@ async def health_check() -> JSONResponse:
             content={
                 "status": "ok",
                 "service": "chat-service",
+                "agent_mode": "multi-agent-workflow",
                 "database": "connected",
                 "threads_count": count,
                 "configuration": config_status,
