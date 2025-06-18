@@ -5,7 +5,7 @@ This test verifies that the DraftAgent has the correct tools and doesn't
 expose the problematic calendar change tools that cause LLM confusion.
 """
 
-import pytest
+
 from services.chat.agents.draft_agent import DraftAgent
 
 
@@ -26,11 +26,11 @@ class TestDraftAgentTools:
         # Should have these tools
         expected_tools = {
             "create_draft_email",
-            "delete_draft_email", 
+            "delete_draft_email",
             "create_draft_calendar_event",
             "delete_draft_calendar_event",
         }
-        
+
         for tool_name in expected_tools:
             assert tool_name in tool_names, f"Missing expected tool: {tool_name}"
 
@@ -39,9 +39,11 @@ class TestDraftAgentTools:
             "create_draft_calendar_change",
             "delete_draft_calendar_change",
         }
-        
+
         for tool_name in problematic_tools:
-            assert tool_name not in tool_names, f"Found problematic tool that should be removed: {tool_name}"
+            assert (
+                tool_name not in tool_names
+            ), f"Found problematic tool that should be removed: {tool_name}"
 
     def test_draft_agent_calendar_event_tool_description(self):
         """Test that the calendar event tool has clear description for updates."""
@@ -57,9 +59,9 @@ class TestDraftAgentTools:
             if tool.metadata.name == "create_draft_calendar_event":
                 calendar_tool = tool
                 break
-        
+
         assert calendar_tool is not None, "create_draft_calendar_event tool not found"
-        
+
         # Check that description emphasizes both creating AND updating
         description = calendar_tool.metadata.description.lower()
         assert "create" in description
@@ -77,5 +79,5 @@ class TestDraftAgentTools:
         )
 
         assert agent.thread_id == str(test_thread_id)
-        assert hasattr(agent, '_thread_id')
-        assert agent._thread_id == str(test_thread_id) 
+        assert hasattr(agent, "_thread_id")
+        assert agent._thread_id == str(test_thread_id)
