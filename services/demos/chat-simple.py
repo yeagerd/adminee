@@ -16,9 +16,9 @@ import sys
 from typing import Optional
 
 # Add the services directory to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-from chat.agents.workflow_agent import WorkflowAgent
+from services.chat.agents.workflow_agent import WorkflowAgent
 
 # Configure logging (quieter for interactive use)
 logging.basicConfig(

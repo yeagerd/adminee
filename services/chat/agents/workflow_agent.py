@@ -11,6 +11,7 @@ while providing modern workflow capabilities including:
 - Human-in-the-loop capabilities
 - Tool integration from existing llm_tools
 - Memory persistence through history_manager
+- Multi-agent support with specialized agents
 
 This will eventually supersede the llama_manager.py orchestration layer.
 """
@@ -21,12 +22,21 @@ from typing import Any, Callable, Dict, List, Optional, Union
 from llama_index.core.agent.workflow import AgentWorkflow, FunctionAgent
 from llama_index.core.base.llms.types import ChatMessage, MessageRole
 from llama_index.core.tools import FunctionTool
-from llama_index.core.workflow import Context, Event, InputRequiredEvent, HumanResponseEvent
+from llama_index.core.workflow import (
+    Context,
+)
 
 from services.chat import history_manager
+from services.chat.agents.calendar_agent import CalendarAgent
 from services.chat.agents.chat_agent import ChatAgent
+
+# Import specialized agents for multi-agent mode
+from services.chat.agents.coordinator_agent import CoordinatorAgent
+from services.chat.agents.document_agent import DocumentAgent
+from services.chat.agents.draft_agent import DraftAgent
+from services.chat.agents.email_agent import EmailAgent
 from services.chat.agents.llm_manager import get_llm_manager
-from services.chat.agents.llm_tools import get_tool_registry, ToolRegistry
+from services.chat.agents.llm_tools import get_tool_registry
 
 logger = logging.getLogger(__name__)
 
@@ -34,13 +44,14 @@ logger = logging.getLogger(__name__)
 class WorkflowAgent:
     """
     LlamaIndex AgentWorkflow-based chat agent.
-    
+
     This class provides a modern workflow-based architecture that:
     - Uses AgentWorkflow for orchestration
     - Integrates with existing ChatAgent for memory management
     - Supports context persistence and state management
     - Provides streaming and human-in-the-loop capabilities
     - Uses existing LLM manager and tools
+    - Supports both single-agent and multi-agent modes
     """
 
     def __init__(
@@ -59,6 +70,7 @@ class WorkflowAgent:
         enable_vector_memory: bool = True,
         max_facts: int = 50,
         office_service_url: str = "http://localhost:8001",
+        use_multi_agent: bool = False,
     ):
         self.thread_id = thread_id
         self.user_id = user_id
@@ -66,6 +78,7 @@ class WorkflowAgent:
         self.chat_history_token_ratio = chat_history_token_ratio
         self.token_flush_size = token_flush_size
         self.office_service_url = office_service_url
+        self.use_multi_agent = use_multi_agent
 
         # Agent configuration
         self.static_content = static_content
@@ -83,9 +96,9 @@ class WorkflowAgent:
             model=llm_model, provider=llm_provider, **self.llm_kwargs
         )
 
-        # Initialize tools
+        # Initialize tools (for single-agent mode)
         self.tools = self._prepare_tools(tools)
-        
+
         # Initialize tool registry for additional office tools
         self.tool_registry = get_tool_registry(office_service_url=office_service_url)
 
@@ -111,16 +124,22 @@ class WorkflowAgent:
         self.agent_workflow: Optional[AgentWorkflow] = None
         self.context: Optional[Context] = None
 
+        # Multi-agent components
+        self.specialized_agents: Dict[str, FunctionAgent] = {}
+
         logger.info(
             f"WorkflowAgent initialized for user_id={self.user_id}, "
-            f"thread_id={self.thread_id}, tools_count={len(self.tools)}"
+            f"thread_id={self.thread_id}, tools_count={len(self.tools)}, "
+            f"multi_agent={self.use_multi_agent}"
         )
 
-    def _prepare_tools(self, tools: Optional[List[Union[Callable, FunctionTool]]]) -> List[FunctionTool]:
+    def _prepare_tools(
+        self, tools: Optional[List[Union[Callable, FunctionTool]]]
+    ) -> List[FunctionTool]:
         """Convert tools to FunctionTool format if needed."""
         if not tools:
             return []
-        
+
         prepared_tools = []
         for tool in tools:
             if isinstance(tool, FunctionTool):
@@ -131,61 +150,130 @@ class WorkflowAgent:
                 prepared_tools.append(function_tool)
             else:
                 logger.warning(f"Unsupported tool type: {type(tool)}")
-        
+
         return prepared_tools
 
     def _get_default_system_prompt(self) -> str:
         """Get default system prompt for the workflow agent."""
-        return (
-            f"You are a helpful AI assistant. You are conversing with user {self.user_id}. "
-            "You have access to tools and can help with various tasks including email, calendar, "
-            "and document management. Always be helpful, accurate, and professional. "
-            "When using tools, provide clear explanations of what you're doing and why."
+        if self.use_multi_agent:
+            return (
+                f"You are a helpful AI assistant coordinator. You are conversing with user {self.user_id}. "
+                "You coordinate between specialized agents to help with various tasks including email, calendar, "
+                "and document management. Always be helpful, accurate, and professional."
+            )
+        else:
+            return (
+                f"You are a helpful AI assistant. You are conversing with user {self.user_id}. "
+                "You have access to tools and can help with various tasks including email, calendar, "
+                "and document management. Always be helpful, accurate, and professional. "
+                "When using tools, provide clear explanations of what you're doing and why."
+            )
+
+    def _create_specialized_agents(self) -> Dict[str, FunctionAgent]:
+        """Create specialized agents for multi-agent mode."""
+        agents = {}
+
+        # Create all specialized agents
+        agents["Coordinator"] = CoordinatorAgent(
+            llm_model=self.llm_model, llm_provider=self.llm_provider, **self.llm_kwargs
         )
+
+        agents["CalendarAgent"] = CalendarAgent(
+            llm_model=self.llm_model,
+            llm_provider=self.llm_provider,
+            office_service_url=self.office_service_url,
+            **self.llm_kwargs,
+        )
+
+        agents["EmailAgent"] = EmailAgent(
+            llm_model=self.llm_model,
+            llm_provider=self.llm_provider,
+            office_service_url=self.office_service_url,
+            **self.llm_kwargs,
+        )
+
+        agents["DocumentAgent"] = DocumentAgent(
+            llm_model=self.llm_model,
+            llm_provider=self.llm_provider,
+            office_service_url=self.office_service_url,
+            **self.llm_kwargs,
+        )
+
+        agents["DraftAgent"] = DraftAgent(
+            llm_model=self.llm_model, llm_provider=self.llm_provider, **self.llm_kwargs
+        )
+
+        logger.info(f"Created {len(agents)} specialized agents")
+        return agents
 
     async def build_agent(self, user_input: str = "") -> None:
         """
         Build the agent workflow components.
-        
+
         This method initializes:
         - The underlying ChatAgent for memory management
-        - FunctionAgent with tools and LLM
+        - FunctionAgent(s) with tools and LLM
         - AgentWorkflow for orchestration
         - Context for state management
         """
         try:
             # Build the underlying ChatAgent for memory management
             await self.chat_agent.build_agent(user_input)
-            
-            # Get all available tools (custom tools + office tools)
-            all_tools = self.tools.copy()
-            
-            # Add office service tools from the registry
-            office_tools = list(self.tool_registry._tools.values())
-            all_tools.extend(office_tools)
 
-            # Create FunctionAgent with all tools
-            system_prompt = self.static_content or self._get_default_system_prompt()
-            
-            self.function_agent = FunctionAgent(
-                tools=all_tools,
-                llm=self._llm,
-                system_prompt=system_prompt,
-            )
+            if self.use_multi_agent:
+                # Multi-agent mode: create specialized agents
+                self.specialized_agents = self._create_specialized_agents()
 
-            # Create AgentWorkflow with the FunctionAgent
-            self.agent_workflow = AgentWorkflow(
-                agents=[self.function_agent],
-                initial_state={
-                    "thread_id": self.thread_id,
-                    "user_id": self.user_id,
-                    "conversation_history": [],
-                }
-            )
+                # Create AgentWorkflow with specialized agents
+                agents_list = list(self.specialized_agents.values())
+                self.agent_workflow = AgentWorkflow(
+                    agents=agents_list,
+                    root_agent="Coordinator",  # Coordinator starts first
+                    initial_state={
+                        "thread_id": str(self.thread_id),
+                        "user_id": self.user_id,
+                        "conversation_history": [],
+                        "calendar_info": {},
+                        "email_info": {},
+                        "document_info": {},
+                        "draft_info": {},
+                    },
+                )
+
+                logger.info("Multi-agent workflow created with specialized agents")
+
+            else:
+                # Single-agent mode: create one FunctionAgent with all tools
+                all_tools = self.tools.copy()
+
+                # Add office service tools from the registry
+                office_tools = list(self.tool_registry._tools.values())
+                all_tools.extend(office_tools)
+
+                # Create FunctionAgent with all tools
+                system_prompt = self.static_content or self._get_default_system_prompt()
+
+                self.function_agent = FunctionAgent(
+                    tools=all_tools,
+                    llm=self._llm,
+                    system_prompt=system_prompt,
+                )
+
+                # Create AgentWorkflow with the single FunctionAgent
+                self.agent_workflow = AgentWorkflow(
+                    agents=[self.function_agent],
+                    initial_state={
+                        "thread_id": str(self.thread_id),
+                        "user_id": self.user_id,
+                        "conversation_history": [],
+                    },
+                )
+
+                logger.info("Single-agent workflow created")
 
             # Create context for state management
             self.context = Context(self.agent_workflow)
-            
+
             # Load conversation history into context state
             await self._load_conversation_history()
 
@@ -199,11 +287,11 @@ class WorkflowAgent:
         """Load conversation history from database into workflow context."""
         if not self.context:
             return
-            
+
         try:
             # Get messages from database via ChatAgent
             chat_history = await self.chat_agent._load_chat_history_from_db()
-            
+
             # Store in workflow context state
             state = await self.context.get("state", {})
             state["conversation_history"] = [
@@ -214,19 +302,19 @@ class WorkflowAgent:
                 for msg in chat_history
             ]
             await self.context.set("state", state)
-            
+
             logger.debug(f"Loaded {len(chat_history)} messages into workflow context")
-            
+
         except Exception as e:
             logger.warning(f"Failed to load conversation history: {e}")
 
     async def chat(self, user_input: str) -> str:
         """
         Process user input through the agent workflow.
-        
+
         Args:
             user_input: The user's message
-            
+
         Returns:
             The agent's response
         """
@@ -239,33 +327,40 @@ class WorkflowAgent:
                 thread_id=self.thread_id,
                 user_id=self.user_id,
                 content=user_input,
-                role="user"
+                role="user",
             )
 
             # Run the workflow
             response = await self.agent_workflow.run(
-                user_msg=user_input, 
-                ctx=self.context
+                user_msg=user_input, ctx=self.context
             )
-            
+
             # Extract response content
-            response_content = str(response) if response else "I'm sorry, I couldn't process your request."
+            response_content = (
+                str(response)
+                if response
+                else "I'm sorry, I couldn't process your request."
+            )
 
             # Save assistant response to database
             await history_manager.save_message(
                 thread_id=self.thread_id,
                 user_id="assistant",  # Assistant messages use "assistant" as user_id
                 content=response_content,
-                role="assistant"
+                role="assistant",
             )
 
             # Update ChatAgent memory with the new exchange
             if self.chat_agent.memory:
                 user_message = ChatMessage(role=MessageRole.USER, content=user_input)
-                assistant_message = ChatMessage(role=MessageRole.ASSISTANT, content=response_content)
-                
+                assistant_message = ChatMessage(
+                    role=MessageRole.ASSISTANT, content=response_content
+                )
+
                 # Add to memory blocks
-                await self.chat_agent.memory.put_messages([user_message, assistant_message])
+                await self.chat_agent.memory.put_messages(
+                    [user_message, assistant_message]
+                )
 
             return response_content
 
@@ -273,27 +368,27 @@ class WorkflowAgent:
             logger.error(f"Error in chat workflow: {e}")
             # Fallback to a generic error response
             error_response = "I apologize, but I encountered an error processing your request. Please try again."
-            
+
             # Still save the error interaction to maintain conversation continuity
             try:
                 await history_manager.save_message(
                     thread_id=self.thread_id,
                     user_id="assistant",
                     content=error_response,
-                    role="assistant"
+                    role="assistant",
                 )
             except:
                 pass  # Don't fail on database save errors
-                
+
             return error_response
 
     async def stream_chat(self, user_input: str):
         """
         Stream chat responses from the agent workflow.
-        
+
         Args:
             user_input: The user's message
-            
+
         Yields:
             Streaming events from the workflow
         """
@@ -306,17 +401,17 @@ class WorkflowAgent:
                 thread_id=self.thread_id,
                 user_id=self.user_id,
                 content=user_input,
-                role="user"
+                role="user",
             )
 
             # Run workflow with streaming
             handler = self.agent_workflow.run(user_msg=user_input, ctx=self.context)
-            
+
             full_response = ""
             async for event in handler.stream_events():
                 yield event
                 # Collect the full response for database storage
-                if hasattr(event, 'delta') and event.delta:
+                if hasattr(event, "delta") and event.delta:
                     full_response += event.delta
 
             # Wait for final response
@@ -329,30 +424,36 @@ class WorkflowAgent:
                 thread_id=self.thread_id,
                 user_id="assistant",
                 content=full_response,
-                role="assistant"
+                role="assistant",
             )
 
             # Update ChatAgent memory
             if self.chat_agent.memory and full_response:
                 user_message = ChatMessage(role=MessageRole.USER, content=user_input)
-                assistant_message = ChatMessage(role=MessageRole.ASSISTANT, content=full_response)
-                await self.chat_agent.memory.put_messages([user_message, assistant_message])
+                assistant_message = ChatMessage(
+                    role=MessageRole.ASSISTANT, content=full_response
+                )
+                await self.chat_agent.memory.put_messages(
+                    [user_message, assistant_message]
+                )
 
         except Exception as e:
             logger.error(f"Error in stream chat workflow: {e}")
-            error_response = "I apologize, but I encountered an error processing your request."
-            
+            error_response = (
+                "I apologize, but I encountered an error processing your request."
+            )
+
             # Save error response
             try:
                 await history_manager.save_message(
                     thread_id=self.thread_id,
                     user_id="assistant",
                     content=error_response,
-                    role="assistant"
+                    role="assistant",
                 )
             except:
                 pass
-            
+
             # Yield error event
             yield {"error": str(e), "message": error_response}
 
@@ -366,7 +467,7 @@ class WorkflowAgent:
         """Reset memory in the underlying ChatAgent."""
         if self.chat_agent:
             await self.chat_agent.reset_memory()
-        
+
         # Also reset workflow context
         if self.context:
             self.context = Context(self.agent_workflow)
@@ -376,20 +477,20 @@ class WorkflowAgent:
         """Save the current workflow context to a serializable format."""
         if not self.context:
             return {}
-        
+
         from llama_index.core.workflow import JsonSerializer
+
         return self.context.to_dict(serializer=JsonSerializer())
 
     async def load_context(self, context_dict: Dict[str, Any]) -> None:
         """Load workflow context from a serialized format."""
         if not self.agent_workflow:
             await self.build_agent()
-        
+
         from llama_index.core.workflow import JsonSerializer
+
         self.context = Context.from_dict(
-            self.agent_workflow, 
-            context_dict, 
-            serializer=JsonSerializer()
+            self.agent_workflow, context_dict, serializer=JsonSerializer()
         )
 
     # Properties for compatibility with existing code
@@ -406,4 +507,4 @@ class WorkflowAgent:
     @property
     def memory(self):
         """Access to the ChatAgent's memory."""
-        return self.chat_agent.memory if self.chat_agent else None 
+        return self.chat_agent.memory if self.chat_agent else None

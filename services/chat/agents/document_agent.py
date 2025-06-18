@@ -1,0 +1,152 @@
+"""
+DocumentAgent - Specialized agent for document and note operations.
+
+This agent handles all document-related queries and operations including:
+- Retrieving documents
+- Searching notes and documents
+- Filtering by various criteria
+- Providing document information to other agents
+
+Part of the multi-agent workflow system.
+"""
+
+import logging
+from functools import partial
+from typing import List
+
+from llama_index.core.agent.workflow import FunctionAgent
+from llama_index.core.tools import FunctionTool
+from llama_index.core.workflow import Context
+
+from services.chat.agents.llm_manager import get_llm_manager
+from services.chat.agents.llm_tools import get_documents, get_notes
+
+logger = logging.getLogger(__name__)
+
+
+async def record_document_info(
+    ctx: Context, document_info: str, info_title: str
+) -> str:
+    """Record document information to the workflow state for other agents to use."""
+    current_state = await ctx.get("state", {})
+    if "document_info" not in current_state:
+        current_state["document_info"] = {}
+    current_state["document_info"][info_title] = document_info
+    await ctx.set("state", current_state)
+    return f"Document information '{info_title}' recorded successfully."
+
+
+class DocumentAgent(FunctionAgent):
+    """
+    Specialized agent for document and note operations.
+
+    This agent can:
+    - Query documents
+    - Search notes and documents by various criteria
+    - Filter by document type, date ranges, search queries
+    - Record document information for other agents
+    """
+
+    def __init__(
+        self,
+        llm_model: str = "gpt-3.5-turbo",
+        llm_provider: str = "openai",
+        office_service_url: str = "http://localhost:8001",
+        **llm_kwargs,
+    ):
+        # Get LLM instance
+        llm = get_llm_manager().get_llm(
+            model=llm_model, provider=llm_provider, **llm_kwargs
+        )
+
+        # Create document-specific tools
+        tools = self._create_document_tools(office_service_url)
+
+        # Initialize FunctionAgent
+        super().__init__(
+            name="DocumentAgent",
+            description=(
+                "Specialized agent for document and note operations. Can retrieve documents, "
+                "search notes, filter by document type and criteria, and provide document "
+                "information to other agents. Use this agent for any document or note-related queries."
+            ),
+            system_prompt=(
+                "You are the DocumentAgent, specialized in document and note operations. "
+                "You can retrieve documents, search notes, and filter by various criteria "
+                "like document type, date ranges, search queries, notebooks, and tags. "
+                "When you find relevant document or note information, use the record_document_info tool "
+                "to save it for other agents to use. Be thorough in your searches and provide detailed "
+                "information about documents and notes, including content summaries, dates, and metadata. "
+                "Finally, hand off to the CoordinatorAgent to take the next action."
+            ),
+            llm=llm,
+            tools=tools,
+            can_handoff_to=["CoordinatorAgent"],
+        )
+
+        logger.info("DocumentAgent initialized with document and note tools")
+
+    def _create_document_tools(self, office_service_url: str) -> List[FunctionTool]:
+        """Create document-specific tools."""
+        tools = []
+
+        # Document retrieval tool
+        get_documents_tool = FunctionTool.from_defaults(
+            fn=partial(get_documents, office_service_url=office_service_url),
+            name="get_documents",
+            description=(
+                "Retrieve documents from the office service. "
+                "Can filter by document type, date range, search query, and maximum results. "
+            ),
+        )
+        tools.append(get_documents_tool)
+
+        # Notes retrieval tool
+        get_notes_tool = FunctionTool.from_defaults(
+            fn=partial(get_notes, office_service_url=office_service_url),
+            name="get_notes",
+            description=(
+                "Retrieve notes from the office service. "
+                "Can filter by notebook, tags, search query, and maximum results. "
+            ),
+        )
+        tools.append(get_notes_tool)
+
+        # Record document info tool (with Context support)
+        record_document_tool = FunctionTool.from_defaults(
+            fn=record_document_info,
+            name="record_document_info",
+            description=(
+                "Record document or note information to share with other agents. "
+                "Use this to save important document findings for later use by other agents."
+            ),
+        )
+        tools.append(record_document_tool)
+
+        return tools
+
+
+def create_document_agent(
+    llm_model: str = "gpt-3.5-turbo",
+    llm_provider: str = "openai",
+    office_service_url: str = "http://localhost:8001",
+    **llm_kwargs,
+) -> DocumentAgent:
+    """
+    Factory function to create a DocumentAgent instance.
+
+    Args:
+        llm_model: LLM model name
+        llm_provider: LLM provider name
+        office_service_url: URL for office service integration
+        **llm_kwargs: Additional LLM configuration
+
+    Returns:
+        Configured DocumentAgent instance
+    """
+    return DocumentAgent(
+        llm_model=llm_model,
+        llm_provider=llm_provider,
+        office_service_url=office_service_url,
+        **llm_kwargs,
+    )
