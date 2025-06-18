@@ -390,15 +390,14 @@ class ChatDemo:
                 print("Type 'quit' to exit or continue chatting.\n")
 
     async def run_streaming_demo(self):
-        """Demo streaming chat (direct mode only)."""
-        if self.use_api:
-            print("❌ Streaming mode is only available in direct multi-agent mode.")
-            return
+        """Demo streaming chat (supports both direct and API modes)."""
             
-        print("\n🌊 Multi-Agent Streaming Demo")
-        print("This shows how the multi-agent system generates responses in real-time.\n")
+        mode_text = "API" if self.use_api else "Direct Multi-Agent"
+        print(f"\n🌊 {mode_text} Streaming Demo")
+        print("This shows how the system generates responses in real-time.\n")
 
-        self.agent = await self.create_agent()
+        if not self.use_api:
+            self.agent = await self.create_agent()
 
         while True:
             try:
@@ -409,10 +408,14 @@ class ChatDemo:
 
                 print("🤖 Briefly: ", end="", flush=True)
 
-                # Stream the response
-                async for chunk in self.agent.stream_chat(user_input):
-                    if hasattr(chunk, "delta") and chunk.delta:
-                        print(chunk.delta, end="", flush=True)
+                if self.use_api:
+                    # Stream via API using Server-Sent Events
+                    await self._stream_api_response(user_input)
+                else:
+                    # Stream via direct multi-agent workflow
+                    async for chunk in self.agent.stream_chat(user_input):
+                        if hasattr(chunk, "delta") and chunk.delta:
+                            print(chunk.delta, end="", flush=True)
 
                 print("\n")  # New line after streaming
 
@@ -423,6 +426,43 @@ class ChatDemo:
             except Exception as e:
                 print(f"\n❌ Streaming error: {str(e)}")
                 break
+
+    async def _stream_api_response(self, message: str):
+        """Stream response from the chat service API using Server-Sent Events."""
+        import httpx
+        
+        payload = {"user_id": self.user_id, "message": message}
+        if self.active_thread:
+            payload["thread_id"] = self.active_thread
+
+        try:
+            async with httpx.AsyncClient() as client:
+                async with client.stream(
+                    "POST",
+                    f"{self.chat_url}/chat/stream",
+                    json=payload,
+                    headers={"Accept": "text/event-stream"}
+                ) as response:
+                    if response.status_code != 200:
+                        print(f"Error: HTTP {response.status_code}")
+                        return
+                    
+                    async for line in response.aiter_lines():
+                        if line.startswith("data: "):
+                            try:
+                                import json
+                                data = json.loads(line[6:])  # Remove "data: " prefix
+                                
+                                if "delta" in data:
+                                    print(data["delta"], end="", flush=True)
+                                elif "thread_id" in data:
+                                    self.active_thread = data["thread_id"]
+                                    
+                            except json.JSONDecodeError:
+                                continue
+                                
+        except Exception as e:
+            print(f"Streaming error: {e}")
 
 
 async def main():
@@ -435,6 +475,7 @@ Examples:
   python services/demos/chat.py                           # Direct multi-agent mode
   python services/demos/chat.py --api                     # API mode
   python services/demos/chat.py --streaming               # Direct streaming demo
+  python services/demos/chat.py --api --streaming         # API streaming demo
   python services/demos/chat.py --message "hi"            # Send single message (direct)
   python services/demos/chat.py --api --message "hi"      # Send single message (API)
         """,
@@ -469,7 +510,7 @@ Examples:
     parser.add_argument(
         "--streaming",
         action="store_true",
-        help="Run streaming demo instead of regular chat (direct mode only)",
+        help="Run streaming demo instead of regular chat (supports both direct and API modes)",
     )
 
     args = parser.parse_args()
