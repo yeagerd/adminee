@@ -242,7 +242,7 @@ class DraftAgent(FunctionAgent):
         # Calendar change drafting tools
         def create_calendar_change_draft(
             ctx: Context,
-            event_id: Optional[str] = None,
+            event_id: str,
             change_type: Optional[str] = None,
             new_title: Optional[str] = None,
             new_start_time: Optional[str] = None,
@@ -253,7 +253,7 @@ class DraftAgent(FunctionAgent):
         ) -> str:
             """Create or update a draft calendar change using the agent's thread_id."""
             logger.info(
-                f"📅 DraftAgent: Creating calendar change draft - Event: {event_id}, Type: {change_type}, Thread: {thread_id}"
+                f"📅 DraftAgent: Creating calendar change draft - Event ID: {event_id}, Type: {change_type}, Thread: {thread_id}"
             )
 
             result = create_draft_calendar_change(
@@ -288,7 +288,7 @@ class DraftAgent(FunctionAgent):
             fn=create_calendar_change_draft,
             name="create_draft_calendar_change",
             description=(
-                "Create or update a draft calendar change. Provide event_id, change_type, and any "
+                "Create or update a draft calendar change. Provide the required event_id, change_type, and any "
                 "new values to change. The thread_id is automatically handled by the agent."
             ),
         )

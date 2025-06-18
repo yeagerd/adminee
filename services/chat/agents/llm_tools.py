@@ -273,7 +273,7 @@ def delete_draft_calendar_event(thread_id: str) -> Dict[str, Any]:
 
 def create_draft_calendar_change(
     thread_id: str,
-    event_id: Optional[str] = None,
+    event_id: str,
     change_type: Optional[str] = None,
     new_title: Optional[str] = None,
     new_start_time: Optional[str] = None,
