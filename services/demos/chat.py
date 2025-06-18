@@ -373,10 +373,10 @@ class ChatDemo:
                     if self.use_api:
                         # Erase the previous input line (prompt + user input)
                         print("\033[F\033[K", end="")  # Move cursor up and clear line
-                        print(f"{self.user_id}: {user_input}")
+                        print(f"💬 {self.user_id}: {user_input}")
 
                         response = self.send_message_api(user_input)
-                        print(f"briefly: {response}")
+                        print(f"✨ Briefly: {response}")
                     else:
                         # Get response from the agent (backend logs will show details)
                         response = await self.send_message_direct(user_input)
