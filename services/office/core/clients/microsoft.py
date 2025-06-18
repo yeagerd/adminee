@@ -186,6 +186,31 @@ class MicrosoftAPIClient(BaseAPIClient):
         response = await self.post(endpoint, json_data=event_data)
         return response.json()
 
+    async def update_event(
+        self,
+        event_id: str,
+        event_data: Dict[str, Any],
+        calendar_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Update a calendar event.
+
+        Args:
+            event_id: Event ID to update
+            event_data: Updated event data in Microsoft Graph API format
+            calendar_id: Calendar ID (if None, uses primary calendar)
+
+        Returns:
+            Dictionary containing updated event details
+        """
+        endpoint = (
+            f"/me/calendars/{calendar_id}/events/{event_id}"
+            if calendar_id
+            else f"/me/events/{event_id}"
+        )
+        response = await self.patch(endpoint, json_data=event_data)
+        return response.json()
+
     async def delete_event(
         self, event_id: str, calendar_id: Optional[str] = None
     ) -> None:

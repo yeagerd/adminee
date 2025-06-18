@@ -438,6 +438,147 @@ async def create_calendar_event(
         )
 
 
+@router.put("/events/{event_id}", response_model=ApiResponse)
+async def update_calendar_event(
+    event_data: CreateCalendarEventRequest,
+    event_id: str = Path(..., description="Event ID (format: provider_originalId)"),
+    user_id: str = Query(..., description="ID of the user updating the event"),
+    service_name: str = Depends(ServicePermissionRequired(["write_calendar"])),
+):
+    """
+    Update a calendar event by ID.
+
+    This endpoint takes unified CalendarEvent data, "de-normalizes" it into the
+    provider-specific format, and uses the correct API client to update the event.
+
+    Args:
+        event_id: Event ID with provider prefix (e.g., "google_abc123")
+        event_data: Updated event content and configuration
+        user_id: ID of the user updating the event
+
+    Returns:
+        ApiResponse with updated event details
+    """
+    request_id = str(uuid.uuid4())
+    start_time = datetime.now(timezone.utc)
+
+    logger.info(
+        f"[{request_id}] Update calendar event request: event_id={event_id}, user_id={user_id}, "
+        f"title='{event_data.title}'"
+    )
+
+    try:
+        # Parse provider from event_id
+        provider, original_event_id = parse_event_id(event_id)
+
+        # Get API client for provider
+        client = await api_client_factory.create_client(user_id, provider)
+        if client is None:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Failed to create API client for provider {provider}. "
+                "User may not have connected this provider.",
+            )
+
+        # Update event based on provider and capture the updated data
+        updated_event_data = None
+
+        async with client:
+            if provider == "google":
+                google_client = cast(GoogleAPIClient, client)
+                updated_event_data = await update_google_event(
+                    request_id, google_client, original_event_id, event_data
+                )
+            elif provider == "microsoft":
+                microsoft_client = cast(MicrosoftAPIClient, client)
+                ms_updated_data = await update_microsoft_event(
+                    request_id, microsoft_client, original_event_id, event_data
+                )
+                # Convert Microsoft format to Google format for consistency
+                updated_event_data = convert_microsoft_event_to_google_format(
+                    ms_updated_data
+                )
+
+        # Extract actual updated values from the provider response
+        actual_title = (
+            updated_event_data.get("summary", event_data.title)
+            if updated_event_data
+            else event_data.title
+        )
+        actual_location = (
+            updated_event_data.get("location", event_data.location)
+            if updated_event_data
+            else event_data.location
+        )
+        actual_description = (
+            updated_event_data.get("description", event_data.description)
+            if updated_event_data
+            else event_data.description
+        )
+
+        # Extract datetime values, handling different formats
+        actual_start_time = event_data.start_time.isoformat()
+        actual_end_time = event_data.end_time.isoformat()
+
+        if updated_event_data:
+            start_data = updated_event_data.get("start", {})
+            end_data = updated_event_data.get("end", {})
+
+            if isinstance(start_data, dict) and "dateTime" in start_data:
+                actual_start_time = start_data["dateTime"]
+            if isinstance(end_data, dict) and "dateTime" in end_data:
+                actual_end_time = end_data["dateTime"]
+
+        # Build response with actual updated data
+        response_data = {
+            "event_id": event_id,
+            "provider": provider,
+            "status": "updated",
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "event_data": {
+                "title": actual_title,
+                "start_time": actual_start_time,
+                "end_time": actual_end_time,
+                "location": actual_location,
+                "description": actual_description,
+            },
+            "request_metadata": {
+                "user_id": user_id,
+                "event_id": event_id,
+                "title": event_data.title,
+                "start_time": event_data.start_time.isoformat(),
+                "end_time": event_data.end_time.isoformat(),
+                "provider": provider,
+            },
+        }
+
+        # Calculate response time
+        end_time = datetime.now(timezone.utc)
+        response_time_ms = int((end_time - start_time).total_seconds() * 1000)
+
+        logger.info(
+            f"[{request_id}] Calendar event updated successfully in {response_time_ms}ms via {provider}"
+        )
+
+        return ApiResponse(
+            success=True,
+            data=response_data,
+            cache_hit=False,
+            provider_used=(
+                Provider.GOOGLE if provider == "google" else Provider.MICROSOFT
+            ),
+            request_id=request_id,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[{request_id}] Update calendar event request failed: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update calendar event: {str(e)}"
+        )
+
+
 async def create_google_event(
     request_id: str, client: GoogleAPIClient, event_data: CreateCalendarEventRequest
 ) -> Dict[str, Any]:
@@ -577,6 +718,157 @@ async def create_microsoft_event(
 
     except Exception as e:
         logger.error(f"[{request_id}] Failed to create Microsoft Calendar event: {e}")
+        raise
+
+
+async def update_google_event(
+    request_id: str,
+    client: GoogleAPIClient,
+    event_id: str,
+    event_data: CreateCalendarEventRequest,
+    calendar_id: str = "primary",
+) -> Dict[str, Any]:
+    """
+    Update a calendar event via Google Calendar API.
+
+    Args:
+        request_id: Request tracking ID
+        client: Google API client
+        event_id: Google Calendar event ID
+        event_data: Updated event content and configuration
+        calendar_id: Calendar ID (defaults to primary)
+
+    Returns:
+        Dictionary containing updated event details
+    """
+    try:
+        # Convert attendees to Google format
+        attendees = []
+        if event_data.attendees:
+            attendees = [
+                {
+                    "email": attendee.email,
+                    "displayName": attendee.name or attendee.email,
+                }
+                for attendee in event_data.attendees
+            ]
+
+        # Build event data in Google Calendar format
+        google_event_data = {
+            "summary": event_data.title,
+            "description": event_data.description or "",
+            "location": event_data.location or "",
+            "start": {
+                "dateTime": event_data.start_time.isoformat(),
+                "timeZone": "UTC",
+            },
+            "end": {
+                "dateTime": event_data.end_time.isoformat(),
+                "timeZone": "UTC",
+            },
+            "attendees": attendees,
+            "visibility": event_data.visibility or "default",
+            "status": event_data.status or "confirmed",
+        }
+
+        # Handle all-day events
+        if event_data.all_day:
+            start_date = event_data.start_time.date().isoformat()
+            end_date = event_data.end_time.date().isoformat()
+            google_event_data["start"] = {"date": start_date}
+            google_event_data["end"] = {"date": end_date}
+
+        # Update the event
+        result = await client.update_event(calendar_id, event_id, google_event_data)
+
+        logger.info(
+            f"[{request_id}] Google Calendar event updated successfully: {event_id}"
+        )
+        return result
+
+    except Exception as e:
+        logger.error(f"[{request_id}] Failed to update Google Calendar event: {e}")
+        raise
+
+
+async def update_microsoft_event(
+    request_id: str,
+    client: MicrosoftAPIClient,
+    event_id: str,
+    event_data: CreateCalendarEventRequest,
+    calendar_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Update a calendar event via Microsoft Graph API.
+
+    Args:
+        request_id: Request tracking ID
+        client: Microsoft API client
+        event_id: Microsoft Graph event ID
+        event_data: Updated event content and configuration
+        calendar_id: Calendar ID (optional, uses primary if not specified)
+
+    Returns:
+        Dictionary containing updated event details
+    """
+    try:
+        # Convert attendees to Microsoft format
+        attendees: List[Dict[str, Any]] = []
+        if event_data.attendees:
+            attendees = [
+                {
+                    "emailAddress": {
+                        "address": attendee.email,
+                        "name": attendee.name or attendee.email,
+                    },
+                    "type": "required",
+                }
+                for attendee in event_data.attendees
+            ]
+
+        # Build event data in Microsoft Graph format
+        microsoft_event_data: Dict[str, Any] = {
+            "subject": event_data.title,
+            "body": {
+                "contentType": "Text",
+                "content": event_data.description or "",
+            },
+            "start": {
+                "dateTime": event_data.start_time.isoformat(),
+                "timeZone": "UTC",
+            },
+            "end": {
+                "dateTime": event_data.end_time.isoformat(),
+                "timeZone": "UTC",
+            },
+            "location": {
+                "displayName": event_data.location or "",
+            },
+            "attendees": attendees,
+            "showAs": "busy",  # Default availability
+            "sensitivity": "normal",  # Default sensitivity
+        }
+
+        # Handle all-day events
+        if event_data.all_day:
+            microsoft_event_data["isAllDay"] = True
+
+        # Map visibility to Microsoft sensitivity
+        if event_data.visibility == "private":
+            microsoft_event_data["sensitivity"] = "private"
+        elif event_data.visibility == "public":
+            microsoft_event_data["sensitivity"] = "normal"
+
+        # Update the event
+        result = await client.update_event(event_id, microsoft_event_data, calendar_id)
+
+        logger.info(
+            f"[{request_id}] Microsoft Calendar event updated successfully: {event_id}"
+        )
+        return result
+
+    except Exception as e:
+        logger.error(f"[{request_id}] Failed to update Microsoft Calendar event: {e}")
         raise
 
 
