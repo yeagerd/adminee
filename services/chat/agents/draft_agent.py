@@ -79,8 +79,11 @@ class DraftAgent(FunctionAgent):
                 "compose, draft, or modify emails and calendar items."
             ),
             system_prompt=(
-                "You are the DraftAgent, specialized in creating and managing drafts. "
-                "You can create draft emails, calendar events, and calendar changes. "
+                "You are the DraftAgent, specialized in creating and managing drafts in the current conversation. "
+                "You can create draft emails and calendar events. "
+                "IMPORTANT: When users want to modify or update existing calendar event drafts (like changing time, location, attendees), "
+                "always use the 'create_draft_calendar_event' tool - it will automatically update the existing draft with new values. "
+                "Do NOT create separate 'calendar change' drafts for updates. "
                 "When creating drafts, be thorough and ask for all necessary details. "
                 "Use the available tools to create, update, or delete drafts as needed. "
                 "Record draft information for other agents to reference. "
@@ -147,14 +150,14 @@ class DraftAgent(FunctionAgent):
             fn=create_email_draft,
             name="create_draft_email",
             description=(
-                "Create or update a draft email. Provide to, cc, bcc, subject, and body. "
-                "The thread_id is automatically handled by the agent."
+                "Create or update a draft email in the current conversation. Provide to, cc, bcc, subject, and body. "
+                "The conversation context is automatically handled by the agent."
             ),
         )
         tools.append(create_email_draft_tool)
 
         def delete_email_draft(ctx: Context) -> str:
-            """Delete the draft email for this thread."""
+            """Delete the draft email for this conversation."""
             logger.info(f"🗑️ DraftAgent: Deleting email draft for thread {thread_id}")
             result = delete_draft_email(thread_id)
             return str(result)
@@ -162,7 +165,7 @@ class DraftAgent(FunctionAgent):
         delete_email_draft_tool = FunctionTool.from_defaults(
             fn=delete_email_draft,
             name="delete_draft_email",
-            description="Delete the draft email for the current thread.",
+            description="Delete the draft email in the current conversation.",
         )
         tools.append(delete_email_draft_tool)
 
@@ -215,14 +218,14 @@ class DraftAgent(FunctionAgent):
             fn=create_calendar_event_draft,
             name="create_draft_calendar_event",
             description=(
-                "Create or update a draft calendar event. Provide title, start_time, end_time, "
-                "attendees, location, and description. The thread_id is automatically handled by the agent."
+                "Create or update a draft calendar event in the current conversation. Use this for both creating new calendar events AND updating existing calendar event drafts (e.g., changing time, location, attendees). "
+                "Provide title, start_time, end_time, attendees, location, and description. The conversation context is automatically handled by the agent."
             ),
         )
         tools.append(create_calendar_event_draft_tool)
 
         def delete_calendar_event_draft(ctx: Context) -> str:
-            """Delete the draft calendar event for this thread."""
+            """Delete the draft calendar event for this conversation."""
             logger.info(
                 f"🗑️ DraftAgent: Deleting calendar event draft for thread {thread_id}"
             )
@@ -232,7 +235,7 @@ class DraftAgent(FunctionAgent):
         delete_calendar_event_draft_tool = FunctionTool.from_defaults(
             fn=delete_calendar_event_draft,
             name="delete_draft_calendar_event",
-            description="Delete the draft calendar event for the current thread.",
+            description="Delete the draft calendar event in the current conversation.",
         )
         tools.append(delete_calendar_event_draft_tool)
 
