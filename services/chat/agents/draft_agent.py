@@ -57,12 +57,20 @@ async def create_draft_email_with_context(
 ) -> str:
     """Create or update draft email using thread_id from context."""
     thread_id = await get_thread_id_from_context(ctx)
+    logger.info(f"📧 DraftAgent: Creating email draft - To: {to}, Subject: {subject}")
+    
     result = create_draft_email(thread_id, to, cc, bcc, subject, body)
 
-    # Record the draft info
+    # Record the draft info and log the result
     if result.get("success"):
         draft_info = f"Email draft created/updated - To: {to}, Subject: {subject}"
         await record_draft_info(ctx, draft_info, "email")
+        logger.info(f"✅ DraftAgent: Email draft created successfully")
+        # Log the draft content for visibility
+        if body:
+            logger.info(f"📝 Draft Email Content:\n  To: {to}\n  Subject: {subject}\n  Body: {body[:200]}{'...' if len(body) > 200 else ''}")
+    else:
+        logger.warning(f"❌ DraftAgent: Failed to create email draft - {result}")
 
     return str(result)
 
@@ -85,14 +93,21 @@ async def create_draft_calendar_event_with_context(
 ) -> str:
     """Create or update draft calendar event using thread_id from context."""
     thread_id = await get_thread_id_from_context(ctx)
+    logger.info(f"📅 DraftAgent: Creating calendar event draft - Title: {title}, Start: {start_time}")
+    
     result = create_draft_calendar_event(
         thread_id, title, start_time, end_time, attendees, location, description
     )
 
-    # Record the draft info
+    # Record the draft info and log the result
     if result.get("success"):
         draft_info = f"Calendar event draft created/updated - Title: {title}, Start: {start_time}"
         await record_draft_info(ctx, draft_info, "calendar_event")
+        logger.info(f"✅ DraftAgent: Calendar event draft created successfully")
+        # Log the draft content for visibility
+        logger.info(f"📝 Draft Calendar Event:\n  Title: {title}\n  Start: {start_time}\n  End: {end_time}\n  Location: {location}")
+    else:
+        logger.warning(f"❌ DraftAgent: Failed to create calendar event draft - {result}")
 
     return str(result)
 

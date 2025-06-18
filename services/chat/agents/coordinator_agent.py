@@ -24,6 +24,9 @@ logger = logging.getLogger(__name__)
 
 async def analyze_user_request(ctx: Context, user_request: str, analysis: str) -> str:
     """Analyze and record the user's request for tracking and coordination."""
+    logger.info(f"🧠 Coordinator: Analyzing request - '{user_request}'")
+    logger.info(f"📋 Analysis: {analysis}")
+    
     current_state = await ctx.get("state", {})
     if "request_analysis" not in current_state:
         current_state["request_analysis"] = {}
@@ -38,6 +41,8 @@ async def analyze_user_request(ctx: Context, user_request: str, analysis: str) -
 
 async def summarize_findings(ctx: Context, summary: str) -> str:
     """Summarize findings from all agents for the final response."""
+    logger.info(f"📊 Coordinator: Summarizing findings from all agents")
+    
     current_state = await ctx.get("state", {})
 
     # Collect information from all agent findings
@@ -45,6 +50,16 @@ async def summarize_findings(ctx: Context, summary: str) -> str:
     email_info = current_state.get("email_info", {})
     document_info = current_state.get("document_info", {})
     draft_info = current_state.get("draft_info", {})
+
+    # Log what information was gathered
+    if calendar_info:
+        logger.info(f"📅 Calendar findings: {len(calendar_info)} items")
+    if email_info:
+        logger.info(f"📧 Email findings: {len(email_info)} items")
+    if document_info:
+        logger.info(f"📄 Document findings: {len(document_info)} items")
+    if draft_info:
+        logger.info(f"✏️ Draft actions: {list(draft_info.keys())}")
 
     findings = {
         "calendar_findings": calendar_info,
@@ -57,7 +72,8 @@ async def summarize_findings(ctx: Context, summary: str) -> str:
     current_state["final_summary"] = findings
     current_state["request_analysis"]["status"] = "completed"
     await ctx.set("state", current_state)
-
+    
+    logger.info(f"✅ Coordinator: Final summary prepared - {summary}")
     return f"Findings summarized and recorded: {summary}"
 
 

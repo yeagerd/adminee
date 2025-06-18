@@ -407,6 +407,33 @@ class WorkflowAgent:
                 else "I'm sorry, I couldn't process your request."
             )
 
+            # Check for draft information in the workflow context and display it
+            try:
+                if self.context:
+                    # Get current state to check for draft info
+                    get_method = getattr(self.context, "get", None)
+                    if get_method:
+                        state_result = get_method("state", {})
+                        # Handle both sync and async get methods
+                        if hasattr(state_result, "__await__"):
+                            state = await state_result
+                        else:
+                            state = state_result
+                        
+                        draft_info = state.get("draft_info", {})
+                        if draft_info:
+                            logger.info("🎯 DRAFT CREATED - Content visible to client:")
+                            draft_summary = []
+                            for draft_type, info in draft_info.items():
+                                logger.info(f"  📝 {draft_type.upper()}: {info}")
+                                draft_summary.append(f"• {draft_type.replace('_', ' ').title()}: {info}")
+                            
+                            # Add draft summary to response if drafts were created
+                            if draft_summary:
+                                response_content += f"\n\n📋 **Drafts Created:**\n" + "\n".join(draft_summary)
+            except Exception as draft_error:
+                logger.warning(f"Failed to extract draft information: {draft_error}")
+
             # Save assistant response to database
             await history_manager.append_message(
                 thread_id=self.thread_id,

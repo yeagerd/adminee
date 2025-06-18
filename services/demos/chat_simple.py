@@ -25,32 +25,28 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 
 from services.chat.agents.workflow_agent import WorkflowAgent
 
-# Configure logging (verbose for debugging)
+# Configure logging (clean for demo use)
 logging.basicConfig(
-    level=logging.DEBUG,  # Show all logs including debug
+    level=logging.INFO,  # Show info and above
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
-# Set specific loggers to be more verbose for our services
-logging.getLogger("services.chat.agents.workflow_agent").setLevel(logging.DEBUG)
-logging.getLogger("services.chat.agents.coordinator_agent").setLevel(logging.DEBUG)
-logging.getLogger("services.chat.agents.calendar_agent").setLevel(logging.DEBUG)
-logging.getLogger("services.chat.agents.email_agent").setLevel(logging.DEBUG)
-logging.getLogger("services.chat.agents.document_agent").setLevel(logging.DEBUG)
-logging.getLogger("services.chat.agents.draft_agent").setLevel(logging.DEBUG)
-logging.getLogger("llama_index").setLevel(logging.INFO)  # LlamaIndex logs at INFO level
+# Set specific loggers for multi-agent workflow visibility
+logging.getLogger("services.chat.agents.workflow_agent").setLevel(logging.INFO)
+logging.getLogger("services.chat.agents.coordinator_agent").setLevel(logging.INFO)
+logging.getLogger("services.chat.agents.calendar_agent").setLevel(logging.INFO)
+logging.getLogger("services.chat.agents.email_agent").setLevel(logging.INFO)
+logging.getLogger("services.chat.agents.document_agent").setLevel(logging.INFO)
+logging.getLogger("services.chat.agents.draft_agent").setLevel(logging.INFO)
 
-# Suppress spammy database and library logs
-logging.getLogger("aiosqlite").setLevel(
-    logging.WARNING
-)  # Only show warnings/errors from aiosqlite
-logging.getLogger("asyncio").setLevel(
-    logging.WARNING
-)  # Only show warnings/errors from asyncio
-logging.getLogger("LiteLLM").setLevel(
-    logging.WARNING
-)  # Only show warnings/errors from LiteLLM
+# Suppress noisy loggers
+logging.getLogger("aiosqlite").setLevel(logging.WARNING)
+logging.getLogger("asyncio").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)  # Hide HTTP request logs
+logging.getLogger("openai._base_client").setLevel(logging.WARNING)  # Hide OpenAI client logs
+logging.getLogger("llama_index").setLevel(logging.WARNING)  # Reduce LlamaIndex noise
+logging.getLogger("LiteLLM").setLevel(logging.WARNING)  # Only show warnings/errors from LiteLLM
 
 
 class ChatDemo:
