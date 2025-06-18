@@ -112,19 +112,23 @@ async def test_chat_basic_flow(workflow_agent, mock_history_manager):
         ) as mock_history:
             mock_history.return_value = []
 
-            # Test chat
-            response = await workflow_agent.chat("Hello")
+            # Mock the history_manager import inside the chat method
+            with patch("services.chat.history_manager") as mock_hm:
+                mock_hm.append_message = AsyncMock()
 
-            assert response == mock_response
+                # Test chat
+                response = await workflow_agent.chat("Hello")
 
-            # Verify database calls
-            assert mock_history_manager.append_message.call_count == 2
-            mock_history_manager.append_message.assert_any_call(
-                thread_id=123, user_id="test_user", content="Hello"
-            )
-            mock_history_manager.append_message.assert_any_call(
-                thread_id=123, user_id="assistant", content=mock_response
-            )
+                assert response == mock_response
+
+                # Verify database calls
+                assert mock_hm.append_message.call_count == 2
+                mock_hm.append_message.assert_any_call(
+                    thread_id=123, user_id="test_user", content="Hello"
+                )
+                mock_hm.append_message.assert_any_call(
+                    thread_id=123, user_id="assistant", content=mock_response
+                )
 
 
 @pytest.mark.asyncio
