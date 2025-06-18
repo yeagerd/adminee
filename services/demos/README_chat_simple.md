@@ -1,257 +1,170 @@
-# Multi-Agent Chat Demo
+# Multi-Agent WorkflowAgent Chat Demo
 
-A simple command-line interface for testing and demonstrating the consolidated multi-agent WorkflowAgent system.
+This demo provides an interactive command-line interface to chat with the WorkflowAgent multi-agent system. The system features specialized agents for calendar, email, documents, and drafting operations.
 
-## Usage
-
-### Basic Multi-Agent Chat Demo
+## Quick Start
 
 ```bash
-python services/demos/chat_simple.py
-```
+# Interactive multi-agent chat
+python services/demos/chat.py
 
-### Streaming Demo
+# Send a single message
+python services/demos/chat.py --message "Draft an email to john@example.com about the meeting"
 
-```bash
-python services/demos/chat_simple.py --streaming
+# Streaming demo (shows real-time response generation)
+python services/demos/chat.py --streaming
+
+# API mode (requires chat service running)
+python services/demos/chat.py --api
 ```
 
 ## Features
 
-### Multi-Agent Architecture
-- **CoordinatorAgent**: Orchestrates tasks and delegates to specialized agents
-- **CalendarAgent**: Handles calendar queries and scheduling operations
+### Multi-Agent System
+- **CoordinatorAgent**: Main orchestrator that routes requests to specialized agents
+- **CalendarAgent**: Handles calendar queries and scheduling information
 - **EmailAgent**: Manages email operations and searches
 - **DocumentAgent**: Finds and manages documents and notes
-- **DraftAgent**: Creates drafts of emails and content
+- **DraftAgent**: Creates drafts for emails, calendar events, and content
+
+### Intelligent Routing
+The system automatically routes requests to the appropriate agent:
+- "What's on my calendar?" → CalendarAgent
+- "Show me my emails" → EmailAgent
+- "Find my notes about the project" → DocumentAgent
+- "Create a calendar event" → DraftAgent
+- "Draft an email" → DraftAgent
+
+### Logging and Visibility
+- Clean, informative logging showing agent interactions
+- Draft content displayed to the user
+- Agent handoffs and coordination visible in logs
+- HTTP request logs suppressed for clean output
+
+## Usage Examples
+
+### Calendar Operations
+```bash
+# View calendar events
+python services/demos/chat.py --message "What meetings do I have this week?"
+
+# Create calendar events
+python services/demos/chat.py --message "Create a calendar event at 2pm tomorrow with the team"
+```
+
+### Email Operations
+```bash
+# View emails
+python services/demos/chat.py --message "Show me my unread emails from today"
+
+# Draft emails
+python services/demos/chat.py --message "Draft an email to alice@company.com about the quarterly review"
+```
+
+### Document Operations
+```bash
+# Find documents
+python services/demos/chat.py --message "Find my notes about the project planning"
+
+# Search content
+python services/demos/chat.py --message "Look for documents mentioning budget"
+```
 
 ### Interactive Commands
-- `help` - Show available commands, agents, and example prompts
-- `clear` - Clear conversation history and start fresh
+When running in interactive mode, you can use these commands:
+- `help` - Show available commands
+- `clear` - Clear conversation history (starts new thread)
 - `quit` or `exit` - Exit the demo
-
-### Example Prompts
-
-Try these prompts to see different agents in action:
-
-#### Calendar Operations
-- "What meetings do I have this week?"
-- "Show me my calendar for tomorrow"
-- "Do I have any conflicts on Friday?"
-- "When is my next appointment?"
-
-#### Email Management  
-- "Show me my unread emails from today"
-- "Find emails about the project planning"
-- "What's in my inbox?"
-- "Find emails from john@example.com"
-
-#### Document Operations
-- "Find my notes about the quarterly planning"
-- "Search for documents about the budget"
-- "Show me my recent notes"
-- "Find documents related to the project"
-
-#### Content Creation
-- "Draft an email to john@example.com about the meeting"
-- "Create a calendar event for team standup"
-- "Draft a follow-up email for the board meeting"
-- "Help me write a project update"
-
-#### Complex Multi-Agent Coordination
-- "Help me prepare for tomorrow's board meeting"
-- "Organize my day by checking calendar and emails"
-- "Find everything related to the quarterly planning project"
-- "Schedule follow-up meetings and draft summary emails"
-
-## How It Works
-
-1. **User Input**: You provide a request or question
-2. **Coordinator Analysis**: The CoordinatorAgent analyzes your request and determines which specialized agents to involve
-3. **Agent Delegation**: Tasks are delegated to appropriate specialized agents
-4. **Information Gathering**: Specialized agents use their tools to gather relevant information
-5. **Context Sharing**: Agents record their findings for other agents to access
-6. **Coordination**: The CoordinatorAgent synthesizes results from all agents
-7. **Agent Handoffs**: Agents can hand off control to others as needed for complex workflows
-8. **Final Response**: A comprehensive response is provided to the user
-
-## Demo Flow
-
-1. **Welcome Screen**: Shows introduction, available agents, and example prompts
-2. **Agent Initialization**: Creates and builds the multi-agent WorkflowAgent system
-3. **Interactive Chat**: Chat loop with command processing and agent coordination
-4. **Graceful Exit**: Clean shutdown on quit/exit
-
-## Sample Session
-
-```
-============================================================
-🚀 Welcome to the Multi-Agent WorkflowAgent Demo!
-============================================================
-
-This demo lets you chat with the multi-agent WorkflowAgent system.
-Features specialized agents for different tasks:
-  • CoordinatorAgent - Orchestrates and delegates tasks
-  • CalendarAgent - Manages calendar and scheduling
-  • EmailAgent - Handles email operations
-  • DocumentAgent - Manages documents and notes
-  • DraftAgent - Creates drafts and content
-
-📋 Example prompts to try:
-  • 'What meetings do I have this week?'
-  • 'Show me my unread emails'
-  • 'Find my notes about the project'
-  • 'Draft an email to the team about the meeting'
-  • 'Help me prepare for tomorrow's board meeting'
-
-💡 Commands:
-  • 'quit' or 'exit' - Exit the demo
-  • 'help' - Show this help message
-  • 'clear' - Clear the conversation history
-
-🤖 Creating Multi-Agent WorkflowAgent...
-✅ Multi-Agent system ready with 5 specialized agents:
-   • Coordinator
-   • CalendarAgent
-   • EmailAgent
-   • DocumentAgent
-   • DraftAgent
-
-💬 Multi-Agent chat started!
-Type 'help' for commands or start chatting!
-
-You: Help me prepare for tomorrow's board meeting
-🤖 Briefly: I'll help you prepare for tomorrow's board meeting. Let me coordinate with the specialized agents to gather everything you need.
-
-[CoordinatorAgent delegates to CalendarAgent]
-[CalendarAgent retrieves meeting details and records calendar info]
-[CoordinatorAgent delegates to EmailAgent] 
-[EmailAgent searches for related emails and records findings]
-[CoordinatorAgent delegates to DocumentAgent]
-[DocumentAgent finds relevant documents and notes]
-[CoordinatorAgent synthesizes all information]
-
-I've gathered everything for your board meeting preparation:
-
-**Meeting Details:**
-- Tomorrow at 2:00 PM - 3:30 PM
-- Board Room A, attendees: CEO, CFO, and 5 board members
-
-**Related Communications:**
-- 3 emails about quarterly results
-- 2 emails about budget proposals  
-- 1 email with agenda items
-
-**Relevant Documents:**
-- Q3 Financial Report
-- Budget Proposal 2024
-- Strategic Planning Notes
-
-Would you like me to draft talking points or create follow-up reminders?
-
-You: clear
-
-🧹 Clearing conversation history...
-✅ Multi-Agent system ready with 5 specialized agents:
-   • Coordinator
-   • CalendarAgent
-   • EmailAgent
-   • DocumentAgent
-   • DraftAgent
-
-💬 History cleared. Continue chatting!
-
-You: quit
-
-👋 Thanks for using the WorkflowAgent demo! Goodbye!
-```
 
 ## Configuration
 
-### LLM Settings
-
-Edit the `create_agent` method in `chat_simple.py` to customize:
-
+### LLM Model
+Edit the `create_agent` method in `chat.py` to customize:
 ```python
 agent = WorkflowAgent(
     thread_id=self.thread_id,
     user_id=self.user_id,
-    llm_model="gpt-4",  # Change model here
-    llm_provider="openai",  # Change provider here
+    llm_model="gpt-4.1-nano",  # Change this to your preferred model
+    llm_provider="openai",
     max_tokens=2000,
     office_service_url="http://localhost:8001",
 )
 ```
 
-### Office Service
+### Logging
+The demo includes clean logging configuration:
+- Agent operations logged at INFO level
+- HTTP requests suppressed
+- Database operations suppressed
+- Clean output focused on multi-agent workflow
 
-Make sure the office service is running on `http://localhost:8001` or update the URL in the demo.
+## Architecture
 
-## Error Handling
+### Multi-Agent Workflow
+1. **User Input** → CoordinatorAgent analyzes request
+2. **Routing** → Coordinator hands off to appropriate specialized agent
+3. **Processing** → Specialized agent handles the request
+4. **Response** → Results returned to user with draft content if applicable
 
-The demo includes comprehensive error handling:
-- LLM errors are caught and displayed gracefully
-- Keyboard interrupts (Ctrl+C) exit cleanly
-- Invalid commands show helpful messages
-- Agent coordination failures are handled gracefully
-- Connection issues are reported clearly
+### Agent Specialization
+- **Read Operations**: CalendarAgent, EmailAgent, DocumentAgent
+- **Create Operations**: DraftAgent (for all creation/drafting tasks)
+- **Coordination**: CoordinatorAgent (orchestrates the workflow)
 
-## Advanced Usage
+## Troubleshooting
 
-### Streaming Mode
+### Common Issues
+1. **"object NoneType can't be used in 'await' expression"**
+   - This has been resolved with enhanced error handling
+   - The system now properly handles Context operations
 
-Use `--streaming` flag to see real-time response generation:
+2. **Agent routing issues**
+   - The Coordinator has been enhanced with explicit routing rules
+   - Creation requests properly route to DraftAgent
 
-```bash
-python services/demos/chat_simple.py --streaming
+3. **HTTP request spam in logs**
+   - HTTP logging has been suppressed for clean output
+   - Only relevant multi-agent operations are logged
+
+### Development Mode
+For more verbose logging during development:
+```python
+logging.getLogger("services.chat.agents.workflow_agent").setLevel(logging.DEBUG)
 ```
 
-This shows how the multi-agent system generates responses in real-time, including:
-- Agent handoffs and coordination
-- Tool usage by specialized agents
-- Context sharing between agents
-- Final response synthesis
+## Streaming Demo
 
-### Testing Different Scenarios
+The streaming demo shows real-time response generation:
 
-1. **Simple single-agent queries** - Test individual agent capabilities
-2. **Complex multi-agent workflows** - Test agent coordination
-3. **Use 'clear'** - Test conversation memory reset across agents
-4. **Try various example prompts** - Explore different agent specializations
+```bash
+python services/demos/chat.py --streaming
+```
 
-## Agent Specializations
+This demonstrates how the multi-agent system generates responses progressively, useful for understanding the workflow timing and agent interactions.
 
-### CoordinatorAgent
-- Analyzes user requests
-- Delegates to appropriate specialized agents
-- Synthesizes results from multiple agents
-- Handles complex workflow orchestration
+## API Mode
 
-### CalendarAgent
-- Retrieves calendar events and scheduling information
-- Searches by date ranges and criteria
-- Records calendar findings for other agents
+The demo also supports API mode for testing the chat service:
 
-### EmailAgent
-- Manages email operations and searches
-- Finds relevant communications
-- Records email findings for coordination
+```bash
+# Start the chat service first
+python services/chat/main.py
 
-### DocumentAgent
-- Searches and manages documents and notes
-- Finds relevant information across document types
-- Records document findings for other agents
+# Then use API mode
+python services/demos/chat.py --api
+```
 
-### DraftAgent
-- Creates drafts of emails and content
-- Generates various types of written content
-- Integrates information from other agents
+In API mode, you get additional commands:
+- `list` - List all conversation threads
+- `new` - Start a new thread
+- `switch <thread_id>` - Switch to existing thread
 
-## Development
+## Integration
 
-The demo showcases the consolidated multi-agent architecture:
-- Single entry point with multi-agent coordination
-- Context sharing and state management across agents
-- Agent handoff capabilities
-- Extensible architecture for additional specialized agents
-- Integration with existing LLM providers and office services 
+This demo serves as a reference implementation for integrating the WorkflowAgent into other applications. Key integration points:
+
+1. **WorkflowAgent Creation**: How to initialize the multi-agent system
+2. **Message Processing**: How to send messages and receive responses
+3. **Draft Handling**: How to extract and display draft content
+4. **Error Handling**: How to handle and recover from errors
+5. **Logging Configuration**: How to set up clean, informative logging 
