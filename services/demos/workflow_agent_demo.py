@@ -189,6 +189,44 @@ async def demo_context_management():
     print(f"Agent (with loaded context): {response}")
 
 
+async def demo_programmatic_draft_tracking():
+    """Demonstrate the new programmatic draft tracking system."""
+    print("\n=== Programmatic Draft Tracking Demo ===")
+
+    agent = WorkflowAgent(
+        thread_id=999,
+        user_id="demo_user_drafts",
+        llm_model="fake-model",
+        llm_provider="fake",
+        max_tokens=2000,
+    )
+
+    print(f"📋 Initial drafts: {agent.has_drafts()}")  # Should be False
+    print(f"📋 Current drafts: {agent.get_current_drafts()}")  # Should be empty
+
+    # Create some drafts via chat
+    await agent.chat("Draft an email to john@example.com about the project meeting")
+    await agent.chat("Create a calendar event for the team meeting tomorrow at 2pm")
+
+    # Check drafts programmatically (no LLM tracking needed!)
+    print("\n📝 After creating drafts:")
+    print(f"📋 Has drafts: {agent.has_drafts()}")  # Should be True
+    drafts = agent.get_current_drafts()
+    for draft_type, draft_data in drafts.items():
+        print(
+            f"  • {draft_type}: {draft_data.get('subject', draft_data.get('title', 'No title'))}"
+        )
+
+    # Extract draft data asynchronously (compatible with existing API)
+    async_drafts = await agent.get_draft_data()
+    print(f"📋 Async draft count: {len(async_drafts)}")
+
+    # Clear drafts programmatically
+    success = agent.clear_all_drafts()
+    print(f"\n🗑️ Cleared drafts: {success}")
+    print(f"📋 Has drafts after clear: {agent.has_drafts()}")  # Should be False
+
+
 async def main():
     """Run all demos."""
     print("WorkflowAgent Demo Script")
@@ -200,6 +238,7 @@ async def main():
         await demo_office_tools()
         await demo_streaming()
         await demo_context_management()
+        await demo_programmatic_draft_tracking()
 
         print("\n" + "=" * 50)
         print("Demo completed successfully!")
