@@ -2,7 +2,7 @@
 LlamaIndex Multi-Agent Workflow implementation for chat_service.
 
 This module provides a specialized multi-agent architecture using LlamaIndex's AgentWorkflow
-with domain-specific agents. It integrates with the existing ChatAgent and LLM manager 
+with domain-specific agents. It integrates with the existing ChatAgent and LLM manager
 infrastructure while providing modern workflow capabilities including:
 
 - Multi-agent orchestration with specialized agents
@@ -241,18 +241,18 @@ class WorkflowAgent:
             # Create context for state management
             if self.agent_workflow is None:
                 raise ValueError("AgentWorkflow is None, cannot create Context")
-            
+
             try:
                 self.context = Context(self.agent_workflow)
-                
+
                 # Verify context was created successfully
                 if self.context is None:
                     raise ValueError("Failed to create Context object")
-                    
+
                 # Test that context methods are available
-                if not hasattr(self.context, 'get') or not hasattr(self.context, 'set'):
+                if not hasattr(self.context, "get") or not hasattr(self.context, "set"):
                     logger.warning("Context created but missing expected methods")
-                    
+
             except Exception as context_error:
                 logger.error(f"Failed to create Context: {context_error}")
                 # Create a minimal context fallback if needed
@@ -280,31 +280,33 @@ class WorkflowAgent:
             # Store in workflow context state with proper error handling
             try:
                 # Check if context has the expected methods
-                get_method = getattr(self.context, 'get', None)
-                set_method = getattr(self.context, 'set', None)
-                
+                get_method = getattr(self.context, "get", None)
+                set_method = getattr(self.context, "set", None)
+
                 if get_method is None or set_method is None:
                     logger.warning("Context object missing get/set methods")
                     return
-                
+
                 # Try to get current state
-                logger.debug(f"Calling context.get('state', {{}}) method")
+                logger.debug("Calling context.get('state', {}) method")
                 state_result = get_method("state", {})
-                logger.debug(f"Context.get returned: {state_result} (type: {type(state_result)})")
-                
+                logger.debug(
+                    f"Context.get returned: {state_result} (type: {type(state_result)})"
+                )
+
                 # Handle both sync and async get methods
-                if hasattr(state_result, '__await__'):
+                if hasattr(state_result, "__await__"):
                     logger.debug("Context.get result is awaitable, awaiting it...")
                     state = await state_result
                     logger.debug(f"Awaited state result: {state}")
                 else:
                     logger.debug("Context.get result is not awaitable, using directly")
                     state = state_result
-                
+
                 # Ensure state is a dict
                 if not isinstance(state, dict):
                     state = {}
-                
+
                 # Add conversation history
                 state["conversation_history"] = [
                     {
@@ -313,22 +315,28 @@ class WorkflowAgent:
                     }
                     for msg in chat_history
                 ]
-                
+
                 # Try to set the state
                 logger.debug(f"Calling context.set('state', {state}) method")
                 set_result = set_method("state", state)
-                logger.debug(f"Context.set returned: {set_result} (type: {type(set_result)})")
-                
+                logger.debug(
+                    f"Context.set returned: {set_result} (type: {type(set_result)})"
+                )
+
                 # Handle both sync and async set methods
-                if hasattr(set_result, '__await__'):
+                if hasattr(set_result, "__await__"):
                     logger.debug("Context.set result is awaitable, awaiting it...")
                     await set_result
                     logger.debug("Context.set await completed successfully")
                 else:
-                    logger.debug("Context.set result is not awaitable, operation complete")
+                    logger.debug(
+                        "Context.set result is not awaitable, operation complete"
+                    )
 
-                logger.debug(f"Loaded {len(chat_history)} messages into workflow context")
-                
+                logger.debug(
+                    f"Loaded {len(chat_history)} messages into workflow context"
+                )
+
             except Exception as context_error:
                 logger.warning(f"Context operation failed: {context_error}")
                 # Continue without context state - the workflow can still function
@@ -358,15 +366,19 @@ class WorkflowAgent:
             )
 
             # Run the workflow
-            logger.debug(f"Starting workflow.run with user_msg='{user_input}' and context={self.context}")
+            logger.debug(
+                f"Starting workflow.run with user_msg='{user_input}' and context={self.context}"
+            )
             try:
                 response = await self.agent_workflow.run(
                     user_msg=user_input, ctx=self.context
                 )
-                logger.debug(f"Workflow.run completed successfully with response: {response}")
+                logger.debug(
+                    f"Workflow.run completed successfully with response: {response}"
+                )
             except Exception as workflow_error:
                 logger.error(f"Workflow.run failed: {workflow_error}")
-                logger.error(f"Workflow error traceback:", exc_info=True)
+                logger.error("Workflow error traceback:", exc_info=True)
                 raise
 
             # Extract response content
@@ -396,12 +408,14 @@ class WorkflowAgent:
                     memory_result = self.chat_agent.memory.put_messages(
                         [user_message, assistant_message]
                     )
-                    if hasattr(memory_result, '__await__'):
+                    if hasattr(memory_result, "__await__"):
                         logger.debug("Memory.put_messages is awaitable, awaiting...")
                         await memory_result
                         logger.debug("Memory.put_messages completed successfully")
                     else:
-                        logger.debug("Memory.put_messages is not awaitable, completed synchronously")
+                        logger.debug(
+                            "Memory.put_messages is not awaitable, completed synchronously"
+                        )
                 except Exception as memory_error:
                     logger.error(f"Memory update failed: {memory_error}")
                     # Don't fail the whole operation for memory errors
@@ -504,7 +518,11 @@ class WorkflowAgent:
         if self.chat_agent:
             try:
                 memory_info = await self.chat_agent.get_memory_info()
-                return memory_info if memory_info is not None else {"error": "No memory info available"}
+                return (
+                    memory_info
+                    if memory_info is not None
+                    else {"error": "No memory info available"}
+                )
             except Exception as e:
                 logger.error(f"Failed to get memory info: {e}")
                 return {"error": f"Failed to get memory info: {str(e)}"}

@@ -32,7 +32,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException
 
-from services.chat.agents.llama_manager import ChatAgentManager
+from services.chat.agents.workflow_agent import WorkflowAgent
 from services.chat.models import (
     ChatRequest,
     ChatResponse,
@@ -86,16 +86,19 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
     # At this point, thread is guaranteed to be not None
     thread = cast(history_manager.Thread, thread)
 
-    # Initialize the agent with LLM from LLMManager
-    agent = ChatAgentManager(
+    # Initialize the multi-agent workflow
+    agent = WorkflowAgent(
         thread_id=int(thread.id),
         user_id=user_id,
-        tools=[],
-        subagents=[],
-        # These will use settings
         llm_model=get_settings().llm_model,
         llm_provider=get_settings().llm_provider,
+        max_tokens=get_settings().max_tokens,
+        office_service_url=get_settings().office_service_url,
     )
+
+    # Build the agent workflow if not already built
+    await agent.build_agent(user_input)
+
     # Actually run the chat and get the agent's response
     agent_response = await agent.chat(user_input)
 

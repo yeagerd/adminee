@@ -35,9 +35,6 @@ def multi_agent_workflow(mock_history_manager):
     )
 
 
-
-
-
 def test_multi_agent_initialization(multi_agent_workflow):
     """Test that multi-agent WorkflowAgent initializes correctly."""
     assert multi_agent_workflow.specialized_agents == {}  # Empty until built
@@ -74,9 +71,6 @@ async def test_multi_agent_build(multi_agent_workflow, mock_history_manager):
 
     # Check that ChatAgent was built
     multi_agent_workflow.chat_agent.build_agent.assert_called_once_with("test input")
-
-
-
 
 
 def test_coordinator_agent_creation():
