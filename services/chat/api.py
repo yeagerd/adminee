@@ -103,6 +103,23 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
     # Actually run the chat and get the agent's response
     agent_response = await agent.chat(user_input)
 
+    # Extract structured draft data
+    draft_data = await agent.get_draft_data()
+
+    # Convert draft data to API models
+    from services.chat.models import DraftCalendarChange, DraftCalendarEvent, DraftEmail
+
+    structured_drafts = []
+
+    for draft in draft_data:
+        draft_type = draft.get("type", "")
+        if draft_type == "email":
+            structured_drafts.append(DraftEmail(**draft))
+        elif draft_type == "calendar_event":
+            structured_drafts.append(DraftCalendarEvent(**draft))
+        elif draft_type == "calendar_change":
+            structured_drafts.append(DraftCalendarChange(**draft))
+
     # CONVERSION PATTERN: Create API response model from data
     # Note: This creates MessageResponse (API model) directly rather than
     # converting from Message (database model) since this is a new response
@@ -117,7 +134,9 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
         )
     ]
     return ChatResponse(
-        thread_id=str(agent.thread_id), messages=pydantic_messages, draft=None
+        thread_id=str(agent.thread_id),
+        messages=pydantic_messages,
+        drafts=structured_drafts if structured_drafts else None,
     )
 
 
@@ -283,7 +302,7 @@ async def thread_history(thread_id: str) -> ChatResponse:
         )
         for i, m in enumerate(reversed(messages))
     ]
-    return ChatResponse(thread_id=str(thread_id), messages=chat_messages, draft=None)
+    return ChatResponse(thread_id=str(thread_id), messages=chat_messages, drafts=None)
 
 
 @router.post("/feedback", response_model=FeedbackResponse)

@@ -35,7 +35,12 @@ from typing import Optional
 # Add the services directory to the path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
+import httpx
 import requests
+
+# Set environment variables to disable cost tracking
+os.environ["LITELLM_LOG"] = "WARNING"  # Set LiteLLM log level to WARNING
+os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "False")  # Disable local cost map
 
 from services.chat.agents.workflow_agent import WorkflowAgent
 from services.chat.models import ChatResponse
@@ -66,6 +71,13 @@ logging.getLogger("llama_index").setLevel(logging.WARNING)  # Reduce LlamaIndex 
 logging.getLogger("LiteLLM").setLevel(
     logging.WARNING
 )  # Only show warnings/errors from LiteLLM
+# Suppress cost calculation and model selection messages
+logging.getLogger("litellm").setLevel(logging.WARNING)
+logging.getLogger("litellm.cost_calculator").setLevel(logging.ERROR)
+logging.getLogger("litellm.utils").setLevel(logging.WARNING)
+# Additional suppression based on GitHub issue #9815
+logging.getLogger("litellm.cost_calculation").setLevel(logging.ERROR)
+logging.getLogger("litellm._logging").setLevel(logging.WARNING)
 
 
 def print_help():
@@ -219,6 +231,13 @@ class ChatDemo:
         try:
             # Get response from the agent (backend logs will show details)
             response = await self.agent.chat(message)
+
+            # Get structured draft data and render as text for the demo
+            draft_data = await self.agent.get_draft_data()
+            if draft_data:
+                draft_text = self._render_drafts_as_text(draft_data)
+                response += f"\n\n{draft_text}"
+
             return response
 
         except Exception as e:
@@ -228,6 +247,88 @@ class ChatDemo:
 
             traceback.print_exc()
             return error_msg
+
+    def _render_drafts_as_text(self, drafts):
+        """Render structured draft data as text for the demo."""
+        if not drafts:
+            return ""
+
+        lines = ["📋 **Drafts Created:**"]
+
+        for draft in drafts:
+            draft_type = draft.get("type", "unknown")
+
+            if draft_type == "email":
+                lines.append("• Email Draft:")
+                # Display all non-empty email fields
+                for field, label in [
+                    ("to", "To"),
+                    ("cc", "CC"),
+                    ("bcc", "BCC"),
+                    ("subject", "Subject"),
+                    ("body", "Body"),
+                ]:
+                    value = draft.get(field)
+                    if value:
+                        if field == "body":
+                            # Truncate body for readability
+                            body_preview = (
+                                value[:100] + "..." if len(value) > 100 else value
+                            )
+                            lines.append(f"  {label}: {body_preview}")
+                        else:
+                            lines.append(f"  {label}: {value}")
+
+            elif draft_type == "calendar_event":
+                lines.append("• Calendar Event Draft:")
+                # Display all non-empty calendar event fields
+                for field, label in [
+                    ("title", "Title"),
+                    ("start_time", "Start"),
+                    ("end_time", "End"),
+                    ("attendees", "Attendees"),
+                    ("location", "Location"),
+                    ("description", "Description"),
+                ]:
+                    value = draft.get(field)
+                    if value:
+                        if field == "description":
+                            # Truncate description for readability
+                            desc_preview = (
+                                value[:100] + "..." if len(value) > 100 else value
+                            )
+                            lines.append(f"  {label}: {desc_preview}")
+                        else:
+                            lines.append(f"  {label}: {value}")
+
+            elif draft_type == "calendar_change":
+                lines.append("• Calendar Change Draft:")
+                # Display all non-empty calendar change fields
+                for field, label in [
+                    ("event_id", "Event ID"),
+                    ("change_type", "Change Type"),
+                    ("new_title", "New Title"),
+                    ("new_start_time", "New Start"),
+                    ("new_end_time", "New End"),
+                    ("new_attendees", "New Attendees"),
+                    ("new_location", "New Location"),
+                    ("new_description", "New Description"),
+                ]:
+                    value = draft.get(field)
+                    if value:
+                        if field == "new_description":
+                            # Truncate description for readability
+                            desc_preview = (
+                                value[:100] + "..." if len(value) > 100 else value
+                            )
+                            lines.append(f"  {label}: {desc_preview}")
+                        else:
+                            lines.append(f"  {label}: {value}")
+
+            else:
+                lines.append(f"• {draft_type.replace('_', ' ').title()}: Created")
+
+        return "\n".join(lines)
 
     def send_message_api(self, message: str):
         """Send a message using the chat service API."""
@@ -247,8 +348,14 @@ class ChatDemo:
             if messages:
                 latest_message = messages[-1]
                 response = latest_message.content
-                if chat_resp.draft:
-                    response += f"\n\nDraft:\n{chat_resp.draft}"
+
+                # Render structured draft data as text for the demo
+                if chat_resp.drafts:
+                    draft_text = self._render_drafts_as_text(
+                        [draft.model_dump() for draft in chat_resp.drafts]
+                    )
+                    response += f"\n\n{draft_text}"
+
                 return response
             else:
                 return "No response received."
@@ -440,7 +547,6 @@ class ChatDemo:
 
     async def _stream_api_response(self, message: str):
         """Stream response from the chat service API using Server-Sent Events."""
-        import httpx
 
         payload = {"user_id": self.user_id, "message": message}
         if self.active_thread:
