@@ -15,10 +15,10 @@ import logging
 import os
 import sys
 
-# Add the services directory to the path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+# Add the project root to the path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from chat.agents.workflow_agent import WorkflowAgent
+from services.chat.agents.workflow_agent import WorkflowAgent
 
 # Configure logging
 logging.basicConfig(
