@@ -193,10 +193,10 @@ class DraftAgent(FunctionAgent):
 
             # Record the draft info and log the result
             if result.get("success"):
-                draft_info = f"Calendar event draft {'updated' if is_update else 'created'} - Title: {title}, Start: {start_time}"
+                draft_info = f"Calendar event draft created/updated - Title: {title}, Start: {start_time}"
                 logger.info(f"📝 DraftAgent: {draft_info}")
                 logger.info(
-                    f"✅ DraftAgent: Calendar event draft {'updated' if is_update else 'created'} successfully"
+                    "✅ DraftAgent: Calendar event draft created/updated successfully"
                 )
                 # Log the draft content for visibility
                 logger.info(
