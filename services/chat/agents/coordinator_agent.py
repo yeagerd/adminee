@@ -26,7 +26,7 @@ async def analyze_user_request(ctx: Context, user_request: str, analysis: str) -
     """Analyze and record the user's request for tracking and coordination."""
     logger.info(f"🧠 Coordinator: Analyzing request - '{user_request}'")
     logger.info(f"📋 Analysis: {analysis}")
-    
+
     current_state = await ctx.get("state", {})
     if "request_analysis" not in current_state:
         current_state["request_analysis"] = {}
@@ -41,8 +41,8 @@ async def analyze_user_request(ctx: Context, user_request: str, analysis: str) -
 
 async def summarize_findings(ctx: Context, summary: str) -> str:
     """Summarize findings from all agents for the final response."""
-    logger.info(f"📊 Coordinator: Summarizing findings from all agents")
-    
+    logger.info("📊 Coordinator: Summarizing findings from all agents")
+
     current_state = await ctx.get("state", {})
 
     # Collect information from all agent findings
@@ -72,7 +72,7 @@ async def summarize_findings(ctx: Context, summary: str) -> str:
     current_state["final_summary"] = findings
     current_state["request_analysis"]["status"] = "completed"
     await ctx.set("state", current_state)
-    
+
     logger.info(f"✅ Coordinator: Final summary prepared - {summary}")
     return f"Findings summarized and recorded: {summary}"
 

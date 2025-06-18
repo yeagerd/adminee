@@ -125,7 +125,7 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
 async def chat_stream_endpoint(request: ChatRequest) -> StreamingResponse:
     """
     Streaming chat endpoint using Server-Sent Events (SSE).
-    
+
     This endpoint streams the multi-agent workflow responses in real-time,
     allowing clients to see responses as they're generated.
     """
@@ -181,14 +181,14 @@ async def chat_stream_endpoint(request: ChatRequest) -> StreamingResponse:
                 # Convert event to JSON and send as SSE
                 event_data = {
                     "type": type(event).__name__,
-                    "content": str(event) if hasattr(event, '__str__') else "",
+                    "content": str(event) if hasattr(event, "__str__") else "",
                 }
-                
+
                 # Extract delta if available
                 if hasattr(event, "delta") and event.delta:
                     event_data["delta"] = event.delta
                     full_response += event.delta
-                    
+
                 yield f"event: chunk\ndata: {json.dumps(event_data)}\n\n"
 
             # Wait for final response
@@ -203,16 +203,13 @@ async def chat_stream_endpoint(request: ChatRequest) -> StreamingResponse:
             completion_data = {
                 "thread_id": str(thread.id),
                 "full_response": full_response,
-                "status": "completed"
+                "status": "completed",
             }
             yield f"event: completed\ndata: {json.dumps(completion_data)}\n\n"
 
         except Exception as e:
             # Send error event
-            error_data = {
-                "error": str(e),
-                "status": "error"
-            }
+            error_data = {"error": str(e), "status": "error"}
             yield f"event: error\ndata: {json.dumps(error_data)}\n\n"
 
     return StreamingResponse(
@@ -222,7 +219,7 @@ async def chat_stream_endpoint(request: ChatRequest) -> StreamingResponse:
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",  # Disable proxy buffering
-        }
+        },
     )
 
 

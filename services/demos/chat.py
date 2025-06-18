@@ -37,8 +37,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 
 import requests
 
-from services.chat.models import ChatResponse
 from services.chat.agents.workflow_agent import WorkflowAgent
+from services.chat.models import ChatResponse
 
 # Configure logging (clean for demo use)
 logging.basicConfig(
@@ -59,9 +59,13 @@ logging.getLogger("services.chat.agents.draft_agent").setLevel(logging.INFO)
 logging.getLogger("aiosqlite").setLevel(logging.WARNING)
 logging.getLogger("asyncio").setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)  # Hide HTTP request logs
-logging.getLogger("openai._base_client").setLevel(logging.WARNING)  # Hide OpenAI client logs
+logging.getLogger("openai._base_client").setLevel(
+    logging.WARNING
+)  # Hide OpenAI client logs
 logging.getLogger("llama_index").setLevel(logging.WARNING)  # Reduce LlamaIndex noise
-logging.getLogger("LiteLLM").setLevel(logging.WARNING)  # Only show warnings/errors from LiteLLM
+logging.getLogger("LiteLLM").setLevel(
+    logging.WARNING
+)  # Only show warnings/errors from LiteLLM
 
 
 def print_help():
@@ -91,7 +95,7 @@ class ChatDemo:
         """Create and initialize a multi-agent WorkflowAgent (direct mode only)."""
         if self.use_api:
             return None
-            
+
         print("\n🤖 Creating Multi-Agent WorkflowAgent...")
 
         agent = WorkflowAgent(
@@ -121,7 +125,7 @@ class ChatDemo:
         else:
             print("🚀 Welcome to the Multi-Agent WorkflowAgent Demo!")
         print("=" * 60)
-        
+
         if self.use_api:
             print(f"🌐 API URL: {self.chat_url}")
             print(f"👤 User ID: {self.user_id}")
@@ -135,7 +139,7 @@ class ChatDemo:
             print("  • EmailAgent - Handles email operations")
             print("  • DocumentAgent - Manages documents and notes")
             print("  • DraftAgent - Creates drafts and content")
-        
+
         print()
         print("📋 Example prompts to try:")
         print("  • 'What meetings do I have this week?'")
@@ -161,7 +165,7 @@ class ChatDemo:
         print("  • Type any message to chat with the system")
         print("  • 'quit' or 'exit' - Exit the demo")
         print("  • 'help' - Show this help message")
-        
+
         if self.use_api:
             print("  • 'list' - List all threads for the user")
             print("  • 'new' - Start a new thread")
@@ -170,12 +174,14 @@ class ChatDemo:
             print("  • 'clear' - Clear the conversation history")
             print()
             print("🤖 Specialized Agents:")
-            print("  • CoordinatorAgent - Orchestrates tasks and delegates to other agents")
+            print(
+                "  • CoordinatorAgent - Orchestrates tasks and delegates to other agents"
+            )
             print("  • CalendarAgent - Handles calendar queries and scheduling")
             print("  • EmailAgent - Manages email operations and searches")
             print("  • DocumentAgent - Finds and manages documents and notes")
             print("  • DraftAgent - Creates drafts of emails and content")
-        
+
         print()
         print("📋 Example prompts:")
         print("  • 'What meetings do I have this week?'")
@@ -199,7 +205,9 @@ class ChatDemo:
             # Generate a new thread ID to start fresh
             old_thread_id = self.thread_id
             self.thread_id = int(time.time())
-            print(f"📝 New conversation thread: {self.thread_id} (was: {old_thread_id})")
+            print(
+                f"📝 New conversation thread: {self.thread_id} (was: {old_thread_id})"
+            )
             self.agent = await self.create_agent()
 
     async def send_message_direct(self, message: str):
@@ -217,6 +225,7 @@ class ChatDemo:
             error_msg = f"Sorry, I encountered an error: {str(e)}"
             logger.error(f"Chat error: {e}")
             import traceback
+
             traceback.print_exc()
             return error_msg
 
@@ -232,7 +241,7 @@ class ChatDemo:
             data = resp.json()
             chat_resp = ChatResponse.model_validate(data)
             self.active_thread = chat_resp.thread_id
-            
+
             # Extract the latest response
             messages = chat_resp.messages or []
             if messages:
@@ -243,7 +252,7 @@ class ChatDemo:
                 return response
             else:
                 return "No response received."
-                
+
         except requests.RequestException as e:
             return f"Error sending message: {e}"
 
@@ -253,7 +262,7 @@ class ChatDemo:
             response = self.send_message_api(message)
         else:
             response = await self.send_message_direct(message)
-        
+
         print(f"\nYou: {message}")
         print(f"🤖 Briefly: {response}")
         return response
@@ -265,7 +274,9 @@ class ChatDemo:
 
         if cmd == "list":
             try:
-                resp = requests.get(f"{self.chat_url}/threads", params={"user_id": self.user_id})
+                resp = requests.get(
+                    f"{self.chat_url}/threads", params={"user_id": self.user_id}
+                )
                 resp.raise_for_status()
                 threads = resp.json()
                 if not threads:
@@ -278,12 +289,12 @@ class ChatDemo:
             except requests.RequestException as e:
                 print(f"Error listing threads: {e}")
             return True
-            
+
         elif cmd == "new":
             self.active_thread = None
             print("New thread started. Next message will create it.")
             return True
-            
+
         elif cmd == "switch":
             if len(parts) < 2:
                 print("Usage: switch <thread_id>")
@@ -307,7 +318,7 @@ class ChatDemo:
                 except requests.RequestException as e:
                     print(f"Error switching thread: {e}")
             return True
-            
+
         return False
 
     async def chat_loop(self):
@@ -329,7 +340,7 @@ class ChatDemo:
                     prompt = f"[{self.active_thread}]> "
                 else:
                     prompt = "You: "
-                    
+
                 user_input = input(prompt).strip()
 
                 # Handle empty input
@@ -363,7 +374,7 @@ class ChatDemo:
                         # Erase the previous input line (prompt + user input)
                         print("\033[F\033[K", end="")  # Move cursor up and clear line
                         print(f"{self.user_id}: {user_input}")
-                        
+
                         response = self.send_message_api(user_input)
                         print(f"briefly: {response}")
                     else:
@@ -375,6 +386,7 @@ class ChatDemo:
                     print(f"Sorry, I encountered an error: {str(e)}")
                     logger.error(f"Chat error: {e}")
                     import traceback
+
                     traceback.print_exc()
 
                 print()  # Add a blank line for readability
@@ -390,7 +402,7 @@ class ChatDemo:
 
     async def run_streaming_demo(self):
         """Demo streaming chat (supports both direct and API modes)."""
-            
+
         mode_text = "API" if self.use_api else "Direct Multi-Agent"
         print(f"\n🌊 {mode_text} Streaming Demo")
         print("This shows how the system generates responses in real-time.\n")
@@ -429,7 +441,7 @@ class ChatDemo:
     async def _stream_api_response(self, message: str):
         """Stream response from the chat service API using Server-Sent Events."""
         import httpx
-        
+
         payload = {"user_id": self.user_id, "message": message}
         if self.active_thread:
             payload["thread_id"] = self.active_thread
@@ -440,26 +452,27 @@ class ChatDemo:
                     "POST",
                     f"{self.chat_url}/chat/stream",
                     json=payload,
-                    headers={"Accept": "text/event-stream"}
+                    headers={"Accept": "text/event-stream"},
                 ) as response:
                     if response.status_code != 200:
                         print(f"Error: HTTP {response.status_code}")
                         return
-                    
+
                     async for line in response.aiter_lines():
                         if line.startswith("data: "):
                             try:
                                 import json
+
                                 data = json.loads(line[6:])  # Remove "data: " prefix
-                                
+
                                 if "delta" in data:
                                     print(data["delta"], end="", flush=True)
                                 elif "thread_id" in data:
                                     self.active_thread = data["thread_id"]
-                                    
+
                             except json.JSONDecodeError:
                                 continue
-                                
+
         except Exception as e:
             print(f"Streaming error: {e}")
 
@@ -483,7 +496,7 @@ Examples:
     parser.add_argument(
         "--api",
         action="store_true",
-        help="Use chat service API instead of direct multi-agent workflow"
+        help="Use chat service API instead of direct multi-agent workflow",
     )
 
     parser.add_argument(
@@ -492,18 +505,16 @@ Examples:
         default="http://localhost:8001",
         help="Base URL for the chat service API (default: http://localhost:8001)",
     )
-    
+
     parser.add_argument(
-        "--user-id", 
-        type=str, 
-        default="demo_user", 
-        help="User ID for chat (default: demo_user)"
+        "--user-id",
+        type=str,
+        default="demo_user",
+        help="User ID for chat (default: demo_user)",
     )
 
     parser.add_argument(
-        "--message", "-m", 
-        type=str, 
-        help="Send a single message (non-interactive mode)"
+        "--message", "-m", type=str, help="Send a single message (non-interactive mode)"
     )
 
     parser.add_argument(
@@ -514,11 +525,7 @@ Examples:
 
     args = parser.parse_args()
 
-    demo = ChatDemo(
-        use_api=args.api,
-        chat_url=args.chat_url,
-        user_id=args.user_id
-    )
+    demo = ChatDemo(use_api=args.api, chat_url=args.chat_url, user_id=args.user_id)
 
     if args.message:
         # Non-interactive mode: send single message

@@ -27,15 +27,19 @@ async def record_calendar_info(
 ) -> str:
     """Record calendar information to the workflow state for other agents to use."""
     logger.info(f"📅 CalendarAgent: Recording calendar info - {info_title}")
-    logger.info(f"📋 Calendar data: {calendar_info[:300]}{'...' if len(calendar_info) > 300 else ''}")
-    
+    logger.info(
+        f"📋 Calendar data: {calendar_info[:300]}{'...' if len(calendar_info) > 300 else ''}"
+    )
+
     current_state = await ctx.get("state", {})
     if "calendar_info" not in current_state:
         current_state["calendar_info"] = {}
     current_state["calendar_info"][info_title] = calendar_info
     await ctx.set("state", current_state)
-    
-    logger.info(f"✅ CalendarAgent: Calendar information '{info_title}' recorded successfully")
+
+    logger.info(
+        f"✅ CalendarAgent: Calendar information '{info_title}' recorded successfully"
+    )
     return f"Calendar information '{info_title}' recorded successfully."
 
 

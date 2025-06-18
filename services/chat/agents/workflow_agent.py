@@ -27,7 +27,6 @@ import logging
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from llama_index.core.agent.workflow import AgentWorkflow, FunctionAgent
-from llama_index.core.base.llms.types import ChatMessage, MessageRole
 from llama_index.core.tools import FunctionTool
 from llama_index.core.workflow import (
     Context,
@@ -158,8 +157,8 @@ class WorkflowAgent:
     async def _load_chat_history_from_db(self) -> List:
         """Load chat history from database for workflow context."""
         try:
+
             from services.chat import history_manager
-            from llama_index.core.llms import ChatMessage, MessageRole
 
             # Get messages from database
             db_messages = await history_manager.get_thread_history(
@@ -173,11 +172,13 @@ class WorkflowAgent:
             chat_history = []
             for msg in db_messages:
                 role = "user" if msg.user_id == self.user_id else "assistant"
-                chat_history.append({
-                    "role": role,
-                    "content": msg.content,
-                    "timestamp": str(msg.created_at) if msg.created_at else None
-                })
+                chat_history.append(
+                    {
+                        "role": role,
+                        "content": msg.content,
+                        "timestamp": str(msg.created_at) if msg.created_at else None,
+                    }
+                )
 
             logger.debug(f"Loaded {len(chat_history)} messages into workflow context")
             return chat_history
@@ -414,18 +415,23 @@ class WorkflowAgent:
                             state = await state_result
                         else:
                             state = state_result
-                        
+
                         draft_info = state.get("draft_info", {})
                         if draft_info:
                             logger.info("🎯 DRAFT CREATED - Content visible to client:")
                             draft_summary = []
                             for draft_type, info in draft_info.items():
                                 logger.info(f"  📝 {draft_type.upper()}: {info}")
-                                draft_summary.append(f"• {draft_type.replace('_', ' ').title()}: {info}")
-                            
+                                draft_summary.append(
+                                    f"• {draft_type.replace('_', ' ').title()}: {info}"
+                                )
+
                             # Add draft summary to response if drafts were created
                             if draft_summary:
-                                response_content += f"\n\n📋 **Drafts Created:**\n" + "\n".join(draft_summary)
+                                response_content += (
+                                    "\n\n📋 **Drafts Created:**\n"
+                                    + "\n".join(draft_summary)
+                                )
             except Exception as draft_error:
                 logger.warning(f"Failed to extract draft information: {draft_error}")
 
@@ -437,7 +443,9 @@ class WorkflowAgent:
             )
 
             # Memory is now handled by the specialized agents in the workflow
-            logger.debug("Conversation saved to database, memory handled by workflow agents")
+            logger.debug(
+                "Conversation saved to database, memory handled by workflow agents"
+            )
 
             return response_content
 
@@ -527,16 +535,22 @@ class WorkflowAgent:
         """Get memory information from the workflow context and specialized agents."""
         try:
             info = {
-                "workflow_context": "initialized" if self.context else "not_initialized",
-                "specialized_agents": list(self.specialized_agents.keys()) if self.specialized_agents else [],
+                "workflow_context": (
+                    "initialized" if self.context else "not_initialized"
+                ),
+                "specialized_agents": (
+                    list(self.specialized_agents.keys())
+                    if self.specialized_agents
+                    else []
+                ),
                 "thread_id": self.thread_id,
                 "user_id": self.user_id,
             }
-            
+
             # Get conversation history count
             chat_history = await self._load_chat_history_from_db()
             info["conversation_messages"] = len(chat_history)
-            
+
             return info
         except Exception as e:
             logger.error(f"Failed to get memory info: {e}")

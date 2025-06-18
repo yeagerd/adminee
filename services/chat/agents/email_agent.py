@@ -26,15 +26,19 @@ logger = logging.getLogger(__name__)
 async def record_email_info(ctx: Context, email_info: str, info_title: str) -> str:
     """Record email information to the workflow state for other agents to use."""
     logger.info(f"📧 EmailAgent: Recording email info - {info_title}")
-    logger.info(f"📋 Email data: {email_info[:300]}{'...' if len(email_info) > 300 else ''}")
-    
+    logger.info(
+        f"📋 Email data: {email_info[:300]}{'...' if len(email_info) > 300 else ''}"
+    )
+
     current_state = await ctx.get("state", {})
     if "email_info" not in current_state:
         current_state["email_info"] = {}
     current_state["email_info"][info_title] = email_info
     await ctx.set("state", current_state)
-    
-    logger.info(f"✅ EmailAgent: Email information '{info_title}' recorded successfully")
+
+    logger.info(
+        f"✅ EmailAgent: Email information '{info_title}' recorded successfully"
+    )
     return f"Email information '{info_title}' recorded successfully."
 
 
