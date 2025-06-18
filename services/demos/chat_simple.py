@@ -2,13 +2,17 @@
 """
 Interactive Multi-Agent Chat Demo for WorkflowAgent.
 
-This script provides a simple command-line interface to chat with the WorkflowAgent
+This script provides a command-line interface to chat with the WorkflowAgent
 multi-agent system. Features specialized agents for calendar, email, documents, and drafting.
 
 Usage:
-    python services/demos/chat-simple.py
+    python services/demos/chat_simple.py                    # Interactive mode
+    python services/demos/chat_simple.py --streaming        # Streaming demo
+    python services/demos/chat_simple.py --message "hi"     # Send single message
+    python services/demos/chat_simple.py -m "What meetings do I have today?"
 """
 
+import argparse
 import asyncio
 import logging
 import os
@@ -27,7 +31,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Set specific loggers to be more verbose
+# Set specific loggers to be more verbose for our services
 logging.getLogger("services.chat.agents.workflow_agent").setLevel(logging.DEBUG)
 logging.getLogger("services.chat.agents.coordinator_agent").setLevel(logging.DEBUG)
 logging.getLogger("services.chat.agents.calendar_agent").setLevel(logging.DEBUG)
@@ -35,6 +39,11 @@ logging.getLogger("services.chat.agents.email_agent").setLevel(logging.DEBUG)
 logging.getLogger("services.chat.agents.document_agent").setLevel(logging.DEBUG)
 logging.getLogger("services.chat.agents.draft_agent").setLevel(logging.DEBUG)
 logging.getLogger("llama_index").setLevel(logging.INFO)  # LlamaIndex logs at INFO level
+
+# Suppress spammy database and library logs
+logging.getLogger("aiosqlite").setLevel(logging.WARNING)  # Only show warnings/errors from aiosqlite
+logging.getLogger("asyncio").setLevel(logging.WARNING)    # Only show warnings/errors from asyncio
+logging.getLogger("LiteLLM").setLevel(logging.WARNING)    # Only show warnings/errors from LiteLLM
 
 
 class ChatDemo:
@@ -130,6 +139,31 @@ class ChatDemo:
         self.thread_id += 1
         self.agent = await self.create_agent()
 
+    async def send_message(self, message: str):
+        """Send a single message and return the response (non-interactive mode)."""
+        # Create the multi-agent system if not already created
+        if self.agent is None:
+            print("\n🤖 Creating Multi-Agent WorkflowAgent...")
+            self.agent = await self.create_agent()
+            print("✅ Multi-Agent system ready!")
+        
+        print(f"\nYou: {message}")
+        print("🤖 Briefly:", end=" ", flush=True)
+        
+        try:
+            # Get response from the agent (backend logs will show details)
+            response = await self.agent.chat(message)
+            print(response)
+            return response
+            
+        except Exception as e:
+            error_msg = f"Sorry, I encountered an error: {str(e)}"
+            print(error_msg)
+            logger.error(f"Chat error: {e}")
+            import traceback
+            traceback.print_exc()
+            return error_msg
+
     async def chat_loop(self):
         """Main chat loop."""
         self.show_welcome()
@@ -223,13 +257,43 @@ class ChatDemo:
 
 
 async def main():
-    """Run the interactive chat demo."""
+    """Run the chat demo with command line argument support."""
+    parser = argparse.ArgumentParser(
+        description="Multi-Agent WorkflowAgent Chat Demo",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python services/demos/chat_simple.py                    # Interactive mode
+  python services/demos/chat_simple.py --streaming        # Streaming demo
+  python services/demos/chat_simple.py --message "hi"     # Send single message
+  python services/demos/chat_simple.py -m "What meetings do I have today?"
+        """
+    )
+    
+    parser.add_argument(
+        "--message", "-m",
+        type=str,
+        help="Send a single message (non-interactive mode)"
+    )
+    
+    parser.add_argument(
+        "--streaming",
+        action="store_true",
+        help="Run streaming demo instead of regular chat"
+    )
+    
+    args = parser.parse_args()
+    
     demo = ChatDemo()
     
-    # Check if user wants streaming demo
-    if len(sys.argv) > 1 and sys.argv[1] == "--streaming":
+    if args.message:
+        # Non-interactive mode: send single message
+        await demo.send_message(args.message)
+    elif args.streaming:
+        # Streaming demo mode
         await demo.run_streaming_demo()
     else:
+        # Interactive chat mode
         await demo.chat_loop()
 
 
