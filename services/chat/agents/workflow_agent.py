@@ -35,7 +35,6 @@ from llama_index.core.workflow import (
 
 from services.chat import history_manager
 from services.chat.agents.calendar_agent import CalendarAgent
-from services.chat.agents.chat_agent import ChatAgent
 
 # Import specialized agents for multi-agent mode
 from services.chat.agents.coordinator_agent import CoordinatorAgent
@@ -108,22 +107,14 @@ class WorkflowAgent:
         # Initialize tool registry for additional office tools
         self.tool_registry = get_tool_registry(office_service_url=office_service_url)
 
-        # Create ChatAgent for memory management (leveraging existing implementation)
-        self.chat_agent = ChatAgent(
-            thread_id=thread_id,
-            user_id=user_id,
-            llm_model=llm_model,
-            llm_provider=llm_provider,
-            max_tokens=max_tokens,
-            chat_history_token_ratio=chat_history_token_ratio,
-            token_flush_size=token_flush_size,
-            tools=[],  # Tools will be handled by workflow
-            llm_kwargs=llm_kwargs,
-            static_content=static_content,
-            enable_fact_extraction=enable_fact_extraction,
-            enable_vector_memory=enable_vector_memory,
-            max_facts=max_facts,
-        )
+        # Store configuration for direct database operations (no ChatAgent needed)
+        self.max_tokens = max_tokens
+        self.chat_history_token_ratio = chat_history_token_ratio
+        self.token_flush_size = token_flush_size
+        self.static_content = static_content
+        self.enable_fact_extraction = enable_fact_extraction
+        self.enable_vector_memory = enable_vector_memory
+        self.max_facts = max_facts
 
         # Workflow components (initialized during build)
         self.agent_workflow: Optional[AgentWorkflow] = None
@@ -165,6 +156,37 @@ class WorkflowAgent:
             "You coordinate between specialized agents to help with various tasks including email, calendar, "
             "and document management. Always be helpful, accurate, and professional."
         )
+
+    async def _load_chat_history_from_db(self) -> List:
+        """Load chat history from database for workflow context."""
+        try:
+            from services.chat import history_manager
+            from llama_index.core.llms import ChatMessage, MessageRole
+
+            # Get messages from database
+            db_messages = await history_manager.get_thread_history(
+                self.thread_id, limit=100
+            )
+
+            # Reverse to chronological order (oldest to newest)
+            db_messages = list(reversed(db_messages))
+
+            # Convert to simple format for workflow context
+            chat_history = []
+            for msg in db_messages:
+                role = "user" if msg.user_id == self.user_id else "assistant"
+                chat_history.append({
+                    "role": role,
+                    "content": msg.content,
+                    "timestamp": str(msg.created_at) if msg.created_at else None
+                })
+
+            logger.debug(f"Loaded {len(chat_history)} messages into workflow context")
+            return chat_history
+
+        except Exception as e:
+            logger.error(f"Error loading chat history from database: {e}")
+            return []
 
     def _create_specialized_agents(self) -> Dict[str, FunctionAgent]:
         """Create specialized agents for multi-agent mode."""
@@ -214,9 +236,6 @@ class WorkflowAgent:
         - Context for state management
         """
         try:
-            # Build the underlying ChatAgent for memory management
-            await self.chat_agent.build_agent(user_input)
-
             # Create specialized agents
             self.specialized_agents = self._create_specialized_agents()
 
@@ -274,8 +293,8 @@ class WorkflowAgent:
             return
 
         try:
-            # Get messages from database via ChatAgent
-            chat_history = await self.chat_agent._load_chat_history_from_db()
+            # Get messages from database directly
+            chat_history = await self._load_chat_history_from_db()
 
             # Store in workflow context state with proper error handling
             try:
@@ -395,32 +414,8 @@ class WorkflowAgent:
                 content=response_content,
             )
 
-            # Update ChatAgent memory with the new exchange
-            if self.chat_agent.memory:
-                logger.debug("Updating ChatAgent memory with new messages")
-                user_message = ChatMessage(role=MessageRole.USER, content=user_input)
-                assistant_message = ChatMessage(
-                    role=MessageRole.ASSISTANT, content=response_content
-                )
-
-                # Add to memory blocks
-                try:
-                    memory_result = self.chat_agent.memory.put_messages(
-                        [user_message, assistant_message]
-                    )
-                    if hasattr(memory_result, "__await__"):
-                        logger.debug("Memory.put_messages is awaitable, awaiting...")
-                        await memory_result
-                        logger.debug("Memory.put_messages completed successfully")
-                    else:
-                        logger.debug(
-                            "Memory.put_messages is not awaitable, completed synchronously"
-                        )
-                except Exception as memory_error:
-                    logger.error(f"Memory update failed: {memory_error}")
-                    # Don't fail the whole operation for memory errors
-            else:
-                logger.debug("No ChatAgent memory available, skipping memory update")
+            # Memory is now handled by the specialized agents in the workflow
+            logger.debug("Conversation saved to database, memory handled by workflow agents")
 
             return response_content
 
@@ -484,15 +479,8 @@ class WorkflowAgent:
                 content=full_response,
             )
 
-            # Update ChatAgent memory
-            if self.chat_agent.memory and full_response:
-                user_message = ChatMessage(role=MessageRole.USER, content=user_input)
-                assistant_message = ChatMessage(
-                    role=MessageRole.ASSISTANT, content=full_response
-                )
-                await self.chat_agent.memory.put_messages(
-                    [user_message, assistant_message]
-                )
+            # Memory is handled by the specialized agents in the workflow
+            logger.debug("Streaming conversation saved to database")
 
         except Exception as e:
             logger.error(f"Error in stream chat workflow: {e}")
@@ -514,33 +502,31 @@ class WorkflowAgent:
             yield {"error": str(e), "message": error_response}
 
     async def get_memory_info(self) -> Dict[str, Any]:
-        """Get memory information from the underlying ChatAgent."""
-        if self.chat_agent:
-            try:
-                memory_info = await self.chat_agent.get_memory_info()
-                return (
-                    memory_info
-                    if memory_info is not None
-                    else {"error": "No memory info available"}
-                )
-            except Exception as e:
-                logger.error(f"Failed to get memory info: {e}")
-                return {"error": f"Failed to get memory info: {str(e)}"}
-        return {"error": "Agent not initialized"}
+        """Get memory information from the workflow context and specialized agents."""
+        try:
+            info = {
+                "workflow_context": "initialized" if self.context else "not_initialized",
+                "specialized_agents": list(self.specialized_agents.keys()) if self.specialized_agents else [],
+                "thread_id": self.thread_id,
+                "user_id": self.user_id,
+            }
+            
+            # Get conversation history count
+            chat_history = await self._load_chat_history_from_db()
+            info["conversation_messages"] = len(chat_history)
+            
+            return info
+        except Exception as e:
+            logger.error(f"Failed to get memory info: {e}")
+            return {"error": f"Failed to get memory info: {str(e)}"}
 
     async def reset_memory(self) -> None:
-        """Reset memory in the underlying ChatAgent."""
-        if self.chat_agent:
-            try:
-                reset_result = await self.chat_agent.reset_memory()
-                # Ensure the result is handled properly (should be None for reset operations)
-            except Exception as e:
-                logger.error(f"Failed to reset ChatAgent memory: {e}")
-
-        # Also reset workflow context
+        """Reset workflow context (conversation history stays in database)."""
+        # Reset workflow context to clear in-memory state
         if self.context and self.agent_workflow:
             try:
                 self.context = Context(self.agent_workflow)
+                logger.info("Workflow context reset successfully")
             except Exception as e:
                 logger.warning(f"Failed to reset workflow context: {e}")
                 self.context = None
@@ -579,5 +565,5 @@ class WorkflowAgent:
 
     @property
     def memory(self):
-        """Access to the ChatAgent's memory."""
-        return self.chat_agent.memory if self.chat_agent else None
+        """Access to workflow context for compatibility."""
+        return self.context
