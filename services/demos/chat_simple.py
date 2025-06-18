@@ -17,6 +17,7 @@ import asyncio
 import logging
 import os
 import sys
+import time
 from typing import Optional
 
 # Add the services directory to the path
@@ -57,7 +58,8 @@ class ChatDemo:
 
     def __init__(self):
         self.agent: Optional[WorkflowAgent] = None
-        self.thread_id = 1
+        # Generate a new thread ID based on current timestamp to ensure each session is unique
+        self.thread_id = int(time.time())
         self.user_id = "demo_user"
 
     async def create_agent(self) -> WorkflowAgent:
@@ -89,6 +91,7 @@ class ChatDemo:
         print("=" * 60)
         print("🚀 Welcome to the Multi-Agent WorkflowAgent Demo!")
         print("=" * 60)
+        print(f"📝 Starting new conversation thread: {self.thread_id}")
         print()
         print("This demo lets you chat with the multi-agent WorkflowAgent system.")
         print("Features specialized agents for different tasks:")
@@ -141,8 +144,10 @@ class ChatDemo:
 
         print("\n🧹 Clearing conversation history...")
 
-        # Increment thread ID to start fresh
-        self.thread_id += 1
+        # Generate a new thread ID to start fresh
+        old_thread_id = self.thread_id
+        self.thread_id = int(time.time())
+        print(f"📝 New conversation thread: {self.thread_id} (was: {old_thread_id})")
         self.agent = await self.create_agent()
 
     async def send_message(self, message: str):
