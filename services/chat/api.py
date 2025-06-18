@@ -28,11 +28,13 @@ This pattern ensures:
 - Clean separation between data persistence and API concerns
 """
 
+import json
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 
-from services.chat.agents.llama_manager import ChatAgentManager
+from services.chat.agents.workflow_agent import WorkflowAgent
 from services.chat.models import (
     ChatRequest,
     ChatResponse,
@@ -86,16 +88,18 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
     # At this point, thread is guaranteed to be not None
     thread = cast(history_manager.Thread, thread)
 
-    # Initialize the agent with LLM from LLMManager
-    agent = ChatAgentManager(
+    # Initialize the multi-agent workflow
+    agent = WorkflowAgent(
         thread_id=int(thread.id),
         user_id=user_id,
-        tools=[],
-        subagents=[],
-        # These will use settings
         llm_model=get_settings().llm_model,
         llm_provider=get_settings().llm_provider,
+        max_tokens=get_settings().max_tokens,
     )
+
+    # Build the agent workflow if not already built
+    await agent.build_agent(user_input)
+
     # Actually run the chat and get the agent's response
     agent_response = await agent.chat(user_input)
 
@@ -114,6 +118,108 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
     ]
     return ChatResponse(
         thread_id=str(agent.thread_id), messages=pydantic_messages, draft=None
+    )
+
+
+@router.post("/chat/stream")
+async def chat_stream_endpoint(request: ChatRequest) -> StreamingResponse:
+    """
+    Streaming chat endpoint using Server-Sent Events (SSE).
+
+    This endpoint streams the multi-agent workflow responses in real-time,
+    allowing clients to see responses as they're generated.
+    """
+    from typing import cast
+
+    from services.chat import history_manager
+
+    user_id = request.user_id
+    thread_id = request.thread_id
+    user_input = request.message
+
+    # Create or get thread (returns database Thread model)
+    thread: Optional[history_manager.Thread]
+    if not thread_id:
+        # Always create a new thread if no thread_id is provided
+        thread = await history_manager.create_thread(user_id=user_id)
+    else:
+        # Fetch the existing thread
+        try:
+            thread_id_int = int(thread_id)
+            thread = await history_manager.get_thread(thread_id=thread_id_int)
+            if thread is None:
+                raise HTTPException(status_code=404, detail="Thread not found")
+        except (ValueError, TypeError) as e:
+            raise HTTPException(
+                status_code=400, detail="Invalid thread_id format. Must be an integer."
+            ) from e
+
+    # At this point, thread is guaranteed to be not None
+    thread = cast(history_manager.Thread, thread)
+
+    async def generate_streaming_response():
+        """Generate streaming response using Server-Sent Events format."""
+        try:
+            # Initialize the multi-agent workflow
+            agent = WorkflowAgent(
+                thread_id=int(thread.id),
+                user_id=user_id,
+                llm_model=get_settings().llm_model,
+                llm_provider=get_settings().llm_provider,
+                max_tokens=get_settings().max_tokens,
+            )
+
+            # Build the agent workflow if not already built
+            await agent.build_agent(user_input)
+
+            # Send initial metadata
+            yield f"event: metadata\ndata: {json.dumps({'thread_id': str(thread.id), 'user_id': user_id})}\n\n"
+
+            # Stream the workflow responses
+            full_response = ""
+            async for event in agent.stream_chat(user_input):
+                # Convert event to JSON and send as SSE
+                event_data = {
+                    "type": type(event).__name__,
+                    "content": str(event) if hasattr(event, "__str__") else "",
+                }
+
+                # Extract delta if available
+                if hasattr(event, "delta") and event.delta:
+                    event_data["delta"] = event.delta
+                    full_response += event.delta
+
+                yield f"event: chunk\ndata: {json.dumps(event_data)}\n\n"
+
+            # Wait for final response
+            try:
+                final_response = await agent.stream_chat(user_input).__anext__()
+                if not full_response:
+                    full_response = str(final_response)
+            except StopAsyncIteration:
+                pass
+
+            # Send completion event
+            completion_data = {
+                "thread_id": str(thread.id),
+                "full_response": full_response,
+                "status": "completed",
+            }
+            yield f"event: completed\ndata: {json.dumps(completion_data)}\n\n"
+
+        except Exception as e:
+            # Send error event
+            error_data = {"error": str(e), "status": "error"}
+            yield f"event: error\ndata: {json.dumps(error_data)}\n\n"
+
+    return StreamingResponse(
+        generate_streaming_response(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable proxy buffering
+        },
     )
 
 

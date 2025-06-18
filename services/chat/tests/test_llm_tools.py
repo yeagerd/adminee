@@ -257,7 +257,7 @@ def test_tool_registry(monkeypatch):
         return MockResponse({}, 404)
 
     monkeypatch.setattr(requests, "get", mock_get)
-    registry = get_tool_registry("http://test-office-service")
+    registry = get_tool_registry()
     # Calendar
     calendar_result = registry.execute_tool(
         "get_calendar_events", user_token="user_token"
@@ -311,7 +311,7 @@ def test_tool_registry_tooloutput_success(monkeypatch):
         return MockResponse({"events": [{"id": "1", "title": "Meeting"}]}, 200)
 
     monkeypatch.setattr(requests, "get", mock_get)
-    registry = get_tool_registry("http://test-office-service")
+    registry = get_tool_registry()
     # Call a tool that returns a dict with 'success'
     draft_result = registry.execute_tool(
         "create_draft_email",
@@ -332,7 +332,7 @@ def test_tool_registry_tooloutput_success(monkeypatch):
 
 def test_tool_registry_tooloutput_error(monkeypatch):
     # This test checks that ToolOutput objects wrap error dicts as .raw_output
-    registry = get_tool_registry("http://test-office-service")
+    registry = get_tool_registry()
     result = registry.execute_tool("not_a_tool")
     assert hasattr(result, "raw_output")
     assert isinstance(result.raw_output, dict)
@@ -346,7 +346,7 @@ def test_tool_registry_tooloutput_for_get_tools(monkeypatch):
         return MockResponse({"events": [{"id": "1", "title": "Meeting"}]}, 200)
 
     monkeypatch.setattr(requests, "get", mock_get)
-    registry = get_tool_registry("http://test-office-service")
+    registry = get_tool_registry()
     calendar_result = registry.execute_tool(
         "get_calendar_events", user_token="user_token"
     )
@@ -361,7 +361,7 @@ def test_tool_registry_execute_tool_returns_tooloutput(monkeypatch):
         return MockResponse({"emails": [{"id": "1", "subject": "Email"}]}, 200)
 
     monkeypatch.setattr(requests, "get", mock_get)
-    registry = get_tool_registry("http://test-office-service")
+    registry = get_tool_registry()
     email_result = registry.execute_tool("get_emails", user_token="user_token")
     # Should be a ToolOutput-like object with .raw_output
     assert hasattr(email_result, "raw_output")
@@ -370,7 +370,7 @@ def test_tool_registry_execute_tool_returns_tooloutput(monkeypatch):
 
 
 def test_tool_registry_execute_tool_error():
-    registry = get_tool_registry("http://test-office-service")
+    registry = get_tool_registry()
     result = registry.execute_tool("calendar")  # Missing user_token
     # Should be a ToolOutput-like object with .raw_output
     assert hasattr(result, "raw_output")
@@ -380,6 +380,6 @@ def test_tool_registry_execute_tool_error():
 
 
 def test_get_tool_registry_singleton():
-    registry1 = get_tool_registry("http://test1")
-    registry2 = get_tool_registry("http://test2")
+    registry1 = get_tool_registry()
+    registry2 = get_tool_registry()
     assert registry1 is registry2
