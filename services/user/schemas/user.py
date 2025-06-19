@@ -173,11 +173,6 @@ class UserUpdate(BaseModel):
         # Use comprehensive email validation
         return validate_email_address(v)
 
-    model_config = ConfigDict(
-        # Allow partial updates - all fields are optional
-        exclude_none=True
-    )
-
 
 class UserResponse(UserBase):
     """Schema for user response data."""

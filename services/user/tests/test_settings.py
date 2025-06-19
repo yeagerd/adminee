@@ -8,15 +8,14 @@ and configuration management.
 import os
 from unittest.mock import patch
 
-from pydantic import ConfigDict
-
+from pydantic_settings import SettingsConfigDict # Added SettingsConfigDict
 from services.user.settings import Settings
 
 
 class _TestableSettings(Settings):
     """Test version of Settings that doesn't load from .env file."""
 
-    model_config = ConfigDict(
+    model_config = SettingsConfigDict(
         env_file=None,  # Don't load from .env file in tests
         env_file_encoding="utf-8",
         case_sensitive=False,
