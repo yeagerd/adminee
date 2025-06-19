@@ -39,7 +39,6 @@ import logging
 import os
 import sys
 import time
-import webbrowser
 from typing import Any, Dict, List, Optional
 
 # Add the services directory to the path
@@ -136,9 +135,24 @@ class UserServiceClient(ServiceClient):
             return None
 
         try:
+            # Use provider-specific default scopes
+            if provider == "microsoft":
+                scopes = [
+                    "openid",
+                    "email",
+                    "profile",
+                    "offline_access",
+                    "https://graph.microsoft.com/User.Read",
+                ]
+            elif provider == "google":
+                scopes = ["read", "write"]
+            else:
+                scopes = ["read"]
+
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
-                    f"{self.base_url}/integrations/oauth/{provider}/start",
+                    f"{self.base_url}/users/{self.user_id}/integrations/oauth/start",
+                    json={"provider": provider, "scopes": scopes},
                     headers={"Authorization": f"Bearer {self.auth_token}"},
                 )
                 if response.status_code == 200:
@@ -156,7 +170,7 @@ class UserServiceClient(ServiceClient):
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
-                    f"{self.base_url}/integrations/oauth/{provider}/callback",
+                    f"{self.base_url}/users/{self.user_id}/integrations/oauth/callback?provider={provider}",
                     json={"code": code, "state": state},
                     headers={"Authorization": f"Bearer {self.auth_token}"},
                 )
@@ -168,30 +182,33 @@ class UserServiceClient(ServiceClient):
     async def get_integrations_status(self) -> Dict[str, Any]:
         """Get status of all integrations."""
         if not self.auth_token or not self.user_id:
-            return {}
+            raise Exception("No authentication token or user ID provided")
 
-        try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                # Try the public endpoint first (requires Bearer token)
-                response = await client.get(
-                    f"{self.base_url}/users/{self.user_id}/integrations/",
-                    headers={"Authorization": f"Bearer {self.auth_token}"},
-                )
-                if response.status_code == 200:
-                    data = response.json()
-                    # Convert to simple status format
-                    return {
-                        integration.get("provider", "unknown"): {
-                            "connected": integration.get("status") == "active",
-                            "status": integration.get("status", "unknown"),
-                        }
-                        for integration in data.get("integrations", [])
-                    }
-        except Exception as e:
-            logger.debug(
-                f"Get integrations status failed (this is normal for demo): {e}"
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            # Try the public endpoint first (requires Bearer token)
+            response = await client.get(
+                f"{self.base_url}/users/{self.user_id}/integrations/",
+                headers={"Authorization": f"Bearer {self.auth_token}"},
             )
-        return {}
+
+            if response.status_code == 401:
+                raise Exception("Authentication failed: Invalid token")
+            elif response.status_code == 403:
+                raise Exception("Authentication failed: Access denied")
+            elif response.status_code == 404:
+                raise Exception("User not found")
+            elif response.status_code != 200:
+                raise Exception(f"HTTP {response.status_code}: {response.text}")
+
+            data = response.json()
+            # Convert to simple status format
+            return {
+                integration.get("provider", "unknown"): {
+                    "connected": integration.get("status") == "active",
+                    "status": integration.get("status", "unknown"),
+                }
+                for integration in data.get("integrations", [])
+            }
 
 
 class ChatServiceClient(ServiceClient):
@@ -329,43 +346,108 @@ class FullDemo:
         )
         print(f"  User Service: {'✅' if self.services_available['user'] else '❌'}")
 
-    async def authenticate(self) -> bool:
+    async def authenticate(self, email: Optional[str] = None) -> bool:
         """Authenticate with user service and set up OAuth."""
-        if self.skip_auth or not self.services_available["user"]:
-            print("🔐 Skipping authentication (disabled or user service unavailable)")
-            return True
+        if self.skip_auth:
+            print("🔐 Skipping authentication (disabled)")
+            return False
+
+        if not self.services_available["user"]:
+            print("🔐 ❌ User service unavailable for authentication")
+            return False
 
         if not OAUTH_AVAILABLE:
-            print("⚠️  OAuth utilities not available, skipping authentication")
-            return True
+            print("⚠️  OAuth utilities not available")
+            return False
 
         print("\n🔐 Setting up authentication...")
 
-        # Create demo JWT token
-        self.user_client.auth_token = create_bearer_token(
-            self.user_id, f"{self.user_id}@example.com"
-        )
-        self.user_client.user_id = self.user_id
+        # Get email address if not provided
+        if not email:
+            email = input(
+                f"📧 Enter email address (default: {self.user_id}@example.com): "
+            ).strip()
+            if not email:
+                email = f"{self.user_id}@example.com"
 
-        # Start OAuth server
-        if not self.oauth_server:
-            self.oauth_server = OAuthCallbackServer()
-            self.oauth_server.start()
+        print(f"👤 Authenticating as: {email}")
 
-        # Try to check existing integrations (but don't fail if it doesn't work)
         try:
+            # Create demo JWT token
+            self.user_client.auth_token = create_bearer_token(self.user_id, email)
+            self.user_client.user_id = self.user_id
+
+            # Create the user via webhook simulation if they don't exist
+            await self._create_user_if_not_exists(email)
+
+            # Test authentication by checking integrations
             integrations = await self.user_client.get_integrations_status()
+
             if integrations:
-                print("✅ Existing integrations found")
+                print("✅ Authentication successful - existing integrations found")
                 for provider, status in integrations.items():
                     print(f"  {provider}: {'✅' if status.get('connected') else '❌'}")
+                return True
             else:
-                print("ℹ️  No integrations found (this is normal for demo)")
-        except Exception as e:
-            print(f"ℹ️  Integration status check skipped: {str(e)[:50]}...")
-            # Continue without integrations
+                # No integrations found, but authentication worked
+                print("✅ Authentication successful - no integrations configured yet")
+                return True
 
-        return True
+        except Exception as e:
+            print(f"❌ Authentication failed: {str(e)[:100]}...")
+            return False
+
+    async def _create_user_if_not_exists(self, email: str) -> bool:
+        """Create user via webhook simulation if they don't exist."""
+        import time
+        from datetime import datetime, timezone
+
+        # Simulate Clerk webhook for user creation
+        webhook_payload = {
+            "type": "user.created",
+            "object": "event",  # Required by ClerkWebhookEvent schema
+            "data": {
+                "id": self.user_id,
+                "email_addresses": [
+                    {
+                        "email_address": email,
+                        "verification": {"status": "verified"},
+                    }
+                ],
+                "first_name": "Demo",
+                "last_name": "User",
+                "image_url": "https://images.clerk.dev/demo-avatar.png",
+                "created_at": int(datetime.now(timezone.utc).timestamp() * 1000),
+                "updated_at": int(datetime.now(timezone.utc).timestamp() * 1000),
+            },
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    f"{self.user_client.base_url}/webhooks/clerk",
+                    json=webhook_payload,
+                    headers={
+                        "Content-Type": "application/json",
+                        "svix-id": "msg_demo_12345",
+                        "svix-timestamp": str(int(time.time())),
+                        "svix-signature": "v1,demo_signature",  # Would be real in production
+                    },
+                )
+                if response.status_code in [200, 201]:
+                    print(f"✅ User created/verified: {email}")
+                    return True
+                elif response.status_code == 409:
+                    print(f"✅ User already exists: {email}")
+                    return True
+                else:
+                    print(
+                        f"⚠️  User creation returned {response.status_code}, continuing..."
+                    )
+                    return True  # Continue anyway, user might exist
+        except Exception as e:
+            print(f"⚠️  User creation failed: {e}, continuing...")
+            return True  # Continue anyway, authentication might still work
 
     async def setup_oauth_integration(self, provider: str) -> bool:
         """Set up OAuth integration for a provider."""
@@ -377,38 +459,21 @@ class FullDemo:
             print(f"❌ Failed to start {provider} OAuth flow")
             return False
 
-        print(f"🌐 Opening {provider} authorization URL...")
-        print(f"URL: {auth_url}")
+        print("✅ OAuth flow started successfully")
 
-        # Open browser
-        webbrowser.open(auth_url)
+        # Provide URL for manual copying instead of opening browser
+        print("\n🔗 Please copy and paste this URL into your browser:")
+        print(f"   {auth_url}")
+        print("\n   After authorization, you'll be redirected back to the service.")
 
-        # Wait for callback
-        print("⏳ Waiting for OAuth callback...")
-        callback_data = self.oauth_server.wait_for_callback(timeout=300)
+        # Wait for user to complete OAuth flow
+        input(f"\nPress Enter after completing the {provider.title()} OAuth flow...")
 
-        if not callback_data or callback_data.get("error"):
-            print(
-                f"❌ OAuth flow failed: {callback_data.get('error') if callback_data else 'Timeout'}"
-            )
-            return False
-
-        # Complete OAuth flow
-        code = callback_data.get("code")
-        state = callback_data.get("state")
-
-        if not code:
-            print("❌ No authorization code received")
-            return False
-
-        success = await self.user_client.complete_oauth_flow(provider, code, state)
-
-        if success:
-            print(f"✅ {provider} integration completed successfully")
-        else:
-            print(f"❌ Failed to complete {provider} integration")
-
-        return success
+        print(f"✅ {provider} integration setup completed!")
+        print(
+            "   (Note: This demo doesn't verify the OAuth callback, but the URL was provided)"
+        )
+        return True
 
     async def create_agent(self) -> Optional[WorkflowAgent]:
         """Create multi-agent workflow (local mode only)."""
@@ -453,7 +518,8 @@ class FullDemo:
         print("  • 'delete' - Delete current draft")
         print("  • 'send' - Send current draft via email")
         print("  • 'status' - Show service status")
-        print("  • 'auth' - Re-authenticate")
+        print("  • 'auth' - Re-authenticate (prompts for email)")
+        print("  • 'oauth google' - Set up Google integration (shows OAuth URL)")
         print("  • 'help' - Show all commands")
         print("  • 'exit' - Exit demo")
 
@@ -485,7 +551,10 @@ class FullDemo:
 
         print("\n🔧 System Commands:")
         print("  • 'status' - Show service and integration status")
-        print("  • 'auth' - Re-authenticate with services")
+        print("  • 'auth' - Re-authenticate with services (prompts for email)")
+        print("  • 'auth email@example.com' - Authenticate with specific email")
+        print("  • 'oauth google' - Set up Google OAuth integration (shows URL)")
+        print("  • 'oauth microsoft' - Set up Microsoft OAuth integration (shows URL)")
         print("  • 'help' - Show this help message")
         print("  • 'exit' or 'quit' - Exit the demo")
 
@@ -653,12 +722,12 @@ class FullDemo:
 
         return status.rstrip()
 
-    async def handle_auth_command(self) -> str:
+    async def handle_auth_command(self, email: Optional[str] = None) -> str:
         """Handle re-authentication."""
         if not self.services_available["user"]:
             return "❌ User service unavailable for authentication"
 
-        success = await self.authenticate()
+        success = await self.authenticate(email)
         return "✅ Authentication completed" if success else "❌ Authentication failed"
 
     def handle_api_commands(self, command: str) -> tuple[bool, str]:
@@ -777,9 +846,36 @@ class FullDemo:
                     print(response)
                     continue
 
-                elif user_input.lower() == "auth":
-                    response = await self.handle_auth_command()
+                elif user_input.lower().startswith("auth"):
+                    # Handle both "auth" and "auth email@example.com"
+                    parts = user_input.split(maxsplit=1)
+                    email = parts[1] if len(parts) > 1 else None
+                    response = await self.handle_auth_command(email)
                     print(f"🔐 {response}")
+                    continue
+
+                elif user_input.lower().startswith("oauth"):
+                    # Handle OAuth integration setup: "oauth google" or "oauth microsoft"
+                    parts = user_input.split(maxsplit=1)
+                    if len(parts) < 2:
+                        print("🔗 Usage: oauth <provider>")
+                        print("   Available providers: google, microsoft")
+                        continue
+
+                    provider = parts[1].lower()
+                    if provider not in ["google", "microsoft"]:
+                        print("🔗 Available providers: google, microsoft")
+                        continue
+
+                    if not self.services_available["user"]:
+                        print("❌ User service unavailable for OAuth setup")
+                        continue
+
+                    success = await self.setup_oauth_integration(provider)
+                    if success:
+                        print(f"✅ OAuth setup completed for {provider}")
+                    else:
+                        print(f"❌ OAuth setup failed for {provider}")
                     continue
 
                 # Handle API-specific commands
