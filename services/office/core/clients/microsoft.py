@@ -130,7 +130,10 @@ class MicrosoftAPIClient(BaseAPIClient):
         order_by: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Get calendar events.
+        Get calendar events including recurring event instances.
+
+        Uses the calendarView endpoint when date filtering is needed to properly
+        expand recurring events into individual instances.
 
         Args:
             calendar_id: Calendar ID (if None, uses primary calendar)
@@ -143,26 +146,42 @@ class MicrosoftAPIClient(BaseAPIClient):
         Returns:
             Dictionary containing events list and pagination info
         """
-        # Use primary calendar if no calendar_id specified
-        endpoint = (
-            f"/me/calendars/{calendar_id}/events" if calendar_id else "/me/events"
-        )
-
-        params: Dict[str, Any] = {"$top": top, "$skip": skip}
-        if order_by:
-            params["$orderby"] = order_by
-        else:
-            params["$orderby"] = "start/dateTime"
-
-        # Add time range filter if specified
+        # Use calendarView endpoint when filtering by date range to expand recurring events
         if start_time and end_time:
-            params["$filter"] = (
-                f"start/dateTime ge '{start_time}' and end/dateTime le '{end_time}'"
+            # CalendarView endpoint automatically expands recurring events
+            endpoint = (
+                f"/me/calendars/{calendar_id}/calendarView"
+                if calendar_id
+                else "/me/calendarView"
             )
-        elif start_time:
-            params["$filter"] = f"start/dateTime ge '{start_time}'"
-        elif end_time:
-            params["$filter"] = f"end/dateTime le '{end_time}'"
+
+            params: Dict[str, Any] = {
+                "$top": top,
+                "startDateTime": start_time,
+                "endDateTime": end_time,
+            }
+            if order_by:
+                params["$orderby"] = order_by
+            else:
+                params["$orderby"] = "start/dateTime"
+
+        else:
+            # Use regular events endpoint when no date filtering
+            endpoint = (
+                f"/me/calendars/{calendar_id}/events" if calendar_id else "/me/events"
+            )
+
+            params = {"$top": top, "$skip": skip}
+            if order_by:
+                params["$orderby"] = order_by
+            else:
+                params["$orderby"] = "start/dateTime"
+
+            # Add time range filter if only one date specified
+            if start_time:
+                params["$filter"] = f"start/dateTime ge '{start_time}'"
+            elif end_time:
+                params["$filter"] = f"end/dateTime le '{end_time}'"
 
         response = await self.get(endpoint, params=params)
         return response.json()
