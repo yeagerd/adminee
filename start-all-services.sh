@@ -1,42 +1,27 @@
 #!/bin/bash
 
 # Start All Services Script
-# This script starts the chat, user, and office services with proper environment variables
+# This script starts the chat, user, and office services using their individual start.sh scripts
 
 set -e
 
+# Ensure we're in the repo root (where this script is located)
+cd "$(dirname "$0")"
+
 echo "🚀 Starting all Briefly services..."
-
-# Set environment variables
-export API_FRONTEND_USER_KEY=test-frontend-api-key
-export DB_URL_CHAT=sqlite:///$(pwd)/services/chat/chat.db
-export DB_URL_USER_MANAGEMENT=sqlite:///$(pwd)/services/user/user_service.db
-export DB_URL_OFFICE=sqlite:///$(pwd)/services/office/office_service.db
-export CLERK_SECRET_KEY=test-clerk-secret
-export TOKEN_ENCRYPTION_SALT=dGVzdC1zYWx0LTE2Ynl0ZQ==
-export REDIS_URL=redis://localhost:6379
-
-# Activate virtual environment
-source venv/bin/activate
-
-echo "📊 Environment variables set:"
-echo "  API_FRONTEND_USER_KEY: ${API_FRONTEND_USER_KEY}"
-echo "  DB_URL_CHAT: ${DB_URL_CHAT}"
-echo "  DB_URL_USER_MANAGEMENT: ${DB_URL_USER_MANAGEMENT}"
-echo "  DB_URL_OFFICE: ${DB_URL_OFFICE}"
-echo "  REDIS_URL: ${REDIS_URL}"
+echo "📁 Working directory: $(pwd)"
 echo ""
 
 echo "🔧 Starting User Service on port 8001..."
-python -m uvicorn services.user.main:app --port 8001 --host 0.0.0.0 &
+./services/user/start.sh &
 USER_PID=$!
 
 echo "💬 Starting Chat Service on port 8002..."
-python -m uvicorn services.chat.main:app --port 8002 --host 0.0.0.0 &
+./services/chat/start.sh &
 CHAT_PID=$!
 
 echo "🏢 Starting Office Service on port 8003..."
-python -m uvicorn services.office.app.main:app --port 8003 --host 0.0.0.0 &
+./services/office/start.sh &
 OFFICE_PID=$!
 
 echo ""
