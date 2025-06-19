@@ -18,6 +18,7 @@ from llama_index.core.tools import FunctionTool
 from llama_index.core.workflow import Context
 
 from services.chat.agents.llm_manager import get_llm_manager
+from services.chat.agents.llm_tools import _draft_storage
 
 logger = logging.getLogger(__name__)
 
@@ -86,10 +87,94 @@ class CoordinatorAgent(FunctionAgent):
     - Coordinates between specialized agents
     - Ensures tasks are completed properly
     - Provides comprehensive final responses
+    - Enforces one-draft policy across conversations
     """
+
+    @staticmethod
+    def _get_existing_drafts(thread_id: str) -> dict:
+        """Get all existing drafts for a thread."""
+        drafts = {}
+
+        # Check for email draft
+        email_key = f"{thread_id}_email"
+        if email_key in _draft_storage:
+            drafts["email"] = _draft_storage[email_key]
+
+        # Check for calendar event draft
+        calendar_key = f"{thread_id}_calendar_event"
+        if calendar_key in _draft_storage:
+            drafts["calendar_event"] = _draft_storage[calendar_key]
+
+        # Check for calendar edit draft
+        calendar_edit_key = f"{thread_id}_calendar_edit"
+        if calendar_edit_key in _draft_storage:
+            drafts["calendar_edit"] = _draft_storage[calendar_edit_key]
+
+        return drafts
+
+    @staticmethod
+    def _create_context_aware_prompt(thread_id: str) -> str:
+        """Create a context-aware system prompt based on existing drafts."""
+        # Common prefix that can be cached
+        base_prompt = (
+            "You are Briefly, a personal assistant and coordinator of specialized agents. "
+            "Your role is to analyze user requests, coordinate between agents as needed, "
+            "and synthesize comprehensive responses.\n\n"
+        )
+
+        coordination_principles = (
+            "COORDINATION PRINCIPLES:\n"
+            "- Think about what information is needed to fulfill the user's request\n"
+            "- Coordinate multiple agents when necessary (e.g., check availability before scheduling)\n"
+            "- Use appropriate agents for their specialized capabilities\n"
+            "- Synthesize responses from multiple agents into coherent answers\n"
+            "- Always maintain context and provide helpful, actionable responses\n\n"
+            "AVAILABLE AGENTS:\n"
+            "- CalendarAgent: Calendar operations, availability checking, event management\n"
+            "- EmailAgent: Email composition, sending, and management\n"
+            "- DocumentAgent: Document creation, editing, note-taking\n"
+            "- DraftAgent: Draft management (email/calendar), editing, completion\n\n"
+        )
+
+        # Import here to avoid circular dependency
+        from services.chat.agents.draft_agent import DraftAgent
+
+        # Check for existing drafts using the helper
+        has_drafts = bool(DraftAgent._get_existing_drafts(thread_id))
+
+        if has_drafts:
+            # Static prompt for when drafts exist
+            draft_context = (
+                "🚨 ACTIVE DRAFT DETECTED:\n"
+                "This conversation has an active draft that need attention.\n\n"
+                "DISAMBIGUATION LOGIC:\n"
+                "- If user refers to 'it', 'this', 'the draft', 'the event', 'the meeting', or similar generic terms → likely referring to ACTIVE DRAFT\n"
+                "- If user uses vague edit requests like 'change the time', 'update the title' → likely about ACTIVE DRAFT\n"
+                "- If user specifies existing events with details like 'my 3pm meeting', 'tomorrow's call with John' → consider if its likely the ACTIVE DRAFT or a different, existing calendar event\n"
+                "- If user wants to schedule/create something new while an ACTIVE DRAFT exists → apply one-draft policy\n\n"
+                "ONE-DRAFT POLICY (STRICTLY ENFORCED):\n"
+                "- Only one active draft per conversation is supported\n"
+                "- DraftAgent will return an ERROR if trying to create a different draft type\n"
+                "- If user wants to create a DIFFERENT type of draft:\n"
+                "  * Explain the one-draft policy and the error from DraftAgent\n"
+                "  * Ask: 'Would you like me to delete the current draft and create a new one instead?'\n"
+                "  * Only proceed to use the DraftAgent to delete the ACTIVE DRAFT after explicit user confirmation\n"
+                "- If user wants to MODIFY existing drafts:\n"
+                "  * This is encouraged and allowed - hand off to DraftAgent\n"
+                "- Be helpful but firm about the one-draft policy\n"
+            )
+        else:
+            # Static prompt for clean state
+            draft_context = (
+                "✅ CLEAN STATE:\n"
+                "No active drafts in this conversation - you can create any type of draft as requested.\n"
+            )
+
+        return base_prompt + coordination_principles + draft_context
 
     def __init__(
         self,
+        thread_id: int,
         llm_model: str = "gpt-4.1-nano",
         llm_provider: str = "openai",
         **llm_kwargs,
@@ -102,6 +187,9 @@ class CoordinatorAgent(FunctionAgent):
         # Create coordinator-specific tools
         tools = self._create_coordinator_tools()
 
+        # Create context-aware system prompt based on existing drafts
+        context_aware_prompt = self._create_context_aware_prompt(str(thread_id))
+
         # Initialize FunctionAgent
         super().__init__(
             name="CoordinatorAgent",
@@ -110,38 +198,7 @@ class CoordinatorAgent(FunctionAgent):
                 "Handles user requests, coordinates between CalendarAgent, EmailAgent, "
                 "DocumentAgent, and DraftAgent, and provides comprehensive responses."
             ),
-            system_prompt=(
-                "You are Briefly, a personal assistant. Internally, you are the Coordinator, the main orchestrator of the multi-agent system. "
-                "Your role is to:\n"
-                "1. Analyze user requests and determine what needs to be done\n"
-                "2. Hand off to appropriate specialized agents based on the request type\n"
-                "3. Coordinate between agents when multiple types of information are needed\n"
-                "4. If the user request is not clear, ask for clarification\n"
-                "5. Synthesize information from all agents into comprehensive responses\n"
-                "6. Ensure user requests are fully satisfied before responding\n\n"
-                "CRITICAL ROUTING RULES - You MUST hand off to the correct agent:\n"
-                "- If user wants to READ/VIEW/CHECK calendar → CalendarAgent\n"
-                "- If user wants to CREATE/DRAFT/MAKE calendar event → DraftAgent\n"
-                "- If user wants to READ/search emails → EmailAgent\n"
-                "- If user wants to create/draft/compose email → DraftAgent\n"
-                "- If user wants to search documents/notes → DocumentAgent\n"
-                "- If user says 'create', 'draft', 'make', 'compose' anything → DraftAgent\n\n"
-                "EXAMPLES:\n"
-                "- 'create a calendar event' → DraftAgent (NOT CalendarAgent)\n"
-                "- 'draft an email' → DraftAgent (NOT EmailAgent)\n"
-                "- 'what's on my calendar' → CalendarAgent\n"
-                "- 'show me emails' → EmailAgent\n\n"
-                "When you receive a request:\n"
-                "- Use analyze_user_request to record your analysis\n"
-                "- Immediately hand off to the appropriate specialized agent based on the routing rules above\n"
-                "- When all agents have completed their work, use summarize_findings to create a comprehensive response\n"
-                "- Always be thorough and ensure user needs are fully addressed\n\n"
-                "Available agents:\n"
-                "- CalendarAgent: READ calendar events, scheduling queries, check availability\n"
-                "- EmailAgent: READ emails, search email history, retrieve messages\n"
-                "- DocumentAgent: SEARCH documents, notes, and files\n"
-                "- DraftAgent: CREATE drafts for emails, calendar events, calendar changes, or any composition task"
-            ),
+            system_prompt=context_aware_prompt,
             llm=llm,
             tools=tools,
             can_handoff_to=[
@@ -152,7 +209,17 @@ class CoordinatorAgent(FunctionAgent):
             ],
         )
 
-        logger.debug("CoordinatorAgent initialized as main orchestrator")
+        # Store thread_id using object.__setattr__ to bypass Pydantic validation
+        object.__setattr__(self, "_thread_id", str(thread_id))
+
+        logger.debug(
+            f"CoordinatorAgent initialized as main orchestrator with thread_id={self._thread_id}"
+        )
+
+    @property
+    def thread_id(self) -> str:
+        """Get the thread_id for this agent."""
+        return getattr(self, "_thread_id")
 
     def _create_coordinator_tools(self) -> List[FunctionTool]:
         """Create coordinator-specific tools."""
@@ -184,12 +251,16 @@ class CoordinatorAgent(FunctionAgent):
 
 
 def create_coordinator_agent(
-    llm_model: str = "gpt-4.1-nano", llm_provider: str = "openai", **llm_kwargs
+    thread_id: int,
+    llm_model: str = "gpt-4.1-nano",
+    llm_provider: str = "openai",
+    **llm_kwargs,
 ) -> CoordinatorAgent:
     """
     Factory function to create a CoordinatorAgent instance.
 
     Args:
+        thread_id: Thread ID for draft context awareness
         llm_model: LLM model name
         llm_provider: LLM provider name
         **llm_kwargs: Additional LLM configuration
@@ -198,5 +269,8 @@ def create_coordinator_agent(
         Configured CoordinatorAgent instance
     """
     return CoordinatorAgent(
-        llm_model=llm_model, llm_provider=llm_provider, **llm_kwargs
+        thread_id=thread_id,
+        llm_model=llm_model,
+        llm_provider=llm_provider,
+        **llm_kwargs,
     )
