@@ -35,6 +35,16 @@ router = APIRouter(prefix="/calendar", tags=["calendar"])
 api_client_factory = APIClientFactory()
 
 
+def _get_calendar_scopes(provider: str) -> List[str]:
+    """Get calendar-specific scopes for a provider."""
+    if provider == "google":
+        return ["https://www.googleapis.com/auth/calendar"]
+    elif provider == "microsoft":
+        return ["https://graph.microsoft.com/Calendars.ReadWrite"]
+    else:
+        return []
+
+
 @router.get("/events", response_model=ApiResponse)
 async def get_calendar_events(
     user_id: str = Query(..., description="ID of the user to fetch events for"),
@@ -1053,8 +1063,11 @@ async def fetch_provider_events(
         Tuple of (events list, provider name)
     """
     try:
-        # Get API client for provider
-        client = await api_client_factory.create_client(user_id, provider)
+        # Get API client for provider with calendar-specific scopes
+        calendar_scopes = _get_calendar_scopes(provider)
+        client = await api_client_factory.create_client(
+            user_id, provider, calendar_scopes
+        )
         if client is None:
             raise ValueError(f"Failed to create API client for provider {provider}")
 
@@ -1180,8 +1193,11 @@ async def fetch_single_event(
         CalendarEvent or None if not found
     """
     try:
-        # Get API client for provider
-        client = await api_client_factory.create_client(user_id, provider)
+        # Get API client for provider with calendar-specific scopes
+        calendar_scopes = _get_calendar_scopes(provider)
+        client = await api_client_factory.create_client(
+            user_id, provider, calendar_scopes
+        )
         if client is None:
             raise ValueError(f"Failed to create API client for provider {provider}")
 
