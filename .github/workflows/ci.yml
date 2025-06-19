@@ -133,7 +133,7 @@ jobs:
         pip install tox tox-gh-actions
 
     - name: Run tox (coverage)
-      run: tox -e coverage
+      run: tox -e cov
 
     - name: Upload coverage reports
       uses: codecov/codecov-action@v3
