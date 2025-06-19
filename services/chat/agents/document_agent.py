@@ -96,7 +96,7 @@ class DocumentAgent(FunctionAgent):
             can_handoff_to=["CoordinatorAgent"],
         )
 
-        logger.info("DocumentAgent initialized with document and note tools")
+        logger.debug("DocumentAgent initialized with document and note tools")
 
     def _create_document_tools(self) -> List[FunctionTool]:
         """Create document-specific tools."""
