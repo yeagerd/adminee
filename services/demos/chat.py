@@ -270,11 +270,11 @@ class FullDemo:
 
     def __init__(
         self,
-        use_api: bool = True,
-        chat_url: str = "http://localhost:8001",
-        office_url: str = "http://localhost:8003",
-        user_url: str = "http://localhost:8001",
-        user_id: str = "demo_user",
+        use_api: bool,
+        chat_url: str,
+        office_url: str,
+        user_url: str,
+        user_id: str,
         skip_auth: bool = False,
     ):
         self.use_api = use_api
@@ -924,15 +924,15 @@ Examples:
     parser.add_argument(
         "--office-url",
         type=str,
-        default="http://localhost:8003",
-        help="Office service URL (default: http://localhost:8003)",
+        default="http://localhost:8002",
+        help="Office service URL (default: http://localhost:8002)",
     )
 
     parser.add_argument(
         "--user-url",
         type=str,
-        default="http://localhost:8001",
-        help="User service URL (default: http://localhost:8001)",
+        default="http://localhost:8000",
+        help="User service URL (default: http://localhost:8000)",
     )
 
     parser.add_argument(
