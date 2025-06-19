@@ -276,7 +276,9 @@ class WorkflowAgent:
             await self._load_conversation_history()
 
             # Consolidated log message with all important information
-            agent_names = list(self.specialized_agents.keys()) if self.specialized_agents else []
+            agent_names = (
+                list(self.specialized_agents.keys()) if self.specialized_agents else []
+            )
             logger.info(
                 f"WorkflowAgent ready - user_id={self.user_id}, "
                 f"thread_id={self.thread_id}, agents={len(agent_names)} ({', '.join(agent_names)}), "
