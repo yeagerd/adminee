@@ -8,22 +8,29 @@ from services.chat.settings import get_settings
 
 
 def get_calendar_events(
-    user_token: str,
+    user_id: str,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    user_timezone: Optional[str] = None,
-    provider_type: Optional[str] = None,
+    time_zone: Optional[str] = None,
+    providers: Optional[str] = None,
 ) -> Dict[str, Any]:
-    headers = {"Authorization": f"Bearer {user_token}"}
-    params = {}
+    # Use service-to-service authentication
+    headers = {"Content-Type": "application/json"}
+    if get_settings().api_chat_office_key:
+        headers["X-API-Key"] = get_settings().api_chat_office_key
+
+    params = {"user_id": user_id}
     if start_date:
         params["start_date"] = start_date
     if end_date:
         params["end_date"] = end_date
-    if user_timezone:
-        params["user_timezone"] = user_timezone
-    if provider_type:
-        params["provider_type"] = provider_type
+    if time_zone:
+        params["time_zone"] = time_zone
+    if providers:
+        # Convert comma-separated string to list format expected by office service
+        provider_list = [p.strip() for p in providers.split(",")]
+        params["providers"] = provider_list
+
     try:
         office_service_url = get_settings().office_service_url
         response = requests.get(

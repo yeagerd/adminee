@@ -201,6 +201,7 @@ class WorkflowAgent:
         agents["CalendarAgent"] = CalendarAgent(
             llm_model=self.llm_model,
             llm_provider=self.llm_provider,
+            user_id=self.user_id,
             **self.llm_kwargs,
         )
 

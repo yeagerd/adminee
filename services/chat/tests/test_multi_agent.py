@@ -86,6 +86,7 @@ def test_coordinator_agent_creation():
 def test_calendar_agent_creation():
     """Test that CalendarAgent can be created."""
     agent = CalendarAgent(
+        user_id="test_user",
         llm_model="fake-model",
         llm_provider="fake",
     )
@@ -171,7 +172,7 @@ def test_agent_handoff_capabilities():
     coordinator = CoordinatorAgent(
         thread_id=123, llm_model="fake-model", llm_provider="fake"
     )
-    calendar_agent = CalendarAgent(llm_model="fake-model", llm_provider="fake")
+    calendar_agent = CalendarAgent(user_id="test_user", llm_model="fake-model", llm_provider="fake")
     email_agent = EmailAgent(llm_model="fake-model", llm_provider="fake")
     document_agent = DocumentAgent(llm_model="fake-model", llm_provider="fake")
     draft_agent = DraftAgent(thread_id=123, llm_model="fake-model", llm_provider="fake")
