@@ -126,7 +126,7 @@ class TestValidationUtilities:
         """Test valid URLs."""
         valid_urls = [
             "https://example.com",
-            "http://localhost:8000",
+            "http://localhost:8001",
             "https://sub.domain.co.uk/path?param=value",
             "https://192.168.1.1:3000",
         ]

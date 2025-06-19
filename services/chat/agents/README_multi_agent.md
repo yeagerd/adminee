@@ -119,19 +119,19 @@ from services.chat.agents.coordinator_agent import CoordinatorAgent
 calendar_agent = CalendarAgent(
     llm_model="gpt-4.1-nano",
     llm_provider="openai",
-    office_service_url="http://localhost:8001"
+    office_service_url="http://localhost:8003"
 )
 
 email_agent = EmailAgent(
     llm_model="gpt-4.1-nano", 
     llm_provider="openai",
-    office_service_url="http://localhost:8001"
+    office_service_url="http://localhost:8003"
 )
 
 document_agent = DocumentAgent(
     llm_model="gpt-4.1-nano",
     llm_provider="openai", 
-    office_service_url="http://localhost:8001"
+    office_service_url="http://localhost:8003"
 )
 
 draft_agent = DraftAgent(
@@ -235,7 +235,7 @@ WorkflowAgent(use_multi_agent=False)
 ```python
 # Configure office service URL for calendar/email/document tools
 WorkflowAgent(
-    office_service_url="http://localhost:8001",
+    office_service_url="http://localhost:8003",
     use_multi_agent=True
 )
 ```

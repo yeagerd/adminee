@@ -77,7 +77,7 @@ The full demo performs these operations via HTTP API calls:
 🚀 Office Service Full Integration Demo
 ============================================================
 👤 User: user@example.com
-🌐 Service URL: http://localhost:8000
+🌐 Service URL: http://localhost:8003
 
 ==================================================
  🏥 HEALTH CHECK
