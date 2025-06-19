@@ -152,7 +152,7 @@ class CoordinatorAgent(FunctionAgent):
             ],
         )
 
-        logger.info("CoordinatorAgent initialized as main orchestrator")
+        logger.debug("CoordinatorAgent initialized as main orchestrator")
 
     def _create_coordinator_tools(self) -> List[FunctionTool]:
         """Create coordinator-specific tools."""

@@ -120,10 +120,9 @@ class WorkflowAgent:
         # Multi-agent components
         self.specialized_agents: Dict[str, FunctionAgent] = {}
 
-        logger.info(
-            f"WorkflowAgent initialized for user_id={self.user_id}, "
-            f"thread_id={self.thread_id}, tools_count={len(self.tools)}, "
-            "mode=multi_agent"
+        # Logging will be consolidated in build_agent() after all components are initialized
+        logger.debug(
+            f"Initializing WorkflowAgent for user_id={self.user_id}, thread_id={self.thread_id}"
         )
 
     def _prepare_tools(
@@ -219,7 +218,7 @@ class WorkflowAgent:
             **self.llm_kwargs,
         )
 
-        logger.info(f"Created {len(agents)} specialized agents")
+        logger.debug(f"Created {len(agents)} specialized agents")
         return agents
 
     async def build_agent(self, user_input: str = "") -> None:
@@ -252,8 +251,6 @@ class WorkflowAgent:
                 },
             )
 
-            logger.info("Multi-agent workflow created with specialized agents")
-
             # Create context for state management
             if self.agent_workflow is None:
                 raise ValueError("AgentWorkflow is None, cannot create Context")
@@ -278,7 +275,13 @@ class WorkflowAgent:
             # Load conversation history into context state
             await self._load_conversation_history()
 
-            logger.info("WorkflowAgent built successfully")
+            # Consolidated log message with all important information
+            agent_names = list(self.specialized_agents.keys()) if self.specialized_agents else []
+            logger.info(
+                f"WorkflowAgent ready - user_id={self.user_id}, "
+                f"thread_id={self.thread_id}, agents={len(agent_names)} ({', '.join(agent_names)}), "
+                f"tools={len(self.tools)}"
+            )
 
         except Exception as e:
             logger.error(f"Failed to build WorkflowAgent: {e}")
