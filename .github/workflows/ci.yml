@@ -1,4 +1,4 @@
-name: Continuous Integration
+name: Continuous Integration with UV
 
 on:
   push:
@@ -22,19 +22,25 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Cache pip dependencies
+    - name: Cache UV dependencies
       uses: actions/cache@v3
       with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        path: |
+          ~/.cache/uv
+          ~/.cargo/registry
+        key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
         restore-keys: |
-          ${{ runner.os }}-pip-
+          ${{ runner.os }}-uv-
 
-    - name: Install dependencies
+    - name: Install UV
       run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install tox tox-gh-actions
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+    - name: Install dependencies with UV
+      run: |
+        uv pip install --system -e .
+        uv pip install tox tox-gh-actions
 
     - name: Run tox (format, lint)
       run: tox -e format,lint -p auto --parallel-live
@@ -54,19 +60,24 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Cache pip dependencies
+    - name: Cache UV dependencies
       uses: actions/cache@v3
       with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        path: |
+          ~/.cache/uv
+          ~/.cargo/registry
+        key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
         restore-keys: |
-          ${{ runner.os }}-pip-
+          ${{ runner.os }}-uv-
 
-    - name: Install dependencies
+    - name: Install UV
       run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install tox tox-gh-actions
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+    - name: Install dependencies with UV
+      run: |
+        uv pip install --system -e .
+        uv pip install tox tox-gh-actions
 
     - name: Run tox (typecheck)
       run: tox -e typecheck
@@ -86,19 +97,23 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Cache pip dependencies
+    - name: Cache UV dependencies
       uses: actions/cache@v3
       with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        path: |
+          ~/.cache/uv
+          ~/.cargo/registry
+        key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
         restore-keys: |
-          ${{ runner.os }}-pip-
-
-    - name: Install dependencies
+          ${{ runner.os }}-uv-
+    - name: Install UV
       run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install tox tox-gh-actions
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+    - name: Install dependencies with UV
+      run: |
+        uv pip install --system -e .
+        uv pip install tox tox-gh-actions
 
     - name: Run tox (test)
       run: tox -e test
@@ -118,19 +133,23 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Cache pip dependencies
+    - name: Cache UV dependencies
       uses: actions/cache@v3
       with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        path: |
+          ~/.cache/uv
+          ~/.cargo/registry
+        key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
         restore-keys: |
-          ${{ runner.os }}-pip-
-
-    - name: Install dependencies
+          ${{ runner.os }}-uv-
+    - name: Install UV
       run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install tox tox-gh-actions
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+    - name: Install dependencies with UV
+      run: |
+        uv pip install --system -e .
+        uv pip install tox tox-gh-actions
 
     - name: Run tox (coverage)
       run: tox -e cov
@@ -198,10 +217,4 @@ jobs:
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           TOKEN_ENCRYPTION_SALT: ${{ secrets.TOKEN_ENCRYPTION_SALT }}
-      run: |
-        # Create .env file for testing
-        cp .example.env .env
-        
-        # Test that docker-compose builds successfully
-        docker compose config
-        docker compose build --no-cache
+      run: docker compose build

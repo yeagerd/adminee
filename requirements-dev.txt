@@ -1,0 +1,13 @@
+# Development dependencies
+black
+isort
+ruff
+mypy
+types-requests
+types-pytz
+tox
+tox-gh-actions
+pytest
+pytest-asyncio
+pytest-mock
+pytest-xdist

@@ -16,6 +16,51 @@ Key components include:
 - **Database:** PostgreSQL
 - **Vector Database:** Pinecone
 
+## Development with UV
+
+This project uses [UV](https://github.com/astral-sh/uv) for Python package management and virtual environment management. UV is a fast, reliable, and secure package manager and resolver written in Rust.
+
+### Prerequisites
+
+- Python 3.12 or higher
+- [UV](https://github.com/astral-sh/uv#installation) installed on your system
+
+### Setup
+
+1. **Install UV** (if not already installed):
+   ```bash
+   curl -sSf https://astral.sh/uv/install.sh | sh
+   ```
+
+2. **Install project dependencies** (from the project root):
+   ```bash
+   # Install all services in development mode
+   uv pip install -e .
+   uv pip install -e services/chat
+   uv pip install -e services/user
+   uv pip install -e services/office
+   
+   # Install development dependencies
+   uv pip install -r requirements-dev.txt
+   ```
+
+3. **Run tests** with UV:
+   ```bash
+   # Run all tests
+   tox
+   
+   # Or run specific test environments
+   tox -e lint     # Linting
+   tox -e typecheck # Type checking
+   tox -e test     # Unit tests
+   ```
+
+4. **Run services** (example for chat service):
+   ```bash
+   cd services/chat
+   uvicorn main:app --reload
+   ```
+
 ## Office Service
 
 The Office Service is a FastAPI-based microservice that provides unified access to email, calendar, and file data across Google and Microsoft providers. It handles OAuth token management, data normalization, caching, and provides RESTful APIs for frontend consumption.
