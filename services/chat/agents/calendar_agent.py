@@ -73,6 +73,12 @@ class CalendarAgent(FunctionAgent):
         # Create calendar-specific tools
         tools = self._create_calendar_tools()
 
+        # Get current date for context
+        from datetime import datetime
+
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
         # Initialize FunctionAgent
         super().__init__(
             name="CalendarAgent",
@@ -83,6 +89,8 @@ class CalendarAgent(FunctionAgent):
             ),
             system_prompt=(
                 "You are the CalendarAgent, specialized in calendar operations. "
+                f"CURRENT DATE AND TIME: {current_datetime}\n"
+                f"Today's date is {current_date}. Use this for any date-related queries or calculations.\n\n"
                 "You can retrieve calendar events, search by date ranges, and filter by various criteria. "
                 "When you find relevant calendar information, use the record_calendar_info tool to save it "
                 "for other agents to use. Be thorough in your calendar searches and provide detailed "
