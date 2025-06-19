@@ -47,15 +47,18 @@ def mock_settings():
 
 def test_get_calendar_events_success(monkeypatch):
     def mock_get(*args, **kwargs):
-        return MockResponse({
-            "success": True,
-            "data": {
-                "events": [{"id": "1", "title": "Meeting"}],
-                "total_count": 1,
-                "providers_used": ["google"],
-                "provider_errors": None
-            }
-        }, 200)
+        return MockResponse(
+            {
+                "success": True,
+                "data": {
+                    "events": [{"id": "1", "title": "Meeting"}],
+                    "total_count": 1,
+                    "providers_used": ["google"],
+                    "provider_errors": None,
+                },
+            },
+            200,
+        )
 
     monkeypatch.setattr(requests, "get", mock_get)
     result = get_calendar_events(
@@ -71,10 +74,7 @@ def test_get_calendar_events_success(monkeypatch):
 
 def test_get_calendar_events_malformed(monkeypatch):
     def mock_get(*args, **kwargs):
-        return MockResponse({
-            "success": True,
-            "data": {"bad": "data"}
-        }, 200)
+        return MockResponse({"success": True, "data": {"bad": "data"}}, 200)
 
     monkeypatch.setattr(requests, "get", mock_get)
     result = get_calendar_events("token123")
@@ -269,15 +269,18 @@ def test_tool_registry(monkeypatch):
     def mock_get(*args, **kwargs):
         url = args[0]
         if "events" in url:
-            return MockResponse({
-                "success": True,
-                "data": {
-                    "events": [{"id": "1", "title": "Meeting"}],
-                    "total_count": 1,
-                    "providers_used": ["google"],
-                    "provider_errors": None
-                }
-            }, 200)
+            return MockResponse(
+                {
+                    "success": True,
+                    "data": {
+                        "events": [{"id": "1", "title": "Meeting"}],
+                        "total_count": 1,
+                        "providers_used": ["google"],
+                        "provider_errors": None,
+                    },
+                },
+                200,
+            )
         elif "emails" in url:
             return MockResponse({"emails": [{"id": "1", "subject": "Email"}]}, 200)
         elif "notes" in url:
@@ -338,15 +341,18 @@ def test_tool_registry_tooloutput_success(monkeypatch):
     # have a .raw_output attribute containing the original dict, and that
     # success is only present in .raw_output, not as a direct attribute.
     def mock_get(*args, **kwargs):
-        return MockResponse({
-            "success": True,
-            "data": {
-                "events": [{"id": "1", "title": "Meeting"}],
-                "total_count": 1,
-                "providers_used": ["google"],
-                "provider_errors": None
-            }
-        }, 200)
+        return MockResponse(
+            {
+                "success": True,
+                "data": {
+                    "events": [{"id": "1", "title": "Meeting"}],
+                    "total_count": 1,
+                    "providers_used": ["google"],
+                    "provider_errors": None,
+                },
+            },
+            200,
+        )
 
     monkeypatch.setattr(requests, "get", mock_get)
     registry = get_tool_registry()
@@ -381,15 +387,18 @@ def test_tool_registry_tooloutput_error(monkeypatch):
 def test_tool_registry_tooloutput_for_get_tools(monkeypatch):
     # This test checks that ToolOutput is returned for get_calendar_events and contains expected keys
     def mock_get(*args, **kwargs):
-        return MockResponse({
-            "success": True,
-            "data": {
-                "events": [{"id": "1", "title": "Meeting"}],
-                "total_count": 1,
-                "providers_used": ["google"],
-                "provider_errors": None
-            }
-        }, 200)
+        return MockResponse(
+            {
+                "success": True,
+                "data": {
+                    "events": [{"id": "1", "title": "Meeting"}],
+                    "total_count": 1,
+                    "providers_used": ["google"],
+                    "provider_errors": None,
+                },
+            },
+            200,
+        )
 
     monkeypatch.setattr(requests, "get", mock_get)
     registry = get_tool_registry()
