@@ -1,9 +1,7 @@
-import os
-import pytest
-import requests
 from unittest.mock import patch
 
-from services.chat.settings import get_settings
+import pytest
+import requests
 
 from services.chat.agents.llm_tools import (
     _draft_storage,
@@ -43,14 +41,17 @@ def clear_drafts():
 
 @pytest.fixture(autouse=True)
 def mock_settings():
-    with patch('services.chat.settings.Settings') as mock_settings:
-        mock_settings.return_value.office_service_url = 'http://test-server'
+    with patch("services.chat.settings.Settings") as mock_settings:
+        mock_settings.return_value.office_service_url = "http://test-server"
         yield
 
 
 def test_get_calendar_events_success(monkeypatch):
     def mock_get(*args, **kwargs):
-        return MockResponse({"success": True, "data": {"events": [{"id": "1", "title": "Meeting"}]}}, 200)
+        return MockResponse(
+            {"success": True, "data": {"events": [{"id": "1", "title": "Meeting"}]}},
+            200,
+        )
 
     monkeypatch.setattr(requests, "get", mock_get)
     result = get_calendar_events(
@@ -261,7 +262,13 @@ def test_tool_registry(monkeypatch):
     def mock_get(*args, **kwargs):
         url = args[0]
         if "events" in url:
-            return MockResponse({"success": True, "data": {"events": [{"id": "1", "title": "Meeting"}]}}, 200)
+            return MockResponse(
+                {
+                    "success": True,
+                    "data": {"events": [{"id": "1", "title": "Meeting"}]},
+                },
+                200,
+            )
         elif "emails" in url:
             return MockResponse({"emails": [{"id": "1", "subject": "Email"}]}, 200)
         elif "notes" in url:
@@ -322,7 +329,10 @@ def test_tool_registry_tooloutput_success(monkeypatch):
     # have a .raw_output attribute containing the original dict, and that
     # success is only present in .raw_output, not as a direct attribute.
     def mock_get(*args, **kwargs):
-        return MockResponse({"success": True, "data": {"events": [{"id": "1", "title": "Meeting"}]}}, 200)
+        return MockResponse(
+            {"success": True, "data": {"events": [{"id": "1", "title": "Meeting"}]}},
+            200,
+        )
 
     monkeypatch.setattr(requests, "get", mock_get)
     registry = get_tool_registry()
@@ -357,7 +367,10 @@ def test_tool_registry_tooloutput_error(monkeypatch):
 def test_tool_registry_tooloutput_for_get_tools(monkeypatch):
     # This test checks that ToolOutput is returned for get_calendar_events and contains expected keys
     def mock_get(*args, **kwargs):
-        return MockResponse({"success": True, "data": {"events": [{"id": "1", "title": "Meeting"}]}}, 200)
+        return MockResponse(
+            {"success": True, "data": {"events": [{"id": "1", "title": "Meeting"}]}},
+            200,
+        )
 
     monkeypatch.setattr(requests, "get", mock_get)
     registry = get_tool_registry()
