@@ -95,10 +95,18 @@ class DraftAgent(FunctionAgent):
     @staticmethod
     def _create_context_aware_prompt(thread_id: str) -> str:
         """Create a context-aware system prompt based on existing drafts."""
+        from datetime import datetime
+
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
         # Common prefix that can be cached
         base_prompt = (
             "You are the DraftAgent, responsible for creating and managing drafts of emails and calendar events. "
             "Your role is to help users create, edit, and finalize drafts before they are sent or scheduled.\n\n"
+            f"CURRENT DATE AND TIME: {current_datetime}\n"
+            f"Today's date is {current_date}. When users mention relative dates like 'tomorrow', 'next week', "
+            f"'in 3 days', etc., convert them to absolute dates based on today's date.\n\n"
         )
 
         capabilities = (

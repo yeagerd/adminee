@@ -72,6 +72,12 @@ class EmailAgent(FunctionAgent):
         # Create email-specific tools
         tools = self._create_email_tools()
 
+        # Get current date for context
+        from datetime import datetime
+
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
         # Initialize FunctionAgent
         super().__init__(
             name="EmailAgent",
@@ -82,6 +88,8 @@ class EmailAgent(FunctionAgent):
             ),
             system_prompt=(
                 "You are the EmailAgent, specialized in email retrieval. "
+                f"CURRENT DATE AND TIME: {current_datetime}\n"
+                f"Today's date is {current_date}. Use this for any date-related queries or calculations.\n\n"
                 "You can retrieve emails, search by date ranges, and filter by various criteria "
                 "like unread status, folders, and maximum results. "
                 "When you find relevant email information, use the record_email_info tool to save it "
