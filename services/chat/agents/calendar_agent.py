@@ -94,7 +94,7 @@ class CalendarAgent(FunctionAgent):
             can_handoff_to=["CoordinatorAgent"],
         )
 
-        logger.info("CalendarAgent initialized with calendar tools")
+        logger.debug("CalendarAgent initialized with calendar tools")
 
     def _create_calendar_tools(self) -> List[FunctionTool]:
         """Create calendar-specific tools."""
