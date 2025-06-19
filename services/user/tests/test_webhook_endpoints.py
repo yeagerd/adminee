@@ -214,7 +214,7 @@ class TestClerkWebhookEndpoint(BaseUserManagementTest):
 
         response = self.client.post(
             "/webhooks/clerk",
-            data=invalid_payload,
+            content=invalid_payload,
             headers={
                 "svix-signature": "v1=test_signature",
                 "svix-timestamp": "1234567890",
@@ -281,7 +281,7 @@ class TestClerkWebhookEndpoint(BaseUserManagementTest):
 
         response = self.client.post(
             "/webhooks/clerk",
-            data="{invalid json}",
+            content="{invalid json}",
             headers={
                 "svix-signature": "v1=test_signature",
                 "svix-timestamp": "1234567890",

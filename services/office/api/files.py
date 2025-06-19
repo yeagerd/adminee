@@ -258,7 +258,7 @@ async def get_files(
 
         # Build response data
         response_data = {
-            "files": [file.dict() for file in all_files],
+            "files": [file.model_dump() for file in all_files],
             "total_count": len(all_files),
             "providers_used": providers_used,
             "provider_errors": provider_errors,
@@ -481,7 +481,7 @@ async def search_files(
 
         # Build response data
         response_data = {
-            "files": [file.dict() for file in all_results],
+            "files": [file.model_dump() for file in all_results],
             "total_count": len(all_results),
             "providers_used": providers_used,
             "provider_errors": provider_errors,
@@ -598,7 +598,7 @@ async def get_file(
 
                 # Build response data
                 response_data = {
-                    "file": normalized_file.dict(),
+                    "file": normalized_file.model_dump(),
                     "provider": provider,
                     "request_metadata": {
                         "user_id": user_id,
