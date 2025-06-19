@@ -10,7 +10,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from services.user.utils.validation import (
     check_sql_injection_patterns,
@@ -134,10 +134,8 @@ class UIPreferencesSchema(BaseModel):
     show_tooltips: bool = Field(default=True, description="Show helpful tooltips")
     animations_enabled: bool = Field(default=True, description="Enable UI animations")
 
-    class Config:
-        """Pydantic config."""
-
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "theme": "dark",
                 "language": "en",
@@ -149,6 +147,7 @@ class UIPreferencesSchema(BaseModel):
                 "animations_enabled": True,
             }
         }
+    )
 
 
 # Notification Preferences Schema
@@ -207,10 +206,8 @@ class NotificationPreferencesSchema(BaseModel):
         # Use comprehensive time validation
         return validate_time_format(v)
 
-    class Config:
-        """Pydantic config."""
-
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "email_notifications": True,
                 "push_notifications": True,
@@ -226,6 +223,7 @@ class NotificationPreferencesSchema(BaseModel):
                 "quiet_hours_end": "08:00",
             }
         }
+    )
 
 
 # AI Preferences Schema
@@ -298,10 +296,8 @@ class AIPreferencesSchema(BaseModel):
         valid_lengths = ["short", "medium", "long"]
         return validate_enum_value(sanitized, valid_lengths, "response_length")
 
-    class Config:
-        """Pydantic config."""
-
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "preferred_provider": "openai",
                 "preferred_model": "gpt-4",
@@ -314,6 +310,7 @@ class AIPreferencesSchema(BaseModel):
                 "max_tokens": 2000,
             }
         }
+    )
 
 
 # Integration Preferences Schema
@@ -366,10 +363,8 @@ class IntegrationPreferencesSchema(BaseModel):
         valid_strategies = ["prompt", "local_wins", "remote_wins", "create_copy"]
         return validate_enum_value(sanitized, valid_strategies, "conflict_resolution")
 
-    class Config:
-        """Pydantic config."""
-
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "auto_sync": True,
                 "sync_frequency": 30,
@@ -382,6 +377,7 @@ class IntegrationPreferencesSchema(BaseModel):
                 "conflict_resolution": "prompt",
             }
         }
+    )
 
 
 # Privacy Preferences Schema
@@ -417,10 +413,8 @@ class PrivacyPreferencesSchema(BaseModel):
         default=True, description="Encrypt sensitive data"
     )
 
-    class Config:
-        """Pydantic config."""
-
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "data_collection": True,
                 "analytics": True,
@@ -432,6 +426,7 @@ class PrivacyPreferencesSchema(BaseModel):
                 "encrypt_sensitive_data": True,
             }
         }
+    )
 
 
 # Complete Preferences Response Schema
@@ -452,10 +447,8 @@ class UserPreferencesResponse(BaseModel):
     created_at: datetime = Field(description="Creation timestamp")
     updated_at: datetime = Field(description="Last update timestamp")
 
-    class Config:
-        """Pydantic config."""
-
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "user_id": "user_123",
                 "ui": {
@@ -474,6 +467,7 @@ class UserPreferencesResponse(BaseModel):
                 "updated_at": "2024-01-01T12:00:00Z",
             }
         }
+    )
 
 
 # Preferences Update Schema
@@ -496,15 +490,14 @@ class UserPreferencesUpdate(BaseModel):
         None, description="Privacy preferences to update"
     )
 
-    class Config:
-        """Pydantic config."""
-
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "ui": {"theme": "dark", "language": "en"},
                 "notifications": {"email_notifications": False},
             }
         }
+    )
 
 
 # Preferences Reset Schema
@@ -530,10 +523,9 @@ class PreferencesResetRequest(BaseModel):
                 )
         return v
 
-    class Config:
-        """Pydantic config."""
-
-        json_schema_extra = {"example": {"categories": ["ui", "notifications"]}}
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"categories": ["ui", "notifications"]}}
+    )
 
 
 # Preferences Export Schema
@@ -545,10 +537,8 @@ class PreferencesExportResponse(BaseModel):
     exported_at: datetime = Field(description="Export timestamp")
     version: str = Field(default="1.0", description="Export format version")
 
-    class Config:
-        """Pydantic config."""
-
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "user_id": "user_123",
                 "preferences": {
@@ -559,6 +549,7 @@ class PreferencesExportResponse(BaseModel):
                 "version": "1.0",
             }
         }
+    )
 
 
 # Preferences Import Schema
@@ -587,10 +578,8 @@ class PreferencesImportRequest(BaseModel):
         valid_strategies = ["replace", "merge", "skip_existing"]
         return validate_enum_value(sanitized, valid_strategies, "merge_strategy")
 
-    class Config:
-        """Pydantic config."""
-
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "preferences": {
                     "ui": {"theme": "dark"},
@@ -600,3 +589,4 @@ class PreferencesImportRequest(BaseModel):
                 "merge_strategy": "merge",
             }
         }
+    )

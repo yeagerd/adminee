@@ -8,7 +8,7 @@ including integration status, token management, and provider-specific data.
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from services.user.models.integration import (
     IntegrationProvider,
@@ -89,8 +89,7 @@ class IntegrationResponse(BaseModel):
     created_at: datetime = Field(..., description="Integration creation time")
     updated_at: datetime = Field(..., description="Last update time")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class IntegrationListResponse(BaseModel):
@@ -385,8 +384,7 @@ class IntegrationErrorResponse(BaseModel):
         description="Error timestamp",
     )
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 # Validation schemas
