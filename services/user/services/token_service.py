@@ -205,34 +205,37 @@ class TokenService:
             now = datetime.now(timezone.utc)
             buffer_time = timedelta(minutes=5)
 
-            if (
-                access_token_record.expires_at
-                and access_token_record.expires_at <= now + buffer_time
-                and refresh_if_needed
-            ):
-                # Token is expired or near expiration - try to refresh
-                refresh_result = await self._refresh_token_if_possible(
-                    integration, user_id, provider
-                )
-                if refresh_result.success:
-                    # Get the refreshed access token record
-                    async_session = get_async_session()
-                    async with async_session() as session:
-                        token_result = await session.execute(
-                            select(EncryptedToken).where(
-                                EncryptedToken.integration_id == integration.id,
-                                EncryptedToken.token_type == TokenType.ACCESS,
-                            )
-                        )
-                        access_token_record = token_result.scalar_one()
-                else:
-                    return InternalTokenResponse(
-                        success=False,
-                        provider=provider,
-                        user_id=user_id,
-                        integration_id=integration.id,
-                        error=f"Token refresh failed: {refresh_result.error}",
+            if access_token_record.expires_at and refresh_if_needed:
+                # Ensure expires_at is timezone-aware for comparison
+                expires_at = access_token_record.expires_at
+                if expires_at.tzinfo is None:
+                    expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+                # Check if token is expired or near expiration
+                if expires_at <= now + buffer_time:
+                    # Token is expired or near expiration - try to refresh
+                    refresh_result = await self._refresh_token_if_possible(
+                        integration, user_id, provider
                     )
+                    if refresh_result.success:
+                        # Get the refreshed access token record
+                        async_session = get_async_session()
+                        async with async_session() as session:
+                            token_result = await session.execute(
+                                select(EncryptedToken).where(
+                                    EncryptedToken.integration_id == integration.id,
+                                    EncryptedToken.token_type == TokenType.ACCESS,
+                                )
+                            )
+                            access_token_record = token_result.scalar_one()
+                    else:
+                        return InternalTokenResponse(
+                            success=False,
+                            provider=provider,
+                            user_id=user_id,
+                            integration_id=integration.id,
+                            error=f"Token refresh failed: {refresh_result.error}",
+                        )
 
             # Decrypt access token
             access_token = self.token_encryption.decrypt_token(
