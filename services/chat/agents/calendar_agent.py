@@ -10,7 +10,7 @@ Part of the multi-agent workflow system.
 """
 
 import logging
-from typing import List
+from typing import List, Optional
 
 from llama_index.core.agent.workflow import FunctionAgent
 from llama_index.core.tools import FunctionTool
@@ -63,15 +63,17 @@ class CalendarAgent(FunctionAgent):
         self,
         llm_model: str = "gpt-4.1-nano",
         llm_provider: str = "openai",
+        user_id: Optional[str] = None,
         **llm_kwargs,
     ):
+
         # Get LLM instance
         llm = get_llm_manager().get_llm(
             model=llm_model, provider=llm_provider, **llm_kwargs
         )
 
-        # Create calendar-specific tools
-        tools = self._create_calendar_tools()
+        # Create calendar-specific tools with user_id
+        tools = self._create_calendar_tools(user_id)
 
         # Initialize FunctionAgent
         super().__init__(
@@ -96,17 +98,36 @@ class CalendarAgent(FunctionAgent):
 
         logger.debug("CalendarAgent initialized with calendar tools")
 
-    def _create_calendar_tools(self) -> List[FunctionTool]:
+    def _create_calendar_tools(self, user_id: Optional[str]) -> List[FunctionTool]:
         """Create calendar-specific tools."""
         tools = []
 
+        # Create a wrapper function that provides the user_id
+        def get_calendar_events_with_user_id(
+            start_date: Optional[str] = None,
+            end_date: Optional[str] = None,
+            time_zone: Optional[str] = None,
+            providers: Optional[str] = None,
+        ):
+            if not user_id:
+                return {"error": "User ID not available in calendar agent"}
+            return get_calendar_events(
+                user_id=user_id,
+                start_date=start_date,
+                end_date=end_date,
+                time_zone=time_zone,
+                providers=providers,
+            )
+
         # Calendar events retrieval tool
         get_calendar_events_tool = FunctionTool.from_defaults(
-            fn=get_calendar_events,
+            fn=get_calendar_events_with_user_id,
             name="get_calendar_events",
             description=(
                 "Retrieve calendar events from the office service. "
                 "Can filter by date range, timezone, and provider type. "
+                "Parameters: start_date (YYYY-MM-DD), end_date (YYYY-MM-DD), "
+                "time_zone (e.g., 'America/New_York'), providers (comma-separated: 'google,microsoft')"
             ),
         )
         tools.append(get_calendar_events_tool)
@@ -128,6 +149,7 @@ class CalendarAgent(FunctionAgent):
 def create_calendar_agent(
     llm_model: str = "gpt-4.1-nano",
     llm_provider: str = "openai",
+    user_id: Optional[str] = None,
     **llm_kwargs,
 ) -> CalendarAgent:
     """
@@ -136,6 +158,7 @@ def create_calendar_agent(
     Args:
         llm_model: LLM model name
         llm_provider: LLM provider name
+        user_id: User ID for calendar operations
         **llm_kwargs: Additional LLM configuration
 
     Returns:
@@ -144,5 +167,6 @@ def create_calendar_agent(
     return CalendarAgent(
         llm_model=llm_model,
         llm_provider=llm_provider,
+        user_id=user_id,
         **llm_kwargs,
     )

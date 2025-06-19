@@ -8,39 +8,75 @@ from services.chat.settings import get_settings
 
 
 def get_calendar_events(
-    user_token: str,
+    user_id: str,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    user_timezone: Optional[str] = None,
-    provider_type: Optional[str] = None,
+    time_zone: Optional[str] = None,
+    providers: Optional[str] = None,
 ) -> Dict[str, Any]:
-    headers = {"Authorization": f"Bearer {user_token}"}
-    params = {}
+    # Use service-to-service authentication
+    headers = {"Content-Type": "application/json"}
+    if get_settings().api_chat_office_key:
+        headers["X-API-Key"] = get_settings().api_chat_office_key
+
+    params = {"user_id": user_id}
     if start_date:
         params["start_date"] = start_date
     if end_date:
         params["end_date"] = end_date
-    if user_timezone:
-        params["user_timezone"] = user_timezone
-    if provider_type:
-        params["provider_type"] = provider_type
+    if time_zone:
+        params["time_zone"] = time_zone
+    if providers:
+        # Convert comma-separated string to list format expected by office service
+        provider_list = [p.strip() for p in providers.split(",")]
+        params["providers"] = provider_list
+
     try:
         office_service_url = get_settings().office_service_url
         response = requests.get(
-            f"{office_service_url}/events",
+            f"{office_service_url}/calendar/events",
             headers=headers,
             params=params,
             timeout=10,
         )
         response.raise_for_status()
         data = response.json()
-        if "events" not in data:
-            return {"error": "Malformed response from office-service."}
-        return {"events": data["events"]}
+
+        # Check for successful response structure
+        if not data.get("success", False):
+            return {
+                "error": f"Office service error: {data.get('message', 'Unknown error')}"
+            }
+
+        # Extract events from the data field
+        events_data = data.get("data", {})
+        if "events" not in events_data:
+            return {
+                "error": "Malformed response from office-service: missing events data."
+            }
+
+        # Check for provider errors - if all providers failed, return error
+        provider_errors = events_data.get("provider_errors", {})
+        providers_used = events_data.get("providers_used", [])
+
+        if provider_errors and not providers_used:
+            # All providers failed
+            error_messages = [
+                f"{provider}: {error}" for provider, error in provider_errors.items()
+            ]
+            return {"error": f"Calendar access failed - {'; '.join(error_messages)}"}
+        elif provider_errors:
+            # Some providers failed, but we have data from others
+            # Log warning but continue with available data
+            print(f"Warning: Some calendar providers failed: {provider_errors}")
+
+        return {"events": events_data["events"]}
     except requests.Timeout:
         return {"error": "Request to office-service timed out."}
     except requests.HTTPError as e:
-        return {"error": f"HTTP error: {str(e)}"}
+        return {
+            "error": f"HTTP error: {str(e)} - Response: {e.response.text if e.response else 'No response'}"
+        }
     except Exception as e:
         return {"error": f"Unexpected error: {str(e)}"}
 

@@ -39,7 +39,7 @@ API_KEYS: Dict[str, APIKeyConfig] = {
         ],
     ),
     # Service-to-service keys - limited permissions
-    "api-chat-office-key": APIKeyConfig(
+    "test-CHAT_OFFICE_KEY": APIKeyConfig(
         client="chat-service",
         service="office-service-access",
         permissions=[
