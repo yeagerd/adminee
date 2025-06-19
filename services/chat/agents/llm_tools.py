@@ -27,7 +27,7 @@ def get_calendar_events(
     try:
         office_service_url = get_settings().office_service_url
         response = requests.get(
-            f"{office_service_url}/events",
+            f"{office_service_url}/calendar/events",
             headers=headers,
             params=params,
             timeout=10,
