@@ -467,6 +467,7 @@ class TestOAuthConfig:
             "profile",
             "offline_access",
             "https://graph.microsoft.com/User.Read",
+            "https://graph.microsoft.com/Calendars.ReadWrite",
         }
         assert config.supports_pkce is True
         assert config.pkce_method == PKCEChallengeMethod.S256
@@ -1021,6 +1022,7 @@ class TestOAuthConfig:
             "profile",
             "offline_access",
             "https://graph.microsoft.com/User.Read",
+            "https://graph.microsoft.com/Calendars.ReadWrite",
         }
         assert set(oauth_state.scopes) == expected_scopes
         for scope in expected_scopes:
