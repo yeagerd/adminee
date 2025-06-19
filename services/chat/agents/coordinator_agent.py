@@ -216,12 +216,10 @@ class CoordinatorAgent(FunctionAgent):
             f"CoordinatorAgent initialized as main orchestrator with thread_id={self._thread_id}"
         )
 
-
     @property
     def thread_id(self) -> str:
         """Get the thread_id for this agent."""
         return getattr(self, "_thread_id")
-
 
     def _create_coordinator_tools(self) -> List[FunctionTool]:
         """Create coordinator-specific tools."""
