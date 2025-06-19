@@ -10,7 +10,7 @@ Part of the multi-agent workflow system.
 """
 
 import logging
-from typing import List
+from typing import List, Optional
 
 from llama_index.core.agent.workflow import FunctionAgent
 from llama_index.core.tools import FunctionTool
