@@ -1,0 +1,62 @@
+[project]
+name = "briefly-user"
+version = "0.1.0"
+description = "Briefly User Management Service"
+requires-python = ">=3.12"
+dependencies = [
+    # Web Framework
+    "fastapi>=0.95.0,<1.0.0",
+    "uvicorn[standard]>=0.22.0,<1.0.0",
+    "pydantic>=2.0.0,<2.9.0",
+    "pydantic-settings>=2.0.0,<3.0.0",
+    "python-dotenv>=1.0.0,<2.0.0",
+    "structlog>=23.1.0,<24.0.0",
+    "httpx>=0.24.0,<1.0.0",
+    "requests>=2.31.0,<3.0.0",
+
+    # Database
+    "sqlmodel>=0.0.21",
+    "sqlalchemy>=2.0.0",
+    "aiosqlite",
+    "asyncpg",
+    "psycopg2-binary",
+    "alembic",
+
+    # Authentication & Security
+    "PyJWT",
+    "cryptography",
+    "email-validator",
+
+    # Background tasks
+    "celery",
+    "redis",
+
+    # Time zone handling
+    "pytz",
+
+    # OpenTelemetry
+    "opentelemetry-api",
+    "opentelemetry-sdk",
+    "opentelemetry-instrumentation",
+    "opentelemetry-instrumentation-fastapi",
+    "opentelemetry-instrumentation-httpx",
+    "opentelemetry-distro",
+    "opentelemetry-exporter-gcp-trace",
+
+    # GCP
+    "google-cloud-secret-manager"
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-asyncio"
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["*"]
