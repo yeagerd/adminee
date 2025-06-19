@@ -608,8 +608,8 @@ Examples:
     parser.add_argument(
         "--chat-url",
         type=str,
-        default="http://localhost:8001",
-        help="Base URL for the chat service API (default: http://localhost:8001)",
+        default="http://localhost:8002",
+        help="Base URL for the chat service API (default: http://localhost:8002)",
     )
 
     parser.add_argument(
