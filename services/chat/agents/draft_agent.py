@@ -182,7 +182,7 @@ class DraftAgent(FunctionAgent):
         # Store thread_id using object.__setattr__ to bypass Pydantic validation
         object.__setattr__(self, "_thread_id", thread_id_str)
 
-        logger.info(f"DraftAgent initialized with thread_id={self._thread_id}")
+        logger.debug(f"DraftAgent initialized with thread_id={self._thread_id}")
 
     @property
     def thread_id(self) -> str:

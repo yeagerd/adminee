@@ -212,14 +212,16 @@ class CoordinatorAgent(FunctionAgent):
         # Store thread_id using object.__setattr__ to bypass Pydantic validation
         object.__setattr__(self, "_thread_id", str(thread_id))
 
-        logger.info(
+        logger.debug(
             f"CoordinatorAgent initialized as main orchestrator with thread_id={self._thread_id}"
         )
+
 
     @property
     def thread_id(self) -> str:
         """Get the thread_id for this agent."""
         return getattr(self, "_thread_id")
+
 
     def _create_coordinator_tools(self) -> List[FunctionTool]:
         """Create coordinator-specific tools."""

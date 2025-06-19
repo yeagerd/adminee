@@ -94,7 +94,7 @@ class EmailAgent(FunctionAgent):
             can_handoff_to=["CoordinatorAgent"],
         )
 
-        logger.info("EmailAgent initialized with email tools")
+        logger.debug("EmailAgent initialized with email tools")
 
     def _create_email_tools(self) -> List[FunctionTool]:
         """Create email-specific tools."""
