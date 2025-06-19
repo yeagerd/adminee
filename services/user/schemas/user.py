@@ -191,7 +191,7 @@ class UserResponse(UserBase):
     created_at: datetime = Field(..., description="When the user was created")
     updated_at: datetime = Field(..., description="When the user was last updated")
 
-    @field_serializer('created_at', 'updated_at')
+    @field_serializer("created_at", "updated_at")
     def serialize_dt(self, dt: datetime, _info):
         return dt.isoformat() if dt else None
 
@@ -220,7 +220,7 @@ class UserDeleteResponse(BaseModel):
     )
     deleted_at: datetime = Field(..., description="When the user was deleted")
 
-    @field_serializer('deleted_at')
+    @field_serializer("deleted_at")
     def serialize_dt(self, dt: datetime, _info):
         return dt.isoformat() if dt else None
 

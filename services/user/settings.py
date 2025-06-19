@@ -6,8 +6,11 @@ Uses Pydantic Settings to manage environment variables and configuration.
 
 from typing import List, Optional
 
-from pydantic import AliasChoices, Field # Removed ConfigDict
-from pydantic_settings import BaseSettings, SettingsConfigDict # Added SettingsConfigDict
+from pydantic import AliasChoices, Field  # Removed ConfigDict
+from pydantic_settings import (  # Added SettingsConfigDict
+    BaseSettings,
+    SettingsConfigDict,
+)
 
 
 class Settings(BaseSettings):

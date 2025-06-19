@@ -8,7 +8,8 @@ and configuration management.
 import os
 from unittest.mock import patch
 
-from pydantic_settings import SettingsConfigDict # Added SettingsConfigDict
+from pydantic_settings import SettingsConfigDict  # Added SettingsConfigDict
+
 from services.user.settings import Settings
 
 
