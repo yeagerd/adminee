@@ -861,9 +861,13 @@ class IntegrationService:
 
                         # Check token expiration
                         if access_token_record and access_token_record.expires_at:
-                            if access_token_record.expires_at <= datetime.now(
-                                timezone.utc
-                            ):
+                            # Ensure expires_at is timezone-aware for comparison
+                            expires_at = access_token_record.expires_at
+                            if expires_at.tzinfo is None:
+                                expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+                            now = datetime.now(timezone.utc)
+                            if expires_at <= now:
                                 issues.append("Access token has expired")
                                 # Check if refresh token exists
                                 refresh_token_result = await session.execute(
@@ -880,9 +884,7 @@ class IntegrationService:
                                 else:
                                     healthy = False
                                     recommendations.append("Reconnect the integration")
-                            elif access_token_record.expires_at <= datetime.now(
-                                timezone.utc
-                            ) + timedelta(hours=1):
+                            elif expires_at <= now + timedelta(hours=1):
                                 issues.append("Access token expires soon")
                                 recommendations.append("Consider refreshing the token")
 
