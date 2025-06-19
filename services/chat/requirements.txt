@@ -1,17 +1,16 @@
 # Chat Service Dependencies
-fastapi
-uvicorn[standard]
-pydantic>=2.0,<2.9.0
-pydantic-settings
-structlog
-httpx
+fastapi>=0.95.0,<1.0.0
+uvicorn[standard]>=0.22.0,<1.0.0
+pydantic>=2.0.0,<2.9.0
+pydantic-settings>=2.0.0,<3.0.0
+structlog>=23.1.0,<24.0.0
+httpx>=0.24.0,<1.0.0
 
 # LLM and AI dependencies
 llama-index>=0.12.0,<0.13.0
 llama-index-embeddings-openai>=0.3.0,<0.4.0
 llama-index-llms-litellm>=0.3.0,<0.6.0
-litellm
-langchain>=0.1.0,<0.3.0
+litellm==1.72.6
 
 # Database
 sqlmodel>=0.0.21
