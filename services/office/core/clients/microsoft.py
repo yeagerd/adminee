@@ -150,9 +150,11 @@ class MicrosoftAPIClient(BaseAPIClient):
         if start_time and end_time:
             # CalendarView endpoint automatically expands recurring events
             endpoint = (
-                f"/me/calendars/{calendar_id}/calendarView" if calendar_id else "/me/calendarView"
+                f"/me/calendars/{calendar_id}/calendarView"
+                if calendar_id
+                else "/me/calendarView"
             )
-            
+
             params: Dict[str, Any] = {
                 "$top": top,
                 "startDateTime": start_time,
@@ -162,7 +164,7 @@ class MicrosoftAPIClient(BaseAPIClient):
                 params["$orderby"] = order_by
             else:
                 params["$orderby"] = "start/dateTime"
-                
+
         else:
             # Use regular events endpoint when no date filtering
             endpoint = (

@@ -234,7 +234,9 @@ async def get_calendar_events(
             # Cache the result for 10 minutes (calendar data changes more frequently)
             await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=600)
         else:
-            logger.info(f"[{request_id}] Not caching response due to no successful providers")
+            logger.info(
+                f"[{request_id}] Not caching response due to no successful providers"
+            )
 
         # Calculate response time
         end_time = datetime.now(timezone.utc)
@@ -1063,7 +1065,9 @@ async def fetch_provider_events(
     try:
         # Get API client for provider with calendar-specific scopes
         calendar_scopes = _get_calendar_scopes(provider)
-        client = await api_client_factory.create_client(user_id, provider, calendar_scopes)
+        client = await api_client_factory.create_client(
+            user_id, provider, calendar_scopes
+        )
         if client is None:
             raise ValueError(f"Failed to create API client for provider {provider}")
 
@@ -1191,7 +1195,9 @@ async def fetch_single_event(
     try:
         # Get API client for provider with calendar-specific scopes
         calendar_scopes = _get_calendar_scopes(provider)
-        client = await api_client_factory.create_client(user_id, provider, calendar_scopes)
+        client = await api_client_factory.create_client(
+            user_id, provider, calendar_scopes
+        )
         if client is None:
             raise ValueError(f"Failed to create API client for provider {provider}")
 

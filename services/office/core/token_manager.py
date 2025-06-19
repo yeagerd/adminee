@@ -164,9 +164,9 @@ class TokenManager:
 
             if response.status_code == 200:
                 response_data = response.json()
-                
+
                 # Check if the response indicates success
-                if response_data.get('success', False):
+                if response_data.get("success", False):
                     token_data = TokenData(**response_data)
 
                     # Cache the token
@@ -178,7 +178,7 @@ class TokenManager:
                     return token_data
                 else:
                     # Log the error from the User service
-                    error_msg = response_data.get('error', 'Unknown error')
+                    error_msg = response_data.get("error", "Unknown error")
                     logger.warning(
                         f"Token retrieval failed for user {user_id}, provider {provider}: {error_msg}"
                     )

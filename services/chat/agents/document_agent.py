@@ -74,6 +74,12 @@ class DocumentAgent(FunctionAgent):
         # Create document-specific tools
         tools = self._create_document_tools()
 
+        # Get current date for context
+        from datetime import datetime
+
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
         # Initialize FunctionAgent
         super().__init__(
             name="DocumentAgent",
@@ -84,6 +90,8 @@ class DocumentAgent(FunctionAgent):
             ),
             system_prompt=(
                 "You are the DocumentAgent, specialized in document and note operations. "
+                f"CURRENT DATE AND TIME: {current_datetime}\n"
+                f"Today's date is {current_date}. Use this for any date-related queries or calculations.\n\n"
                 "You can retrieve documents, search notes, and filter by various criteria "
                 "like document type, date ranges, search queries, notebooks, and tags. "
                 "When you find relevant document or note information, use the record_document_info tool "
