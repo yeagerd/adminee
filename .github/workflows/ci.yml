@@ -37,7 +37,7 @@ jobs:
         pip install tox tox-gh-actions
 
     - name: Run tox (format, lint)
-      run: tox -e format,lint -p auto
+      run: tox -e format,lint -p auto --parallel-live
 
   typecheck:
     name: Python Type Checking
@@ -69,7 +69,7 @@ jobs:
         pip install tox tox-gh-actions
 
     - name: Run tox (typecheck)
-      run: tox -e typecheck -p auto
+      run: tox -e typecheck
 
   test:
     name: Python Tests
@@ -101,7 +101,7 @@ jobs:
         pip install tox tox-gh-actions
 
     - name: Run tox (test)
-      run: tox -e test -p auto
+      run: tox -e test
 
   coverage:
     name: Python Coverage
@@ -133,7 +133,7 @@ jobs:
         pip install tox tox-gh-actions
 
     - name: Run tox (coverage)
-      run: tox -e cov -p auto
+      run: tox -e coverage
 
     - name: Upload coverage reports
       uses: codecov/codecov-action@v3
