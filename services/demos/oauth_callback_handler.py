@@ -206,21 +206,49 @@ class OAuthCallbackServer:
 
     def start(self):
         """Start the OAuth callback server."""
-        try:
-            self.server = socketserver.TCPServer(("", self.port), self.handler)
-            self.thread = threading.Thread(target=self.server.serve_forever)
-            self.thread.daemon = True
-            self.thread.start()
+        # Try multiple ports if the default is in use
+        ports_to_try = [
+            self.port,
+            self.port + 1,
+            self.port + 2,
+            self.port + 3,
+            self.port + 4,
+        ]
 
-            print(f"🚀 OAuth Callback Server started on http://localhost:{self.port}")
-            print(
-                f"🔗 Ready to handle OAuth callbacks at http://localhost:{self.port}/oauth/callback"
-            )
-            print("   (Configure this as your OAuth redirect URI)")
-            return True
-        except Exception as e:
-            print(f"❌ Failed to start OAuth callback server: {e}")
-            return False
+        for port in ports_to_try:
+            try:
+                self.server = socketserver.TCPServer(("", port), self.handler)
+                self.port = port  # Update the port to the one that worked
+                self.thread = threading.Thread(target=self.server.serve_forever)
+                self.thread.daemon = True
+                self.thread.start()
+
+                print(
+                    f"🚀 OAuth Callback Server started on http://localhost:{self.port}"
+                )
+                print(
+                    f"🔗 Ready to handle OAuth callbacks at http://localhost:{self.port}/oauth/callback"
+                )
+                print("   (Configure this as your OAuth redirect URI)")
+                return True
+            except OSError as e:
+                if e.errno == 48:  # Address already in use
+                    if port == ports_to_try[-1]:  # Last port to try
+                        print(
+                            f"❌ Failed to start OAuth callback server: All ports {ports_to_try} are in use"
+                        )
+                        return False
+                    else:
+                        print(f"⚠️  Port {port} in use, trying {port + 1}...")
+                        continue
+                else:
+                    print(f"❌ Failed to start OAuth callback server: {e}")
+                    return False
+            except Exception as e:
+                print(f"❌ Failed to start OAuth callback server: {e}")
+                return False
+
+        return False
 
     def stop(self):
         """Stop the OAuth callback server."""
