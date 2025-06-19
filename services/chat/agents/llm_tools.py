@@ -34,13 +34,42 @@ def get_calendar_events(
         )
         response.raise_for_status()
         data = response.json()
-        if "events" not in data:
-            return {"error": "Malformed response from office-service."}
-        return {"events": data["events"]}
+
+        # Check for successful response structure
+        if not data.get("success", False):
+            return {
+                "error": f"Office service error: {data.get('message', 'Unknown error')}"
+            }
+
+        # Extract events from the data field
+        events_data = data.get("data", {})
+        if "events" not in events_data:
+            return {
+                "error": "Malformed response from office-service: missing events data."
+            }
+
+        # Check for provider errors - if all providers failed, return error
+        provider_errors = events_data.get("provider_errors", {})
+        providers_used = events_data.get("providers_used", [])
+
+        if provider_errors and not providers_used:
+            # All providers failed
+            error_messages = [
+                f"{provider}: {error}" for provider, error in provider_errors.items()
+            ]
+            return {"error": f"Calendar access failed - {'; '.join(error_messages)}"}
+        elif provider_errors:
+            # Some providers failed, but we have data from others
+            # Log warning but continue with available data
+            print(f"Warning: Some calendar providers failed: {provider_errors}")
+
+        return {"events": events_data["events"]}
     except requests.Timeout:
         return {"error": "Request to office-service timed out."}
     except requests.HTTPError as e:
-        return {"error": f"HTTP error: {str(e)}"}
+        return {
+            "error": f"HTTP error: {str(e)} - Response: {e.response.text if e.response else 'No response'}"
+        }
     except Exception as e:
         return {"error": f"Unexpected error: {str(e)}"}
 
