@@ -93,17 +93,17 @@ def get_demo_tokens() -> Dict[str, str]:
 
 def create_bearer_token(user_id: str, email: str = None) -> str:
     """
-    Create a Bearer token string for Authorization header.
+    Create a JWT token for use in Authorization header.
 
     Args:
         user_id: User ID to include in token
         email: User email to include in token
 
     Returns:
-        Bearer token string ready for Authorization header
+        JWT token string (without "Bearer" prefix - that's added by the client)
     """
     jwt_token = create_demo_jwt_token(user_id, email)
-    return f"Bearer {jwt_token}"
+    return jwt_token  # Return just the JWT token, not "Bearer {jwt_token}"
 
 
 def decode_token(token: str) -> Dict[str, Any]:
