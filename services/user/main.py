@@ -83,13 +83,39 @@ async def lifespan(app: FastAPI):
     # Startup
     get_safe_logger().info("Starting User Management Service")
 
+    settings = get_settings()
+
     # Validate required configuration
-    if not get_settings().api_frontend_user_key:
+    if not settings.api_frontend_user_key:
         get_safe_logger().error("API_FRONTEND_USER_KEY is required but not configured")
         get_safe_logger().error(
             "Set the API_FRONTEND_USER_KEY environment variable or configure it in settings"
         )
         raise RuntimeError("API_FRONTEND_USER_KEY is required but not configured")
+
+    # Configure docs URLs
+    if settings.debug:
+        app.docs_url = "/docs"
+        app.redoc_url = "/redoc"
+    else:
+        app.docs_url = None
+        app.redoc_url = None
+
+    # Configure middleware
+    app.add_middleware(
+        InputSanitizationMiddleware,
+        enabled=True,
+        strict_mode=settings.debug,  # Use strict mode in development
+    )
+
+    # Add CORS middleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["*"],
+    )
 
     try:
         await create_all_tables()
@@ -125,43 +151,8 @@ app = FastAPI(
 )
 
 
-# Configure docs URLs after app creation to avoid module-level settings access
-@app.on_event("startup")
-async def configure_docs():
-    """Configure documentation URLs based on settings."""
-    settings = get_settings()
-    if settings.debug:
-        app.docs_url = "/docs"
-        app.redoc_url = "/redoc"
-    else:
-        app.docs_url = None
-        app.redoc_url = None
-
-
 # Add security middleware
 app.add_middleware(XSSProtectionMiddleware)
-
-
-# Configure middleware after startup to avoid module-level settings access
-@app.on_event("startup")
-async def configure_middleware():
-    """Configure middleware based on settings."""
-    settings = get_settings()
-
-    app.add_middleware(
-        InputSanitizationMiddleware,
-        enabled=True,
-        strict_mode=settings.debug,  # Use strict mode in development
-    )
-
-    # Add CORS middleware
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.cors_origins,
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["*"],
-    )
 
 
 # Register API routers

@@ -14,9 +14,18 @@ and cleanup operations.
 """
 
 import pytest
-
+import pytest_asyncio # Import pytest_asyncio
 import services.chat.history_manager as hm
 
+
+@pytest_asyncio.fixture(autouse=True, scope="function")
+async def setup_database():
+    """Initialize the database and create tables before each test."""
+    # Ensure DB_URL_CHAT is set for the test environment, already done by os.environ
+    await hm.init_db()
+    # yield # if we needed teardown per test
+    # For a simple setup, we might not need specific per-test teardown if test.db is ephemeral
+    # or if tests are okay with data persisting between them (not ideal but simpler for now)
 
 @pytest.mark.asyncio
 async def test_create_and_list_threads():

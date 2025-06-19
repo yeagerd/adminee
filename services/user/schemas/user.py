@@ -8,7 +8,15 @@ with comprehensive validation and serialization.
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
 
 from services.user.utils.validation import (
     check_sql_injection_patterns,
@@ -165,11 +173,10 @@ class UserUpdate(BaseModel):
         # Use comprehensive email validation
         return validate_email_address(v)
 
-    class Config:
-        """Pydantic config for update schema."""
-
+    model_config = ConfigDict(
         # Allow partial updates - all fields are optional
-        exclude_none = True
+        exclude_none=True
+    )
 
 
 class UserResponse(UserBase):
@@ -189,11 +196,11 @@ class UserResponse(UserBase):
     created_at: datetime = Field(..., description="When the user was created")
     updated_at: datetime = Field(..., description="When the user was last updated")
 
-    class Config:
-        """Pydantic config for response schema."""
+    @field_serializer('created_at', 'updated_at')
+    def serialize_dt(self, dt: datetime, _info):
+        return dt.isoformat() if dt else None
 
-        from_attributes = True  # Enable ORM mode for Ormar models
-        json_encoders = {datetime: lambda v: v.isoformat() if v else None}
+    model_config = ConfigDict(from_attributes=True)  # Enable ORM mode for Ormar models
 
 
 class UserListResponse(BaseModel):
@@ -218,10 +225,11 @@ class UserDeleteResponse(BaseModel):
     )
     deleted_at: datetime = Field(..., description="When the user was deleted")
 
-    class Config:
-        """Pydantic config for delete response schema."""
+    @field_serializer('deleted_at')
+    def serialize_dt(self, dt: datetime, _info):
+        return dt.isoformat() if dt else None
 
-        json_encoders = {datetime: lambda v: v.isoformat() if v else None}
+    model_config = ConfigDict()
 
 
 class UserOnboardingUpdate(BaseModel):

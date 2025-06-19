@@ -1,5 +1,6 @@
 import logging
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 import httpx
@@ -25,11 +26,30 @@ from services.office.schemas import ApiError
 setup_logging()
 logger = logging.getLogger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup event logic
+    logger.info(
+        "Office Service starting up",
+        extra={
+            "service": get_settings().APP_NAME,
+            "version": get_settings().APP_VERSION,
+            "environment": get_settings().ENVIRONMENT,
+            "debug": get_settings().DEBUG,
+        },
+    )
+    yield
+    # Shutdown event logic (if any)
+    logger.info("Office Service shutting down")
+
+
 app = FastAPI(
     title=get_settings().APP_NAME,
     description="A backend microservice responsible for all external API interactions with Google and Microsoft services",
     version=get_settings().APP_VERSION,
     debug=get_settings().DEBUG,
+    lifespan=lifespan,
 )
 
 
@@ -275,21 +295,6 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
     return JSONResponse(
         status_code=500,
         content=error_response.model_dump(),
-    )
-
-
-# Startup event
-@app.on_event("startup")
-async def startup_event():
-    """Log application startup."""
-    logger.info(
-        "Office Service starting up",
-        extra={
-            "service": get_settings().APP_NAME,
-            "version": get_settings().APP_VERSION,
-            "environment": get_settings().ENVIRONMENT,
-            "debug": get_settings().DEBUG,
-        },
     )
 
 
