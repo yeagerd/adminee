@@ -38,7 +38,7 @@ from services.office.schemas import ApiResponse
 class OfficeServiceClient:
     """Client for making requests to the Office Service HTTP API."""
 
-    def __init__(self, base_url: str = "http://localhost:8000", timeout: float = 30.0):
+    def __init__(self, base_url: str = "http://localhost:8003", timeout: float = 30.0):
         """Initialize the Office Service client."""
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
@@ -164,7 +164,7 @@ class OfficeServiceClient:
 class FullOfficeDemo:
     """Comprehensive Office Service demonstration using HTTP API."""
 
-    def __init__(self, email: str, service_url: str = "http://localhost:8000"):
+    def __init__(self, email: str, service_url: str = "http://localhost:8003"):
         """Initialize the demo."""
         self.email = email
         self.client = OfficeServiceClient(service_url)
@@ -675,8 +675,8 @@ Environment Variables for Office Service:
 
     parser.add_argument(
         "--url",
-        default="http://localhost:8000",
-        help="Office Service URL (default: http://localhost:8000)",
+        default="http://localhost:8003",
+        help="Office Service URL (default: http://localhost:8003)",
     )
 
     return parser.parse_args()

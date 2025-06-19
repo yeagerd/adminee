@@ -58,7 +58,7 @@ The Office Service is a FastAPI-based microservice that provides unified access 
 
 5. **Start the service:**
    ```bash
-   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8003
    ```
 
 ### Office Service API Endpoints
@@ -145,7 +145,7 @@ tox -p auto             # Full test matrix
 -   Once the dev container or Docker Compose setup is running:
     -   The **Next.js frontend** should be accessible at `http://localhost:3000`.
     -   The **PostgreSQL database** will be running on port `5432` (accessible as `db:5432` from other services within the Docker network, or `localhost:5432` from the host).
-    -   Backend services (e.g., Calendar Service) will be running on their respective ports (e.g., `8000`) and are typically accessed via the Next.js proxy at `localhost:3000/api/proxy/...`.
+    -   Backend services (e.g., Calendar Service) will be running on their respective ports (e.g., `8003`) and are typically accessed via the Next.js proxy at `localhost:3000/api/proxy/...`.
 
 ### Local Testing
 

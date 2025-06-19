@@ -10,7 +10,7 @@ This demo showcases the user management service functionality including:
 - Interactive OAuth flows with browser windows
 
 Requirements:
-- User management service running on http://localhost:8000
+- User management service running on http://localhost:8001
 - Valid OAuth credentials configured (for OAuth demo)
 - Web browser available for OAuth flows
 
@@ -67,7 +67,7 @@ class UserManagementDemo:
 
     def __init__(
         self,
-        base_url: str = "http://localhost:8000",
+        base_url: str = "http://localhost:8001",
         user_management_api_key: Optional[str] = None,
     ):
         self.base_url = base_url
@@ -907,8 +907,8 @@ Environment Variables:
     )
     parser.add_argument(
         "--base-url",
-        default="http://localhost:8000",
-        help="Base URL for the user management service (default: http://localhost:8000)",
+        default="http://localhost:8001",
+        help="Base URL for the user management service (default: http://localhost:8001)",
     )
     parser.add_argument(
         "--service-api-key",

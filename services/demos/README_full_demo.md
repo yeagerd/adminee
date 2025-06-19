@@ -14,9 +14,9 @@ This comprehensive demo integrates all three Briefly services (chat, office, use
 ## Prerequisites
 
 1. **Services Running**:
-   - Chat Service: `http://localhost:8001`
-   - User Service: `http://localhost:8000`
-   - Office Service: `http://localhost:8002`
+   - Chat Service: `http://localhost:8002`
+   - User Service: `http://localhost:8001`
+   - Office Service: `http://localhost:8003`
 
 2. **Optional OAuth Setup**:
    - Google OAuth credentials (for Google integrations)
@@ -76,9 +76,9 @@ This skips the OAuth setup process.
 ### Custom Service URLs
 ```bash
 python services/demos/full_demo.py \
-  --chat-url http://localhost:8001 \
-  --user-url http://localhost:8000 \
-  --office-url http://localhost:8002
+  --chat-url http://localhost:8002 \
+  --user-url http://localhost:8001 \
+  --office-url http://localhost:8003
 ```
 
 ### Single Message Mode

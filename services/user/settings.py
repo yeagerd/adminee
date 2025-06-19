@@ -95,11 +95,11 @@ class Settings(BaseSettings):
 
     # OAuth Redirect Configuration
     oauth_redirect_uri: str = Field(
-        default="http://localhost:8000/oauth/callback",
+        default="http://localhost:8001/oauth/callback",
         description="OAuth callback redirect URI for all providers",
     )
     oauth_base_url: str = Field(
-        default="http://localhost:8000",
+        default="http://localhost:8001",
         description="Base URL for OAuth callbacks (used to construct redirect URI)",
     )
 

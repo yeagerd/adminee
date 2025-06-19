@@ -193,7 +193,7 @@ class UserServiceClient(ServiceClient):
 class ChatServiceClient(ServiceClient):
     """Client for chat service operations."""
 
-    def __init__(self, base_url: str = "http://localhost:8001"):
+    def __init__(self, base_url: str = "http://localhost:8002"):
         super().__init__(base_url)
 
     def send_message(
@@ -917,22 +917,22 @@ Examples:
     parser.add_argument(
         "--chat-url",
         type=str,
-        default="http://localhost:8001",
-        help="Chat service URL (default: http://localhost:8001)",
+        default="http://localhost:8002",
+        help="Chat service URL (default: http://localhost:8002)",
     )
 
     parser.add_argument(
         "--office-url",
         type=str,
-        default="http://localhost:8002",
-        help="Office service URL (default: http://localhost:8002)",
+        default="http://localhost:8003",
+        help="Office service URL (default: http://localhost:8003)",
     )
 
     parser.add_argument(
         "--user-url",
         type=str,
-        default="http://localhost:8000",
-        help="User service URL (default: http://localhost:8000)",
+        default="http://localhost:8001",
+        help="User service URL (default: http://localhost:8001)",
     )
 
     parser.add_argument(
