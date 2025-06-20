@@ -13,10 +13,10 @@ from .clerk import (
     verify_user_ownership,
 )
 from .service_auth import (
-    ServiceAuthRequired,
+    client_has_permission,
+    get_client_permissions,
     get_current_service,
     require_service_auth,
-    validate_service_permissions,
     verify_service_authentication,
 )
 from .webhook_auth import WebhookSignatureVerifier, verify_webhook_signature
@@ -32,8 +32,8 @@ __all__ = [
     "verify_service_authentication",
     "get_current_service",
     "require_service_auth",
-    "validate_service_permissions",
-    "ServiceAuthRequired",
+    "get_client_permissions",
+    "client_has_permission",
     # Webhook authentication
     "WebhookSignatureVerifier",
     "verify_webhook_signature",
