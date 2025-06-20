@@ -200,26 +200,17 @@ async def get_user_preferences_internal(
     """
     try:
         from services.user.services.preferences_service import PreferencesService
-        from services.user.database import get_async_session
-        from services.user.models.user import User
-        from sqlmodel import select
 
-        # Convert external auth ID to internal database ID
-        async_session = get_async_session()
-        async with async_session() as session:
-            result = await session.execute(
-                select(User).where(User.external_auth_id == user_id)
-            )
-            user = result.scalar_one_or_none()
-            if not user:
-                # User not found - return None (normal for new users)
-                return None
-
-            internal_user_id = str(user.id)
-
-        preferences = await PreferencesService.get_user_preferences(internal_user_id)
-        return preferences
-    except Exception:
-        # Return None for any error (user not found, preferences not found, etc.)
+        # Use external auth ID directly (preferences service now handles this)
+        preferences = await PreferencesService.get_user_preferences(user_id)
+        
+        # Convert to JSON-serializable dict to avoid enum serialization issues
+        return preferences.model_dump() if preferences else None
+    except Exception as e:
+        # Log the error but return None for any error (user not found, preferences not found, etc.)
         # This matches the behavior expected by chat service
+        import structlog
+        logger = structlog.get_logger(__name__)
+        logger.warning("Failed to get user preferences in internal endpoint", 
+                      user_id=user_id, error=str(e))
         return None
