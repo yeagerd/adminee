@@ -18,7 +18,7 @@ class Settings(BaseSettings):
 
     # Database Configuration
     db_url_user_management: str = Field(
-        ...,  # Required field - no default to prevent production mistakes
+        default=None,
         description="PostgreSQL database connection string",
         validation_alias=AliasChoices("DB_URL_USER_MANAGEMENT"),
     )
