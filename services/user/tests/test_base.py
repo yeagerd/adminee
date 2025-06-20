@@ -30,6 +30,11 @@ class BaseUserManagementTest:
         os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
         os.environ.setdefault("ENVIRONMENT", "test")
 
+        # Import app after environment variables are set
+        from services.user.main import app
+
+        self.app = app
+
     def teardown_method(self):
         """Clean up User Management test environment."""
         # Close and remove temporary database file
@@ -91,11 +96,8 @@ class BaseUserManagementIntegrationTest(BaseUserManagementTest):
 
         asyncio.run(create_all_tables())
 
-        # Import and create test client
-        from services.user.main import app
-
-        self.app = app
-        self.client = TestClient(app)
+        # Create test client using app from base class
+        self.client = TestClient(self.app)
 
         # Set up authentication overrides
         self._override_auth()

@@ -6,13 +6,14 @@ and various webhook event types.
 """
 
 import asyncio
+import importlib
+import sys
 from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
 
 from services.user.database import create_all_tables
 from services.user.exceptions import DatabaseError, WebhookProcessingError
-from services.user.main import app
 from services.user.tests.test_base import BaseUserManagementTest
 
 
@@ -21,8 +22,23 @@ class TestClerkWebhookEndpoint(BaseUserManagementTest):
 
     def setup_method(self):
         super().setup_method()
+
+        # Force reload of database-related modules to pick up new database path
+        try:
+            modules_to_reload = [
+                "services.user.database",
+                "services.user.settings",
+                "services.user.services.webhook_service",
+            ]
+
+            for module_name in modules_to_reload:
+                if module_name in sys.modules:
+                    importlib.reload(sys.modules[module_name])
+        finally:
+            pass
+
         asyncio.run(create_all_tables())
-        self.client = TestClient(app)
+        self.client = TestClient(self.app)
         self.sample_user_created_payload = self._get_sample_user_created_payload()
         self.sample_user_updated_payload = self._get_sample_user_updated_payload()
         self.sample_user_deleted_payload = self._get_sample_user_deleted_payload()
@@ -404,8 +420,23 @@ class TestClerkTestWebhookEndpoint(BaseUserManagementTest):
 
     def setup_method(self):
         super().setup_method()
+
+        # Force reload of database-related modules to pick up new database path
+        try:
+            modules_to_reload = [
+                "services.user.database",
+                "services.user.settings",
+                "services.user.services.webhook_service",
+            ]
+
+            for module_name in modules_to_reload:
+                if module_name in sys.modules:
+                    importlib.reload(sys.modules[module_name])
+        finally:
+            pass
+
         asyncio.run(create_all_tables())
-        self.client = TestClient(app)
+        self.client = TestClient(self.app)
 
     def _get_sample_user_created_payload(self):
         """Sample Clerk user.created webhook payload."""
@@ -471,7 +502,7 @@ class TestWebhookHealthEndpoint(BaseUserManagementTest):
 
     def setup_method(self):
         super().setup_method()
-        self.client = TestClient(app)
+        self.client = TestClient(self.app)
 
     def test_webhook_health(self):
         """Test webhook health endpoint."""
@@ -488,7 +519,7 @@ class TestOAuthWebhookEndpoint(BaseUserManagementTest):
 
     def setup_method(self):
         super().setup_method()
-        self.client = TestClient(app)
+        self.client = TestClient(self.app)
 
     def test_oauth_webhook_placeholder(self):
         """Test OAuth webhook placeholder endpoint."""

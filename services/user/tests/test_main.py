@@ -7,39 +7,30 @@ exception handling, middleware, and API documentation.
 
 from unittest.mock import patch
 
-import pytest
-from fastapi.testclient import TestClient
-
 from services.user.exceptions import (
     AuthenticationException,
     IntegrationNotFoundException,
     UserNotFoundException,
     ValidationException,
 )
-from services.user.main import app
 from services.user.tests.test_base import BaseUserManagementIntegrationTest
-
-
-@pytest.fixture
-def client():
-    return TestClient(app)
 
 
 class TestApplicationStartup(BaseUserManagementIntegrationTest):
     """Test cases for application startup and configuration."""
 
     def test_app_creation(self):
-        assert app.title == "User Management Service"
-        assert app.version == "0.1.0"
+        assert self.app.title == "User Management Service"
+        assert self.app.version == "0.1.0"
         assert (
             "Manages user profiles, preferences, and OAuth integrations"
-            in app.description
+            in self.app.description
         )
 
     def test_cors_middleware_configured(self):
         """Test that CORS middleware is configured (simplified test)."""
         # Test that the app has middleware configured
-        assert len(app.user_middleware) > 0
+        assert len(self.app.user_middleware) > 0
         # The actual CORS headers are tested in the middleware test section
 
     def test_routers_registered(self):
@@ -248,7 +239,7 @@ class TestExceptionHandling(BaseUserManagementIntegrationTest):
         assert "User test_user_123 not found" in exc.message
 
         # Test that the exception handler is registered
-        assert UserNotFoundException in app.exception_handlers
+        assert UserNotFoundException in self.app.exception_handlers
 
     def test_integration_not_found_exception(self):
         """Test IntegrationNotFoundException creation and handler registration."""
@@ -258,7 +249,7 @@ class TestExceptionHandling(BaseUserManagementIntegrationTest):
         assert "Integration google for user test_user_123 not found" in exc.message
 
         # Test that the exception handler is registered
-        assert IntegrationNotFoundException in app.exception_handlers
+        assert IntegrationNotFoundException in self.app.exception_handlers
 
     def test_validation_exception(self):
         """Test ValidationException creation and handler registration."""
@@ -269,7 +260,7 @@ class TestExceptionHandling(BaseUserManagementIntegrationTest):
         assert "Validation failed for field 'email'" in exc.message
 
         # Test that the exception handler is registered
-        assert ValidationException in app.exception_handlers
+        assert ValidationException in self.app.exception_handlers
 
     def test_authentication_exception(self):
         """Test AuthenticationException creation and handler registration."""
@@ -277,7 +268,7 @@ class TestExceptionHandling(BaseUserManagementIntegrationTest):
         assert "Invalid token" in exc.message
 
         # Test that the exception handler is registered
-        assert AuthenticationException in app.exception_handlers
+        assert AuthenticationException in self.app.exception_handlers
 
     def test_exception_handlers_registered(self):
         # Test that all expected exception handlers are registered
@@ -288,7 +279,7 @@ class TestExceptionHandling(BaseUserManagementIntegrationTest):
             AuthenticationException,
         ]
         for exc_type in expected_exceptions:
-            assert exc_type in app.exception_handlers
+            assert exc_type in self.app.exception_handlers
 
 
 class TestMiddleware(BaseUserManagementIntegrationTest):
