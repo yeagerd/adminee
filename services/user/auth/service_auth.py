@@ -114,6 +114,11 @@ class ServiceAPIKeyAuth:
                 "user-management-access"
             )
 
+        if get_settings().api_chat_user_key:
+            self.api_key_value_to_service[get_settings().api_chat_user_key] = (
+                "user-management-access"
+            )
+
         if get_settings().api_office_user_key:
             self.api_key_value_to_service[get_settings().api_office_user_key] = (
                 "office-service-access"
@@ -238,9 +243,19 @@ async def verify_service_authentication(request: Request) -> str:
         "user-management-access": "frontend",
         "office-service-access": "office",
     }
-    request.state.client_name = service_to_client.get(
-        service_name, get_client_from_api_key_name_lookup(api_key_value)
-    )
+
+    # For user-management-access, determine client based on the API key
+    if service_name == "user-management-access":
+        if api_key_value == get_settings().api_frontend_user_key:
+            client_name = "frontend"
+        elif api_key_value == get_settings().api_chat_user_key:
+            client_name = "chat"
+        else:
+            client_name = "unknown"
+    else:
+        client_name = service_to_client.get(service_name, "unknown")
+
+    request.state.client_name = client_name
 
     logger.info(
         f"Service authenticated: {service_name} (client: {request.state.client_name})"

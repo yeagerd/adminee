@@ -93,6 +93,14 @@ async def lifespan(app: FastAPI):
         )
         raise RuntimeError("API_FRONTEND_USER_KEY is required but not configured")
 
+    # Validate required configuration
+    if not settings.api_chat_user_key:
+        get_safe_logger().error("API_CHAT_USER_KEY is required but not configured")
+        get_safe_logger().error(
+            "Set the API_CHAT_USER_KEY environment variable or configure it in settings"
+        )
+        raise RuntimeError("API_CHAT_USER_KEY is required but not configured")
+
     # Configure docs URLs
     if settings.debug:
         app.docs_url = "/docs"
