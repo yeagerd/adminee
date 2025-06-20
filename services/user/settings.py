@@ -44,6 +44,10 @@ class Settings(BaseSettings):
         default=None,
         description="Frontend API key to access User Management service",
     )
+    api_office_user_key: Optional[str] = Field(
+        default=None,
+        description="Office service API key to access User Management service",
+    )
     token_encryption_salt: Optional[str] = Field(
         default=None,
         description="Base64-encoded service salt for token encryption key derivation",
