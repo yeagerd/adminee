@@ -31,10 +31,11 @@ This pattern ensures:
 import json
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
 from services.chat.agents.workflow_agent import WorkflowAgent
+from services.chat.auth import require_chat_auth
 from services.chat.models import (
     ChatRequest,
     ChatResponse,
@@ -55,7 +56,10 @@ FEEDBACKS: List[FeedbackRequest] = []
 
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(request: ChatRequest) -> ChatResponse:
+async def chat_endpoint(
+    request: ChatRequest,
+    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
+) -> ChatResponse:
     """
     Chat endpoint using llama_manager ChatAgentManager.
 
@@ -153,7 +157,10 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
 
 
 @router.post("/chat/stream")
-async def chat_stream_endpoint(request: ChatRequest) -> StreamingResponse:
+async def chat_stream_endpoint(
+    request: ChatRequest,
+    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
+) -> StreamingResponse:
     """
     Streaming chat endpoint using Server-Sent Events (SSE).
 
@@ -266,7 +273,10 @@ async def chat_stream_endpoint(request: ChatRequest) -> StreamingResponse:
 
 
 @router.get("/threads", response_model=List[ThreadResponse])
-async def list_threads(user_id: str) -> List[ThreadResponse]:
+async def list_threads(
+    user_id: str,
+    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
+) -> List[ThreadResponse]:
     """
     List threads for a given user using history_manager.
 
@@ -293,7 +303,10 @@ async def list_threads(user_id: str) -> List[ThreadResponse]:
 
 
 @router.get("/threads/{thread_id}/history", response_model=ChatResponse)
-async def thread_history(thread_id: str) -> ChatResponse:
+async def thread_history(
+    thread_id: str,
+    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
+) -> ChatResponse:
     """
     Get chat history for a given thread using history_manager.
 
@@ -329,7 +342,10 @@ async def thread_history(thread_id: str) -> ChatResponse:
 
 
 @router.post("/feedback", response_model=FeedbackResponse)
-def feedback_endpoint(request: FeedbackRequest) -> FeedbackResponse:
+def feedback_endpoint(
+    request: FeedbackRequest,
+    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
+) -> FeedbackResponse:
     """
     Receive user feedback for a message.
     """
