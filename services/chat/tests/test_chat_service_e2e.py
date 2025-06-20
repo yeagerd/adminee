@@ -30,9 +30,18 @@ def fake_llm_env(monkeypatch):
     monkeypatch.setenv("LLM_PROVIDER", "openai")
     # Set test API key for frontend authentication
     monkeypatch.setenv("API_FRONTEND_CHAT_KEY", "test-frontend-chat-key")
+
+    # Re-initialize the auth system to pick up the new API key
+    from services.chat.auth import ChatServiceAuth, _chat_auth
+
+    _chat_auth = ChatServiceAuth()
+
     # Initialize test database synchronously
     asyncio.run(setup_test_database())
     yield
+
+    # Clean up
+    _chat_auth = None
 
 
 # Test API key for authentication
