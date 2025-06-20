@@ -101,22 +101,6 @@ async def lifespan(app: FastAPI):
         app.docs_url = None
         app.redoc_url = None
 
-    # Configure middleware
-    app.add_middleware(
-        InputSanitizationMiddleware,
-        enabled=True,
-        strict_mode=settings.debug,  # Use strict mode in development
-    )
-
-    # Add CORS middleware
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.cors_origins,
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["*"],
-    )
-
     try:
         await create_all_tables()
         get_safe_logger().info("Database connected successfully")
@@ -150,6 +134,24 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Configure middleware (must be done before app starts)
+settings = get_settings()
+
+# Add InputSanitizationMiddleware
+app.add_middleware(
+    InputSanitizationMiddleware,
+    enabled=True,
+    strict_mode=settings.debug,  # Use strict mode in development
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 # Add security middleware
 app.add_middleware(XSSProtectionMiddleware)
