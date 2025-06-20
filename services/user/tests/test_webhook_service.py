@@ -31,12 +31,25 @@ class TestWebhookServiceIntegration(BaseUserManagementTest):
         # Set the database URL to use our test database
         os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.test_db_path}"
 
-        # Reload the database module to pick up the new database URL
+        # Force reload of all database-related modules
         import importlib
+        import sys
 
-        import services.user.database
+        # Clear any cached database connections
+        modules_to_reload = [
+            "services.user.database",
+            "services.user.settings",
+            "services.user.services.webhook_service",
+        ]
 
-        importlib.reload(services.user.database)
+        for module_name in modules_to_reload:
+            if module_name in sys.modules:
+                importlib.reload(sys.modules[module_name])
+
+        # Re-import and recreate the webhook service to use new database connection
+        from services.user.services.webhook_service import WebhookService
+
+        self.webhook_service = WebhookService()
 
         # Create all tables in the fresh database
         await create_all_tables()
