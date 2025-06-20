@@ -44,6 +44,10 @@ class Settings(BaseSettings):
         default=None,
         description="Frontend API key to access User Management service",
     )
+    api_chat_user_key: Optional[str] = Field(
+        default=None,
+        description="Chat service API key to access User Management service",
+    )
     api_office_user_key: Optional[str] = Field(
         default=None,
         description="Office service API key to access User Management service",

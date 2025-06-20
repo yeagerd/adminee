@@ -34,122 +34,63 @@ class APIKeyConfig:
     permissions: List[str]
 
 
-# API Key Name to Service/Client mapping with permissions
-# NOTE: These are KEY NAMES, not the actual secret values!
-# The actual values come from environment variables.
-API_KEY_CONFIGS: Dict[str, APIKeyConfig] = {
-    # Frontend (Next.js API) keys - full permissions for user-facing operations
-    "api-frontend-office-key": APIKeyConfig(
-        client="frontend",
-        service="office-service-access",
-        permissions=[
-            "read_emails",
-            "send_emails",
-            "read_calendar",
-            "write_calendar",
-            "read_files",
-            "write_files",
-        ],
-    ),
-    "api-frontend-user-key": APIKeyConfig(
-        client="frontend",
-        service="user-management-access",
-        permissions=[
-            "read_users",
-            "write_users",
-            "read_tokens",
-            "write_tokens",
-            "read_preferences",
-            "write_preferences",
-        ],
-    ),
-    "api-frontend-chat-key": APIKeyConfig(
-        client="frontend",
-        service="chat-service-access",
-        permissions=["read_chats", "write_chats", "read_threads", "write_threads"],
-    ),
-    # Service-to-service keys - limited permissions
-    "api-chat-user-key": APIKeyConfig(
-        client="chat-service",
-        service="user-management-access",
-        permissions=["read_users", "read_preferences"],  # Read-only for user context
-    ),
-    "api-chat-office-key": APIKeyConfig(
-        client="chat-service",
-        service="office-service-access",
-        permissions=[
-            "read_emails",
-            "read_calendar",
-            "read_files",
-        ],  # No write permissions
-    ),
-    "api-office-user-key": APIKeyConfig(
-        client="office-service",
-        service="user-management-access",
-        permissions=[
-            "read_users",
-            "read_tokens",
-            "write_tokens",
-        ],  # Can manage tokens
-    ),
-}
-
-
 class ServiceAPIKeyAuth:
     """
     Service API key authentication handler.
 
     This class manages authentication for this specific service by:
     1. Reading actual API key values from environment variables
-    2. Mapping them to service names for authorization
+    2. Mapping them directly to client service names
     """
 
     def __init__(self):
-        # Map actual API key values to service names
-        self.api_key_value_to_service: Dict[str, str] = {}
+        # Map actual API key values directly to client service names
+        self.api_key_value_to_client: Dict[str, str] = {}
 
-        # Only register API keys that belong to this service (user-management)
+        # Register API keys that can access this user service
         if get_settings().api_frontend_user_key:
-            self.api_key_value_to_service[get_settings().api_frontend_user_key] = (
-                "user-management-access"
+            self.api_key_value_to_client[get_settings().api_frontend_user_key] = (
+                "frontend"
             )
+
+        if get_settings().api_chat_user_key:
+            self.api_key_value_to_client[get_settings().api_chat_user_key] = "chat"
 
         if get_settings().api_office_user_key:
-            self.api_key_value_to_service[get_settings().api_office_user_key] = (
-                "office-service-access"
-            )
+            self.api_key_value_to_client[get_settings().api_office_user_key] = "office"
 
         logger.info(
-            f"ServiceAPIKeyAuth initialized with {len(self.api_key_value_to_service)} API keys"
+            f"ServiceAPIKeyAuth initialized with {len(self.api_key_value_to_client)} API keys"
         )
 
     def verify_api_key_value(self, api_key_value: str) -> Optional[str]:
         """
-        Verify an API key value and return the associated service name.
+        Verify an API key value and return the associated client service name.
 
         Args:
             api_key_value: The actual API key secret value from the request
 
         Returns:
-            Service name if the API key value is valid, None otherwise
+            Client service name if the API key value is valid, None otherwise
         """
-        return self.api_key_value_to_service.get(api_key_value)
+        return self.api_key_value_to_client.get(api_key_value)
 
-    def is_valid_service(self, service_name: str) -> bool:
+    def is_valid_client(self, client_name: str) -> bool:
         """
-        Check if service name is valid and authorized for this service.
+        Check if client name is valid and authorized for this service.
 
         Args:
-            service_name: Name of the service
+            client_name: Name of the client service
 
         Returns:
-            True if service is authorized
+            True if client is authorized
         """
-        authorized_services = [
-            "user-management-access",
-            "office-service-access",
+        authorized_clients = [
+            "frontend",
+            "chat",
+            "office",
         ]
-        return service_name in authorized_services
+        return client_name in authorized_clients
 
 
 # Global service auth instance
@@ -205,7 +146,7 @@ async def verify_service_authentication(request: Request) -> str:
         request: FastAPI request object
 
     Returns:
-        Service name if authentication succeeds
+        Client service name if authentication succeeds
 
     Raises:
         HTTPException: If authentication fails
@@ -220,9 +161,9 @@ async def verify_service_authentication(request: Request) -> str:
             headers={"WWW-Authenticate": "ApiKey"},
         )
 
-    service_name = get_service_auth().verify_api_key_value(api_key_value)
+    client_name = get_service_auth().verify_api_key_value(api_key_value)
 
-    if not service_name:
+    if not client_name:
         logger.warning(f"Invalid API key value: {api_key_value[:8]}...")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -230,40 +171,30 @@ async def verify_service_authentication(request: Request) -> str:
             headers={"WWW-Authenticate": "ApiKey"},
         )
 
-    # Store API key and service info in request state for permission checking
+    # Store API key and client info in request state
     request.state.api_key_value = api_key_value
-    request.state.service_name = service_name
-    # Map service names to client names
-    service_to_client = {
-        "user-management-access": "frontend",
-        "office-service-access": "office",
-    }
-    request.state.client_name = service_to_client.get(
-        service_name, get_client_from_api_key_name_lookup(api_key_value)
-    )
+    request.state.client_name = client_name
 
-    logger.info(
-        f"Service authenticated: {service_name} (client: {request.state.client_name})"
-    )
-    return service_name
+    logger.info(f"Service authenticated: {client_name}")
+    return client_name
 
 
 async def get_current_service(request: Request) -> str:
     """
-    FastAPI dependency to get current authenticated service.
+    FastAPI dependency to get current authenticated client service.
 
     Args:
         request: FastAPI request object
 
     Returns:
-        Service name
+        Client service name (e.g., "frontend", "chat", "office")
 
     Raises:
         HTTPException: If service authentication fails
     """
     try:
-        service_name = await verify_service_authentication(request)
-        return service_name
+        client_name = await verify_service_authentication(request)
+        return client_name
 
     except AuthenticationException as e:
         logger.warning(f"Service authentication failed: {e.message}")
@@ -291,114 +222,50 @@ async def get_current_service(request: Request) -> str:
         )
 
 
-def require_service_auth(allowed_services: list = None):
+def require_service_auth(allowed_clients: list = None):
     """
-    Decorator factory for service authentication with specific service restrictions.
+    Decorator factory for service authentication with specific client restrictions.
 
     Args:
-        allowed_services: List of allowed service names (optional)
+        allowed_clients: List of allowed client names (e.g., ["frontend", "chat"])
 
     Returns:
         FastAPI dependency function
     """
 
     async def service_dependency(request: Request) -> str:
-        service_name = await get_current_service(request)
+        client_name = await get_current_service(request)
 
-        if allowed_services and service_name not in allowed_services:
+        if allowed_clients and client_name not in allowed_clients:
             logger.warning(
-                f"Service {service_name} not in allowed list: {allowed_services}"
+                f"Client {client_name} not in allowed list: {allowed_clients}"
             )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={
                     "error": "ServiceAuthorizationError",
-                    "message": f"Service {service_name} not authorized for this endpoint",
+                    "message": f"Client {client_name} not authorized for this endpoint",
                 },
             )
 
-        return service_name
+        return client_name
 
     return service_dependency
 
 
-# Legacy functions for backwards compatibility with global API_KEY_CONFIGS
-# These work with API key names, not values
-
-
-def verify_api_key_name(api_key_name: str) -> Optional[str]:
+# Simple permission checking based on client type
+def get_client_permissions(client_name: str) -> List[str]:
     """
-    Verify an API key name and return the service name it's authorized for.
-
-    NOTE: This function works with key NAMES, not actual secret values!
+    Get the permissions for a client.
 
     Args:
-        api_key_name: The API key name/identifier (e.g., "api-frontend-user-key")
+        client_name: Name of the client service
 
     Returns:
-        Service name if valid, None if invalid
+        List of permissions for the client
     """
-    if not api_key_name:
-        return None
-
-    key_config = API_KEY_CONFIGS.get(api_key_name)
-    if not key_config:
-        return None
-
-    return key_config.service
-
-
-def get_client_from_api_key_name(api_key_name: str) -> Optional[str]:
-    """Get the client name from an API key name."""
-    key_config = API_KEY_CONFIGS.get(api_key_name)
-    return key_config.client if key_config else None
-
-
-def get_permissions_from_api_key_name(api_key_name: str) -> List[str]:
-    """Get the permissions for an API key name."""
-    key_config = API_KEY_CONFIGS.get(api_key_name)
-    return key_config.permissions if key_config else []
-
-
-def get_client_from_api_key_name_lookup(api_key_value: str) -> Optional[str]:
-    """
-    Attempt to find client name by looking up API key value in configurations.
-    This is a fallback for cases where we can't determine the client otherwise.
-    """
-    # For now, return None since we can't reverse-lookup from value to name
-    # without storing additional mapping
-    return None
-
-
-def has_permission_by_key_name(api_key_name: str, required_permission: str) -> bool:
-    """Check if an API key name has a specific permission."""
-    permissions = get_permissions_from_api_key_name(api_key_name)
-    return required_permission in permissions
-
-
-async def validate_service_permissions(
-    service_name: str,
-    required_permissions: Optional[List[str]] = None,
-    api_key_value: Optional[str] = None,
-) -> bool:
-    """
-    Validate that a service has the required permissions.
-
-    Args:
-        service_name: The authenticated service name
-        required_permissions: List of required permissions
-        api_key_value: The API key value used (for granular permission checking)
-
-    Returns:
-        True if service has all required permissions, False otherwise
-    """
-    if not required_permissions:
-        return True
-
-    # For now, use service-level permissions since we don't have
-    # a reverse mapping from api_key_value to api_key_name
-    service_permissions = {
-        "user-management-access": [
+    client_permissions = {
+        "frontend": [
             "read_users",
             "write_users",
             "read_tokens",
@@ -406,107 +273,30 @@ async def validate_service_permissions(
             "read_preferences",
             "write_preferences",
         ],
-        "office-service-access": [
+        "chat": [
+            "read_users",
+            "read_preferences",
+        ],
+        "office": [
             "read_users",
             "read_tokens",
-            "read_emails",
-            "send_emails",
-            "read_calendar",
-            "write_calendar",
-            "read_files",
-            "write_files",
+            "write_tokens",
         ],
-        "chat-service-access": [
-            "read_users",
-            "read_chats",
-            "write_chats",
-            "read_threads",
-            "write_threads",
-        ],
-        "api-gateway-access": ["read_users"],
     }
 
-    allowed_permissions = service_permissions.get(service_name, [])
-    return all(perm in allowed_permissions for perm in required_permissions)
+    return client_permissions.get(client_name, [])
 
 
-class ServiceAuthRequired:
+def client_has_permission(client_name: str, required_permission: str) -> bool:
     """
-    Dependency class for service authentication with permission validation.
+    Check if a client has a specific permission.
+
+    Args:
+        client_name: Name of the client service
+        required_permission: The permission to check for
+
+    Returns:
+        True if client has the permission, False otherwise
     """
-
-    def __init__(self, permissions: list = None, allowed_services: list = None):
-        self.permissions = permissions or []
-        self.allowed_services = allowed_services
-
-    async def __call__(self, request: Request) -> str:
-        service_name = await get_current_service(request)
-
-        # Check service restrictions
-        if self.allowed_services and service_name not in self.allowed_services:
-            logger.warning(
-                f"Service {service_name} not in allowed list: {self.allowed_services}"
-            )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error": "ServiceAuthorizationError",
-                    "message": f"Service {service_name} not authorized for this endpoint",
-                },
-            )
-
-        # Check permissions
-        if self.permissions:
-            api_key_value = getattr(request.state, "api_key_value", None)
-            has_permissions = await validate_service_permissions(
-                service_name, self.permissions, api_key_value
-            )
-            if not has_permissions:
-                logger.warning(
-                    f"Service {service_name} missing required permissions: {self.permissions}"
-                )
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail={
-                        "error": "ServiceAuthorizationError",
-                        "message": f"Service {service_name} lacks required permissions",
-                    },
-                )
-
-        return service_name
-
-
-class ServicePermissionRequired:
-    """
-    Dependency class that requires specific permissions for service access.
-
-    This ensures that the authenticated service has the necessary permissions
-    to perform the requested operation.
-    """
-
-    def __init__(self, required_permissions: List[str]):
-        self.required_permissions = required_permissions
-
-    async def __call__(self, request: Request) -> str:
-        # First ensure service is authenticated
-        service_name = await get_current_service(request)
-
-        # Then check permissions
-        api_key_value = getattr(request.state, "api_key_value", None)
-        has_permissions = await validate_service_permissions(
-            service_name, self.required_permissions, api_key_value
-        )
-
-        if not has_permissions:
-            logger.warning(
-                f"Service {service_name} missing required permissions: {self.required_permissions}"
-            )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error": "ServiceAuthorizationError",
-                    "message": f"Service {service_name} lacks required permissions: {', '.join(self.required_permissions)}",
-                },
-            )
-
-        return service_name
+    permissions = get_client_permissions(client_name)
+    return required_permission in permissions
