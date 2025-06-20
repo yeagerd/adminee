@@ -228,6 +228,41 @@ class UserService:
                 reason=f"Failed to update user: {str(e)}",
             )
 
+    async def update_user_by_external_auth_id(
+        self, external_auth_id: str, user_data: UserUpdate, auth_provider: str = "clerk"
+    ) -> User:
+        """
+        Update an existing user by external auth ID.
+
+        Args:
+            external_auth_id: External auth provider user ID
+            user_data: User update data
+            auth_provider: Authentication provider name
+
+        Returns:
+            Updated user model instance
+
+        Raises:
+            UserNotFoundException: If user is not found
+            ValidationException: If update data is invalid
+        """
+        try:
+            # First get the user by external auth ID to get the internal ID
+            user = await self.get_user_by_external_auth_id(external_auth_id, auth_provider)
+            
+            # Then use the existing update method with the internal ID
+            return await self.update_user(user.id, user_data)
+
+        except UserNotFoundException:
+            raise
+        except Exception as e:
+            logger.error(f"Error updating user by external auth ID {external_auth_id}: {e}")
+            raise ValidationException(
+                field="user_data",
+                value=str(user_data),
+                reason=f"Failed to update user: {str(e)}",
+            )
+
     async def update_user_onboarding(
         self, user_id: int, onboarding_data: UserOnboardingUpdate
     ) -> User:
@@ -276,6 +311,41 @@ class UserService:
                 reason=f"Failed to update onboarding: {str(e)}",
             )
 
+    async def update_user_onboarding_by_external_auth_id(
+        self, external_auth_id: str, onboarding_data: UserOnboardingUpdate, auth_provider: str = "clerk"
+    ) -> User:
+        """
+        Update user onboarding status by external auth ID.
+
+        Args:
+            external_auth_id: External auth provider user ID
+            onboarding_data: Onboarding update data
+            auth_provider: Authentication provider name
+
+        Returns:
+            Updated user model instance
+
+        Raises:
+            UserNotFoundException: If user is not found
+            ValidationException: If onboarding data is invalid
+        """
+        try:
+            # First get the user by external auth ID to get the internal ID
+            user = await self.get_user_by_external_auth_id(external_auth_id, auth_provider)
+            
+            # Then use the existing onboarding update method with the internal ID
+            return await self.update_user_onboarding(user.id, onboarding_data)
+
+        except UserNotFoundException:
+            raise
+        except Exception as e:
+            logger.error(f"Error updating user onboarding by external auth ID {external_auth_id}: {e}")
+            raise ValidationException(
+                field="onboarding_data",
+                value=str(onboarding_data),
+                reason=f"Failed to update user onboarding: {str(e)}",
+            )
+
     async def delete_user(self, user_id: int) -> UserDeleteResponse:
         """
         Soft delete a user.
@@ -322,6 +392,39 @@ class UserService:
             raise ValidationException(
                 field="user_id",
                 value=user_id,
+                reason=f"Failed to delete user: {str(e)}",
+            )
+
+    async def delete_user_by_external_auth_id(
+        self, external_auth_id: str, auth_provider: str = "clerk"
+    ) -> UserDeleteResponse:
+        """
+        Delete (soft delete) a user by external auth ID.
+
+        Args:
+            external_auth_id: External auth provider user ID
+            auth_provider: Authentication provider name
+
+        Returns:
+            UserDeleteResponse with deletion details
+
+        Raises:
+            UserNotFoundException: If user is not found
+        """
+        try:
+            # First get the user by external auth ID to get the internal ID
+            user = await self.get_user_by_external_auth_id(external_auth_id, auth_provider)
+            
+            # Then use the existing delete method with the internal ID
+            return await self.delete_user(user.id)
+
+        except UserNotFoundException:
+            raise
+        except Exception as e:
+            logger.error(f"Error deleting user by external auth ID {external_auth_id}: {e}")
+            raise ValidationException(
+                field="external_auth_id",
+                value=external_auth_id,
                 reason=f"Failed to delete user: {str(e)}",
             )
 
@@ -403,6 +506,25 @@ class UserService:
             UserNotFoundException: If user is not found
         """
         user = await self.get_user_by_id(user_id)
+        return UserResponse.from_orm(user)
+
+    async def get_user_profile_by_external_auth_id(
+        self, external_auth_id: str, auth_provider: str = "clerk"
+    ) -> UserResponse:
+        """
+        Get user profile response by external auth ID.
+
+        Args:
+            external_auth_id: External auth provider user ID
+            auth_provider: Authentication provider name
+
+        Returns:
+            User response schema
+
+        Raises:
+            UserNotFoundException: If user is not found
+        """
+        user = await self.get_user_by_external_auth_id(external_auth_id, auth_provider)
         return UserResponse.from_orm(user)
 
     async def verify_user_exists(self, user_id: int) -> bool:

@@ -91,21 +91,18 @@ async def get_current_user_profile(
     },
 )
 async def get_user_profile(
-    user_id: int = Path(..., description="User database ID"),
+    user_id: str = Path(..., description="User external auth ID"),
     current_user_external_auth_id: str = Depends(get_current_user),
 ) -> UserResponse:
     """
-    Get user profile by database ID.
+    Get user profile by external auth ID.
 
-    Users can only access their own profile. The user_id must belong
-    to the authenticated user.
+    Users can only access their own profile. The user_id must match
+    the authenticated user's external auth ID.
     """
     try:
-        # Get the user to verify they exist and check ownership
-        user = await get_user_service().get_user_by_id(user_id)
-
-        # Verify ownership - check if the authenticated user's external auth ID matches
-        if current_user_external_auth_id != user.external_auth_id:
+        # Verify ownership - user can only access their own profile
+        if current_user_external_auth_id != user_id:
             logger.warning(
                 f"User {current_user_external_auth_id} attempted to access profile of user {user_id}"
             )
@@ -117,7 +114,8 @@ async def get_user_profile(
                 },
             )
 
-        user_profile = await get_user_service().get_user_profile(user_id)
+        # Get the user profile by external auth ID
+        user_profile = await get_user_service().get_user_profile_by_external_auth_id(user_id)
 
         logger.info(f"Retrieved profile for user {user_id}")
         return user_profile
@@ -156,7 +154,7 @@ async def get_user_profile(
 )
 async def update_user_profile(
     user_data: UserUpdate,
-    user_id: int = Path(..., description="User database ID"),
+    user_id: str = Path(..., description="User external auth ID"),
     current_user_external_auth_id: str = Depends(get_current_user),
 ) -> UserResponse:
     """
@@ -166,11 +164,8 @@ async def update_user_profile(
     - only provided fields will be updated.
     """
     try:
-        # Get the user to verify they exist and check ownership
-        user = await get_user_service().get_user_by_id(user_id)
-
-        # Verify ownership
-        if current_user_external_auth_id != user.external_auth_id:
+        # Verify ownership - user can only update their own profile
+        if current_user_external_auth_id != user_id:
             logger.warning(
                 f"User {current_user_external_auth_id} attempted to update profile of user {user_id}"
             )
@@ -182,7 +177,7 @@ async def update_user_profile(
                 },
             )
 
-        updated_user = await get_user_service().update_user(user_id, user_data)
+        updated_user = await get_user_service().update_user_by_external_auth_id(user_id, user_data)
         user_response = UserResponse.from_orm(updated_user)
 
         logger.info(f"Updated profile for user {user_id}")
@@ -226,7 +221,7 @@ async def update_user_profile(
     },
 )
 async def delete_user_profile(
-    user_id: int = Path(..., description="User database ID"),
+    user_id: str = Path(..., description="User external auth ID"),
     current_user_external_auth_id: str = Depends(get_current_user),
 ) -> UserDeleteResponse:
     """
@@ -236,11 +231,8 @@ async def delete_user_profile(
     by setting the deleted_at timestamp.
     """
     try:
-        # Get the user to verify they exist and check ownership
-        user = await get_user_service().get_user_by_id(user_id)
-
-        # Verify ownership
-        if current_user_external_auth_id != user.external_auth_id:
+        # Verify ownership - user can only delete their own profile
+        if current_user_external_auth_id != user_id:
             logger.warning(
                 f"User {current_user_external_auth_id} attempted to delete profile of user {user_id}"
             )
@@ -252,7 +244,7 @@ async def delete_user_profile(
                 },
             )
 
-        delete_response = await get_user_service().delete_user(user_id)
+        delete_response = await get_user_service().delete_user_by_external_auth_id(user_id)
 
         logger.info(f"Deleted profile for user {user_id}")
         return delete_response
@@ -293,7 +285,7 @@ async def delete_user_profile(
 )
 async def update_user_onboarding(
     onboarding_data: UserOnboardingUpdate,
-    user_id: int = Path(..., description="User database ID"),
+    user_id: str = Path(..., description="User external auth ID"),
     current_user_external_auth_id: str = Depends(get_current_user),
 ) -> UserResponse:
     """
@@ -303,11 +295,8 @@ async def update_user_onboarding(
     is used to track user progress through the onboarding flow.
     """
     try:
-        # Get the user to verify they exist and check ownership
-        user = await get_user_service().get_user_by_id(user_id)
-
-        # Verify ownership
-        if current_user_external_auth_id != user.external_auth_id:
+        # Verify ownership - user can only update their own onboarding
+        if current_user_external_auth_id != user_id:
             logger.warning(
                 f"User {current_user_external_auth_id} attempted to update onboarding of user {user_id}"
             )
@@ -319,7 +308,7 @@ async def update_user_onboarding(
                 },
             )
 
-        updated_user = await get_user_service().update_user_onboarding(
+        updated_user = await get_user_service().update_user_onboarding_by_external_auth_id(
             user_id, onboarding_data
         )
         user_response = UserResponse.from_orm(updated_user)
