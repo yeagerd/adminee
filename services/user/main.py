@@ -64,8 +64,11 @@ from services.user.services.integration_service import (
 from services.user.settings import Settings, get_settings
 
 # Set up centralized logging
+settings = get_settings()
 setup_service_logging(
-    service_name="user-management-service", log_level="INFO", log_format="json"
+    service_name="user-management-service",
+    log_level=settings.log_level,
+    log_format=settings.log_format,
 )
 
 logger = logging.getLogger(__name__)
