@@ -308,4 +308,70 @@ python -m pytest --durations=10 -q -n auto
 
 See `LICENSE`
 
+## Quick Start
+
+1. Set up the development environment:
+   ```bash
+   ./setup-dev.sh
+   ```
+
+2. Start all services:
+   ```bash
+   ./start-all-services.sh
+   ```
+
+3. Access the application at http://localhost:3000
+
+## Logging Configuration
+
+The application uses structured logging that can be configured for development or production use:
+
+### For Human-Readable Logs (Development)
+
+Set the log format to "text" for easier reading during development:
+
+```bash
+export LOG_FORMAT=text
+export LOG_LEVEL=INFO
+./start-all-services.sh
+```
+
+Or create a `.env` file:
+```
+LOG_FORMAT=text
+LOG_LEVEL=DEBUG
+```
+
+### For Machine-Readable Logs (Production)
+
+Use JSON format for structured logging in production:
+
+```bash
+export LOG_FORMAT=json
+export LOG_LEVEL=INFO
+```
+
+### Log Format Examples
+
+**Text format (human-readable):**
+```
+2025-06-20 06:58:14 - services.user.security.encryption - INFO - Token decrypted successfully [user_id=demo_user]
+```
+
+**JSON format (machine-readable):**
+```json
+{
+  "timestamp": "2025-06-20T06:58:14.258Z",
+  "level": "INFO", 
+  "logger": "services.user.security.encryption",
+  "message": "Token decrypted successfully",
+  "service": "user-management-service",
+  "user_id": "demo_user"
+}
+```
+
+## Architecture
+
+// ... existing code ...
+
 ---

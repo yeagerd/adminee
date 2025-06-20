@@ -28,8 +28,11 @@ from services.office.core.settings import get_settings
 from services.office.schemas import ApiError
 
 # Set up centralized logging
+settings = get_settings()
 setup_service_logging(
-    service_name="office-service", log_level="INFO", log_format="json"
+    service_name="office-service",
+    log_level=settings.LOG_LEVEL,
+    log_format=settings.LOG_FORMAT,
 )
 
 logger = logging.getLogger(__name__)
