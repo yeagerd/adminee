@@ -65,6 +65,9 @@ try:
 except ImportError:
     OAUTH_AVAILABLE = False
 
+# Set default user ID
+DEFAULT_USER_ID = "trybriefly@outlook.com"
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -376,10 +379,10 @@ class FullDemo:
         # Get email address if not provided
         if not email:
             email = input(
-                f"📧 Enter email address (default: {self.user_id}@example.com): "
+                f"📧 Enter email address (default: {DEFAULT_USER_ID}): "
             ).strip()
             if not email:
-                email = f"{self.user_id}@example.com"
+                email = DEFAULT_USER_ID
 
         print(f"👤 Authenticating as: {email}")
 
