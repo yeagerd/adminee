@@ -6,6 +6,8 @@ and various webhook event types.
 """
 
 import asyncio
+import importlib
+import sys
 from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
@@ -21,6 +23,21 @@ class TestClerkWebhookEndpoint(BaseUserManagementTest):
 
     def setup_method(self):
         super().setup_method()
+
+        # Force reload of database-related modules to pick up new database path
+        try:
+            modules_to_reload = [
+                "services.user.database",
+                "services.user.settings",
+                "services.user.services.webhook_service",
+            ]
+
+            for module_name in modules_to_reload:
+                if module_name in sys.modules:
+                    importlib.reload(sys.modules[module_name])
+        finally:
+            pass
+
         asyncio.run(create_all_tables())
         self.client = TestClient(app)
         self.sample_user_created_payload = self._get_sample_user_created_payload()
@@ -404,6 +421,21 @@ class TestClerkTestWebhookEndpoint(BaseUserManagementTest):
 
     def setup_method(self):
         super().setup_method()
+
+        # Force reload of database-related modules to pick up new database path
+        try:
+            modules_to_reload = [
+                "services.user.database",
+                "services.user.settings",
+                "services.user.services.webhook_service",
+            ]
+
+            for module_name in modules_to_reload:
+                if module_name in sys.modules:
+                    importlib.reload(sys.modules[module_name])
+        finally:
+            pass
+
         asyncio.run(create_all_tables())
         self.client = TestClient(app)
 
