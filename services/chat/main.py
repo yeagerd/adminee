@@ -17,7 +17,12 @@ from services.common.logging_config import (
 )
 
 # Set up centralized logging
-setup_service_logging(service_name="chat-service", log_level="INFO", log_format="json")
+settings = get_settings()
+setup_service_logging(
+    service_name="chat-service",
+    log_level=settings.log_level,
+    log_format=settings.log_format,
+)
 
 logger = logging.getLogger(__name__)
 
