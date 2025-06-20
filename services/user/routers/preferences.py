@@ -28,6 +28,7 @@ from services.user.services.preferences_service import PreferencesService
 # Set up logging
 logger = structlog.get_logger(__name__)
 
+
 router = APIRouter(
     prefix="/users/{user_id}/preferences",
     tags=["Preferences"],
@@ -66,6 +67,7 @@ async def get_preferences(
         # Verify user ownership
         await verify_user_ownership(current_user, user_id)
 
+        # Pass external auth ID directly to service (service handles internal lookup)
         preferences = await PreferencesService.get_user_preferences(user_id)
 
         if not preferences:
@@ -148,6 +150,7 @@ async def update_preferences(
         # Verify user ownership
         await verify_user_ownership(current_user, user_id)
 
+        # Pass external auth ID directly to service (service handles internal lookup)
         updated_preferences = await PreferencesService.update_user_preferences(
             user_id, preferences_update
         )
@@ -230,15 +233,12 @@ async def reset_preferences(
         # Verify user ownership
         await verify_user_ownership(current_user, user_id)
 
+        # Pass external auth ID directly to service (service handles internal lookup)
         reset_preferences = await PreferencesService.reset_user_preferences(
             user_id, reset_request.categories
         )
 
-        logger.info(
-            "Successfully reset preferences",
-            user_id=user_id,
-            categories=reset_request.categories,
-        )
+        logger.info("Successfully reset preferences", user_id=user_id)
         return reset_preferences
 
     except UserNotFoundException:

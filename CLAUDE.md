@@ -13,7 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Chat Service**: AI conversations with LLM integration (`/services/chat/`)
 - **Vector DB**: Pinecone for RAG pipeline (`/services/vector-db/`)
 
-**Tech**: Python 3.11+, FastAPI, PostgreSQL, Redis, Next.js, Clerk auth, LangChain, OpenAI, Docker
+**Tech**: Python 3.11+, FastAPI, PostgreSQL, Redis, Next.js, NextAuth, LangChain, OpenAI, Docker
 
 ## Key Commands
 From project root:
@@ -45,7 +45,7 @@ alembic upgrade head  # Apply migrations
 
 ## Development Patterns
 
-- **Auth**: Clerk (frontend) + service-to-service API keys
+- **Auth**: NextAuth (frontend) + service-to-service API keys
 - **Communication**: Frontend → Next.js API routes → Backend services
 - **Testing**: `pytest` with async support, `fakeredis`/`aiosqlite` for isolation
 - **Style**: Black, isort, ruff, mypy (Python); ESLint (TypeScript)
