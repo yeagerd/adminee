@@ -39,10 +39,9 @@ class TestDemoAuthentication:
 
     @pytest.mark.asyncio
     async def test_create_user_if_not_exists_success(self, demo_instance):
-        """Test successful user creation via webhook simulation."""
+        """Test successful user creation."""
         email = "test@example.com"
 
-        # Mock the HTTP client response for successful user creation
         mock_response = MagicMock()
         mock_response.status_code = 201
 
@@ -58,9 +57,9 @@ class TestDemoAuthentication:
             mock_client.return_value.__aenter__.return_value.post.assert_called_once()
             call_args = mock_client.return_value.__aenter__.return_value.post.call_args
 
-            # Check URL
+            # Check URL - call_args[0] contains positional args, call_args[1] contains keyword args
             assert (
-                call_args[1]["url"]
+                call_args[0][0]
                 == f"{demo_instance.user_client.base_url}/webhooks/clerk"
             )
 
@@ -136,7 +135,7 @@ class TestDemoAuthentication:
 
         with (
             patch("httpx.AsyncClient") as mock_client,
-            patch("services.demos.demo_jwt_utils.create_bearer_token") as mock_jwt,
+            patch("services.demos.chat.create_bearer_token") as mock_jwt,
         ):
 
             mock_jwt.return_value = "mock_jwt_token"
@@ -198,7 +197,7 @@ class TestDemoAuthentication:
         # Mock failed integrations check (user doesn't exist)
         with (
             patch("httpx.AsyncClient") as mock_client,
-            patch("services.demos.demo_jwt_utils.create_bearer_token") as mock_jwt,
+            patch("services.demos.chat.create_bearer_token") as mock_jwt,
         ):
 
             mock_jwt.return_value = "mock_jwt_token"

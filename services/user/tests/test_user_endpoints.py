@@ -58,39 +58,36 @@ class TestUserProfileEndpoints:
     @pytest.mark.asyncio
     async def test_get_user_profile_success(self):
         """Test successful user profile retrieval."""
-        mock_user = self.create_mock_user()
+        mock_response = UserResponse(
+            id=1,
+            external_auth_id="user_123",
+            auth_provider="clerk",
+            email="test@example.com",
+            first_name="Test",
+            last_name="User",
+            profile_image_url="https://example.com/avatar.jpg",
+            onboarding_completed=False,
+            onboarding_step="profile_setup",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
 
-        with (
-            patch.object(get_user_service(), "get_user_by_id", return_value=mock_user),
-            patch.object(get_user_service(), "get_user_profile") as mock_get_profile,
-        ):
-
-            mock_response = UserResponse(
-                id=1,
-                external_auth_id="user_123",
-                auth_provider="clerk",
-                email="test@example.com",
-                first_name="Test",
-                last_name="User",
-                profile_image_url="https://example.com/avatar.jpg",
-                onboarding_completed=False,
-                onboarding_step="profile_setup",
-                created_at=datetime.now(timezone.utc),
-                updated_at=datetime.now(timezone.utc),
-            )
+        with patch.object(
+            get_user_service(), "get_user_profile_by_external_auth_id"
+        ) as mock_get_profile:
             mock_get_profile.return_value = mock_response
 
             # Import here to avoid circular imports during testing
             from services.user.routers.users import get_user_profile
 
             result = await get_user_profile(
-                user_id=1, current_user_external_auth_id="user_123"
+                user_id="user_123", current_user_external_auth_id="user_123"
             )
 
             assert result.id == 1
             assert result.external_auth_id == "user_123"
             assert result.email == "test@example.com"
-            mock_get_profile.assert_called_once_with(1)
+            mock_get_profile.assert_called_once_with("user_123")
 
     @pytest.mark.asyncio
     async def test_get_user_profile_unauthorized(self):
@@ -119,14 +116,18 @@ class TestUserProfileEndpoints:
     @pytest.mark.asyncio
     async def test_get_user_profile_not_found(self):
         """Test user profile retrieval when user not found."""
-        with patch.object(get_user_service(), "get_user_by_id") as mock_get_by_id:
-            mock_get_by_id.side_effect = UserNotFoundException("User not found")
+        # The authorization check happens before user lookup, so we need to pass the same user_id
+        # to trigger the user lookup, but mock the service to return not found
+        with patch.object(
+            get_user_service(), "get_user_profile_by_external_auth_id"
+        ) as mock_get_profile:
+            mock_get_profile.side_effect = UserNotFoundException("User not found")
 
             from services.user.routers.users import get_user_profile
 
             with pytest.raises(HTTPException) as exc_info:
                 await get_user_profile(
-                    user_id=1, current_user_external_auth_id="user_123"
+                    user_id="user_123", current_user_external_auth_id="user_123"
                 )
 
             assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
@@ -134,16 +135,16 @@ class TestUserProfileEndpoints:
     @pytest.mark.asyncio
     async def test_update_user_profile_success(self):
         """Test successful user profile update."""
-        mock_user = self.create_mock_user()
         mock_updated_user = self.create_mock_user()
         mock_updated_user.first_name = "Updated"
 
         user_update = UserUpdate(first_name="Updated", last_name="Name")
 
         with (
-            patch.object(get_user_service(), "get_user_by_id", return_value=mock_user),
             patch.object(
-                get_user_service(), "update_user", return_value=mock_updated_user
+                get_user_service(),
+                "update_user_by_external_auth_id",
+                return_value=mock_updated_user,
             ),
             patch("services.user.schemas.user.UserResponse.from_orm") as mock_from_orm,
         ):
@@ -167,24 +168,23 @@ class TestUserProfileEndpoints:
 
             result = await update_user_profile(
                 user_data=user_update,
-                user_id=1,
+                user_id="user_123",
                 current_user_external_auth_id="user_123",
             )
 
             assert result.first_name == "Updated"
-            get_user_service().update_user.assert_called_once_with(1, user_update)
+            get_user_service().update_user_by_external_auth_id.assert_called_once_with(
+                "user_123", user_update
+            )
 
     @pytest.mark.asyncio
     async def test_update_user_profile_validation_error(self):
         """Test user profile update with validation error."""
-        mock_user = self.create_mock_user()
         user_update = UserUpdate(first_name="Updated")
 
-        with (
-            patch.object(get_user_service(), "get_user_by_id", return_value=mock_user),
-            patch.object(get_user_service(), "update_user") as mock_update,
-        ):
-
+        with patch.object(
+            get_user_service(), "update_user_by_external_auth_id"
+        ) as mock_update:
             mock_update.side_effect = ValidationException(
                 field="email", value="invalid-email", reason="Invalid email format"
             )
@@ -194,7 +194,7 @@ class TestUserProfileEndpoints:
             with pytest.raises(HTTPException) as exc_info:
                 await update_user_profile(
                     user_data=user_update,
-                    user_id=1,
+                    user_id="user_123",
                     current_user_external_auth_id="user_123",
                 )
 
@@ -203,31 +203,31 @@ class TestUserProfileEndpoints:
     @pytest.mark.asyncio
     async def test_delete_user_profile_success(self):
         """Test successful user profile deletion."""
-        mock_user = self.create_mock_user()
         mock_delete_response = UserDeleteResponse(
             success=True,
-            message="User 1 successfully deleted",
+            message="User user_123 successfully deleted",
             user_id=1,
             external_auth_id="user_123",
             deleted_at=datetime.now(timezone.utc),
         )
 
-        with (
-            patch.object(get_user_service(), "get_user_by_id", return_value=mock_user),
-            patch.object(
-                get_user_service(), "delete_user", return_value=mock_delete_response
-            ),
+        with patch.object(
+            get_user_service(),
+            "delete_user_by_external_auth_id",
+            return_value=mock_delete_response,
         ):
 
             from services.user.routers.users import delete_user_profile
 
             result = await delete_user_profile(
-                user_id=1, current_user_external_auth_id="user_123"
+                user_id="user_123", current_user_external_auth_id="user_123"
             )
 
             assert result.success is True
-            assert result.user_id == 1
-            get_user_service().delete_user.assert_called_once_with(1)
+            assert result.external_auth_id == "user_123"
+            get_user_service().delete_user_by_external_auth_id.assert_called_once_with(
+                "user_123"
+            )
 
     @pytest.mark.asyncio
     async def test_delete_user_profile_unauthorized(self):
@@ -255,7 +255,6 @@ class TestUserProfileEndpoints:
     @pytest.mark.asyncio
     async def test_update_user_onboarding_success(self):
         """Test successful user onboarding update."""
-        mock_user = self.create_mock_user()
         mock_updated_user = self.create_mock_user()
         mock_updated_user.onboarding_completed = True
         mock_updated_user.onboarding_step = None
@@ -265,10 +264,9 @@ class TestUserProfileEndpoints:
         )
 
         with (
-            patch.object(get_user_service(), "get_user_by_id", return_value=mock_user),
             patch.object(
                 get_user_service(),
-                "update_user_onboarding",
+                "update_user_onboarding_by_external_auth_id",
                 return_value=mock_updated_user,
             ),
             patch("services.user.schemas.user.UserResponse.from_orm") as mock_from_orm,
@@ -293,13 +291,14 @@ class TestUserProfileEndpoints:
 
             result = await update_user_onboarding(
                 onboarding_data=onboarding_update,
-                user_id=1,
+                user_id="user_123",
                 current_user_external_auth_id="user_123",
             )
 
             assert result.onboarding_completed is True
-            get_user_service().update_user_onboarding.assert_called_once_with(
-                1, onboarding_update
+            assert result.onboarding_step is None
+            get_user_service().update_user_onboarding_by_external_auth_id.assert_called_once_with(
+                "user_123", onboarding_update
             )
 
     @pytest.mark.asyncio
@@ -408,7 +407,7 @@ class TestUserProfileEndpoints:
 
             assert result.external_auth_id == "user_123"
             get_user_service().get_user_by_external_auth_id.assert_called_once_with(
-                "user_123"
+                "user_123", "clerk"
             )
 
     @pytest.mark.asyncio
