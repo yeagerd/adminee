@@ -206,12 +206,16 @@ class WorkflowAgent:
         )
 
         agents["EmailAgent"] = EmailAgent(
-            llm_model=self.llm_model, llm_provider=self.llm_provider, **self.llm_kwargs
+            llm_model=self.llm_model,
+            llm_provider=self.llm_provider,
+            user_id=self.user_id,
+            **self.llm_kwargs
         )
 
         agents["DocumentAgent"] = DocumentAgent(
             llm_model=self.llm_model,
             llm_provider=self.llm_provider,
+            user_id=self.user_id,
             **self.llm_kwargs,
         )
 
