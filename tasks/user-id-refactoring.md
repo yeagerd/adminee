@@ -34,10 +34,12 @@ Fix the broken `get_user_preferences()` function that takes `user_id: str` but q
 3. Update all related functions in the same file to follow same pattern
 
 **Acceptance Criteria:**
-- [ ] Function signature keeps `user_id: str` (external Clerk ID)
-- [ ] Database queries work correctly with internal ID lookup
-- [ ] All tests pass
-- [ ] Demo authentication works correctly
+- [x] Function signature keeps `user_id: str` (external Clerk ID)
+- [x] Database queries work correctly with internal ID lookup
+- [x] All tests pass
+- [x] Demo authentication works correctly
+
+**✅ COMPLETED:** Fixed all three methods in PreferencesService and updated router to pass external auth ID directly. All 24 preference tests and 14 user endpoint tests pass.
 
 **Testing:**
 ```bash
