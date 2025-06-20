@@ -3,11 +3,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
-      args:
-        # Clerk args removed - now using NextAuth
     volumes:
       - ./frontend:/app:cached
-    command: sleep infinity
+    command: npm run dev
     ports:
       - "3000:3000" # For Next.js frontend
       - "8000:8000" # For Python/FastAPI backend (Note: Original 'app' service. If chat-service is also FastAPI on 8000, ports need adjustment)
@@ -15,10 +13,6 @@ services:
       - user-management
       - chat-service
       - office-service
-    environment:
-      # Frontend / Next.js specific vars
-      # NextAuth configuration handled at runtime
-      # Add other necessary environment variables for the app service
 
   user-management:
     build:
@@ -38,8 +32,8 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - API_FRONTEND_USER_KEY=${API_FRONTEND_USER_KEY}
+      - API_CHAT_USER_KEY=${API_CHAT_USER_KEY}
       - TOKEN_ENCRYPTION_SALT=${TOKEN_ENCRYPTION_SALT}
-      # Clerk environment variables removed - now using NextAuth
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - MICROSOFT_CLIENT_ID=${MICROSOFT_CLIENT_ID}
