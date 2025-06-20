@@ -51,8 +51,10 @@ async def get_current_user_profile(
     without needing to know their database ID.
     """
     try:
-        current_user = await get_user_service().get_user_by_external_auth_id_auto_detect(
-            current_user_external_auth_id
+        current_user = (
+            await get_user_service().get_user_by_external_auth_id_auto_detect(
+                current_user_external_auth_id
+            )
         )
         user_response = UserResponse.from_orm(current_user)
 
@@ -115,7 +117,9 @@ async def get_user_profile(
             )
 
         # Get the user profile by external auth ID
-        user_profile = await get_user_service().get_user_profile_by_external_auth_id(user_id)
+        user_profile = await get_user_service().get_user_profile_by_external_auth_id(
+            user_id
+        )
 
         logger.info(f"Retrieved profile for user {user_id}")
         return user_profile
@@ -177,7 +181,9 @@ async def update_user_profile(
                 },
             )
 
-        updated_user = await get_user_service().update_user_by_external_auth_id(user_id, user_data)
+        updated_user = await get_user_service().update_user_by_external_auth_id(
+            user_id, user_data
+        )
         user_response = UserResponse.from_orm(updated_user)
 
         logger.info(f"Updated profile for user {user_id}")
@@ -244,7 +250,9 @@ async def delete_user_profile(
                 },
             )
 
-        delete_response = await get_user_service().delete_user_by_external_auth_id(user_id)
+        delete_response = await get_user_service().delete_user_by_external_auth_id(
+            user_id
+        )
 
         logger.info(f"Deleted profile for user {user_id}")
         return delete_response
@@ -308,8 +316,10 @@ async def update_user_onboarding(
                 },
             )
 
-        updated_user = await get_user_service().update_user_onboarding_by_external_auth_id(
-            user_id, onboarding_data
+        updated_user = (
+            await get_user_service().update_user_onboarding_by_external_auth_id(
+                user_id, onboarding_data
+            )
         )
         user_response = UserResponse.from_orm(updated_user)
 

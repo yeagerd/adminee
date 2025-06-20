@@ -9,12 +9,12 @@ These tests verify that the demo script can properly:
 This would have caught the issue where demo_user creation was failing.
 """
 
-import asyncio
-import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
-import httpx
-import sys
 import os
+import sys
+from unittest.mock import MagicMock, patch
+
+import httpx
+import pytest
 
 # Add the project root to the path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
@@ -234,7 +234,7 @@ class TestDemoAuthentication:
         # This test verifies that time.time() can be called without error
         # If time import was missing, this would raise NameError
         try:
-            result = await demo_instance._create_user_if_not_exists(email)
+            await demo_instance._create_user_if_not_exists(email)
             # If we get here without NameError, the import is working
             assert True
         except NameError as e:

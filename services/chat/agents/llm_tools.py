@@ -85,14 +85,16 @@ def get_calendar_events(
         params["end_date"] = end_date
     if time_zone:
         params["time_zone"] = time_zone
-    
+
     # If no providers specified, get user's available integrations
     if not providers:
         available_providers = get_user_available_providers(user_id)
         if available_providers:
             params["providers"] = available_providers
         else:
-            return {"error": "No calendar integrations available. Please connect Google or Microsoft calendar first."}
+            return {
+                "error": "No calendar integrations available. Please connect Google or Microsoft calendar first."
+            }
     else:
         # Convert comma-separated string to list format expected by office service
         provider_list = [p.strip() for p in providers.split(",")]
@@ -160,10 +162,10 @@ def get_calendar_events(
 def get_user_available_providers(user_id: str) -> List[str]:
     """
     Get list of available calendar providers for a user.
-    
+
     Args:
         user_id: User identifier
-        
+
     Returns:
         List of available provider names (e.g., ['google', 'microsoft'])
     """
@@ -172,33 +174,33 @@ def get_user_available_providers(user_id: str) -> List[str]:
         headers = {"Content-Type": "application/json"}
         if get_settings().api_chat_user_key:
             headers["X-API-Key"] = get_settings().api_chat_user_key
-        
+
         user_service_url = get_settings().user_management_service_url
         response = requests.get(
             f"{user_service_url}/internal/users/{user_id}/integrations",
             headers=headers,
             timeout=5,
         )
-        
+
         if response.status_code == 200:
             data = response.json()
             integrations = data.get("integrations", [])
-            
+
             # Extract active calendar providers
             available_providers = []
             for integration in integrations:
                 provider = integration.get("provider", "").lower()
                 status = integration.get("status", "").lower()
-                
+
                 # Only include active integrations for calendar providers
                 if status == "active" and provider in ["google", "microsoft"]:
                     available_providers.append(provider)
-            
+
             return available_providers
         else:
             print(f"Warning: Could not fetch user integrations: {response.status_code}")
             return []
-            
+
     except Exception as e:
         print(f"Warning: Error fetching user integrations: {e}")
         return []

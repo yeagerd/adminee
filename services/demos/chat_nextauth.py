@@ -41,17 +41,18 @@ from typing import Optional
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 # Import the base demo functionality
-from services.demos.chat import FullDemo, DEFAULT_USER_ID, logger
+from services.demos.chat import FullDemo, logger
 
 # Import NextAuth utilities
 try:
     from services.demos.nextauth_demo_utils import (
         NextAuthClient,
-        test_nextauth_flow,
-        create_nextauth_jwt_for_demo,
         compare_auth_approaches,
+        create_nextauth_jwt_for_demo,
         demonstrate_nextauth_integration,
+        test_nextauth_flow,
     )
+
     NEXTAUTH_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"NextAuth utilities not available: {e}")
@@ -63,11 +64,11 @@ class EnhancedDemo(FullDemo):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
         # NextAuth client
         self.nextauth_client: Optional[NextAuthClient] = None
         self.nextauth_token: Optional[str] = None
-        
+
         # Track available authentication methods
         self.auth_methods = {
             "clerk": True,  # Always available in base demo
@@ -78,14 +79,14 @@ class EnhancedDemo(FullDemo):
         """Enhanced service checking including NextAuth server."""
         # Call parent method
         await super().check_services()
-        
+
         # Check NextAuth test server
         if NEXTAUTH_AVAILABLE:
             print("🔍 Checking NextAuth test server...")
             self.nextauth_client = NextAuthClient()
             nextauth_available = await self.nextauth_client.health_check()
             self.auth_methods["nextauth"] = nextauth_available
-            
+
             if nextauth_available:
                 print("  NextAuth Test Server: ✅")
             else:
@@ -202,7 +203,7 @@ class EnhancedDemo(FullDemo):
         if not NEXTAUTH_AVAILABLE:
             return "❌ NextAuth utilities not available for comparison"
 
-        clerk_token = getattr(self.user_client, 'auth_token', None)
+        clerk_token = getattr(self.user_client, "auth_token", None)
         if clerk_token and clerk_token.startswith("Bearer "):
             clerk_token = clerk_token[7:]  # Remove "Bearer " prefix
 
@@ -221,7 +222,10 @@ class EnhancedDemo(FullDemo):
             try:
                 # Show prompt with authentication status
                 auth_status = ""
-                if hasattr(self.user_client, 'auth_token') and self.user_client.auth_token:
+                if (
+                    hasattr(self.user_client, "auth_token")
+                    and self.user_client.auth_token
+                ):
                     auth_status += "🔑"
                 if self.nextauth_token:
                     auth_status += "🔵"
@@ -449,16 +453,18 @@ Examples:
         print("=" * 40)
         print("This demo will help you compare Clerk vs NextAuth authentication.")
         print()
-        
+
         # Create demo tokens for comparison
         clerk_token = None
         nextauth_token = None
-        
+
         if NEXTAUTH_AVAILABLE:
             print("Creating demo tokens for comparison...")
-            nextauth_token = create_nextauth_jwt_for_demo("demo123", "demo@example.com", "google")
+            nextauth_token = create_nextauth_jwt_for_demo(
+                "demo123", "demo@example.com", "google"
+            )
             print("✅ Demo tokens created")
-            
+
             compare_auth_approaches(clerk_token, nextauth_token)
         else:
             print("❌ NextAuth utilities not available for comparison")
@@ -501,4 +507,4 @@ Examples:
 
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

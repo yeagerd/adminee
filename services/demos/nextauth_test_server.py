@@ -8,7 +8,7 @@ behavior for testing with the chat.py demo.
 
 Features:
 - Google OAuth simulation
-- Microsoft OAuth simulation  
+- Microsoft OAuth simulation
 - JWT token generation (simulating NextAuth tokens)
 - User creation/management
 - Token validation
@@ -24,7 +24,6 @@ Environment Variables:
     NEXTAUTH_SECRET         Secret for JWT signing (default: demo-secret)
 """
 
-import asyncio
 import json
 import logging
 import os
@@ -32,12 +31,12 @@ import secrets
 import time
 import urllib.parse
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 import httpx
 import jwt
 from fastapi import FastAPI, HTTPException, Query, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 # Configure logging
@@ -64,6 +63,7 @@ app = FastAPI(title="NextAuth Test Server", version="1.0.0")
 
 class OAuthStartRequest(BaseModel):
     """Request to start OAuth flow."""
+
     provider: str
     redirect_uri: str = "http://localhost:3000/api/auth/callback"
     scopes: Optional[List[str]] = None
@@ -71,12 +71,14 @@ class OAuthStartRequest(BaseModel):
 
 class OAuthCallbackRequest(BaseModel):
     """OAuth callback request."""
+
     code: str
     state: str
 
 
 class NextAuthToken(BaseModel):
     """NextAuth JWT token structure."""
+
     sub: str  # User ID
     email: str
     name: str
@@ -97,7 +99,7 @@ def create_nextauth_jwt(user_data: Dict, provider: str, tokens: Dict = None) -> 
     """Create a NextAuth-style JWT token."""
     now = int(time.time())
     expires = now + 3600  # 1 hour
-    
+
     payload = {
         "sub": user_data["id"],
         "email": user_data["email"],
@@ -106,15 +108,17 @@ def create_nextauth_jwt(user_data: Dict, provider: str, tokens: Dict = None) -> 
         "iat": now,
         "exp": expires,
     }
-    
+
     # Add OAuth tokens if available
     if tokens:
-        payload.update({
-            "access_token": tokens.get("access_token"),
-            "refresh_token": tokens.get("refresh_token"),
-            "expires_at": tokens.get("expires_at"),
-        })
-    
+        payload.update(
+            {
+                "access_token": tokens.get("access_token"),
+                "refresh_token": tokens.get("refresh_token"),
+                "expires_at": tokens.get("expires_at"),
+            }
+        )
+
     return jwt.encode(payload, NEXTAUTH_SECRET, algorithm="HS256")
 
 
@@ -125,8 +129,7 @@ def verify_nextauth_jwt(token: str) -> Dict:
         return payload
     except jwt.InvalidTokenError as e:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid token: {e}"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Invalid token: {e}"
         )
 
 
@@ -145,7 +148,7 @@ async def root():
         "providers": {
             "google": bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET),
             "microsoft": bool(MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET),
-        }
+        },
     }
 
 
@@ -153,13 +156,13 @@ async def root():
 async def start_oauth_flow(request: OAuthStartRequest):
     """Start OAuth flow for Google or Microsoft."""
     provider = request.provider.lower()
-    
+
     if provider not in ["google", "microsoft"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Supported providers: google, microsoft"
+            detail="Supported providers: google, microsoft",
         )
-    
+
     # Generate state
     state = generate_state()
     oauth_states[state] = {
@@ -168,23 +171,23 @@ async def start_oauth_flow(request: OAuthStartRequest):
         "scopes": request.scopes or [],
         "created_at": time.time(),
     }
-    
+
     # Build authorization URL
     if provider == "google":
         if not GOOGLE_CLIENT_ID:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Google OAuth not configured"
+                detail="Google OAuth not configured",
             )
-        
+
         scopes = request.scopes or [
             "openid",
-            "email", 
+            "email",
             "profile",
             "https://www.googleapis.com/auth/gmail.readonly",
-            "https://www.googleapis.com/auth/calendar"
+            "https://www.googleapis.com/auth/calendar",
         ]
-        
+
         auth_url = (
             "https://accounts.google.com/o/oauth2/v2/auth?"
             f"client_id={GOOGLE_CLIENT_ID}&"
@@ -195,24 +198,24 @@ async def start_oauth_flow(request: OAuthStartRequest):
             "access_type=offline&"
             "prompt=consent"
         )
-        
+
     elif provider == "microsoft":
         if not MICROSOFT_CLIENT_ID:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Microsoft OAuth not configured"
+                detail="Microsoft OAuth not configured",
             )
-        
+
         scopes = request.scopes or [
             "openid",
             "email",
-            "profile", 
+            "profile",
             "offline_access",
             "https://graph.microsoft.com/User.Read",
             "https://graph.microsoft.com/Calendars.ReadWrite",
-            "https://graph.microsoft.com/Mail.Read"
+            "https://graph.microsoft.com/Mail.Read",
         ]
-        
+
         auth_url = (
             "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?"
             f"client_id={MICROSOFT_CLIENT_ID}&"
@@ -221,7 +224,7 @@ async def start_oauth_flow(request: OAuthStartRequest):
             f"scope={urllib.parse.quote(' '.join(scopes))}&"
             f"state={state}"
         )
-    
+
     return {
         "authorization_url": auth_url,
         "state": state,
@@ -238,28 +241,26 @@ async def oauth_callback(
 ):
     """Handle OAuth callback from Google or Microsoft."""
     provider = provider.lower()
-    
+
     # Verify state
     if state not in oauth_states:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired state"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired state"
         )
-    
+
     state_data = oauth_states.pop(state)
     if state_data["provider"] != provider:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Provider mismatch"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Provider mismatch"
         )
-    
+
     try:
         # Exchange code for tokens
         tokens = await exchange_code_for_tokens(provider, code, state_data)
-        
+
         # Get user info
         user_info = await get_user_info(provider, tokens["access_token"])
-        
+
         # Create or update user
         user_id = f"{provider}_{user_info['id']}"
         user_data = {
@@ -271,12 +272,12 @@ async def oauth_callback(
             "created_at": datetime.now(timezone.utc).isoformat(),
             "last_login": datetime.now(timezone.utc).isoformat(),
         }
-        
+
         users_db[user_id] = user_data
-        
+
         # Create NextAuth JWT
         jwt_token = create_nextauth_jwt(user_data, provider, tokens)
-        
+
         # Store session
         session_id = secrets.token_urlsafe(32)
         sessions_db[session_id] = {
@@ -285,11 +286,14 @@ async def oauth_callback(
             "created_at": time.time(),
             "expires_at": time.time() + 3600,
         }
-        
-        logger.info(f"OAuth callback successful for {provider} user {user_info['email']}")
-        
+
+        logger.info(
+            f"OAuth callback successful for {provider} user {user_info['email']}"
+        )
+
         # Return success page with token
-        return HTMLResponse(f"""
+        return HTMLResponse(
+            f"""
         <html>
         <head><title>OAuth Success</title></head>
         <body>
@@ -313,13 +317,14 @@ async def oauth_callback(
             <p><a href="/">← Back to NextAuth Test Server</a></p>
         </body>
         </html>
-        """)
-        
+        """
+        )
+
     except Exception as e:
         logger.error(f"OAuth callback failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"OAuth callback failed: {str(e)}"
+            detail=f"OAuth callback failed: {str(e)}",
         )
 
 
@@ -346,17 +351,19 @@ async def exchange_code_for_tokens(provider: str, code: str, state_data: Dict) -
             }
         else:
             raise ValueError(f"Unsupported provider: {provider}")
-        
+
         response = await client.post(
             token_url,
             data=data,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
             timeout=30.0,
         )
-        
+
         if response.status_code != 200:
-            raise Exception(f"Token exchange failed: {response.status_code} {response.text}")
-        
+            raise Exception(
+                f"Token exchange failed: {response.status_code} {response.text}"
+            )
+
         return response.json()
 
 
@@ -364,7 +371,7 @@ async def get_user_info(provider: str, access_token: str) -> Dict:
     """Get user information from OAuth provider."""
     async with httpx.AsyncClient() as client:
         headers = {"Authorization": f"Bearer {access_token}"}
-        
+
         if provider == "google":
             response = await client.get(
                 "https://www.googleapis.com/oauth2/v2/userinfo",
@@ -379,12 +386,14 @@ async def get_user_info(provider: str, access_token: str) -> Dict:
             )
         else:
             raise ValueError(f"Unsupported provider: {provider}")
-        
+
         if response.status_code != 200:
-            raise Exception(f"User info request failed: {response.status_code} {response.text}")
-        
+            raise Exception(
+                f"User info request failed: {response.status_code} {response.text}"
+            )
+
         user_data = response.json()
-        
+
         # Normalize user data structure
         if provider == "google":
             return {
@@ -409,23 +418,22 @@ async def get_session(request: Request):
     if not auth_header or not auth_header.startswith("Bearer "):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing or invalid authorization header"
+            detail="Missing or invalid authorization header",
         )
-    
+
     token = auth_header[7:]  # Remove "Bearer "
-    
+
     try:
         payload = verify_nextauth_jwt(token)
         user_id = payload["sub"]
-        
+
         if user_id not in users_db:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
             )
-        
+
         user_data = users_db[user_id]
-        
+
         return {
             "user": {
                 "id": user_data["id"],
@@ -437,11 +445,10 @@ async def get_session(request: Request):
             "access_token": payload.get("access_token"),
             "refresh_token": payload.get("refresh_token"),
         }
-        
+
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid session: {e}"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Invalid session: {e}"
         )
 
 
@@ -459,10 +466,9 @@ async def get_user(user_id: str):
     """Get specific user information."""
     if user_id not in users_db:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
-    
+
     return users_db[user_id]
 
 
@@ -472,22 +478,20 @@ async def verify_token(request: Request):
     try:
         body = await request.json()
         token = body.get("token")
-        
+
         if not token:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Token required"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Token required"
             )
-        
+
         payload = verify_nextauth_jwt(token)
         user_id = payload["sub"]
-        
+
         if user_id not in users_db:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
             )
-        
+
         return {
             "valid": True,
             "user_id": user_id,
@@ -495,7 +499,7 @@ async def verify_token(request: Request):
             "provider": payload["provider"],
             "expires_at": payload["exp"],
         }
-        
+
     except Exception as e:
         return {
             "valid": False,
@@ -505,13 +509,17 @@ async def verify_token(request: Request):
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     print("🚀 Starting NextAuth Test Server...")
     print("=" * 50)
-    print(f"📍 Server URL: http://localhost:8090")
+    print("📍 Server URL: http://localhost:8090")
     print(f"🔑 NextAuth Secret: {NEXTAUTH_SECRET}")
-    print(f"🟢 Google OAuth: {'✅ Configured' if GOOGLE_CLIENT_ID else '❌ Not configured'}")
-    print(f"🔵 Microsoft OAuth: {'✅ Configured' if MICROSOFT_CLIENT_ID else '❌ Not configured'}")
+    print(
+        f"🟢 Google OAuth: {'✅ Configured' if GOOGLE_CLIENT_ID else '❌ Not configured'}"
+    )
+    print(
+        f"🔵 Microsoft OAuth: {'✅ Configured' if MICROSOFT_CLIENT_ID else '❌ Not configured'}"
+    )
     print()
     print("📋 Available endpoints:")
     print("  • GET  /                     - Service info")
@@ -524,11 +532,11 @@ if __name__ == "__main__":
     print("💡 Test with chat.py demo:")
     print("  python services/demos/chat.py --nextauth")
     print()
-    
+
     uvicorn.run(
         app,
         host="0.0.0.0",
         port=8090,
         log_level="info",
         access_log=True,
-    ) 
+    )

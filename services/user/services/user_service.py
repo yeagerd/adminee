@@ -249,17 +249,23 @@ class UserService:
         try:
             # First get the user by external auth ID to get the internal ID
             if auth_provider:
-                user = await self.get_user_by_external_auth_id(external_auth_id, auth_provider)
+                user = await self.get_user_by_external_auth_id(
+                    external_auth_id, auth_provider
+                )
             else:
-                user = await self.get_user_by_external_auth_id_auto_detect(external_auth_id)
-            
+                user = await self.get_user_by_external_auth_id_auto_detect(
+                    external_auth_id
+                )
+
             # Then use the existing update method with the internal ID
             return await self.update_user(user.id, user_data)
 
         except UserNotFoundException:
             raise
         except Exception as e:
-            logger.error(f"Error updating user by external auth ID {external_auth_id}: {e}")
+            logger.error(
+                f"Error updating user by external auth ID {external_auth_id}: {e}"
+            )
             raise ValidationException(
                 field="user_data",
                 value=str(user_data),
@@ -315,7 +321,10 @@ class UserService:
             )
 
     async def update_user_onboarding_by_external_auth_id(
-        self, external_auth_id: str, onboarding_data: UserOnboardingUpdate, auth_provider: str = None
+        self,
+        external_auth_id: str,
+        onboarding_data: UserOnboardingUpdate,
+        auth_provider: str = None,
     ) -> User:
         """
         Update user onboarding status by external auth ID.
@@ -335,17 +344,23 @@ class UserService:
         try:
             # First get the user by external auth ID to get the internal ID
             if auth_provider:
-                user = await self.get_user_by_external_auth_id(external_auth_id, auth_provider)
+                user = await self.get_user_by_external_auth_id(
+                    external_auth_id, auth_provider
+                )
             else:
-                user = await self.get_user_by_external_auth_id_auto_detect(external_auth_id)
-            
+                user = await self.get_user_by_external_auth_id_auto_detect(
+                    external_auth_id
+                )
+
             # Then use the existing onboarding update method with the internal ID
             return await self.update_user_onboarding(user.id, onboarding_data)
 
         except UserNotFoundException:
             raise
         except Exception as e:
-            logger.error(f"Error updating user onboarding by external auth ID {external_auth_id}: {e}")
+            logger.error(
+                f"Error updating user onboarding by external auth ID {external_auth_id}: {e}"
+            )
             raise ValidationException(
                 field="onboarding_data",
                 value=str(onboarding_data),
@@ -420,17 +435,23 @@ class UserService:
         try:
             # First get the user by external auth ID to get the internal ID
             if auth_provider:
-                user = await self.get_user_by_external_auth_id(external_auth_id, auth_provider)
+                user = await self.get_user_by_external_auth_id(
+                    external_auth_id, auth_provider
+                )
             else:
-                user = await self.get_user_by_external_auth_id_auto_detect(external_auth_id)
-            
+                user = await self.get_user_by_external_auth_id_auto_detect(
+                    external_auth_id
+                )
+
             # Then use the existing delete method with the internal ID
             return await self.delete_user(user.id)
 
         except UserNotFoundException:
             raise
         except Exception as e:
-            logger.error(f"Error deleting user by external auth ID {external_auth_id}: {e}")
+            logger.error(
+                f"Error deleting user by external auth ID {external_auth_id}: {e}"
+            )
             raise ValidationException(
                 field="external_auth_id",
                 value=external_auth_id,
@@ -522,7 +543,7 @@ class UserService:
     ) -> User:
         """
         Get user by external auth ID with auto-detection of auth provider.
-        
+
         Tries multiple auth providers to find the user.
 
         Args:
@@ -535,16 +556,25 @@ class UserService:
             UserNotFoundException: If user is not found with any provider
         """
         # Try different auth providers in order of preference
-        providers_to_try = ["clerk", "nextauth", "custom", "auth0", "firebase", "supabase"]
-        
+        providers_to_try = [
+            "clerk",
+            "nextauth",
+            "custom",
+            "auth0",
+            "firebase",
+            "supabase",
+        ]
+
         for provider in providers_to_try:
             try:
-                user = await self.get_user_by_external_auth_id(external_auth_id, provider)
+                user = await self.get_user_by_external_auth_id(
+                    external_auth_id, provider
+                )
                 logger.info(f"Found user {external_auth_id} with provider {provider}")
                 return user
             except UserNotFoundException:
                 continue
-        
+
         # If we get here, user was not found with any provider
         raise UserNotFoundException(external_auth_id)
 
@@ -565,7 +595,9 @@ class UserService:
             UserNotFoundException: If user is not found
         """
         if auth_provider:
-            user = await self.get_user_by_external_auth_id(external_auth_id, auth_provider)
+            user = await self.get_user_by_external_auth_id(
+                external_auth_id, auth_provider
+            )
         else:
             user = await self.get_user_by_external_auth_id_auto_detect(external_auth_id)
         return UserResponse.from_orm(user)

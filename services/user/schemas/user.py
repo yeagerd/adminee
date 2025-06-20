@@ -115,7 +115,14 @@ class UserCreate(UserBase):
         # Check for SQL injection patterns
         check_sql_injection_patterns(v, "auth_provider")
 
-        valid_providers = ["clerk", "nextauth", "custom", "auth0", "firebase", "supabase"]
+        valid_providers = [
+            "clerk",
+            "nextauth",
+            "custom",
+            "auth0",
+            "firebase",
+            "supabase",
+        ]
         if v not in valid_providers:
             raise ValueError(
                 f"Invalid auth provider. Must be one of: {', '.join(valid_providers)}"

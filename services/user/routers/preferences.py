@@ -29,9 +29,6 @@ from services.user.services.preferences_service import PreferencesService
 logger = structlog.get_logger(__name__)
 
 
-
-
-
 router = APIRouter(
     prefix="/users/{user_id}/preferences",
     tags=["Preferences"],

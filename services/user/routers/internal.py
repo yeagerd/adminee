@@ -200,10 +200,10 @@ async def get_user_preferences_internal(
     """
     try:
         from services.user.services.preferences_service import get_preferences_service
-        
+
         preferences = await get_preferences_service().get_user_preferences(user_id)
         return preferences
-    except Exception as e:
+    except Exception:
         # Return null for missing preferences (normal for new users)
         return None
 
@@ -237,39 +237,40 @@ async def get_user_integrations_internal(
     """
     try:
         from services.user.services.integration_service import get_integration_service
-        
+
         integrations_response = await get_integration_service().get_user_integrations(
             user_id=user_id,
-            include_token_info=False  # Don't include sensitive token info for internal calls
+            include_token_info=False,  # Don't include sensitive token info for internal calls
         )
-        
+
         # Return simplified integration data for internal services
         integrations = []
         for integration in integrations_response.integrations:
-            integrations.append({
-                "id": integration.id,
-                "provider": integration.provider.value,
-                "status": integration.status.value,
-                "external_user_id": integration.external_user_id,
-                "external_email": integration.external_email,
-                "scopes": integration.scopes,
-                "last_sync_at": integration.last_sync_at.isoformat() if integration.last_sync_at else None,
-                "error_message": integration.last_error,
-                "created_at": integration.created_at.isoformat(),
-                "updated_at": integration.updated_at.isoformat()
-            })
-        
+            integrations.append(
+                {
+                    "id": integration.id,
+                    "provider": integration.provider.value,
+                    "status": integration.status.value,
+                    "external_user_id": integration.external_user_id,
+                    "external_email": integration.external_email,
+                    "scopes": integration.scopes,
+                    "last_sync_at": (
+                        integration.last_sync_at.isoformat()
+                        if integration.last_sync_at
+                        else None
+                    ),
+                    "error_message": integration.last_error,
+                    "created_at": integration.created_at.isoformat(),
+                    "updated_at": integration.updated_at.isoformat(),
+                }
+            )
+
         return {
             "integrations": integrations,
             "total": integrations_response.total,
             "active_count": integrations_response.active_count,
-            "error_count": integrations_response.error_count
+            "error_count": integrations_response.error_count,
         }
-    except Exception as e:
+    except Exception:
         # Return empty list for errors (don't break other services)
-        return {
-            "integrations": [],
-            "total": 0,
-            "active_count": 0,
-            "error_count": 0
-        }
+        return {"integrations": [], "total": 0, "active_count": 0, "error_count": 0}
