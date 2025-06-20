@@ -38,11 +38,11 @@ Environment Variables:
 
 import argparse
 import asyncio
-from datetime import datetime, timezone
 import logging
 import os
 import sys
 import time
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 # Add the services directory to the path

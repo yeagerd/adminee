@@ -199,10 +199,11 @@ async def get_user_preferences_internal(
     - Any service needing user settings for personalization
     """
     try:
-        from services.user.services.preferences_service import PreferencesService
+        from sqlmodel import select
+
         from services.user.database import get_async_session
         from services.user.models.user import User
-        from sqlmodel import select
+        from services.user.services.preferences_service import PreferencesService
 
         # Convert external auth ID to internal database ID
         async_session = get_async_session()
