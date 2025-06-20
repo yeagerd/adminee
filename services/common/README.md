@@ -4,6 +4,48 @@ This package contains shared utilities and configurations used across all Briefl
 
 ## Modules
 
+### `logging_config.py` - Centralized Logging System
+
+Provides consistent, structured logging across all Briefly services with features like:
+- Structured JSON logging for easy parsing and analysis
+- Request ID tracking for tracing requests across services
+- User context extraction from HTTP requests
+- Service identification in all log entries
+- Performance timing for HTTP requests
+- Error context with detailed debugging information
+
+#### Quick Start
+
+```python
+from services.common.logging_config import setup_service_logging, get_logger
+
+# Set up logging for your service
+setup_service_logging(
+    service_name="your-service-name",
+    log_level="INFO",
+    log_format="json"
+)
+
+# Get a structured logger
+logger = get_logger(__name__)
+
+# Log structured messages
+logger.info("User action performed", 
+            user_id="user123", 
+            action="create_document")
+```
+
+#### FastAPI Integration
+
+```python
+from services.common.logging_config import create_request_logging_middleware
+
+# Add request logging middleware
+app.middleware("http")(create_request_logging_middleware())
+```
+
+For complete documentation, see [README_logging.md](./README_logging.md).
+
 ### `secrets.py` - Secret Management
 
 Provides unified secret management for all services with support for:
@@ -92,6 +134,10 @@ google-cloud-secret-manager
 opentelemetry-api
 opentelemetry-sdk
 opentelemetry-instrumentation
+
+# For centralized logging (automatically included)
+structlog
+fastapi
 ```
 
 ## Installation
