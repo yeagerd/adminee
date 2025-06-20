@@ -229,7 +229,7 @@ class UserService:
             )
 
     async def update_user_by_external_auth_id(
-        self, external_auth_id: str, user_data: UserUpdate, auth_provider: str = "clerk"
+        self, external_auth_id: str, user_data: UserUpdate, auth_provider: str = None
     ) -> User:
         """
         Update an existing user by external auth ID.
@@ -237,7 +237,7 @@ class UserService:
         Args:
             external_auth_id: External auth provider user ID
             user_data: User update data
-            auth_provider: Authentication provider name
+            auth_provider: Authentication provider name (optional, will auto-detect if not provided)
 
         Returns:
             Updated user model instance
@@ -248,7 +248,10 @@ class UserService:
         """
         try:
             # First get the user by external auth ID to get the internal ID
-            user = await self.get_user_by_external_auth_id(external_auth_id, auth_provider)
+            if auth_provider:
+                user = await self.get_user_by_external_auth_id(external_auth_id, auth_provider)
+            else:
+                user = await self.get_user_by_external_auth_id_auto_detect(external_auth_id)
             
             # Then use the existing update method with the internal ID
             return await self.update_user(user.id, user_data)
@@ -312,7 +315,7 @@ class UserService:
             )
 
     async def update_user_onboarding_by_external_auth_id(
-        self, external_auth_id: str, onboarding_data: UserOnboardingUpdate, auth_provider: str = "clerk"
+        self, external_auth_id: str, onboarding_data: UserOnboardingUpdate, auth_provider: str = None
     ) -> User:
         """
         Update user onboarding status by external auth ID.
@@ -320,7 +323,7 @@ class UserService:
         Args:
             external_auth_id: External auth provider user ID
             onboarding_data: Onboarding update data
-            auth_provider: Authentication provider name
+            auth_provider: Authentication provider name (optional, will auto-detect if not provided)
 
         Returns:
             Updated user model instance
@@ -331,7 +334,10 @@ class UserService:
         """
         try:
             # First get the user by external auth ID to get the internal ID
-            user = await self.get_user_by_external_auth_id(external_auth_id, auth_provider)
+            if auth_provider:
+                user = await self.get_user_by_external_auth_id(external_auth_id, auth_provider)
+            else:
+                user = await self.get_user_by_external_auth_id_auto_detect(external_auth_id)
             
             # Then use the existing onboarding update method with the internal ID
             return await self.update_user_onboarding(user.id, onboarding_data)
@@ -396,14 +402,14 @@ class UserService:
             )
 
     async def delete_user_by_external_auth_id(
-        self, external_auth_id: str, auth_provider: str = "clerk"
+        self, external_auth_id: str, auth_provider: str = None
     ) -> UserDeleteResponse:
         """
         Delete (soft delete) a user by external auth ID.
 
         Args:
             external_auth_id: External auth provider user ID
-            auth_provider: Authentication provider name
+            auth_provider: Authentication provider name (optional, will auto-detect if not provided)
 
         Returns:
             UserDeleteResponse with deletion details
@@ -413,7 +419,10 @@ class UserService:
         """
         try:
             # First get the user by external auth ID to get the internal ID
-            user = await self.get_user_by_external_auth_id(external_auth_id, auth_provider)
+            if auth_provider:
+                user = await self.get_user_by_external_auth_id(external_auth_id, auth_provider)
+            else:
+                user = await self.get_user_by_external_auth_id_auto_detect(external_auth_id)
             
             # Then use the existing delete method with the internal ID
             return await self.delete_user(user.id)
@@ -508,15 +517,46 @@ class UserService:
         user = await self.get_user_by_id(user_id)
         return UserResponse.from_orm(user)
 
+    async def get_user_by_external_auth_id_auto_detect(
+        self, external_auth_id: str
+    ) -> User:
+        """
+        Get user by external auth ID with auto-detection of auth provider.
+        
+        Tries multiple auth providers to find the user.
+
+        Args:
+            external_auth_id: External auth provider user ID
+
+        Returns:
+            User model instance
+
+        Raises:
+            UserNotFoundException: If user is not found with any provider
+        """
+        # Try different auth providers in order of preference
+        providers_to_try = ["clerk", "nextauth", "custom", "auth0", "firebase", "supabase"]
+        
+        for provider in providers_to_try:
+            try:
+                user = await self.get_user_by_external_auth_id(external_auth_id, provider)
+                logger.info(f"Found user {external_auth_id} with provider {provider}")
+                return user
+            except UserNotFoundException:
+                continue
+        
+        # If we get here, user was not found with any provider
+        raise UserNotFoundException(external_auth_id)
+
     async def get_user_profile_by_external_auth_id(
-        self, external_auth_id: str, auth_provider: str = "clerk"
+        self, external_auth_id: str, auth_provider: str = None
     ) -> UserResponse:
         """
         Get user profile response by external auth ID.
 
         Args:
             external_auth_id: External auth provider user ID
-            auth_provider: Authentication provider name
+            auth_provider: Authentication provider name (optional, will auto-detect if not provided)
 
         Returns:
             User response schema
@@ -524,7 +564,10 @@ class UserService:
         Raises:
             UserNotFoundException: If user is not found
         """
-        user = await self.get_user_by_external_auth_id(external_auth_id, auth_provider)
+        if auth_provider:
+            user = await self.get_user_by_external_auth_id(external_auth_id, auth_provider)
+        else:
+            user = await self.get_user_by_external_auth_id_auto_detect(external_auth_id)
         return UserResponse.from_orm(user)
 
     async def verify_user_exists(self, user_id: int) -> bool:

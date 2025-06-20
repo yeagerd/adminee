@@ -51,7 +51,7 @@ async def get_current_user_profile(
     without needing to know their database ID.
     """
     try:
-        current_user = await get_user_service().get_user_by_external_auth_id(
+        current_user = await get_user_service().get_user_by_external_auth_id_auto_detect(
             current_user_external_auth_id
         )
         user_response = UserResponse.from_orm(current_user)

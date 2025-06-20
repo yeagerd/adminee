@@ -6,13 +6,8 @@ FROM node:18-alpine AS base
 # Set working directory
 WORKDIR /app
 
-# Build-time arguments for environment variables needed during Next.js build
-# Note: Next.js embeds NEXT_PUBLIC_* variables into static assets during build
-# These dummy values allow builds in CI/testing environments without real keys
-ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="pk_test_dummy_key_for_build_time_only"
-
-# Set environment variables from build arguments
-ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+# Clerk references removed - now using NextAuth
+# NextAuth configuration is handled at runtime through environment variables
 
 # Copy package files and install dependencies
 COPY frontend/package.json ./
