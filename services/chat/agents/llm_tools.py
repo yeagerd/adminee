@@ -9,10 +9,10 @@ from services.chat.settings import get_settings
 
 def get_calendar_events(
     user_id: str,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    time_zone: Optional[str] = None,
-    providers: Optional[str] = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    time_zone: str | None = None,
+    providers: str | None = None,
 ) -> Dict[str, Any]:
     # Use service-to-service authentication
     headers = {"Content-Type": "application/json"}
@@ -83,11 +83,11 @@ def get_calendar_events(
 
 def get_emails(
     user_token: str,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    unread_only: Optional[bool] = None,
-    folder: Optional[str] = None,
-    max_results: Optional[int] = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    unread_only: bool | None= None,
+    folder: str | None = None,
+    max_results: int | None = None,
 ) -> Dict[str, Any]:
     headers = {"Authorization": f"Bearer {user_token}"}
     params = {}
@@ -124,10 +124,10 @@ def get_emails(
 
 def get_notes(
     user_token: str,
-    notebook: Optional[str] = None,
-    tags: Optional[str] = None,
-    search_query: Optional[str] = None,
-    max_results: Optional[int] = None,
+    notebook: str | None = None,
+    tags: str | None = None,
+    search_query: str | None = None,
+    max_results: int | None = None,
 ) -> Dict[str, Any]:
     headers = {"Authorization": f"Bearer {user_token}"}
     params = {}
@@ -162,11 +162,11 @@ def get_notes(
 
 def get_documents(
     user_token: str,
-    document_type: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    search_query: Optional[str] = None,
-    max_results: Optional[int] = None,
+    document_type: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    search_query: str | None = None,
+    max_results: int | None = None,
 ) -> Dict[str, Any]:
     headers = {"Authorization": f"Bearer {user_token}"}
     params = {}
@@ -260,11 +260,11 @@ def clear_all_drafts(thread_id: str) -> Dict[str, Any]:
 
 def create_draft_email(
     thread_id: str,
-    to: Optional[str] = None,
-    cc: Optional[str] = None,
-    bcc: Optional[str] = None,
-    subject: Optional[str] = None,
-    body: Optional[str] = None,
+    to: str | None = None,
+    cc: str | None = None,
+    bcc: str | None = None,
+    subject: str | None = None,
+    body: str | None = None,
 ) -> Dict[str, Any]:
     try:
         draft_key = f"{thread_id}_email"
@@ -308,12 +308,12 @@ def delete_draft_email(thread_id: str) -> Dict[str, Any]:
 
 def create_draft_calendar_event(
     thread_id: str,
-    title: Optional[str] = None,
-    start_time: Optional[str] = None,
-    end_time: Optional[str] = None,
-    attendees: Optional[str] = None,
-    location: Optional[str] = None,
-    description: Optional[str] = None,
+    title: str | None = None,
+    start_time: str | None = None,
+    end_time: str | None = None,
+    attendees: str | None = None,
+    location: str | None = None,
+    description: str | None = None,
 ) -> Dict[str, Any]:
     try:
         draft_key = f"{thread_id}_calendar_event"
@@ -363,13 +363,13 @@ def delete_draft_calendar_event(thread_id: str) -> Dict[str, Any]:
 def create_draft_calendar_change(
     thread_id: str,
     event_id: str,
-    change_type: Optional[str] = None,
-    new_title: Optional[str] = None,
-    new_start_time: Optional[str] = None,
-    new_end_time: Optional[str] = None,
-    new_attendees: Optional[str] = None,
-    new_location: Optional[str] = None,
-    new_description: Optional[str] = None,
+    change_type: str | None = None,
+    new_title: str | None = None,
+    new_start_time: str | None = None,
+    new_end_time: str | None = None,
+    new_attendees: str | None = None,
+    new_location: str | None = None,
+    new_description: str | None = None,
 ) -> Dict[str, Any]:
     """
     Create a draft for editing an existing calendar event.

@@ -417,7 +417,7 @@ def test_tool_registry_execute_tool_returns_tooloutput(monkeypatch):
 
     monkeypatch.setattr(requests, "get", mock_get)
     registry = get_tool_registry()
-    email_result = registry.execute_tool("get_emails", user_token="user_token")
+    email_result = registry.execute_tool("get_emails")
     # Should be a ToolOutput-like object with .raw_output
     assert hasattr(email_result, "raw_output")
     assert "emails" in email_result.raw_output
@@ -426,7 +426,7 @@ def test_tool_registry_execute_tool_returns_tooloutput(monkeypatch):
 
 def test_tool_registry_execute_tool_error():
     registry = get_tool_registry()
-    result = registry.execute_tool("calendar")  # Missing user_token
+    result = registry.execute_tool("calendar")
     # Should be a ToolOutput-like object with .raw_output
     assert hasattr(result, "raw_output")
     assert isinstance(result.raw_output, dict)

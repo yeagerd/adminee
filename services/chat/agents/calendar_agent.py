@@ -61,9 +61,9 @@ class CalendarAgent(FunctionAgent):
 
     def __init__(
         self,
+        user_id: str,
         llm_model: str = "gpt-4.1-nano",
         llm_provider: str = "openai",
-        user_id: str = None,
         **llm_kwargs,
     ):
 
@@ -112,16 +112,16 @@ class CalendarAgent(FunctionAgent):
 
         logger.debug("CalendarAgent initialized with calendar tools")
 
-    def _create_calendar_tools(self, user_id: Optional[str]) -> List[FunctionTool]:
+    def _create_calendar_tools(self, user_id: str) -> List[FunctionTool]:
         """Create calendar-specific tools."""
         tools = []
 
         # Create a wrapper function that provides the user_id
         def get_calendar_events_with_user_id(
-            start_date: Optional[str] = None,
-            end_date: Optional[str] = None,
-            time_zone: Optional[str] = None,
-            providers: Optional[str] = None,
+            start_date: str | None = None,
+            end_date: str | None = None,
+            time_zone: str | None = None,
+            providers: str | None = None,
         ):
             if not user_id:
                 return {"error": "User ID not available in calendar agent"}
@@ -158,29 +158,3 @@ class CalendarAgent(FunctionAgent):
         tools.append(record_calendar_tool)
 
         return tools
-
-
-def create_calendar_agent(
-    llm_model: str = "gpt-4.1-nano",
-    llm_provider: str = "openai",
-    user_id: str = None,
-    **llm_kwargs,
-) -> CalendarAgent:
-    """
-    Factory function to create a CalendarAgent instance.
-
-    Args:
-        llm_model: LLM model name
-        llm_provider: LLM provider name
-        user_id: User ID for calendar operations
-        **llm_kwargs: Additional LLM configuration
-
-    Returns:
-        Configured CalendarAgent instance
-    """
-    return CalendarAgent(
-        llm_model=llm_model,
-        llm_provider=llm_provider,
-        user_id=user_id,
-        **llm_kwargs,
-    )
