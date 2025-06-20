@@ -37,6 +37,9 @@ class UserPreferences(SQLModel, table=True):
     integration_preferences: Dict = Field(default_factory=dict, sa_column=Column(JSON))
     privacy_preferences: Dict = Field(default_factory=dict, sa_column=Column(JSON))
 
+    # User timezone preference (IANA timezone string)
+    timezone: str = Field(default="UTC", max_length=50)
+
     # Timestamps
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
