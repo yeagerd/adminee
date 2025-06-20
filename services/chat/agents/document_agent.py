@@ -62,10 +62,13 @@ class DocumentAgent(FunctionAgent):
 
     def __init__(
         self,
+        user_id: str,
         llm_model: str = "gpt-4.1-nano",
         llm_provider: str = "openai",
         **llm_kwargs,
     ):
+        self.user_id = user_id
+
         # Get LLM instance
         llm = get_llm_manager().get_llm(
             model=llm_model, provider=llm_provider, **llm_kwargs
@@ -107,27 +110,35 @@ class DocumentAgent(FunctionAgent):
         logger.debug("DocumentAgent initialized with document and note tools")
 
     def _create_document_tools(self) -> List[FunctionTool]:
-        """Create document-specific tools."""
+        """Create document-specific tools with user_id pre-filled."""
         tools = []
 
-        # Document retrieval tool
+        # Document retrieval tool with user_id pre-filled
+        def get_documents_wrapper(**kwargs):
+            return get_documents(user_id=self.user_id, **kwargs)
+
         get_documents_tool = FunctionTool.from_defaults(
-            fn=get_documents,
+            fn=get_documents_wrapper,
             name="get_documents",
             description=(
                 "Retrieve documents from the office service. "
                 "Can filter by document type, date range, search query, and maximum results. "
+                "The user_id is automatically included in the request."
             ),
         )
         tools.append(get_documents_tool)
 
-        # Notes retrieval tool
+        # Notes retrieval tool with user_id pre-filled
+        def get_notes_wrapper(**kwargs):
+            return get_notes(user_id=self.user_id, **kwargs)
+
         get_notes_tool = FunctionTool.from_defaults(
-            fn=get_notes,
+            fn=get_notes_wrapper,
             name="get_notes",
             description=(
                 "Retrieve notes from the office service. "
                 "Can filter by notebook, tags, search query, and maximum results. "
+                "The user_id is automatically included in the request."
             ),
         )
         tools.append(get_notes_tool)
@@ -147,6 +158,7 @@ class DocumentAgent(FunctionAgent):
 
 
 def create_document_agent(
+    user_id: str,
     llm_model: str = "gpt-4.1-nano",
     llm_provider: str = "openai",
     **llm_kwargs,
@@ -155,6 +167,7 @@ def create_document_agent(
     Factory function to create a DocumentAgent instance.
 
     Args:
+        user_id: The ID of the user to fetch documents for
         llm_model: LLM model name
         llm_provider: LLM provider name
         **llm_kwargs: Additional LLM configuration
@@ -163,6 +176,7 @@ def create_document_agent(
         Configured DocumentAgent instance
     """
     return DocumentAgent(
+        user_id=user_id,
         llm_model=llm_model,
         llm_provider=llm_provider,
         **llm_kwargs,

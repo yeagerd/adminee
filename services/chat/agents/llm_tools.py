@@ -82,15 +82,19 @@ def get_calendar_events(
 
 
 def get_emails(
-    user_token: str,
+    user_id: str,
     start_date: str | None = None,
     end_date: str | None = None,
-    unread_only: bool | None= None,
+    unread_only: bool | None = None,
     folder: str | None = None,
     max_results: int | None = None,
 ) -> Dict[str, Any]:
-    headers = {"Authorization": f"Bearer {user_token}"}
-    params = {}
+    # Use service-to-service authentication
+    headers = {"Content-Type": "application/json"}
+    if get_settings().api_chat_office_key:
+        headers["X-API-Key"] = get_settings().api_chat_office_key
+
+    params = {"user_id": user_id}
     if start_date:
         params["start_date"] = start_date
     if end_date:
@@ -101,6 +105,7 @@ def get_emails(
         params["folder"] = folder
     if max_results:
         params["max_results"] = str(max_results)
+
     try:
         office_service_url = get_settings().office_service_url
         response = requests.get(
@@ -111,26 +116,45 @@ def get_emails(
         )
         response.raise_for_status()
         data = response.json()
-        if "emails" not in data:
-            return {"error": "Malformed response from office-service."}
-        return {"emails": data["emails"]}
+
+        # Check for successful response structure
+        if not data.get("success", False):
+            return {
+                "error": f"Office service error: {data.get('message', 'Unknown error')}"
+            }
+
+        # Extract emails from the data field
+        emails_data = data.get("data", {})
+        if "emails" not in emails_data:
+            return {
+                "error": "Malformed response from office-service: missing emails data."
+            }
+
+        return {"emails": emails_data["emails"]}
+
     except requests.Timeout:
         return {"error": "Request to office-service timed out."}
     except requests.HTTPError as e:
-        return {"error": f"HTTP error: {str(e)}"}
+        return {
+            "error": f"HTTP error: {str(e)} - Response: {e.response.text if e.response else 'No response'}"
+        }
     except Exception as e:
         return {"error": f"Unexpected error: {str(e)}"}
 
 
 def get_notes(
-    user_token: str,
+    user_id: str,
     notebook: str | None = None,
     tags: str | None = None,
     search_query: str | None = None,
     max_results: int | None = None,
 ) -> Dict[str, Any]:
-    headers = {"Authorization": f"Bearer {user_token}"}
-    params = {}
+    # Use service-to-service authentication
+    headers = {"Content-Type": "application/json"}
+    if get_settings().api_chat_office_key:
+        headers["X-API-Key"] = get_settings().api_chat_office_key
+
+    params = {"user_id": user_id}
     if notebook:
         params["notebook"] = notebook
     if tags:
@@ -139,6 +163,7 @@ def get_notes(
         params["search_query"] = search_query
     if max_results:
         params["max_results"] = str(max_results)
+
     try:
         office_service_url = get_settings().office_service_url
         response = requests.get(
@@ -149,27 +174,46 @@ def get_notes(
         )
         response.raise_for_status()
         data = response.json()
-        if "notes" not in data:
-            return {"error": "Malformed response from office-service."}
-        return {"notes": data["notes"]}
+
+        # Check for successful response structure
+        if not data.get("success", False):
+            return {
+                "error": f"Office service error: {data.get('message', 'Unknown error')}"
+            }
+
+        # Extract notes from the data field
+        notes_data = data.get("data", {})
+        if "notes" not in notes_data:
+            return {
+                "error": "Malformed response from office-service: missing notes data."
+            }
+
+        return {"notes": notes_data["notes"]}
+
     except requests.Timeout:
         return {"error": "Request to office-service timed out."}
     except requests.HTTPError as e:
-        return {"error": f"HTTP error: {str(e)}"}
+        return {
+            "error": f"HTTP error: {str(e)} - Response: {e.response.text if e.response else 'No response'}"
+        }
     except Exception as e:
         return {"error": f"Unexpected error: {str(e)}"}
 
 
 def get_documents(
-    user_token: str,
+    user_id: str,
     document_type: str | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
     search_query: str | None = None,
     max_results: int | None = None,
 ) -> Dict[str, Any]:
-    headers = {"Authorization": f"Bearer {user_token}"}
-    params = {}
+    # Use service-to-service authentication
+    headers = {"Content-Type": "application/json"}
+    if get_settings().api_chat_office_key:
+        headers["X-API-Key"] = get_settings().api_chat_office_key
+
+    params = {"user_id": user_id}
     if document_type:
         params["document_type"] = document_type
     if start_date:
@@ -180,6 +224,7 @@ def get_documents(
         params["search_query"] = search_query
     if max_results:
         params["max_results"] = str(max_results)
+
     try:
         office_service_url = get_settings().office_service_url
         response = requests.get(
@@ -190,13 +235,28 @@ def get_documents(
         )
         response.raise_for_status()
         data = response.json()
-        if "documents" not in data:
-            return {"error": "Malformed response from office-service."}
-        return {"documents": data["documents"]}
+
+        # Check for successful response structure
+        if not data.get("success", False):
+            return {
+                "error": f"Office service error: {data.get('message', 'Unknown error')}"
+            }
+
+        # Extract documents from the data field
+        documents_data = data.get("data", {})
+        if "documents" not in documents_data:
+            return {
+                "error": "Malformed response from office-service: missing documents data."
+            }
+
+        return {"documents": documents_data["documents"]}
+
     except requests.Timeout:
         return {"error": "Request to office-service timed out."}
     except requests.HTTPError as e:
-        return {"error": f"HTTP error: {str(e)}"}
+        return {
+            "error": f"HTTP error: {str(e)} - Response: {e.response.text if e.response else 'No response'}"
+        }
     except Exception as e:
         return {"error": f"Unexpected error: {str(e)}"}
 
