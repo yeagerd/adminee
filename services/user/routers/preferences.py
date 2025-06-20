@@ -9,8 +9,10 @@ from typing import Annotated
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlmodel import select
 
 from services.user.auth.clerk import get_current_user, verify_user_ownership
+from services.user.database import get_async_session
 from services.user.exceptions import (
     AuthorizationException,
     DatabaseException,
@@ -18,6 +20,7 @@ from services.user.exceptions import (
     UserNotFoundException,
     ValidationException,
 )
+from services.user.models.user import User
 from services.user.schemas.preferences import (
     PreferencesResetRequest,
     UserPreferencesResponse,
@@ -27,6 +30,44 @@ from services.user.services.preferences_service import PreferencesService
 
 # Set up logging
 logger = structlog.get_logger(__name__)
+
+
+async def get_internal_user_id(external_auth_id: str) -> str:
+    """
+    Convert external auth ID to internal database ID.
+
+    Args:
+        external_auth_id: External authentication ID (e.g., from Clerk)
+
+    Returns:
+        Internal database user ID
+
+    Raises:
+        UserNotFoundException: If user doesn't exist
+    """
+    try:
+        async_session = get_async_session()
+        async with async_session() as session:
+            result = await session.execute(
+                select(User).where(User.external_auth_id == external_auth_id)
+            )
+            user = result.scalar_one_or_none()
+            if not user:
+                logger.warning(
+                    "User not found for external auth ID",
+                    external_auth_id=external_auth_id,
+                )
+                raise UserNotFoundException(f"User {external_auth_id} not found")
+
+            return str(user.id)
+    except Exception as e:
+        logger.error(
+            "Error getting internal user ID",
+            external_auth_id=external_auth_id,
+            error=str(e),
+        )
+        raise
+
 
 router = APIRouter(
     prefix="/users/{user_id}/preferences",
@@ -66,7 +107,10 @@ async def get_preferences(
         # Verify user ownership
         await verify_user_ownership(current_user, user_id)
 
-        preferences = await PreferencesService.get_user_preferences(user_id)
+        # Convert external auth ID to internal database ID
+        internal_user_id = await get_internal_user_id(user_id)
+
+        preferences = await PreferencesService.get_user_preferences(internal_user_id)
 
         if not preferences:
             logger.warning("Preferences not found", user_id=user_id)
@@ -148,8 +192,11 @@ async def update_preferences(
         # Verify user ownership
         await verify_user_ownership(current_user, user_id)
 
+        # Convert external auth ID to internal database ID
+        internal_user_id = await get_internal_user_id(user_id)
+
         updated_preferences = await PreferencesService.update_user_preferences(
-            user_id, preferences_update
+            internal_user_id, preferences_update
         )
 
         logger.info("Successfully updated preferences", user_id=user_id)
@@ -230,15 +277,14 @@ async def reset_preferences(
         # Verify user ownership
         await verify_user_ownership(current_user, user_id)
 
+        # Convert external auth ID to internal database ID
+        internal_user_id = await get_internal_user_id(user_id)
+
         reset_preferences = await PreferencesService.reset_user_preferences(
-            user_id, reset_request.categories
+            internal_user_id, reset_request.categories
         )
 
-        logger.info(
-            "Successfully reset preferences",
-            user_id=user_id,
-            categories=reset_request.categories,
-        )
+        logger.info("Successfully reset preferences", user_id=user_id)
         return reset_preferences
 
     except UserNotFoundException:

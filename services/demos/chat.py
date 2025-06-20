@@ -38,6 +38,7 @@ Environment Variables:
 
 import argparse
 import asyncio
+from datetime import datetime, timezone
 import logging
 import os
 import sys
@@ -476,7 +477,6 @@ class FullDemo:
 
     async def _create_user_if_not_exists(self, email: str) -> bool:
         """Create user via webhook simulation if they don't exist."""
-        from datetime import datetime, timezone
 
         # Simulate Clerk webhook for user creation
         webhook_payload = {

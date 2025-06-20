@@ -200,8 +200,24 @@ async def get_user_preferences_internal(
     """
     try:
         from services.user.services.preferences_service import PreferencesService
+        from services.user.database import get_async_session
+        from services.user.models.user import User
+        from sqlmodel import select
 
-        preferences = await PreferencesService.get_user_preferences(user_id)
+        # Convert external auth ID to internal database ID
+        async_session = get_async_session()
+        async with async_session() as session:
+            result = await session.execute(
+                select(User).where(User.external_auth_id == user_id)
+            )
+            user = result.scalar_one_or_none()
+            if not user:
+                # User not found - return None (normal for new users)
+                return None
+
+            internal_user_id = str(user.id)
+
+        preferences = await PreferencesService.get_user_preferences(internal_user_id)
         return preferences
     except Exception:
         # Return None for any error (user not found, preferences not found, etc.)
