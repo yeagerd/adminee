@@ -11,6 +11,8 @@ from typing import Dict, List, Optional
 
 from fastapi import HTTPException, Request, status
 
+from services.office.core.settings import get_settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -21,12 +23,13 @@ class APIKeyConfig:
     client: str
     service: str
     permissions: List[str]
+    settings_key: str  # The key name in settings to look up the actual API key value
 
 
-# API Key to Service/Client mapping with permissions for Office Service
-API_KEYS: Dict[str, APIKeyConfig] = {
+# API Key configurations mapped by settings key names
+API_KEY_CONFIGS: Dict[str, APIKeyConfig] = {
     # Frontend (Next.js API) keys - full permissions for user-facing operations
-    "api-frontend-office-key": APIKeyConfig(
+    "api_frontend_office_key": APIKeyConfig(
         client="frontend",
         service="office-service-access",
         permissions=[
@@ -37,9 +40,10 @@ API_KEYS: Dict[str, APIKeyConfig] = {
             "read_files",
             "write_files",
         ],
+        settings_key="api_frontend_office_key",
     ),
     # Service-to-service keys - limited permissions
-    "api-chat-office-key": APIKeyConfig(
+    "api_chat_office_key": APIKeyConfig(
         client="chat-service",
         service="office-service-access",
         permissions=[
@@ -47,8 +51,30 @@ API_KEYS: Dict[str, APIKeyConfig] = {
             "read_calendar",
             "read_files",
         ],  # No write permissions
+        settings_key="api_chat_office_key",
     ),
 }
+
+
+def _get_api_key_mapping() -> Dict[str, APIKeyConfig]:
+    """
+    Build a mapping from actual API key values to their configurations.
+
+    Returns:
+        Dictionary mapping actual API key values to APIKeyConfig objects
+    """
+    settings = get_settings()
+    api_key_mapping = {}
+
+    for config_name, config in API_KEY_CONFIGS.items():
+        # Get the actual API key value from settings
+        actual_key_value = getattr(settings, config.settings_key, None)
+        if actual_key_value:
+            api_key_mapping[actual_key_value] = config
+        else:
+            logger.warning(f"API key not found in settings: {config.settings_key}")
+
+    return api_key_mapping
 
 
 def verify_api_key(api_key: str) -> Optional[str]:
@@ -64,7 +90,8 @@ def verify_api_key(api_key: str) -> Optional[str]:
     if not api_key:
         return None
 
-    key_config = API_KEYS.get(api_key)
+    api_key_mapping = _get_api_key_mapping()
+    key_config = api_key_mapping.get(api_key)
     if not key_config:
         return None
 
@@ -73,13 +100,15 @@ def verify_api_key(api_key: str) -> Optional[str]:
 
 def get_client_from_api_key(api_key: str) -> Optional[str]:
     """Get the client name from an API key."""
-    key_config = API_KEYS.get(api_key)
+    api_key_mapping = _get_api_key_mapping()
+    key_config = api_key_mapping.get(api_key)
     return key_config.client if key_config else None
 
 
 def get_permissions_from_api_key(api_key: str) -> List[str]:
     """Get the permissions for an API key."""
-    key_config = API_KEYS.get(api_key)
+    api_key_mapping = _get_api_key_mapping()
+    key_config = api_key_mapping.get(api_key)
     return key_config.permissions if key_config else []
 
 
