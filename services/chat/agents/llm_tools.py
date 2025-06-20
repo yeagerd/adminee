@@ -14,7 +14,11 @@ def get_calendar_events(
     user_timezone: Optional[str] = None,
     provider_type: Optional[str] = None,
 ) -> Dict[str, Any]:
-    headers = {"Authorization": f"Bearer {user_token}"}
+    # Use service-to-service authentication
+    headers = {"Content-Type": "application/json"}
+    if get_settings().api_chat_office_key:
+        headers["X-API-Key"] = get_settings().api_chat_office_key
+
     params = {}
     if start_date:
         params["start_date"] = start_date

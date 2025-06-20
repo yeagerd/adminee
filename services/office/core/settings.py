@@ -32,6 +32,10 @@ class Settings(BaseSettings):
         default="default-office-key",
         description="Frontend API key to access this Office service",
     )
+    api_chat_office_key: str = Field(
+        default="default-chat-office-key",
+        description="Chat service API key to access this Office service",
+    )
     api_office_user_key: Optional[str] = Field(
         default=None,
         description="Office service API key to call User Management service",
