@@ -88,6 +88,9 @@ class ChatRequest(BaseModel):
     user_id: str
     thread_id: Optional[str] = None  # String for JSON compatibility
     message: str
+    user_timezone: Optional[str] = (
+        None  # e.g., "America/New_York", fallback to stored preference
+    )
 
 
 class ChatResponse(BaseModel):

@@ -45,6 +45,7 @@ from services.chat.models import MessageResponse as PydanticMessage
 from services.chat.models import (
     ThreadResponse,
 )
+from services.chat.service_client import ServiceClient
 from services.chat.settings import get_settings
 
 router = APIRouter()
@@ -67,6 +68,16 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
     user_id = request.user_id
     thread_id = request.thread_id
     user_input = request.message
+    user_timezone = request.user_timezone
+
+    # Get user timezone from preferences if not provided
+    if not user_timezone:
+        async with ServiceClient() as service_client:
+            preferences = await service_client.get_user_preferences(user_id)
+            if preferences and "timezone" in preferences:
+                user_timezone = preferences["timezone"]
+            else:
+                user_timezone = "UTC"  # Default fallback
 
     # Create or get thread (returns database Thread model)
     thread: Optional[history_manager.Thread]
@@ -88,13 +99,14 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
     # At this point, thread is guaranteed to be not None
     thread = cast(history_manager.Thread, thread)
 
-    # Initialize the multi-agent workflow
+    # Initialize the multi-agent workflow with user timezone
     agent = WorkflowAgent(
         thread_id=int(thread.id),
         user_id=user_id,
         llm_model=get_settings().llm_model,
         llm_provider=get_settings().llm_provider,
         max_tokens=get_settings().max_tokens,
+        user_timezone=user_timezone,  # Pass user timezone to agent
     )
 
     # Build the agent workflow if not already built
@@ -155,6 +167,16 @@ async def chat_stream_endpoint(request: ChatRequest) -> StreamingResponse:
     user_id = request.user_id
     thread_id = request.thread_id
     user_input = request.message
+    user_timezone = request.user_timezone
+
+    # Get user timezone from preferences if not provided
+    if not user_timezone:
+        async with ServiceClient() as service_client:
+            preferences = await service_client.get_user_preferences(user_id)
+            if preferences and "timezone" in preferences:
+                user_timezone = preferences["timezone"]
+            else:
+                user_timezone = "UTC"  # Default fallback
 
     # Create or get thread (returns database Thread model)
     thread: Optional[history_manager.Thread]
@@ -179,13 +201,14 @@ async def chat_stream_endpoint(request: ChatRequest) -> StreamingResponse:
     async def generate_streaming_response():
         """Generate streaming response using Server-Sent Events format."""
         try:
-            # Initialize the multi-agent workflow
+            # Initialize the multi-agent workflow with user timezone
             agent = WorkflowAgent(
                 thread_id=int(thread.id),
                 user_id=user_id,
                 llm_model=get_settings().llm_model,
                 llm_provider=get_settings().llm_provider,
                 max_tokens=get_settings().max_tokens,
+                user_timezone=user_timezone,  # Pass user timezone to agent
             )
 
             # Build the agent workflow if not already built
