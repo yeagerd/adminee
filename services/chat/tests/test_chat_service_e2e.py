@@ -6,56 +6,58 @@ multi-agent workflow processing, history management, and API endpoints.
 """
 
 import asyncio
-import os
 import sys
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
-
-from services.chat import history_manager
 
 # Test API key for authentication
 TEST_API_KEY = "test-frontend-chat-key"
 TEST_HEADERS = {"X-API-Key": TEST_API_KEY}
 
 
-# Patch the environment before any imports that might use it
-os.environ.update(
-    {
+@pytest.fixture(scope="module")
+def test_env():
+    """Set up test environment variables."""
+    env_vars = {
         "DB_URL_CHAT": "sqlite+aiosqlite:///file::memory:?cache=shared",
         "OPENAI_API_KEY": "test-key-for-multi-agent",
         "LLM_MODEL": "gpt-4.1-nano",
         "LLM_PROVIDER": "openai",
         "API_FRONTEND_CHAT_KEY": TEST_API_KEY,
     }
-)
-
-from services.chat.auth import get_chat_auth  # noqa: E402
-
-# Now import the app after setting up the environment
+    with patch.dict("os.environ", env_vars):
+        yield env_vars
 
 
 @pytest.fixture
-def app():
+def app(test_env):
     """Fixture to provide the FastAPI app with test environment."""
     # Force reload the auth module to pick up the new environment variables
     for module in list(sys.modules):
         if module.startswith("services.chat"):
             del sys.modules[module]
 
-    # Re-import the app and auth to get fresh instances
+    # Import after module cleanup to ensure fresh imports
+    from services.chat import history_manager
     from services.chat.auth import _chat_auth as fresh_auth
+    from services.chat.auth import get_chat_auth
     from services.chat.main import app as fresh_app
 
     # Update the global _chat_auth reference
-    global _chat_auth
+    global _chat_auth, _history_manager
     _chat_auth = fresh_auth
+    _history_manager = history_manager
+    _get_chat_auth = get_chat_auth  # Store for use in other fixtures
 
     return fresh_app
 
 
 async def setup_test_database():
     """Initialize the test database with tables."""
+    from services.chat import history_manager
+
     await history_manager.init_db()
 
 
@@ -66,6 +68,8 @@ def setup_test_environment(app):
     asyncio.run(setup_test_database())
 
     # Verify auth is properly set up
+    from services.chat.auth import get_chat_auth
+
     auth = get_chat_auth()
     assert auth.verify_api_key_value(TEST_API_KEY) == "frontend"
 
