@@ -60,6 +60,7 @@ class EmailAgent(FunctionAgent):
 
     def __init__(
         self,
+        user_id: str,
         llm_model: str = "gpt-4.1-nano",
         llm_provider: str = "openai",
         **llm_kwargs,
@@ -69,8 +70,8 @@ class EmailAgent(FunctionAgent):
             model=llm_model, provider=llm_provider, **llm_kwargs
         )
 
-        # Create email-specific tools
-        tools = self._create_email_tools()
+        # Create email-specific tools with user_id
+        tools = self._create_email_tools(user_id)
 
         # Get current date for context
         from datetime import datetime
@@ -104,17 +105,21 @@ class EmailAgent(FunctionAgent):
 
         logger.debug("EmailAgent initialized with email tools")
 
-    def _create_email_tools(self) -> List[FunctionTool]:
-        """Create email-specific tools."""
+    def _create_email_tools(self, user_id: str) -> List[FunctionTool]:
+        """Create email-specific tools with user_id pre-filled."""
         tools = []
 
-        # Email retrieval tool
+        # Create a wrapper function that includes the user_id
+        def get_emails_wrapper(**kwargs):
+            return get_emails(user_id=user_id, **kwargs)
+
         get_emails_tool = FunctionTool.from_defaults(
-            fn=get_emails,
+            fn=get_emails_wrapper,
             name="get_emails",
             description=(
                 "Retrieve emails from the office service. "
                 "Can filter by date range, unread status, folder, and maximum results. "
+                "The user_id is automatically included in the request."
             ),
         )
         tools.append(get_emails_tool)
@@ -134,6 +139,7 @@ class EmailAgent(FunctionAgent):
 
 
 def create_email_agent(
+    user_id: str,
     llm_model: str = "gpt-4.1-nano",
     llm_provider: str = "openai",
     **llm_kwargs,
@@ -142,6 +148,7 @@ def create_email_agent(
     Factory function to create an EmailAgent instance.
 
     Args:
+        user_id: The ID of the user to fetch emails for
         llm_model: LLM model name
         llm_provider: LLM provider name
         **llm_kwargs: Additional LLM configuration
@@ -150,6 +157,7 @@ def create_email_agent(
         Configured EmailAgent instance
     """
     return EmailAgent(
+        user_id=user_id,
         llm_model=llm_model,
         llm_provider=llm_provider,
         **llm_kwargs,
