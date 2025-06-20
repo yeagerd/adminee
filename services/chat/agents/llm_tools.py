@@ -7,6 +7,65 @@ from llama_index.core.tools.types import ToolOutput
 from services.chat.settings import get_settings
 
 
+def format_event_time_for_display(
+    start_time_utc: str, end_time_utc: str, timezone: str = None
+) -> str:
+    """
+    Format calendar event times from UTC to a human-readable local time format.
+
+    Args:
+        start_time_utc: Start time in UTC ISO format (e.g., "2025-06-20T17:00:00Z")
+        end_time_utc: End time in UTC ISO format
+        timezone: Target timezone (e.g., "America/New_York"), defaults to system timezone
+
+    Returns:
+        Formatted time string (e.g., "5:00 PM to 5:30 PM")
+    """
+    try:
+        from datetime import datetime
+
+        import pytz
+
+        # Parse UTC times
+        start_utc = datetime.fromisoformat(start_time_utc.replace("Z", "+00:00"))
+        end_utc = datetime.fromisoformat(end_time_utc.replace("Z", "+00:00"))
+
+        # If timezone provided, convert to that timezone
+        if timezone:
+            try:
+                target_tz = pytz.timezone(timezone)
+                start_local = start_utc.astimezone(target_tz)
+                end_local = end_utc.astimezone(target_tz)
+            except (pytz.UnknownTimeZoneError, ValueError, TypeError):
+                # Fallback to system timezone if provided timezone is invalid
+                start_local = start_utc.astimezone()
+                end_local = end_utc.astimezone()
+        else:
+            # Convert to system timezone
+            start_local = start_utc.astimezone()
+            end_local = end_utc.astimezone()
+
+        # Format times (12-hour format with AM/PM)
+        start_formatted = start_local.strftime(
+            "%-I:%M %p" if start_local.minute != 0 else "%-I:%M %p"
+        )
+        end_formatted = end_local.strftime(
+            "%-I:%M %p" if end_local.minute != 0 else "%-I:%M %p"
+        )
+
+        # Handle overnight events
+        if start_local.date() != end_local.date():
+            return (
+                f"{start_formatted} to {end_formatted} ({end_local.strftime('%b %d')})"
+            )
+        else:
+            return f"{start_formatted} to {end_formatted}"
+
+    except Exception:
+        # Fallback to original times if parsing fails
+        return f"{start_time_utc} to {end_time_utc}"
+
+
 def get_calendar_events(
     user_id: str,
     start_date: str | None = None,
@@ -70,7 +129,16 @@ def get_calendar_events(
             # Log warning but continue with available data
             print(f"Warning: Some calendar providers failed: {provider_errors}")
 
-        return {"events": events_data["events"]}
+        # Format event times for better display
+        events = events_data["events"]
+        for event in events:
+            if "start_time" in event and "end_time" in event:
+                # Add a formatted time field for display
+                event["display_time"] = format_event_time_for_display(
+                    event["start_time"], event["end_time"], time_zone
+                )
+
+        return {"events": events}
     except requests.Timeout:
         return {"error": "Request to office-service timed out."}
     except requests.HTTPError as e:
