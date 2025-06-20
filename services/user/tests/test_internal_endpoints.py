@@ -11,7 +11,6 @@ from fastapi import status
 from fastapi.testclient import TestClient
 
 from services.user.database import create_all_tables
-from services.user.main import app
 from services.user.tests.test_base import BaseUserManagementTest
 
 
@@ -21,7 +20,7 @@ class TestInternalAPI(BaseUserManagementTest):
     def setup_method(self):
         super().setup_method()
         asyncio.run(create_all_tables())
-        self.client = TestClient(app)
+        self.client = TestClient(self.app)
         self.auth_headers = self._get_auth_headers()
 
     def _get_auth_headers(self):

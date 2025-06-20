@@ -101,22 +101,6 @@ async def lifespan(app: FastAPI):
         app.docs_url = None
         app.redoc_url = None
 
-    # Configure middleware
-    app.add_middleware(
-        InputSanitizationMiddleware,
-        enabled=True,
-        strict_mode=settings.debug,  # Use strict mode in development
-    )
-
-    # Add CORS middleware
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.cors_origins,
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["*"],
-    )
-
     try:
         await create_all_tables()
         get_safe_logger().info("Database connected successfully")
@@ -135,33 +119,89 @@ async def lifespan(app: FastAPI):
         get_safe_logger().error(f"Error during database disconnect: {e}")
 
 
-# Create FastAPI application with enhanced configuration
-app = FastAPI(
-    title="User Management Service",
-    description="Manages user profiles, preferences, and OAuth integrations for the Briefly platform",
-    version="0.1.0",
-    contact={
-        "name": "Briefly Team",
-        "email": "support@briefly.ai",
-    },
-    license_info={
-        "name": "Private",
-    },
-    lifespan=lifespan,
-)
+def create_app() -> FastAPI:
+    """
+    Factory function to create and configure the FastAPI application.
+
+    This prevents initialization during module import and allows for proper
+    configuration based on available settings.
+    """
+    # Get settings for proper configuration
+    settings = get_settings()
+
+    # Create FastAPI application with enhanced configuration
+    app = FastAPI(
+        title="User Management Service",
+        description="Manages user profiles, preferences, and OAuth integrations for the Briefly platform",
+        version="0.1.0",
+        contact={
+            "name": "Briefly Team",
+            "email": "support@briefly.ai",
+        },
+        license_info={
+            "name": "Private",
+        },
+        lifespan=lifespan,
+    )
+
+    # Configure middleware (must be done before app starts)
+    # Add InputSanitizationMiddleware
+    app.add_middleware(
+        InputSanitizationMiddleware,
+        enabled=True,
+        strict_mode=settings.debug,
+    )
+
+    # Add CORS middleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["*"],
+    )
+
+    # Add security middleware
+    app.add_middleware(XSSProtectionMiddleware)
+
+    # Register API routers
+    app.include_router(users_router)
+    app.include_router(preferences_router)
+    app.include_router(integrations_router)
+    app.include_router(provider_router)
+    app.include_router(webhooks_router)
+    app.include_router(internal_router)
+
+    return app
 
 
-# Add security middleware
-app.add_middleware(XSSProtectionMiddleware)
+# Global app instance - will be created lazily
+_app: FastAPI | None = None
 
 
-# Register API routers
-app.include_router(users_router)
-app.include_router(preferences_router)
-app.include_router(integrations_router)
-app.include_router(provider_router)
-app.include_router(webhooks_router)
-app.include_router(internal_router)
+def get_app() -> FastAPI:
+    """Get the FastAPI application instance, creating it if necessary."""
+    global _app
+    if _app is None:
+        _app = create_app()
+    return _app
+
+
+# Create a proxy object that defers app creation until first access
+class AppProxy:
+    """Proxy object that creates the FastAPI app on first access."""
+
+    def __getattr__(self, name):
+        return getattr(get_app(), name)
+
+    async def __call__(self, scope, receive, send):
+        """ASGI callable interface."""
+        app_instance = get_app()
+        return await app_instance(scope, receive, send)
+
+
+# For uvicorn compatibility, we need an app variable at module level
+app = AppProxy()
 
 
 # Global OAuth callback endpoint
