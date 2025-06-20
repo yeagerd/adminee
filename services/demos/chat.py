@@ -31,6 +31,7 @@ Usage:
     python services/demos/full_demo.py --local --streaming # Local streaming demo
     python services/demos/full_demo.py --no-auth          # Skip authentication
     python services/demos/full_demo.py --message "hi"     # Send single message
+    python services/demos/full_demo.py --email user@example.com --message "test"  # Custom email
 
 Environment Variables:
     API_FRONTEND_CHAT_KEY   API key for chat service authentication (default: test-frontend-chat-key)
@@ -1186,6 +1187,7 @@ Examples:
   python services/demos/full_demo.py --local --streaming # Local streaming demo
   python services/demos/full_demo.py --no-auth          # Skip authentication
   python services/demos/full_demo.py --message "hi"     # Send single message
+  python services/demos/full_demo.py --email user@example.com --message "test"  # Custom email
         """,
     )
 
@@ -1242,6 +1244,14 @@ Examples:
         help="Run streaming demo instead of regular chat (supports both local and API modes)",
     )
 
+    parser.add_argument(
+        "--email",
+        "-e",
+        type=str,
+        default=DEFAULT_USER_ID,
+        help=f"Email address for authentication (default: {DEFAULT_USER_ID})",
+    )
+
     args = parser.parse_args()
 
     # Create demo instance
@@ -1259,7 +1269,7 @@ Examples:
         await demo.check_services()
 
         # Set up authentication
-        await demo.authenticate()
+        await demo.authenticate(email=args.email)
 
         # Load timezone preferences (in case authentication was skipped)
         await demo.load_user_timezone()
