@@ -103,8 +103,8 @@ async def lifespan(app: FastAPI):
 
     # Validate required configuration
     if not settings.api_chat_user_key:
-        get_safe_logger().error("API_CHAT_USER_KEY is required but not configured")
-        get_safe_logger().error(
+        logger.error("API_CHAT_USER_KEY is required but not configured")
+        logger.error(
             "Set the API_CHAT_USER_KEY environment variable or configure it in settings"
         )
         raise RuntimeError("API_CHAT_USER_KEY is required but not configured")
