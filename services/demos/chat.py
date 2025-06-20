@@ -50,10 +50,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 import httpx
 import requests
 
-# Set environment variables to disable cost tracking
-os.environ["LITELLM_LOG"] = "WARNING"
-os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "False")
-
 from services.chat.agents.workflow_agent import WorkflowAgent
 
 # Try to import OAuth utilities
@@ -210,6 +206,7 @@ class UserServiceClient(ServiceClient):
     async def get_user_preferences(self) -> Optional[Dict[str, Any]]:
         """Get user preferences."""
         if not self.auth_token or not self.user_id:
+            logger.warning("No auth token or user ID available for preferences request")
             return None
 
         try:
@@ -220,8 +217,31 @@ class UserServiceClient(ServiceClient):
                 )
                 if response.status_code == 200:
                     return response.json()
+                elif response.status_code == 404:
+                    # 404 is expected for new users who don't have preferences yet
+                    logger.info(
+                        "User preferences not found (404) - this is normal for new users"
+                    )
+                    return None
+                elif response.status_code == 401:
+                    logger.error(
+                        "Authentication failed (401) - JWT token may be invalid"
+                    )
+                    logger.debug(
+                        f"Auth token: {self.auth_token[:50]}..."
+                        if self.auth_token
+                        else "None"
+                    )
+                    return None
                 else:
-                    logger.error(f"Failed to get user preferences: {response.status_code}")
+                    logger.error(
+                        f"Failed to get user preferences: {response.status_code}"
+                    )
+                    try:
+                        error_detail = response.json()
+                        logger.error(f"Error details: {error_detail}")
+                    except Exception:
+                        logger.error(f"Response text: {response.text}")
                     return None
         except Exception as e:
             logger.error(f"Error getting user preferences: {e}")
@@ -417,8 +437,12 @@ class FullDemo:
 
         try:
             # Create demo JWT token
-            self.user_client.auth_token = create_bearer_token(self.user_id, email)
+            jwt_token = create_bearer_token(self.user_id, email)
+            self.user_client.auth_token = jwt_token
             self.user_client.user_id = self.user_id
+
+            logger.info(f"Generated JWT token for user {self.user_id}")
+            logger.debug(f"JWT token starts with: {jwt_token[:50]}...")
 
             # Create the user via webhook simulation if they don't exist
             await self._create_user_if_not_exists(email)
@@ -452,7 +476,6 @@ class FullDemo:
 
     async def _create_user_if_not_exists(self, email: str) -> bool:
         """Create user via webhook simulation if they don't exist."""
-        import time
         from datetime import datetime, timezone
 
         # Simulate Clerk webhook for user creation
@@ -561,8 +584,24 @@ class FullDemo:
                 timezone = preferences["ui"].get("timezone", "UTC")
                 self.user_timezone = timezone
                 logger.info(f"Loaded user timezone: {timezone}")
+            elif preferences:
+                # Preferences exist but no UI section - use default
+                logger.info(
+                    "User preferences exist but no timezone configured, using UTC"
+                )
+            else:
+                logger.info("No user preferences found, will use UTC timezone")
         except Exception as e:
             logger.error(f"Failed to load user timezone: {e}")
+            # Check if it's an authentication issue
+            if "401" in str(e) or "authentication" in str(e).lower():
+                logger.error(
+                    f"Authentication issue - JWT_VERIFY_SIGNATURE is set to: {os.environ.get('JWT_VERIFY_SIGNATURE', 'not set')}"
+                )
+            elif "404" in str(e):
+                logger.error(
+                    "User preferences endpoint not found - this is expected for new users"
+                )
 
     def show_welcome(self):
         """Show welcome message."""
@@ -588,7 +627,9 @@ class FullDemo:
         print("  • 'status' - Show service status")
         print("  • 'auth' - Re-authenticate (prompts for email)")
         print("  • 'oauth google' - Set up Google integration (shows OAuth URL)")
-        print("  • 'timezone <timezone>' - Set your timezone (e.g. 'timezone America/New_York')")
+        print(
+            "  • 'timezone <timezone>' - Set your timezone (e.g. 'timezone America/New_York')"
+        )
         print("  • 'help' - Show all commands")
         print("  • 'exit' - Exit demo")
 
@@ -624,7 +665,9 @@ class FullDemo:
         print("  • 'auth email@example.com' - Authenticate with specific email")
         print("  • 'oauth google' - Set up Google OAuth integration (shows URL)")
         print("  • 'oauth microsoft' - Set up Microsoft OAuth integration (shows URL)")
-        print("  • 'timezone <timezone>' - Set your timezone (e.g. 'timezone America/New_York')")
+        print(
+            "  • 'timezone <timezone>' - Set your timezone (e.g. 'timezone America/New_York')"
+        )
         print("  • 'help' - Show this help message")
         print("  • 'exit' or 'quit' - Exit the demo")
 
@@ -838,11 +881,7 @@ class FullDemo:
 
         try:
             # Update user preferences
-            preferences_update = {
-                "ui": {
-                    "timezone": timezone
-                }
-            }
+            preferences_update = {"ui": {"timezone": timezone}}
 
             success = await self.user_client.update_user_preferences(preferences_update)
             if success:
@@ -1008,7 +1047,9 @@ class FullDemo:
                     # Handle timezone setting command
                     parts = user_input.split(maxsplit=1)
                     if len(parts) < 2:
-                        print("🌍 Usage: timezone <timezone> (e.g., timezone America/New_York)")
+                        print(
+                            "🌍 Usage: timezone <timezone> (e.g., timezone America/New_York)"
+                        )
                         continue
 
                     timezone = parts[1]
