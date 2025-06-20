@@ -309,28 +309,41 @@ def test_tool_registry(monkeypatch):
                 200,
             )
         elif "emails" in url:
-            return MockResponse({
-                "success": True,
-                "data": {"emails": [{"id": "1", "subject": "Email"}], "total_count": 1}
-            }, 200)
+            return MockResponse(
+                {
+                    "success": True,
+                    "data": {
+                        "emails": [{"id": "1", "subject": "Email"}],
+                        "total_count": 1,
+                    },
+                },
+                200,
+            )
         elif "notes" in url:
-            return MockResponse({
-                "success": True,
-                "data": {"notes": [{"id": "1", "title": "Note"}], "total_count": 1}
-            }, 200)
+            return MockResponse(
+                {
+                    "success": True,
+                    "data": {"notes": [{"id": "1", "title": "Note"}], "total_count": 1},
+                },
+                200,
+            )
         elif "documents" in url:
-            return MockResponse({
-                "success": True,
-                "data": {"documents": [{"id": "1", "title": "Doc"}], "total_count": 1}
-            }, 200)
+            return MockResponse(
+                {
+                    "success": True,
+                    "data": {
+                        "documents": [{"id": "1", "title": "Doc"}],
+                        "total_count": 1,
+                    },
+                },
+                200,
+            )
         return MockResponse({"error": "Not found"}, 404)
 
     monkeypatch.setattr(requests, "get", mock_get)
     registry = get_tool_registry()
     # Calendar
-    calendar_result = registry.execute_tool(
-        "get_calendar_events", user_id="user123"
-    )
+    calendar_result = registry.execute_tool("get_calendar_events", user_id="user123")
     assert "events" in calendar_result.raw_output
     # Email
     email_result = registry.execute_tool(
@@ -435,12 +448,10 @@ def test_tool_registry_tooloutput_for_get_tools(monkeypatch):
             },
             200,
         )
-    
+
     monkeypatch.setattr(requests, "get", mock_get)
     registry = get_tool_registry()
-    calendar_result = registry.execute_tool(
-        "get_calendar_events", user_id="user123"
-    )
+    calendar_result = registry.execute_tool("get_calendar_events", user_id="user123")
     assert hasattr(calendar_result, "raw_output")
     assert "events" in calendar_result.raw_output
     assert isinstance(calendar_result.raw_output["events"], list)
@@ -451,11 +462,14 @@ def test_tool_registry_tooloutput_for_get_tools(monkeypatch):
 def test_tool_registry_execute_tool_returns_tooloutput(monkeypatch):
     # This test checks that all registry.execute_tool calls return a ToolOutput object (except for errors)
     def mock_get(*args, **kwargs):
-        return MockResponse({
-            "success": True,
-            "data": {"emails": [{"id": "1", "subject": "Email"}], "total_count": 1}
-        }, 200)
-    
+        return MockResponse(
+            {
+                "success": True,
+                "data": {"emails": [{"id": "1", "subject": "Email"}], "total_count": 1},
+            },
+            200,
+        )
+
     monkeypatch.setattr(requests, "get", mock_get)
     registry = get_tool_registry()
     email_result = registry.execute_tool("get_emails", user_id="user123")
