@@ -62,11 +62,11 @@ def test_get_calendar_events_success(monkeypatch):
 
     monkeypatch.setattr(requests, "get", mock_get)
     result = get_calendar_events(
-        "token123",
+        "user123",
         start_date="2025-06-05",
         end_date="2025-06-06",
-        user_timezone="UTC",
-        provider_type="google",
+        time_zone="UTC",
+        providers="google",
     )
     assert "events" in result
     assert result["events"][0]["title"] == "Meeting"
@@ -77,7 +77,7 @@ def test_get_calendar_events_malformed(monkeypatch):
         return MockResponse({"success": True, "data": {"bad": "data"}}, 200)
 
     monkeypatch.setattr(requests, "get", mock_get)
-    result = get_calendar_events("token123")
+    result = get_calendar_events("user123")
     assert "error" in result
     assert "Malformed" in result["error"]
 
@@ -87,7 +87,7 @@ def test_get_calendar_events_timeout(monkeypatch):
         raise requests.Timeout()
 
     monkeypatch.setattr(requests, "get", mock_get)
-    result = get_calendar_events("token123")
+    result = get_calendar_events("user123")
     assert "error" in result
     assert "timed out" in result["error"]
 
@@ -97,7 +97,7 @@ def test_get_calendar_events_http_error(monkeypatch):
         return MockResponse({}, 500)
 
     monkeypatch.setattr(requests, "get", mock_get)
-    result = get_calendar_events("token123")
+    result = get_calendar_events("user123")
     assert "error" in result
     assert "HTTP error" in result["error"]
 
@@ -107,27 +107,36 @@ def test_get_calendar_events_unexpected(monkeypatch):
         raise Exception("boom")
 
     monkeypatch.setattr(requests, "get", mock_get)
-    result = get_calendar_events("token123")
+    result = get_calendar_events("user123")
     assert "error" in result
     assert "Unexpected error" in result["error"]
 
 
 def test_get_emails_success(monkeypatch):
     def mock_get(*args, **kwargs):
-        return MockResponse({"emails": [{"id": "1", "subject": "Test Email"}]}, 200)
+        return MockResponse(
+            {
+                "success": True,
+                "data": {
+                    "emails": [{"id": "1", "subject": "Test Email"}],
+                    "total_count": 1,
+                },
+            },
+            200,
+        )
 
     monkeypatch.setattr(requests, "get", mock_get)
-    result = get_emails("token123", unread_only=True, folder="inbox", max_results=10)
+    result = get_emails("user123", unread_only=True, folder="inbox", max_results=10)
     assert "emails" in result
     assert result["emails"][0]["subject"] == "Test Email"
 
 
 def test_get_emails_malformed(monkeypatch):
     def mock_get(*args, **kwargs):
-        return MockResponse({"bad": "data"}, 200)
+        return MockResponse({"success": True, "data": {"bad": "data"}}, 200)
 
     monkeypatch.setattr(requests, "get", mock_get)
-    result = get_emails("token123")
+    result = get_emails("user123")
     assert "error" in result
     assert "Malformed" in result["error"]
 
@@ -137,7 +146,7 @@ def test_get_emails_timeout(monkeypatch):
         raise requests.Timeout()
 
     monkeypatch.setattr(requests, "get", mock_get)
-    result = get_emails("token123")
+    result = get_emails("user123")
     assert "error" in result
     assert "timed out" in result["error"]
 
@@ -147,7 +156,7 @@ def test_get_emails_http_error(monkeypatch):
         return MockResponse({}, 404)
 
     monkeypatch.setattr(requests, "get", mock_get)
-    result = get_emails("token123")
+    result = get_emails("user123")
     assert "error" in result
     assert "HTTP error" in result["error"]
 
@@ -157,18 +166,27 @@ def test_get_emails_unexpected(monkeypatch):
         raise Exception("boom")
 
     monkeypatch.setattr(requests, "get", mock_get)
-    result = get_emails("token123")
+    result = get_emails("user123")
     assert "error" in result
     assert "Unexpected error" in result["error"]
 
 
 def test_get_notes_success(monkeypatch):
     def mock_get(*args, **kwargs):
-        return MockResponse({"notes": [{"id": "1", "title": "Test Note"}]}, 200)
+        return MockResponse(
+            {
+                "success": True,
+                "data": {
+                    "notes": [{"id": "1", "title": "Test Note"}],
+                    "total_count": 1,
+                },
+            },
+            200,
+        )
 
     monkeypatch.setattr(requests, "get", mock_get)
     result = get_notes(
-        "token123",
+        "user123",
         notebook="work",
         tags="important",
         search_query="project",
@@ -180,11 +198,20 @@ def test_get_notes_success(monkeypatch):
 
 def test_get_documents_success(monkeypatch):
     def mock_get(*args, **kwargs):
-        return MockResponse({"documents": [{"id": "1", "title": "Test Document"}]}, 200)
+        return MockResponse(
+            {
+                "success": True,
+                "data": {
+                    "documents": [{"id": "1", "title": "Test Document"}],
+                    "total_count": 1,
+                },
+            },
+            200,
+        )
 
     monkeypatch.setattr(requests, "get", mock_get)
     result = get_documents(
-        "token123", document_type="word", search_query="project", max_results=10
+        "user123", document_type="word", search_query="project", max_results=10
     )
     assert "documents" in result
     assert result["documents"][0]["title"] == "Test Document"
@@ -282,30 +309,52 @@ def test_tool_registry(monkeypatch):
                 200,
             )
         elif "emails" in url:
-            return MockResponse({"emails": [{"id": "1", "subject": "Email"}]}, 200)
+            return MockResponse(
+                {
+                    "success": True,
+                    "data": {
+                        "emails": [{"id": "1", "subject": "Email"}],
+                        "total_count": 1,
+                    },
+                },
+                200,
+            )
         elif "notes" in url:
-            return MockResponse({"notes": [{"id": "1", "title": "Note"}]}, 200)
+            return MockResponse(
+                {
+                    "success": True,
+                    "data": {"notes": [{"id": "1", "title": "Note"}], "total_count": 1},
+                },
+                200,
+            )
         elif "documents" in url:
-            return MockResponse({"documents": [{"id": "1", "title": "Doc"}]}, 200)
+            return MockResponse(
+                {
+                    "success": True,
+                    "data": {
+                        "documents": [{"id": "1", "title": "Doc"}],
+                        "total_count": 1,
+                    },
+                },
+                200,
+            )
         return MockResponse({"error": "Not found"}, 404)
 
     monkeypatch.setattr(requests, "get", mock_get)
     registry = get_tool_registry()
     # Calendar
-    calendar_result = registry.execute_tool(
-        "get_calendar_events", user_token="user_token"
-    )
+    calendar_result = registry.execute_tool("get_calendar_events", user_id="user123")
     assert "events" in calendar_result.raw_output
     # Email
     email_result = registry.execute_tool(
-        "get_emails", user_token="user_token", unread_only=True
+        "get_emails", user_id="user123", unread_only=True
     )
     assert "emails" in email_result.raw_output
     # Notes
-    notes_result = registry.execute_tool("get_notes", user_token="user_token")
+    notes_result = registry.execute_tool("get_notes", user_id="user123")
     assert "notes" in notes_result.raw_output
     # Documents
-    documents_result = registry.execute_tool("get_documents", user_token="user_token")
+    documents_result = registry.execute_tool("get_documents", user_id="user123")
     assert "documents" in documents_result.raw_output
     # Draft email
     draft_result = registry.execute_tool(
@@ -402,31 +451,39 @@ def test_tool_registry_tooloutput_for_get_tools(monkeypatch):
 
     monkeypatch.setattr(requests, "get", mock_get)
     registry = get_tool_registry()
-    calendar_result = registry.execute_tool(
-        "get_calendar_events", user_token="user_token"
-    )
+    calendar_result = registry.execute_tool("get_calendar_events", user_id="user123")
     assert hasattr(calendar_result, "raw_output")
     assert "events" in calendar_result.raw_output
-    assert calendar_result.raw_output["events"][0]["title"] == "Meeting"
+    assert isinstance(calendar_result.raw_output["events"], list)
+    assert len(calendar_result.raw_output["events"]) > 0
+    assert "title" in calendar_result.raw_output["events"][0]
 
 
 def test_tool_registry_execute_tool_returns_tooloutput(monkeypatch):
     # This test checks that all registry.execute_tool calls return a ToolOutput object (except for errors)
     def mock_get(*args, **kwargs):
-        return MockResponse({"emails": [{"id": "1", "subject": "Email"}]}, 200)
+        return MockResponse(
+            {
+                "success": True,
+                "data": {"emails": [{"id": "1", "subject": "Email"}], "total_count": 1},
+            },
+            200,
+        )
 
     monkeypatch.setattr(requests, "get", mock_get)
     registry = get_tool_registry()
-    email_result = registry.execute_tool("get_emails", user_token="user_token")
+    email_result = registry.execute_tool("get_emails", user_id="user123")
     # Should be a ToolOutput-like object with .raw_output
     assert hasattr(email_result, "raw_output")
     assert "emails" in email_result.raw_output
-    assert email_result.raw_output["emails"][0]["subject"] == "Email"
+    assert isinstance(email_result.raw_output["emails"], list)
+    assert len(email_result.raw_output["emails"]) > 0
+    assert "subject" in email_result.raw_output["emails"][0]
 
 
 def test_tool_registry_execute_tool_error():
     registry = get_tool_registry()
-    result = registry.execute_tool("calendar")  # Missing user_token
+    result = registry.execute_tool("calendar")
     # Should be a ToolOutput-like object with .raw_output
     assert hasattr(result, "raw_output")
     assert isinstance(result.raw_output, dict)

@@ -8,26 +8,29 @@ from services.chat.settings import get_settings
 
 
 def get_calendar_events(
-    user_token: str,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    user_timezone: Optional[str] = None,
-    provider_type: Optional[str] = None,
+    user_id: str,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    time_zone: str | None = None,
+    providers: str | None = None,
 ) -> Dict[str, Any]:
     # Use service-to-service authentication
     headers = {"Content-Type": "application/json"}
     if get_settings().api_chat_office_key:
         headers["X-API-Key"] = get_settings().api_chat_office_key
 
-    params = {}
+    params = {"user_id": user_id}
     if start_date:
         params["start_date"] = start_date
     if end_date:
         params["end_date"] = end_date
-    if user_timezone:
-        params["user_timezone"] = user_timezone
-    if provider_type:
-        params["provider_type"] = provider_type
+    if time_zone:
+        params["time_zone"] = time_zone
+    if providers:
+        # Convert comma-separated string to list format expected by office service
+        provider_list = [p.strip() for p in providers.split(",")]
+        params["providers"] = ",".join(provider_list)
+
     try:
         office_service_url = get_settings().office_service_url
         response = requests.get(
@@ -79,15 +82,19 @@ def get_calendar_events(
 
 
 def get_emails(
-    user_token: str,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    unread_only: Optional[bool] = None,
-    folder: Optional[str] = None,
-    max_results: Optional[int] = None,
+    user_id: str,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    unread_only: bool | None = None,
+    folder: str | None = None,
+    max_results: int | None = None,
 ) -> Dict[str, Any]:
-    headers = {"Authorization": f"Bearer {user_token}"}
-    params = {}
+    # Use service-to-service authentication
+    headers = {"Content-Type": "application/json"}
+    if get_settings().api_chat_office_key:
+        headers["X-API-Key"] = get_settings().api_chat_office_key
+
+    params = {"user_id": user_id}
     if start_date:
         params["start_date"] = start_date
     if end_date:
@@ -98,6 +105,7 @@ def get_emails(
         params["folder"] = folder
     if max_results:
         params["max_results"] = str(max_results)
+
     try:
         office_service_url = get_settings().office_service_url
         response = requests.get(
@@ -108,26 +116,45 @@ def get_emails(
         )
         response.raise_for_status()
         data = response.json()
-        if "emails" not in data:
-            return {"error": "Malformed response from office-service."}
-        return {"emails": data["emails"]}
+
+        # Check for successful response structure
+        if not data.get("success", False):
+            return {
+                "error": f"Office service error: {data.get('message', 'Unknown error')}"
+            }
+
+        # Extract emails from the data field
+        emails_data = data.get("data", {})
+        if "emails" not in emails_data:
+            return {
+                "error": "Malformed response from office-service: missing emails data."
+            }
+
+        return {"emails": emails_data["emails"]}
+
     except requests.Timeout:
         return {"error": "Request to office-service timed out."}
     except requests.HTTPError as e:
-        return {"error": f"HTTP error: {str(e)}"}
+        return {
+            "error": f"HTTP error: {str(e)} - Response: {e.response.text if e.response else 'No response'}"
+        }
     except Exception as e:
         return {"error": f"Unexpected error: {str(e)}"}
 
 
 def get_notes(
-    user_token: str,
-    notebook: Optional[str] = None,
-    tags: Optional[str] = None,
-    search_query: Optional[str] = None,
-    max_results: Optional[int] = None,
+    user_id: str,
+    notebook: str | None = None,
+    tags: str | None = None,
+    search_query: str | None = None,
+    max_results: int | None = None,
 ) -> Dict[str, Any]:
-    headers = {"Authorization": f"Bearer {user_token}"}
-    params = {}
+    # Use service-to-service authentication
+    headers = {"Content-Type": "application/json"}
+    if get_settings().api_chat_office_key:
+        headers["X-API-Key"] = get_settings().api_chat_office_key
+
+    params = {"user_id": user_id}
     if notebook:
         params["notebook"] = notebook
     if tags:
@@ -136,6 +163,7 @@ def get_notes(
         params["search_query"] = search_query
     if max_results:
         params["max_results"] = str(max_results)
+
     try:
         office_service_url = get_settings().office_service_url
         response = requests.get(
@@ -146,27 +174,46 @@ def get_notes(
         )
         response.raise_for_status()
         data = response.json()
-        if "notes" not in data:
-            return {"error": "Malformed response from office-service."}
-        return {"notes": data["notes"]}
+
+        # Check for successful response structure
+        if not data.get("success", False):
+            return {
+                "error": f"Office service error: {data.get('message', 'Unknown error')}"
+            }
+
+        # Extract notes from the data field
+        notes_data = data.get("data", {})
+        if "notes" not in notes_data:
+            return {
+                "error": "Malformed response from office-service: missing notes data."
+            }
+
+        return {"notes": notes_data["notes"]}
+
     except requests.Timeout:
         return {"error": "Request to office-service timed out."}
     except requests.HTTPError as e:
-        return {"error": f"HTTP error: {str(e)}"}
+        return {
+            "error": f"HTTP error: {str(e)} - Response: {e.response.text if e.response else 'No response'}"
+        }
     except Exception as e:
         return {"error": f"Unexpected error: {str(e)}"}
 
 
 def get_documents(
-    user_token: str,
-    document_type: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    search_query: Optional[str] = None,
-    max_results: Optional[int] = None,
+    user_id: str,
+    document_type: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    search_query: str | None = None,
+    max_results: int | None = None,
 ) -> Dict[str, Any]:
-    headers = {"Authorization": f"Bearer {user_token}"}
-    params = {}
+    # Use service-to-service authentication
+    headers = {"Content-Type": "application/json"}
+    if get_settings().api_chat_office_key:
+        headers["X-API-Key"] = get_settings().api_chat_office_key
+
+    params = {"user_id": user_id}
     if document_type:
         params["document_type"] = document_type
     if start_date:
@@ -177,6 +224,7 @@ def get_documents(
         params["search_query"] = search_query
     if max_results:
         params["max_results"] = str(max_results)
+
     try:
         office_service_url = get_settings().office_service_url
         response = requests.get(
@@ -187,13 +235,28 @@ def get_documents(
         )
         response.raise_for_status()
         data = response.json()
-        if "documents" not in data:
-            return {"error": "Malformed response from office-service."}
-        return {"documents": data["documents"]}
+
+        # Check for successful response structure
+        if not data.get("success", False):
+            return {
+                "error": f"Office service error: {data.get('message', 'Unknown error')}"
+            }
+
+        # Extract documents from the data field
+        documents_data = data.get("data", {})
+        if "documents" not in documents_data:
+            return {
+                "error": "Malformed response from office-service: missing documents data."
+            }
+
+        return {"documents": documents_data["documents"]}
+
     except requests.Timeout:
         return {"error": "Request to office-service timed out."}
     except requests.HTTPError as e:
-        return {"error": f"HTTP error: {str(e)}"}
+        return {
+            "error": f"HTTP error: {str(e)} - Response: {e.response.text if e.response else 'No response'}"
+        }
     except Exception as e:
         return {"error": f"Unexpected error: {str(e)}"}
 
@@ -257,11 +320,11 @@ def clear_all_drafts(thread_id: str) -> Dict[str, Any]:
 
 def create_draft_email(
     thread_id: str,
-    to: Optional[str] = None,
-    cc: Optional[str] = None,
-    bcc: Optional[str] = None,
-    subject: Optional[str] = None,
-    body: Optional[str] = None,
+    to: str | None = None,
+    cc: str | None = None,
+    bcc: str | None = None,
+    subject: str | None = None,
+    body: str | None = None,
 ) -> Dict[str, Any]:
     try:
         draft_key = f"{thread_id}_email"
@@ -305,12 +368,12 @@ def delete_draft_email(thread_id: str) -> Dict[str, Any]:
 
 def create_draft_calendar_event(
     thread_id: str,
-    title: Optional[str] = None,
-    start_time: Optional[str] = None,
-    end_time: Optional[str] = None,
-    attendees: Optional[str] = None,
-    location: Optional[str] = None,
-    description: Optional[str] = None,
+    title: str | None = None,
+    start_time: str | None = None,
+    end_time: str | None = None,
+    attendees: str | None = None,
+    location: str | None = None,
+    description: str | None = None,
 ) -> Dict[str, Any]:
     try:
         draft_key = f"{thread_id}_calendar_event"
@@ -360,13 +423,13 @@ def delete_draft_calendar_event(thread_id: str) -> Dict[str, Any]:
 def create_draft_calendar_change(
     thread_id: str,
     event_id: str,
-    change_type: Optional[str] = None,
-    new_title: Optional[str] = None,
-    new_start_time: Optional[str] = None,
-    new_end_time: Optional[str] = None,
-    new_attendees: Optional[str] = None,
-    new_location: Optional[str] = None,
-    new_description: Optional[str] = None,
+    change_type: str | None = None,
+    new_title: str | None = None,
+    new_start_time: str | None = None,
+    new_end_time: str | None = None,
+    new_attendees: str | None = None,
+    new_location: str | None = None,
+    new_description: str | None = None,
 ) -> Dict[str, Any]:
     """
     Create a draft for editing an existing calendar event.
