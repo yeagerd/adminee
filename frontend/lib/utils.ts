@@ -58,9 +58,9 @@ export function formatCalendarTimesInText(text: string): string {
   // Pattern to match "Time: HH:MM AM/PM to HH:MM AM/PM" 
   const timePattern = /Time:\s*(\d{1,2}:\d{2}\s*(?:AM|PM))\s*to\s*(\d{1,2}:\d{2}\s*(?:AM|PM))/gi;
   
-  return text.replace(timePattern, (match, startTime, endTime) => {
-    // For now, just return the original match - this would need more sophisticated parsing
-    // to convert from UTC to local time if the backend is sending UTC times
+  return text.replace(timePattern, (match) => {
+    // Since the backend now handles timezone conversion, we can return the formatted times as-is
+    // The chat service already converts UTC to local time before sending the response
     return match;
   });
 }
