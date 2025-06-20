@@ -19,7 +19,18 @@ from fastapi import status
 
 from services.common.test_utils import BaseOfficeServiceIntegrationTest
 from services.office.core.exceptions import ProviderAPIError
+from services.office.core.settings import get_settings
 from services.office.core.token_manager import TokenData
+
+
+# Helper function to get API key values
+def get_test_api_keys():
+    """Get the actual API key values from settings for testing."""
+    settings = get_settings()
+    return {
+        "frontend": settings.api_frontend_office_key,
+        "chat": settings.api_chat_office_key,
+    }
 
 
 class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
@@ -393,7 +404,7 @@ class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
             ):
                 response = self.client.get(
                     f"/calendar/events?user_id={user_id}",
-                    headers={"X-API-Key": "api-frontend-office-key"},
+                    headers={"X-API-Key": get_test_api_keys()["frontend"]},
                 )
                 assert response.status_code == status.HTTP_200_OK
 
@@ -417,7 +428,7 @@ class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
             ):
                 response = self.client.get(
                     f"/calendar/events?user_id={user_id}&start_date=2023-01-01&end_date=2023-01-31",
-                    headers={"X-API-Key": "api-frontend-office-key"},
+                    headers={"X-API-Key": get_test_api_keys()["frontend"]},
                 )
                 assert response.status_code == status.HTTP_200_OK
 
@@ -449,7 +460,7 @@ class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
                 response = self.client.post(
                     f"/calendar/events?user_id={user_id}",
                     json=event_data,
-                    headers={"X-API-Key": "api-frontend-office-key"},
+                    headers={"X-API-Key": get_test_api_keys()["frontend"]},
                 )
                 # The actual API returns 200, not 201
                 assert response.status_code == status.HTTP_200_OK
@@ -470,7 +481,7 @@ class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
             ):
                 response = self.client.delete(
                     f"/calendar/events/{event_id}?user_id={user_id}",
-                    headers={"X-API-Key": "api-frontend-office-key"},
+                    headers={"X-API-Key": get_test_api_keys()["frontend"]},
                 )
                 assert response.status_code == status.HTTP_200_OK
 
@@ -533,7 +544,7 @@ class TestFilesEndpoints(BaseOfficeServiceIntegrationTest):
             ):
                 response = self.client.get(
                     f"/files?user_id={user_id}",
-                    headers={"X-API-Key": "api-frontend-office-key"},
+                    headers={"X-API-Key": get_test_api_keys()["frontend"]},
                 )
                 assert response.status_code == status.HTTP_200_OK
 
@@ -556,7 +567,7 @@ class TestFilesEndpoints(BaseOfficeServiceIntegrationTest):
             ):
                 response = self.client.get(
                     f"/files/search?user_id={user_id}&q=test",  # Use 'q' parameter instead of 'query'
-                    headers={"X-API-Key": "api-frontend-office-key"},
+                    headers={"X-API-Key": get_test_api_keys()["frontend"]},
                 )
                 assert response.status_code == status.HTTP_200_OK
 
@@ -585,7 +596,7 @@ class TestFilesEndpoints(BaseOfficeServiceIntegrationTest):
             ):
                 response = self.client.get(
                     f"/files/{file_id}?user_id={user_id}",
-                    headers={"X-API-Key": "api-frontend-office-key"},
+                    headers={"X-API-Key": get_test_api_keys()["frontend"]},
                 )
                 assert response.status_code == status.HTTP_200_OK
 

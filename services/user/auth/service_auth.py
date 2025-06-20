@@ -114,6 +114,11 @@ class ServiceAPIKeyAuth:
                 "user-management-access"
             )
 
+        if get_settings().api_office_user_key:
+            self.api_key_value_to_service[get_settings().api_office_user_key] = (
+                "office-service-access"
+            )
+
         logger.info(
             f"ServiceAPIKeyAuth initialized with {len(self.api_key_value_to_service)} API keys"
         )
@@ -142,6 +147,7 @@ class ServiceAPIKeyAuth:
         """
         authorized_services = [
             "user-management-access",
+            "office-service-access",
         ]
         return service_name in authorized_services
 
@@ -227,11 +233,13 @@ async def verify_service_authentication(request: Request) -> str:
     # Store API key and service info in request state for permission checking
     request.state.api_key_value = api_key_value
     request.state.service_name = service_name
-    # For this service's own API keys, client is "frontend"
-    request.state.client_name = (
-        "frontend"
-        if service_name == "user-management-access"
-        else get_client_from_api_key_name_lookup(api_key_value)
+    # Map service names to client names
+    service_to_client = {
+        "user-management-access": "frontend",
+        "office-service-access": "office",
+    }
+    request.state.client_name = service_to_client.get(
+        service_name, get_client_from_api_key_name_lookup(api_key_value)
     )
 
     logger.info(
