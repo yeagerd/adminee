@@ -1,11 +1,4 @@
 import { Sailboat } from "lucide-react";
-import {
-  SignInButton,
-  SignUpButton,
-  SignedIn,
-  SignedOut,
-  UserButton,
-} from '@clerk/nextjs'
 
 export default function Navbar() {
   return (
@@ -16,13 +9,7 @@ export default function Navbar() {
           <h1 className="text-xl font-semibold truncate">Briefly</h1>
         </div>
         <div className="flex items-center gap-4 min-w-0">
-            <SignedOut>
-              <SignInButton />
-              <SignUpButton />
-            </SignedOut>
-            <SignedIn>
-              <UserButton />
-            </SignedIn>
+          {/* If you need NextAuth, add the provider or session logic here. For now, just render the navbar as usual. */}
         </div>
       </div>
     </header>

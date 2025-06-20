@@ -47,18 +47,41 @@ def mock_settings():
 
 def test_get_calendar_events_success(monkeypatch):
     def mock_get(*args, **kwargs):
-        return MockResponse(
-            {
-                "success": True,
-                "data": {
-                    "events": [{"id": "1", "title": "Meeting"}],
-                    "total_count": 1,
-                    "providers_used": ["google"],
-                    "provider_errors": None,
+        # Check if this is a call to user service (integrations) or office service (calendar)
+        url = args[0] if args else ""
+        if "internal/users" in url and "integrations" in url:
+            # Mock user service response for integrations
+            return MockResponse(
+                {
+                    "integrations": [
+                        {
+                            "id": 1,
+                            "provider": "google",
+                            "status": "active",
+                            "external_user_id": "user123",
+                            "scopes": ["calendar"],
+                        }
+                    ],
+                    "total": 1,
+                    "active_count": 1,
+                    "error_count": 0,
                 },
-            },
-            200,
-        )
+                200,
+            )
+        else:
+            # Mock office service response for calendar events
+            return MockResponse(
+                {
+                    "success": True,
+                    "data": {
+                        "events": [{"id": "1", "title": "Meeting"}],
+                        "total_count": 1,
+                        "providers_used": ["google"],
+                        "provider_errors": None,
+                    },
+                },
+                200,
+            )
 
     monkeypatch.setattr(requests, "get", mock_get)
     result = get_calendar_events(
@@ -74,7 +97,30 @@ def test_get_calendar_events_success(monkeypatch):
 
 def test_get_calendar_events_malformed(monkeypatch):
     def mock_get(*args, **kwargs):
-        return MockResponse({"success": True, "data": {"bad": "data"}}, 200)
+        # Check if this is a call to user service (integrations) or office service (calendar)
+        url = args[0] if args else ""
+        if "internal/users" in url and "integrations" in url:
+            # Mock user service response for integrations
+            return MockResponse(
+                {
+                    "integrations": [
+                        {
+                            "id": 1,
+                            "provider": "google",
+                            "status": "active",
+                            "external_user_id": "user123",
+                            "scopes": ["calendar"],
+                        }
+                    ],
+                    "total": 1,
+                    "active_count": 1,
+                    "error_count": 0,
+                },
+                200,
+            )
+        else:
+            # Mock office service response with malformed data
+            return MockResponse({"success": True, "data": {"bad": "data"}}, 200)
 
     monkeypatch.setattr(requests, "get", mock_get)
     result = get_calendar_events("user123")
@@ -84,7 +130,30 @@ def test_get_calendar_events_malformed(monkeypatch):
 
 def test_get_calendar_events_timeout(monkeypatch):
     def mock_get(*args, **kwargs):
-        raise requests.Timeout()
+        # Check if this is a call to user service (integrations) or office service (calendar)
+        url = args[0] if args else ""
+        if "internal/users" in url and "integrations" in url:
+            # Mock user service response for integrations
+            return MockResponse(
+                {
+                    "integrations": [
+                        {
+                            "id": 1,
+                            "provider": "google",
+                            "status": "active",
+                            "external_user_id": "user123",
+                            "scopes": ["calendar"],
+                        }
+                    ],
+                    "total": 1,
+                    "active_count": 1,
+                    "error_count": 0,
+                },
+                200,
+            )
+        else:
+            # Mock office service timeout
+            raise requests.Timeout()
 
     monkeypatch.setattr(requests, "get", mock_get)
     result = get_calendar_events("user123")
@@ -94,7 +163,30 @@ def test_get_calendar_events_timeout(monkeypatch):
 
 def test_get_calendar_events_http_error(monkeypatch):
     def mock_get(*args, **kwargs):
-        return MockResponse({}, 500)
+        # Check if this is a call to user service (integrations) or office service (calendar)
+        url = args[0] if args else ""
+        if "internal/users" in url and "integrations" in url:
+            # Mock user service response for integrations
+            return MockResponse(
+                {
+                    "integrations": [
+                        {
+                            "id": 1,
+                            "provider": "google",
+                            "status": "active",
+                            "external_user_id": "user123",
+                            "scopes": ["calendar"],
+                        }
+                    ],
+                    "total": 1,
+                    "active_count": 1,
+                    "error_count": 0,
+                },
+                200,
+            )
+        else:
+            # Mock office service HTTP error
+            return MockResponse({}, 500)
 
     monkeypatch.setattr(requests, "get", mock_get)
     result = get_calendar_events("user123")
@@ -104,7 +196,30 @@ def test_get_calendar_events_http_error(monkeypatch):
 
 def test_get_calendar_events_unexpected(monkeypatch):
     def mock_get(*args, **kwargs):
-        raise Exception("boom")
+        # Check if this is a call to user service (integrations) or office service (calendar)
+        url = args[0] if args else ""
+        if "internal/users" in url and "integrations" in url:
+            # Mock user service response for integrations
+            return MockResponse(
+                {
+                    "integrations": [
+                        {
+                            "id": 1,
+                            "provider": "google",
+                            "status": "active",
+                            "external_user_id": "user123",
+                            "scopes": ["calendar"],
+                        }
+                    ],
+                    "total": 1,
+                    "active_count": 1,
+                    "error_count": 0,
+                },
+                200,
+            )
+        else:
+            # Mock office service unexpected error
+            raise Exception("boom")
 
     monkeypatch.setattr(requests, "get", mock_get)
     result = get_calendar_events("user123")
@@ -295,7 +410,26 @@ def test_draft_tools_thread_isolation():
 def test_tool_registry(monkeypatch):
     def mock_get(*args, **kwargs):
         url = args[0]
-        if "events" in url:
+        if "internal/users" in url and "integrations" in url:
+            # Mock user service response for integrations
+            return MockResponse(
+                {
+                    "integrations": [
+                        {
+                            "id": 1,
+                            "provider": "google",
+                            "status": "active",
+                            "external_user_id": "user123",
+                            "scopes": ["calendar"],
+                        }
+                    ],
+                    "total": 1,
+                    "active_count": 1,
+                    "error_count": 0,
+                },
+                200,
+            )
+        elif "events" in url:
             return MockResponse(
                 {
                     "success": True,
@@ -390,18 +524,40 @@ def test_tool_registry_tooloutput_success(monkeypatch):
     # have a .raw_output attribute containing the original dict, and that
     # success is only present in .raw_output, not as a direct attribute.
     def mock_get(*args, **kwargs):
-        return MockResponse(
-            {
-                "success": True,
-                "data": {
-                    "events": [{"id": "1", "title": "Meeting"}],
-                    "total_count": 1,
-                    "providers_used": ["google"],
-                    "provider_errors": None,
+        url = args[0]
+        if "internal/users" in url and "integrations" in url:
+            # Mock user service response for integrations
+            return MockResponse(
+                {
+                    "integrations": [
+                        {
+                            "id": 1,
+                            "provider": "google",
+                            "status": "active",
+                            "external_user_id": "user123",
+                            "scopes": ["calendar"],
+                        }
+                    ],
+                    "total": 1,
+                    "active_count": 1,
+                    "error_count": 0,
                 },
-            },
-            200,
-        )
+                200,
+            )
+        else:
+            # Mock office service response
+            return MockResponse(
+                {
+                    "success": True,
+                    "data": {
+                        "events": [{"id": "1", "title": "Meeting"}],
+                        "total_count": 1,
+                        "providers_used": ["google"],
+                        "provider_errors": None,
+                    },
+                },
+                200,
+            )
 
     monkeypatch.setattr(requests, "get", mock_get)
     registry = get_tool_registry()
@@ -436,18 +592,40 @@ def test_tool_registry_tooloutput_error(monkeypatch):
 def test_tool_registry_tooloutput_for_get_tools(monkeypatch):
     # This test checks that ToolOutput is returned for get_calendar_events and contains expected keys
     def mock_get(*args, **kwargs):
-        return MockResponse(
-            {
-                "success": True,
-                "data": {
-                    "events": [{"id": "1", "title": "Meeting"}],
-                    "total_count": 1,
-                    "providers_used": ["google"],
-                    "provider_errors": None,
+        url = args[0]
+        if "internal/users" in url and "integrations" in url:
+            # Mock user service response for integrations
+            return MockResponse(
+                {
+                    "integrations": [
+                        {
+                            "id": 1,
+                            "provider": "google",
+                            "status": "active",
+                            "external_user_id": "user123",
+                            "scopes": ["calendar"],
+                        }
+                    ],
+                    "total": 1,
+                    "active_count": 1,
+                    "error_count": 0,
                 },
-            },
-            200,
-        )
+                200,
+            )
+        else:
+            # Mock office service response
+            return MockResponse(
+                {
+                    "success": True,
+                    "data": {
+                        "events": [{"id": "1", "title": "Meeting"}],
+                        "total_count": 1,
+                        "providers_used": ["google"],
+                        "provider_errors": None,
+                    },
+                },
+                200,
+            )
 
     monkeypatch.setattr(requests, "get", mock_get)
     registry = get_tool_registry()
@@ -462,13 +640,38 @@ def test_tool_registry_tooloutput_for_get_tools(monkeypatch):
 def test_tool_registry_execute_tool_returns_tooloutput(monkeypatch):
     # This test checks that all registry.execute_tool calls return a ToolOutput object (except for errors)
     def mock_get(*args, **kwargs):
-        return MockResponse(
-            {
-                "success": True,
-                "data": {"emails": [{"id": "1", "subject": "Email"}], "total_count": 1},
-            },
-            200,
-        )
+        url = args[0]
+        if "internal/users" in url and "integrations" in url:
+            # Mock user service response for integrations
+            return MockResponse(
+                {
+                    "integrations": [
+                        {
+                            "id": 1,
+                            "provider": "google",
+                            "status": "active",
+                            "external_user_id": "user123",
+                            "scopes": ["calendar"],
+                        }
+                    ],
+                    "total": 1,
+                    "active_count": 1,
+                    "error_count": 0,
+                },
+                200,
+            )
+        else:
+            # Mock office service response
+            return MockResponse(
+                {
+                    "success": True,
+                    "data": {
+                        "emails": [{"id": "1", "subject": "Email"}],
+                        "total_count": 1,
+                    },
+                },
+                200,
+            )
 
     monkeypatch.setattr(requests, "get", mock_get)
     registry = get_tool_registry()

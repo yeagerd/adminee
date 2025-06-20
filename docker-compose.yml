@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
       args:
-        - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+        # Clerk args removed - now using NextAuth
     volumes:
       - ./frontend:/app:cached
     command: sleep infinity
@@ -17,8 +17,7 @@ services:
       - office-service
     environment:
       # Frontend / Next.js specific vars
-      - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY} # For Clerk (client-side)
-      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY} # For Clerk (server-side API routes)
+      # NextAuth configuration handled at runtime
       # Add other necessary environment variables for the app service
 
   user-management:
@@ -40,8 +39,7 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - API_FRONTEND_USER_KEY=${API_FRONTEND_USER_KEY}
       - TOKEN_ENCRYPTION_SALT=${TOKEN_ENCRYPTION_SALT}
-      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
-      - CLERK_WEBHOOK_SECRET=${CLERK_WEBHOOK_SECRET}
+      # Clerk environment variables removed - now using NextAuth
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - MICROSOFT_CLIENT_ID=${MICROSOFT_CLIENT_ID}

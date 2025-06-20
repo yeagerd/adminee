@@ -199,11 +199,78 @@ async def get_user_preferences_internal(
     - Any service needing user settings for personalization
     """
     try:
-        from services.user.services.preferences_service import PreferencesService
+        from services.user.services.preferences_service import get_preferences_service
 
-        preferences = await PreferencesService.get_user_preferences(user_id)
+        preferences = await get_preferences_service().get_user_preferences(user_id)
         return preferences
     except Exception:
-        # Return None for any error (user not found, preferences not found, etc.)
-        # This matches the behavior expected by chat service
+        # Return null for missing preferences (normal for new users)
         return None
+
+
+@router.get("/users/{user_id}/integrations")
+async def get_user_integrations_internal(
+    user_id: str,
+    current_service: str = Depends(get_current_service),
+):
+    """
+    Get user integrations for other services.
+
+    Internal service endpoint to retrieve user integrations with service authentication.
+    Used by chat service and other internal services to determine available providers.
+
+    **Authentication:**
+    - Requires service-to-service API key authentication
+    - Only authorized services can retrieve user integrations
+
+    **Path Parameters:**
+    - `user_id`: User identifier (external auth ID)
+
+    **Response:**
+    - List of user integrations with status and provider information
+    - Returns empty list if user not found or no integrations
+
+    **Use Cases:**
+    - Chat service determining available calendar providers
+    - Office service checking user's connected accounts
+    - Any service needing to know user's OAuth connections
+    """
+    try:
+        from services.user.services.integration_service import get_integration_service
+
+        integrations_response = await get_integration_service().get_user_integrations(
+            user_id=user_id,
+            include_token_info=False,  # Don't include sensitive token info for internal calls
+        )
+
+        # Return simplified integration data for internal services
+        integrations = []
+        for integration in integrations_response.integrations:
+            integrations.append(
+                {
+                    "id": integration.id,
+                    "provider": integration.provider.value,
+                    "status": integration.status.value,
+                    "external_user_id": integration.external_user_id,
+                    "external_email": integration.external_email,
+                    "scopes": integration.scopes,
+                    "last_sync_at": (
+                        integration.last_sync_at.isoformat()
+                        if integration.last_sync_at
+                        else None
+                    ),
+                    "error_message": integration.last_error,
+                    "created_at": integration.created_at.isoformat(),
+                    "updated_at": integration.updated_at.isoformat(),
+                }
+            )
+
+        return {
+            "integrations": integrations,
+            "total": integrations_response.total,
+            "active_count": integrations_response.active_count,
+            "error_count": integrations_response.error_count,
+        }
+    except Exception:
+        # Return empty list for errors (don't break other services)
+        return {"integrations": [], "total": 0, "active_count": 0, "error_count": 0}

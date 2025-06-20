@@ -199,27 +199,51 @@ class TestTimezoneIntegration:
         """Test that calendar events get a display_time field with proper timezone formatting."""
         from services.chat.agents.llm_tools import get_calendar_events
 
-        # Mock office service response
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "success": True,
-            "data": {
-                "events": [
-                    {
-                        "id": "event_1",
-                        "title": "Daily Standup",
-                        "start_time": "2025-06-20T17:00:00Z",
-                        "end_time": "2025-06-20T17:30:00Z",
-                        "location": "SF Office",
-                    }
-                ],
-                "provider_errors": {},
-                "providers_used": ["google"],
-            },
-        }
-        mock_response.raise_for_status.return_value = None
-        mock_requests_get.return_value = mock_response
+        def mock_get(*args, **kwargs):
+            url = args[0]
+            mock_response = MagicMock()
+            mock_response.raise_for_status.return_value = None
+
+            if "internal/users" in url and "integrations" in url:
+                # Mock user service response for integrations
+                mock_response.status_code = 200
+                mock_response.json.return_value = {
+                    "integrations": [
+                        {
+                            "id": 1,
+                            "provider": "google",
+                            "status": "active",
+                            "external_user_id": "test_user",
+                            "scopes": ["calendar"],
+                        }
+                    ],
+                    "total": 1,
+                    "active_count": 1,
+                    "error_count": 0,
+                }
+            else:
+                # Mock office service response
+                mock_response.status_code = 200
+                mock_response.json.return_value = {
+                    "success": True,
+                    "data": {
+                        "events": [
+                            {
+                                "id": "event_1",
+                                "title": "Daily Standup",
+                                "start_time": "2025-06-20T17:00:00Z",
+                                "end_time": "2025-06-20T17:30:00Z",
+                                "location": "SF Office",
+                            }
+                        ],
+                        "provider_errors": {},
+                        "providers_used": ["google"],
+                    },
+                }
+
+            return mock_response
+
+        mock_requests_get.side_effect = mock_get
 
         # Call get_calendar_events with timezone
         result = get_calendar_events(
