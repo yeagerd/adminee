@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import requests
 from llama_index.core.tools import FunctionTool
@@ -19,7 +19,7 @@ def get_calendar_events(
     if get_settings().api_chat_office_key:
         headers["X-API-Key"] = get_settings().api_chat_office_key
 
-    params = {"user_id": user_id}
+    params: Dict[str, str | List[str]] = {"user_id": user_id}
     if start_date:
         params["start_date"] = start_date
     if end_date:
@@ -29,7 +29,7 @@ def get_calendar_events(
     if providers:
         # Convert comma-separated string to list format expected by office service
         provider_list = [p.strip() for p in providers.split(",")]
-        params["providers"] = ",".join(provider_list)
+        params["providers"] = provider_list
 
     try:
         office_service_url = get_settings().office_service_url
