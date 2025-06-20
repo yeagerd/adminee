@@ -67,15 +67,13 @@ class DocumentAgent(FunctionAgent):
         llm_provider: str = "openai",
         **llm_kwargs,
     ):
-        self.user_id = user_id
-
         # Get LLM instance
         llm = get_llm_manager().get_llm(
             model=llm_model, provider=llm_provider, **llm_kwargs
         )
 
-        # Create document-specific tools
-        tools = self._create_document_tools()
+        # Create document-specific tools with user_id
+        tools = self._create_document_tools(user_id)
 
         # Get current date for context
         from datetime import datetime
@@ -109,13 +107,13 @@ class DocumentAgent(FunctionAgent):
 
         logger.debug("DocumentAgent initialized with document and note tools")
 
-    def _create_document_tools(self) -> List[FunctionTool]:
+    def _create_document_tools(self, user_id: str) -> List[FunctionTool]:
         """Create document-specific tools with user_id pre-filled."""
         tools = []
 
         # Document retrieval tool with user_id pre-filled
         def get_documents_wrapper(**kwargs):
-            return get_documents(user_id=self.user_id, **kwargs)
+            return get_documents(user_id=user_id, **kwargs)
 
         get_documents_tool = FunctionTool.from_defaults(
             fn=get_documents_wrapper,
@@ -127,6 +125,21 @@ class DocumentAgent(FunctionAgent):
             ),
         )
         tools.append(get_documents_tool)
+
+        # Note retrieval tool with user_id pre-filled
+        def get_notes_wrapper(**kwargs):
+            return get_notes(user_id=user_id, **kwargs)
+
+        get_notes_tool = FunctionTool.from_defaults(
+            fn=get_notes_wrapper,
+            name="get_notes",
+            description=(
+                "Retrieve notes from the office service. "
+                "Can filter by notebook, tag, date range, search query, and maximum results. "
+                "The user_id is automatically included in the request."
+            ),
+        )
+        tools.append(get_notes_tool)
 
         # Notes retrieval tool with user_id pre-filled
         def get_notes_wrapper(**kwargs):

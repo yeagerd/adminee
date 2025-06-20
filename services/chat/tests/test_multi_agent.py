@@ -99,6 +99,7 @@ def test_calendar_agent_creation():
 def test_email_agent_creation():
     """Test that EmailAgent can be created."""
     agent = EmailAgent(
+        user_id="test_user",
         llm_model="fake-model",
         llm_provider="fake",
     )
@@ -111,6 +112,7 @@ def test_email_agent_creation():
 def test_document_agent_creation():
     """Test that DocumentAgent can be created."""
     agent = DocumentAgent(
+        user_id="test_user",
         llm_model="fake-model",
         llm_provider="fake",
     )
@@ -175,8 +177,12 @@ def test_agent_handoff_capabilities():
     calendar_agent = CalendarAgent(
         user_id="test_user", llm_model="fake-model", llm_provider="fake"
     )
-    email_agent = EmailAgent(llm_model="fake-model", llm_provider="fake")
-    document_agent = DocumentAgent(llm_model="fake-model", llm_provider="fake")
+    email_agent = EmailAgent(
+        user_id="test_user", llm_model="fake-model", llm_provider="fake"
+    )
+    document_agent = DocumentAgent(
+        user_id="test_user", llm_model="fake-model", llm_provider="fake"
+    )
     draft_agent = DraftAgent(thread_id=123, llm_model="fake-model", llm_provider="fake")
 
     # Check handoff configurations - Coordinator can hand off to all specialized agents

@@ -65,15 +65,13 @@ class EmailAgent(FunctionAgent):
         llm_provider: str = "openai",
         **llm_kwargs,
     ):
-        self.user_id = user_id
-
         # Get LLM instance
         llm = get_llm_manager().get_llm(
             model=llm_model, provider=llm_provider, **llm_kwargs
         )
 
-        # Create email-specific tools
-        tools = self._create_email_tools()
+        # Create email-specific tools with user_id
+        tools = self._create_email_tools(user_id)
 
         # Get current date for context
         from datetime import datetime
@@ -107,13 +105,13 @@ class EmailAgent(FunctionAgent):
 
         logger.debug("EmailAgent initialized with email tools")
 
-    def _create_email_tools(self) -> List[FunctionTool]:
+    def _create_email_tools(self, user_id: str) -> List[FunctionTool]:
         """Create email-specific tools with user_id pre-filled."""
         tools = []
 
-        # Email retrieval tool with user_id pre-filled
+        # Create a wrapper function that includes the user_id
         def get_emails_wrapper(**kwargs):
-            return get_emails(user_id=self.user_id, **kwargs)
+            return get_emails(user_id=user_id, **kwargs)
 
         get_emails_tool = FunctionTool.from_defaults(
             fn=get_emails_wrapper,
