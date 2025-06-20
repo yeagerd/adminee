@@ -215,4 +215,4 @@ def client_has_permission(client_name: str, required_permission: str) -> bool:
         True if client has the permission, False otherwise
     """
     permissions = get_client_permissions(client_name)
-    return required_permission in permissions 
+    return required_permission in permissions

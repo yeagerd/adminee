@@ -234,7 +234,10 @@ class ChatServiceClient(ServiceClient):
 
         try:
             response = requests.post(
-                f"{self.base_url}/chat", json=payload, headers=self.headers, timeout=self.timeout
+                f"{self.base_url}/chat",
+                json=payload,
+                headers=self.headers,
+                timeout=self.timeout,
             )
             if response.status_code == 200:
                 data = response.json()
@@ -967,7 +970,7 @@ class FullDemo:
         try:
             # Combine API key headers with streaming headers
             stream_headers = {**self.chat_client.headers, "Accept": "text/event-stream"}
-            
+
             async with httpx.AsyncClient() as client:
                 async with client.stream(
                     "POST",

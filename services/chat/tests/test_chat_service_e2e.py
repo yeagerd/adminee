@@ -50,7 +50,9 @@ def test_end_to_end_chat_flow():
 
     # Start a chat (should create a new thread and return response)
     msg = "Hello, world!"
-    resp = client.post("/chat", json={"user_id": user_id, "message": msg}, headers=TEST_HEADERS)
+    resp = client.post(
+        "/chat", json={"user_id": user_id, "message": msg}, headers=TEST_HEADERS
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert "thread_id" in data
@@ -65,7 +67,9 @@ def test_end_to_end_chat_flow():
     # Send another message in the same thread
     msg2 = "How are you?"
     resp = client.post(
-        "/chat", json={"user_id": user_id, "thread_id": thread_id, "message": msg2}, headers=TEST_HEADERS
+        "/chat",
+        json={"user_id": user_id, "thread_id": thread_id, "message": msg2},
+        headers=TEST_HEADERS,
     )
     assert resp.status_code == 200
     data2 = resp.json()
@@ -108,13 +112,21 @@ def test_multiple_blank_thread_creates_distinct_threads():
     user_id = "testuser_multi"
 
     # Send first message with blank thread_id
-    resp1 = client.post("/chat", json={"user_id": user_id, "message": "First message"}, headers=TEST_HEADERS)
+    resp1 = client.post(
+        "/chat",
+        json={"user_id": user_id, "message": "First message"},
+        headers=TEST_HEADERS,
+    )
     assert resp1.status_code == 200
     data1 = resp1.json()
     thread_id1 = data1["thread_id"]
 
     # Send second message with blank thread_id
-    resp2 = client.post("/chat", json={"user_id": user_id, "message": "Second message"}, headers=TEST_HEADERS)
+    resp2 = client.post(
+        "/chat",
+        json={"user_id": user_id, "message": "Second message"},
+        headers=TEST_HEADERS,
+    )
     assert resp2.status_code == 200
     data2 = resp2.json()
     thread_id2 = data2["thread_id"]

@@ -4,12 +4,12 @@ Tests for Chat Service Authentication.
 Tests the API key authentication system for the chat service.
 """
 
-import pytest
-from fastapi import HTTPException, Request
 from unittest.mock import MagicMock, Mock, patch
 
+import pytest
+from fastapi import HTTPException, Request
+
 from services.chat.auth import (
-    ChatServiceAuth,
     client_has_permission,
     get_chat_auth,
     get_client_permissions,
@@ -208,4 +208,4 @@ class TestChatAuthIntegration:
         for client in invalid_clients:
             assert get_client_permissions(client) == []
             assert client_has_permission(client, "read_chats") is False
-            assert client_has_permission(client, "write_chats") is False 
+            assert client_has_permission(client, "write_chats") is False
