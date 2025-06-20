@@ -50,10 +50,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 import httpx
 import requests
 
-# Set environment variables to disable cost tracking
-os.environ["LITELLM_LOG"] = "WARNING"
-os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "False")
-
 from services.chat.agents.workflow_agent import WorkflowAgent
 
 # Try to import OAuth utilities
@@ -201,21 +197,72 @@ class UserServiceClient(ServiceClient):
             if response.status_code == 401:
                 raise Exception("Authentication failed: Invalid token")
             elif response.status_code == 403:
-                raise Exception("Authentication failed: Access denied")
-            elif response.status_code == 404:
-                raise Exception("User not found")
-            elif response.status_code != 200:
-                raise Exception(f"HTTP {response.status_code}: {response.text}")
+                raise Exception("Access denied: Insufficient permissions")
+            elif response.status_code == 200:
+                return response.json()
+            else:
+                raise Exception(f"Failed to get integrations: {response.status_code}")
 
-            data = response.json()
-            # Convert to simple status format
-            return {
-                integration.get("provider", "unknown"): {
-                    "connected": integration.get("status") == "active",
-                    "status": integration.get("status", "unknown"),
-                }
-                for integration in data.get("integrations", [])
-            }
+    async def get_user_preferences(self) -> Optional[Dict[str, Any]]:
+        """Get user preferences."""
+        if not self.auth_token or not self.user_id:
+            logger.warning("No auth token or user ID available for preferences request")
+            return None
+
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.get(
+                    f"{self.base_url}/users/{self.user_id}/preferences/",
+                    headers={"Authorization": f"Bearer {self.auth_token}"},
+                )
+                if response.status_code == 200:
+                    return response.json()
+                elif response.status_code == 404:
+                    # 404 is expected for new users who don't have preferences yet
+                    logger.info(
+                        "User preferences not found (404) - this is normal for new users"
+                    )
+                    return None
+                elif response.status_code == 401:
+                    logger.error(
+                        "Authentication failed (401) - JWT token may be invalid"
+                    )
+                    logger.debug(
+                        f"Auth token: {self.auth_token[:50]}..."
+                        if self.auth_token
+                        else "None"
+                    )
+                    return None
+                else:
+                    logger.error(
+                        f"Failed to get user preferences: {response.status_code}"
+                    )
+                    try:
+                        error_detail = response.json()
+                        logger.error(f"Error details: {error_detail}")
+                    except Exception:
+                        logger.error(f"Response text: {response.text}")
+                    return None
+        except Exception as e:
+            logger.error(f"Error getting user preferences: {e}")
+            return None
+
+    async def update_user_preferences(self, preferences_update: Dict[str, Any]) -> bool:
+        """Update user preferences."""
+        if not self.auth_token or not self.user_id:
+            return False
+
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.put(
+                    f"{self.base_url}/users/{self.user_id}/preferences/",
+                    json=preferences_update,
+                    headers={"Authorization": f"Bearer {self.auth_token}"},
+                )
+                return response.status_code == 200
+        except Exception as e:
+            logger.error(f"Error updating user preferences: {e}")
+            return False
 
 
 class ChatServiceClient(ServiceClient):
@@ -314,22 +361,24 @@ class FullDemo:
         self.use_api = use_api
         self.user_id = user_id
         self.skip_auth = skip_auth
-        self.thread_id = int(time.time())
-        self.active_thread = None
+        self.active_thread: Optional[str] = None
+        self.agent: Optional[WorkflowAgent] = None
+        self.user_timezone: str = "UTC"  # Default timezone
 
         # Initialize service clients
+        self.user_client = UserServiceClient(user_url)
         self.chat_client = ChatServiceClient(chat_url)
         self.office_client = OfficeServiceClient(office_url)
-        self.user_client = UserServiceClient(user_url)
 
-        # For local mode
-        self.agent: Optional[WorkflowAgent] = None
+        # Track service availability
+        self.services_available = {
+            "user": False,
+            "chat": False,
+            "office": False,
+        }
 
         # OAuth server for authentication
         self.oauth_server: Optional[OAuthCallbackServer] = None
-
-        # Service availability
-        self.services_available = {"chat": False, "office": False, "user": False}
 
     async def check_services(self):
         """Check availability of all services."""
@@ -388,8 +437,12 @@ class FullDemo:
 
         try:
             # Create demo JWT token
-            self.user_client.auth_token = create_bearer_token(self.user_id, email)
+            jwt_token = create_bearer_token(self.user_id, email)
+            self.user_client.auth_token = jwt_token
             self.user_client.user_id = self.user_id
+
+            logger.info(f"Generated JWT token for user {self.user_id}")
+            logger.debug(f"JWT token starts with: {jwt_token[:50]}...")
 
             # Create the user via webhook simulation if they don't exist
             await self._create_user_if_not_exists(email)
@@ -399,12 +452,22 @@ class FullDemo:
 
             if integrations:
                 print("✅ Authentication successful - existing integrations found")
-                for provider, status in integrations.items():
-                    print(f"  {provider}: {'✅' if status.get('connected') else '❌'}")
+                # Handle the integrations response structure
+                if isinstance(integrations, dict) and "integrations" in integrations:
+                    integration_list = integrations["integrations"]
+                    for integration in integration_list:
+                        provider = integration.get("provider", "unknown")
+                        status = integration.get("status", "unknown")
+                        is_active = status == "active"
+                        print(f"  {provider}: {'✅' if is_active else '❌'}")
+                # Load user timezone after successful authentication
+                await self.load_user_timezone()
                 return True
             else:
                 # No integrations found, but authentication worked
                 print("✅ Authentication successful - no integrations configured yet")
+                # Load user timezone after successful authentication
+                await self.load_user_timezone()
                 return True
 
         except Exception as e:
@@ -413,7 +476,6 @@ class FullDemo:
 
     async def _create_user_if_not_exists(self, email: str) -> bool:
         """Create user via webhook simulation if they don't exist."""
-        import time
         from datetime import datetime, timezone
 
         # Simulate Clerk webhook for user creation
@@ -497,7 +559,7 @@ class FullDemo:
         print("\n🤖 Creating Multi-Agent WorkflowAgent...")
 
         agent = WorkflowAgent(
-            thread_id=self.thread_id,
+            thread_id=self.active_thread,
             user_id=self.user_id,
             llm_model="gpt-4o-mini",
             llm_provider="openai",
@@ -511,6 +573,36 @@ class FullDemo:
         )
         return agent
 
+    async def load_user_timezone(self):
+        """Load user's timezone preference."""
+        if not self.services_available["user"]:
+            return
+
+        try:
+            preferences = await self.user_client.get_user_preferences()
+            if preferences and "ui" in preferences:
+                timezone = preferences["ui"].get("timezone", "UTC")
+                self.user_timezone = timezone
+                logger.info(f"Loaded user timezone: {timezone}")
+            elif preferences:
+                # Preferences exist but no UI section - use default
+                logger.info(
+                    "User preferences exist but no timezone configured, using UTC"
+                )
+            else:
+                logger.info("No user preferences found, will use UTC timezone")
+        except Exception as e:
+            logger.error(f"Failed to load user timezone: {e}")
+            # Check if it's an authentication issue
+            if "401" in str(e) or "authentication" in str(e).lower():
+                logger.error(
+                    f"Authentication issue - JWT_VERIFY_SIGNATURE is set to: {os.environ.get('JWT_VERIFY_SIGNATURE', 'not set')}"
+                )
+            elif "404" in str(e):
+                logger.error(
+                    "User preferences endpoint not found - this is expected for new users"
+                )
+
     def show_welcome(self):
         """Show welcome message."""
         print("=" * 80)
@@ -520,6 +612,7 @@ class FullDemo:
         mode = "API" if self.use_api else "Local Multi-Agent"
         print(f"🔧 Mode: {mode}")
         print(f"👤 User: {self.user_id}")
+        print(f"🌍 Timezone: {self.user_timezone}")
 
         # Show service status
         print("\n📊 Service Status:")
@@ -534,6 +627,9 @@ class FullDemo:
         print("  • 'status' - Show service status")
         print("  • 'auth' - Re-authenticate (prompts for email)")
         print("  • 'oauth google' - Set up Google integration (shows OAuth URL)")
+        print(
+            "  • 'timezone <timezone>' - Set your timezone (e.g. 'timezone America/New_York')"
+        )
         print("  • 'help' - Show all commands")
         print("  • 'exit' - Exit demo")
 
@@ -569,6 +665,9 @@ class FullDemo:
         print("  • 'auth email@example.com' - Authenticate with specific email")
         print("  • 'oauth google' - Set up Google OAuth integration (shows URL)")
         print("  • 'oauth microsoft' - Set up Microsoft OAuth integration (shows URL)")
+        print(
+            "  • 'timezone <timezone>' - Set your timezone (e.g. 'timezone America/New_York')"
+        )
         print("  • 'help' - Show this help message")
         print("  • 'exit' or 'quit' - Exit the demo")
 
@@ -577,6 +676,7 @@ class FullDemo:
         print("  • send (to send the drafted email)")
         print("  • 'What meetings do I have today?'")
         print("  • 'Show me my recent emails'")
+        print("  • 'timezone Europe/London' (to set timezone to London)")
 
     async def send_message_local(self, message: str) -> str:
         """Send message using local multi-agent."""
@@ -742,7 +842,57 @@ class FullDemo:
             return "❌ User service unavailable for authentication"
 
         success = await self.authenticate(email)
-        return "✅ Authentication completed" if success else "❌ Authentication failed"
+        if not success:
+            return "❌ Authentication failed"
+
+        logger.info(f"Authentication successful for {email}")
+        return "✅ Authentication completed"
+
+    async def handle_timezone_command(self, timezone: str) -> str:
+        """Handle timezone setting command."""
+        if not self.services_available["user"]:
+            return "❌ User service unavailable for timezone update"
+
+        if not timezone:
+            return f"🌍 Current timezone: {self.user_timezone}\nUsage: timezone <timezone> (e.g., timezone America/New_York)"
+
+        # Common timezone mappings for user convenience
+        timezone_aliases = {
+            "utc": "UTC",
+            "est": "America/New_York",
+            "eastern": "America/New_York",
+            "pst": "America/Los_Angeles",
+            "pacific": "America/Los_Angeles",
+            "cst": "America/Chicago",
+            "central": "America/Chicago",
+            "mst": "America/Denver",
+            "mountain": "America/Denver",
+            "gmt": "UTC",
+            "london": "Europe/London",
+            "paris": "Europe/Paris",
+            "tokyo": "Asia/Tokyo",
+            "sydney": "Australia/Sydney",
+        }
+
+        # Check for alias
+        tz_lower = timezone.lower()
+        if tz_lower in timezone_aliases:
+            timezone = timezone_aliases[tz_lower]
+
+        try:
+            # Update user preferences
+            preferences_update = {"ui": {"timezone": timezone}}
+
+            success = await self.user_client.update_user_preferences(preferences_update)
+            if success:
+                self.user_timezone = timezone
+                return f"✅ Timezone updated to: {timezone}"
+            else:
+                return "❌ Failed to update timezone preference"
+
+        except Exception as e:
+            logger.error(f"Error updating timezone: {e}")
+            return f"❌ Error updating timezone: {str(e)}"
 
     def handle_api_commands(self, command: str) -> tuple[bool, str]:
         """Handle API-specific commands."""
@@ -890,6 +1040,21 @@ class FullDemo:
                         print(f"✅ OAuth setup completed for {provider}")
                     else:
                         print(f"❌ OAuth setup failed for {provider}")
+                    continue
+
+                # Handle timezone command
+                elif user_input.lower().startswith("timezone"):
+                    # Handle timezone setting command
+                    parts = user_input.split(maxsplit=1)
+                    if len(parts) < 2:
+                        print(
+                            "🌍 Usage: timezone <timezone> (e.g., timezone America/New_York)"
+                        )
+                        continue
+
+                    timezone = parts[1]
+                    response = await self.handle_timezone_command(timezone)
+                    print(response)
                     continue
 
                 # Handle API-specific commands
@@ -1095,6 +1260,9 @@ Examples:
 
         # Set up authentication
         await demo.authenticate()
+
+        # Load timezone preferences (in case authentication was skipped)
+        await demo.load_user_timezone()
 
         # Show welcome
         demo.show_welcome()

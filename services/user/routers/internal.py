@@ -169,3 +169,41 @@ async def get_user_status(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
+
+
+@router.get("/users/{user_id}/preferences")
+async def get_user_preferences_internal(
+    user_id: str,
+    current_service: str = Depends(get_current_service),
+):
+    """
+    Get user preferences for other services.
+
+    Internal service endpoint to retrieve user preferences with service authentication.
+    Used by chat service and other internal services to get user timezone and settings.
+
+    **Authentication:**
+    - Requires service-to-service API key authentication
+    - Only authorized services can retrieve user preferences
+
+    **Path Parameters:**
+    - `user_id`: User identifier (external auth ID)
+
+    **Response:**
+    - User preferences object or null if not found
+    - Returns 404 if user not found (normal for new users)
+
+    **Use Cases:**
+    - Chat service getting user timezone for scheduling
+    - Office service getting user notification preferences
+    - Any service needing user settings for personalization
+    """
+    try:
+        from services.user.services.preferences_service import PreferencesService
+
+        preferences = await PreferencesService.get_user_preferences(user_id)
+        return preferences
+    except Exception:
+        # Return None for any error (user not found, preferences not found, etc.)
+        # This matches the behavior expected by chat service
+        return None
