@@ -136,7 +136,7 @@ class TestDemoAuthentication:
 
         with (
             patch("httpx.AsyncClient") as mock_client,
-            patch("services.demos.demo_jwt_utils.create_bearer_token") as mock_jwt,
+            patch("services.demos.chat.create_bearer_token") as mock_jwt,
             patch("services.demos.chat.OAUTH_AVAILABLE", True),
         ):
 
@@ -199,7 +199,7 @@ class TestDemoAuthentication:
         # Mock failed integrations check (user doesn't exist)
         with (
             patch("httpx.AsyncClient") as mock_client,
-            patch("services.demos.demo_jwt_utils.create_bearer_token") as mock_jwt,
+            patch("services.demos.chat.create_bearer_token") as mock_jwt,
             patch("services.demos.chat.OAUTH_AVAILABLE", True),
         ):
 
