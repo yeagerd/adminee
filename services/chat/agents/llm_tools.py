@@ -29,7 +29,7 @@ def get_calendar_events(
     if providers:
         # Convert comma-separated string to list format expected by office service
         provider_list = [p.strip() for p in providers.split(",")]
-        params["providers"] = provider_list
+        params["providers"] = ",".join(provider_list)
 
     try:
         office_service_url = get_settings().office_service_url

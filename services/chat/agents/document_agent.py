@@ -141,21 +141,6 @@ class DocumentAgent(FunctionAgent):
         )
         tools.append(get_notes_tool)
 
-        # Notes retrieval tool with user_id pre-filled
-        def get_notes_wrapper(**kwargs):
-            return get_notes(user_id=self.user_id, **kwargs)
-
-        get_notes_tool = FunctionTool.from_defaults(
-            fn=get_notes_wrapper,
-            name="get_notes",
-            description=(
-                "Retrieve notes from the office service. "
-                "Can filter by notebook, tags, search query, and maximum results. "
-                "The user_id is automatically included in the request."
-            ),
-        )
-        tools.append(get_notes_tool)
-
         # Record document info tool (with Context support)
         record_document_tool = FunctionTool.from_defaults(
             fn=record_document_info,
