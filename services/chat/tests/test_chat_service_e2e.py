@@ -6,12 +6,52 @@ multi-agent workflow processing, history management, and API endpoints.
 """
 
 import asyncio
+import os
+import sys
 
 import pytest
 from fastapi.testclient import TestClient
 
 from services.chat import history_manager
-from services.chat.main import app
+
+# Test API key for authentication
+TEST_API_KEY = "test-frontend-chat-key"
+TEST_HEADERS = {"X-API-Key": TEST_API_KEY}
+
+
+# Patch the environment before any imports that might use it
+os.environ.update(
+    {
+        "DB_URL_CHAT": "sqlite+aiosqlite:///file::memory:?cache=shared",
+        "OPENAI_API_KEY": "test-key-for-multi-agent",
+        "LLM_MODEL": "gpt-4.1-nano",
+        "LLM_PROVIDER": "openai",
+        "API_FRONTEND_CHAT_KEY": TEST_API_KEY,
+    }
+)
+
+from services.chat.auth import get_chat_auth  # noqa: E402
+
+# Now import the app after setting up the environment
+
+
+@pytest.fixture
+def app():
+    """Fixture to provide the FastAPI app with test environment."""
+    # Force reload the auth module to pick up the new environment variables
+    for module in list(sys.modules):
+        if module.startswith("services.chat"):
+            del sys.modules[module]
+
+    # Re-import the app and auth to get fresh instances
+    from services.chat.auth import _chat_auth as fresh_auth
+    from services.chat.main import app as fresh_app
+
+    # Update the global _chat_auth reference
+    global _chat_auth
+    _chat_auth = fresh_auth
+
+    return fresh_app
 
 
 async def setup_test_database():
@@ -20,28 +60,14 @@ async def setup_test_database():
 
 
 @pytest.fixture(autouse=True)
-def fake_llm_env(monkeypatch):
-    # Set shared in-memory SQLite DB for tests
-    monkeypatch.setenv("DB_URL_CHAT", "sqlite+aiosqlite:///file::memory:?cache=shared")
-    # Set a test OpenAI API key for the multi-agent workflow
-    monkeypatch.setenv("OPENAI_API_KEY", "test-key-for-multi-agent")
-    # Set test LLM model
-    monkeypatch.setenv("LLM_MODEL", "gpt-4.1-nano")
-    monkeypatch.setenv("LLM_PROVIDER", "openai")
-    # Set test API key for frontend authentication
-    monkeypatch.setenv("API_FRONTEND_CHAT_KEY", "test-frontend-chat-key")
-
-    # Re-initialize the auth system to pick up the new API key
-    from services.chat.auth import ChatServiceAuth, _chat_auth
-
-    _chat_auth = ChatServiceAuth()
-
+def setup_test_environment(app):
+    """Set up the test environment."""
     # Initialize test database synchronously
     asyncio.run(setup_test_database())
-    yield
 
-    # Clean up
-    _chat_auth = None
+    # Verify auth is properly set up
+    auth = get_chat_auth()
+    assert auth.verify_api_key_value(TEST_API_KEY) == "frontend"
 
 
 # Test API key for authentication
@@ -49,7 +75,7 @@ TEST_API_KEY = "test-frontend-chat-key"
 TEST_HEADERS = {"X-API-Key": TEST_API_KEY}
 
 
-def test_end_to_end_chat_flow():
+def test_end_to_end_chat_flow(app):
     client = TestClient(app)
     user_id = "testuser"
 
@@ -116,7 +142,7 @@ def test_end_to_end_chat_flow():
     assert resp.json()["status"] == "success"
 
 
-def test_multiple_blank_thread_creates_distinct_threads():
+def test_multiple_blank_thread_creates_distinct_threads(app):
     client = TestClient(app)
     user_id = "testuser_multi"
 
