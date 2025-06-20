@@ -73,7 +73,7 @@ class ServiceClient:
             headers = self._get_headers_for_service("user-management")
 
             response = await self.http_client.get(
-                f"{get_settings().user_management_service_url}/preferences/{user_id}",
+                f"{get_settings().user_management_service_url}/users/{user_id}/preferences/",
                 headers=headers,
             )
 
