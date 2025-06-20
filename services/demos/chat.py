@@ -31,6 +31,9 @@ Usage:
     python services/demos/full_demo.py --local --streaming # Local streaming demo
     python services/demos/full_demo.py --no-auth          # Skip authentication
     python services/demos/full_demo.py --message "hi"     # Send single message
+
+Environment Variables:
+    API_FRONTEND_CHAT_KEY   API key for chat service authentication (default: test-frontend-chat-key)
 """
 
 import argparse
@@ -217,6 +220,9 @@ class ChatServiceClient(ServiceClient):
 
     def __init__(self, base_url: str = "http://localhost:8002"):
         super().__init__(base_url)
+        # Get API key from environment or use default for demo
+        self.api_key = os.getenv("API_FRONTEND_CHAT_KEY", "test-frontend-chat-key")
+        self.headers = {"X-API-Key": self.api_key}
 
     def send_message(
         self, user_id: str, message: str, thread_id: Optional[str] = None
@@ -228,7 +234,7 @@ class ChatServiceClient(ServiceClient):
 
         try:
             response = requests.post(
-                f"{self.base_url}/chat", json=payload, timeout=self.timeout
+                f"{self.base_url}/chat", json=payload, headers=self.headers, timeout=self.timeout
             )
             if response.status_code == 200:
                 data = response.json()
@@ -256,6 +262,7 @@ class ChatServiceClient(ServiceClient):
             response = requests.get(
                 f"{self.base_url}/threads",
                 params={"user_id": user_id},
+                headers=self.headers,
                 timeout=self.timeout,
             )
             if response.status_code == 200:
@@ -958,12 +965,15 @@ class FullDemo:
             payload["thread_id"] = self.active_thread
 
         try:
+            # Combine API key headers with streaming headers
+            stream_headers = {**self.chat_client.headers, "Accept": "text/event-stream"}
+            
             async with httpx.AsyncClient() as client:
                 async with client.stream(
                     "POST",
                     f"{self.chat_client.base_url}/chat/stream",
                     json=payload,
-                    headers={"Accept": "text/event-stream"},
+                    headers=stream_headers,
                 ) as response:
                     if response.status_code != 200:
                         print(f"Error: HTTP {response.status_code}")

@@ -28,9 +28,16 @@ def fake_llm_env(monkeypatch):
     # Set test LLM model
     monkeypatch.setenv("LLM_MODEL", "gpt-4.1-nano")
     monkeypatch.setenv("LLM_PROVIDER", "openai")
+    # Set test API key for frontend authentication
+    monkeypatch.setenv("API_FRONTEND_CHAT_KEY", "test-frontend-chat-key")
     # Initialize test database synchronously
     asyncio.run(setup_test_database())
     yield
+
+
+# Test API key for authentication
+TEST_API_KEY = "test-frontend-chat-key"
+TEST_HEADERS = {"X-API-Key": TEST_API_KEY}
 
 
 def test_end_to_end_chat_flow():
@@ -38,12 +45,12 @@ def test_end_to_end_chat_flow():
     user_id = "testuser"
 
     # List threads (record initial count)
-    resp = client.get("/threads", params={"user_id": user_id})
+    resp = client.get("/threads", params={"user_id": user_id}, headers=TEST_HEADERS)
     assert resp.status_code == 200
 
     # Start a chat (should create a new thread and return response)
     msg = "Hello, world!"
-    resp = client.post("/chat", json={"user_id": user_id, "message": msg})
+    resp = client.post("/chat", json={"user_id": user_id, "message": msg}, headers=TEST_HEADERS)
     assert resp.status_code == 200
     data = resp.json()
     assert "thread_id" in data
@@ -58,7 +65,7 @@ def test_end_to_end_chat_flow():
     # Send another message in the same thread
     msg2 = "How are you?"
     resp = client.post(
-        "/chat", json={"user_id": user_id, "thread_id": thread_id, "message": msg2}
+        "/chat", json={"user_id": user_id, "thread_id": thread_id, "message": msg2}, headers=TEST_HEADERS
     )
     assert resp.status_code == 200
     data2 = resp.json()
@@ -68,13 +75,13 @@ def test_end_to_end_chat_flow():
     assert len(data2["messages"][-1]["content"]) > 0
 
     # List threads (should contain the thread we just used)
-    resp = client.get("/threads", params={"user_id": user_id})
+    resp = client.get("/threads", params={"user_id": user_id}, headers=TEST_HEADERS)
     assert resp.status_code == 200
     threads = resp.json()
     assert any(t["thread_id"] == thread_id for t in threads)
 
     # Get thread history
-    resp = client.get(f"/threads/{thread_id}/history")
+    resp = client.get(f"/threads/{thread_id}/history", headers=TEST_HEADERS)
     assert resp.status_code == 200
     history = resp.json()
     assert history["thread_id"] == thread_id
@@ -90,6 +97,7 @@ def test_end_to_end_chat_flow():
             "message_id": last_msg["message_id"],
             "feedback": "up",
         },
+        headers=TEST_HEADERS,
     )
     assert resp.status_code == 200
     assert resp.json()["status"] == "success"
@@ -100,13 +108,13 @@ def test_multiple_blank_thread_creates_distinct_threads():
     user_id = "testuser_multi"
 
     # Send first message with blank thread_id
-    resp1 = client.post("/chat", json={"user_id": user_id, "message": "First message"})
+    resp1 = client.post("/chat", json={"user_id": user_id, "message": "First message"}, headers=TEST_HEADERS)
     assert resp1.status_code == 200
     data1 = resp1.json()
     thread_id1 = data1["thread_id"]
 
     # Send second message with blank thread_id
-    resp2 = client.post("/chat", json={"user_id": user_id, "message": "Second message"})
+    resp2 = client.post("/chat", json={"user_id": user_id, "message": "Second message"}, headers=TEST_HEADERS)
     assert resp2.status_code == 200
     data2 = resp2.json()
     thread_id2 = data2["thread_id"]
@@ -115,7 +123,7 @@ def test_multiple_blank_thread_creates_distinct_threads():
     assert thread_id1 != thread_id2
 
     # List threads and verify both thread IDs are present
-    resp = client.get("/threads", params={"user_id": user_id})
+    resp = client.get("/threads", params={"user_id": user_id}, headers=TEST_HEADERS)
     assert resp.status_code == 200
     threads = resp.json()
     thread_ids = {t["thread_id"] for t in threads}
