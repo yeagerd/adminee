@@ -22,6 +22,9 @@ RUN apt-get update \
 COPY services/user/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy the common module first (shared dependencies)
+COPY services/common/ ./services/common/
+
 # Copy the user management service code
 COPY services/user/ ./services/user/
 
@@ -56,4 +59,4 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8001/health || exit 1
 
 # Define the command to run the application
-CMD ["opentelemetry-instrument", "uvicorn", "services.user.main:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["uvicorn", "services.user.main:app", "--host", "0.0.0.0", "--port", "8001"]
