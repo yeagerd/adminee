@@ -218,4 +218,4 @@ jobs:
         run: git clone https://github.com/google/git-presubmit-linter.git ../git-presubmit-linter
 
       - name: Run mandate-conventional-changelog.sh
-        run: ../git-presubmit-linter/tools/mandate-conventional-changelog.sh
+        run: ../git-presubmit-linter/rules/mandate-conventional-changelog.sh
