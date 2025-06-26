@@ -154,8 +154,8 @@ class TestWebhookServiceIntegration(BaseUserManagementTest):
                 results.append(result)
             # First should create, rest should skip
             assert results[0]["action"] == "user_created"
-            assert results[1]["action"] == "user_creation_skipped"
-            assert results[2]["action"] == "user_creation_skipped"
+            assert results[1]["action"] == "user_already_exists"
+            assert results[2]["action"] == "user_already_exists"
             # Verify only one user exists
             async_session = get_async_session()
             async with async_session() as session:
@@ -174,4 +174,70 @@ class TestWebhookServiceIntegration(BaseUserManagementTest):
                 assert prefs_count == 1
         finally:
             # Clean up the test database
+            self._cleanup_test_database()
+
+    @pytest.mark.asyncio
+    async def test_update_external_auth_id_when_email_exists(self):
+        """Test that if a user exists with the same email but a different external_auth_id, the webhook updates the external_auth_id."""
+        await self._setup_test_database()
+        try:
+            # 1. Create a user with one external_auth_id
+            initial_data = ClerkWebhookEventData(
+                id="demo_user",
+                email_addresses=[
+                    {
+                        "email_address": "trybriefly@outlook.com",
+                        "verification": {"status": "verified"},
+                    }
+                ],
+                first_name="Demo",
+                last_name="User",
+                image_url="https://images.clerk.dev/demo-avatar.png",
+                created_at=1640995200000,
+                updated_at=1640995200000,
+            )
+            create_result = await self.webhook_service._handle_user_created(
+                initial_data
+            )
+            assert create_result["action"] == "user_created"
+
+            # 2. Call webhook with a new external_auth_id but same email
+            new_data = ClerkWebhookEventData(
+                id="user_trybriefly_outlook_com",
+                email_addresses=[
+                    {
+                        "email_address": "trybriefly@outlook.com",
+                        "verification": {"status": "verified"},
+                    }
+                ],
+                first_name="Demo",
+                last_name="User",
+                image_url="https://images.clerk.dev/demo-avatar.png",
+                created_at=1640995200000,
+                updated_at=1640995200000,
+            )
+            update_result = await self.webhook_service._handle_user_created(new_data)
+            assert update_result["action"] == "user_external_id_updated"
+            assert update_result["external_auth_id"] == "user_trybriefly_outlook_com"
+
+            # 3. Verify only one user exists and external_auth_id is updated
+            async_session = get_async_session()
+            async with async_session() as session:
+                from sqlmodel import select
+
+                user_result = await session.execute(
+                    select(User).where(User.email == "trybriefly@outlook.com")
+                )
+                user = user_result.scalar_one_or_none()
+                assert user is not None
+                assert user.external_auth_id == "user_trybriefly_outlook_com"
+                # There should only be one user with this email
+                count_result = await session.execute(
+                    text(
+                        "SELECT COUNT(*) FROM users WHERE email = 'trybriefly@outlook.com'"
+                    )
+                )
+                count = count_result.scalar()
+                assert count == 1
+        finally:
             self._cleanup_test_database()

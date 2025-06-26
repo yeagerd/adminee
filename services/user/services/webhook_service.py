@@ -108,7 +108,7 @@ class WebhookService:
         try:
             async_session = get_async_session()
             async with async_session() as session:
-                # Check if user already exists (idempotency)
+                # Check if user already exists by external_auth_id (idempotency)
                 result = await session.execute(
                     select(User).where(
                         User.external_auth_id == user_data.id,
@@ -118,19 +118,62 @@ class WebhookService:
                 existing_user = result.scalar_one_or_none()
 
                 if existing_user:
-                    logger.info(
-                        f"User {user_data.id} already exists, skipping creation"
-                    )
-                    return {
-                        "action": "user_creation_skipped",
-                        "user_id": user_data.id,
-                        "reason": "User already exists",
-                    }
+                    # User exists, check if email changed
+                    primary_email = user_data.primary_email
+                    if not primary_email:
+                        raise WebhookProcessingError(
+                            "No primary email found in user data"
+                        )
+
+                    if existing_user.email != primary_email:
+                        old_email = existing_user.email
+                        existing_user.email = primary_email
+                        existing_user.updated_at = datetime.now(timezone.utc)
+                        await session.commit()
+                        await session.refresh(existing_user)
+
+                        logger.info(
+                            f"Updated email for user {user_data.id}: {old_email} → {primary_email}"
+                        )
+                        return {
+                            "action": "user_email_updated",
+                            "user_id": existing_user.id,
+                            "external_auth_id": user_data.id,
+                            "old_email": old_email,
+                            "new_email": primary_email,
+                        }
+                    else:
+                        logger.info(
+                            f"User {user_data.id} already exists with same email, skipping creation"
+                        )
+                        return {
+                            "action": "user_already_exists",
+                            "user_id": existing_user.id,
+                            "external_auth_id": user_data.id,
+                            "reason": "User already exists with same email",
+                        }
 
                 # Extract primary email
                 primary_email = user_data.primary_email
                 if not primary_email:
                     raise WebhookProcessingError("No primary email found in user data")
+
+                # Check for email collision (different external ID)
+                result = await session.execute(
+                    select(User).where(
+                        User.email == primary_email,
+                        User.auth_provider == "clerk",
+                    )
+                )
+                existing_user_by_email = result.scalar_one_or_none()
+
+                if existing_user_by_email:
+                    logger.warning(
+                        f"Email collision: {primary_email} exists with external_auth_id {existing_user_by_email.external_auth_id}, but new user has external_auth_id {user_data.id}"
+                    )
+                    raise WebhookProcessingError(
+                        f"Email {primary_email} already exists with different external ID {existing_user_by_email.external_auth_id}"
+                    )
 
                 # Create User record
                 user = User(
