@@ -1,40 +1,19 @@
 #!/usr/bin/env python3
 """
-Full Briefly Demo - Integrated Chat, Office, and User Services
+Enhanced Briefly Demo with NextAuth Testing.
 
-This demo combines all three services (chat, office, user) to provide a complete
-Briefly experience with OAuth authentication and enhanced chat functionality.
+This demo provides a comprehensive testing environment for the Briefly platform,
+including authentication testing with both Clerk and NextAuth, OAuth integration,
+and multi-agent workflow capabilities.
 
 Features:
-- OAuth authentication via user service
-- Full chat interface with multi-agent support
-- Draft management (delete, send)
-- Integrated office operations (email, calendar, files)
-- Graceful fallback when services are unavailable
-
-Commands (interactive mode):
-  help                Show this help message
-  list                List all chat threads
-  new                 Start a new thread
-  switch <thread_id>  Switch to an existing thread
-  clear               Clear conversation history
-  delete              Delete the current draft
-  send                Send the current draft via email
-  auth                Re-authenticate with services
-  status              Show service and integration status
-  exit                Exit the demo
-
-Usage:
-    python services/demos/full_demo.py                    # API mode (default)
-    python services/demos/full_demo.py --local            # Local multi-agent mode
-    python services/demos/full_demo.py --streaming        # API streaming demo
-    python services/demos/full_demo.py --local --streaming # Local streaming demo
-    python services/demos/full_demo.py --no-auth          # Skip authentication
-    python services/demos/full_demo.py --message "hi"     # Send single message
-    python services/demos/full_demo.py --email user@example.com --message "test"  # Custom email
-
-Environment Variables:
-    API_FRONTEND_CHAT_KEY   API key for chat service authentication (default: test-frontend-chat-key)
+- Clerk authentication with JWT tokens
+- NextAuth integration testing
+- OAuth flow simulation (Google, Microsoft)
+- Multi-agent workflow testing
+- Service health monitoring
+- User preference management
+- Timezone handling
 """
 
 import argparse
@@ -51,6 +30,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 
 import httpx
 import requests
+from pydantic import ConfigDict
+from pydantic_settings import BaseSettings
 
 from services.chat.agents.workflow_agent import WorkflowAgent
 
@@ -62,6 +43,36 @@ try:
     OAUTH_AVAILABLE = True
 except ImportError:
     OAUTH_AVAILABLE = False
+
+# Try to import NextAuth utilities
+try:
+    from services.demos.nextauth_demo_utils import (
+        NextAuthClient,
+        compare_auth_approaches,
+        create_nextauth_jwt_for_demo,
+        demonstrate_nextauth_integration,
+        test_nextauth_flow,
+    )
+
+    NEXTAUTH_AVAILABLE = True
+except ImportError:
+    NEXTAUTH_AVAILABLE = False
+
+
+class DemoSettings(BaseSettings):
+    """Demo settings loaded from environment variables."""
+
+    model_config = ConfigDict(extra="ignore")
+    API_FRONTEND_USER_KEY: str = "test-FRONTEND_USER_KEY"
+    API_FRONTEND_OFFICE_KEY: str = "test-FRONTEND_OFFICE_KEY"
+    API_FRONTEND_CHAT_KEY: str = "test-FRONTEND_CHAT_KEY"
+    API_CHAT_USER_KEY: str = "test-CHAT_USER_KEY"
+    API_CHAT_OFFICE_KEY: str = "test-OFFICE_USER_KEY"
+    API_OFFICE_USER_KEY: str = "test-OFFICE_USER_KEY"
+
+
+# Load settings
+settings = DemoSettings()
 
 # Set default user ID
 DEFAULT_USER_ID = "trybriefly@outlook.com"
@@ -189,26 +200,77 @@ class UserServiceClient(ServiceClient):
         if not self.auth_token or not self.user_id:
             raise Exception("No authentication token or user ID provided")
 
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            # Try the public endpoint first (requires Bearer token)
-            response = await client.get(
-                f"{self.base_url}/users/{self.user_id}/integrations/",
-                headers={"Authorization": f"Bearer {self.auth_token}"},
-            )
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                # Try the public endpoint first (requires Bearer token)
+                response = await client.get(
+                    f"{self.base_url}/users/{self.user_id}/integrations",
+                    headers={"Authorization": f"Bearer {self.auth_token}"},
+                )
 
-            if response.status_code == 401:
-                raise Exception("Authentication failed: Invalid token")
-            elif response.status_code == 403:
-                raise Exception("Access denied: Insufficient permissions")
-            elif response.status_code == 200:
-                return response.json()
-            else:
+                if response.status_code == 401:
+                    raise Exception("Authentication failed: Invalid token")
+
+                if response.status_code == 404:
+                    raise Exception("User not found")
+
+                if response.status_code == 200:
+                    return response.json()
+
+                # Fallback to internal endpoint
+                response = await client.get(
+                    f"{self.base_url}/internal/users/{self.user_id}/integrations",
+                    headers={"X-API-Key": settings.API_FRONTEND_USER_KEY},
+                )
+
+                if response.status_code == 200:
+                    return response.json()
+                elif response.status_code == 404:
+                    raise Exception("User not found")
+
                 raise Exception(f"Failed to get integrations: {response.status_code}")
+
+        except httpx.TimeoutException:
+            raise Exception("Service timeout - user service is unresponsive")
+        except httpx.ConnectError:
+            raise Exception("Service connection error - user service is down")
+        except Exception as e:
+            # Re-raise the exception with more context
+            if "User not found" in str(e):
+                raise
+            elif "Authentication failed" in str(e):
+                raise
+            elif "Service timeout" in str(e):
+                raise
+            elif "Service connection error" in str(e):
+                raise
+            else:
+                raise Exception(f"Unexpected error getting integrations: {str(e)}")
+
+    async def check_user_exists_internal(self, user_id: str) -> bool:
+        """Return True if user exists, False if not. Raise if service is down."""
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.get(
+                    f"{self.base_url}/internal/users/{user_id}/integrations",
+                    headers={"X-API-Key": settings.API_FRONTEND_USER_KEY},
+                )
+                if response.status_code == 200:
+                    return True
+                elif response.status_code == 404:
+                    return False
+                else:
+                    raise RuntimeError(f"User service error: {response.status_code}")
+        except (httpx.TimeoutException, httpx.ConnectError) as e:
+            logger.warning(f"User service connection error: {e}")
+            raise RuntimeError("User service is down or unreachable")
+        except Exception as e:
+            logger.warning(f"Unexpected error checking if user {user_id} exists: {e}")
+            raise RuntimeError(f"Unexpected error: {e}")
 
     async def get_user_preferences(self) -> Optional[Dict[str, Any]]:
         """Get user preferences."""
         if not self.auth_token or not self.user_id:
-            logger.warning("No auth token or user ID available for preferences request")
             return None
 
         try:
@@ -217,34 +279,23 @@ class UserServiceClient(ServiceClient):
                     f"{self.base_url}/users/{self.user_id}/preferences/",
                     headers={"Authorization": f"Bearer {self.auth_token}"},
                 )
+
                 if response.status_code == 200:
                     return response.json()
                 elif response.status_code == 404:
-                    # 404 is expected for new users who don't have preferences yet
-                    logger.info(
-                        "User preferences not found (404) - this is normal for new users"
-                    )
-                    return None
-                elif response.status_code == 401:
-                    logger.error(
-                        "Authentication failed (401) - JWT token may be invalid"
-                    )
-                    logger.debug(
-                        f"Auth token: {self.auth_token[:50]}..."
-                        if self.auth_token
-                        else "None"
-                    )
-                    return None
+                    # User preferences don't exist yet, return defaults
+                    return {
+                        "version": "1.0",
+                        "ui_preferences": {},
+                        "notification_preferences": {},
+                        "ai_preferences": {},
+                        "integration_preferences": {},
+                        "privacy_preferences": {},
+                    }
                 else:
-                    logger.error(
-                        f"Failed to get user preferences: {response.status_code}"
-                    )
-                    try:
-                        error_detail = response.json()
-                        logger.error(f"Error details: {error_detail}")
-                    except Exception:
-                        logger.error(f"Response text: {response.text}")
+                    logger.warning(f"Failed to get preferences: {response.status_code}")
                     return None
+
         except Exception as e:
             logger.error(f"Error getting user preferences: {e}")
             return None
@@ -272,59 +323,55 @@ class ChatServiceClient(ServiceClient):
 
     def __init__(self, base_url: str = "http://localhost:8002"):
         super().__init__(base_url)
-        # Get API key from environment or use default for demo
-        self.api_key = os.getenv("API_FRONTEND_CHAT_KEY", "test-frontend-chat-key")
-        self.headers = {"X-API-Key": self.api_key}
 
     def send_message(
         self, user_id: str, message: str, thread_id: Optional[str] = None
     ) -> Optional[str]:
         """Send a message to the chat service."""
-        payload = {"user_id": user_id, "message": message}
-        if thread_id:
-            payload["thread_id"] = thread_id
-
         try:
             response = requests.post(
-                f"{self.base_url}/chat",
-                json=payload,
-                headers=self.headers,
+                f"{self.base_url}/chat/message",
+                json={
+                    "user_id": user_id,
+                    "message": message,
+                    "thread_id": thread_id,
+                },
+                headers={"X-API-Key": settings.API_FRONTEND_CHAT_KEY},
                 timeout=self.timeout,
             )
             if response.status_code == 200:
-                data = response.json()
-                # Extract content from the messages array
-                messages = data.get("messages", [])
-                if messages:
-                    return messages[0].get("content", "")
-                return ""
+                return response.json().get("response")
         except Exception as e:
-            logger.error(f"Send message failed: {e}")
+            logger.error(f"Chat service error: {e}")
         return None
 
     def delete_draft(self, user_id: str, thread_id: Optional[str] = None) -> bool:
         """Delete the current draft."""
-        # Note: Chat service doesn't currently have a dedicated draft deletion endpoint
-        # This is a placeholder that gracefully handles the missing endpoint
-        logger.info(
-            "Draft deletion requested, but endpoint not yet implemented in chat service"
-        )
-        return True  # Return True to avoid breaking the demo flow
+        try:
+            response = requests.delete(
+                f"{self.base_url}/chat/draft",
+                json={"user_id": user_id, "thread_id": thread_id},
+                headers={"X-API-Key": settings.API_FRONTEND_CHAT_KEY},
+                timeout=self.timeout,
+            )
+            return response.status_code == 200
+        except Exception as e:
+            logger.error(f"Delete draft error: {e}")
+            return False
 
     def get_threads(self, user_id: str) -> List[Dict]:
-        """List all threads for a user."""
+        """Get all chat threads for a user."""
         try:
             response = requests.get(
-                f"{self.base_url}/threads",
+                f"{self.base_url}/chat/threads",
                 params={"user_id": user_id},
-                headers=self.headers,
+                headers={"X-API-Key": settings.API_FRONTEND_CHAT_KEY},
                 timeout=self.timeout,
             )
             if response.status_code == 200:
-                # The endpoint returns a list directly, not wrapped in a "threads" field
-                return response.json()
+                return response.json().get("threads", [])
         except Exception as e:
-            logger.error(f"Get threads failed: {e}")
+            logger.error(f"Get threads error: {e}")
         return []
 
 
@@ -335,21 +382,22 @@ class OfficeServiceClient(ServiceClient):
         super().__init__(base_url)
 
     async def send_email(self, user_id: str, email_data: Dict[str, Any]) -> bool:
-        """Send an email through the office service."""
+        """Send an email via the office service."""
         try:
-            payload = {"user_id": user_id, **email_data}
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
-                    f"{self.base_url}/email/send", json=payload
+                    f"{self.base_url}/email/send",
+                    json={"user_id": user_id, **email_data},
+                    headers={"X-API-Key": settings.API_FRONTEND_OFFICE_KEY},
                 )
                 return response.status_code == 200
         except Exception as e:
-            logger.error(f"Send email failed: {e}")
-        return False
+            logger.error(f"Send email error: {e}")
+            return False
 
 
 class FullDemo:
-    """Comprehensive demo integrating all services."""
+    """Full demo with integrated services and NextAuth testing capabilities."""
 
     def __init__(
         self,
@@ -363,251 +411,245 @@ class FullDemo:
         self.use_api = use_api
         self.user_id = user_id
         self.skip_auth = skip_auth
-        self.active_thread: Optional[str] = None
-        self.agent: Optional[WorkflowAgent] = None
-        self.user_timezone: str = "UTC"  # Default timezone
+        self.user_timezone = "UTC"
+        self.timeout = 30.0  # Default timeout for HTTP requests
 
-        # Initialize service clients
-        self.user_client = UserServiceClient(user_url)
+        # Service clients
         self.chat_client = ChatServiceClient(chat_url)
         self.office_client = OfficeServiceClient(office_url)
+        self.user_client = UserServiceClient(user_url)
 
-        # Track service availability
+        # Service availability
         self.services_available = {
-            "user": False,
             "chat": False,
             "office": False,
+            "user": False,
         }
 
-        # OAuth server for authentication
-        self.oauth_server: Optional[OAuthCallbackServer] = None
+        # Authentication tracking
+        self.auth_token: Optional[str] = None
+        self.authenticated = False
+
+        # Chat state
+        self.current_thread_id: Optional[str] = None
+        self.agent: Optional[WorkflowAgent] = None
+
+        # NextAuth client
+        self.nextauth_client: Optional[NextAuthClient] = None
+        self.nextauth_token: Optional[str] = None
+
+        # Track available authentication methods
+        self.auth_methods = {
+            "clerk": True,  # Always available in base demo
+            "nextauth": NEXTAUTH_AVAILABLE,
+        }
 
     async def check_services(self):
-        """Check availability of all services."""
+        """Check availability of all services including NextAuth server."""
         print("🔍 Checking service availability...")
 
-        # Check services in parallel
-        chat_task = self.chat_client.health_check()
-        office_task = self.office_client.health_check()
-        user_task = self.user_client.health_check()
+        # Check main services
+        self.services_available["chat"] = await self.chat_client.health_check()
+        self.services_available["office"] = await self.office_client.health_check()
+        self.services_available["user"] = await self.user_client.health_check()
 
-        results = await asyncio.gather(
-            chat_task, office_task, user_task, return_exceptions=True
-        )
+        # Check NextAuth test server
+        if NEXTAUTH_AVAILABLE:
+            print("🔍 Checking NextAuth test server...")
+            self.nextauth_client = NextAuthClient()
+            nextauth_available = await self.nextauth_client.health_check()
+            self.auth_methods["nextauth"] = nextauth_available
 
-        self.services_available["chat"] = (
-            results[0] if not isinstance(results[0], Exception) else False
-        )
-        self.services_available["office"] = (
-            results[1] if not isinstance(results[1], Exception) else False
-        )
-        self.services_available["user"] = (
-            results[2] if not isinstance(results[2], Exception) else False
-        )
+            if nextauth_available:
+                print("  NextAuth Test Server: ✅")
+            else:
+                print("  NextAuth Test Server: ❌")
+                print("    Start with: python services/demos/nextauth_test_server.py")
 
-        print(f"  Chat Service: {'✅' if self.services_available['chat'] else '❌'}")
-        print(
-            f"  Office Service: {'✅' if self.services_available['office'] else '❌'}"
-        )
-        print(f"  User Service: {'✅' if self.services_available['user'] else '❌'}")
+        # Show status
+        for service, available in self.services_available.items():
+            status = "✅ Available" if available else "❌ Unavailable"
+            print(f"  {service.title()}: {status}")
 
     async def authenticate(self, email: Optional[str] = None) -> bool:
-        """Authenticate with user service and set up OAuth."""
+        """Authenticate with the user service."""
         if self.skip_auth:
-            print("🔐 Skipping authentication (disabled)")
-            return False
+            print("⏭️  Skipping authentication (--no-auth flag)")
+            self.authenticated = True
+            return True
 
         if not self.services_available["user"]:
-            print("🔐 ❌ User service unavailable for authentication")
+            print("❌ User service not available")
             return False
 
-        if not OAUTH_AVAILABLE:
-            print("⚠️  OAuth utilities not available")
-            return False
-
-        print("\n🔐 Setting up authentication...")
-
-        # Get email address if not provided
-        if not email:
-            email = input(
-                f"📧 Enter email address (default: {DEFAULT_USER_ID}): "
-            ).strip()
-            if not email:
-                email = DEFAULT_USER_ID
-
-        print(f"👤 Authenticating as: {email}")
+        # Use provided email or default
+        auth_email = email or self.user_id
 
         try:
-            # Create demo JWT token
-            jwt_token = create_bearer_token(self.user_id, email)
-            self.user_client.auth_token = jwt_token
-            self.user_client.user_id = self.user_id
+            # Generate a Clerk-style user ID from the email
+            user_id = f"user_{auth_email.replace('@', '_').replace('.', '_')}"
 
-            logger.info(f"Generated JWT token for user {self.user_id}")
-            logger.debug(f"JWT token starts with: {jwt_token[:50]}...")
+            # Create user if it doesn't exist (before creating the token)
+            if not await self._create_user_if_not_exists(auth_email, user_id):
+                print(f"❌ Failed to create user {auth_email}")
+                return False
 
-            # Create the user via webhook simulation if they don't exist
-            await self._create_user_if_not_exists(email)
+            # Now create a demo JWT token with the user ID and email
+            self.auth_token = create_bearer_token(user_id, auth_email)
+            self.user_client.auth_token = self.auth_token
+            self.user_client.user_id = user_id
 
-            # Test authentication by checking integrations
-            integrations = await self.user_client.get_integrations_status()
-
-            if integrations:
-                print("✅ Authentication successful - existing integrations found")
-                # Handle the integrations response structure
-                if isinstance(integrations, dict) and "integrations" in integrations:
-                    integration_list = integrations["integrations"]
-                    for integration in integration_list:
-                        provider = integration.get("provider", "unknown")
-                        status = integration.get("status", "unknown")
-                        is_active = status == "active"
-                        print(f"  {provider}: {'✅' if is_active else '❌'}")
-                # Load user timezone after successful authentication
-                await self.load_user_timezone()
-                return True
-            else:
-                # No integrations found, but authentication worked
-                print("✅ Authentication successful - no integrations configured yet")
-                # Load user timezone after successful authentication
-                await self.load_user_timezone()
-                return True
-
-        except Exception as e:
-            print(f"❌ Authentication failed: {str(e)[:100]}...")
-            return False
-
-    async def _create_user_if_not_exists(self, email: str) -> bool:
-        """Create user via webhook simulation if they don't exist."""
-
-        # Simulate Clerk webhook for user creation
-        webhook_payload = {
-            "type": "user.created",
-            "object": "event",  # Required by ClerkWebhookEvent schema
-            "data": {
-                "id": self.user_id,
-                "email_addresses": [
-                    {
-                        "email_address": email,
-                        "verification": {"status": "verified"},
-                    }
-                ],
-                "first_name": "Demo",
-                "last_name": "User",
-                "image_url": "https://images.clerk.dev/demo-avatar.png",
-                "created_at": int(datetime.now(timezone.utc).timestamp() * 1000),
-                "updated_at": int(datetime.now(timezone.utc).timestamp() * 1000),
-            },
-        }
-
-        try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(
-                    f"{self.user_client.base_url}/webhooks/clerk",
-                    json=webhook_payload,
-                    headers={
-                        "Content-Type": "application/json",
-                        "svix-id": "msg_demo_12345",
-                        "svix-timestamp": str(int(time.time())),
-                        "svix-signature": "v1,demo_signature",  # Would be real in production
-                    },
+            # Verify the token works by trying to get integrations
+            try:
+                await self.user_client.get_integrations_status()
+            except Exception as e:
+                logger.warning(
+                    f"Could not verify integrations, but user was created: {e}"
                 )
-                if response.status_code in [200, 201]:
-                    print(f"✅ User created/verified: {email}")
-                    return True
-                elif response.status_code == 409:
-                    print(f"✅ User already exists: {email}")
-                    return True
-                else:
-                    print(
-                        f"⚠️  User creation returned {response.status_code}, continuing..."
-                    )
-                    return True  # Continue anyway, user might exist
+
+            self.authenticated = True
+            print(f"✅ Authenticated as {auth_email} (ID: {user_id})")
+            return True
+
         except Exception as e:
-            print(f"⚠️  User creation failed: {e}, continuing...")
-            return True  # Continue anyway, authentication might still work
+            print(f"❌ Authentication failed: {e}")
+            self.authenticated = False
+            return False
+
+    async def _create_user_if_not_exists(self, email: str, user_id: str) -> bool:
+        """Create a user if they don't exist."""
+        try:
+            user_exists = await self.user_client.check_user_exists_internal(user_id)
+        except Exception as e:
+            logger.error(
+                f"User service is down, cannot determine if user {user_id} exists: {e}"
+            )
+            return False
+
+        if user_exists:
+            logger.info(f"User {user_id} already exists")
+            return True
+        else:
+            logger.info(f"User {user_id} not found, creating via webhook")
+            # Create user via webhook simulation
+            webhook_payload = {
+                "type": "user.created",
+                "object": "event",
+                "data": {
+                    "id": user_id,
+                    "email_addresses": [
+                        {
+                            "email_address": email,
+                            "verification": {"status": "verified"},
+                        }
+                    ],
+                    "first_name": "Demo",
+                    "last_name": "User",
+                    "image_url": "https://images.clerk.dev/demo-avatar.png",
+                    "created_at": int(datetime.now(timezone.utc).timestamp() * 1000),
+                    "updated_at": int(datetime.now(timezone.utc).timestamp() * 1000),
+                },
+            }
+            try:
+                async with httpx.AsyncClient(timeout=self.timeout) as client:
+                    response = await client.post(
+                        f"{self.user_client.base_url}/webhooks/clerk",
+                        json=webhook_payload,
+                        headers={
+                            "Content-Type": "application/json",
+                            "svix-id": "msg_demo_12345",
+                            "svix-timestamp": str(int(time.time())),
+                            "svix-signature": "v1,demo_signature",
+                        },
+                    )
+                    if response.status_code in [200, 201]:
+                        logger.info(f"Successfully created user {user_id} via webhook")
+                        return True
+                    else:
+                        logger.error(
+                            f"Failed to create user via webhook: {response.status_code}"
+                        )
+                        return False
+            except Exception as webhook_error:
+                logger.error(f"Webhook creation failed: {webhook_error}")
+                return False
 
     async def setup_oauth_integration(self, provider: str) -> bool:
         """Set up OAuth integration for a provider."""
-        print(f"\n🔗 Setting up {provider} integration...")
-
-        # Start OAuth flow
-        auth_url = await self.user_client.start_oauth_flow(provider)
-        if not auth_url:
-            print(f"❌ Failed to start {provider} OAuth flow")
+        if not self.authenticated:
+            print("❌ Not authenticated")
             return False
 
-        print("✅ OAuth flow started successfully")
+        if not OAUTH_AVAILABLE:
+            print("❌ OAuth utilities not available")
+            return False
 
-        # Provide URL for manual copying instead of opening browser
-        print("\n🔗 Please copy and paste this URL into your browser:")
-        print(f"   {auth_url}")
-        print("\n   After authorization, you'll be redirected back to the service.")
+        try:
+            # Start OAuth flow
+            auth_url = await self.user_client.start_oauth_flow(provider)
+            if not auth_url:
+                print(f"❌ Failed to start {provider} OAuth flow")
+                return False
 
-        # Wait for user to complete OAuth flow
-        input(f"\nPress Enter after completing the {provider.title()} OAuth flow...")
+            print(f"🔗 Starting {provider} OAuth flow...")
+            print(f"   URL: {auth_url}")
 
-        print(f"✅ {provider} integration setup completed!")
-        print(
-            "   (Note: This demo doesn't verify the OAuth callback, but the URL was provided)"
-        )
-        return True
+            # Start callback server
+            callback_server = OAuthCallbackServer()
+            await callback_server.start()
+
+            try:
+                # Wait for callback
+                code, state = await callback_server.wait_for_callback()
+                print(f"✅ Received OAuth callback: code={code[:10]}..., state={state}")
+
+                # Complete OAuth flow
+                success = await self.user_client.complete_oauth_flow(
+                    provider, code, state
+                )
+                if success:
+                    print(f"✅ {provider.title()} OAuth integration successful!")
+                    return True
+                else:
+                    print(f"❌ {provider.title()} OAuth integration failed")
+                    return False
+
+            finally:
+                await callback_server.stop()
+
+        except Exception as e:
+            print(f"❌ OAuth setup failed: {e}")
+            return False
 
     async def create_agent(self) -> Optional[WorkflowAgent]:
-        """Create multi-agent workflow (local mode only)."""
-        if self.use_api:
-            return None
-
-        print("\n🤖 Creating Multi-Agent WorkflowAgent...")
-
-        agent = WorkflowAgent(
-            thread_id=self.active_thread,
-            user_id=self.user_id,
-            llm_model="gpt-4o-mini",
-            llm_provider="openai",
-            max_tokens=2000,
-        )
-
-        await agent.build_agent("Hello, I'm ready to help!")
-
-        print(
-            f"✅ Multi-Agent system ready with {len(agent.specialized_agents)} specialized agents"
-        )
-        return agent
+        """Create a workflow agent for local mode."""
+        if not self.use_api:
+            try:
+                agent = WorkflowAgent()
+                await agent.initialize()
+                return agent
+            except Exception as e:
+                logger.error(f"Failed to create agent: {e}")
+        return None
 
     async def load_user_timezone(self):
-        """Load user's timezone preference."""
-        if not self.services_available["user"]:
+        """Load user timezone from preferences."""
+        if not self.authenticated:
             return
 
         try:
             preferences = await self.user_client.get_user_preferences()
-            if preferences and "ui" in preferences:
-                timezone = preferences["ui"].get("timezone", "UTC")
-                self.user_timezone = timezone
-                logger.info(f"Loaded user timezone: {timezone}")
-            elif preferences:
-                # Preferences exist but no UI section - use default
-                logger.info(
-                    "User preferences exist but no timezone configured, using UTC"
-                )
-            else:
-                logger.info("No user preferences found, will use UTC timezone")
+            if preferences:
+                ui_prefs = preferences.get("ui_preferences", {})
+                self.user_timezone = ui_prefs.get("timezone", "UTC")
+                logger.info(f"Loaded user timezone: {self.user_timezone}")
         except Exception as e:
-            logger.error(f"Failed to load user timezone: {e}")
-            # Check if it's an authentication issue
-            if "401" in str(e) or "authentication" in str(e).lower():
-                logger.error(
-                    f"Authentication issue - JWT_VERIFY_SIGNATURE is set to: {os.environ.get('JWT_VERIFY_SIGNATURE', 'not set')}"
-                )
-            elif "404" in str(e):
-                logger.error(
-                    "User preferences endpoint not found - this is expected for new users"
-                )
+            logger.warning(f"Failed to load user timezone: {e}")
 
     def show_welcome(self):
-        """Show welcome message."""
+        """Show welcome message with NextAuth information."""
         print("=" * 80)
-        print("🚀 Welcome to the Full Briefly Demo!")
+        print("🚀 Welcome to the Enhanced Briefly Demo with NextAuth Testing!")
         print("=" * 80)
 
         mode = "API" if self.use_api else "Local Multi-Agent"
@@ -621,16 +663,25 @@ class FullDemo:
             status = "✅ Available" if available else "❌ Unavailable"
             print(f"  {service.title()}: {status}")
 
-        print("\n💡 Enhanced Commands:")
+        # Show authentication methods
+        print("\n🔐 Authentication Methods:")
+        for method, available in self.auth_methods.items():
+            status = "✅ Available" if available else "❌ Unavailable"
+            print(f"  {method.title()}: {status}")
+
+        print("\n💡 Enhanced Commands (NextAuth Testing):")
+        print("  • 'nextauth google' - Test NextAuth with Google OAuth")
+        print("  • 'nextauth microsoft' - Test NextAuth with Microsoft OAuth")
+        print("  • 'compare' - Compare Clerk vs NextAuth tokens")
+        print("  • 'demo-nextauth' - Run NextAuth integration demonstration")
+
+        print("\n💡 Original Commands:")
         print("  • Type any message to chat")
         print("  • 'delete' - Delete current draft")
         print("  • 'send' - Send current draft via email")
         print("  • 'status' - Show service status")
         print("  • 'auth' - Re-authenticate (prompts for email)")
-        print("  • 'oauth google' - Set up Google integration (shows OAuth URL)")
-        print(
-            "  • 'timezone <timezone>' - Set your timezone (e.g. 'timezone America/New_York')"
-        )
+        print("  • 'oauth google' - Set up Google integration (Clerk)")
         print("  • 'help' - Show all commands")
         print("  • 'exit' - Exit demo")
 
@@ -642,10 +693,16 @@ class FullDemo:
         print()
 
     def show_help(self):
-        """Show detailed help."""
+        """Show enhanced help with NextAuth commands."""
         print("\n" + "=" * 60)
-        print("📋 Full Briefly Demo - Help")
+        print("📋 Enhanced Briefly Demo - Help")
         print("=" * 60)
+
+        print("\n🔵 NextAuth Testing Commands:")
+        print("  • 'nextauth google' - Test NextAuth OAuth flow with Google")
+        print("  • 'nextauth microsoft' - Test NextAuth OAuth flow with Microsoft")
+        print("  • 'compare' - Compare Clerk vs NextAuth authentication approaches")
+        print("  • 'demo-nextauth' - Run full NextAuth integration demonstration")
 
         print("\n🗣️  Chat Commands:")
         print("  • Type any message to chat with Briefly")
@@ -662,632 +719,469 @@ class FullDemo:
 
         print("\n🔧 System Commands:")
         print("  • 'status' - Show service and integration status")
-        print("  • 'auth' - Re-authenticate with services (prompts for email)")
-        print("  • 'auth email@example.com' - Authenticate with specific email")
-        print("  • 'oauth google' - Set up Google OAuth integration (shows URL)")
-        print("  • 'oauth microsoft' - Set up Microsoft OAuth integration (shows URL)")
-        print(
-            "  • 'timezone <timezone>' - Set your timezone (e.g. 'timezone America/New_York')"
-        )
+        print("  • 'auth' - Re-authenticate with Clerk")
+        print("  • 'oauth google' - Set up Google OAuth integration (Clerk)")
+        print("  • 'oauth microsoft' - Set up Microsoft OAuth integration (Clerk)")
         print("  • 'help' - Show this help message")
         print("  • 'exit' or 'quit' - Exit the demo")
 
-        print("\n💡 Example Usage:")
-        print("  • 'Draft an email to the team about the meeting'")
-        print("  • send (to send the drafted email)")
-        print("  • 'What meetings do I have today?'")
-        print("  • 'Show me my recent emails'")
-        print("  • 'timezone Europe/London' (to set timezone to London)")
+        print("\n💡 Comparison Examples:")
+        print("  1. Run 'auth' to set up Clerk authentication")
+        print("  2. Run 'nextauth google' to test NextAuth with Google")
+        print("  3. Run 'compare' to see the differences")
 
     async def send_message_local(self, message: str) -> str:
-        """Send message using local multi-agent."""
+        """Send a message using local agent."""
         if not self.agent:
-            self.agent = await self.create_agent()
-
-        if not self.agent:
-            return "❌ Failed to create agent"
+            return "❌ Agent not available"
 
         try:
             response = await self.agent.process_message(message)
-            return response.response if hasattr(response, "response") else str(response)
+            return response
         except Exception as e:
-            logger.error(f"Local message error: {e}")
-            return f"❌ Error: {str(e)}"
+            logger.error(f"Local agent error: {e}")
+            return f"❌ Error: {e}"
 
     def _render_drafts_as_text(self, drafts):
-        """Render structured draft data as text for the demo."""
+        """Render drafts as text for display."""
         if not drafts:
-            return ""
+            return "No drafts available"
 
-        lines = ["📋 **Drafts Created:**"]
+        text = "📝 Current Drafts:\n"
+        for i, draft in enumerate(drafts, 1):
+            text += f"\n{i}. {draft.get('type', 'Unknown')} Draft\n"
+            text += f"   Subject: {draft.get('subject', 'No subject')}\n"
+            text += f"   To: {', '.join(draft.get('to', []))}\n"
+            text += f"   Content: {draft.get('content', 'No content')[:100]}...\n"
+            text += f"   Created: {draft.get('created_at', 'Unknown')}\n"
 
-        for draft in drafts:
-            draft_type = draft.get("type", "unknown")
-
-            if draft_type == "email":
-                lines.append("• Email Draft:")
-                # Display all non-empty email fields
-                for field, label in [
-                    ("to", "To"),
-                    ("cc", "CC"),
-                    ("bcc", "BCC"),
-                    ("subject", "Subject"),
-                    ("body", "Body"),
-                ]:
-                    value = draft.get(field)
-                    if value:
-                        if field == "body":
-                            # Truncate body for readability
-                            body_preview = (
-                                value[:100] + "..." if len(value) > 100 else value
-                            )
-                            lines.append(f"  {label}: {body_preview}")
-                        else:
-                            lines.append(f"  {label}: {value}")
-
-            elif draft_type == "calendar_event":
-                lines.append("• Calendar Event Draft:")
-                # Display all non-empty calendar event fields
-                for field, label in [
-                    ("title", "Title"),
-                    ("start_time", "Start"),
-                    ("end_time", "End"),
-                    ("attendees", "Attendees"),
-                    ("location", "Location"),
-                    ("description", "Description"),
-                ]:
-                    value = draft.get(field)
-                    if value:
-                        if field == "description":
-                            # Truncate description for readability
-                            desc_preview = (
-                                value[:100] + "..." if len(value) > 100 else value
-                            )
-                            lines.append(f"  {label}: {desc_preview}")
-                        else:
-                            lines.append(f"  {label}: {value}")
-
-            elif draft_type == "calendar_change":
-                lines.append("• Calendar Change Draft:")
-                # Display all non-empty calendar change fields
-                for field, label in [
-                    ("event_id", "Event ID"),
-                    ("change_type", "Change Type"),
-                    ("new_title", "New Title"),
-                    ("new_start_time", "New Start"),
-                    ("new_end_time", "New End"),
-                    ("new_attendees", "New Attendees"),
-                    ("new_location", "New Location"),
-                    ("new_description", "New Description"),
-                ]:
-                    value = draft.get(field)
-                    if value:
-                        if field == "new_description":
-                            # Truncate description for readability
-                            desc_preview = (
-                                value[:100] + "..." if len(value) > 100 else value
-                            )
-                            lines.append(f"  {label}: {desc_preview}")
-                        else:
-                            lines.append(f"  {label}: {value}")
-
-            else:
-                lines.append(f"• {draft_type.replace('_', ' ').title()}: Created")
-
-        return "\n".join(lines)
+        return text
 
     def send_message_api(self, message: str) -> str:
-        """Send message using chat service API."""
-        if not self.services_available["chat"]:
-            return "❌ Chat service unavailable"
-
+        """Send a message using API."""
         response = self.chat_client.send_message(
-            self.user_id, message, self.active_thread
+            self.user_id, message, self.current_thread_id
         )
-        return response or "❌ Failed to get response"
+        if response:
+            return response
+        else:
+            return "❌ Failed to send message"
 
     async def send_message(self, message: str) -> str:
-        """Send message using appropriate method."""
+        """Send a message using the appropriate method."""
         if self.use_api:
             return self.send_message_api(message)
         else:
             return await self.send_message_local(message)
 
     async def handle_delete_command(self) -> str:
-        """Handle draft deletion."""
-        if not self.services_available["chat"]:
-            return "❌ Chat service unavailable for draft deletion"
-
-        success = self.chat_client.delete_draft(self.user_id, self.active_thread)
-        return "✅ Draft deleted" if success else "❌ Failed to delete draft"
+        """Handle delete command."""
+        if self.use_api:
+            success = self.chat_client.delete_draft(
+                self.user_id, self.current_thread_id
+            )
+            return "✅ Draft deleted" if success else "❌ Failed to delete draft"
+        else:
+            return "❌ Delete not supported in local mode"
 
     async def handle_send_command(self) -> str:
-        """Handle draft sending via email."""
+        """Handle send command."""
         if not self.services_available["office"]:
-            return "❌ Office service unavailable for sending email"
+            return "❌ Office service not available"
 
-        # For now, this is a placeholder - in a real implementation,
-        # you'd retrieve the current draft and send it
+        # For demo purposes, send a test email
         email_data = {
-            "to": [f"{self.user_id}@example.com"],
-            "subject": "Draft from Briefly",
-            "body": "This is a draft email sent from Briefly demo.",
+            "to": ["demo@example.com"],
+            "subject": "Test Email from Briefly Demo",
+            "body": "This is a test email sent from the Briefly demo.",
         }
 
         success = await self.office_client.send_email(self.user_id, email_data)
-        return "✅ Draft sent via email" if success else "❌ Failed to send draft"
+        return "✅ Email sent" if success else "❌ Failed to send email"
 
     async def handle_status_command(self) -> str:
-        """Show system status."""
-        status = "📊 System Status:\n"
-
-        # Service status
+        """Handle status command."""
+        status = "📊 Service Status:\n"
         for service, available in self.services_available.items():
-            icon = "✅" if available else "❌"
-            status += f"  {service.title()} Service: {icon}\n"
+            status += f"  {service.title()}: {'✅ Available' if available else '❌ Unavailable'}\n"
 
-        # Integration status (if user service available)
-        if self.services_available["user"]:
-            integrations = await self.user_client.get_integrations_status()
-            if integrations:
-                status += "\n🔗 Integrations:\n"
-                for provider, info in integrations.items():
-                    icon = "✅" if info.get("connected") else "❌"
-                    status += f"  {provider.title()}: {icon}\n"
+        status += f"\n🔐 Authentication: {'✅ Authenticated' if self.authenticated else '❌ Not authenticated'}\n"
+        status += f"👤 User: {self.user_id}\n"
+        status += f"🌍 Timezone: {self.user_timezone}\n"
 
-        return status.rstrip()
+        if self.use_api:
+            status += f"🧵 Thread: {self.current_thread_id or 'None'}\n"
+
+        return status
 
     async def handle_auth_command(self, email: Optional[str] = None) -> str:
-        """Handle re-authentication."""
-        if not self.services_available["user"]:
-            return "❌ User service unavailable for authentication"
-
+        """Handle auth command."""
         success = await self.authenticate(email)
-        if not success:
-            return "❌ Authentication failed"
-
-        logger.info(f"Authentication successful for {email}")
-        return "✅ Authentication completed"
+        return "✅ Authentication successful" if success else "❌ Authentication failed"
 
     async def handle_timezone_command(self, timezone: str) -> str:
-        """Handle timezone setting command."""
-        if not self.services_available["user"]:
-            return "❌ User service unavailable for timezone update"
-
-        if not timezone:
-            return f"🌍 Current timezone: {self.user_timezone}\nUsage: timezone <timezone> (e.g., timezone America/New_York)"
-
-        # Common timezone mappings for user convenience
-        timezone_aliases = {
-            "utc": "UTC",
-            "est": "America/New_York",
-            "eastern": "America/New_York",
-            "pst": "America/Los_Angeles",
-            "pacific": "America/Los_Angeles",
-            "cst": "America/Chicago",
-            "central": "America/Chicago",
-            "mst": "America/Denver",
-            "mountain": "America/Denver",
-            "gmt": "UTC",
-            "london": "Europe/London",
-            "paris": "Europe/Paris",
-            "tokyo": "Asia/Tokyo",
-            "sydney": "Australia/Sydney",
-        }
-
-        # Check for alias
-        tz_lower = timezone.lower()
-        if tz_lower in timezone_aliases:
-            timezone = timezone_aliases[tz_lower]
+        """Handle timezone command."""
+        if not self.authenticated:
+            return "❌ Not authenticated"
 
         try:
-            # Update user preferences
-            preferences_update = {"ui": {"timezone": timezone}}
-
+            # Update user preferences with new timezone
+            preferences_update = {"ui_preferences": {"timezone": timezone}}
             success = await self.user_client.update_user_preferences(preferences_update)
             if success:
                 self.user_timezone = timezone
-                return f"✅ Timezone updated to: {timezone}"
+                return f"✅ Timezone updated to {timezone}"
             else:
-                return "❌ Failed to update timezone preference"
-
+                return "❌ Failed to update timezone"
         except Exception as e:
-            logger.error(f"Error updating timezone: {e}")
-            return f"❌ Error updating timezone: {str(e)}"
+            return f"❌ Error updating timezone: {e}"
+
+    async def handle_nextauth_command(self, provider: str) -> str:
+        """Handle NextAuth testing command."""
+        if not NEXTAUTH_AVAILABLE:
+            return "❌ NextAuth utilities not available"
+
+        if not self.auth_methods.get("nextauth"):
+            return "❌ NextAuth test server not available. Start with: python services/demos/nextauth_test_server.py"
+
+        if provider not in ["google", "microsoft"]:
+            return "❌ Supported providers: google, microsoft"
+
+        print(f"\n🎭 Testing NextAuth OAuth Flow - {provider.title()}")
+        print("=" * 50)
+
+        token = await test_nextauth_flow(provider)
+        if token:
+            self.nextauth_token = token
+            return f"✅ NextAuth {provider} authentication successful!"
+        else:
+            return f"❌ NextAuth {provider} authentication failed"
+
+    async def handle_compare_command(self) -> str:
+        """Handle compare command to compare authentication approaches."""
+        if not NEXTAUTH_AVAILABLE:
+            return "❌ NextAuth utilities not available"
+
+        if not self.auth_token:
+            return "❌ No Clerk token available. Run 'auth' first."
+
+        if not self.nextauth_token:
+            return "❌ No NextAuth token available. Run 'nextauth <provider>' first."
+
+        print("\n🔍 Running authentication comparison...")
+        comparison = await compare_auth_approaches(self.auth_token, self.nextauth_token)
+        return comparison
+
+    async def handle_demo_nextauth_command(self) -> str:
+        """Handle demo-nextauth command."""
+        if not NEXTAUTH_AVAILABLE:
+            return "❌ NextAuth utilities not available"
+
+        print("\n🎭 Running NextAuth Integration Demonstration")
+        print("=" * 50)
+
+        demo_result = await demonstrate_nextauth_integration()
+        return demo_result
 
     def handle_api_commands(self, command: str) -> tuple[bool, str]:
         """Handle API-specific commands."""
-        if not self.use_api:
-            return False, ""
-
-        parts = command.strip().split()
-        cmd = parts[0].lower()
-
-        if cmd == "list":
-            threads = self.chat_client.get_threads(self.user_id)
-            if threads:
-                result = "📋 Your threads:\n"
-                for thread in threads:
-                    result += (
-                        f"  • {thread.get('id')}: {thread.get('title', 'Untitled')}\n"
-                    )
-                return True, result.rstrip()
-            else:
-                return True, "📋 No threads found"
-
-        elif cmd == "new":
-            self.active_thread = None
-            return True, "✅ Started new thread"
-
-        elif cmd == "switch" and len(parts) > 1:
-            thread_id = parts[1]
+        if command == "list":
             if not self.services_available["chat"]:
-                return True, "❌ Chat service unavailable for thread switching"
+                return True, "❌ Chat service not available"
 
-            try:
-                # Get thread history
-                response = requests.get(
-                    f"{self.chat_client.base_url}/threads/{thread_id}/history",
-                    timeout=self.chat_client.timeout,
-                )
-                if response.status_code == 200:
-                    self.active_thread = thread_id
-                    data = response.json()
-                    messages = data.get("messages", [])
+            threads = self.chat_client.get_threads(self.user_id)
+            if not threads:
+                return True, "📝 No chat threads found"
 
-                    result = f"✅ Switched to thread {thread_id}.\n"
-                    if not messages:
-                        result += "No messages in this thread."
-                    else:
-                        result += "Conversation history:\n"
-                        for m in messages:
-                            uid = (
-                                actor(m)
-                                if hasattr(m, "__dict__")
-                                else m.get("user_id", "user")
-                            )
-                            content = getattr(m, "content", None) or m.get(
-                                "content", ""
-                            )
-                            result += f"  {uid}: {content}\n"
+            result = "📝 Chat Threads:\n"
+            for thread in threads:
+                result += f"  {thread['id']}: {thread.get('title', 'Untitled')}\n"
+            return True, result
 
-                    return True, result.rstrip()
-                else:
-                    return (
-                        True,
-                        f"❌ Failed to switch to thread {thread_id}: {response.status_code}",
-                    )
-            except Exception as e:
-                return True, f"❌ Error switching thread: {str(e)}"
+        elif command.startswith("switch "):
+            thread_id = command[7:].strip()
+            if thread_id:
+                self.current_thread_id = thread_id
+                return True, f"✅ Switched to thread {thread_id}"
+            else:
+                return True, "❌ Please provide a thread ID"
+
+        elif command == "new":
+            self.current_thread_id = None
+            return True, "✅ Started new thread"
 
         return False, ""
 
     async def chat_loop(self):
-        """Main interactive chat loop."""
-        if not self.use_api:
-            self.agent = await self.create_agent()
+        """Main chat loop with NextAuth command support."""
+        print("🚀 Starting chat loop... (type 'help' for commands, 'exit' to quit)")
 
         while True:
             try:
-                # Show prompt
-                thread_info = (
-                    f" (thread: {self.active_thread})" if self.active_thread else ""
-                )
-                prompt = f"💬 {self.user_id}{thread_info}: "
-                user_input = input(prompt).strip()
+                # Get user input
+                user_input = input("\n👤 You: ").strip()
 
                 if not user_input:
                     continue
 
                 # Handle exit commands
-                if user_input.lower() in ["quit", "exit", "q"]:
-                    print("\n👋 Thanks for using Briefly! Goodbye!")
+                if user_input.lower() in ["exit", "quit"]:
+                    print("👋 Goodbye!")
                     break
 
-                # Handle special commands
+                # Handle help command
                 if user_input.lower() == "help":
                     self.show_help()
                     continue
 
-                elif user_input.lower() == "clear":
-                    if not self.use_api and self.agent:
-                        # Clear agent history
-                        await self.agent.clear_history()
-                    print("💬 History cleared")
+                # Handle status command
+                if user_input.lower() == "status":
+                    status = await self.handle_status_command()
+                    print(f"\n{status}")
                     continue
 
-                elif user_input.lower() == "delete":
-                    response = await self.handle_delete_command()
-                    print(f"📝 {response}")
+                # Handle auth command
+                if user_input.lower() == "auth":
+                    email = input("Enter email (or press Enter for default): ").strip()
+                    email = email if email else None
+                    result = await self.handle_auth_command(email)
+                    print(f"\n{result}")
                     continue
 
-                elif user_input.lower() == "send":
-                    response = await self.handle_send_command()
-                    print(f"📧 {response}")
-                    continue
-
-                elif user_input.lower() == "status":
-                    response = await self.handle_status_command()
-                    print(response)
-                    continue
-
-                elif user_input.lower().startswith("auth"):
-                    # Handle both "auth" and "auth email@example.com"
-                    parts = user_input.split(maxsplit=1)
-                    email = parts[1] if len(parts) > 1 else None
-                    response = await self.handle_auth_command(email)
-                    print(f"🔐 {response}")
-                    continue
-
-                elif user_input.lower().startswith("oauth"):
-                    # Handle OAuth integration setup: "oauth google" or "oauth microsoft"
-                    parts = user_input.split(maxsplit=1)
-                    if len(parts) < 2:
-                        print("🔗 Usage: oauth <provider>")
-                        print("   Available providers: google, microsoft")
-                        continue
-
-                    provider = parts[1].lower()
-                    if provider not in ["google", "microsoft"]:
-                        print("🔗 Available providers: google, microsoft")
-                        continue
-
-                    if not self.services_available["user"]:
-                        print("❌ User service unavailable for OAuth setup")
-                        continue
-
-                    success = await self.setup_oauth_integration(provider)
-                    if success:
-                        print(f"✅ OAuth setup completed for {provider}")
+                # Handle OAuth commands
+                if user_input.lower().startswith("oauth "):
+                    provider = user_input[6:].strip()
+                    if provider in ["google", "microsoft"]:
+                        result = await self.setup_oauth_integration(provider)
+                        print(
+                            f"\n{'✅ OAuth setup successful' if result else '❌ OAuth setup failed'}"
+                        )
                     else:
-                        print(f"❌ OAuth setup failed for {provider}")
+                        print("❌ Supported providers: google, microsoft")
+                    continue
+
+                # Handle NextAuth commands
+                if user_input.lower().startswith("nextauth "):
+                    provider = user_input[10:].strip()
+                    result = await self.handle_nextauth_command(provider)
+                    print(f"\n{result}")
+                    continue
+
+                # Handle compare command
+                if user_input.lower() == "compare":
+                    result = await self.handle_compare_command()
+                    print(f"\n{result}")
+                    continue
+
+                # Handle demo-nextauth command
+                if user_input.lower() == "demo-nextauth":
+                    result = await self.handle_demo_nextauth_command()
+                    print(f"\n{result}")
                     continue
 
                 # Handle timezone command
-                elif user_input.lower().startswith("timezone"):
-                    # Handle timezone setting command
-                    parts = user_input.split(maxsplit=1)
-                    if len(parts) < 2:
-                        print(
-                            "🌍 Usage: timezone <timezone> (e.g., timezone America/New_York)"
-                        )
-                        continue
-
-                    timezone = parts[1]
-                    response = await self.handle_timezone_command(timezone)
-                    print(response)
+                if user_input.lower().startswith("timezone "):
+                    timezone = user_input[9:].strip()
+                    result = await self.handle_timezone_command(timezone)
+                    print(f"\n{result}")
                     continue
 
                 # Handle API-specific commands
                 if self.use_api:
-                    handled, response = self.handle_api_commands(user_input)
+                    handled, result = self.handle_api_commands(user_input)
                     if handled:
-                        print(response)
+                        print(f"\n{result}")
                         continue
 
-                # Process chat message
-                print("🤖 Briefly:", end=" ", flush=True)
+                # Handle delete command
+                if user_input.lower() == "delete":
+                    result = await self.handle_delete_command()
+                    print(f"\n{result}")
+                    continue
 
-                try:
-                    response = await self.send_message(user_input)
-                    print(response)
-                except Exception as e:
-                    print(f"❌ Error: {str(e)}")
-                    logger.error(f"Chat error: {e}")
+                # Handle send command
+                if user_input.lower() == "send":
+                    result = await self.handle_send_command()
+                    print(f"\n{result}")
+                    continue
 
-                print()  # Blank line for readability
+                # Handle clear command
+                if user_input.lower() == "clear":
+                    print("🧹 Conversation cleared")
+                    continue
+
+                # Send message
+                print("\n🤖 Briefly: ", end="", flush=True)
+                response = await self.send_message(user_input)
+                print(response)
 
             except KeyboardInterrupt:
-                print("\n\n👋 Interrupted by user. Goodbye!")
+                print("\n👋 Goodbye!")
                 break
             except Exception as e:
-                print(f"\n❌ An error occurred: {str(e)}")
-                logger.error(f"Demo error: {e}")
-                print("Type 'exit' to quit or continue chatting.\n")
+                print(f"\n❌ Error: {e}")
 
     async def run_streaming_demo(self):
-        """Demo streaming chat (supports both local and API modes)."""
-        # Check service availability first
-        await self.check_services()
-
-        mode_text = "API" if self.use_api else "Local Multi-Agent"
-        print(f"\n🌊 {mode_text} Streaming Demo")
-        print("This shows how the system generates responses in real-time.\n")
-
-        # Create agent for local mode
-        if not self.use_api:
-            self.agent = await self.create_agent()
+        """Run streaming demo."""
+        print("🌊 Running streaming demo...")
+        print("Type messages to see streaming responses (type 'exit' to quit)")
 
         while True:
             try:
-                user_input = input("You: ").strip()
+                user_input = input("\n👤 You: ").strip()
 
-                if not user_input or user_input.lower() in ["quit", "exit"]:
+                if user_input.lower() in ["exit", "quit"]:
                     break
 
-                print("🤖 Briefly: ", end="", flush=True)
+                if not user_input:
+                    continue
 
-                if self.use_api:
-                    # Stream via API using Server-Sent Events
-                    await self._stream_api_response(user_input)
-                else:
-                    # Stream via direct multi-agent workflow
-                    if self.agent:
-                        async for chunk in self.agent.stream_chat(user_input):
-                            if hasattr(chunk, "delta") and chunk.delta:
-                                print(chunk.delta, end="", flush=True)
-
-                print("\n")  # New line after streaming
+                print("\n🤖 Briefly: ", end="", flush=True)
+                await self._stream_api_response(user_input)
 
             except KeyboardInterrupt:
-                print("\n\n👋 Streaming demo interrupted. Goodbye!")
                 break
-            except Exception as e:
-                print(f"\n❌ Streaming error: {str(e)}")
-                break
+
+        print("\n👋 Streaming demo finished!")
 
     async def _stream_api_response(self, message: str):
-        """Stream response from the chat service API using Server-Sent Events."""
+        """Stream API response."""
         if not self.services_available["chat"]:
-            print("❌ Chat service unavailable for streaming")
+            print("❌ Chat service not available")
             return
 
-        payload = {"user_id": self.user_id, "message": message}
-        if self.active_thread:
-            payload["thread_id"] = self.active_thread
-
         try:
-            # Combine API key headers with streaming headers
-            stream_headers = {**self.chat_client.headers, "Accept": "text/event-stream"}
+            # This would implement actual streaming
+            # For now, just simulate it
+            response = self.send_message_api(message)
+            for char in response:
+                print(char, end="", flush=True)
+                await asyncio.sleep(0.01)
+            print()
 
-            async with httpx.AsyncClient() as client:
-                async with client.stream(
-                    "POST",
-                    f"{self.chat_client.base_url}/chat/stream",
-                    json=payload,
-                    headers=stream_headers,
-                ) as response:
-                    if response.status_code != 200:
-                        print(f"Error: HTTP {response.status_code}")
-                        return
-
-                    async for line in response.aiter_lines():
-                        if line.startswith("data: "):
-                            try:
-                                import json
-
-                                data = json.loads(line[6:])  # Remove "data: " prefix
-
-                                if "delta" in data:
-                                    print(data["delta"], end="", flush=True)
-                                elif "thread_id" in data:
-                                    self.active_thread = data["thread_id"]
-
-                            except json.JSONDecodeError:
-                                continue
         except Exception as e:
-            print(f"Streaming error: {e}")
+            print(f"❌ Streaming error: {e}")
 
     async def cleanup(self):
         """Clean up resources."""
-        if self.oauth_server:
-            self.oauth_server.stop()
+        if self.agent:
+            await self.agent.cleanup()
 
 
 async def main():
-    """Run the full demo."""
-    parser = argparse.ArgumentParser(
-        description="Full Briefly Demo - Integrated Chat, Office, and User Services",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  python services/demos/full_demo.py                    # API mode (default)
-  python services/demos/full_demo.py --local            # Local multi-agent mode
-  python services/demos/full_demo.py --streaming        # API streaming demo
-  python services/demos/full_demo.py --local --streaming # Local streaming demo
-  python services/demos/full_demo.py --no-auth          # Skip authentication
-  python services/demos/full_demo.py --message "hi"     # Send single message
-  python services/demos/full_demo.py --email user@example.com --message "test"  # Custom email
-        """,
-    )
-
+    """Main function."""
+    parser = argparse.ArgumentParser(description="Briefly Demo")
     parser.add_argument(
-        "--local",
-        action="store_true",
-        help="Use local multi-agent mode instead of API mode (default: API mode)",
+        "--local", action="store_true", help="Use local multi-agent mode"
     )
-
+    parser.add_argument("--streaming", action="store_true", help="Run streaming demo")
+    parser.add_argument("--no-auth", action="store_true", help="Skip authentication")
+    parser.add_argument("--message", help="Send a single message and exit")
+    parser.add_argument("--email", help="Use custom email for authentication")
     parser.add_argument(
-        "--chat-url",
-        type=str,
-        default="http://localhost:8002",
-        help="Chat service URL (default: http://localhost:8002)",
+        "--nextauth-only", action="store_true", help="NextAuth testing only"
     )
-
-    parser.add_argument(
-        "--office-url",
-        type=str,
-        default="http://localhost:8003",
-        help="Office service URL (default: http://localhost:8003)",
-    )
-
-    parser.add_argument(
-        "--user-url",
-        type=str,
-        default="http://localhost:8001",
-        help="User service URL (default: http://localhost:8001)",
-    )
-
-    parser.add_argument(
-        "--user-id",
-        type=str,
-        default="demo_user",
-        help="User ID (default: demo_user)",
-    )
-
-    parser.add_argument(
-        "--no-auth",
-        action="store_true",
-        help="Skip authentication setup",
-    )
-
-    parser.add_argument(
-        "--message",
-        "-m",
-        type=str,
-        help="Send a single message (non-interactive mode)",
-    )
-
-    parser.add_argument(
-        "--streaming",
-        action="store_true",
-        help="Run streaming demo instead of regular chat (supports both local and API modes)",
-    )
-
-    parser.add_argument(
-        "--email",
-        "-e",
-        type=str,
-        default=DEFAULT_USER_ID,
-        help=f"Email address for authentication (default: {DEFAULT_USER_ID})",
-    )
+    parser.add_argument("--compare", action="store_true", help="Run comparison demo")
 
     args = parser.parse_args()
 
-    # Create demo instance
+    # Set up demo
+    use_api = not args.local
+    chat_url = "http://localhost:8002"
+    office_url = "http://localhost:8003"
+    user_url = "http://localhost:8001"
+    user_id = args.email or DEFAULT_USER_ID
+
     demo = FullDemo(
-        use_api=not args.local,  # API is default, --local switches to local mode
-        chat_url=args.chat_url,
-        office_url=args.office_url,
-        user_url=args.user_url,
-        user_id=args.user_id,
+        use_api=use_api,
+        chat_url=chat_url,
+        office_url=office_url,
+        user_url=user_url,
+        user_id=user_id,
         skip_auth=args.no_auth,
     )
 
     try:
-        # Check service availability
+        # Check services
         await demo.check_services()
 
-        # Set up authentication
-        await demo.authenticate(email=args.email)
+        # Handle NextAuth-only mode
+        if args.nextauth_only:
+            if not NEXTAUTH_AVAILABLE:
+                print("❌ NextAuth utilities not available")
+                return
 
-        # Load timezone preferences (in case authentication was skipped)
+            print("🔵 NextAuth Testing Mode")
+            print("=" * 30)
+
+            # Test NextAuth flows
+            for provider in ["google", "microsoft"]:
+                print(f"\n🎭 Testing {provider} OAuth flow...")
+                token = await test_nextauth_flow(provider)
+                if token:
+                    print(f"✅ {provider.title()} OAuth successful")
+                else:
+                    print(f"❌ {provider.title()} OAuth failed")
+
+            # Run comparison if requested
+            if args.compare:
+                print("\n🔍 Running authentication comparison...")
+                comparison = await compare_auth_approaches(None, None)
+                print(comparison)
+
+            return
+
+        # Handle comparison mode
+        if args.compare:
+            if not NEXTAUTH_AVAILABLE:
+                print("❌ NextAuth utilities not available")
+                return
+
+            print("🔍 Authentication Comparison Mode")
+            print("=" * 30)
+
+            # Create demo tokens for comparison
+            clerk_token = create_bearer_token(user_id)
+            nextauth_token = create_nextauth_jwt_for_demo(user_id)
+
+            comparison = await compare_auth_approaches(clerk_token, nextauth_token)
+            print(comparison)
+            return
+
+        # Authenticate
+        if not await demo.authenticate():
+            print("❌ Authentication failed")
+            return
+
+        # Load user timezone
         await demo.load_user_timezone()
+
+        # Create agent for local mode
+        if not use_api:
+            demo.agent = await demo.create_agent()
 
         # Show welcome
         demo.show_welcome()
 
+        # Handle single message mode
         if args.message:
-            # Single message mode
+            print(f"🤖 Sending message: {args.message}")
             response = await demo.send_message(args.message)
-            print(f"🤖 Briefly: {response}")
-        elif args.streaming:
-            # Streaming demo mode
-            await demo.run_streaming_demo()
-        else:
-            # Interactive mode
-            await demo.chat_loop()
+            print(f"🤖 Response: {response}")
+            return
 
+        # Handle streaming mode
+        if args.streaming:
+            await demo.run_streaming_demo()
+            return
+
+        # Start chat loop
+        await demo.chat_loop()
+
+    except KeyboardInterrupt:
+        print("\n👋 Demo interrupted")
+    except Exception as e:
+        print(f"❌ Demo error: {e}")
     finally:
         await demo.cleanup()
 
