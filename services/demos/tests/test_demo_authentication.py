@@ -41,21 +41,35 @@ class TestDemoAuthentication:
     async def test_create_user_if_not_exists_success(self, demo_instance):
         """Test successful user creation."""
         email = "test@example.com"
+        user_id = f"user_{email.replace('@', '_').replace('.', '_')}"
 
-        mock_response = MagicMock()
-        mock_response.status_code = 201
+        # Mock the user existence check (GET request) - user doesn't exist
+        mock_get_response = MagicMock()
+        mock_get_response.status_code = 404
+
+        # Mock the webhook creation (POST request) - successful creation
+        mock_post_response = MagicMock()
+        mock_post_response.status_code = 201
 
         with patch("httpx.AsyncClient") as mock_client:
-            mock_client.return_value.__aenter__.return_value.post.return_value = (
-                mock_response
-            )
+            mock_http_client = mock_client.return_value.__aenter__.return_value
 
-            result = await demo_instance._create_user_if_not_exists(email)
+            # Setup different responses for GET vs POST
+            def side_effect(url, **kwargs):
+                if "GET" in kwargs.get("method", "GET") or "get" in str(url):
+                    return mock_get_response
+                else:
+                    return mock_post_response
+
+            mock_http_client.get.return_value = mock_get_response
+            mock_http_client.post.return_value = mock_post_response
+
+            result = await demo_instance._create_user_if_not_exists(email, user_id)
 
             assert result is True
             # Verify the webhook was called with correct payload
-            mock_client.return_value.__aenter__.return_value.post.assert_called_once()
-            call_args = mock_client.return_value.__aenter__.return_value.post.call_args
+            mock_http_client.post.assert_called_once()
+            call_args = mock_http_client.post.call_args
 
             # Check URL - call_args[0] contains positional args, call_args[1] contains keyword args
             assert (
@@ -67,41 +81,44 @@ class TestDemoAuthentication:
             payload = call_args[1]["json"]
             assert payload["type"] == "user.created"
             assert payload["object"] == "event"
-            assert payload["data"]["id"] == demo_instance.user_id
+            assert payload["data"]["id"] == user_id
             assert payload["data"]["email_addresses"][0]["email_address"] == email
 
     @pytest.mark.asyncio
     async def test_create_user_if_not_exists_already_exists(self, demo_instance):
         """Test user creation when user already exists (409 response)."""
         email = "existing@example.com"
+        user_id = f"user_{email.replace('@', '_').replace('.', '_')}"
 
-        mock_response = MagicMock()
-        mock_response.status_code = 409
+        # Mock the user existence check (GET request) - user exists
+        mock_get_response = MagicMock()
+        mock_get_response.status_code = 200
 
         with patch("httpx.AsyncClient") as mock_client:
-            mock_client.return_value.__aenter__.return_value.post.return_value = (
-                mock_response
-            )
+            mock_http_client = mock_client.return_value.__aenter__.return_value
+            mock_http_client.get.return_value = mock_get_response
 
-            result = await demo_instance._create_user_if_not_exists(email)
+            result = await demo_instance._create_user_if_not_exists(email, user_id)
 
             assert result is True
+            # Verify no webhook was called since user already exists
+            mock_http_client.post.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_create_user_if_not_exists_handles_errors(self, demo_instance):
         """Test that user creation gracefully handles errors."""
         email = "test@example.com"
+        user_id = f"user_{email.replace('@', '_').replace('.', '_')}"
 
-        # Test HTTP error
+        # Test HTTP error on user existence check
         with patch("httpx.AsyncClient") as mock_client:
-            mock_client.return_value.__aenter__.return_value.post.side_effect = (
-                httpx.RequestError("Connection failed")
-            )
+            mock_http_client = mock_client.return_value.__aenter__.return_value
+            mock_http_client.get.side_effect = httpx.RequestError("Connection failed")
 
-            result = await demo_instance._create_user_if_not_exists(email)
+            result = await demo_instance._create_user_if_not_exists(email, user_id)
 
-            # Should return True to continue gracefully
-            assert result is True
+            # Should return False when user service is down
+            assert result is False
 
     @pytest.mark.asyncio
     async def test_authenticate_creates_user_and_can_access_preferences(
@@ -114,11 +131,16 @@ class TestDemoAuthentication:
         but the demo continued, leading to 404 errors when accessing preferences.
         """
         email = "integration_test@example.com"
+        user_id = f"user_{email.replace('@', '_').replace('.', '_')}"
 
         # Mock services as available
         demo_instance.services_available = {"user": True, "chat": True, "office": True}
 
-        # Mock successful user creation
+        # Mock user existence check (GET request) - user doesn't exist initially
+        mock_get_response = MagicMock()
+        mock_get_response.status_code = 404
+
+        # Mock successful user creation via webhook (POST request)
         mock_create_response = MagicMock()
         mock_create_response.status_code = 201
 
@@ -143,17 +165,23 @@ class TestDemoAuthentication:
 
             # Setup different responses for different endpoints
             def side_effect(url, **kwargs):
-                if "/webhooks/clerk" in url:
+                if "/internal/users/" in url and "/integrations" in url:
+                    # User existence check
+                    return mock_get_response
+                elif "/webhooks/clerk" in url:
+                    # User creation webhook
                     return mock_create_response
-                elif "/integrations/" in url:
+                elif "/integrations/" in url and "/webhooks/clerk" not in url:
+                    # Integrations status check
                     return mock_integrations_response
                 elif "/preferences/" in url:
+                    # Preferences check
                     return mock_preferences_response
                 else:
                     return MagicMock(status_code=200)
 
-            mock_http_client.post.side_effect = side_effect
             mock_http_client.get.side_effect = side_effect
+            mock_http_client.post.side_effect = side_effect
 
             # Run authentication
             result = await demo_instance.authenticate(email)
@@ -169,12 +197,12 @@ class TestDemoAuthentication:
             ]
             assert len(create_calls) > 0
 
-            # Verify JWT token was created
-            mock_jwt.assert_called_once_with(demo_instance.user_id, email)
+            # Verify JWT token was created with the correct user_id
+            mock_jwt.assert_called_once_with(user_id, email)
 
             # Verify user client has token
             assert demo_instance.user_client.auth_token == "mock_jwt_token"
-            assert demo_instance.user_client.user_id == demo_instance.user_id
+            assert demo_instance.user_client.user_id == user_id
 
     @pytest.mark.asyncio
     async def test_authenticate_fails_if_user_creation_fails_and_user_doesnt_exist(
@@ -229,11 +257,12 @@ class TestDemoAuthentication:
         but didn't import time module.
         """
         email = "test@example.com"
+        user_id = f"user_{email.replace('@', '_').replace('.', '_')}"
 
         # This test verifies that time.time() can be called without error
         # If time import was missing, this would raise NameError
         try:
-            await demo_instance._create_user_if_not_exists(email)
+            await demo_instance._create_user_if_not_exists(email, user_id)
             # If we get here without NameError, the import is working
             assert True
         except NameError as e:
