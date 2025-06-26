@@ -57,13 +57,11 @@ class EmailCollisionDetector:
         normalized_email = await self.normalize_email(email)
         
         # Query for existing user with same normalized email
-        # Note: normalized_email field doesn't exist yet in Phase 1
-        # For now, we'll check against the regular email field
         async_session = get_async_session()
         async with async_session() as session:
             result = await session.execute(
                 select(User).where(
-                    User.email == normalized_email,
+                    User.normalized_email == normalized_email,
                     User.deleted_at.is_(None)
                 )
             )

@@ -132,7 +132,8 @@ class TestEmailCollisionDB:
             id=1,
             external_auth_id="clerk_123",
             auth_provider="clerk",
-            email="existing@example.com"
+            email="existing@example.com",
+            normalized_email="existing@example.com"
         )
         async_session = get_async_session()
         async with async_session() as session:
@@ -158,7 +159,8 @@ class TestEmailCollisionDB:
             id=1,
             external_auth_id="clerk_123",
             auth_provider="clerk",
-            email="existing@example.com"
+            email="existing@example.com",
+            normalized_email="existing@example.com"
         )
         with patch.object(detector, 'check_collision', return_value=existing_user):
             with patch('services.user.utils.email_collision.normalize') as mock_normalize:
@@ -170,7 +172,7 @@ class TestEmailCollisionDB:
                 assert result["collision"] is True
                 assert result["existing_user_id"] == 1
                 assert result["original_email"] == "existing@example.com"
-                assert result["normalized_email"] is None
+                assert result["normalized_email"] == "existing@example.com"
                 assert result["auth_provider"] == "clerk"
                 assert result["provider_info"]["mailbox_provider"] == "Google"
 
