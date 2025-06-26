@@ -8,7 +8,7 @@ authorization, and comprehensive error handling.
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status, Body
 
 from services.user.auth import get_current_user
 from services.user.exceptions import (
@@ -24,6 +24,7 @@ from services.user.schemas.user import (
     UserUpdate,
 )
 from services.user.services.user_service import get_user_service
+from pydantic import BaseModel, EmailStr
 
 logger = logging.getLogger(__name__)
 
@@ -413,3 +414,45 @@ async def search_users(
                 "message": "Failed to search users",
             },
         )
+
+
+class EmailCheckRequest(BaseModel):
+    email: EmailStr
+
+class EmailCheckResponse(BaseModel):
+    available: bool
+    normalized_email: str
+    email_info: dict
+    details: Optional[dict] = None
+    reason: Optional[str] = None
+
+@router.post(
+    "/check-email",
+    response_model=EmailCheckResponse,
+    summary="Check if email is available for registration",
+    description="Check if an email address is available for new user registration, with normalization and collision details.",
+    responses={
+        200: {"description": "Email availability checked"},
+        422: {"description": "Validation error in email address"},
+    },
+)
+async def check_email_availability(
+    req: EmailCheckRequest = Body(..., description="Email to check for availability")
+) -> EmailCheckResponse:
+    from services.user.utils.email_collision import EmailCollisionDetector
+    detector = EmailCollisionDetector()
+    collision_details = await detector.get_collision_details(req.email)
+    email_info = await detector.get_email_info(req.email)
+    if collision_details["collision"]:
+        return EmailCheckResponse(
+            available=False,
+            reason="email_exists",
+            details=collision_details,
+            normalized_email=email_info["normalized_email"],
+            email_info=email_info,
+        )
+    return EmailCheckResponse(
+        available=True,
+        normalized_email=email_info["normalized_email"],
+        email_info=email_info,
+    )

@@ -27,6 +27,7 @@ from services.user.schemas.user import (
     UserUpdate,
 )
 from services.user.services.audit_service import audit_logger
+from services.user.utils.email_collision import EmailCollisionDetector
 
 logger = audit_logger.logger
 
@@ -121,6 +122,7 @@ class UserService:
         Raises:
             ValidationException: If user data is invalid or external_auth_id already exists
         """
+        detector = EmailCollisionDetector()
         try:
             async_session = get_async_session()
             async with async_session() as session:
@@ -140,11 +142,25 @@ class UserService:
                         reason=f"User with {user_data.auth_provider} ID {user_data.external_auth_id} already exists",
                     )
 
+                # Check for email collision using normalized_email
+                collision = await detector.get_collision_details(user_data.email)
+                if collision["collision"]:
+                    raise ValidationException(
+                        field="email",
+                        value=user_data.email,
+                        reason="Email collision detected",
+                        details=collision
+                    )
+
+                # Normalize email for storage
+                normalized_email = await detector.normalize_email(user_data.email)
+
                 # Create new user
                 user = User(
                     external_auth_id=user_data.external_auth_id,
                     auth_provider=user_data.auth_provider,
                     email=user_data.email,
+                    normalized_email=normalized_email,
                     first_name=user_data.first_name,
                     last_name=user_data.last_name,
                     profile_image_url=user_data.profile_image_url,
@@ -186,6 +202,8 @@ class UserService:
             UserNotFoundException: If user is not found
             ValidationException: If update data is invalid
         """
+        from services.user.utils.email_collision import EmailCollisionDetector
+        detector = EmailCollisionDetector()
         try:
             async_session = get_async_session()
             async with async_session() as session:
@@ -199,6 +217,19 @@ class UserService:
                 # Update only provided fields
                 update_fields = {}
                 if user_data.email is not None:
+                    # Only check collision if the email is actually changing
+                    if user.email != user_data.email:
+                        collision = await detector.get_collision_details(user_data.email)
+                        if collision["collision"]:
+                            raise ValidationException(
+                                field="email",
+                                value=user_data.email,
+                                reason="Email collision detected",
+                                details=collision
+                            )
+                        # Normalize the new email
+                        normalized_email = await detector.normalize_email(user_data.email)
+                        update_fields["normalized_email"] = normalized_email
                     update_fields["email"] = user_data.email
                 if user_data.first_name is not None:
                     update_fields["first_name"] = user_data.first_name

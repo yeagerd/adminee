@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import HTTPException, status
+from fastapi.testclient import TestClient
 
 from services.user.exceptions import (
     UserNotFoundException,
@@ -25,6 +26,7 @@ from services.user.schemas.user import (
     UserUpdate,
 )
 from services.user.services.user_service import get_user_service
+from services.user.main import app
 
 
 class TestUserProfileEndpoints:
@@ -527,3 +529,95 @@ class TestUserServiceIntegration:
         user.last_name = "User"
         user.deleted_at = None
         return user
+
+
+class TestUserEmailCollision:
+    client = TestClient(app)
+
+    def _clerk_user_created_event(self, external_auth_id, email, first_name="Test", last_name="User", image_url=None):
+        return {
+            "type": "user.created",
+            "data": {
+                "id": external_auth_id,
+                "primary_email": email,
+                "first_name": first_name,
+                "last_name": last_name,
+                "image_url": image_url or "https://example.com/avatar.jpg"
+            }
+        }
+
+    def test_check_email_available(self):
+        resp = self.client.post("/users/check-email", json={"email": "unique@example.com"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["available"] is True
+        assert data["normalized_email"] == "unique@example.com"
+        assert "email_info" in data
+
+    def test_check_email_collision(self):
+        # Create a user via webhook
+        event = self._clerk_user_created_event("clerk_1", "user+work@gmail.com")
+        resp = self.client.post("/webhooks/clerk", json=event)
+        assert resp.status_code == 200
+        # Now check collision with normalized email
+        resp2 = self.client.post("/users/check-email", json={"email": "user@gmail.com"})
+        assert resp2.status_code == 200
+        data = resp2.json()
+        assert data["available"] is False
+        assert data["reason"] == "email_exists"
+        assert data["details"]["collision"] is True
+        assert data["normalized_email"] == "user@gmail.com"
+
+    def test_create_user_collision(self):
+        # Create a user via webhook
+        event = self._clerk_user_created_event("clerk_2", "user+topic@gmail.com")
+        resp = self.client.post("/webhooks/clerk", json=event)
+        assert resp.status_code == 200
+        # Try to create another user with colliding normalized email
+        event2 = self._clerk_user_created_event("clerk_3", "user@gmail.com")
+        resp2 = self.client.post("/webhooks/clerk", json=event2)
+        # Should fail with 500 due to collision (WebhookProcessingError)
+        assert resp2.status_code == 500 or resp2.status_code == 409
+        data = resp2.json()
+        assert "Email" in str(data)
+
+    def test_update_user_email_collision(self):
+        # Create two users
+        event1 = self._clerk_user_created_event("clerk_4", "first@gmail.com", first_name="A", last_name="B")
+        event2 = self._clerk_user_created_event("clerk_5", "second@gmail.com", first_name="C", last_name="D")
+        r1 = self.client.post("/webhooks/clerk", json=event1)
+        r2 = self.client.post("/webhooks/clerk", json=event2)
+        assert r1.status_code == 200 and r2.status_code == 200
+        # Try to update user2's email to collide with user1
+        update_event = {
+            "type": "user.updated",
+            "data": {
+                "id": "clerk_5",
+                "primary_email": "first@gmail.com",
+                "first_name": "C",
+                "last_name": "D",
+                "image_url": "https://example.com/avatar.jpg"
+            }
+        }
+        resp = self.client.post("/webhooks/clerk", json=update_event)
+        assert resp.status_code == 500 or resp.status_code == 409
+        data = resp.json()
+        assert "Email" in str(data)
+
+    def test_create_user_stores_normalized_email(self):
+        event = self._clerk_user_created_event("clerk_6", "dot.user+foo@gmail.com", first_name="Norm", last_name="Alized")
+        resp = self.client.post("/webhooks/clerk", json=event)
+        assert resp.status_code == 200
+        # Fetch user from DB to check normalized_email
+        from services.user.database import get_async_session
+        from services.user.models.user import User as UserModel
+        import asyncio
+        async def get_user():
+            async_session = get_async_session()
+            async with async_session() as session:
+                from sqlalchemy import select
+                result = await session.execute(select(UserModel).where(UserModel.external_auth_id == "clerk_6"))
+                return result.scalar_one_or_none()
+        db_user = asyncio.run(get_user())
+        assert db_user is not None
+        assert db_user.normalized_email == "dotuser@gmail.com"
