@@ -140,6 +140,57 @@ tox -p auto             # Full test matrix
         docker compose down
         ```
 
+4.  **Set up Database Migrations:**
+
+    All services use Alembic for database schema management. Run migrations from the repository root:
+
+    ```bash
+    # Office Service (port 8003)
+    alembic -c services/office/alembic.ini upgrade head
+
+    # User Management Service (port 8001) 
+    alembic -c services/user/alembic.ini upgrade head
+
+    # Chat Service (port 8000)
+    alembic -c services/chat/alembic.ini upgrade head
+    ```
+
+    **Important:** Always run migrations from the repository root, not from within service directories. The database URLs in your `.env` file are configured to work from the root directory.
+
+    **For Development (Fresh Start):**
+    If you need to reset a service's database:
+    ```bash
+    # Remove the database file (e.g., for user service)
+    rm services/user/user_service.db
+    
+    # Re-run the migration to create fresh tables
+    alembic -c services/user/alembic.ini upgrade head
+    ```
+
+    **For Production:**
+    - Never delete production databases
+    - Always backup before running migrations
+    - Test migrations on staging first
+    - Use `alembic stamp head` if tables exist but migration history is missing
+
+    **Creating New Migrations:**
+    ```bash
+    # Generate a new migration for a service
+    alembic -c services/office/alembic.ini revision --autogenerate -m "Add new table"
+
+    # Apply the new migration
+    alembic -c services/office/alembic.ini upgrade head
+    ```
+
+    **Checking Migration Status:**
+    ```bash
+    # Check current migration status
+    alembic -c services/office/alembic.ini current
+
+    # List all migrations
+    alembic -c services/office/alembic.ini history
+    ```
+
 ### Running the Application
 
 -   Once the dev container or Docker Compose setup is running:
