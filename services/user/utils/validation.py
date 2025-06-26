@@ -12,6 +12,8 @@ from urllib.parse import urlparse
 
 import pytz
 
+from services.user.utils.email_collision import email_collision_detector
+
 # Security patterns for input sanitization
 HTML_TAG_PATTERN = re.compile(r"<[^>]*>")
 SCRIPT_PATTERN = re.compile(r"<script[^>]*>.*?</script>", re.IGNORECASE | re.DOTALL)
@@ -55,57 +57,58 @@ MALICIOUS_PATTERNS = [
 
 
 class ValidationError(ValueError):
-    """Custom validation error for user inputs."""
+    """Custom validation error with field context."""
 
     def __init__(self, field: str, value: Any, reason: str):
         self.field = field
         self.value = value
         self.reason = reason
-        super().__init__(f"Validation failed for field '{field}': {reason}")
+        super().__init__(f"Validation error for {field}: {reason}")
 
 
 def sanitize_text_input(
     text: Optional[str], max_length: Optional[int] = None
 ) -> Optional[str]:
     """
-    Sanitize text input for security and safety.
+    Sanitize text input to prevent XSS and injection attacks.
 
     Args:
-        text: Input text to sanitize
+        text: Text to sanitize
         max_length: Maximum allowed length
 
     Returns:
-        Sanitized text or None if input was empty
+        Sanitized text
 
     Raises:
-        ValidationError: If input contains malicious content
+        ValidationError: If text contains malicious content or exceeds length
     """
-    if not text:
+    if text is None:
         return None
 
-    # Check for malicious patterns first
+    # Convert to string if needed
+    text = str(text).strip()
+
+    # Check for HTML tags and scripts
+    if HTML_TAG_PATTERN.search(text) or SCRIPT_PATTERN.search(text):
+        raise ValidationError("text", text, "Text contains HTML tags or scripts")
+
+    # Check for dangerous characters
+    if DANGEROUS_CHARS_PATTERN.search(text):
+        raise ValidationError("text", text, "Text contains dangerous characters")
+
+    # Check for malicious patterns
     for pattern in MALICIOUS_PATTERNS:
         if pattern.search(text):
-            raise ValidationError(
-                "text", text, "Contains potentially malicious content"
-            )
+            raise ValidationError("text", text, "Text contains malicious content")
 
-    # Remove HTML tags and scripts
-    text = SCRIPT_PATTERN.sub("", text)
-    text = HTML_TAG_PATTERN.sub("", text)
-
-    # HTML escape the content
-    text = html.escape(text, quote=True)
-
-    # Remove dangerous characters
-    text = DANGEROUS_CHARS_PATTERN.sub("", text)
-
-    # Trim whitespace
-    text = text.strip()
-
-    # Check length constraints
+    # Check length
     if max_length and len(text) > max_length:
-        raise ValidationError("text", text, f"Exceeds maximum length of {max_length}")
+        raise ValidationError(
+            "text", text, f"Text exceeds maximum length of {max_length} characters"
+        )
+
+    # HTML escape to prevent XSS
+    text = html.escape(text)
 
     return text if text else None
 
@@ -158,6 +161,31 @@ def validate_email_address(email: str) -> str:
         raise ValidationError("email", email, "Invalid email format")
 
     return email
+
+
+async def validate_email_with_collision_check(email: str) -> str:
+    """
+    Validate email address and check for collisions using normalized email.
+    
+    Args:
+        email: Email address to validate
+        
+    Returns:
+        Normalized email address
+        
+    Raises:
+        ValidationError: If email is invalid or collision detected
+    """
+    # First validate the email format
+    validated_email = validate_email_address(email)
+    
+    # Then normalize using email-normalize library
+    try:
+        normalized_email = await email_collision_detector.normalize_email(validated_email)
+        return normalized_email
+    except Exception as e:
+        # If normalization fails, fall back to basic validation
+        return validated_email
 
 
 def validate_url(url: str, allowed_schemes: Optional[List[str]] = None) -> str:
@@ -315,11 +343,11 @@ def validate_phone_number(phone: str) -> str:
 
 def validate_json_safe_string(text: str, field_name: str = "text") -> str:
     """
-    Validate string is safe for JSON serialization.
+    Validate that string is safe for JSON serialization.
 
     Args:
         text: Text to validate
-        field_name: Field name for error reporting
+        field_name: Name of the field for error messages
 
     Returns:
         Validated text
@@ -327,62 +355,69 @@ def validate_json_safe_string(text: str, field_name: str = "text") -> str:
     Raises:
         ValidationError: If text contains unsafe characters
     """
-    if not text:
-        return text
+    if not text or not text.strip():
+        raise ValidationError(field_name, text, f"{field_name} cannot be empty")
 
-    # Check for null bytes and other control characters
-    if "\x00" in text:
-        raise ValidationError(field_name, text, "Contains null bytes")
+    text = text.strip()
 
-    # Check for other problematic control characters
-    control_chars = [
-        chr(i) for i in range(32) if i not in [9, 10, 13]
-    ]  # Allow tab, LF, CR
+    # Check for control characters that could break JSON
+    control_chars = [chr(i) for i in range(32) if i not in [9, 10, 13]]  # Allow tab, LF, CR
     for char in control_chars:
         if char in text:
             raise ValidationError(
-                field_name, text, f"Contains control character: {repr(char)}"
+                field_name, text, f"{field_name} contains unsafe control characters"
             )
+
+    # Check for unpaired surrogate characters
+    try:
+        text.encode("utf-8").decode("utf-8")
+    except UnicodeError:
+        raise ValidationError(
+            field_name, text, f"{field_name} contains invalid Unicode characters"
+        )
 
     return text
 
 
 def check_sql_injection_patterns(text: str, field_name: str = "text") -> str:
     """
-    Check text for SQL injection patterns.
+    Check for SQL injection patterns in text.
 
     Args:
         text: Text to check
-        field_name: Field name for error reporting
+        field_name: Name of the field for error messages
 
     Returns:
         Original text if safe
 
     Raises:
-        ValidationError: If SQL injection patterns are detected
+        ValidationError: If SQL injection patterns detected
     """
     if not text:
         return text
 
+    text_str = str(text)
+
+    # Check for SQL injection patterns
     for pattern in SQL_INJECTION_PATTERNS:
-        if pattern.search(text):
+        if pattern.search(text_str):
             raise ValidationError(
-                field_name, text, "Contains potential SQL injection patterns"
+                field_name, text, f"{field_name} contains SQL injection patterns"
             )
 
-    return text
+    return text_str
 
 
 def validate_enum_value(
     value: str, valid_values: List[str], field_name: str = "value"
 ) -> str:
     """
-    Validate that value is in allowed enum values.
+    Validate that value is in the list of valid values.
 
     Args:
         value: Value to validate
         valid_values: List of valid values
-        field_name: Field name for error reporting
+        field_name: Name of the field for error messages
 
     Returns:
         Validated value
@@ -390,9 +425,16 @@ def validate_enum_value(
     Raises:
         ValidationError: If value is not in valid_values
     """
+    if not value or not value.strip():
+        raise ValidationError(field_name, value, f"{field_name} cannot be empty")
+
+    value = value.strip()
+
     if value not in valid_values:
         raise ValidationError(
-            field_name, value, f"Must be one of: {', '.join(valid_values)}"
+            field_name,
+            value,
+            f"{field_name} must be one of: {', '.join(valid_values)}",
         )
 
     return value
@@ -416,17 +458,18 @@ def validate_file_path(file_path: str) -> str:
 
     file_path = file_path.strip()
 
-    # Check for path traversal attempts
-    dangerous_patterns = ["../", "..\\", "..", "/etc/", "/root/", "~", "\\\\"]
-    for dangerous_pattern in dangerous_patterns:
-        if dangerous_pattern in file_path:
-            raise ValidationError(
-                "file_path", file_path, "Contains path traversal patterns"
-            )
+    # Check for path traversal
+    if ".." in file_path or "\\" in file_path:
+        raise ValidationError("file_path", file_path, "File path contains unsafe patterns")
 
-    # Check for null bytes
-    if "\x00" in file_path:
-        raise ValidationError("file_path", file_path, "Contains null bytes")
+    # Check for absolute paths
+    if file_path.startswith("/") or file_path.startswith("\\"):
+        raise ValidationError("file_path", file_path, "File path cannot be absolute")
+
+    # Check for dangerous patterns
+    for pattern in MALICIOUS_PATTERNS:
+        if pattern.search(file_path):
+            raise ValidationError("file_path", file_path, "File path contains malicious content")
 
     return file_path
 
@@ -436,35 +479,36 @@ def validate_pagination_params(page: int, page_size: int) -> tuple[int, int]:
     Validate pagination parameters.
 
     Args:
-        page: Page number (1-based)
+        page: Page number
         page_size: Number of items per page
 
     Returns:
-        Validated (page, page_size) tuple
+        Tuple of (page, page_size)
 
     Raises:
         ValidationError: If parameters are invalid
     """
     if page < 1:
-        raise ValidationError("page", page, "Page number must be >= 1")
-
-    if page > 10000:  # Reasonable upper limit
-        raise ValidationError("page", page, "Page number too large")
+        raise ValidationError("page", page, "Page number must be at least 1")
 
     if page_size < 1:
-        raise ValidationError("page_size", page_size, "Page size must be >= 1")
+        raise ValidationError("page_size", page_size, "Page size must be at least 1")
 
-    if page_size > 1000:  # Reasonable upper limit
-        raise ValidationError("page_size", page_size, "Page size too large")
+    if page_size > 100:
+        raise ValidationError("page_size", page_size, "Page size cannot exceed 100")
 
     return page, page_size
 
 
-# Pydantic validator decorators for common use cases
+# Pydantic validators
+
+
 def text_validator(max_length: Optional[int] = None):
     """Create a Pydantic validator for text fields."""
 
     def validator(cls, v):
+        if v is None:
+            return v
         return sanitize_text_input(v, max_length)
 
     return validator
@@ -477,6 +521,17 @@ def email_validator():
         if v is None:
             return v
         return validate_email_address(v)
+
+    return validator
+
+
+async def email_validator_with_collision_check():
+    """Create a Pydantic validator for email fields with collision checking."""
+
+    async def validator(cls, v):
+        if v is None:
+            return v
+        return await validate_email_with_collision_check(v)
 
     return validator
 
