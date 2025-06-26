@@ -149,7 +149,7 @@ class UserService:
                         field="email",
                         value=user_data.email,
                         reason="Email collision detected",
-                        details=collision
+                        details=collision,
                     )
 
                 # Normalize email for storage
@@ -203,6 +203,7 @@ class UserService:
             ValidationException: If update data is invalid
         """
         from services.user.utils.email_collision import EmailCollisionDetector
+
         detector = EmailCollisionDetector()
         try:
             async_session = get_async_session()
@@ -219,16 +220,20 @@ class UserService:
                 if user_data.email is not None:
                     # Only check collision if the email is actually changing
                     if user.email != user_data.email:
-                        collision = await detector.get_collision_details(user_data.email)
+                        collision = await detector.get_collision_details(
+                            user_data.email
+                        )
                         if collision["collision"]:
                             raise ValidationException(
                                 field="email",
                                 value=user_data.email,
                                 reason="Email collision detected",
-                                details=collision
+                                details=collision,
                             )
                         # Normalize the new email
-                        normalized_email = await detector.normalize_email(user_data.email)
+                        normalized_email = await detector.normalize_email(
+                            user_data.email
+                        )
                         update_fields["normalized_email"] = normalized_email
                     update_fields["email"] = user_data.email
                 if user_data.first_name is not None:

@@ -166,24 +166,26 @@ def validate_email_address(email: str) -> str:
 async def validate_email_with_collision_check(email: str) -> str:
     """
     Validate email address and check for collisions using normalized email.
-    
+
     Args:
         email: Email address to validate
-        
+
     Returns:
         Normalized email address
-        
+
     Raises:
         ValidationError: If email is invalid or collision detected
     """
     # First validate the email format
     validated_email = validate_email_address(email)
-    
+
     # Then normalize using email-normalize library
     try:
-        normalized_email = await email_collision_detector.normalize_email(validated_email)
+        normalized_email = await email_collision_detector.normalize_email(
+            validated_email
+        )
         return normalized_email
-    except Exception as e:
+    except Exception:
         # If normalization fails, fall back to basic validation
         return validated_email
 
@@ -361,7 +363,9 @@ def validate_json_safe_string(text: str, field_name: str = "text") -> str:
     text = text.strip()
 
     # Check for control characters that could break JSON
-    control_chars = [chr(i) for i in range(32) if i not in [9, 10, 13]]  # Allow tab, LF, CR
+    control_chars = [
+        chr(i) for i in range(32) if i not in [9, 10, 13]
+    ]  # Allow tab, LF, CR
     for char in control_chars:
         if char in text:
             raise ValidationError(
@@ -460,7 +464,9 @@ def validate_file_path(file_path: str) -> str:
 
     # Check for path traversal
     if ".." in file_path or "\\" in file_path:
-        raise ValidationError("file_path", file_path, "File path contains unsafe patterns")
+        raise ValidationError(
+            "file_path", file_path, "File path contains unsafe patterns"
+        )
 
     # Check for absolute paths
     if file_path.startswith("/") or file_path.startswith("\\"):
@@ -469,7 +475,9 @@ def validate_file_path(file_path: str) -> str:
     # Check for dangerous patterns
     for pattern in MALICIOUS_PATTERNS:
         if pattern.search(file_path):
-            raise ValidationError("file_path", file_path, "File path contains malicious content")
+            raise ValidationError(
+                "file_path", file_path, "File path contains malicious content"
+            )
 
     return file_path
 

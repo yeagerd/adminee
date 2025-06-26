@@ -18,11 +18,15 @@ depends_on = None
 
 def upgrade() -> None:
     # Add normalized_email column
-    op.add_column("users", sa.Column("normalized_email", sa.String(length=255), nullable=True))
-    
+    op.add_column(
+        "users", sa.Column("normalized_email", sa.String(length=255), nullable=True)
+    )
+
     # Create index on normalized_email for performance
-    op.create_index(op.f("ix_users_normalized_email"), "users", ["normalized_email"], unique=False)
-    
+    op.create_index(
+        op.f("ix_users_normalized_email"), "users", ["normalized_email"], unique=False
+    )
+
     # Create unique index on normalized_email excluding soft-deleted users
     # Note: This is a partial unique index that only applies when deleted_at IS NULL
     op.create_index(
@@ -31,16 +35,16 @@ def upgrade() -> None:
         ["normalized_email"],
         unique=True,
         postgresql_where=sa.text("deleted_at IS NULL"),
-        sqlite_where=sa.text("deleted_at IS NULL")
+        sqlite_where=sa.text("deleted_at IS NULL"),
     )
 
 
 def downgrade() -> None:
     # Drop the unique index first
     op.drop_index("ix_users_normalized_email_unique_active", table_name="users")
-    
+
     # Drop the regular index
     op.drop_index(op.f("ix_users_normalized_email"), table_name="users")
-    
+
     # Drop the column
-    op.drop_column("users", "normalized_email") 
+    op.drop_column("users", "normalized_email")

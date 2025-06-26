@@ -8,7 +8,8 @@ authorization, and comprehensive error handling.
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status, Body
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, status
+from pydantic import BaseModel, EmailStr
 
 from services.user.auth import get_current_user
 from services.user.exceptions import (
@@ -24,7 +25,6 @@ from services.user.schemas.user import (
     UserUpdate,
 )
 from services.user.services.user_service import get_user_service
-from pydantic import BaseModel, EmailStr
 
 logger = logging.getLogger(__name__)
 
@@ -419,12 +419,14 @@ async def search_users(
 class EmailCheckRequest(BaseModel):
     email: EmailStr
 
+
 class EmailCheckResponse(BaseModel):
     available: bool
     normalized_email: str
     email_info: dict
     details: Optional[dict] = None
     reason: Optional[str] = None
+
 
 @router.post(
     "/check-email",
@@ -440,6 +442,7 @@ async def check_email_availability(
     req: EmailCheckRequest = Body(..., description="Email to check for availability")
 ) -> EmailCheckResponse:
     from services.user.utils.email_collision import EmailCollisionDetector
+
     detector = EmailCollisionDetector()
     collision_details = await detector.get_collision_details(req.email)
     email_info = await detector.get_email_info(req.email)
