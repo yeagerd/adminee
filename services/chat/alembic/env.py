@@ -4,16 +4,18 @@ from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
-from sqlmodel import SQLModel
 
 # Add the parent directory to sys.path to import our models
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 
-from services.chat.settings import get_settings
-from services.chat.history_manager import chat_registry
-
 # Import our models to ensure they're registered with SQLModel metadata
-from services.chat.history_manager import Thread, Message, Draft  # noqa: F401
+from services.chat.history_manager import (  # noqa: F401
+    Draft,
+    Message,
+    Thread,
+    chat_registry,
+)
+from services.chat.settings import get_settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
