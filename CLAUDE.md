@@ -39,8 +39,10 @@ source venv/bin/activate
 
 ### Database
 ```bash
-cd services/{service}/
-alembic upgrade head  # Apply migrations
+# From project root - run migrations for all services
+alembic -c services/office/alembic.ini upgrade head   # Office service
+alembic -c services/user/alembic.ini upgrade head     # User service  
+alembic -c services/chat/alembic.ini upgrade head     # Chat service
 ```
 
 ## Development Patterns

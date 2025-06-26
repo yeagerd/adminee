@@ -43,11 +43,10 @@ python user_management_demo.py --help
 
 ```bash
 # Terminal 1: Start the service (from project root)
-cd /Users/yeagerd/github/briefly/services/user
-alembic upgrade head
+cd /Users/yeagerd/github/briefly
+alembic -c services/user/alembic.ini upgrade head
 export JWT_VERIFY_SIGNATURE=false
 export TOKEN_ENCRYPTION_SALT="ZGVtby1lbmNyeXB0aW9uLXNhbHQtZm9yLXRlc3Rpbmc="
-cd /Users/yeagerd/github/briefly  # Navigate to project root
 uvicorn services.user.main:app --reload --port 8001
 ```
 
