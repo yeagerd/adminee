@@ -205,3 +205,17 @@ jobs:
         # Test that docker-compose builds successfully
         docker compose config
         docker compose build --no-cache
+
+  conventional-commits:
+    name: Conventional Commits Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetches all history for accurate commit message linting
+
+      - name: Clone git-presubmit-linter
+        run: git clone https://github.com/google/git-presubmit-linter.git ../git-presubmit-linter
+
+      - name: Run mandate-conventional-changelog.sh
+        run: ../git-presubmit-linter/tools/mandate-conventional-changelog.sh
