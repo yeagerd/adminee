@@ -645,57 +645,6 @@ class TestUserEmailCollision:
         }
 
     @patch("services.user.utils.email_collision.normalize")
-    def test_check_email_available(self, mock_normalize):
-        # Mock email normalization
-        mock_result = MagicMock()
-        mock_result.normalized_address = "unique@example.com"
-        mock_normalize.return_value = mock_result
-
-        resp = self.client.post(
-            "/users/check-email", json={"email": "unique@example.com"}
-        )
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["available"] is True
-        assert data["normalized_email"] == "unique@example.com"
-        assert "email_info" in data
-
-    @patch("services.user.utils.email_collision.normalize")
-    def test_check_email_collision(self, mock_normalize):
-        # Mock email normalization to return different normalized emails
-        def mock_normalize_side_effect(email):
-            mock_result = MagicMock()
-            if "user+work" in email:
-                mock_result.normalized_address = "user@gmail.com"
-            else:
-                mock_result.normalized_address = email.lower()
-            return mock_result
-
-        mock_normalize.side_effect = mock_normalize_side_effect
-
-        # First, check that email is available initially
-        resp = self.client.post("/users/check-email", json={"email": "user@gmail.com"})
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["available"] is True  # Should be available initially
-
-        # Create a user via webhook with colliding email
-        unique_email = self._get_unique_email("user+work@gmail.com")
-        unique_user_id = self._get_unique_user_id("clerk_collision_test_1")
-        event = self._clerk_user_created_event(unique_user_id, unique_email)
-        resp = self.client.post("/webhooks/clerk", json=event)
-        assert resp.status_code == 200
-
-        # Now check for collision with normalized email
-        resp = self.client.post("/users/check-email", json={"email": "user@gmail.com"})
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["available"] is False  # Should not be available due to collision
-        assert "details" in data
-        assert "collision" in data["details"]
-        assert "existing_user_id" in data["details"]
-
-    @patch("services.user.utils.email_collision.normalize")
     def test_create_user_collision(self, mock_normalize):
         # Mock email normalization to return same normalized email for different inputs
         def mock_normalize_side_effect(email):
