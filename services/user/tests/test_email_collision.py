@@ -133,35 +133,41 @@ class TestEmailCollisionDB:
     @pytest.mark.asyncio
     async def test_check_collision_no_collision(self, db_setup, detector_fixture):
         detector = detector_fixture
-        with patch.object(detector, "normalize_email_async", return_value="test@example.com"):
+        with patch.object(
+            detector, "normalize_email_async", return_value="test@example.com"
+        ):
             result = await detector.check_collision("test@example.com")
             assert result is None
 
     @pytest.mark.asyncio
     async def test_check_collision_with_collision(self, db_setup, detector_fixture):
         detector = detector_fixture
+        # Use unique email to avoid conflicts with other tests
+        unique_email = f"existing_{id(self)}@example.com"
         existing_user = User(
-            external_auth_id="clerk_collision_test_123",
+            external_auth_id=f"clerk_collision_test_{id(self)}",
             auth_provider="clerk",
-            email="existing@example.com",
-            normalized_email="existing@example.com",
+            email=unique_email,
+            normalized_email=unique_email,
         )
         async_session = get_async_session()
         async with async_session() as session:
             session.add(existing_user)
             await session.commit()
             with patch.object(
-                detector, "normalize_email_async", return_value="existing@example.com"
+                detector, "normalize_email_async", return_value=unique_email
             ):
-                result = await detector.check_collision("existing@example.com")
+                result = await detector.check_collision(unique_email)
                 assert result is not None
-                assert result.email == "existing@example.com"
+                assert result.email == unique_email
 
     @pytest.mark.asyncio
     async def test_get_collision_details_no_collision(self, db_setup, detector_fixture):
         detector = detector_fixture
         with patch.object(detector, "check_collision", return_value=None):
-            with patch.object(detector, "normalize_email_async", return_value="test@example.com"):
+            with patch.object(
+                detector, "normalize_email_async", return_value="test@example.com"
+            ):
                 result = await detector.get_collision_details("test@example.com")
                 assert result["available"] is True
                 assert result["collision"] is False
@@ -180,7 +186,9 @@ class TestEmailCollisionDB:
             normalized_email="existing@example.com",
         )
         with patch.object(detector, "check_collision", return_value=existing_user):
-            with patch.object(detector, "normalize_email_async", return_value="existing@example.com"):
+            with patch.object(
+                detector, "normalize_email_async", return_value="existing@example.com"
+            ):
                 result = await detector.get_collision_details("existing@example.com")
                 assert result["collision"] is True
                 assert result["existing_user_id"] == "clerk_123"
@@ -229,5 +237,7 @@ class TestEmailCollisionDetectorGlobal:
             mock_result = MagicMock()
             mock_result.normalized_address = "test@example.com"
             mock_normalize.return_value = mock_result
-            result = await email_collision_detector.normalize_email_async("test@example.com")
+            result = await email_collision_detector.normalize_email_async(
+                "test@example.com"
+            )
             assert result == "test@example.com"

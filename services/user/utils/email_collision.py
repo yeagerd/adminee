@@ -56,7 +56,18 @@ class EmailCollisionDetector:
         Returns:
             str: Normalized email address
         """
-        return self.normalize_email(email)
+        if not email:
+            return email
+
+        try:
+            # Use the email-normalize library (synchronous)
+            # We call it synchronously to avoid event loop issues
+            result = normalize(email)
+            return result.normalized_address
+        except Exception as e:
+            # Fallback to basic normalization if email-normalize fails
+            logger.warning(f"Failed to normalize email {email}: {e}")
+            return email.strip().lower()
 
     async def check_collision(self, email: str) -> Optional[User]:
         """
@@ -154,6 +165,7 @@ class EmailCollisionDetector:
             Dictionary with email information
         """
         try:
+            # Use synchronous call to avoid event loop issues
             result = normalize(email)
             return {
                 "original_email": email,

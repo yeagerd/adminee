@@ -10,6 +10,7 @@ import tempfile
 
 import pytest
 from sqlalchemy import text
+from unittest.mock import patch, MagicMock
 
 from services.user.database import create_all_tables, get_async_session
 from services.user.models.user import User
@@ -180,64 +181,71 @@ class TestWebhookServiceIntegration(BaseUserManagementTest):
     async def test_update_external_auth_id_when_email_exists(self):
         """Test that if a user exists with the same email but a different external_auth_id, the webhook updates the external_auth_id."""
         await self._setup_test_database()
-        try:
-            # 1. Create a user with one external_auth_id
-            initial_data = ClerkWebhookEventData(
-                id="demo_user",
-                email_addresses=[
-                    {
-                        "email_address": "trybriefly@outlook.com",
-                        "verification": {"status": "verified"},
-                    }
-                ],
-                first_name="Demo",
-                last_name="User",
-                image_url="https://images.clerk.dev/demo-avatar.png",
-                created_at=1640995200000,
-                updated_at=1640995200000,
-            )
-            create_result = await self.webhook_service._handle_user_created(
-                initial_data
-            )
-            assert create_result["action"] == "user_created"
-
-            # 2. Call webhook with a new external_auth_id but same email
-            new_data = ClerkWebhookEventData(
-                id="user_trybriefly_outlook_com",
-                email_addresses=[
-                    {
-                        "email_address": "trybriefly@outlook.com",
-                        "verification": {"status": "verified"},
-                    }
-                ],
-                first_name="Demo",
-                last_name="User",
-                image_url="https://images.clerk.dev/demo-avatar.png",
-                created_at=1640995200000,
-                updated_at=1640995200000,
-            )
-            update_result = await self.webhook_service._handle_user_created(new_data)
-            assert update_result["action"] == "user_external_id_updated"
-            assert update_result["external_auth_id"] == "user_trybriefly_outlook_com"
-
-            # 3. Verify only one user exists and external_auth_id is updated
-            async_session = get_async_session()
-            async with async_session() as session:
-                from sqlmodel import select
-
-                user_result = await session.execute(
-                    select(User).where(User.email == "trybriefly@outlook.com")
+        
+        # Mock email normalization to avoid event loop issues
+        with patch("services.user.utils.email_collision.normalize") as mock_normalize:
+            mock_result = MagicMock()
+            mock_result.normalized_address = "trybriefly@outlook.com"
+            mock_normalize.return_value = mock_result
+            
+            try:
+                # 1. Create a user with one external_auth_id
+                initial_data = ClerkWebhookEventData(
+                    id="demo_user",
+                    email_addresses=[
+                        {
+                            "email_address": "trybriefly@outlook.com",
+                            "verification": {"status": "verified"},
+                        }
+                    ],
+                    first_name="Demo",
+                    last_name="User",
+                    image_url="https://images.clerk.dev/demo-avatar.png",
+                    created_at=1640995200000,
+                    updated_at=1640995200000,
                 )
-                user = user_result.scalar_one_or_none()
-                assert user is not None
-                assert user.external_auth_id == "user_trybriefly_outlook_com"
-                # There should only be one user with this email
-                count_result = await session.execute(
-                    text(
-                        "SELECT COUNT(*) FROM users WHERE email = 'trybriefly@outlook.com'"
+                create_result = await self.webhook_service._handle_user_created(
+                    initial_data
+                )
+                assert create_result["action"] == "user_created"
+
+                # 2. Call webhook with a new external_auth_id but same email
+                new_data = ClerkWebhookEventData(
+                    id="user_trybriefly_outlook_com",
+                    email_addresses=[
+                        {
+                            "email_address": "trybriefly@outlook.com",
+                            "verification": {"status": "verified"},
+                        }
+                    ],
+                    first_name="Demo",
+                    last_name="User",
+                    image_url="https://images.clerk.dev/demo-avatar.png",
+                    created_at=1640995200000,
+                    updated_at=1640995200000,
+                )
+                update_result = await self.webhook_service._handle_user_created(new_data)
+                assert update_result["action"] == "user_external_id_updated"
+                assert update_result["external_auth_id"] == "user_trybriefly_outlook_com"
+
+                # 3. Verify only one user exists and external_auth_id is updated
+                async_session = get_async_session()
+                async with async_session() as session:
+                    from sqlmodel import select
+
+                    user_result = await session.execute(
+                        select(User).where(User.email == "trybriefly@outlook.com")
                     )
-                )
-                count = count_result.scalar()
-                assert count == 1
-        finally:
-            self._cleanup_test_database()
+                    user = user_result.scalar_one_or_none()
+                    assert user is not None
+                    assert user.external_auth_id == "user_trybriefly_outlook_com"
+                    # There should only be one user with this email
+                    count_result = await session.execute(
+                        text(
+                            "SELECT COUNT(*) FROM users WHERE email = 'trybriefly@outlook.com'"
+                        )
+                    )
+                    count = count_result.scalar()
+                    assert count == 1
+            finally:
+                self._cleanup_test_database()
