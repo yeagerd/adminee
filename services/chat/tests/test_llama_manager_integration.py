@@ -18,7 +18,6 @@ os.environ.setdefault("DB_URL_CHAT", "sqlite:///test.db")
 
 import logging
 import os
-import tempfile
 from unittest.mock import patch
 
 import pytest
@@ -33,13 +32,9 @@ logger = logging.getLogger(__name__)
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def setup_test_database():
     """Set up test database with proper tables for all tests."""
-    # Create a temporary database file for testing
-    db_fd, db_path = tempfile.mkstemp(suffix=".db")
-    os.close(db_fd)
-
-    # Set the database URL for testing
+    # Use in-memory database for testing
     original_db_url = os.environ.get("DB_URL_CHAT")
-    os.environ["DB_URL_CHAT"] = f"sqlite:///{db_path}"
+    os.environ["DB_URL_CHAT"] = "sqlite+aiosqlite:///file::memory:?cache=shared"
 
     try:
         # Initialize database tables
@@ -51,12 +46,6 @@ async def setup_test_database():
             os.environ["DB_URL_CHAT"] = original_db_url
         elif "DB_URL_CHAT" in os.environ:
             del os.environ["DB_URL_CHAT"]
-
-        # Remove temporary database file
-        try:
-            os.unlink(db_path)
-        except OSError:
-            pass
 
 
 class DummyTool:

@@ -6,7 +6,7 @@ from external services like Clerk.
 """
 
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -15,7 +15,9 @@ class ClerkWebhookEventData(BaseModel):
     """Base class for Clerk webhook event data."""
 
     id: str = Field(..., description="Unique identifier for the user")
-    email_addresses: Optional[str] = Field(None, description="Primary email address")
+    email_addresses: Optional[List[Dict[str, Any]]] = Field(
+        None, description="Array of email addresses"
+    )
     first_name: Optional[str] = Field(None, description="User's first name")
     last_name: Optional[str] = Field(None, description="User's last name")
     image_url: Optional[str] = Field(None, description="User's profile image URL")
@@ -26,20 +28,18 @@ class ClerkWebhookEventData(BaseModel):
         None, description="Update timestamp in milliseconds"
     )
 
-    @field_validator("email_addresses", mode="before")
-    def extract_primary_email(cls, v) -> Optional[str]:
-        """Extract primary email from email addresses array."""
-        if v and isinstance(v, list) and len(v) > 0:
-            # Find primary email or use first one
-            for email_obj in v:
-                if isinstance(email_obj, dict) and email_obj.get("email_address"):
-                    return email_obj["email_address"]
-        return v  # Return as-is if it's already a string or None
-
     @property
     def primary_email(self) -> Optional[str]:
         """Get the primary email address."""
-        return self.email_addresses
+        if (
+            self.email_addresses
+            and isinstance(self.email_addresses, list)
+            and len(self.email_addresses) > 0
+        ):
+            for email_obj in self.email_addresses:
+                if isinstance(email_obj, dict) and email_obj.get("email_address"):
+                    return email_obj["email_address"]
+        return None
 
 
 class ClerkWebhookEvent(BaseModel):

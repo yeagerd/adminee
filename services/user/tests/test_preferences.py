@@ -105,7 +105,7 @@ class TestPreferencesSchemas:
             assert prefs.response_style == style
 
         # Invalid style
-        with pytest.raises(ValidationError, match="Must be one of"):
+        with pytest.raises(ValidationError, match="response_style must be one of"):
             AIPreferencesSchema(response_style="invalid")
 
     def test_user_preferences_update_partial(self):
