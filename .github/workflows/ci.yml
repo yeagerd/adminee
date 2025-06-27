@@ -5,8 +5,68 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
+    types: [opened, edited, synchronize]
 
 jobs:
+  validate-pr-title:
+    name: Validate PR Title
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Configure which types are allowed.
+          # Default: https://github.com/commitizen/conventional-commit-types/blob/master/index.json
+          # Example:
+          # types: |
+          #   feat
+          #   fix
+          #   chore
+          #   docs
+          #   style
+          #   refactor
+          #   perf
+          #   test
+          #   revert
+          #   ci
+          #   build
+          #   improvement
+          # Allow use of Merge Cmmits for versioning
+          allowMergeCommits: true
+          # Allow use of Revert Commits for reverting
+          allowRevertCommits: true
+          # Configure that a scope must always be provided.
+          # requireScope: true
+          # Configure which scopes are allowed.
+          # Default: Any scope is allowed.
+          # Example:
+          # scopes: |
+          #   core
+          #   ui
+          #   docs
+          # Configure that the subject must not start with an uppercase character.
+          # subjectPattern: ^(?![A-Z]).+$
+          # Configure that the subject must not end with a period.
+          # subjectPatternError: |
+          #   The subject "{subject}" found in the pull request title "{title}"
+          #   must not end with a period.
+          # Configure additional validation for the subject based on a regex.
+          # The subject="{subject}" found in the pull request title "{title}"
+          # must match the regex "{subjectPattern}".
+          # validateSingleCommit: true
+          # If `validateSingleCommit` is true, this option allows you to ignore merge commits.
+          # ignoreSingleMergeCommit: false
+          # For work-in-progress PRs, you can typically use draft PRs.
+          # Alternatively, you can choose to ignore PRs with certain labels.
+          # The action will simply pass without checking the title.
+          # ignoreLabels: |
+          #   WIP
+          #   ignore-semantic-pull-request
+          # You can also define a list of labels that should prevent the PR from being validated.
+          #
+          # wip: true
+
   lint:
     name: Python Linting & Formatting
     runs-on: ubuntu-latest
