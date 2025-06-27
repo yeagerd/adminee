@@ -8,8 +8,7 @@ authorization, and comprehensive error handling.
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, status
-from pydantic import BaseModel, EmailStr
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
 from services.user.auth import get_current_user
 from services.user.exceptions import (
