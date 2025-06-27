@@ -7,19 +7,15 @@ error handling, authentication, and authorization.
 
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
-import tempfile
-import os
 
 import pytest
 from fastapi import HTTPException, status
 from fastapi.testclient import TestClient
-from sqlalchemy import select
 
 from services.user.exceptions import (
     UserNotFoundException,
     ValidationException,
 )
-from services.user.main import app
 from services.user.models.user import User
 from services.user.schemas.user import (
     UserCreate,
@@ -30,7 +26,6 @@ from services.user.schemas.user import (
     UserUpdate,
 )
 from services.user.services.user_service import get_user_service
-from services.user.database import create_all_tables
 
 
 class TestUserProfileEndpoints:
@@ -542,62 +537,79 @@ class TestUserEmailCollision:
         """Set up test method with unique email addresses and isolated database."""
         # Increment counter for each test method
         TestUserEmailCollision.test_counter += 1
-        
+
         # Mock the database engine to use in-memory database
         from unittest.mock import patch
         from sqlalchemy.ext.asyncio import create_async_engine
         from sqlmodel import SQLModel
-        
+
         # Create in-memory engine
-        self.test_engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
-        
+        self.test_engine = create_async_engine(
+            "sqlite+aiosqlite:///:memory:", echo=False
+        )
+
         # Patch the get_engine function to return our test engine
-        self.engine_patcher = patch('services.user.database.get_engine', return_value=self.test_engine)
+        self.engine_patcher = patch(
+            "services.user.database.get_engine", return_value=self.test_engine
+        )
         self.engine_patcher.start()
-        
+
         # Create tables in the in-memory database
         import asyncio
+
         async def create_tables():
             async with self.test_engine.begin() as conn:
                 await conn.run_sync(SQLModel.metadata.create_all)
-        
+
         asyncio.run(create_tables())
-        
+
         # Create a completely custom FastAPI app for tests
         from fastapi import FastAPI
         from fastapi.middleware.cors import CORSMiddleware
         from services.user.routers import users_router, webhooks_router
-        from services.user.middleware.sanitization import InputSanitizationMiddleware, XSSProtectionMiddleware
+        from services.user.middleware.sanitization import (
+            InputSanitizationMiddleware,
+            XSSProtectionMiddleware,
+        )
         from services.common.logging_config import create_request_logging_middleware
-        
+
         # Create a minimal FastAPI app for testing
         self.app = FastAPI(
             title="User Management Service - Test",
             description="Test instance for user management service",
             version="0.1.0",
         )
-        
+
         # Add essential middleware
-        self.app.add_middleware(InputSanitizationMiddleware, enabled=True, strict_mode=False)
-        self.app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+        self.app.add_middleware(
+            InputSanitizationMiddleware, enabled=True, strict_mode=False
+        )
+        self.app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
         self.app.add_middleware(XSSProtectionMiddleware)
         self.app.middleware("http")(create_request_logging_middleware())
-        
+
         # Add only the routers we need for testing
         self.app.include_router(users_router)
         self.app.include_router(webhooks_router)
-        
+
         self.client = TestClient(self.app)
 
     def teardown_method(self):
         """Clean up after each test."""
         # Stop the engine patch
-        if hasattr(self, 'engine_patcher'):
+        if hasattr(self, "engine_patcher"):
             self.engine_patcher.stop()
-        
+
         # Dispose of the test engine
-        if hasattr(self, 'test_engine'):
+        if hasattr(self, "test_engine"):
             import asyncio
+
             asyncio.run(self.test_engine.dispose())
 
     def _get_unique_email(self, base_email):
@@ -636,7 +648,7 @@ class TestUserEmailCollision:
         mock_result = MagicMock()
         mock_result.normalized_address = "unique@example.com"
         mock_normalize.return_value = mock_result
-        
+
         resp = self.client.post(
             "/users/check-email", json={"email": "unique@example.com"}
         )
@@ -656,22 +668,22 @@ class TestUserEmailCollision:
             else:
                 mock_result.normalized_address = email.lower()
             return mock_result
-        
+
         mock_normalize.side_effect = mock_normalize_side_effect
-        
+
         # First, check that email is available initially
         resp = self.client.post("/users/check-email", json={"email": "user@gmail.com"})
         assert resp.status_code == 200
         data = resp.json()
         assert data["available"] is True  # Should be available initially
-        
+
         # Create a user via webhook with colliding email
         unique_email = self._get_unique_email("user+work@gmail.com")
         unique_user_id = self._get_unique_user_id("clerk_collision_test_1")
         event = self._clerk_user_created_event(unique_user_id, unique_email)
         resp = self.client.post("/webhooks/clerk", json=event)
         assert resp.status_code == 200
-        
+
         # Now check for collision with normalized email
         resp = self.client.post("/users/check-email", json={"email": "user@gmail.com"})
         assert resp.status_code == 200
@@ -691,16 +703,16 @@ class TestUserEmailCollision:
             else:
                 mock_result.normalized_address = email.lower()
             return mock_result
-        
+
         mock_normalize.side_effect = mock_normalize_side_effect
-        
+
         # Create first user with unique email
         unique_email1 = self._get_unique_email("user+work@gmail.com")
         unique_user_id1 = self._get_unique_user_id("clerk_collision_test_2")
         event1 = self._clerk_user_created_event(unique_user_id1, unique_email1)
         resp = self.client.post("/webhooks/clerk", json=event1)
         assert resp.status_code == 200
-        
+
         # Try to create second user with colliding email (should normalize to same email)
         # Note: Currently the collision detection is not working for user creation,
         # so this test verifies the current behavior
@@ -723,21 +735,25 @@ class TestUserEmailCollision:
             else:
                 mock_result.normalized_address = email.lower()
             return mock_result
-        
+
         mock_normalize.side_effect = mock_normalize_side_effect
-        
+
         # Create two users with unique emails
         unique_email1 = self._get_unique_email("first@gmail.com")
         unique_email2 = self._get_unique_email("second@gmail.com")
         unique_user_id1 = self._get_unique_user_id("clerk_collision_test_4")
         unique_user_id2 = self._get_unique_user_id("clerk_collision_test_5")
-        
-        event1 = self._clerk_user_created_event(unique_user_id1, unique_email1, first_name="A", last_name="B")
-        event2 = self._clerk_user_created_event(unique_user_id2, unique_email2, first_name="C", last_name="D")
+
+        event1 = self._clerk_user_created_event(
+            unique_user_id1, unique_email1, first_name="A", last_name="B"
+        )
+        event2 = self._clerk_user_created_event(
+            unique_user_id2, unique_email2, first_name="C", last_name="D"
+        )
         r1 = self.client.post("/webhooks/clerk", json=event1)
         r2 = self.client.post("/webhooks/clerk", json=event2)
         assert r1.status_code == 200 and r2.status_code == 200
-        
+
         # Try to update user2's email to collide with user1
         update_event = {
             "type": "user.updated",
@@ -766,9 +782,9 @@ class TestUserEmailCollision:
             else:
                 mock_result.normalized_address = email.lower()
             return mock_result
-        
+
         mock_normalize.side_effect = mock_normalize_side_effect
-        
+
         unique_email = self._get_unique_email("dot.user+foo@gmail.com")
         unique_user_id = self._get_unique_user_id("clerk_collision_test_6")
         event = self._clerk_user_created_event(
@@ -779,24 +795,24 @@ class TestUserEmailCollision:
         )
         resp = self.client.post("/webhooks/clerk", json=event)
         assert resp.status_code == 200
-        
+
         # Fetch user from DB to check normalized_email
         import asyncio
         from services.user.database import get_async_session
         from services.user.models.user import User as UserModel
-        
+
         async def get_user():
             async_session = get_async_session()
             async with async_session() as session:
                 from sqlalchemy import select
-                
+
                 result = await session.execute(
                     select(UserModel).where(
                         UserModel.external_auth_id == unique_user_id
                     )
                 )
                 return result.scalar_one_or_none()
-        
+
         db_user = asyncio.run(get_user())
         assert db_user is not None
         assert db_user.normalized_email == "dotuser@gmail.com"
