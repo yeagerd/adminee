@@ -61,7 +61,7 @@ async def backfill_normalized_emails(batch_size: int = 100) -> None:
             for user in users:
                 try:
                     # Normalize the email
-                    normalized_email = await detector.normalize_email(user.email)
+                    normalized_email = await detector.normalize_email_async(user.email)
                     user.normalized_email = normalized_email
                     processed += 1
 

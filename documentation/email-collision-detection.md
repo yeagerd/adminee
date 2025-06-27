@@ -303,9 +303,11 @@ async def check_email_availability(email: str):
 - [x] Update email validation utilities to use the library
 
 #### Phase 2: Database Schema (Week 2)
-- [ ] Create Alembic migration for `normalized_email` column
-- [ ] Add database indexes for performance
-- [ ] Update User model with new field
+- [x] Create Alembic migration for `normalized_email` column
+- [x] Add database indexes for performance
+- [x] Update User model with new field
+
+**Status**: ✅ **COMPLETE** - Database schema changes implemented and verified. Migration file `add_normalized_email_column.py` created with proper indexes, User model updated with `normalized_email` field, and migration successfully applied to database (status: `add_normalized_email_column (head)`).
 
 #### Phase 3: Application Integration (Week 3)
 - [x] Integrate collision detection into user creation flow

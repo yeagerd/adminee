@@ -181,7 +181,7 @@ async def validate_email_with_collision_check(email: str) -> str:
 
     # Then normalize using email-normalize library
     try:
-        normalized_email = await email_collision_detector.normalize_email(
+        normalized_email = await email_collision_detector.normalize_email_async(
             validated_email
         )
         return normalized_email

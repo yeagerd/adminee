@@ -24,7 +24,7 @@ class EmailCollisionDetector:
         """Initialize the email collision detector."""
         pass
 
-    async def normalize_email(self, email: str) -> str:
+    def normalize_email(self, email: str) -> str:
         """
         Normalize an email address using provider-specific rules.
 
@@ -38,13 +38,25 @@ class EmailCollisionDetector:
             return email
 
         try:
-            # Use the email-normalize library
+            # Use the email-normalize library (synchronous)
             result = normalize(email)
             return result.normalized_address
         except Exception as e:
             # Fallback to basic normalization if email-normalize fails
             logger.warning(f"Failed to normalize email {email}: {e}")
             return email.strip().lower()
+
+    async def normalize_email_async(self, email: str) -> str:
+        """
+        Async wrapper for email normalization.
+
+        Args:
+            email: Email address to normalize
+
+        Returns:
+            str: Normalized email address
+        """
+        return self.normalize_email(email)
 
     async def check_collision(self, email: str) -> Optional[User]:
         """
@@ -56,7 +68,7 @@ class EmailCollisionDetector:
         Returns:
             Existing user if collision found, None otherwise
         """
-        normalized_email = await self.normalize_email(email)
+        normalized_email = await self.normalize_email_async(email)
 
         # Query for existing user with same normalized email
         async_session = get_async_session()
@@ -89,7 +101,7 @@ class EmailCollisionDetector:
 
         try:
             # Normalize the email
-            normalized_email = await self.normalize_email(email)
+            normalized_email = await self.normalize_email_async(email)
 
             # Check for collision
             collision_user = await self.check_collision(normalized_email)

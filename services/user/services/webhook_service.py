@@ -180,7 +180,7 @@ class WebhookService:
                     )
 
                 # Normalize email for storage
-                normalized_email = await self.email_detector.normalize_email(
+                normalized_email = await self.email_detector.normalize_email_async(
                     primary_email
                 )
 
@@ -274,7 +274,7 @@ class WebhookService:
                         )
 
                     # Normalize the new email
-                    normalized_email = await self.email_detector.normalize_email(
+                    normalized_email = await self.email_detector.normalize_email_async(
                         user_data.primary_email
                     )
                     update_data["email"] = user_data.primary_email

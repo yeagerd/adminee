@@ -153,7 +153,7 @@ class UserService:
                     )
 
                 # Normalize email for storage
-                normalized_email = await detector.normalize_email(user_data.email)
+                normalized_email = await detector.normalize_email_async(user_data.email)
 
                 # Create new user
                 user = User(
@@ -231,7 +231,7 @@ class UserService:
                                 details=collision,
                             )
                         # Normalize the new email
-                        normalized_email = await detector.normalize_email(
+                        normalized_email = await detector.normalize_email_async(
                             user_data.email
                         )
                         update_fields["normalized_email"] = normalized_email

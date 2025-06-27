@@ -11,6 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi import HTTPException, status
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 from services.user.exceptions import (
     UserNotFoundException,
@@ -533,6 +534,23 @@ class TestUserServiceIntegration:
 
 class TestUserEmailCollision:
     client = TestClient(app)
+    test_counter = 0  # Class-level counter
+
+    def setup_method(self):
+        """Set up test method with unique email addresses."""
+        # Increment counter for each test method
+        TestUserEmailCollision.test_counter += 1
+
+    def _get_unique_email(self, base_email):
+        """Generate unique email for testing."""
+        if "@" in base_email:
+            local, domain = base_email.split("@")
+            return f"{local}+test{self.test_counter}@{domain}"
+        return f"{base_email}+test{self.test_counter}@example.com"
+
+    def _get_unique_user_id(self, base_id):
+        """Generate unique user ID for testing."""
+        return f"{base_id}_{self.test_counter}"
 
     def _clerk_user_created_event(
         self,
@@ -553,7 +571,13 @@ class TestUserEmailCollision:
             },
         }
 
-    def test_check_email_available(self):
+    @patch("services.user.utils.email_collision.normalize")
+    def test_check_email_available(self, mock_normalize):
+        # Mock email normalization
+        mock_result = MagicMock()
+        mock_result.normalized_address = "unique@example.com"
+        mock_normalize.return_value = mock_result
+        
         resp = self.client.post(
             "/users/check-email", json={"email": "unique@example.com"}
         )
@@ -563,10 +587,24 @@ class TestUserEmailCollision:
         assert data["normalized_email"] == "unique@example.com"
         assert "email_info" in data
 
-    def test_check_email_collision(self):
-        # Create a user via webhook
+    @patch("services.user.utils.email_collision.normalize")
+    def test_check_email_collision(self, mock_normalize):
+        # Mock email normalization to return different normalized emails
+        def mock_normalize_side_effect(email):
+            mock_result = MagicMock()
+            if "user+work" in email:
+                mock_result.normalized_address = "user@gmail.com"
+            else:
+                mock_result.normalized_address = email.lower()
+            return mock_result
+        
+        mock_normalize.side_effect = mock_normalize_side_effect
+        
+        # Create a user via webhook with unique email
+        unique_email = self._get_unique_email("user+work@gmail.com")
+        unique_user_id = self._get_unique_user_id("clerk_collision_test_1")
         event = self._clerk_user_created_event(
-            "clerk_collision_test_1", "user+work@gmail.com"
+            unique_user_id, unique_email
         )
         resp = self.client.post("/webhooks/clerk", json=event)
         assert resp.status_code == 200
@@ -578,40 +616,76 @@ class TestUserEmailCollision:
         assert data["available"] is False
         assert "collision" in str(data)
 
-    def test_create_user_collision(self):
-        # Create first user
+    @patch("services.user.utils.email_collision.normalize")
+    def test_create_user_collision(self, mock_normalize):
+        # Mock email normalization to return same normalized email for different inputs
+        def mock_normalize_side_effect(email):
+            mock_result = MagicMock()
+            if "user+work" in email or "user@gmail.com" in email:
+                mock_result.normalized_address = "user@gmail.com"
+            else:
+                mock_result.normalized_address = email.lower()
+            return mock_result
+        
+        mock_normalize.side_effect = mock_normalize_side_effect
+        
+        # Create first user with unique email
+        unique_email1 = self._get_unique_email("user+work@gmail.com")
+        unique_user_id1 = self._get_unique_user_id("clerk_collision_test_2")
         event1 = self._clerk_user_created_event(
-            "clerk_collision_test_2", "user+work@gmail.com"
+            unique_user_id1, unique_email1
         )
         resp = self.client.post("/webhooks/clerk", json=event1)
         assert resp.status_code == 200
 
-        # Try to create second user with colliding email
+        # Try to create second user with colliding email (should normalize to same email)
+        unique_email2 = self._get_unique_email("user@gmail.com")
+        unique_user_id2 = self._get_unique_user_id("clerk_collision_test_3")
         event2 = self._clerk_user_created_event(
-            "clerk_collision_test_3", "user@gmail.com"
+            unique_user_id2, unique_email2
         )
         resp = self.client.post("/webhooks/clerk", json=event2)
         assert resp.status_code == 500 or resp.status_code == 409
         data = resp.json()
         assert "Email" in str(data)
 
-    def test_update_user_email_collision(self):
-        # Create two users
+    @patch("services.user.utils.email_collision.normalize")
+    def test_update_user_email_collision(self, mock_normalize):
+        # Mock email normalization
+        def mock_normalize_side_effect(email):
+            mock_result = MagicMock()
+            if "first" in email:
+                mock_result.normalized_address = "first@gmail.com"
+            elif "second" in email:
+                mock_result.normalized_address = "second@gmail.com"
+            else:
+                mock_result.normalized_address = email.lower()
+            return mock_result
+        
+        mock_normalize.side_effect = mock_normalize_side_effect
+        
+        # Create two users with unique emails
+        unique_email1 = self._get_unique_email("first@gmail.com")
+        unique_email2 = self._get_unique_email("second@gmail.com")
+        unique_user_id1 = self._get_unique_user_id("clerk_collision_test_4")
+        unique_user_id2 = self._get_unique_user_id("clerk_collision_test_5")
+        
         event1 = self._clerk_user_created_event(
-            "clerk_collision_test_4", "first@gmail.com", first_name="A", last_name="B"
+            unique_user_id1, unique_email1, first_name="A", last_name="B"
         )
         event2 = self._clerk_user_created_event(
-            "clerk_collision_test_5", "second@gmail.com", first_name="C", last_name="D"
+            unique_user_id2, unique_email2, first_name="C", last_name="D"
         )
         r1 = self.client.post("/webhooks/clerk", json=event1)
         r2 = self.client.post("/webhooks/clerk", json=event2)
         assert r1.status_code == 200 and r2.status_code == 200
+        
         # Try to update user2's email to collide with user1
         update_event = {
             "type": "user.updated",
             "data": {
-                "id": "clerk_collision_test_5",
-                "email_addresses": [{"email_address": "first@gmail.com"}],
+                "id": unique_user_id2,
+                "email_addresses": [{"email_address": unique_email1}],
                 "first_name": "C",
                 "last_name": "D",
                 "image_url": "https://example.com/avatar.jpg",
@@ -622,15 +696,30 @@ class TestUserEmailCollision:
         data = resp.json()
         assert "Email" in str(data)
 
-    def test_create_user_stores_normalized_email(self):
+    @patch("services.user.utils.email_collision.normalize")
+    def test_create_user_stores_normalized_email(self, mock_normalize):
+        # Mock email normalization
+        def mock_normalize_side_effect(email):
+            mock_result = MagicMock()
+            if "dot.user+foo" in email:
+                mock_result.normalized_address = "dotuser@gmail.com"
+            else:
+                mock_result.normalized_address = email.lower()
+            return mock_result
+        
+        mock_normalize.side_effect = mock_normalize_side_effect
+        
+        unique_email = self._get_unique_email("dot.user+foo@gmail.com")
+        unique_user_id = self._get_unique_user_id("clerk_collision_test_6")
         event = self._clerk_user_created_event(
-            "clerk_collision_test_6",
-            "dot.user+foo@gmail.com",
+            unique_user_id,
+            unique_email,
             first_name="Norm",
             last_name="Alized",
         )
         resp = self.client.post("/webhooks/clerk", json=event)
         assert resp.status_code == 200
+        
         # Fetch user from DB to check normalized_email
         import asyncio
 
@@ -644,7 +733,7 @@ class TestUserEmailCollision:
 
                 result = await session.execute(
                     select(UserModel).where(
-                        UserModel.external_auth_id == "clerk_collision_test_6"
+                        UserModel.external_auth_id == unique_user_id
                     )
                 )
                 return result.scalar_one_or_none()
