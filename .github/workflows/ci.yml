@@ -215,7 +215,9 @@ jobs:
           fetch-depth: 0 # Fetches all history for accurate commit message linting
 
       - name: Clone git-presubmit-linter
-        run: git clone https://github.com/google/git-presubmit-linter.git ./git-presubmit-linter
+        run: git clone https://github.com/google/git-presubmit-linter.git git-presubmit-linter
 
       - name: Run mandate-conventional-changelog.sh
-        run: ./git-presubmit-linter/rules/mandate-conventional-changelog.sh
+        run: |
+          cd git-presubmit-linter
+          git log -1 --pretty=%B | ./rules/mandate-conventional-changelog.sh
