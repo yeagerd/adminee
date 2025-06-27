@@ -32,10 +32,6 @@ jobs:
           #   ci
           #   build
           #   improvement
-          # Allow use of Merge Cmmits for versioning
-          allowMergeCommits: true
-          # Allow use of Revert Commits for reverting
-          allowRevertCommits: true
           # Configure that a scope must always be provided.
           # requireScope: true
           # Configure which scopes are allowed.
