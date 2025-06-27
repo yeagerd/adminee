@@ -1,3 +1,4 @@
+import importlib
 import os
 from unittest.mock import MagicMock, patch
 
@@ -40,14 +41,17 @@ def test_get_llm_fallback_to_fake_llm_if_api_key_missing(llm_manager):
 @patch.dict(os.environ, {"OPENAI_API_KEY": "test_key"}, clear=True)
 def test_get_llm_success_real_provider_with_api_key(llm_manager):
     """Test get_llm returns LoggingLiteLLM for a real provider if API key is present."""
-    # We expect this to try to create a LoggingLiteLLM instance.
-    # Since LiteLLM might try to make network calls or validate the key,
-    # we'll patch LoggingLiteLLM to prevent actual instantiation issues in this unit test.
+    import services.chat.agents.llm_manager as llm_mod
+
+    importlib.reload(llm_mod)
+    llm_mod._LLMManager._instance = None
+    # Patch LoggingLiteLLM in the module where it is used
     with patch("services.chat.agents.llm_manager.LoggingLiteLLM") as mock_logging_llm:
         mock_logging_llm_instance = MagicMock()
         mock_logging_llm.return_value = mock_logging_llm_instance
 
-        llm = llm_manager.get_llm(model="gpt-4.1-nano", provider="openai")
+        manager = llm_mod.get_llm_manager()
+        llm = manager.get_llm(model="gpt-4.1-nano", provider="openai")
         mock_logging_llm.assert_called_once_with(
             model="openai/gpt-4.1-nano", language="en"
         )
@@ -70,9 +74,8 @@ def test_get_llm_missing_provider_arg(llm_manager):
         llm_manager.get_llm(model="fake-model")
 
 
-def test_get_model_info_success(llm_manager):
-    """Test get_model_info returns correct information."""
-    # Mock get_llm_provider from litellm.utils to avoid external calls
+def test_get_model_info_success():
+    # Patch get_llm_provider in the correct namespace before importing the module
     with patch(
         "services.chat.agents.llm_manager.get_llm_provider"
     ) as mock_get_provider:
@@ -80,7 +83,11 @@ def test_get_model_info_success(llm_manager):
             "openai",
             "gpt-4.1-nano",
         )  # provider, model_name
-        info = llm_manager.get_model_info(model="openai/gpt-4.1-nano")
+        import services.chat.agents.llm_manager as llm_mod
+
+        llm_mod._LLMManager._instance = None
+        manager = llm_mod.get_llm_manager()
+        info = manager.get_model_info(model="openai/gpt-4.1-nano")
 
     assert info["model"] == "openai/gpt-4.1-nano"
     assert info["provider"] == "openai"
@@ -118,8 +125,9 @@ def test_get_llm_manager_is_singleton():
 def test_llm_manager_new_does_not_set_defaults():
     # Reset singleton for this specific test to observe __new__ behavior
     _LLMManager._instance = None
-    manager = _LLMManager()  # Directly instantiate
+    manager = get_llm_manager()  # Always use the factory for singleton
     assert not hasattr(manager, "_default_provider")
     assert not hasattr(manager, "_default_model")
     # Ensure it's the same instance get_llm_manager() would return
     assert manager is get_llm_manager()
+    # Direct instantiation is not supported and should not be used.

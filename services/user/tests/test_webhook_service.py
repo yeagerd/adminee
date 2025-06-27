@@ -179,7 +179,7 @@ class TestWebhookServiceIntegration(BaseUserManagementTest):
 
     @pytest.mark.asyncio
     async def test_update_external_auth_id_when_email_exists(self):
-        """Test that if a user exists with the same email but a different external_auth_id, the webhook updates the external_auth_id."""
+        """Test that if a user exists with the same email but a different external_auth_id, the webhook returns a 409 EmailCollision error."""
         await self._setup_test_database()
 
         # Mock email normalization to avoid event loop issues
@@ -224,15 +224,14 @@ class TestWebhookServiceIntegration(BaseUserManagementTest):
                     created_at=1640995200000,
                     updated_at=1640995200000,
                 )
-                update_result = await self.webhook_service._handle_user_created(
-                    new_data
-                )
-                assert update_result["action"] == "user_external_id_updated"
-                assert (
-                    update_result["external_auth_id"] == "user_trybriefly_outlook_com"
-                )
+                from fastapi import HTTPException
 
-                # 3. Verify only one user exists and external_auth_id is updated
+                with pytest.raises(HTTPException) as exc_info:
+                    await self.webhook_service._handle_user_created(new_data)
+                assert exc_info.value.status_code == 409
+                assert exc_info.value.detail["error"] == "EmailCollision"
+
+                # 3. Verify only one user exists and external_auth_id is NOT updated
                 async_session = get_async_session()
                 async with async_session() as session:
                     from sqlmodel import select
@@ -242,7 +241,7 @@ class TestWebhookServiceIntegration(BaseUserManagementTest):
                     )
                     user = user_result.scalar_one_or_none()
                     assert user is not None
-                    assert user.external_auth_id == "user_trybriefly_outlook_com"
+                    assert user.external_auth_id == "demo_user"
                     # There should only be one user with this email
                     count_result = await session.execute(
                         text(
