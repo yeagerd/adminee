@@ -175,23 +175,24 @@ class WebhookService:
                     logger.warning(
                         f"Email collision: {primary_email} exists with external_auth_id {collision_details['existing_user_id']}, but new user has external_auth_id {user_data.id}"
                     )
-                    
+
                     # Update the existing user's external_auth_id to the new one
                     existing_user_result = await session.execute(
                         select(User).where(
-                            User.external_auth_id == collision_details['existing_user_id'],
+                            User.external_auth_id
+                            == collision_details["existing_user_id"],
                             User.auth_provider == "clerk",
                         )
                     )
                     existing_user = existing_user_result.scalar_one_or_none()
-                    
+
                     if existing_user:
                         old_external_auth_id = existing_user.external_auth_id
                         existing_user.external_auth_id = user_data.id
                         existing_user.updated_at = datetime.now(timezone.utc)
                         await session.commit()
                         await session.refresh(existing_user)
-                        
+
                         logger.info(
                             f"Updated external_auth_id for user with email {primary_email}: {old_external_auth_id} → {user_data.id}"
                         )

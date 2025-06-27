@@ -52,12 +52,16 @@ class TestValidationUtilities:
 
     def test_sanitize_text_input_html_removal(self):
         """Test HTML tag removal."""
-        with pytest.raises(CustomValidationError, match="Text contains HTML tags or scripts"):
+        with pytest.raises(
+            CustomValidationError, match="Text contains HTML tags or scripts"
+        ):
             sanitize_text_input("<script>alert('xss')</script>Hello")
 
     def test_sanitize_text_input_dangerous_chars(self):
         """Test dangerous character removal."""
-        with pytest.raises(CustomValidationError, match="Text contains HTML tags or scripts"):
+        with pytest.raises(
+            CustomValidationError, match="Text contains HTML tags or scripts"
+        ):
             sanitize_text_input('Hello"World<test>')
 
     def test_sanitize_text_input_max_length(self):
@@ -589,7 +593,9 @@ class TestEdgeCases:
     def test_nested_malicious_patterns(self):
         """Test nested malicious patterns."""
         nested_script = "Hello<script>alert('xss')</script>World"
-        with pytest.raises(CustomValidationError, match="Text contains HTML tags or scripts"):
+        with pytest.raises(
+            CustomValidationError, match="Text contains HTML tags or scripts"
+        ):
             sanitize_text_input(nested_script)
 
     def test_url_edge_cases(self):

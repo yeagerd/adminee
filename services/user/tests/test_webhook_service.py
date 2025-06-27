@@ -7,10 +7,10 @@ database operations, and error handling scenarios.
 
 import os
 import tempfile
+from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy import text
-from unittest.mock import patch, MagicMock
 
 from services.user.database import create_all_tables, get_async_session
 from services.user.models.user import User
@@ -181,13 +181,13 @@ class TestWebhookServiceIntegration(BaseUserManagementTest):
     async def test_update_external_auth_id_when_email_exists(self):
         """Test that if a user exists with the same email but a different external_auth_id, the webhook updates the external_auth_id."""
         await self._setup_test_database()
-        
+
         # Mock email normalization to avoid event loop issues
         with patch("services.user.utils.email_collision.normalize") as mock_normalize:
             mock_result = MagicMock()
             mock_result.normalized_address = "trybriefly@outlook.com"
             mock_normalize.return_value = mock_result
-            
+
             try:
                 # 1. Create a user with one external_auth_id
                 initial_data = ClerkWebhookEventData(
@@ -224,9 +224,13 @@ class TestWebhookServiceIntegration(BaseUserManagementTest):
                     created_at=1640995200000,
                     updated_at=1640995200000,
                 )
-                update_result = await self.webhook_service._handle_user_created(new_data)
+                update_result = await self.webhook_service._handle_user_created(
+                    new_data
+                )
                 assert update_result["action"] == "user_external_id_updated"
-                assert update_result["external_auth_id"] == "user_trybriefly_outlook_com"
+                assert (
+                    update_result["external_auth_id"] == "user_trybriefly_outlook_com"
+                )
 
                 # 3. Verify only one user exists and external_auth_id is updated
                 async_session = get_async_session()

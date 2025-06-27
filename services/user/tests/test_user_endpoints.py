@@ -540,6 +540,7 @@ class TestUserEmailCollision:
 
         # Mock the database engine to use in-memory database
         from unittest.mock import patch
+
         from sqlalchemy.ext.asyncio import create_async_engine
         from sqlmodel import SQLModel
 
@@ -566,12 +567,13 @@ class TestUserEmailCollision:
         # Create a completely custom FastAPI app for tests
         from fastapi import FastAPI
         from fastapi.middleware.cors import CORSMiddleware
-        from services.user.routers import users_router, webhooks_router
+
+        from services.common.logging_config import create_request_logging_middleware
         from services.user.middleware.sanitization import (
             InputSanitizationMiddleware,
             XSSProtectionMiddleware,
         )
-        from services.common.logging_config import create_request_logging_middleware
+        from services.user.routers import users_router, webhooks_router
 
         # Create a minimal FastAPI app for testing
         self.app = FastAPI(
@@ -798,6 +800,7 @@ class TestUserEmailCollision:
 
         # Fetch user from DB to check normalized_email
         import asyncio
+
         from services.user.database import get_async_session
         from services.user.models.user import User as UserModel
 
