@@ -217,10 +217,10 @@ jobs:
       - name: Clone git-presubmit-linter
         run: git clone https://github.com/google/git-presubmit-linter.git git-presubmit-linter
 
-    - name: List cloned files for diagnostics
-      run: |
-        ls -la git-presubmit-linter
-        ls -la git-presubmit-linter/rules
+      - name: List cloned files for diagnostics
+        run: |
+          ls -la git-presubmit-linter
+          ls -la git-presubmit-linter/rules
 
       - name: Run mandate-conventional-changelog.sh
         run: |
