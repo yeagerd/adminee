@@ -644,37 +644,47 @@ class TestUserEmailCollision:
             },
         }
 
-    @patch("services.user.utils.email_collision.normalize")
-    def test_create_user_collision(self, mock_normalize):
-        # Mock email normalization to return same normalized email for different inputs
-        def mock_normalize_side_effect(email):
-            mock_result = MagicMock()
-            if "user+work" in email or "user@gmail.com" in email:
-                mock_result.normalized_address = "user@gmail.com"
-            else:
-                mock_result.normalized_address = email.lower()
-            return mock_result
+    @patch(
+        "services.user.utils.email_collision.EmailCollisionDetector.normalize_email_async"
+    )
+    def test_create_user_collision(self, mock_normalize_async):
+        import logging
 
-        mock_normalize.side_effect = mock_normalize_side_effect
+        logging.basicConfig(level=logging.DEBUG)
+        logging.getLogger().setLevel(logging.DEBUG)
+
+        # Mock async normalization to always return the same normalized email for both test addresses
+        async def mock_normalize_side_effect(email):
+            if "user" in email and "gmail.com" in email:
+                return "user@gmail.com"
+            return email.lower()
+
+        mock_normalize_async.side_effect = mock_normalize_side_effect
 
         # Create first user with unique email
         unique_email1 = self._get_unique_email("user+work@gmail.com")
         unique_user_id1 = self._get_unique_user_id("clerk_collision_test_2")
+        print(
+            f"TEST: Creating user 1 with email: {unique_email1}, user_id: {unique_user_id1}"
+        )
         event1 = self._clerk_user_created_event(unique_user_id1, unique_email1)
         resp = self.client.post("/webhooks/clerk", json=event1)
         assert resp.status_code == 200
 
         # Try to create second user with colliding email (should normalize to same email)
-        # Note: Currently the collision detection is not working for user creation,
-        # so this test verifies the current behavior
         unique_email2 = self._get_unique_email("user@gmail.com")
         unique_user_id2 = self._get_unique_user_id("clerk_collision_test_3")
+        print(
+            f"TEST: Creating user 2 with email: {unique_email2}, user_id: {unique_user_id2}"
+        )
         event2 = self._clerk_user_created_event(unique_user_id2, unique_email2)
         resp = self.client.post("/webhooks/clerk", json=event2)
-        # For now, both users can be created (this is the current behavior)
-        assert resp.status_code == 200
+        # Should fail due to collision detection
+        assert resp.status_code == 409
+        data = resp.json()
+        assert data["detail"]["error"] == "EmailCollision"
 
-    @patch("services.user.utils.email_collision.normalize")
+    @patch("email_normalize.normalize")
     def test_update_user_email_collision(self, mock_normalize):
         # Mock email normalization
         def mock_normalize_side_effect(email):
@@ -723,18 +733,17 @@ class TestUserEmailCollision:
         # as evidenced by the warning message in the logs
         assert data["detail"]["error"] == "InternalServerError"
 
-    @patch("services.user.utils.email_collision.normalize")
-    def test_create_user_stores_normalized_email(self, mock_normalize):
-        # Mock email normalization
-        def mock_normalize_side_effect(email):
-            mock_result = MagicMock()
+    @patch(
+        "services.user.utils.email_collision.EmailCollisionDetector.normalize_email_async"
+    )
+    def test_create_user_stores_normalized_email(self, mock_normalize_async):
+        # Mock async normalization
+        async def mock_normalize_side_effect(email):
             if "dot.user+foo" in email:
-                mock_result.normalized_address = "dotuser@gmail.com"
-            else:
-                mock_result.normalized_address = email.lower()
-            return mock_result
+                return "dotuser@gmail.com"
+            return email.lower()
 
-        mock_normalize.side_effect = mock_normalize_side_effect
+        mock_normalize_async.side_effect = mock_normalize_side_effect
 
         unique_email = self._get_unique_email("dot.user+foo@gmail.com")
         unique_user_id = self._get_unique_user_id("clerk_collision_test_6")

@@ -80,8 +80,10 @@ class EmailCollisionDetector:
             Existing user if collision found, None otherwise
         """
         normalized_email = await self.normalize_email_async(email)
+        logger.debug(
+            f"COLLISION: Checking for user with normalized_email={normalized_email}"
+        )
 
-        # Query for existing user with same normalized email
         async_session = get_async_session()
         async with async_session() as session:
             result = await session.execute(
@@ -89,7 +91,16 @@ class EmailCollisionDetector:
                     User.normalized_email == normalized_email, User.deleted_at.is_(None)
                 )
             )
-            return result.scalar_one_or_none()
+            user = result.scalar_one_or_none()
+            if user:
+                logger.warning(
+                    f"COLLISION: Found existing user={user.external_auth_id} for normalized_email={normalized_email}"
+                )
+            else:
+                logger.debug(
+                    f"COLLISION: No user found for normalized_email={normalized_email}"
+                )
+            return user
 
     async def get_collision_details(self, email: str) -> dict:
         """
@@ -111,13 +122,17 @@ class EmailCollisionDetector:
             }
 
         try:
-            # Normalize the email
             normalized_email = await self.normalize_email_async(email)
+            logger.debug(
+                f"COLLISION: get_collision_details for email={email}, normalized={normalized_email}"
+            )
 
-            # Check for collision
             collision_user = await self.check_collision(normalized_email)
 
             if collision_user:
+                logger.warning(
+                    f"COLLISION: Collision detected for normalized_email={normalized_email}, user={collision_user.external_auth_id}"
+                )
                 return {
                     "available": False,
                     "normalized_email": normalized_email,
@@ -132,6 +147,9 @@ class EmailCollisionDetector:
                     },
                 }
             else:
+                logger.debug(
+                    f"COLLISION: No collision for normalized_email={normalized_email}"
+                )
                 return {
                     "available": True,
                     "normalized_email": normalized_email,

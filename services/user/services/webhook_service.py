@@ -7,6 +7,7 @@ Handles business logic for processing webhook events from external providers.
 import logging
 from datetime import datetime, timezone
 
+from fastapi import HTTPException
 from sqlalchemy import select
 
 from services.user.database import get_async_session
@@ -175,39 +176,15 @@ class WebhookService:
                     logger.warning(
                         f"Email collision: {primary_email} exists with external_auth_id {collision_details['existing_user_id']}, but new user has external_auth_id {user_data.id}"
                     )
-
-                    # Update the existing user's external_auth_id to the new one
-                    existing_user_result = await session.execute(
-                        select(User).where(
-                            User.external_auth_id
-                            == collision_details["existing_user_id"],
-                            User.auth_provider == "clerk",
-                        )
+                    logger.debug("Raising HTTPException 409 for email collision!")
+                    # Instead of updating the existing user's external_auth_id, raise a 409 Conflict
+                    raise HTTPException(
+                        status_code=409,
+                        detail={
+                            "error": "EmailCollision",
+                            "message": f"Email {primary_email} already exists with a different user.",
+                        },
                     )
-                    existing_user = existing_user_result.scalar_one_or_none()
-
-                    if existing_user:
-                        old_external_auth_id = existing_user.external_auth_id
-                        existing_user.external_auth_id = user_data.id
-                        existing_user.updated_at = datetime.now(timezone.utc)
-                        await session.commit()
-                        await session.refresh(existing_user)
-
-                        logger.info(
-                            f"Updated external_auth_id for user with email {primary_email}: {old_external_auth_id} → {user_data.id}"
-                        )
-                        return {
-                            "action": "user_external_id_updated",
-                            "user_id": existing_user.id,
-                            "external_auth_id": user_data.id,
-                            "old_external_auth_id": old_external_auth_id,
-                            "email": primary_email,
-                        }
-                    else:
-                        # Fallback: raise exception if we can't find the existing user
-                        raise WebhookProcessingError(
-                            f"Email {primary_email} already exists with different external ID {collision_details['existing_user_id']}, but user not found"
-                        )
 
                 # Normalize email for storage
                 normalized_email = await self.email_detector.normalize_email_async(
@@ -251,6 +228,8 @@ class WebhookService:
                     "preferences_id": preferences.id,
                 }
 
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error(f"Failed to create user {user_data.id}: {str(e)}")
             raise DatabaseError(f"User creation failed: {str(e)}")
