@@ -43,3 +43,6 @@ opentelemetry-exporter-gcp-trace
 
 # GCP Secret Manager
 google-cloud-secret-manager
+
+# Email normalization for collision detection
+email-normalize==2.0.0

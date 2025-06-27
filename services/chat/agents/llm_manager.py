@@ -290,7 +290,7 @@ class _LLMManager:
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super(_LLMManager, cls).__new__(cls)
+            cls._instance = object.__new__(cls)
         return cls._instance
 
     def get_llm(self, model: str, provider: str, **kwargs) -> Any:
