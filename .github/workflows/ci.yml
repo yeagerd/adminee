@@ -222,7 +222,7 @@ jobs:
           ls -la git-presubmit-linter
           ls -la git-presubmit-linter/rules
 
-      - name: Run mandate-conventional-changelog.sh
+      - name: Run mandate-conventional-commit.sh
         run: |
           cd git-presubmit-linter
-          git log -1 --pretty=%B | ./rules/mandate-conventional-changelog.sh
+          git log -1 --pretty=%B | ./rules/mandate-conventional-commit.sh
