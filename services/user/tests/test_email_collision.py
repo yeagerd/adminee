@@ -125,7 +125,7 @@ async def db_setup(monkeypatch):
 
 
 @pytest_asyncio.fixture(scope="function")
-def detector_fixture():
+async def detector_fixture():
     return EmailCollisionDetector()
 
 
@@ -150,16 +150,28 @@ class TestEmailCollisionDB:
             email=unique_email,
             normalized_email=unique_email,
         )
+
+        # Create user in the database using the same session factory that check_collision will use
         async_session = get_async_session()
         async with async_session() as session:
             session.add(existing_user)
             await session.commit()
+
+            # Test collision detection within the same session context
             with patch.object(
                 detector, "normalize_email_async", return_value=unique_email
             ):
-                result = await detector.check_collision(unique_email)
-                assert result is not None
-                assert result.email == unique_email
+                # Mock the get_async_session to return our current session
+                with patch(
+                    "services.user.utils.email_collision.get_async_session"
+                ) as mock_get_session:
+                    # Create a mock session factory that returns our session
+                    mock_session_factory = MagicMock()
+                    mock_session_factory.return_value = session
+                    mock_get_session.return_value = mock_session_factory
+                    result = await detector.check_collision(unique_email)
+                    assert result is not None
+                    assert result.email == unique_email
 
     @pytest.mark.asyncio
     async def test_get_collision_details_no_collision(self, db_setup, detector_fixture):
