@@ -3,11 +3,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
-      args:
-        - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
     volumes:
       - ./frontend:/app:cached
-    command: sleep infinity
+    command: npm run dev
     ports:
       - "3000:3000" # For Next.js frontend
       - "8000:8000" # For Python/FastAPI backend (Note: Original 'app' service. If chat-service is also FastAPI on 8000, ports need adjustment)
@@ -15,11 +13,6 @@ services:
       - user-management
       - chat-service
       - office-service
-    environment:
-      # Frontend / Next.js specific vars
-      - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY} # For Clerk (client-side)
-      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY} # For Clerk (server-side API routes)
-      # Add other necessary environment variables for the app service
 
   user-management:
     build:
@@ -39,9 +32,8 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - API_FRONTEND_USER_KEY=${API_FRONTEND_USER_KEY}
+      - API_CHAT_USER_KEY=${API_CHAT_USER_KEY}
       - TOKEN_ENCRYPTION_SALT=${TOKEN_ENCRYPTION_SALT}
-      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
-      - CLERK_WEBHOOK_SECRET=${CLERK_WEBHOOK_SECRET}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - MICROSOFT_CLIENT_ID=${MICROSOFT_CLIENT_ID}
@@ -57,7 +49,7 @@ services:
       args:
         - ENVIRONMENT=${ENVIRONMENT}
     ports:
-      - "8080:8080"
+      - "8003:8003"
     depends_on:
       - db
       - redis
@@ -80,7 +72,7 @@ services:
       args:
         - ENVIRONMENT=${ENVIRONMENT}
     ports:
-      - "8002:8000" # Changed from 8000 to 8002 to avoid conflict with 'app' service
+      - "8002:8002" # Chat service on port 8002
     depends_on:
       - db # Assuming it might use the main db or its own
       - user-management # If it needs to authenticate/call user-management
@@ -89,7 +81,7 @@ services:
       - ENVIRONMENT=${ENVIRONMENT}  # Required: local|staging|production
       - DB_URL_CHAT=${DB_URL_CHAT}
       - USER_MANAGEMENT_SERVICE_URL=http://user-management:8001
-      - OFFICE_SERVICE_URL=http://office-service:8080
+      - OFFICE_SERVICE_URL=http://office-service:8003
       - API_FRONTEND_CHAT_KEY=${API_FRONTEND_CHAT_KEY}
       - API_CHAT_USER_KEY=${API_CHAT_USER_KEY}
       - API_CHAT_OFFICE_KEY=${API_CHAT_OFFICE_KEY}

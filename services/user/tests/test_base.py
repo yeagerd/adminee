@@ -30,6 +30,11 @@ class BaseUserManagementTest:
         os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
         os.environ.setdefault("ENVIRONMENT", "test")
 
+        # Import app after environment variables are set
+        from services.user.main import app
+
+        self.app = app
+
     def teardown_method(self):
         """Clean up User Management test environment."""
         # Close and remove temporary database file
@@ -91,11 +96,8 @@ class BaseUserManagementIntegrationTest(BaseUserManagementTest):
 
         asyncio.run(create_all_tables())
 
-        # Import and create test client
-        from services.user.main import app
-
-        self.app = app
-        self.client = TestClient(app)
+        # Create test client using app from base class
+        self.client = TestClient(self.app)
 
         # Set up authentication overrides
         self._override_auth()
@@ -118,19 +120,25 @@ class BaseUserManagementIntegrationTest(BaseUserManagementTest):
 
     def _override_auth(self):
         """Override authentication for testing."""
+        from unittest.mock import AsyncMock
+
         from services.user.auth.clerk import get_current_user
 
         async def mock_get_current_user():
             return "user_123"
 
-        async def mock_verify_user_ownership(
-            current_user_id: str, resource_user_id: str
-        ):
-            return None
+        # This async def function can still be used as a side_effect if needed,
+        # but we'll create an AsyncMock instance directly for the patch.
+        # async def mock_verify_user_ownership_side_effect(
+        #     current_user_id: str, resource_user_id: str
+        # ):
+        #     return None
+
+        mock_verify_ownership_instance = AsyncMock(return_value=None)
 
         self.app.dependency_overrides[get_current_user] = mock_get_current_user
         patcher = patch(
             "services.user.auth.clerk.verify_user_ownership",
-            side_effect=mock_verify_user_ownership,
+            new=mock_verify_ownership_instance,
         )
         self._patcher = patcher.start()

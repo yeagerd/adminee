@@ -31,10 +31,11 @@ This pattern ensures:
 import json
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
 from services.chat.agents.workflow_agent import WorkflowAgent
+from services.chat.auth import require_chat_auth
 from services.chat.models import (
     ChatRequest,
     ChatResponse,
@@ -45,6 +46,7 @@ from services.chat.models import MessageResponse as PydanticMessage
 from services.chat.models import (
     ThreadResponse,
 )
+from services.chat.service_client import ServiceClient
 from services.chat.settings import get_settings
 
 router = APIRouter()
@@ -54,7 +56,10 @@ FEEDBACKS: List[FeedbackRequest] = []
 
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(request: ChatRequest) -> ChatResponse:
+async def chat_endpoint(
+    request: ChatRequest,
+    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
+) -> ChatResponse:
     """
     Chat endpoint using llama_manager ChatAgentManager.
 
@@ -67,6 +72,16 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
     user_id = request.user_id
     thread_id = request.thread_id
     user_input = request.message
+    user_timezone = request.user_timezone
+
+    # Get user timezone from preferences if not provided
+    if not user_timezone:
+        async with ServiceClient() as service_client:
+            preferences = await service_client.get_user_preferences(user_id)
+            if preferences and "timezone" in preferences:
+                user_timezone = preferences["timezone"]
+            else:
+                user_timezone = "UTC"  # Default fallback
 
     # Create or get thread (returns database Thread model)
     thread: Optional[history_manager.Thread]
@@ -88,13 +103,14 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
     # At this point, thread is guaranteed to be not None
     thread = cast(history_manager.Thread, thread)
 
-    # Initialize the multi-agent workflow
+    # Initialize the multi-agent workflow with user timezone
     agent = WorkflowAgent(
         thread_id=int(thread.id),
         user_id=user_id,
         llm_model=get_settings().llm_model,
         llm_provider=get_settings().llm_provider,
         max_tokens=get_settings().max_tokens,
+        user_timezone=user_timezone,  # Pass user timezone to agent
     )
 
     # Build the agent workflow if not already built
@@ -141,7 +157,10 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
 
 
 @router.post("/chat/stream")
-async def chat_stream_endpoint(request: ChatRequest) -> StreamingResponse:
+async def chat_stream_endpoint(
+    request: ChatRequest,
+    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
+) -> StreamingResponse:
     """
     Streaming chat endpoint using Server-Sent Events (SSE).
 
@@ -155,6 +174,16 @@ async def chat_stream_endpoint(request: ChatRequest) -> StreamingResponse:
     user_id = request.user_id
     thread_id = request.thread_id
     user_input = request.message
+    user_timezone = request.user_timezone
+
+    # Get user timezone from preferences if not provided
+    if not user_timezone:
+        async with ServiceClient() as service_client:
+            preferences = await service_client.get_user_preferences(user_id)
+            if preferences and "timezone" in preferences:
+                user_timezone = preferences["timezone"]
+            else:
+                user_timezone = "UTC"  # Default fallback
 
     # Create or get thread (returns database Thread model)
     thread: Optional[history_manager.Thread]
@@ -179,13 +208,14 @@ async def chat_stream_endpoint(request: ChatRequest) -> StreamingResponse:
     async def generate_streaming_response():
         """Generate streaming response using Server-Sent Events format."""
         try:
-            # Initialize the multi-agent workflow
+            # Initialize the multi-agent workflow with user timezone
             agent = WorkflowAgent(
                 thread_id=int(thread.id),
                 user_id=user_id,
                 llm_model=get_settings().llm_model,
                 llm_provider=get_settings().llm_provider,
                 max_tokens=get_settings().max_tokens,
+                user_timezone=user_timezone,  # Pass user timezone to agent
             )
 
             # Build the agent workflow if not already built
@@ -243,7 +273,10 @@ async def chat_stream_endpoint(request: ChatRequest) -> StreamingResponse:
 
 
 @router.get("/threads", response_model=List[ThreadResponse])
-async def list_threads(user_id: str) -> List[ThreadResponse]:
+async def list_threads(
+    user_id: str,
+    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
+) -> List[ThreadResponse]:
     """
     List threads for a given user using history_manager.
 
@@ -270,7 +303,10 @@ async def list_threads(user_id: str) -> List[ThreadResponse]:
 
 
 @router.get("/threads/{thread_id}/history", response_model=ChatResponse)
-async def thread_history(thread_id: str) -> ChatResponse:
+async def thread_history(
+    thread_id: str,
+    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
+) -> ChatResponse:
     """
     Get chat history for a given thread using history_manager.
 
@@ -306,7 +342,10 @@ async def thread_history(thread_id: str) -> ChatResponse:
 
 
 @router.post("/feedback", response_model=FeedbackResponse)
-def feedback_endpoint(request: FeedbackRequest) -> FeedbackResponse:
+def feedback_endpoint(
+    request: FeedbackRequest,
+    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
+) -> FeedbackResponse:
     """
     Receive user feedback for a message.
     """

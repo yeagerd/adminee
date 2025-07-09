@@ -27,6 +27,7 @@ class TestTokenManager:
     def mock_token_data_dict(self):
         """Mock TokenData response from User Management Service."""
         return {
+            "success": True,
             "access_token": "test_access_token_123",
             "refresh_token": "test_refresh_token",
             "expires_at": "2023-12-31T23:59:59+00:00",

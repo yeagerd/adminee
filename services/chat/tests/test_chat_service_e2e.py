@@ -6,44 +6,92 @@ multi-agent workflow processing, history management, and API endpoints.
 """
 
 import asyncio
+import sys
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
 
-from services.chat import history_manager
-from services.chat.main import app
+# Test API key for authentication
+TEST_API_KEY = "test-frontend-chat-key"
+TEST_HEADERS = {"X-API-Key": TEST_API_KEY}
+
+
+@pytest.fixture(scope="module")
+def test_env():
+    """Set up test environment variables."""
+    env_vars = {
+        "DB_URL_CHAT": "sqlite+aiosqlite:///file::memory:?cache=shared",
+        "OPENAI_API_KEY": "test-key-for-multi-agent",
+        "LLM_MODEL": "gpt-4.1-nano",
+        "LLM_PROVIDER": "openai",
+        "API_FRONTEND_CHAT_KEY": TEST_API_KEY,
+    }
+    with patch.dict("os.environ", env_vars):
+        yield env_vars
+
+
+@pytest.fixture
+def app(test_env):
+    """Fixture to provide the FastAPI app with test environment."""
+    # Force reload the auth module to pick up the new environment variables
+    for module in list(sys.modules):
+        if module.startswith("services.chat"):
+            del sys.modules[module]
+
+    # Import after module cleanup to ensure fresh imports
+    from services.chat import history_manager
+    from services.chat.auth import _chat_auth as fresh_auth
+    from services.chat.auth import get_chat_auth
+    from services.chat.main import app as fresh_app
+
+    # Update the global _chat_auth reference
+    global _chat_auth, _history_manager
+    _chat_auth = fresh_auth
+    _history_manager = history_manager
+    _get_chat_auth = get_chat_auth  # Store for use in other fixtures
+
+    return fresh_app
 
 
 async def setup_test_database():
     """Initialize the test database with tables."""
+    from services.chat import history_manager
+
     await history_manager.init_db()
 
 
 @pytest.fixture(autouse=True)
-def fake_llm_env(monkeypatch):
-    # Set shared in-memory SQLite DB for tests
-    monkeypatch.setenv("DB_URL_CHAT", "sqlite+aiosqlite:///file::memory:?cache=shared")
-    # Set a test OpenAI API key for the multi-agent workflow
-    monkeypatch.setenv("OPENAI_API_KEY", "test-key-for-multi-agent")
-    # Set test LLM model
-    monkeypatch.setenv("LLM_MODEL", "gpt-4.1-nano")
-    monkeypatch.setenv("LLM_PROVIDER", "openai")
+def setup_test_environment(app):
+    """Set up the test environment."""
     # Initialize test database synchronously
     asyncio.run(setup_test_database())
-    yield
+
+    # Verify auth is properly set up
+    from services.chat.auth import get_chat_auth
+
+    auth = get_chat_auth()
+    assert auth.verify_api_key_value(TEST_API_KEY) == "frontend"
 
 
-def test_end_to_end_chat_flow():
+# Test API key for authentication
+TEST_API_KEY = "test-frontend-chat-key"
+TEST_HEADERS = {"X-API-Key": TEST_API_KEY}
+
+
+def test_end_to_end_chat_flow(app):
     client = TestClient(app)
     user_id = "testuser"
 
     # List threads (record initial count)
-    resp = client.get("/threads", params={"user_id": user_id})
+    resp = client.get("/threads", params={"user_id": user_id}, headers=TEST_HEADERS)
     assert resp.status_code == 200
 
     # Start a chat (should create a new thread and return response)
     msg = "Hello, world!"
-    resp = client.post("/chat", json={"user_id": user_id, "message": msg})
+    resp = client.post(
+        "/chat", json={"user_id": user_id, "message": msg}, headers=TEST_HEADERS
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert "thread_id" in data
@@ -58,7 +106,9 @@ def test_end_to_end_chat_flow():
     # Send another message in the same thread
     msg2 = "How are you?"
     resp = client.post(
-        "/chat", json={"user_id": user_id, "thread_id": thread_id, "message": msg2}
+        "/chat",
+        json={"user_id": user_id, "thread_id": thread_id, "message": msg2},
+        headers=TEST_HEADERS,
     )
     assert resp.status_code == 200
     data2 = resp.json()
@@ -68,13 +118,13 @@ def test_end_to_end_chat_flow():
     assert len(data2["messages"][-1]["content"]) > 0
 
     # List threads (should contain the thread we just used)
-    resp = client.get("/threads", params={"user_id": user_id})
+    resp = client.get("/threads", params={"user_id": user_id}, headers=TEST_HEADERS)
     assert resp.status_code == 200
     threads = resp.json()
     assert any(t["thread_id"] == thread_id for t in threads)
 
     # Get thread history
-    resp = client.get(f"/threads/{thread_id}/history")
+    resp = client.get(f"/threads/{thread_id}/history", headers=TEST_HEADERS)
     assert resp.status_code == 200
     history = resp.json()
     assert history["thread_id"] == thread_id
@@ -90,23 +140,32 @@ def test_end_to_end_chat_flow():
             "message_id": last_msg["message_id"],
             "feedback": "up",
         },
+        headers=TEST_HEADERS,
     )
     assert resp.status_code == 200
     assert resp.json()["status"] == "success"
 
 
-def test_multiple_blank_thread_creates_distinct_threads():
+def test_multiple_blank_thread_creates_distinct_threads(app):
     client = TestClient(app)
     user_id = "testuser_multi"
 
     # Send first message with blank thread_id
-    resp1 = client.post("/chat", json={"user_id": user_id, "message": "First message"})
+    resp1 = client.post(
+        "/chat",
+        json={"user_id": user_id, "message": "First message"},
+        headers=TEST_HEADERS,
+    )
     assert resp1.status_code == 200
     data1 = resp1.json()
     thread_id1 = data1["thread_id"]
 
     # Send second message with blank thread_id
-    resp2 = client.post("/chat", json={"user_id": user_id, "message": "Second message"})
+    resp2 = client.post(
+        "/chat",
+        json={"user_id": user_id, "message": "Second message"},
+        headers=TEST_HEADERS,
+    )
     assert resp2.status_code == 200
     data2 = resp2.json()
     thread_id2 = data2["thread_id"]
@@ -115,7 +174,7 @@ def test_multiple_blank_thread_creates_distinct_threads():
     assert thread_id1 != thread_id2
 
     # List threads and verify both thread IDs are present
-    resp = client.get("/threads", params={"user_id": user_id})
+    resp = client.get("/threads", params={"user_id": user_id}, headers=TEST_HEADERS)
     assert resp.status_code == 200
     threads = resp.json()
     thread_ids = {t["thread_id"] for t in threads}

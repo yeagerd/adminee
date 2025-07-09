@@ -61,7 +61,7 @@ class PreferencesService:
         Get user preferences by user ID.
 
         Args:
-            user_id: The user's Clerk ID
+            user_id: The user's external authentication ID (Clerk ID)
 
         Returns:
             UserPreferencesResponse object or None if not found
@@ -75,9 +75,9 @@ class PreferencesService:
 
             async_session = get_async_session()
             async with async_session() as session:
-                # Check if user exists
+                # Check if user exists by external auth ID
                 user_result = await session.execute(
-                    select(User).where(User.id == user_id)
+                    select(User).where(User.external_auth_id == user_id)
                 )
                 user = user_result.scalar_one_or_none()
                 if not user:
@@ -140,7 +140,7 @@ class PreferencesService:
         Update user preferences with partial update support.
 
         Args:
-            user_id: The user's Clerk ID
+            user_id: The user's external authentication ID (Clerk ID)
             preferences_update: Preferences update data
 
         Returns:
@@ -157,9 +157,9 @@ class PreferencesService:
 
             async_session = get_async_session()
             async with async_session() as session:
-                # Check if user exists
+                # Check if user exists by external auth ID
                 user_result = await session.execute(
-                    select(User).where(User.id == user_id)
+                    select(User).where(User.external_auth_id == user_id)
                 )
                 user = user_result.scalar_one_or_none()
                 if not user:
@@ -259,7 +259,7 @@ class PreferencesService:
         Reset user preferences to default values.
 
         Args:
-            user_id: The user's Clerk ID
+            user_id: The user's external authentication ID (Clerk ID)
             categories: List of categories to reset (None = reset all)
 
         Returns:
@@ -278,9 +278,9 @@ class PreferencesService:
 
             async_session = get_async_session()
             async with async_session() as session:
-                # Check if user exists
+                # Check if user exists by external auth ID
                 user_result = await session.execute(
-                    select(User).where(User.id == user_id)
+                    select(User).where(User.external_auth_id == user_id)
                 )
                 user = user_result.scalar_one_or_none()
                 if not user:

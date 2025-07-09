@@ -17,7 +17,6 @@ from services.user.database import create_all_tables
 from services.user.exceptions import (
     UserNotFoundException,
 )
-from services.user.main import app
 from services.user.schemas.preferences import (
     AIPreferencesSchema,
     IntegrationPreferencesSchema,
@@ -106,7 +105,7 @@ class TestPreferencesSchemas:
             assert prefs.response_style == style
 
         # Invalid style
-        with pytest.raises(ValidationError, match="Must be one of"):
+        with pytest.raises(ValidationError, match="response_style must be one of"):
             AIPreferencesSchema(response_style="invalid")
 
     def test_user_preferences_update_partial(self):
@@ -364,7 +363,7 @@ class TestPreferencesEndpoints(BaseUserManagementTest):
     def setup_method(self):
         super().setup_method()
         asyncio.run(create_all_tables())
-        self.client = TestClient(app)
+        self.client = TestClient(self.app)
         self.mock_preferences = self._create_mock_preferences()
         self._setup_auth_mock()
 
@@ -413,7 +412,7 @@ class TestPreferencesEndpoints(BaseUserManagementTest):
                 "last_name": "User",
             }
 
-        app.dependency_overrides[get_current_user] = mock_get_current_user
+        self.app.dependency_overrides[get_current_user] = mock_get_current_user
 
     def test_get_preferences_success(self):
         """Test successful preferences retrieval via API."""

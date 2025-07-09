@@ -1,38 +1,55 @@
 import logging
-import sys
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlmodel import select
 
 from services.chat import history_manager
 from services.chat.api import router
 from services.chat.settings import get_settings
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)],
+from services.common.logging_config import (
+    create_request_logging_middleware,
+    log_service_shutdown,
+    log_service_startup,
+    setup_service_logging,
 )
 
-# Silence verbose logs from specific modules
-logging.getLogger("LiteLLM").setLevel(logging.WARNING)
-logging.getLogger("httpx").setLevel(logging.WARNING)
-logging.getLogger("httpcore").setLevel(logging.WARNING)
+# Set up centralized logging
+settings = get_settings()
+setup_service_logging(
+    service_name="chat-service",
+    log_level=settings.log_level,
+    log_format=settings.log_format,
+)
 
 logger = logging.getLogger(__name__)
-logger.info("Logging is configured")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Startup: Ensure the database is created and tables exist
-    logger.info("Starting Chat Service with Multi-Agent Workflow")
+    log_service_startup(
+        "chat-service",
+        api_frontend_chat_key=(
+            "configured" if get_settings().api_frontend_chat_key else "missing"
+        ),
+        api_chat_user_key=(
+            "configured" if get_settings().api_chat_user_key else "missing"
+        ),
+        api_chat_office_key=(
+            "configured" if get_settings().api_chat_office_key else "missing"
+        ),
+        user_management_service_url=get_settings().user_management_service_url,
+        office_service_url=get_settings().office_service_url,
+    )
 
-    # Validate API keys for outgoing service calls (optional - will warn if missing)
+    # Validate API keys for incoming and outgoing service calls
+    if not get_settings().api_frontend_chat_key:
+        logger.warning(
+            "API_FRONTEND_CHAT_KEY not configured - frontend authentication will fail"
+        )
     if not get_settings().api_chat_user_key:
         logger.warning(
             "API_CHAT_USER_KEY not configured - user management calls will fail"
@@ -47,12 +64,57 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     yield  # The application runs here
 
     # Shutdown: Clean up connections
-    logger.info("Shutting down Chat Service")
+    log_service_shutdown("chat-service")
     engine = history_manager.get_engine()
     await engine.dispose()
 
 
 app = FastAPI(title="Chat Service", version="0.1.0", lifespan=lifespan)
+
+# Add centralized request logging middleware
+app.middleware("http")(create_request_logging_middleware())
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """
+    Global exception handler for unhandled exceptions.
+
+    Logs the error with full traceback and returns a generic error response
+    to avoid exposing internal details in production.
+    """
+    import uuid
+    from datetime import datetime, timezone
+
+    request_id = str(uuid.uuid4())
+
+    logger.error(
+        "Unhandled exception occurred",
+        extra={
+            "path": request.url.path,
+            "method": request.method,
+            "error": str(exc),
+            "error_type": type(exc).__name__,
+            "request_id": request_id,
+        },
+        exc_info=True,  # This includes the full traceback
+    )
+
+    return JSONResponse(
+        status_code=500,
+        content={
+            "type": "internal_error",
+            "message": "An unexpected error occurred. Please try again later.",
+            "details": {
+                "error_type": type(exc).__name__,
+                "path": request.url.path,
+                "method": request.method,
+                "code": "INTERNAL_SERVER_ERROR",
+            },
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "request_id": request_id,
+        },
+    )
 
 
 @app.get("/ready")
@@ -73,13 +135,16 @@ app.include_router(router)
 async def health_check() -> JSONResponse:
     try:
         # Simple query to verify database connection
-        async with history_manager.async_session() as session:
+        async with history_manager.get_async_session_factory()() as session:
             result = await session.execute(select(history_manager.Thread))
             threads = result.scalars().all()
             count = len(threads)
 
         # Check service configuration
         config_status = {
+            "api_frontend_chat_key": (
+                "configured" if get_settings().api_frontend_chat_key else "missing"
+            ),
             "api_chat_user_key": (
                 "configured" if get_settings().api_chat_user_key else "missing"
             ),
@@ -101,6 +166,14 @@ async def health_check() -> JSONResponse:
             }
         )
     except Exception as e:
+        logger.error(
+            "Health check failed with exception",
+            extra={
+                "error": str(e),
+                "error_type": type(e).__name__,
+            },
+            exc_info=True,  # This includes the full traceback
+        )
         return JSONResponse(
             status_code=500,
             content={

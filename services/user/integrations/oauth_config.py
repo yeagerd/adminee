@@ -355,6 +355,7 @@ class OAuthConfig:
                 "profile",
                 "offline_access",
                 "https://graph.microsoft.com/User.Read",
+                "https://graph.microsoft.com/Calendars.ReadWrite",
             ],
             supports_pkce=True,
             pkce_method=PKCEChallengeMethod.S256,

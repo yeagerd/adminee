@@ -43,14 +43,13 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
         # For development/demo, we use simplified JWT validation
         # In production, you should use proper signature verification with JWKS
         verify_signature = getattr(get_settings(), "jwt_verify_signature", False)
-        dummy_key = "dummy-key-for-verification-disabled"
 
+        # Decode without signature verification for demo purposes
         decoded_token = jwt.decode(
             token,
-            key=dummy_key,
             options={
                 "verify_signature": verify_signature
-            },  # Configurable signature verification
+            },  # Disable signature verification
             algorithms=[
                 "RS256",
                 "HS256",

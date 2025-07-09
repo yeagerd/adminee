@@ -23,10 +23,11 @@ from services.user.schemas.preferences import (
     UserPreferencesResponse,
     UserPreferencesUpdate,
 )
-from services.user.services import preferences_service
+from services.user.services.preferences_service import PreferencesService
 
 # Set up logging
 logger = structlog.get_logger(__name__)
+
 
 router = APIRouter(
     prefix="/users/{user_id}/preferences",
@@ -66,7 +67,8 @@ async def get_preferences(
         # Verify user ownership
         await verify_user_ownership(current_user, user_id)
 
-        preferences = await preferences_service.get_user_preferences(user_id)
+        # Pass external auth ID directly to service (service handles internal lookup)
+        preferences = await PreferencesService.get_user_preferences(user_id)
 
         if not preferences:
             logger.warning("Preferences not found", user_id=user_id)
@@ -148,7 +150,8 @@ async def update_preferences(
         # Verify user ownership
         await verify_user_ownership(current_user, user_id)
 
-        updated_preferences = await preferences_service.update_user_preferences(
+        # Pass external auth ID directly to service (service handles internal lookup)
+        updated_preferences = await PreferencesService.update_user_preferences(
             user_id, preferences_update
         )
 
@@ -230,15 +233,12 @@ async def reset_preferences(
         # Verify user ownership
         await verify_user_ownership(current_user, user_id)
 
-        reset_preferences = await preferences_service.reset_user_preferences(
+        # Pass external auth ID directly to service (service handles internal lookup)
+        reset_preferences = await PreferencesService.reset_user_preferences(
             user_id, reset_request.categories
         )
 
-        logger.info(
-            "Successfully reset preferences",
-            user_id=user_id,
-            categories=reset_request.categories,
-        )
+        logger.info("Successfully reset preferences", user_id=user_id)
         return reset_preferences
 
     except UserNotFoundException:

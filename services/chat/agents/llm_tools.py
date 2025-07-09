@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import requests
 from llama_index.core.tools import FunctionTool
@@ -7,54 +7,219 @@ from llama_index.core.tools.types import ToolOutput
 from services.chat.settings import get_settings
 
 
+def format_event_time_for_display(
+    start_time_utc: str, end_time_utc: str, timezone: str = None
+) -> str:
+    """
+    Format calendar event times from UTC to a human-readable local time format.
+
+    Args:
+        start_time_utc: Start time in UTC ISO format (e.g., "2025-06-20T17:00:00Z")
+        end_time_utc: End time in UTC ISO format
+        timezone: Target timezone (e.g., "America/New_York"), defaults to system timezone
+
+    Returns:
+        Formatted time string (e.g., "5:00 PM to 5:30 PM")
+    """
+    try:
+        from datetime import datetime
+
+        import pytz
+
+        # Parse UTC times
+        start_utc = datetime.fromisoformat(start_time_utc.replace("Z", "+00:00"))
+        end_utc = datetime.fromisoformat(end_time_utc.replace("Z", "+00:00"))
+
+        # If timezone provided, convert to that timezone
+        if timezone:
+            try:
+                target_tz = pytz.timezone(timezone)
+                start_local = start_utc.astimezone(target_tz)
+                end_local = end_utc.astimezone(target_tz)
+            except (pytz.UnknownTimeZoneError, ValueError, TypeError):
+                # Fallback to system timezone if provided timezone is invalid
+                start_local = start_utc.astimezone()
+                end_local = end_utc.astimezone()
+        else:
+            # Convert to system timezone
+            start_local = start_utc.astimezone()
+            end_local = end_utc.astimezone()
+
+        # Format times (12-hour format with AM/PM)
+        start_formatted = start_local.strftime(
+            "%-I:%M %p" if start_local.minute != 0 else "%-I:%M %p"
+        )
+        end_formatted = end_local.strftime(
+            "%-I:%M %p" if end_local.minute != 0 else "%-I:%M %p"
+        )
+
+        # Handle overnight events
+        if start_local.date() != end_local.date():
+            return (
+                f"{start_formatted} to {end_formatted} ({end_local.strftime('%b %d')})"
+            )
+        else:
+            return f"{start_formatted} to {end_formatted}"
+
+    except Exception:
+        # Fallback to original times if parsing fails
+        return f"{start_time_utc} to {end_time_utc}"
+
+
 def get_calendar_events(
-    user_token: str,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    user_timezone: Optional[str] = None,
-    provider_type: Optional[str] = None,
+    user_id: str,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    time_zone: str | None = None,
+    providers: str | None = None,
 ) -> Dict[str, Any]:
-    headers = {"Authorization": f"Bearer {user_token}"}
-    params = {}
+    # Use service-to-service authentication
+    headers = {"Content-Type": "application/json"}
+    if get_settings().api_chat_office_key:
+        headers["X-API-Key"] = get_settings().api_chat_office_key
+
+    params: Dict[str, str | List[str]] = {"user_id": user_id}
     if start_date:
         params["start_date"] = start_date
     if end_date:
         params["end_date"] = end_date
-    if user_timezone:
-        params["user_timezone"] = user_timezone
-    if provider_type:
-        params["provider_type"] = provider_type
+    if time_zone:
+        params["time_zone"] = time_zone
+
+    # If no providers specified, get user's available integrations
+    if not providers:
+        available_providers = get_user_available_providers(user_id)
+        if available_providers:
+            params["providers"] = available_providers
+        else:
+            return {
+                "error": "No calendar integrations available. Please connect Google or Microsoft calendar first."
+            }
+    else:
+        # Convert comma-separated string to list format expected by office service
+        provider_list = [p.strip() for p in providers.split(",")]
+        params["providers"] = provider_list
+
     try:
         office_service_url = get_settings().office_service_url
         response = requests.get(
-            f"{office_service_url}/events",
+            f"{office_service_url}/calendar/events",
             headers=headers,
             params=params,
             timeout=10,
         )
         response.raise_for_status()
         data = response.json()
-        if "events" not in data:
-            return {"error": "Malformed response from office-service."}
-        return {"events": data["events"]}
+
+        # Check for successful response structure
+        if not data.get("success", False):
+            return {
+                "error": f"Office service error: {data.get('message', 'Unknown error')}"
+            }
+
+        # Extract events from the data field
+        events_data = data.get("data", {})
+        if "events" not in events_data:
+            return {
+                "error": "Malformed response from office-service: missing events data."
+            }
+
+        # Check for provider errors - if all providers failed, return error
+        provider_errors = events_data.get("provider_errors", {})
+        providers_used = events_data.get("providers_used", [])
+
+        if provider_errors and not providers_used:
+            # All providers failed
+            error_messages = [
+                f"{provider}: {error}" for provider, error in provider_errors.items()
+            ]
+            return {"error": f"Calendar access failed - {'; '.join(error_messages)}"}
+        elif provider_errors:
+            # Some providers failed, but we have data from others
+            # Log warning but continue with available data
+            print(f"Warning: Some calendar providers failed: {provider_errors}")
+
+        # Format event times for better display
+        events = events_data["events"]
+        for event in events:
+            if "start_time" in event and "end_time" in event:
+                # Add a formatted time field for display
+                event["display_time"] = format_event_time_for_display(
+                    event["start_time"], event["end_time"], time_zone
+                )
+
+        return {"events": events}
     except requests.Timeout:
         return {"error": "Request to office-service timed out."}
     except requests.HTTPError as e:
-        return {"error": f"HTTP error: {str(e)}"}
+        return {
+            "error": f"HTTP error: {str(e)} - Response: {e.response.text if e.response else 'No response'}"
+        }
     except Exception as e:
         return {"error": f"Unexpected error: {str(e)}"}
 
 
+def get_user_available_providers(user_id: str) -> List[str]:
+    """
+    Get list of available calendar providers for a user.
+
+    Args:
+        user_id: User identifier
+
+    Returns:
+        List of available provider names (e.g., ['google', 'microsoft'])
+    """
+    try:
+        # Use service-to-service authentication to get user integrations
+        headers = {"Content-Type": "application/json"}
+        if get_settings().api_chat_user_key:
+            headers["X-API-Key"] = get_settings().api_chat_user_key
+
+        user_service_url = get_settings().user_management_service_url
+        response = requests.get(
+            f"{user_service_url}/internal/users/{user_id}/integrations",
+            headers=headers,
+            timeout=5,
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+            integrations = data.get("integrations", [])
+
+            # Extract active calendar providers
+            available_providers = []
+            for integration in integrations:
+                provider = integration.get("provider", "").lower()
+                status = integration.get("status", "").lower()
+
+                # Only include active integrations for calendar providers
+                if status == "active" and provider in ["google", "microsoft"]:
+                    available_providers.append(provider)
+
+            return available_providers
+        else:
+            print(f"Warning: Could not fetch user integrations: {response.status_code}")
+            return []
+
+    except Exception as e:
+        print(f"Warning: Error fetching user integrations: {e}")
+        return []
+
+
 def get_emails(
-    user_token: str,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    unread_only: Optional[bool] = None,
-    folder: Optional[str] = None,
-    max_results: Optional[int] = None,
+    user_id: str,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    unread_only: bool | None = None,
+    folder: str | None = None,
+    max_results: int | None = None,
 ) -> Dict[str, Any]:
-    headers = {"Authorization": f"Bearer {user_token}"}
-    params = {}
+    # Use service-to-service authentication
+    headers = {"Content-Type": "application/json"}
+    if get_settings().api_chat_office_key:
+        headers["X-API-Key"] = get_settings().api_chat_office_key
+
+    params = {"user_id": user_id}
     if start_date:
         params["start_date"] = start_date
     if end_date:
@@ -65,6 +230,7 @@ def get_emails(
         params["folder"] = folder
     if max_results:
         params["max_results"] = str(max_results)
+
     try:
         office_service_url = get_settings().office_service_url
         response = requests.get(
@@ -75,26 +241,45 @@ def get_emails(
         )
         response.raise_for_status()
         data = response.json()
-        if "emails" not in data:
-            return {"error": "Malformed response from office-service."}
-        return {"emails": data["emails"]}
+
+        # Check for successful response structure
+        if not data.get("success", False):
+            return {
+                "error": f"Office service error: {data.get('message', 'Unknown error')}"
+            }
+
+        # Extract emails from the data field
+        emails_data = data.get("data", {})
+        if "emails" not in emails_data:
+            return {
+                "error": "Malformed response from office-service: missing emails data."
+            }
+
+        return {"emails": emails_data["emails"]}
+
     except requests.Timeout:
         return {"error": "Request to office-service timed out."}
     except requests.HTTPError as e:
-        return {"error": f"HTTP error: {str(e)}"}
+        return {
+            "error": f"HTTP error: {str(e)} - Response: {e.response.text if e.response else 'No response'}"
+        }
     except Exception as e:
         return {"error": f"Unexpected error: {str(e)}"}
 
 
 def get_notes(
-    user_token: str,
-    notebook: Optional[str] = None,
-    tags: Optional[str] = None,
-    search_query: Optional[str] = None,
-    max_results: Optional[int] = None,
+    user_id: str,
+    notebook: str | None = None,
+    tags: str | None = None,
+    search_query: str | None = None,
+    max_results: int | None = None,
 ) -> Dict[str, Any]:
-    headers = {"Authorization": f"Bearer {user_token}"}
-    params = {}
+    # Use service-to-service authentication
+    headers = {"Content-Type": "application/json"}
+    if get_settings().api_chat_office_key:
+        headers["X-API-Key"] = get_settings().api_chat_office_key
+
+    params = {"user_id": user_id}
     if notebook:
         params["notebook"] = notebook
     if tags:
@@ -103,6 +288,7 @@ def get_notes(
         params["search_query"] = search_query
     if max_results:
         params["max_results"] = str(max_results)
+
     try:
         office_service_url = get_settings().office_service_url
         response = requests.get(
@@ -113,27 +299,46 @@ def get_notes(
         )
         response.raise_for_status()
         data = response.json()
-        if "notes" not in data:
-            return {"error": "Malformed response from office-service."}
-        return {"notes": data["notes"]}
+
+        # Check for successful response structure
+        if not data.get("success", False):
+            return {
+                "error": f"Office service error: {data.get('message', 'Unknown error')}"
+            }
+
+        # Extract notes from the data field
+        notes_data = data.get("data", {})
+        if "notes" not in notes_data:
+            return {
+                "error": "Malformed response from office-service: missing notes data."
+            }
+
+        return {"notes": notes_data["notes"]}
+
     except requests.Timeout:
         return {"error": "Request to office-service timed out."}
     except requests.HTTPError as e:
-        return {"error": f"HTTP error: {str(e)}"}
+        return {
+            "error": f"HTTP error: {str(e)} - Response: {e.response.text if e.response else 'No response'}"
+        }
     except Exception as e:
         return {"error": f"Unexpected error: {str(e)}"}
 
 
 def get_documents(
-    user_token: str,
-    document_type: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    search_query: Optional[str] = None,
-    max_results: Optional[int] = None,
+    user_id: str,
+    document_type: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    search_query: str | None = None,
+    max_results: int | None = None,
 ) -> Dict[str, Any]:
-    headers = {"Authorization": f"Bearer {user_token}"}
-    params = {}
+    # Use service-to-service authentication
+    headers = {"Content-Type": "application/json"}
+    if get_settings().api_chat_office_key:
+        headers["X-API-Key"] = get_settings().api_chat_office_key
+
+    params = {"user_id": user_id}
     if document_type:
         params["document_type"] = document_type
     if start_date:
@@ -144,6 +349,7 @@ def get_documents(
         params["search_query"] = search_query
     if max_results:
         params["max_results"] = str(max_results)
+
     try:
         office_service_url = get_settings().office_service_url
         response = requests.get(
@@ -154,13 +360,28 @@ def get_documents(
         )
         response.raise_for_status()
         data = response.json()
-        if "documents" not in data:
-            return {"error": "Malformed response from office-service."}
-        return {"documents": data["documents"]}
+
+        # Check for successful response structure
+        if not data.get("success", False):
+            return {
+                "error": f"Office service error: {data.get('message', 'Unknown error')}"
+            }
+
+        # Extract documents from the data field
+        documents_data = data.get("data", {})
+        if "documents" not in documents_data:
+            return {
+                "error": "Malformed response from office-service: missing documents data."
+            }
+
+        return {"documents": documents_data["documents"]}
+
     except requests.Timeout:
         return {"error": "Request to office-service timed out."}
     except requests.HTTPError as e:
-        return {"error": f"HTTP error: {str(e)}"}
+        return {
+            "error": f"HTTP error: {str(e)} - Response: {e.response.text if e.response else 'No response'}"
+        }
     except Exception as e:
         return {"error": f"Unexpected error: {str(e)}"}
 
@@ -224,11 +445,11 @@ def clear_all_drafts(thread_id: str) -> Dict[str, Any]:
 
 def create_draft_email(
     thread_id: str,
-    to: Optional[str] = None,
-    cc: Optional[str] = None,
-    bcc: Optional[str] = None,
-    subject: Optional[str] = None,
-    body: Optional[str] = None,
+    to: str | None = None,
+    cc: str | None = None,
+    bcc: str | None = None,
+    subject: str | None = None,
+    body: str | None = None,
 ) -> Dict[str, Any]:
     try:
         draft_key = f"{thread_id}_email"
@@ -272,12 +493,12 @@ def delete_draft_email(thread_id: str) -> Dict[str, Any]:
 
 def create_draft_calendar_event(
     thread_id: str,
-    title: Optional[str] = None,
-    start_time: Optional[str] = None,
-    end_time: Optional[str] = None,
-    attendees: Optional[str] = None,
-    location: Optional[str] = None,
-    description: Optional[str] = None,
+    title: str | None = None,
+    start_time: str | None = None,
+    end_time: str | None = None,
+    attendees: str | None = None,
+    location: str | None = None,
+    description: str | None = None,
 ) -> Dict[str, Any]:
     try:
         draft_key = f"{thread_id}_calendar_event"
@@ -327,13 +548,13 @@ def delete_draft_calendar_event(thread_id: str) -> Dict[str, Any]:
 def create_draft_calendar_change(
     thread_id: str,
     event_id: str,
-    change_type: Optional[str] = None,
-    new_title: Optional[str] = None,
-    new_start_time: Optional[str] = None,
-    new_end_time: Optional[str] = None,
-    new_attendees: Optional[str] = None,
-    new_location: Optional[str] = None,
-    new_description: Optional[str] = None,
+    change_type: str | None = None,
+    new_title: str | None = None,
+    new_start_time: str | None = None,
+    new_end_time: str | None = None,
+    new_attendees: str | None = None,
+    new_location: str | None = None,
+    new_description: str | None = None,
 ) -> Dict[str, Any]:
     """
     Create a draft for editing an existing calendar event.

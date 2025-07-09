@@ -5,8 +5,19 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
+    types: [opened, edited, synchronize]
 
 jobs:
+  validate-pr-title:
+    name: Validate PR Title
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # No specific `with` configuration needed, defaults are fine.
+        # All previous lines were comments after removing deprecated params.
+
   lint:
     name: Python Linting & Formatting
     runs-on: ubuntu-latest

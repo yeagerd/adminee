@@ -44,21 +44,24 @@ RUN uv pip install -e .
 RUN uv pip install -e services/chat
 RUN uv pip install -e services/common
 
+# Copy the common module first (shared dependencies)
+COPY services/common/ ./services/common/
+
 # Copy the rest of the application code for the chat service
 COPY services/chat/ /app/services/chat/
 
 # Service URL environment variables (non-sensitive)
 ENV USER_MANAGEMENT_SERVICE_URL="http://user-management:8001"
-ENV OFFICE_SERVICE_URL="http://office-service:8080"
+ENV OFFICE_SERVICE_URL="http://office-service:8003"
 
 # API keys will be provided at runtime via docker-compose environment
 
-# Expose the port the app runs on (e.g., 8000 for FastAPI)
-EXPOSE 8000
+# Expose the port the app runs on
+EXPOSE 8002
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:8002/health || exit 1
 
 # Define the command to run the application
-CMD ["opentelemetry-instrument", "uvicorn", "services.chat.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "services.chat.main:app", "--host", "0.0.0.0", "--port", "8002"]

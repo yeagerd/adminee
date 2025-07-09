@@ -7,7 +7,8 @@ Handles business logic for processing webhook events from external providers.
 import logging
 from datetime import datetime, timezone
 
-from sqlmodel import select
+from fastapi import HTTPException
+from sqlalchemy import select
 
 from services.user.database import get_async_session
 from services.user.exceptions import DatabaseError, WebhookProcessingError
@@ -17,12 +18,16 @@ from services.user.schemas.webhook import (
     ClerkWebhookEvent,
     ClerkWebhookEventData,
 )
+from services.user.utils.email_collision import EmailCollisionDetector
 
 logger = logging.getLogger(__name__)
 
 
 class WebhookService:
     """Service for processing webhook events."""
+
+    def __init__(self):
+        self.email_detector = EmailCollisionDetector()
 
     async def process_clerk_webhook(self, event: ClerkWebhookEvent) -> dict:
         """
@@ -37,19 +42,23 @@ class WebhookService:
         Raises:
             WebhookProcessingError: If event processing fails
         """
+        logger.info(f"Processing Clerk webhook: {event.type} for user {event.data.id}")
+
         try:
             if event.type == "user.created":
-                return await self._handle_user_created(event.data)
+                result = await self._handle_user_created(event.data)
             elif event.type == "user.updated":
-                return await self._handle_user_updated(event.data)
+                result = await self._handle_user_updated(event.data)
             elif event.type == "user.deleted":
-                return await self._handle_user_deleted(event.data)
+                result = await self._handle_user_deleted(event.data)
             else:
                 raise WebhookProcessingError(f"Unsupported event type: {event.type}")
 
+            return result
+
         except Exception as e:
-            logger.error(f"Failed to process webhook event {event.type}: {str(e)}")
-            raise WebhookProcessingError(f"Webhook processing failed: {str(e)}")
+            logger.error(f"Unexpected error processing webhook: {str(e)}")
+            raise DatabaseError(f"Webhook processing failed: {str(e)}")
 
     async def process_user_created(self, user_data: dict) -> dict:
         """
@@ -108,7 +117,7 @@ class WebhookService:
         try:
             async_session = get_async_session()
             async with async_session() as session:
-                # Check if user already exists (idempotency)
+                # Check if user already exists by external_auth_id (idempotency)
                 result = await session.execute(
                     select(User).where(
                         User.external_auth_id == user_data.id,
@@ -118,25 +127,76 @@ class WebhookService:
                 existing_user = result.scalar_one_or_none()
 
                 if existing_user:
-                    logger.info(
-                        f"User {user_data.id} already exists, skipping creation"
-                    )
-                    return {
-                        "action": "user_creation_skipped",
-                        "user_id": user_data.id,
-                        "reason": "User already exists",
-                    }
+                    # User exists, check if email changed
+                    primary_email = user_data.primary_email
+                    if not primary_email:
+                        raise WebhookProcessingError(
+                            "No primary email found in user data"
+                        )
+
+                    if existing_user.email != primary_email:
+                        old_email = existing_user.email
+                        existing_user.email = primary_email
+                        existing_user.updated_at = datetime.now(timezone.utc)
+                        await session.commit()
+                        await session.refresh(existing_user)
+
+                        logger.info(
+                            f"Updated email for user {user_data.id}: {old_email} → {primary_email}"
+                        )
+                        return {
+                            "action": "user_email_updated",
+                            "user_id": existing_user.id,
+                            "external_auth_id": user_data.id,
+                            "old_email": old_email,
+                            "new_email": primary_email,
+                        }
+                    else:
+                        logger.info(
+                            f"User {user_data.id} already exists with same email, skipping creation"
+                        )
+                        return {
+                            "action": "user_already_exists",
+                            "user_id": existing_user.id,
+                            "external_auth_id": user_data.id,
+                            "reason": "User already exists with same email",
+                        }
 
                 # Extract primary email
                 primary_email = user_data.primary_email
                 if not primary_email:
                     raise WebhookProcessingError("No primary email found in user data")
 
+                # Check for email collision using the new EmailCollisionDetector
+                collision_details = await self.email_detector.get_collision_details(
+                    primary_email
+                )
+
+                if collision_details["collision"]:
+                    logger.warning(
+                        f"Email collision: {primary_email} exists with external_auth_id {collision_details['existing_user_id']}, but new user has external_auth_id {user_data.id}"
+                    )
+                    logger.debug("Raising HTTPException 409 for email collision!")
+                    # Instead of updating the existing user's external_auth_id, raise a 409 Conflict
+                    raise HTTPException(
+                        status_code=409,
+                        detail={
+                            "error": "EmailCollision",
+                            "message": f"Email {primary_email} already exists with a different user.",
+                        },
+                    )
+
+                # Normalize email for storage
+                normalized_email = await self.email_detector.normalize_email_async(
+                    primary_email
+                )
+
                 # Create User record
                 user = User(
                     external_auth_id=user_data.id,
                     auth_provider="clerk",
                     email=primary_email,
+                    normalized_email=normalized_email,
                     first_name=user_data.first_name,
                     last_name=user_data.last_name,
                     profile_image_url=user_data.image_url,
@@ -168,6 +228,8 @@ class WebhookService:
                     "preferences_id": preferences.id,
                 }
 
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error(f"Failed to create user {user_data.id}: {str(e)}")
             raise DatabaseError(f"User creation failed: {str(e)}")
@@ -207,7 +269,25 @@ class WebhookService:
                 update_data = {}
 
                 if user_data.primary_email and user_data.primary_email != user.email:
+                    # Check for email collision using the new EmailCollisionDetector
+                    collision_details = await self.email_detector.get_collision_details(
+                        user_data.primary_email
+                    )
+
+                    if collision_details["collision"]:
+                        logger.warning(
+                            f"Email collision on update: {user_data.primary_email} exists with external_auth_id {collision_details['existing_user_id']}, but update user has external_auth_id {user_data.id}"
+                        )
+                        raise WebhookProcessingError(
+                            f"Email {user_data.primary_email} already exists with different external ID {collision_details['existing_user_id']}"
+                        )
+
+                    # Normalize the new email
+                    normalized_email = await self.email_detector.normalize_email_async(
+                        user_data.primary_email
+                    )
                     update_data["email"] = user_data.primary_email
+                    update_data["normalized_email"] = normalized_email
 
                 if (
                     user_data.first_name is not None

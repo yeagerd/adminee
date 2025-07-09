@@ -87,7 +87,7 @@ agent = WorkflowAgent(
     llm_model="gpt-4.1-nano",  # Change this to your preferred model
     llm_provider="openai",
     max_tokens=2000,
-    office_service_url="http://localhost:8001",
+    office_service_url="http://localhost:8003",
 )
 ```
 

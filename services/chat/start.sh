@@ -11,4 +11,4 @@ if [ -d ".venv" ]; then
 fi
 
 # Run uvicorn with UV for better performance
-uv run python -m uvicorn services.chat.main:app --port 8001 --host 0.0.0.0 --env-file .env "$@" 
+uv run python -m uvicorn services.chat.main:app --port 8001 --host 0.0.0.0 --env-file .env "$@"

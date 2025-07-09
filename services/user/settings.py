@@ -6,8 +6,11 @@ Uses Pydantic Settings to manage environment variables and configuration.
 
 from typing import List, Optional
 
-from pydantic import AliasChoices, Field
-from pydantic_settings import BaseSettings
+from pydantic import AliasChoices, Field  # Removed ConfigDict
+from pydantic_settings import (  # Added SettingsConfigDict
+    BaseSettings,
+    SettingsConfigDict,
+)
 
 
 class Settings(BaseSettings):
@@ -15,7 +18,7 @@ class Settings(BaseSettings):
 
     # Database Configuration
     db_url_user_management: str = Field(
-        ...,  # Required field - no default to prevent production mistakes
+        default=None,
         description="PostgreSQL database connection string",
         validation_alias=AliasChoices("DB_URL_USER_MANAGEMENT"),
     )
@@ -40,6 +43,14 @@ class Settings(BaseSettings):
     api_frontend_user_key: Optional[str] = Field(
         default=None,
         description="Frontend API key to access User Management service",
+    )
+    api_chat_user_key: Optional[str] = Field(
+        default=None,
+        description="Chat service API key to access User Management service",
+    )
+    api_office_user_key: Optional[str] = Field(
+        default=None,
+        description="Office service API key to access User Management service",
     )
     token_encryption_salt: Optional[str] = Field(
         default=None,
@@ -95,11 +106,11 @@ class Settings(BaseSettings):
 
     # OAuth Redirect Configuration
     oauth_redirect_uri: str = Field(
-        default="http://localhost:8000/oauth/callback",
+        default="http://localhost:8001/oauth/callback",
         description="OAuth callback redirect URI for all providers",
     )
     oauth_base_url: str = Field(
-        default="http://localhost:8000",
+        default="http://localhost:8001",
         description="Base URL for OAuth callbacks (used to construct redirect URI)",
     )
 
@@ -107,11 +118,12 @@ class Settings(BaseSettings):
     log_level: str = Field(default="INFO", description="Logging level")
     log_format: str = Field(default="json", description="Log format (json or text)")
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
-        extra = "ignore"  # Ignore extra environment variables from other services
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",  # Ignore extra environment variables from other services
+    )
 
 
 # Global settings instance

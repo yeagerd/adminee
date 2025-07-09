@@ -115,11 +115,18 @@ class CoordinatorAgent(FunctionAgent):
     @staticmethod
     def _create_context_aware_prompt(thread_id: str) -> str:
         """Create a context-aware system prompt based on existing drafts."""
+        from datetime import datetime
+
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
         # Common prefix that can be cached
         base_prompt = (
             "You are Briefly, a personal assistant and coordinator of specialized agents. "
             "Your role is to analyze user requests, coordinate between agents as needed, "
             "and synthesize comprehensive responses.\n\n"
+            f"CURRENT DATE AND TIME: {current_datetime}\n"
+            f"Today's date is {current_date}. Use this for any date-related queries or calculations.\n\n"
         )
 
         coordination_principles = (

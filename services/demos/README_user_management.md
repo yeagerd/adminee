@@ -43,17 +43,16 @@ python user_management_demo.py --help
 
 ```bash
 # Terminal 1: Start the service (from project root)
-cd /Users/yeagerd/github/briefly/services/user
-alembic upgrade head
+cd /Users/yeagerd/github/briefly
+alembic -c services/user/alembic.ini upgrade head
 export JWT_VERIFY_SIGNATURE=false
 export TOKEN_ENCRYPTION_SALT="ZGVtby1lbmNyeXB0aW9uLXNhbHQtZm9yLXRlc3Rpbmc="
-cd /Users/yeagerd/github/briefly  # Navigate to project root
-uvicorn services.user.main:app --reload --port 8000
+uvicorn services.user.main:app --reload --port 8001
 ```
 
 Wait for the service to start and show:
 ```
-INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Uvicorn running on http://127.0.0.1:8001 (Press CTRL+C to quit)
 INFO:     Started reloader process
 ```
 
@@ -96,7 +95,7 @@ Non-interactive demo that runs all core functionality sequentially:
 Running in SIMPLE mode (non-interactive)
 
 This demo requires:
-• User management service running on http://localhost:8000
+• User management service running on http://localhost:8001
 
 ============================================================
  User Management Service Simple Demo
@@ -249,12 +248,12 @@ TOKEN_ENCRYPTION_SALT=your_encryption_salt
 2. Create or select a project
 3. Enable Google+ API
 4. Create OAuth 2.0 credentials
-5. Add redirect URI: `http://localhost:8000/oauth/callback`
+5. Add redirect URI: `http://localhost:8001/oauth/callback`
 
 #### Microsoft OAuth Setup
 1. Go to [Azure Portal](https://portal.azure.com/)
 2. Register a new application in Azure AD
-3. Configure redirect URI: `http://localhost:8000/oauth/callback`
+3. Configure redirect URI: `http://localhost:8001/oauth/callback`
 4. Note the Application ID and secret
 
 ## Troubleshooting
@@ -335,7 +334,7 @@ async with UserManagementDemo() as demo:
 
 - [User Management Service Documentation](../../documentation/user-management-service.md)
 - [OAuth Integration Guide](../user_management/integrations/README.md)
-- [API Reference](http://localhost:8000/docs) (when service is running)
+- [API Reference](http://localhost:8001/docs) (when service is running)
 
 ## Support
 

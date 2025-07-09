@@ -1,11 +1,18 @@
 import logging
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from services.common.logging_config import (
+    create_request_logging_middleware,
+    log_service_shutdown,
+    log_service_startup,
+    setup_service_logging,
+)
 from services.office.api.calendar import router as calendar_router
 from services.office.api.email import router as email_router
 from services.office.api.files import router as files_router
@@ -17,20 +24,47 @@ from services.office.core.exceptions import (
     TokenError,
     ValidationError,
 )
-from services.office.core.logging_config import setup_logging
 from services.office.core.settings import get_settings
 from services.office.schemas import ApiError
 
-# Initialize logging
-setup_logging()
+# Set up centralized logging
+settings = get_settings()
+setup_service_logging(
+    service_name="office-service",
+    log_level=settings.LOG_LEVEL,
+    log_format=settings.LOG_FORMAT,
+)
+
 logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup event logic
+    settings = get_settings()
+    log_service_startup(
+        "office-service",
+        app_name=settings.APP_NAME,
+        version=settings.APP_VERSION,
+        environment=settings.ENVIRONMENT,
+        debug=settings.DEBUG,
+        user_management_service_url=settings.USER_MANAGEMENT_SERVICE_URL,
+    )
+    yield
+    # Shutdown event logic
+    log_service_shutdown("office-service")
+
 
 app = FastAPI(
     title=get_settings().APP_NAME,
     description="A backend microservice responsible for all external API interactions with Google and Microsoft services",
     version=get_settings().APP_VERSION,
     debug=get_settings().DEBUG,
+    lifespan=lifespan,
 )
+
+# Add centralized request logging middleware
+app.middleware("http")(create_request_logging_middleware())
 
 
 # Global Exception Handlers
@@ -275,21 +309,6 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
     return JSONResponse(
         status_code=500,
         content=error_response.model_dump(),
-    )
-
-
-# Startup event
-@app.on_event("startup")
-async def startup_event():
-    """Log application startup."""
-    logger.info(
-        "Office Service starting up",
-        extra={
-            "service": get_settings().APP_NAME,
-            "version": get_settings().APP_VERSION,
-            "environment": get_settings().ENVIRONMENT,
-            "debug": get_settings().DEBUG,
-        },
     )
 
 

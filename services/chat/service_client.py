@@ -68,19 +68,23 @@ class ServiceClient:
             return None
 
     async def get_user_preferences(self, user_id: str) -> Optional[Dict[str, Any]]:
-        """Get user preferences from User Management Service."""
+        """Get user preferences from User Management Service using internal endpoint."""
         try:
             headers = self._get_headers_for_service("user-management")
 
             response = await self.http_client.get(
-                f"{get_settings().user_management_service_url}/preferences/{user_id}",
+                f"{get_settings().user_management_service_url}/internal/users/{user_id}/preferences",
                 headers=headers,
             )
 
             if response.status_code == 200:
-                return response.json()
+                # Handle both null response and preferences object
+                result = response.json()
+                return result if result is not None else None
             elif response.status_code == 404:
-                logger.warning(f"Preferences for user {user_id} not found")
+                logger.info(
+                    f"Preferences for user {user_id} not found - normal for new users"
+                )
                 return None
             else:
                 logger.error(

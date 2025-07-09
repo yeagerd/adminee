@@ -75,9 +75,11 @@ class WorkflowAgent:
         enable_fact_extraction: bool = True,
         enable_vector_memory: bool = True,
         max_facts: int = 50,
+        user_timezone: str = "UTC",
     ):
         self.thread_id = thread_id
         self.user_id = user_id
+        self.user_timezone = user_timezone
         self.max_tokens = max_tokens
         self.chat_history_token_ratio = chat_history_token_ratio
         self.token_flush_size = token_flush_size
@@ -201,16 +203,22 @@ class WorkflowAgent:
         agents["CalendarAgent"] = CalendarAgent(
             llm_model=self.llm_model,
             llm_provider=self.llm_provider,
+            user_id=self.user_id,
+            user_timezone=self.user_timezone,  # Pass user timezone to calendar agent
             **self.llm_kwargs,
         )
 
         agents["EmailAgent"] = EmailAgent(
-            llm_model=self.llm_model, llm_provider=self.llm_provider, **self.llm_kwargs
+            llm_model=self.llm_model,
+            llm_provider=self.llm_provider,
+            user_id=self.user_id,
+            **self.llm_kwargs,
         )
 
         agents["DocumentAgent"] = DocumentAgent(
             llm_model=self.llm_model,
             llm_provider=self.llm_provider,
+            user_id=self.user_id,
             **self.llm_kwargs,
         )
 
