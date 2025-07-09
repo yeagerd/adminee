@@ -57,7 +57,7 @@ jobs:
     - name: Run nox (format, lint)
       run:  |
         source .venv/bin/activate
-        nox -s format,lint
+        nox -s format lint
 
   typecheck:
     name: Python Type Checking
