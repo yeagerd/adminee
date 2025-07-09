@@ -52,7 +52,7 @@ jobs:
       run: |
         uv venv
         uv pip install --system -e .
-        uv pip install nox
+        uv pip install -e ".[dev]"
 
     - name: Run nox (format, lint)
       run:  |
@@ -92,7 +92,7 @@ jobs:
       run: |
         uv venv
         uv pip install --system -e .
-        uv pip install nox
+        uv pip install -e ".[dev]"
         uv pip install pytest-asyncio
 
     - name: Run nox (typecheck)
@@ -129,8 +129,7 @@ jobs:
         curl -LsSf https://astral.sh/uv/install.sh | sh
         echo "$HOME/.cargo/bin" >> $GITHUB_PATH
     - name: Install dependencies with UV
-      run: |
-        uv pip install -e ".[dev]"
+      run: ./install.sh
 
     - name: Run nox (test)
       run: |
@@ -166,8 +165,7 @@ jobs:
         curl -LsSf https://astral.sh/uv/install.sh | sh
         echo "$HOME/.cargo/bin" >> $GITHUB_PATH
     - name: Install dependencies with UV
-      run: |
-        uv pip install -e ".[dev]"
+      run: ./install.sh
 
     - name: Run nox (coverage)
       run: nox -s cov
