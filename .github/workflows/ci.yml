@@ -50,9 +50,7 @@ jobs:
 
     - name: Install dependencies with UV
       run: |
-        uv venv
-        uv pip install --system -e .
-        uv pip install -e ".[dev]"
+        uv sync --all-packages --all-extras --active
 
     - name: Run nox (format, lint)
       run:  |
@@ -90,10 +88,7 @@ jobs:
         echo "$HOME/.cargo/bin" >> $GITHUB_PATH
     - name: Install dependencies with UV
       run: |
-        uv venv
-        uv pip install --system -e .
-        uv pip install -e ".[dev]"
-        uv pip install pytest-asyncio
+        uv sync --all-packages --all-extras --active
 
     - name: Run nox (typecheck)
       run: |
