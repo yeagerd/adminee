@@ -8,14 +8,14 @@ set -e
 echo "🚀 Starting Briefly services with UV..."
 
 # Check if virtual environment exists
-if [ ! -d "venv" ]; then
+if [ ! -d ".venv" ]; then
     echo "❌ Virtual environment not found. Please run ./install.sh first"
     exit 1
 fi
 
 # Activate virtual environment
 echo "🔧 Activating virtual environment..."
-source venv/bin/activate
+source .venv/bin/activate
 
 # Function to start a service
 start_service() {

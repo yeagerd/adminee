@@ -29,17 +29,12 @@ This project uses [UV](https://github.com/astral-sh/uv) for Python package manag
 
 ### Quick Start
 
-1. **Install UV** (if not already installed):
-   ```bash
-   curl -sSf https://astral.sh/uv/install.sh | sh
-   ```
-
-2. **Set up development environment**:
+1. **Set up development environment**:
    ```bash
    ./install.sh
    ```
 
-3. **Start all services**:
+2. **Start all services**:
    ```bash
    ./scripts/start-services.sh
    ```
@@ -50,8 +45,8 @@ This project uses [UV](https://github.com/astral-sh/uv) for Python package manag
 
 **Install dependencies:**
 ```bash
-# Install all project dependencies including dev dependencies
-uv sync
+# Install all project dependencies including dev dependencies (see install.sh)
+uv sync --all-packages --all-extras --active
 
 # Install specific service in development mode
 uv pip install -e services/chat
@@ -74,12 +69,12 @@ uv run python -m uvicorn services.office.app.main:app --port 8002 --reload
 **Run tests:**
 ```bash
 # Run all tests
-uv run tox
+nox -s test
 
 # Run specific test environments
-uv run tox -e lint     # Linting
-uv run tox -e typecheck # Type checking
-uv run tox -e test     # Unit tests
+nox -s lint        # Linting
+nox -s typecheck   # Type checking
+nox -s test        # Unit tests
 ```
 
 #### Development Commands
@@ -88,9 +83,9 @@ Use UV directly for common development tasks:
 
 ```bash
 # Run tests
-uv run tox                    # All tests
-uv run tox -e fast           # Fast tests
-uv run tox -e coverage       # Coverage tests
+nox -s test                  # All tests
+nox -s test_fast            # Fast tests
+nox -s test_cov             # Coverage tests
 
 # Run service-specific tests
 uv run python -m pytest services/user/tests/ -v
@@ -98,13 +93,12 @@ uv run python -m pytest services/chat/tests/ -v
 uv run python -m pytest services/office/tests/ -v
 
 # Linting and formatting
-uv run tox -e lint           # All linting
-uv run tox -e format         # Format check
-uv run tox -e fix            # Auto-fix issues
+nox -s lint                  # All linting
+nox -s format                # Format check
 
 # Type checking
-uv run tox -e typecheck      # Standard
-uv run tox -e typecheck-strict  # Strict mode
+nox -s typecheck             # Standard
+nox -s typecheck_strict      # Strict mode
 
 # Add dependencies
 uv add fastapi               # Add to root
@@ -181,16 +175,16 @@ uv run python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 **Run all tests:**
 ```bash
-uv run tox
+nox -s test
 ```
 
 **Run specific test categories:**
 ```bash
 # Fast tests (stop on first failure)
-uv run tox -e fast
+nox -s test_fast
 
 # Coverage tests
-uv run tox -e coverage
+nox -s test_cov
 
 # Service-specific tests
 uv run python -m pytest services/user/tests/ -v
@@ -201,22 +195,19 @@ uv run python -m pytest services/office/tests/ -v
 **Type checking:**
 ```bash
 # Standard type checking
-uv run tox -e typecheck
+nox -s typecheck
 
 # Strict type checking
-uv run tox -e typecheck-strict
+nox -s typecheck_strict
 ```
 
 **Linting and formatting:**
 ```bash
 # Check formatting
-uv run tox -e format
-
-# Fix formatting issues
-uv run tox -e fix
+nox -s format
 
 # Run all linting checks
-uv run tox -e lint
+nox -s lint
 ```
 
 ### Database Management
@@ -426,12 +417,12 @@ docker run -p 8001:8000 briefly-chat
 
 3. **Test failures:**
    ```bash
-   uv run tox -e fast
+   nox -s test_fast
    ```
 
 4. **Type checking errors:**
    ```bash
-   uv run tox -e typecheck
+   nox -s typecheck
    ```
 
 For more detailed troubleshooting, check the service-specific documentation in each service directory.

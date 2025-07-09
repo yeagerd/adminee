@@ -47,4 +47,4 @@ echo "🔧 To run the full stack, use:"
 echo "docker-compose up -d"
 echo
 echo "🧪 To run tests:"
-echo "source venv/bin/activate && pytest" 
+echo "source .venv/bin/activate && pytest" 

@@ -1,4 +1,4 @@
-name: Continuous Integration with UV
+name: Continuous Integration
 
 on:
   push:
