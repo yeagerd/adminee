@@ -55,7 +55,9 @@ jobs:
         uv pip install tox tox-gh-actions
 
     - name: Run tox (format, lint)
-      run: tox -e format,lint -p auto --parallel-live
+      run:  |
+        source .venv/bin/activate
+        tox -e format,lint -p auto --parallel-live
 
   typecheck:
     name: Python Type Checking
@@ -94,7 +96,9 @@ jobs:
         uv pip install pytest-asyncio
 
     - name: Run tox (typecheck)
-      run: tox -e typecheck
+      run: |
+        source .venv/bin/activate
+        tox -e typecheck
 
   test:
     name: Python Tests
@@ -131,7 +135,9 @@ jobs:
         uv pip install tox tox-gh-actions
 
     - name: Run tox (test)
-      run: tox -e test
+      run: |
+        source .venv/bin/activate
+        tox -e test
 
   coverage:
     name: Python Coverage
