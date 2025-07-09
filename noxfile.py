@@ -1,7 +1,7 @@
 import nox
 
 nox.options.sessions = [
-    "format", "lint", "typecheck", "typecheck_strict", "test", "test_fast", "test_cov", "test_parallel"
+    "format", "lint", "typecheck", "typecheck_strict", "test", "test_fast", "test_cov", "test_serial"
 ]
 nox.options.reuse_existing_virtualenvs = True
 
