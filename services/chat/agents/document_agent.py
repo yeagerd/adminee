@@ -11,7 +11,7 @@ Part of the multi-agent workflow system.
 """
 
 import logging
-from typing import List
+from typing import List, Sequence, Callable, Any
 
 from llama_index.core.agent.workflow import FunctionAgent
 from llama_index.core.tools import FunctionTool
@@ -73,7 +73,7 @@ class DocumentAgent(FunctionAgent):
         )
 
         # Create document-specific tools with user_id
-        tools = self._create_document_tools(user_id)
+        tools: Sequence[Callable[..., Any]] = self._create_document_tools(user_id)
 
         # Get current date for context
         from datetime import datetime
@@ -85,9 +85,8 @@ class DocumentAgent(FunctionAgent):
         super().__init__(
             name="DocumentAgent",
             description=(
-                "Specialized agent for document and note operations. Can retrieve documents, "
-                "search notes, filter by document type and criteria, and provide document "
-                "information to other agents. Use this agent for any document or note-related queries."
+                "Specialized agent for document retrieval. Can retrieve documents, "
+                "search by date, type, or content, and provide document information to other agents."
             ),
             system_prompt=(
                 "You are the DocumentAgent, specialized in document and note operations. "
@@ -101,11 +100,11 @@ class DocumentAgent(FunctionAgent):
                 "Finally, hand off to the CoordinatorAgent to take the next action."
             ),
             llm=llm,
-            tools=tools,
+            tools=tools,  # type: ignore[arg-type]
             can_handoff_to=["CoordinatorAgent"],
         )
 
-        logger.debug("DocumentAgent initialized with document and note tools")
+        logger.debug("DocumentAgent initialized with document tools")
 
     def _create_document_tools(self, user_id: str) -> List[FunctionTool]:
         """Create document-specific tools with user_id pre-filled."""

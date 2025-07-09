@@ -10,7 +10,7 @@ Part of the multi-agent workflow system.
 """
 
 import logging
-from typing import List
+from typing import List, Sequence, Callable, Any
 
 from llama_index.core.agent.workflow import FunctionAgent
 from llama_index.core.tools import FunctionTool
@@ -74,7 +74,7 @@ class CalendarAgent(FunctionAgent):
         )
 
         # Create calendar-specific tools with user_id and timezone
-        tools = self._create_calendar_tools(user_id, user_timezone)
+        tools: Sequence[Callable[..., Any]] = self._create_calendar_tools(user_id, user_timezone)
 
         # Get current date for context
         from datetime import datetime
@@ -92,9 +92,8 @@ class CalendarAgent(FunctionAgent):
         super().__init__(
             name="CalendarAgent",
             description=(
-                "Specialized agent for calendar operations. Can retrieve calendar events, "
-                "search by date ranges, filter by criteria, and provide calendar information "
-                "to other agents. Use this agent for any calendar-related queries."
+                "Specialized agent for calendar operations. Can create, update, and delete events, "
+                "search for events, and provide calendar information to other agents. Use this agent for any calendar-related queries."
             ),
             system_prompt=(
                 "You are the CalendarAgent, specialized in calendar operations. "
@@ -114,7 +113,7 @@ class CalendarAgent(FunctionAgent):
                 "Finally, hand off to the CoordinatorAgent to take the next action."
             ),
             llm=llm,
-            tools=tools,
+            tools=tools,  # type: ignore[arg-type]
             can_handoff_to=["CoordinatorAgent"],
         )
 

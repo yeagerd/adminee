@@ -24,7 +24,7 @@ This supersedes single-agent approaches with a focused multi-agent architecture.
 """
 
 import logging
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union, Sequence
 
 from llama_index.core.agent.workflow import AgentWorkflow, FunctionAgent
 from llama_index.core.tools import FunctionTool
@@ -249,7 +249,7 @@ class WorkflowAgent:
             # Create AgentWorkflow with specialized agents
             agents_list = list(self.specialized_agents.values())
             self.agent_workflow = AgentWorkflow(
-                agents=agents_list,
+                agents=agents_list,  # type: ignore[arg-type]
                 root_agent="CoordinatorAgent",  # Coordinator starts first
                 initial_state={
                     "thread_id": str(self.thread_id),

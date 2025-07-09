@@ -14,7 +14,7 @@ handles orchestration across multiple agents.
 
 import logging
 import os
-from typing import Any, Callable, Dict, List, Optional
+from typing import Sequence, Callable, Optional, Dict, Any, List
 
 from llama_index.core import StorageContext
 from llama_index.core.agent import ReActAgent
@@ -59,14 +59,17 @@ class ChatAgent:
         max_tokens: int = 30000,
         chat_history_token_ratio: float = 0.7,
         token_flush_size: int = 3000,
-        tools: Optional[List[Callable]] = None,
-        subagents: Optional[List[Callable]] = None,
+        tools: Optional[Sequence[Callable]] = None,
+        subagents: Optional[Sequence[Callable]] = None,
         llm_kwargs: Optional[Dict[str, Any]] = None,
         static_content: Optional[str] = None,
         enable_fact_extraction: bool = True,
         enable_vector_memory: bool = True,
         max_facts: int = 50,
     ):
+        # Ensure thread_id is int, not None
+        if thread_id is None:
+            thread_id = 0
         self.thread_id = thread_id
         self.user_id = user_id
         self.max_tokens = max_tokens
@@ -74,8 +77,8 @@ class ChatAgent:
         self.token_flush_size = token_flush_size
 
         # Agent configuration
-        self.tools = tools or []
-        self.subagents = subagents or []
+        self.tools = list(tools) if tools else []
+        self.subagents = list(subagents) if subagents else []
         self.static_content = static_content
         self.enable_fact_extraction = enable_fact_extraction
         self.enable_vector_memory = enable_vector_memory
@@ -111,7 +114,7 @@ class ChatAgent:
 
     def _create_memory_blocks(self) -> List[BaseMemoryBlock]:
         """Create memory blocks based on configuration."""
-        memory_blocks = []
+        memory_blocks: List[BaseMemoryBlock] = []
 
         # 1. Static Memory Block (priority 0)
         static_content = self.static_content or self._get_default_static_content()
@@ -237,7 +240,7 @@ class ChatAgent:
         )
 
         # Build tools list
-        all_tools = []
+        all_tools: List[FunctionTool] = []
 
         # Validate and register tools
         if self.tools:
@@ -269,7 +272,7 @@ class ChatAgent:
         if all_tools:
             # Use FunctionCallingAgent if we have tools
             self.agent = FunctionCallingAgent.from_tools(
-                tools=all_tools,
+                tools=all_tools,  # type: ignore[arg-type]
                 llm=self.llm,
                 max_function_calls=5,
             )
@@ -315,7 +318,7 @@ class ChatAgent:
                 f"Thread id={self.thread_id} not found. Creating new thread for user_id={self.user_id}"
             )
             thread = await history_manager.create_thread(self.user_id)
-            self.thread_id = int(thread.id)  # Ensure proper type
+            self.thread_id = int(thread.id) if thread.id is not None else 0  # Ensure proper type
 
         # Handle fake LLM mode
         if isinstance(self.llm, FakeLLM):
@@ -324,7 +327,7 @@ class ChatAgent:
             response_obj = await self.llm.achat(
                 [ChatMessage(role=MessageRole.USER, content=user_input)]
             )
-            response = response_obj.content or ""
+            response = response_obj.message.content or ""
             await history_manager.append_message(self.thread_id, "assistant", response)
             logger.info(f"FakeLLM response: {response}")
             return response
@@ -397,10 +400,11 @@ class ChatAgent:
                     }
 
                     # Add specific info for fact extraction blocks
-                    if hasattr(block, "facts"):
-                        if hasattr(block.facts, "append"):
-                            block_info["facts_count"] = len(block.facts)
-                            block_info["facts"] = block.facts[:5]  # First 5 facts
+                    facts = getattr(block, "facts", None)
+                    if facts is not None:
+                        if hasattr(facts, "append"):
+                            block_info["facts_count"] = len(facts)
+                            block_info["facts"] = facts[:5]  # First 5 facts
 
                     info["memory_blocks"].append(block_info)
 
@@ -426,8 +430,8 @@ def create_chat_agent(
     llm_model: str,
     llm_provider: str,
     max_tokens: int = 30000,
-    tools: Optional[List[Callable]] = None,
-    subagents: Optional[List[Callable]] = None,
+    tools: Optional[Sequence[Callable]] = None,
+    subagents: Optional[Sequence[Callable]] = None,
     llm_kwargs: Optional[Dict[str, Any]] = None,
     **kwargs,
 ) -> ChatAgent:

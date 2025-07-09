@@ -11,7 +11,7 @@ Part of the multi-agent workflow system.
 """
 
 import logging
-from typing import List
+from typing import List, Sequence, Callable, Any
 
 from llama_index.core.agent.workflow import FunctionAgent
 from llama_index.core.tools import FunctionTool
@@ -71,7 +71,7 @@ class EmailAgent(FunctionAgent):
         )
 
         # Create email-specific tools with user_id
-        tools = self._create_email_tools(user_id)
+        tools: Sequence[Callable[..., Any]] = self._create_email_tools(user_id)
 
         # Get current date for context
         from datetime import datetime
@@ -99,7 +99,7 @@ class EmailAgent(FunctionAgent):
                 "Finally, hand off to the CoordinatorAgent to take the next action."
             ),
             llm=llm,
-            tools=tools,
+            tools=tools,  # type: ignore[arg-type]
             can_handoff_to=["CoordinatorAgent"],
         )
 

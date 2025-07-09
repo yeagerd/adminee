@@ -82,5 +82,7 @@ def get_settings() -> Settings:
     """Get the global settings instance, creating it if necessary."""
     global _settings
     if _settings is None:
-        _settings = Settings()
+        # In production, the required fields are set in the environment variables.
+        # In unit tests, we patch or mock the settings object.
+        _settings = Settings()  # type: ignore[call-arg]
     return _settings
