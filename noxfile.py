@@ -25,23 +25,23 @@ def typecheck_strict(session):
     session.run("mypy", "services", "--strict", external=True)
 
 @nox.session(venv_backend="none")
-def test(session):
+def test_serial(session):
     # Use sequential execution to avoid SQLite conflicts
-    session.run("pytest", "services/", "-q", "--tb=short", external=True)
+    session.run("pytest", "services/", "-q", "--tb=short", "--timeout=5", external=True)
 
 @nox.session(venv_backend="none")
-def test_parallel(session):
+def test(session):
     # Use in-memory databases for parallel execution
-    session.run("pytest", "services/", "-n", "auto", "-q", "--tb=short", "--dist=worksteal", external=True)
+    session.run("pytest", "services/", "-n", "auto", "-q", "--tb=short", "--dist=worksteal", "--timeout=5", external=True)
 
 @nox.session(venv_backend="none")
 def test_fast(session):
-    session.run("bash", "-c", "cd services/user && python -m pytest tests/ -x -q", external=True)
-    session.run("bash", "-c", "cd services/chat && python -m pytest tests/ -x -q", external=True)
-    session.run("bash", "-c", "cd services/office && python -m pytest tests/ -x -q", external=True)
+    session.run("bash", "-c", "cd services/user && python -m pytest tests/ -x -q --timeout=5", external=True)
+    session.run("bash", "-c", "cd services/chat && python -m pytest tests/ -x -q --timeout=5", external=True)
+    session.run("bash", "-c", "cd services/office && python -m pytest tests/ -x -q --timeout=5", external=True)
 
 @nox.session(venv_backend="none")
 def test_cov(session):
-    session.run("bash", "-c", "cd services/user && python -m pytest tests/ --cov=. --cov-report=xml:../../coverage-user-management.xml --cov-report=term-missing -x -q", external=True)
-    session.run("bash", "-c", "cd services/chat && python -m pytest tests/ --cov=. --cov-report=xml:../../coverage-chat-service.xml --cov-report=term-missing -x -q", external=True)
-    session.run("bash", "-c", "cd services/office && python -m pytest tests/ --cov=. --cov-report=xml:../../coverage-office-service.xml --cov-report=term-missing -x -q", external=True) 
+    session.run("bash", "-c", "cd services/user && python -m pytest tests/ --cov=. --cov-report=xml:../../coverage-user-management.xml --cov-report=term-missing -x -q --timeout=5", external=True)
+    session.run("bash", "-c", "cd services/chat && python -m pytest tests/ --cov=. --cov-report=xml:../../coverage-chat-service.xml --cov-report=term-missing -x -q --timeout=5", external=True)
+    session.run("bash", "-c", "cd services/office && python -m pytest tests/ --cov=. --cov-report=xml:../../coverage-office-service.xml --cov-report=term-missing -x -q --timeout=5", external=True) 
