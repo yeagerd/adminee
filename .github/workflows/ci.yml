@@ -50,6 +50,7 @@ jobs:
 
     - name: Install dependencies with UV
       run: |
+        uv venv
         uv pip install --system -e .
         uv pip install tox tox-gh-actions
 
@@ -87,8 +88,10 @@ jobs:
         echo "$HOME/.cargo/bin" >> $GITHUB_PATH
     - name: Install dependencies with UV
       run: |
+        uv venv
         uv pip install --system -e .
         uv pip install tox tox-gh-actions
+        uv pip install pytest-asyncio
 
     - name: Run tox (typecheck)
       run: tox -e typecheck
@@ -123,6 +126,7 @@ jobs:
         echo "$HOME/.cargo/bin" >> $GITHUB_PATH
     - name: Install dependencies with UV
       run: |
+        uv venv
         uv pip install --system -e .
         uv pip install tox tox-gh-actions
 
@@ -159,6 +163,7 @@ jobs:
         echo "$HOME/.cargo/bin" >> $GITHUB_PATH
     - name: Install dependencies with UV
       run: |
+        uv venv
         uv pip install --system -e .
         uv pip install tox tox-gh-actions
 
