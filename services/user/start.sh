@@ -6,8 +6,8 @@
 cd "$(dirname "$0")/../.."
 
 # Activate the virtual environment if it exists
-if [ -d ".venv" ]; then
-    source .venv/bin/activate
+if [ -d "../../venv" ]; then
+    source ../../venv/bin/activate
 fi
 
 # Run uvicorn with UV for better performance

@@ -36,7 +36,7 @@ This project uses [UV](https://github.com/astral-sh/uv) for Python package manag
 
 2. **Set up development environment**:
    ```bash
-   ./scripts/dev-setup.sh
+   ./install.sh
    ```
 
 3. **Start all services**:
@@ -82,33 +82,42 @@ uv run tox -e typecheck # Type checking
 uv run tox -e test     # Unit tests
 ```
 
-#### Using Development Utilities
+#### Development Commands
 
-We provide a comprehensive development utilities script for common tasks:
+Use UV directly for common development tasks:
 
 ```bash
 # Run tests
-./scripts/dev-utils.sh test fast
-./scripts/dev-utils.sh test coverage
-./scripts/dev-utils.sh test user
+uv run tox                    # All tests
+uv run tox -e fast           # Fast tests
+uv run tox -e coverage       # Coverage tests
 
-# Run linting
-./scripts/dev-utils.sh lint fix
-./scripts/dev-utils.sh lint format
+# Run service-specific tests
+uv run python -m pytest services/user/tests/ -v
+uv run python -m pytest services/chat/tests/ -v
+uv run python -m pytest services/office/tests/ -v
+
+# Linting and formatting
+uv run tox -e lint           # All linting
+uv run tox -e format         # Format check
+uv run tox -e fix            # Auto-fix issues
 
 # Type checking
-./scripts/dev-utils.sh typecheck true  # Strict mode
+uv run tox -e typecheck      # Standard
+uv run tox -e typecheck-strict  # Strict mode
 
 # Add dependencies
-./scripts/dev-utils.sh add fastapi user
-./scripts/dev-utils.sh add pytest --dev
+uv add fastapi               # Add to root
+uv add sqlalchemy --project services/user  # Add to service
 
 # Update dependencies
-./scripts/dev-utils.sh update
+uv lock --upgrade
+uv sync --all-packages --all-extras --active
 
 # Run migrations
-./scripts/dev-utils.sh migrate all
-./scripts/dev-utils.sh migrate chat
+alembic -c services/user/alembic.ini upgrade head
+alembic -c services/chat/alembic.ini upgrade head
+alembic -c services/office/alembic.ini upgrade head
 ```
 
 ### Service-Specific Setup
@@ -178,36 +187,36 @@ uv run tox
 **Run specific test categories:**
 ```bash
 # Fast tests (stop on first failure)
-./scripts/dev-utils.sh test fast
+uv run tox -e fast
 
 # Coverage tests
-./scripts/dev-utils.sh test coverage
+uv run tox -e coverage
 
 # Service-specific tests
-./scripts/dev-utils.sh test user
-./scripts/dev-utils.sh test chat
-./scripts/dev-utils.sh test office
+uv run python -m pytest services/user/tests/ -v
+uv run python -m pytest services/chat/tests/ -v
+uv run python -m pytest services/office/tests/ -v
 ```
 
 **Type checking:**
 ```bash
 # Standard type checking
-./scripts/dev-utils.sh typecheck
+uv run tox -e typecheck
 
 # Strict type checking
-./scripts/dev-utils.sh typecheck true
+uv run tox -e typecheck-strict
 ```
 
 **Linting and formatting:**
 ```bash
 # Check formatting
-./scripts/dev-utils.sh lint format
+uv run tox -e format
 
 # Fix formatting issues
-./scripts/dev-utils.sh lint fix
+uv run tox -e fix
 
 # Run all linting checks
-./scripts/dev-utils.sh lint all
+uv run tox -e lint
 ```
 
 ### Database Management
@@ -215,12 +224,14 @@ uv run tox
 **Run migrations:**
 ```bash
 # All services
-./scripts/dev-utils.sh migrate all
+alembic -c services/user/alembic.ini upgrade head
+alembic -c services/chat/alembic.ini upgrade head
+alembic -c services/office/alembic.ini upgrade head
 
 # Specific service
-./scripts/dev-utils.sh migrate chat
-./scripts/dev-utils.sh migrate user
-./scripts/dev-utils.sh migrate office
+alembic -c services/chat/alembic.ini upgrade head
+alembic -c services/user/alembic.ini upgrade head
+alembic -c services/office/alembic.ini upgrade head
 ```
 
 ### Dependency Management
@@ -228,18 +239,19 @@ uv run tox
 **Add new dependencies:**
 ```bash
 # Add to root project
-./scripts/dev-utils.sh add fastapi
+uv add fastapi
 
 # Add to specific service
-./scripts/dev-utils.sh add sqlalchemy user
+uv add sqlalchemy --project services/user
 
 # Add development dependency
-./scripts/dev-utils.sh add pytest --dev
+uv add pytest --dev
 ```
 
 **Update dependencies:**
 ```bash
-./scripts/dev-utils.sh update
+uv lock --upgrade
+uv sync --all-packages --all-extras --active
 ```
 
 ### Environment Configuration
@@ -403,22 +415,23 @@ docker run -p 8001:8000 briefly-chat
 
 1. **Virtual environment not found:**
    ```bash
-   ./scripts/dev-setup.sh
+   ./install.sh
    ```
 
 2. **Dependency conflicts:**
    ```bash
-   ./scripts/dev-utils.sh update
+   uv lock --upgrade
+   uv sync --all-packages --all-extras --active
    ```
 
 3. **Test failures:**
    ```bash
-   ./scripts/dev-utils.sh test fast
+   uv run tox -e fast
    ```
 
 4. **Type checking errors:**
    ```bash
-   ./scripts/dev-utils.sh typecheck
+   uv run tox -e typecheck
    ```
 
 For more detailed troubleshooting, check the service-specific documentation in each service directory.

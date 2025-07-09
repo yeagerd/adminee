@@ -19,33 +19,24 @@ fi
 echo "✅ UV is already installed"
 
 # Create virtual environment if it doesn't exist
-if [ ! -d ".venv" ]; then
+if [ ! -d "venv" ]; then
     echo "📦 Creating virtual environment..."
-    uv venv
+    uv venv venv
 fi
 
 # Activate virtual environment
 echo "🔧 Activating virtual environment..."
-source .venv/bin/activate
+source venv/bin/activate
 
-# Install all dependencies
-echo "📥 Installing project dependencies..."
-uv pip install -e .
-uv pip install -e services/chat
-uv pip install -e services/user
-uv pip install -e services/office
-uv pip install -e services/common
-uv pip install -e services/vector-db
+# Install all workspace and dev dependencies
+echo "📥 Installing all workspace and development dependencies..."
+uv sync --all-packages --all-extras --active
 
-# Install development dependencies
-echo "🔧 Installing development dependencies..."
-uv pip install -e ".[dev]"
-
-# Run database migrations
+# Run database migrations from repository root
 echo "🗄️ Setting up databases..."
-cd services/user && alembic upgrade head && cd ../..
-cd services/chat && alembic upgrade head && cd ../..
-cd services/office && alembic upgrade head && cd ../..
+alembic -c services/user/alembic.ini upgrade head
+alembic -c services/chat/alembic.ini upgrade head
+alembic -c services/office/alembic.ini upgrade head
 
 echo "✅ Development environment setup complete!"
 echo ""
