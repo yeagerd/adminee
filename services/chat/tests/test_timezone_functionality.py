@@ -16,6 +16,33 @@ from services.chat.agents.llm_tools import format_event_time_for_display
 from services.chat.models import ChatRequest
 
 
+@pytest.fixture(autouse=True)
+def mock_settings():
+    with patch("services.chat.settings.get_settings") as mock_get_settings:
+        # Create a mock settings object with all required attributes
+        mock_settings_obj = MagicMock()
+        mock_settings_obj.db_url_chat = "sqlite:///test.db"
+        mock_settings_obj.api_chat_user_key = "test-api-key"
+        mock_settings_obj.api_chat_office_key = "test-api-key"
+        mock_settings_obj.api_frontend_chat_key = "test-api-key"
+        mock_settings_obj.user_management_service_url = "http://test-user-server"
+        mock_settings_obj.office_service_url = "http://test-office-server"
+        mock_settings_obj.llm_provider = "fake"
+        mock_settings_obj.llm_model = "fake-model"
+        mock_settings_obj.max_tokens = 2000
+        mock_settings_obj.openai_api_key = None
+        mock_settings_obj.service_name = "chat-service"
+        mock_settings_obj.host = "0.0.0.0"
+        mock_settings_obj.port = 8000
+        mock_settings_obj.debug = False
+        mock_settings_obj.environment = "test"
+        mock_settings_obj.log_level = "INFO"
+        mock_settings_obj.log_format = "json"
+
+        mock_get_settings.return_value = mock_settings_obj
+        yield mock_settings_obj
+
+
 class TestTimezoneFormatting:
     """Test the format_event_time_for_display function."""
 
