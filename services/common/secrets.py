@@ -40,7 +40,7 @@ def get_secret(secret_id: str, default: str = "") -> str:
 
     # Local development: use environment variables
     if environment == "local":
-        value = os.getenv(secret_id, default)
+        value = os.getenv(secret_id, default) or default
         _secret_cache[secret_id] = value
         return value
 
@@ -54,7 +54,7 @@ def get_secret(secret_id: str, default: str = "") -> str:
         logger.warning(f"Failed to get secret {secret_id} from Secret Manager: {e}")
 
     # Fallback to environment variables (Cloud Run secret mounts)
-    value = os.getenv(secret_id, default)
+    value = os.getenv(secret_id, default) or default
     if not value and environment == "production":
         logger.error(f"Secret {secret_id} not found in Secret Manager or environment")
         # In production, we might want to raise an error for critical secrets
