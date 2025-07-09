@@ -482,6 +482,7 @@ def test_tool_registry(mock_requests):
             )
         else:
             return MockResponse({"error": "Not found"}, 404)
+
     mock_requests.side_effect = mock_get
     registry = get_tool_registry()
     calendar_result = registry.execute_tool("get_calendar_events", user_id="user123")
@@ -525,7 +526,14 @@ def test_tool_registry_tooloutput_success(mock_requests):
                 200,
             )
         else:
-            return MockResponse({"success": True, "data": {"emails": [{"id": "1", "subject": "Test Email"}]}}, 200)
+            return MockResponse(
+                {
+                    "success": True,
+                    "data": {"emails": [{"id": "1", "subject": "Test Email"}]},
+                },
+                200,
+            )
+
     mock_requests.side_effect = mock_get
     registry = get_tool_registry()
     calendar_result = registry.execute_tool("get_calendar_events", user_id="user123")
@@ -575,7 +583,14 @@ def test_tool_registry_tooloutput_for_get_tools(mock_requests):
                 200,
             )
         else:
-            return MockResponse({"success": True, "data": {"emails": [{"id": "1", "subject": "Test Email"}]}}, 200)
+            return MockResponse(
+                {
+                    "success": True,
+                    "data": {"emails": [{"id": "1", "subject": "Test Email"}]},
+                },
+                200,
+            )
+
     mock_requests.side_effect = mock_get
     registry = get_tool_registry()
     calendar_result = registry.execute_tool("get_calendar_events", user_id="user123")
@@ -619,7 +634,14 @@ def test_tool_registry_execute_tool_returns_tooloutput(mock_requests):
                 200,
             )
         else:
-            return MockResponse({"success": True, "data": {"emails": [{"id": "1", "subject": "Test Email"}]}}, 200)
+            return MockResponse(
+                {
+                    "success": True,
+                    "data": {"emails": [{"id": "1", "subject": "Test Email"}]},
+                },
+                200,
+            )
+
     mock_requests.side_effect = mock_get
     registry = get_tool_registry()
     email_result = registry.execute_tool("get_emails", user_id="user123")
