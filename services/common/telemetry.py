@@ -10,7 +10,9 @@ import socket
 from opentelemetry import trace
 
 try:
-    from opentelemetry.exporter.gcp.trace import CloudTraceSpanExporter  # type: ignore[import]
+    from opentelemetry.exporter.gcp.trace import (
+        CloudTraceSpanExporter,  # type: ignore[import]
+    )
 except ImportError:
     CloudTraceSpanExporter = None
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor

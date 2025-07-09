@@ -11,7 +11,7 @@ Part of the multi-agent workflow system.
 """
 
 import logging
-from typing import List, Sequence, Callable, Any
+from typing import Any, Callable, List, Sequence
 
 from llama_index.core.agent.workflow import FunctionAgent
 from llama_index.core.tools import FunctionTool

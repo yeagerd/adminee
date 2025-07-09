@@ -96,7 +96,9 @@ class PreferencesService:
                     # Create default preferences
                     default_prefs = PreferencesService._get_default_preferences()
                     if user.id is None:
-                        raise ValueError("user.id cannot be None when creating preferences")
+                        raise ValueError(
+                            "user.id cannot be None when creating preferences"
+                        )
                     preferences = UserPreferences(
                         user_id=user.id, version="1.0", **default_prefs
                     )

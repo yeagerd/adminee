@@ -8,7 +8,7 @@ import logging
 from datetime import datetime, timezone
 
 from fastapi import HTTPException
-from sqlalchemy import select, and_
+from sqlalchemy import and_, select
 
 from services.user.database import get_async_session
 from services.user.exceptions import DatabaseError, WebhookProcessingError

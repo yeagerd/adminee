@@ -524,7 +524,9 @@ async def list_oauth_providers(
                     name=provider_config.name,
                     provider=provider,
                     available=True,
-                    supported_scopes=[IntegrationScopeResponse(**scope) for scope in supported_scopes],
+                    supported_scopes=[
+                        IntegrationScopeResponse(**scope) for scope in supported_scopes
+                    ],
                     default_scopes=provider_config.default_scopes,
                 )
                 providers.append(provider_info)

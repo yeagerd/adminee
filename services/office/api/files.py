@@ -258,7 +258,9 @@ async def get_files(
 
         # Build response data
         files_list = cast(list, all_files if all_files is not None else [])
-        providers_list = cast(list, providers_used if providers_used is not None else [])
+        providers_list = cast(
+            list, providers_used if providers_used is not None else []
+        )
         response_data = {
             "files": files_list,
             "providers": providers_list,

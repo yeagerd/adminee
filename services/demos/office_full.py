@@ -72,7 +72,9 @@ class OfficeServiceClient:
             timeout=self.timeout, follow_redirects=True
         ) as client:
             # Ensure params is a Mapping[str, str | int | float | bool | None]
-            params_str = {k: str(v) if v is not None else None for k, v in params.items()}
+            params_str = {
+                k: str(v) if v is not None else None for k, v in params.items()
+            }
             response = await client.get(
                 f"{self.base_url}/email/messages", params=params_str
             )
@@ -86,7 +88,9 @@ class OfficeServiceClient:
             timeout=self.timeout, follow_redirects=True
         ) as client:
             # Ensure params is a Mapping[str, str | int | float | bool | None]
-            params_str = {k: str(v) if v is not None else None for k, v in params.items()}
+            params_str = {
+                k: str(v) if v is not None else None for k, v in params.items()
+            }
             response = await client.get(
                 f"{self.base_url}/email/messages/{message_id}", params=params_str
             )
@@ -121,7 +125,9 @@ class OfficeServiceClient:
             timeout=self.timeout, follow_redirects=True
         ) as client:
             # Ensure params is a Mapping[str, str | int | float | bool | None]
-            params_str = {k: str(v) if v is not None else None for k, v in params.items()}
+            params_str = {
+                k: str(v) if v is not None else None for k, v in params.items()
+            }
             response = await client.get(
                 f"{self.base_url}/calendar/events", params=params_str
             )
@@ -151,7 +157,9 @@ class OfficeServiceClient:
             timeout=self.timeout, follow_redirects=True
         ) as client:
             # Ensure params is a Mapping[str, str | int | float | bool | None]
-            params_str = {k: str(v) if v is not None else None for k, v in params.items()}
+            params_str = {
+                k: str(v) if v is not None else None for k, v in params.items()
+            }
             response = await client.get(f"{self.base_url}/files/", params=params_str)
             response.raise_for_status()
             return ApiResponse(**response.json())
@@ -165,8 +173,12 @@ class OfficeServiceClient:
             timeout=self.timeout, follow_redirects=True
         ) as client:
             # Ensure params is a Mapping[str, str | int | float | bool | None]
-            params_str = {k: str(v) if v is not None else None for k, v in params.items()}
-            response = await client.get(f"{self.base_url}/files/search", params=params_str)
+            params_str = {
+                k: str(v) if v is not None else None for k, v in params.items()
+            }
+            response = await client.get(
+                f"{self.base_url}/files/search", params=params_str
+            )
             response.raise_for_status()
             return ApiResponse(**response.json())
 

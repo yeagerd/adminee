@@ -9,7 +9,7 @@ import logging
 from typing import Any, Dict, Optional
 
 from email_normalize import normalize
-from sqlalchemy import select, and_
+from sqlalchemy import select
 
 from services.user.database import get_async_session
 from services.user.models.user import User

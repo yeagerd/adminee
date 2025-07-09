@@ -14,7 +14,7 @@ handles orchestration across multiple agents.
 
 import logging
 import os
-from typing import Sequence, Callable, Optional, Dict, Any, List
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 from llama_index.core import StorageContext
 from llama_index.core.agent import ReActAgent
@@ -318,7 +318,9 @@ class ChatAgent:
                 f"Thread id={self.thread_id} not found. Creating new thread for user_id={self.user_id}"
             )
             thread = await history_manager.create_thread(self.user_id)
-            self.thread_id = int(thread.id) if thread.id is not None else 0  # Ensure proper type
+            self.thread_id = (
+                int(thread.id) if thread.id is not None else 0
+            )  # Ensure proper type
 
         # Handle fake LLM mode
         if isinstance(self.llm, FakeLLM):

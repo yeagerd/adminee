@@ -24,7 +24,7 @@ This supersedes single-agent approaches with a focused multi-agent architecture.
 """
 
 import logging
-from typing import Any, Callable, Dict, List, Optional, Union, Sequence
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from llama_index.core.agent.workflow import AgentWorkflow, FunctionAgent
 from llama_index.core.tools import FunctionTool

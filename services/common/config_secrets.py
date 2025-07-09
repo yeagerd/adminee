@@ -10,7 +10,7 @@ This is a shared module for all services in the application.
 
 import logging
 import os
-from typing import Optional, cast
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,6 @@ def get_secret(secret_id: str, default: str = "") -> str:
         # In production, we might want to raise an error for critical secrets
         # raise RuntimeError(f"Required secret {secret_id} not found")
 
-    from typing import cast
     final_value = value if value is not None else ""
     _secret_cache[secret_id] = final_value
     return final_value
