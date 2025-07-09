@@ -65,8 +65,9 @@ def get_secret(secret_id: str, default: str = "") -> str:
         # raise RuntimeError(f"Required secret {secret_id} not found")
 
     from typing import cast
-    _secret_cache[secret_id] = cast(str, value if value is not None else "")
-    return value
+    final_value = value if value is not None else ""
+    _secret_cache[secret_id] = final_value
+    return final_value
 
 
 def _get_secret_from_manager(secret_id: str) -> Optional[str]:

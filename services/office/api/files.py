@@ -646,7 +646,7 @@ async def get_file(
 
                 # Return error response
                 response_data = {
-                    "file": None,
+                    "file": [],  # Changed from None to [] for mypy Collection[str] compatibility
                     "provider": provider,
                     "error": error_msg,
                     "request_metadata": {
