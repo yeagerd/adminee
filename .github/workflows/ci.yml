@@ -170,7 +170,9 @@ jobs:
         uv sync --all-packages --all-extras --active
 
     - name: Run nox (coverage)
-      run: nox -s cov
+      run: |
+        source .venv/bin/activate
+        nox -s cov
 
     - name: Upload coverage reports
       uses: codecov/codecov-action@v3
