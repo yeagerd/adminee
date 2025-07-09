@@ -1,11 +1,14 @@
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
 
 
 @pytest.mark.asyncio
 async def test_lifespan_disposes_engine():
-    with patch("services.chat.history_manager") as mock_history_manager, \
-         patch("services.chat.main.get_settings") as mock_get_settings:
+    with (
+        patch("services.chat.history_manager") as mock_history_manager,
+        patch("services.chat.main.get_settings") as mock_get_settings,
+    ):
         # Set up the mock settings to return valid values
         mock_settings = AsyncMock()
         mock_settings.api_frontend_chat_key = "test_key"
@@ -23,6 +26,7 @@ async def test_lifespan_disposes_engine():
 
         # Import lifespan after patching
         from fastapi import FastAPI
+
         from services.chat.main import lifespan
 
         app = FastAPI()
