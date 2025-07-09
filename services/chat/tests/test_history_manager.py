@@ -1,11 +1,6 @@
 # flake8: noqa: E402
 pytest_plugins = ["pytest_asyncio"]
 
-# Set required environment variables before any imports
-import os
-
-os.environ.setdefault("DB_URL_CHAT", "sqlite:///test.db")
-
 """
 Unit tests for history manager functionality.
 
@@ -13,20 +8,30 @@ Tests conversation history management, storage, retrieval,
 and cleanup operations.
 """
 
+import os
 import pytest
 import pytest_asyncio  # Import pytest_asyncio
 
 import services.chat.history_manager as hm
 
 
-@pytest_asyncio.fixture(autouse=True, scope="function")
-async def setup_database():
-    """Initialize the database and create tables before each test."""
-    # Ensure DB_URL_CHAT is set for the test environment, already done by os.environ
-    await hm.init_db()
-    # yield # if we needed teardown per test
-    # For a simple setup, we might not need specific per-test teardown if test.db is ephemeral
-    # or if tests are okay with data persisting between them (not ideal but simpler for now)
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def setup_test_database():
+    """Set up test database with proper tables for all tests."""
+    # Use in-memory database for testing
+    original_db_url = os.environ.get("DB_URL_CHAT")
+    os.environ["DB_URL_CHAT"] = "sqlite+aiosqlite:///file::memory:?cache=shared"
+
+    try:
+        # Initialize database tables
+        await hm.init_db()
+        yield
+    finally:
+        # Cleanup
+        if original_db_url:
+            os.environ["DB_URL_CHAT"] = original_db_url
+        elif "DB_URL_CHAT" in os.environ:
+            del os.environ["DB_URL_CHAT"]
 
 
 @pytest.mark.asyncio
@@ -51,6 +56,7 @@ async def test_create_and_list_threads():
 @pytest.mark.asyncio
 async def test_append_and_get_history():
     t = await hm.create_thread("user2", "History Thread")
+    assert t.id is not None
     m1 = await hm.append_message(t.id, "user2", "Hello")
     m2 = await hm.append_message(t.id, "user2", "World")
     history = await hm.get_thread_history(t.id)
@@ -75,11 +81,13 @@ async def test_append_and_get_history():
 @pytest.mark.asyncio
 async def test_create_update_delete_draft():
     t = await hm.create_thread("user3", "Draft Thread")
+    assert t.id is not None
     d1 = await hm.create_or_update_draft(t.id, "email", "Draft 1")
     assert d1.content == "Draft 1"
     d2 = await hm.create_or_update_draft(t.id, "email", "Draft 2")
     assert d2.content == "Draft 2"
     d = await hm.get_draft(t.id, "email")
+    assert d is not None
     assert d.content == "Draft 2"
     await hm.delete_draft(t.id, "email")
     d_none = await hm.get_draft(t.id, "email")
@@ -89,6 +97,7 @@ async def test_create_update_delete_draft():
 @pytest.mark.asyncio
 async def test_draft_unique_constraint():
     t = await hm.create_thread("user4", "Unique Draft Thread")
+    assert t.id is not None
     d1 = await hm.create_or_update_draft(t.id, "calendar_event", "Event 1")
     assert d1.content == "Event 1"
     d2 = await hm.create_or_update_draft(t.id, "calendar_event", "Event 2")
@@ -102,6 +111,7 @@ async def test_draft_unique_constraint():
 @pytest.mark.asyncio
 async def test_pagination_and_ordering():
     t = await hm.create_thread("user5", "Paginate Thread")
+    assert t.id is not None
     for i in range(10):
         await hm.append_message(t.id, "user5", f"msg {i}")
     msgs = await hm.get_thread_history(t.id, limit=5, offset=0)
