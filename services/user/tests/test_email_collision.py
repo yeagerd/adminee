@@ -4,8 +4,10 @@ Unit tests for email collision detection functionality.
 Tests email normalization and collision detection using the email-normalize library.
 """
 
+import contextlib
 import os
 import tempfile
+import uuid
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -143,32 +145,30 @@ class TestEmailCollisionDB:
     async def test_check_collision_with_collision(self, db_setup, detector_fixture):
         detector = detector_fixture
         # Use unique email to avoid conflicts with other tests
-        unique_email = f"existing_{id(self)}@example.com"
+        unique_email = f"existing_{id(self)}_{uuid.uuid4().hex}@example.com"
         existing_user = User(
-            external_auth_id=f"clerk_collision_test_{id(self)}",
+            external_auth_id=f"clerk_collision_test_{id(self)}_{uuid.uuid4().hex}",
             auth_provider="clerk",
             email=unique_email,
             normalized_email=unique_email,
         )
-
-        # Create user in the database using the same session factory that check_collision will use
         async_session = get_async_session()
         async with async_session() as session:
             session.add(existing_user)
             await session.commit()
 
-            # Test collision detection within the same session context
+            # Patch get_async_session to return a context manager yielding our session
+            @contextlib.asynccontextmanager
+            async def session_cm():
+                yield session
+
             with patch.object(
                 detector, "normalize_email_async", return_value=unique_email
             ):
-                # Mock the get_async_session to return our current session
                 with patch(
-                    "services.user.utils.email_collision.get_async_session"
-                ) as mock_get_session:
-                    # Create a mock session factory that returns our session
-                    mock_session_factory = MagicMock()
-                    mock_session_factory.return_value = session
-                    mock_get_session.return_value = mock_session_factory
+                    "services.user.utils.email_collision.get_async_session",
+                    return_value=session_cm,
+                ):
                     result = await detector.check_collision(unique_email)
                     assert result is not None
                     assert result.email == unique_email
@@ -190,22 +190,23 @@ class TestEmailCollisionDB:
         self, db_setup, detector_fixture
     ):
         detector = detector_fixture
+        unique_email = f"existing_{id(self)}_{uuid.uuid4().hex}@example.com"
         existing_user = User(
             id=1,
-            external_auth_id="clerk_123",
+            external_auth_id=f"clerk_123_{uuid.uuid4().hex}",
             auth_provider="clerk",
-            email="existing@example.com",
-            normalized_email="existing@example.com",
+            email=unique_email,
+            normalized_email=unique_email,
         )
         with patch.object(detector, "check_collision", return_value=existing_user):
             with patch.object(
-                detector, "normalize_email_async", return_value="existing@example.com"
+                detector, "normalize_email_async", return_value=unique_email
             ):
-                result = await detector.get_collision_details("existing@example.com")
+                result = await detector.get_collision_details(unique_email)
                 assert result["collision"] is True
-                assert result["existing_user_id"] == "clerk_123"
-                assert result["existing_user_email"] == "existing@example.com"
-                assert result["normalized_email"] == "existing@example.com"
+                assert result["existing_user_id"] == existing_user.external_auth_id
+                assert result["existing_user_email"] == unique_email
+                assert result["normalized_email"] == unique_email
 
     @pytest.mark.asyncio
     async def test_get_email_info_valid_email(self, db_setup, detector_fixture):
