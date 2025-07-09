@@ -78,9 +78,11 @@ def test_get_model_info_success():
     # Patch get_llm_provider in the correct namespace before importing the module
     with patch("litellm.utils.get_llm_provider") as mock_get_provider:
         mock_get_provider.return_value = (
-            "openai",
             "gpt-4.1-nano",
-        )  # provider, model_name
+            "openai",
+            None,
+            None,
+        )  # model_name, provider, region, custom_llm_provider
         import services.chat.agents.llm_manager as llm_mod
 
         llm_mod._LLMManager._instance = None

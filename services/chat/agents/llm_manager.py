@@ -7,6 +7,8 @@ import logging
 import os
 from typing import Any, AsyncGenerator, Dict, Generator, Sequence, Union
 
+# noqa: F401 - get_llm_provider is present at runtime, linter is wrong
+from litellm.utils import get_llm_provider  # type: ignore
 from llama_index.core.base.llms.types import ChatResponse, CompletionResponse
 from llama_index.core.llms import ChatMessage, MessageRole
 from llama_index.core.llms.function_calling import FunctionCallingLLM
@@ -15,13 +17,6 @@ from llama_index.llms.litellm import LiteLLM as LlamaLiteLLM
 
 # Configure logging
 logger = logging.getLogger(__name__)
-
-
-# Remove get_llm_provider import and use a stub
-# get_llm_provider = ...
-def get_llm_provider(model):
-    # TODO: Replace with real provider logic if needed
-    return ("unknown",)
 
 
 class LoggingLiteLLM(LlamaLiteLLM):
@@ -375,9 +370,7 @@ class _LLMManager:
             Dictionary containing model information
         """
         try:
-            from litellm.utils import get_llm_provider
-
-            provider, *_ = get_llm_provider(model)
+            model_name, provider, *_ = get_llm_provider(model)
             return {
                 "model": model,
                 "provider": provider,
