@@ -38,9 +38,9 @@ def clear_drafts():
     _draft_storage.clear()
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(scope="module", autouse=True)
 def mock_settings():
-    """Mock settings for all tests to work in parallel execution."""
+    """Mock settings for all tests in this module to work in parallel execution."""
     with patch("services.chat.agents.llm_tools.get_settings") as mock_get_settings:
         # Create a mock settings object with all required attributes
         mock_settings_obj = MagicMock()
@@ -66,9 +66,9 @@ def mock_settings():
         yield mock_settings_obj
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(scope="module", autouse=True)
 def mock_requests():
-    """Mock requests module for all tests to work in parallel execution."""
+    """Mock requests module for all tests in this module to work in parallel execution."""
     with patch("services.chat.agents.llm_tools.requests.get") as mock_get:
         yield mock_get
 
