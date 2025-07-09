@@ -62,7 +62,7 @@ except ImportError:
 class DemoSettings(BaseSettings):
     """Demo settings loaded from environment variables."""
 
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="ignore")  # type: ignore[assignment]
     API_FRONTEND_USER_KEY: str = "test-FRONTEND_USER_KEY"
     API_FRONTEND_OFFICE_KEY: str = "test-FRONTEND_OFFICE_KEY"
     API_FRONTEND_CHAT_KEY: str = "test-FRONTEND_CHAT_KEY"
