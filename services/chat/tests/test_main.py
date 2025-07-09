@@ -13,6 +13,15 @@ async def test_lifespan_disposes_engine(mock_get_settings, mock_history_manager)
     """
     Test that the lifespan context manager disposes of the engine on shutdown.
     """
+    # Set up the mock settings to return valid values
+    mock_settings = AsyncMock()
+    mock_settings.api_frontend_chat_key = "test_key"
+    mock_settings.api_chat_user_key = "test_key"
+    mock_settings.api_chat_office_key = "test_key"
+    mock_settings.user_management_service_url = "http://localhost:8001"
+    mock_settings.office_service_url = "http://localhost:8003"
+    mock_get_settings.return_value = mock_settings
+    
     mock_engine = AsyncMock()
     mock_history_manager.init_db = AsyncMock()
     mock_history_manager.get_engine.return_value = mock_engine
