@@ -176,8 +176,6 @@
     "editor.acceptSuggestionOnEnter": "on",
     // Show status bar
     "workbench.statusBar.visible": true,
-    // Show activity bar
-    "workbench.activityBar.visible": true,
     // Show side bar
     "workbench.sideBar.visible": true,
     // Show panel

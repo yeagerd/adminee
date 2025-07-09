@@ -1,7 +1,7 @@
 import nox
 
 nox.options.sessions = [
-    "format", "lint", "typecheck", "typecheck_strict", "test", "test_fast", "test_cov"
+    "format", "lint", "typecheck", "typecheck_strict", "test", "test_fast", "test_cov", "test_parallel"
 ]
 nox.options.reuse_existing_virtualenvs = True
 
@@ -26,7 +26,13 @@ def typecheck_strict(session):
 
 @nox.session(venv_backend="none")
 def test(session):
-    session.run("pytest", "services/", "-n", "auto", "-q", "--tb=short", external=True)
+    # Use sequential execution to avoid SQLite conflicts
+    session.run("pytest", "services/", "-q", "--tb=short", external=True)
+
+@nox.session(venv_backend="none")
+def test_parallel(session):
+    # Use in-memory databases for parallel execution
+    session.run("pytest", "services/", "-n", "auto", "-q", "--tb=short", "--dist=worksteal", external=True)
 
 @nox.session(venv_backend="none")
 def test_fast(session):
