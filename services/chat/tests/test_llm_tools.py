@@ -40,7 +40,7 @@ def clear_drafts():
 
 @pytest.fixture(autouse=True)
 def mock_settings():
-    with patch("services.chat.settings.get_settings") as mock_get_settings:
+    with patch("services.chat.agents.llm_tools.get_settings") as mock_get_settings:
         # Create a mock settings object with all required attributes
         mock_settings_obj = MagicMock()
         mock_settings_obj.db_url_chat = "sqlite:///test.db"
