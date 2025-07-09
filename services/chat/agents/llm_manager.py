@@ -376,6 +376,7 @@ class _LLMManager:
         """
         try:
             from litellm.utils import get_llm_provider
+
             provider, *_ = get_llm_provider(model)
             return {
                 "model": model,

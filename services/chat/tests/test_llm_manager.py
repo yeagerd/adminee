@@ -76,9 +76,7 @@ def test_get_llm_missing_provider_arg(llm_manager):
 
 def test_get_model_info_success():
     # Patch get_llm_provider in the correct namespace before importing the module
-    with patch(
-        "litellm.utils.get_llm_provider"
-    ) as mock_get_provider:
+    with patch("litellm.utils.get_llm_provider") as mock_get_provider:
         mock_get_provider.return_value = (
             "openai",
             "gpt-4.1-nano",
