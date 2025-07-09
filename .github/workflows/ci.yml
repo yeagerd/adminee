@@ -167,7 +167,7 @@ jobs:
     - name: Run nox (coverage)
       run: |
         source .venv/bin/activate
-        nox -s cov
+        nox -s test_cov
 
     - name: Upload coverage reports
       uses: codecov/codecov-action@v3
