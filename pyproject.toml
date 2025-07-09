@@ -87,6 +87,17 @@ namespace_packages = true
 explicit_package_bases = true
 ignore_missing_imports = true
 
+# Disable call-arg errors only for SQLModel-related issues
+[[tool.mypy.overrides]]
+module = [
+    "services.user.models.*",
+    "services.chat.history_manager",
+    "services.office.models.*"
+]
+disable_error_code = ["call-arg"]
+
+
+
 [tool.coverage.run]
 source = ["services"]
 omit = [
