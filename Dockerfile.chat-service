@@ -1,7 +1,7 @@
 # Dockerfile for Chat Service (Python/FastAPI)
 
 # Use an official Python runtime as a parent image
-FROM python:3.11-slim-bullseye
+FROM python:3.12-slim-bullseye
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -31,10 +31,18 @@ RUN apt-get update \
         curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-# First, copy only the requirements file to leverage Docker cache
-COPY services/chat/requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
+# Install UV
+RUN pip install uv
+
+# Copy pyproject.toml and uv.lock files
+COPY pyproject.toml uv.lock ./
+COPY services/chat/pyproject.toml ./services/chat/
+COPY services/common/setup.py ./services/common/
+
+# Install Python dependencies using UV
+RUN uv pip install -e .
+RUN uv pip install -e services/chat
+RUN uv pip install -e services/common
 
 # Copy the rest of the application code for the chat service
 COPY services/chat/ /app/services/chat/

@@ -10,6 +10,23 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = []
 
+[project.optional-dependencies]
+dev = [
+    "black",
+    "isort", 
+    "ruff",
+    "mypy",
+    "types-requests",
+    "types-pytz",
+    "tox",
+    "tox-gh-actions",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-mock",
+    "pytest-xdist",
+    "pytest-cov",
+]
+
 # UV workspace configuration
 [tool.uv.workspace]
 members = [
