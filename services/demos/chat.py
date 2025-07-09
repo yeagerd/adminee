@@ -625,8 +625,13 @@ class FullDemo:
         """Create a workflow agent for local mode."""
         if not self.use_api:
             try:
-                agent = WorkflowAgent()
-                await agent.initialize()
+                agent = WorkflowAgent(
+                    thread_id=1,  # Default thread ID
+                    user_id="demo_user",
+                    llm_model="gpt-4",
+                    llm_provider="openai",
+                )
+                await agent.build_agent()
                 return agent
             except Exception as e:
                 logger.error(f"Failed to create agent: {e}")
@@ -736,7 +741,7 @@ class FullDemo:
             return "❌ Agent not available"
 
         try:
-            response = await self.agent.process_message(message)
+            response = await self.agent.chat(message)
             return response
         except Exception as e:
             logger.error(f"Local agent error: {e}")

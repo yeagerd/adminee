@@ -180,6 +180,9 @@ class TokenService:
                     user_id=user_id,
                     integration_id=integration.id,
                     error=f"Integration status is {integration.status.value}",
+                    access_token=None,
+                    refresh_token=None,
+                    expires_at=None,
                 )
 
             # Get access token record
@@ -199,6 +202,9 @@ class TokenService:
                     user_id=user_id,
                     integration_id=integration.id,
                     error="No access token found",
+                    access_token=None,
+                    refresh_token=None,
+                    expires_at=None,
                 )
 
             # Check token expiration
@@ -235,6 +241,9 @@ class TokenService:
                             user_id=user_id,
                             integration_id=integration.id,
                             error=f"Token refresh failed: {refresh_result.error}",
+                            access_token=None,
+                            refresh_token=None,
+                            expires_at=None,
                         )
 
             # Decrypt access token
@@ -269,6 +278,9 @@ class TokenService:
             ):
                 return InternalTokenResponse(
                     success=False,
+                    access_token=None,
+                    refresh_token=None,
+                    expires_at=None,
                     provider=provider,
                     user_id=user_id,
                     integration_id=integration.id,
@@ -297,6 +309,7 @@ class TokenService:
                 provider=provider,
                 user_id=user_id,
                 integration_id=integration.id,
+                error=None,
             )
 
         except Exception as e:
@@ -310,8 +323,12 @@ class TokenService:
                 raise
             return InternalTokenResponse(
                 success=False,
+                access_token=None,
+                refresh_token=None,
+                expires_at=None,
                 provider=provider,
                 user_id=user_id,
+                integration_id=None,
                 error=f"Token retrieval failed: {str(e)}",
             )
 
@@ -350,6 +367,9 @@ class TokenService:
             else:
                 return InternalTokenResponse(
                     success=False,
+                    access_token=None,
+                    refresh_token=None,
+                    expires_at=None,
                     provider=provider,
                     user_id=user_id,
                     integration_id=refresh_result.integration_id,
@@ -365,8 +385,12 @@ class TokenService:
             )
             return InternalTokenResponse(
                 success=False,
+                access_token=None,
+                refresh_token=None,
+                expires_at=None,
                 provider=provider,
                 user_id=user_id,
+                integration_id=None,
                 error=f"Token refresh failed: {str(e)}",
             )
 
@@ -683,7 +707,9 @@ class TokenService:
                 success=False,
                 provider=provider,
                 user_id=user_id,
-                reason=reason,
+                integration_id=None,
+                revoked_at=None,
+                provider_response=None,
                 error=f"Token revocation failed: {str(e)}",
             )
 

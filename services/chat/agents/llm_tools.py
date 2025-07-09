@@ -76,7 +76,7 @@ def get_calendar_events(
     # Use service-to-service authentication
     headers = {"Content-Type": "application/json"}
     if get_settings().api_chat_office_key:
-        headers["X-API-Key"] = get_settings().api_chat_office_key
+        headers["X-API-Key"] = get_settings().api_chat_office_key or ""
 
     params: Dict[str, str | List[str]] = {"user_id": user_id}
     if start_date:
@@ -101,7 +101,7 @@ def get_calendar_events(
         params["providers"] = provider_list
 
     try:
-        office_service_url = get_settings().office_service_url
+        office_service_url = get_settings().office_service_url or ""
         response = requests.get(
             f"{office_service_url}/calendar/events",
             headers=headers,
@@ -173,9 +173,9 @@ def get_user_available_providers(user_id: str) -> List[str]:
         # Use service-to-service authentication to get user integrations
         headers = {"Content-Type": "application/json"}
         if get_settings().api_chat_user_key:
-            headers["X-API-Key"] = get_settings().api_chat_user_key
+            headers["X-API-Key"] = get_settings().api_chat_user_key or ""
 
-        user_service_url = get_settings().user_management_service_url
+        user_service_url = get_settings().user_management_service_url or ""
         response = requests.get(
             f"{user_service_url}/internal/users/{user_id}/integrations",
             headers=headers,
@@ -217,7 +217,7 @@ def get_emails(
     # Use service-to-service authentication
     headers = {"Content-Type": "application/json"}
     if get_settings().api_chat_office_key:
-        headers["X-API-Key"] = get_settings().api_chat_office_key
+        headers["X-API-Key"] = get_settings().api_chat_office_key or ""
 
     params = {"user_id": user_id}
     if start_date:
@@ -232,7 +232,7 @@ def get_emails(
         params["max_results"] = str(max_results)
 
     try:
-        office_service_url = get_settings().office_service_url
+        office_service_url = get_settings().office_service_url or ""
         response = requests.get(
             f"{office_service_url}/emails",
             headers=headers,
@@ -277,7 +277,7 @@ def get_notes(
     # Use service-to-service authentication
     headers = {"Content-Type": "application/json"}
     if get_settings().api_chat_office_key:
-        headers["X-API-Key"] = get_settings().api_chat_office_key
+        headers["X-API-Key"] = get_settings().api_chat_office_key or ""
 
     params = {"user_id": user_id}
     if notebook:
@@ -290,7 +290,7 @@ def get_notes(
         params["max_results"] = str(max_results)
 
     try:
-        office_service_url = get_settings().office_service_url
+        office_service_url = get_settings().office_service_url or ""
         response = requests.get(
             f"{office_service_url}/notes",
             headers=headers,
@@ -336,7 +336,7 @@ def get_documents(
     # Use service-to-service authentication
     headers = {"Content-Type": "application/json"}
     if get_settings().api_chat_office_key:
-        headers["X-API-Key"] = get_settings().api_chat_office_key
+        headers["X-API-Key"] = get_settings().api_chat_office_key or ""
 
     params = {"user_id": user_id}
     if document_type:
@@ -351,7 +351,7 @@ def get_documents(
         params["max_results"] = str(max_results)
 
     try:
-        office_service_url = get_settings().office_service_url
+        office_service_url = get_settings().office_service_url or ""
         response = requests.get(
             f"{office_service_url}/documents",
             headers=headers,

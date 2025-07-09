@@ -404,10 +404,6 @@ async def send_email(
         return SendEmailResponse(
             success=True,
             data=response_data,
-            cache_hit=False,
-            provider_used=(
-                Provider.GOOGLE if provider == "google" else Provider.MICROSOFT
-            ),
             request_id=request_id,
         )
 

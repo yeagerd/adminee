@@ -18,6 +18,7 @@ from llama_index.core.llms import ChatMessage, MessageRole
 from llama_index.core.llms.function_calling import FunctionCallingLLM
 from llama_index.llms.litellm import LiteLLM as LlamaLiteLLM
 from llama_index.core.base.llms.types import ChatResponse, CompletionResponse
+from llama_index.core.tools import BaseTool
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -277,16 +278,17 @@ class FakeLLM(FunctionCallingLLM):
 
     async def astream_chat_with_tools(
         self,
-        tools: Sequence[Any] = (),
+        tools: Sequence[BaseTool],
         user_msg: Union[str, ChatMessage, None] = None,
-        chat_history: Sequence[ChatMessage] = (),
+        chat_history: list[ChatMessage] | None = None,
         verbose: bool = False,
         allow_parallel_tool_calls: bool = True,
         tool_required: bool = False,
         **kwargs: Any
-    ):
+    ) -> AsyncGenerator[ChatResponse, None]:
         async def gen():
-            response = self.chat(chat_history, **kwargs)
+            messages = chat_history or []
+            response = self.chat(messages, **kwargs)
             yield response
         return gen()
 

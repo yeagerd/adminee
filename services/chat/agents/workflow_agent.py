@@ -188,7 +188,7 @@ class WorkflowAgent:
             logger.error(f"Error loading chat history from database: {e}")
             return []
 
-    def _create_specialized_agents(self) -> Dict[str, FunctionAgent]:
+    def _create_specialized_agents(self) -> Dict[str, Any]:
         """Create specialized agents for multi-agent mode."""
         agents = {}
 
@@ -230,7 +230,7 @@ class WorkflowAgent:
         )
 
         logger.debug(f"Created {len(agents)} specialized agents")
-        return agents
+        return agents  # type: ignore[return-value]
 
     async def build_agent(self, user_input: str = "") -> None:
         """
@@ -669,7 +669,7 @@ class WorkflowAgent:
 
     async def load_context(self, context_dict: Dict[str, Any]) -> None:
         """Load workflow context from a serialized format."""
-        if not self.agent_workflow:
+        if self.agent_workflow is None:
             await self.build_agent()
 
         from llama_index.core.workflow import JsonSerializer

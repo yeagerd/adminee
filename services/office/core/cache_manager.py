@@ -102,7 +102,7 @@ class CacheManager:
 
             # Use default TTL if not specified
             if ttl_seconds is None:
-                ttl_seconds = get_settings().DEFAULT_CACHE_TTL_SECONDS
+                ttl_seconds = get_settings().CACHE_TTL
 
             # Set data with TTL
             await redis_client.setex(key, ttl_seconds, serialized_data)

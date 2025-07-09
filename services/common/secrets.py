@@ -41,7 +41,7 @@ def get_secret(secret_id: str, default: str = "") -> str:
     # Local development: use environment variables
     if environment == "local":
         value = os.getenv(secret_id, default) or default
-        _secret_cache[secret_id] = value
+        _secret_cache[secret_id] = str(value)
         return value
 
     # Production: try Secret Manager first, fallback to env vars
@@ -60,7 +60,7 @@ def get_secret(secret_id: str, default: str = "") -> str:
         # In production, we might want to raise an error for critical secrets
         # raise RuntimeError(f"Required secret {secret_id} not found")
 
-    _secret_cache[secret_id] = value
+    _secret_cache[secret_id] = str(value)
     return value
 
 
@@ -77,7 +77,7 @@ def _get_secret_from_manager(secret_id: str) -> Optional[str]:
     try:
         from google.cloud import secretmanager
 
-        project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
+        project_id = os.getenv("GOOGLE_CLOUD_PROJECT") or ""
         if not project_id:
             logger.warning("GOOGLE_CLOUD_PROJECT not set, cannot access Secret Manager")
             return None

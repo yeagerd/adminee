@@ -409,6 +409,9 @@ async def get_user_info(provider: str, access_token: str) -> Dict:
                 "name": user_data.get("displayName"),
                 "picture": None,  # Would need separate request
             }
+        else:
+            # This should never happen due to the earlier check, but mypy needs it
+            return {"id": "", "email": "", "name": "", "picture": None}
 
 
 @app.get("/auth/session")
