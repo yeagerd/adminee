@@ -20,6 +20,8 @@ async def test_lifespan_disposes_engine(mock_get_settings, mock_history_manager)
     mock_settings.api_chat_office_key = "test_key"
     mock_settings.user_management_service_url = "http://localhost:8001"
     mock_settings.office_service_url = "http://localhost:8003"
+    mock_settings.log_level = "INFO"
+    mock_settings.log_format = "json"
     mock_get_settings.return_value = mock_settings
 
     mock_engine = AsyncMock()
