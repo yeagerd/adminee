@@ -37,7 +37,7 @@ from services.user.schemas.integration import (
     TokenRefreshRequest,
     TokenRefreshResponse,
 )
-from services.user.services.audit_service import audit_logger
+from services.user.services.audit_service import get_audit_logger
 from services.user.services.integration_service import (
     get_integration_service,
 )
@@ -208,7 +208,7 @@ async def complete_oauth_flow(
     try:
         # Handle OAuth errors from provider
         if request.error:
-            await audit_logger.log_security_event(
+            await get_audit_logger().log_security_event(
                 user_id=user_id,
                 action="oauth_callback_error",
                 severity="medium",

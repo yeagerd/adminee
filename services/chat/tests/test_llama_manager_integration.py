@@ -10,12 +10,6 @@ This test suite covers:
 - Memory block coordination
 """
 
-# Set required environment variables before any imports
-import os
-
-os.environ.setdefault("DB_URL_CHAT", "sqlite:///test.db")
-
-
 import logging
 import os
 from unittest.mock import patch
@@ -28,24 +22,26 @@ from services.chat.agents.llama_manager import ChatAgentManager
 
 logger = logging.getLogger(__name__)
 
+@pytest_asyncio.fixture(autouse=True, scope="function")
+async def setup_database():
+    """Initialize the database for each test."""
+    # Mock the settings to use in-memory database
+    with patch("services.chat.history_manager.get_settings") as mock_get_settings:
+        mock_settings = mock_get_settings.return_value
+        mock_settings.db_url_chat = "sqlite+aiosqlite:///file::memory:?cache=shared"
 
-@pytest_asyncio.fixture(scope="session", autouse=True)
-async def setup_test_database():
-    """Set up test database with proper tables for all tests."""
-    # Use in-memory database for testing
-    original_db_url = os.environ.get("DB_URL_CHAT")
-    os.environ["DB_URL_CHAT"] = "sqlite+aiosqlite:///file::memory:?cache=shared"
+        # Also mock the engine creation to ensure it uses the mocked settings
+        with patch("services.chat.history_manager.get_engine") as mock_get_engine:
+            # Create a mock engine that uses the in-memory database
+            from sqlalchemy.ext.asyncio import create_async_engine
 
-    try:
-        # Initialize database tables
-        await history_manager.init_db()
-        yield
-    finally:
-        # Cleanup
-        if original_db_url:
-            os.environ["DB_URL_CHAT"] = original_db_url
-        elif "DB_URL_CHAT" in os.environ:
-            del os.environ["DB_URL_CHAT"]
+            mock_engine = create_async_engine(
+                "sqlite+aiosqlite:///file::memory:?cache=shared"
+            )
+            mock_get_engine.return_value = mock_engine
+
+            await history_manager.init_db()
+            yield
 
 
 class DummyTool:

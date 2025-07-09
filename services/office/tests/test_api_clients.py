@@ -8,10 +8,6 @@ and API client factory with mocked HTTP responses and error handling.
 # Set required environment variables before any imports
 import os
 
-os.environ.setdefault("DB_URL_OFFICE", "sqlite:///test.db")
-os.environ.setdefault("API_OFFICE_USER_KEY", "test-api-key")
-
-
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -24,6 +20,13 @@ from services.office.core.clients.microsoft import MicrosoftAPIClient
 from services.office.core.exceptions import ProviderAPIError
 from services.office.core.token_manager import TokenData
 from services.office.models import Provider
+from services.office.core.settings import Settings
+
+settings_patcher = patch(
+    "services.office.core.settings.get_settings",
+    return_value=Settings(db_url_office="sqlite:///test.db", api_office_user_key="test-api-key")
+)
+settings_patcher.start()
 
 
 class MockAPIClient(BaseAPIClient):
@@ -663,3 +666,7 @@ class TestAPIClientFactory:
         assert Provider.GOOGLE in providers
         assert Provider.MICROSOFT in providers
         assert len(providers) == 2
+
+
+def teardown_module(module):
+    settings_patcher.stop()

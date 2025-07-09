@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
+from services.user.settings import Settings
 
 class BaseUserManagementTest:
     """Base class for all User Management tests (unit and integration)."""
@@ -19,24 +20,24 @@ class BaseUserManagementTest:
         """Set up User Management test environment with required variables."""
         # Create temporary database file for tests that need file-based SQLite
         self.db_fd, self.db_path = tempfile.mkstemp(suffix=".db")
+        self.db_url = f"sqlite:///{self.db_path}"
 
-        # Set required environment variables for User Management service
-        os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
-        os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
-        os.environ["API_FRONTEND_USER_KEY"] = "test-api-key"
-        os.environ["CLERK_SECRET_KEY"] = "test-clerk-key"
+        # Patch get_settings to return a Settings instance with our temp DB URL
+        self.settings_patcher = patch(
+            "services.user.settings.get_settings",
+            return_value=Settings(db_url_user_management=self.db_url)
+        )
+        self.mock_settings = self.settings_patcher.start()
 
-        # Optional environment variables with test defaults
-        os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
-        os.environ.setdefault("ENVIRONMENT", "test")
-
-        # Import app after environment variables are set
+        # Import app after patching settings
         from services.user.main import app
-
         self.app = app
 
     def teardown_method(self):
         """Clean up User Management test environment."""
+        # Stop patcher
+        if hasattr(self, "settings_patcher"):
+            self.settings_patcher.stop()
         # Close and remove temporary database file
         if hasattr(self, "db_fd"):
             os.close(self.db_fd)

@@ -8,8 +8,15 @@ and data transformation for office service models.
 # Set required environment variables before any imports
 import os
 
-os.environ.setdefault("DB_URL_OFFICE", "sqlite:///test.db")
-os.environ.setdefault("API_OFFICE_USER_KEY", "test-api-key")
+from unittest.mock import patch
+from services.office.core.settings import Settings
+
+# Patch get_settings to use a test DB and API key for all tests in this file
+settings_patcher = patch(
+    "services.office.core.settings.get_settings",
+    return_value=Settings(db_url_office="sqlite:///test.db", api_office_user_key="test-api-key")
+)
+settings_patcher.start()
 
 
 from datetime import datetime, timezone
@@ -376,3 +383,7 @@ class TestModelSerialization:
         assert "event_123" in json_str
         assert "Meeting" in json_str
         assert "google" in json_str
+
+
+def teardown_module(module):
+    settings_patcher.stop()

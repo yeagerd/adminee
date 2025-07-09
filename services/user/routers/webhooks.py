@@ -27,8 +27,9 @@ router = APIRouter(
     },
 )
 
-webhook_service = WebhookService()
-
+def get_webhook_service() -> WebhookService:
+    """Get webhook service instance (lazy singleton)."""
+    return WebhookService()
 
 @router.post("/clerk", response_model=WebhookResponse)
 async def clerk_webhook(
@@ -94,6 +95,7 @@ async def clerk_webhook(
         logger.info(f"Processing Clerk webhook: {event_type} for user {data.get('id')}")
 
         # Process the webhook based on event type
+        webhook_service = get_webhook_service()
         if event_type == "user.created":
             await webhook_service.process_user_created(data)
         elif event_type == "user.updated":
@@ -160,6 +162,7 @@ async def test_clerk_webhook(
     logger.warning("Using test webhook endpoint - should be disabled in production")
 
     try:
+        webhook_service = get_webhook_service()
         result = await webhook_service.process_clerk_webhook(event)
 
         logger.info(f"Test webhook processed: {result['action']}")

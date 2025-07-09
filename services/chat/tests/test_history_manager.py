@@ -1,11 +1,3 @@
-# flake8: noqa: E402
-pytest_plugins = ["pytest_asyncio"]
-
-# Set required environment variables before any imports
-import os
-
-os.environ.setdefault("DB_URL_CHAT", "sqlite:///test.db")
-
 """
 Unit tests for history manager functionality.
 
@@ -13,20 +5,21 @@ Tests conversation history management, storage, retrieval,
 and cleanup operations.
 """
 
+from unittest.mock import patch
+
 import pytest
-import pytest_asyncio  # Import pytest_asyncio
+import pytest_asyncio
 
 import services.chat.history_manager as hm
 
 
 @pytest_asyncio.fixture(autouse=True, scope="function")
 async def setup_database():
-    """Initialize the database and create tables before each test."""
-    # Ensure DB_URL_CHAT is set for the test environment, already done by os.environ
-    await hm.init_db()
-    # yield # if we needed teardown per test
-    # For a simple setup, we might not need specific per-test teardown if test.db is ephemeral
-    # or if tests are okay with data persisting between them (not ideal but simpler for now)
+    """Initialize the database for each test."""
+    # Mock the settings to use in-memory database
+    with patch("services.chat.history_manager.get_settings") as mock_get_settings:
+        mock_settings = mock_get_settings.return_value
+        mock_settings.db_url_chat = "sqlite+aiosqlite:///file::memory:?cache=shared"
 
 
 @pytest.mark.asyncio

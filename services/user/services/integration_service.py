@@ -35,7 +35,7 @@ from services.user.schemas.integration import (
     TokenRefreshResponse,
 )
 from services.user.security.encryption import TokenEncryption
-from services.user.services.audit_service import audit_logger
+from services.user.services.audit_service import get_audit_logger
 
 # Set up logging
 logger = structlog.get_logger(__name__)
@@ -147,7 +147,7 @@ class IntegrationService:
                 1 for i in integration_responses if i.status == IntegrationStatus.ERROR
             )
 
-            await audit_logger.log_user_action(
+            await get_audit_logger().log_user_action(
                 user_id=user_id,
                 action="integrations_listed",
                 resource_type="integration",
@@ -248,7 +248,7 @@ class IntegrationService:
             )
 
             # Log the OAuth flow start
-            await audit_logger.log_user_action(
+            await get_audit_logger().log_user_action(
                 user_id=user_id,
                 action="oauth_flow_started",
                 resource_type="integration",
@@ -361,7 +361,7 @@ class IntegrationService:
             self.oauth_config.remove_state(oauth_state.state)
 
             # Log successful OAuth completion
-            await audit_logger.log_user_action(
+            await get_audit_logger().log_user_action(
                 user_id=user_id,
                 action="oauth_flow_completed",
                 resource_type="integration",
@@ -402,7 +402,7 @@ class IntegrationService:
             )
 
             # Log failed OAuth completion
-            await audit_logger.log_security_event(
+            await get_audit_logger().log_security_event(
                 user_id=user_id,
                 action="oauth_flow_failed",
                 severity="medium",
@@ -549,7 +549,7 @@ class IntegrationService:
                 await session.commit()
 
             # Log token refresh
-            await audit_logger.log_user_action(
+            await get_audit_logger().log_user_action(
                 user_id=user_id,
                 action="tokens_refreshed",
                 resource_type="integration",
@@ -755,7 +755,7 @@ class IntegrationService:
                     await session.commit()
 
             # Log disconnection
-            await audit_logger.log_user_action(
+            await get_audit_logger().log_user_action(
                 user_id=user_id,
                 action="integration_disconnected",
                 resource_type="integration",
@@ -1154,7 +1154,7 @@ class IntegrationService:
                 await session.refresh(integration)
 
         # Log the integration creation
-        await audit_logger.log_user_action(
+        await get_audit_logger().log_user_action(
             user_id=user.external_auth_id,
             action="integration_created",
             resource_type="integration",
@@ -1260,13 +1260,6 @@ class IntegrationService:
                     await session.commit()
 
 
-# Global integration service instance
-_integration_service: IntegrationService | None = None
-
-
 def get_integration_service() -> IntegrationService:
-    """Get the global integration service instance, creating it if necessary."""
-    global _integration_service
-    if _integration_service is None:
-        _integration_service = IntegrationService()
-    return _integration_service
+    """Get integration service instance (lazy singleton)."""
+    return IntegrationService()

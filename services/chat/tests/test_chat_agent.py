@@ -5,12 +5,6 @@ Tests the chat agent's message processing, response generation,
 and integration with various AI models.
 """
 
-# Set required environment variables before any imports
-import os
-
-os.environ.setdefault("DB_URL_CHAT", "sqlite:///test.db")
-
-
 import os
 from unittest.mock import AsyncMock, MagicMock, patch
 

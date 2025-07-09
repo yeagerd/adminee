@@ -4,7 +4,7 @@ Services package for User Management Service.
 Exports all service modules for easy importing.
 """
 
-from services.user.services.audit_service import audit_logger
+from services.user.services.audit_service import get_audit_logger
 from services.user.services.integration_service import (
     get_integration_service,
 )
@@ -21,5 +21,5 @@ __all__ = [
     "get_integration_service",
     "get_token_service",
     "get_webhook_service",
-    "audit_logger",
+    "get_audit_logger",
 ]

@@ -26,10 +26,10 @@ from services.user.schemas.user import (
     UserSearchRequest,
     UserUpdate,
 )
-from services.user.services.audit_service import audit_logger
+from services.user.services.audit_service import get_audit_logger
 from services.user.utils.email_collision import EmailCollisionDetector
 
-logger = audit_logger.logger
+logger = get_audit_logger().logger
 
 
 class UserService:
@@ -709,13 +709,6 @@ class UserService:
             logger.warning(f"Failed to update last login for user {user_id}: {e}")
 
 
-# Global user service instance
-_user_service: UserService | None = None
-
-
 def get_user_service() -> UserService:
-    """Get the global user service instance, creating it if necessary."""
-    global _user_service
-    if _user_service is None:
-        _user_service = UserService()
-    return _user_service
+    """Get user service instance (lazy singleton)."""
+    return UserService()

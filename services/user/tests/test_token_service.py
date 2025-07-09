@@ -7,7 +7,7 @@ refresh operations, user status tracking, and error handling.
 
 import asyncio
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
 
@@ -67,8 +67,11 @@ class TestTokenService(BaseUserManagementTest):
                 return_value=self.mock_integration,
             ),
             patch.object(self.token_service, "_store_token_record") as mock_store,
-            patch("services.user.services.token_service.audit_logger.log_user_action"),
+            patch("services.user.services.token_service.get_audit_logger") as mock_get_logger,
         ):
+            mock_logger = MagicMock()
+            mock_logger.log_user_action = AsyncMock()
+            mock_get_logger.return_value = mock_logger
 
             await self.token_service.store_tokens(
                 user_id="test_user_123",
@@ -79,6 +82,7 @@ class TestTokenService(BaseUserManagementTest):
 
             # Should be called twice (access and refresh tokens)
             assert mock_store.call_count == 2
+            assert mock_logger.log_user_action.call_count == 1
 
     @pytest.mark.asyncio
     async def test_has_required_scopes_success(self):

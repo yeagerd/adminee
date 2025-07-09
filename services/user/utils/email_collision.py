@@ -8,7 +8,6 @@ to handle provider-specific email formatting rules (Gmail dots, plus addressing,
 import logging
 from typing import Any, Dict, Optional
 
-from email_normalize import normalize
 from sqlalchemy import select
 
 from services.user.database import get_async_session
@@ -20,70 +19,43 @@ logger = logging.getLogger(__name__)
 class EmailCollisionDetector:
     """Detect and handle email collisions during user registration."""
 
-    def __init__(self):
-        """Initialize the email collision detector."""
-        pass
-
     def normalize_email(self, email: str) -> str:
         """
-        Normalize an email address using provider-specific rules.
-
-        Args:
-            email: Email address to normalize
-
-        Returns:
-            str: Normalized email address
+        Normalize an email address using provider-specific rules (sync).
+        For async contexts, use normalize_email_async instead.
         """
         if not email:
             return email
-
         try:
-            # Use the email-normalize library (synchronous)
+            from email_normalize import normalize
+
             result = normalize(email)
             return result.normalized_address
         except Exception as e:
-            # Fallback to basic normalization if email-normalize fails
             logger.warning(f"Failed to normalize email {email}: {e}")
             return email.strip().lower()
 
     async def normalize_email_async(self, email: str) -> str:
         """
-        Async wrapper for email normalization.
-
-        Args:
-            email: Email address to normalize
-
-        Returns:
-            str: Normalized email address
+        Async email normalization using the Normalizer class.
         """
         if not email:
             return email
-
         try:
-            # Use the email-normalize library (synchronous)
-            # We call it synchronously to avoid event loop issues
-            result = normalize(email)
+            from email_normalize import Normalizer
+
+            normalizer = Normalizer()
+            result = await normalizer.normalize(email)
             return result.normalized_address
         except Exception as e:
-            # Fallback to basic normalization if email-normalize fails
             logger.warning(f"Failed to normalize email {email}: {e}")
             return email.strip().lower()
 
     async def check_collision(self, email: str) -> Optional[User]:
-        """
-        Check if normalized email already exists.
-
-        Args:
-            email: Email address to check for collision
-
-        Returns:
-            Existing user if collision found, None otherwise
-        """
         normalized_email = await self.normalize_email_async(email)
         logger.debug(
             f"COLLISION: Checking for user with normalized_email={normalized_email}"
         )
-
         async_session = get_async_session()
         async with async_session() as session:
             result = await session.execute(
@@ -103,15 +75,6 @@ class EmailCollisionDetector:
             return user
 
     async def get_collision_details(self, email: str) -> dict:
-        """
-        Get detailed information about email collision status.
-
-        Args:
-            email: Email address to check
-
-        Returns:
-            dict: Collision details including availability, normalized email, and collision info
-        """
         if not email:
             return {
                 "available": False,
@@ -120,15 +83,12 @@ class EmailCollisionDetector:
                 "reason": "empty_email",
                 "email_info": {},
             }
-
         try:
             normalized_email = await self.normalize_email_async(email)
             logger.debug(
                 f"COLLISION: get_collision_details for email={email}, normalized={normalized_email}"
             )
-
             collision_user = await self.check_collision(normalized_email)
-
             if collision_user:
                 logger.warning(
                     f"COLLISION: Collision detected for normalized_email={normalized_email}, user={collision_user.external_auth_id}"
@@ -173,18 +133,11 @@ class EmailCollisionDetector:
             }
 
     async def get_email_info(self, email: str) -> Dict[str, Any]:
-        """
-        Get comprehensive email information including normalization.
-
-        Args:
-            email: Email address to analyze
-
-        Returns:
-            Dictionary with email information
-        """
         try:
-            # Use synchronous call to avoid event loop issues
-            result = normalize(email)
+            from email_normalize import Normalizer
+
+            normalizer = Normalizer()
+            result = await normalizer.normalize(email)
             return {
                 "original_email": email,
                 "normalized_email": result.normalized_address,
@@ -203,21 +156,9 @@ class EmailCollisionDetector:
             }
 
     def _get_email_provider(self, email: str) -> str:
-        """
-        Extract email provider from email address.
-
-        Args:
-            email: Email address
-
-        Returns:
-            str: Email provider (e.g., 'gmail', 'outlook', etc.)
-        """
         if not email or "@" not in email:
             return "unknown"
-
         domain = email.split("@")[1].lower()
-
-        # Common providers
         if "gmail.com" in domain:
             return "gmail"
         elif "outlook.com" in domain or "hotmail.com" in domain:
@@ -230,5 +171,6 @@ class EmailCollisionDetector:
             return domain
 
 
-# Global instance for easy access
-email_collision_detector = EmailCollisionDetector()
+def get_email_collision_detector() -> EmailCollisionDetector:
+    """Get email collision detector instance (lazy singleton)."""
+    return EmailCollisionDetector()

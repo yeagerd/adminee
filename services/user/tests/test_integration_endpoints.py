@@ -301,9 +301,7 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
         assert "User.Read" in data["scopes"]
         assert data["external_user_info"]["displayName"] == "Test User"
 
-    @patch("services.user.services.audit_service.audit_logger.log_audit_event")
-    def test_complete_oauth_flow_with_error(self, mock_audit):
-        """Test OAuth flow completion with error."""
+    def test_complete_oauth_flow_with_error(self):
         mock_response = OAuthCallbackResponse(
             success=False,
             integration_id=None,

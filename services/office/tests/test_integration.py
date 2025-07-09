@@ -8,10 +8,6 @@ and provider-specific integration features.
 # Set required environment variables before any imports
 import os
 
-os.environ.setdefault("DB_URL_OFFICE", "sqlite:///test.db")
-os.environ.setdefault("API_OFFICE_USER_KEY", "test-api-key")
-
-
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -19,8 +15,14 @@ from fastapi import status
 
 from services.common.test_utils import BaseOfficeServiceIntegrationTest
 from services.office.core.exceptions import ProviderAPIError
-from services.office.core.settings import get_settings
+from services.office.core.settings import get_settings, Settings
 from services.office.core.token_manager import TokenData
+
+settings_patcher = patch(
+    "services.office.core.settings.get_settings",
+    return_value=Settings(db_url_office="sqlite:///test.db", api_office_user_key="test-api-key", REDIS_URL="redis://localhost:6379/1")
+)
+settings_patcher.start()
 
 
 # Helper function to get API key values
@@ -870,3 +872,7 @@ class TestHTTPCallDetection(BaseOfficeServiceIntegrationTest):
             asyncio.run(test_async_httpx())
 
         print("All HTTP call detection tests passed!")
+
+
+def teardown_module(module):
+    settings_patcher.stop()

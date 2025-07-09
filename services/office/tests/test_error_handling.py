@@ -8,10 +8,6 @@ for various failure scenarios in the office service.
 # Set required environment variables before any imports
 import os
 
-os.environ.setdefault("DB_URL_OFFICE", "sqlite:///test.db")
-os.environ.setdefault("API_OFFICE_USER_KEY", "test-api-key")
-
-
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -34,6 +30,13 @@ from services.office.core.exceptions import (
     ValidationError,
 )
 from services.office.models import Provider
+from services.office.core.settings import Settings
+
+settings_patcher = patch(
+    "services.office.core.settings.get_settings",
+    return_value=Settings(db_url_office="sqlite:///test.db", api_office_user_key="test-api-key")
+)
+settings_patcher.start()
 
 
 class TestGlobalExceptionHandlers:
@@ -399,3 +402,7 @@ class TestLoggingIntegration:
         assert client1._session_id != client2._session_id
         assert len(client1._session_id) == 8  # UUID hex[:8]
         assert len(client2._session_id) == 8
+
+
+def teardown_module(module):
+    settings_patcher.stop()

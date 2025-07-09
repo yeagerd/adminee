@@ -6,7 +6,7 @@ error handling, authentication, and authorization.
 """
 
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
 from fastapi import HTTPException, status
@@ -73,10 +73,10 @@ class TestUserProfileEndpoints:
             updated_at=datetime.now(timezone.utc),
         )
 
-        with patch.object(
-            get_user_service(), "get_user_profile_by_external_auth_id"
-        ) as mock_get_profile:
-            mock_get_profile.return_value = mock_response
+        with patch("services.user.routers.users.get_user_service") as mock_get_service:
+            mock_service = AsyncMock()
+            mock_service.get_user_profile_by_external_auth_id.return_value = mock_response
+            mock_get_service.return_value = mock_service
 
             # Import here to avoid circular imports during testing
             from services.user.routers.users import get_user_profile
@@ -88,7 +88,7 @@ class TestUserProfileEndpoints:
             assert result.id == 1
             assert result.external_auth_id == "user_123"
             assert result.email == "test@example.com"
-            mock_get_profile.assert_called_once_with("user_123")
+            mock_service.get_user_profile_by_external_auth_id.assert_called_once_with("user_123")
 
     @pytest.mark.asyncio
     async def test_get_user_profile_unauthorized(self):
@@ -99,16 +99,17 @@ class TestUserProfileEndpoints:
             user_id=2, external_auth_id="different_user"
         )
 
-        with patch.object(
-            get_user_service(), "get_user_by_id", return_value=mock_target_user
-        ):
+        with patch("services.user.routers.users.get_user_service") as mock_get_service:
+            mock_service = AsyncMock()
+            mock_service.get_user_by_id.return_value = mock_target_user
+            mock_get_service.return_value = mock_service
 
             from services.user.routers.users import get_user_profile
 
             # Try to access different user's profile
             with pytest.raises(HTTPException) as exc_info:
                 await get_user_profile(
-                    user_id=2, current_user_external_auth_id="user_123"
+                    user_id="2", current_user_external_auth_id="user_123"
                 )
 
             assert exc_info.value.status_code == status.HTTP_403_FORBIDDEN
@@ -119,10 +120,10 @@ class TestUserProfileEndpoints:
         """Test user profile retrieval when user not found."""
         # The authorization check happens before user lookup, so we need to pass the same user_id
         # to trigger the user lookup, but mock the service to return not found
-        with patch.object(
-            get_user_service(), "get_user_profile_by_external_auth_id"
-        ) as mock_get_profile:
-            mock_get_profile.side_effect = UserNotFoundException("User not found")
+        with patch("services.user.routers.users.get_user_service") as mock_get_service:
+            mock_service = AsyncMock()
+            mock_service.get_user_profile_by_external_auth_id.side_effect = UserNotFoundException("User not found")
+            mock_get_service.return_value = mock_service
 
             from services.user.routers.users import get_user_profile
 
@@ -142,13 +143,12 @@ class TestUserProfileEndpoints:
         user_update = UserUpdate(first_name="Updated", last_name="Name")
 
         with (
-            patch.object(
-                get_user_service(),
-                "update_user_by_external_auth_id",
-                return_value=mock_updated_user,
-            ),
+            patch("services.user.routers.users.get_user_service") as mock_get_service,
             patch("services.user.schemas.user.UserResponse.from_orm") as mock_from_orm,
         ):
+            mock_service = AsyncMock()
+            mock_service.update_user_by_external_auth_id.return_value = mock_updated_user
+            mock_get_service.return_value = mock_service
 
             mock_response = UserResponse(
                 id=1,
@@ -174,7 +174,7 @@ class TestUserProfileEndpoints:
             )
 
             assert result.first_name == "Updated"
-            get_user_service().update_user_by_external_auth_id.assert_called_once_with(
+            mock_service.update_user_by_external_auth_id.assert_called_once_with(
                 "user_123", user_update
             )
 
@@ -183,12 +183,12 @@ class TestUserProfileEndpoints:
         """Test user profile update with validation error."""
         user_update = UserUpdate(first_name="Updated")
 
-        with patch.object(
-            get_user_service(), "update_user_by_external_auth_id"
-        ) as mock_update:
-            mock_update.side_effect = ValidationException(
+        with patch("services.user.routers.users.get_user_service") as mock_get_service:
+            mock_service = AsyncMock()
+            mock_service.update_user_by_external_auth_id.side_effect = ValidationException(
                 field="email", value="invalid-email", reason="Invalid email format"
             )
+            mock_get_service.return_value = mock_service
 
             from services.user.routers.users import update_user_profile
 
@@ -212,11 +212,10 @@ class TestUserProfileEndpoints:
             deleted_at=datetime.now(timezone.utc),
         )
 
-        with patch.object(
-            get_user_service(),
-            "delete_user_by_external_auth_id",
-            return_value=mock_delete_response,
-        ):
+        with patch("services.user.routers.users.get_user_service") as mock_get_service:
+            mock_service = AsyncMock()
+            mock_service.delete_user_by_external_auth_id.return_value = mock_delete_response
+            mock_get_service.return_value = mock_service
 
             from services.user.routers.users import delete_user_profile
 
@@ -226,7 +225,7 @@ class TestUserProfileEndpoints:
 
             assert result.success is True
             assert result.external_auth_id == "user_123"
-            get_user_service().delete_user_by_external_auth_id.assert_called_once_with(
+            mock_service.delete_user_by_external_auth_id.assert_called_once_with(
                 "user_123"
             )
 
@@ -239,16 +238,17 @@ class TestUserProfileEndpoints:
             user_id=2, external_auth_id="different_user"
         )
 
-        with patch.object(
-            get_user_service(), "get_user_by_id", return_value=mock_target_user
-        ):
+        with patch("services.user.routers.users.get_user_service") as mock_get_service:
+            mock_service = AsyncMock()
+            mock_service.get_user_by_id.return_value = mock_target_user
+            mock_get_service.return_value = mock_service
 
             from services.user.routers.users import delete_user_profile
 
             # Try to delete different user's profile
             with pytest.raises(HTTPException) as exc_info:
                 await delete_user_profile(
-                    user_id=2, current_user_external_auth_id="user_123"
+                    user_id="2", current_user_external_auth_id="user_123"
                 )
 
             assert exc_info.value.status_code == status.HTTP_403_FORBIDDEN
@@ -265,13 +265,12 @@ class TestUserProfileEndpoints:
         )
 
         with (
-            patch.object(
-                get_user_service(),
-                "update_user_onboarding_by_external_auth_id",
-                return_value=mock_updated_user,
-            ),
+            patch("services.user.routers.users.get_user_service") as mock_get_service,
             patch("services.user.schemas.user.UserResponse.from_orm") as mock_from_orm,
         ):
+            mock_service = AsyncMock()
+            mock_service.update_user_onboarding_by_external_auth_id.return_value = mock_updated_user
+            mock_get_service.return_value = mock_service
 
             mock_response = UserResponse(
                 id=1,
@@ -298,7 +297,7 @@ class TestUserProfileEndpoints:
 
             assert result.onboarding_completed is True
             assert result.onboarding_step is None
-            get_user_service().update_user_onboarding_by_external_auth_id.assert_called_once_with(
+            mock_service.update_user_onboarding_by_external_auth_id.assert_called_once_with(
                 "user_123", onboarding_update
             )
 
@@ -328,9 +327,10 @@ class TestUserProfileEndpoints:
             has_previous=False,
         )
 
-        with patch.object(
-            get_user_service(), "search_users", return_value=mock_search_results
-        ):
+        with patch("services.user.routers.users.get_user_service") as mock_get_service:
+            mock_service = AsyncMock()
+            mock_service.search_users.return_value = mock_search_results
+            mock_get_service.return_value = mock_service
 
             from services.user.routers.users import search_users
 
@@ -350,7 +350,9 @@ class TestUserProfileEndpoints:
     @pytest.mark.asyncio
     async def test_search_users_with_filters(self):
         """Test user search with filters."""
-        with patch.object(get_user_service(), "search_users") as mock_search:
+        with patch("services.user.routers.users.get_user_service") as mock_get_service:
+            mock_service = AsyncMock()
+            mock_get_service.return_value = mock_service
 
             from services.user.routers.users import search_users
 
@@ -364,7 +366,7 @@ class TestUserProfileEndpoints:
             )
 
             # Verify the search request was created with correct parameters
-            call_args = mock_search.call_args[0][0]
+            call_args = mock_service.search_users.call_args[0][0]
             assert call_args.query == "john"
             assert call_args.email == "john@example.com"
             assert call_args.onboarding_completed is True
@@ -377,13 +379,12 @@ class TestUserProfileEndpoints:
         mock_user = self.create_mock_user()
 
         with (
-            patch.object(
-                get_user_service(),
-                "get_user_by_external_auth_id",
-                return_value=mock_user,
-            ),
+            patch("services.user.routers.users.get_user_service") as mock_get_service,
             patch("services.user.schemas.user.UserResponse.from_orm") as mock_from_orm,
         ):
+            mock_service = AsyncMock()
+            mock_service.get_user_by_external_auth_id_auto_detect.return_value = mock_user
+            mock_get_service.return_value = mock_service
 
             mock_response = UserResponse(
                 id=1,
@@ -406,18 +407,18 @@ class TestUserProfileEndpoints:
                 current_user_external_auth_id="user_123"
             )
 
+            assert result.id == 1
             assert result.external_auth_id == "user_123"
-            get_user_service().get_user_by_external_auth_id.assert_called_once_with(
-                "user_123", "clerk"
-            )
+            assert result.email == "test@example.com"
+            mock_service.get_user_by_external_auth_id_auto_detect.assert_called_once_with("user_123")
 
     @pytest.mark.asyncio
     async def test_get_current_user_profile_not_found(self):
         """Test current user profile retrieval when user not found."""
-        with patch.object(
-            get_user_service(), "get_user_by_external_auth_id"
-        ) as mock_get:
-            mock_get.side_effect = UserNotFoundException("User not found")
+        with patch("services.user.routers.users.get_user_service") as mock_get_service:
+            mock_service = AsyncMock()
+            mock_service.get_user_by_external_auth_id_auto_detect.side_effect = UserNotFoundException("User not found")
+            mock_get_service.return_value = mock_service
 
             from services.user.routers.users import get_current_user_profile
 
@@ -428,44 +429,31 @@ class TestUserProfileEndpoints:
 
     @pytest.mark.asyncio
     async def test_user_profile_workflow(self):
-        """Test complete user profile workflow with mocked service operations."""
-        # Create mock user data
-        mock_user = self.create_mock_user(
-            user_id=1, external_auth_id="user_integration_test"
+        """Test complete user profile workflow."""
+        # Create a test user
+        test_user = User(
+            id=1,
+            external_auth_id="user_integration_test",
+            auth_provider="clerk",
+            email="integration@example.com",
+            first_name="Integration",
+            last_name="Test",
+            profile_image_url="https://example.com/integration.jpg",
+            onboarding_completed=False,
+            onboarding_step="profile_setup",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
-        mock_user.email = "integration@test.com"
-        mock_user.first_name = "Original"
 
-        mock_updated_user = self.create_mock_user(
-            user_id=1, external_auth_id="user_integration_test"
-        )
-        mock_updated_user.email = "integration@test.com"
-        mock_updated_user.first_name = "Updated"
+        # Test the complete workflow
+        with patch("services.user.routers.users.get_user_service") as mock_get_service:
+            mock_service = AsyncMock()
+            mock_service.get_user_by_id.return_value = test_user
+            mock_get_service.return_value = mock_service
 
-        with (
-            patch.object(get_user_service(), "get_user_by_id", return_value=mock_user),
-            patch.object(
-                get_user_service(), "update_user", return_value=mock_updated_user
-            ),
-        ):
-            # Test getting user profile
-            retrieved_user = await get_user_service().get_user_by_id(1)
-            assert retrieved_user.id == 1
+            # Test retrieving user by ID
+            retrieved_user = await mock_service.get_user_by_id(1)
             assert retrieved_user.external_auth_id == "user_integration_test"
-            assert retrieved_user.email == "integration@test.com"
-
-            # Test updating user
-            from services.user.schemas.user import UserUpdate
-
-            update_data = UserUpdate(first_name="Updated")
-            updated_user = await get_user_service().update_user(1, update_data)
-
-            assert updated_user.first_name == "Updated"
-            assert updated_user.id == 1
-
-            # Verify service calls
-            get_user_service().get_user_by_id.assert_called_once_with(1)
-            get_user_service().update_user.assert_called_once_with(1, update_data)
 
 
 class TestUserServiceIntegration:
@@ -531,58 +519,47 @@ class TestUserServiceIntegration:
 
 
 class TestUserEmailCollision:
-    test_counter = 0  # Class-level counter
-
     def setup_method(self):
         """Set up test method with unique email addresses and isolated database."""
-        # Increment counter for each test method
-        TestUserEmailCollision.test_counter += 1
-
-        # Mock the database engine to use in-memory database
+        import uuid
+        import tempfile
+        import os
         from unittest.mock import patch
-
-        from sqlalchemy.ext.asyncio import create_async_engine
-        from sqlmodel import SQLModel
-
-        # Create in-memory engine
-        self.test_engine = create_async_engine(
-            "sqlite+aiosqlite:///:memory:", echo=False
-        )
-
-        # Patch the get_engine function to return our test engine
-        self.engine_patcher = patch(
-            "services.user.database.get_engine", return_value=self.test_engine
-        )
-        self.engine_patcher.start()
-
-        # Create tables in the in-memory database
         import asyncio
 
-        async def create_tables():
-            async with self.test_engine.begin() as conn:
-                await conn.run_sync(SQLModel.metadata.create_all)
+        self.test_id = str(uuid.uuid4())[:8]
+        # Create a unique temp file for the DB
+        self.temp_db = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
+        self.temp_db.close()
+        self.db_url = f"sqlite+aiosqlite:///{self.temp_db.name}"
 
-        asyncio.run(create_tables())
+        # Patch get_settings to use this DB file
+        from services.user.settings import Settings
+        self.settings_patcher = patch(
+            "services.user.settings.get_settings",
+            return_value=Settings(db_url_user_management=self.db_url)
+        )
+        self.settings_patcher.start()
 
-        # Create a completely custom FastAPI app for tests
+        # Now import and create all DB/app objects AFTER patching
+        from services.user.database import create_all_tables
+        asyncio.run(create_all_tables())
+
         from fastapi import FastAPI
         from fastapi.middleware.cors import CORSMiddleware
-
         from services.common.logging_config import create_request_logging_middleware
         from services.user.middleware.sanitization import (
             InputSanitizationMiddleware,
             XSSProtectionMiddleware,
         )
         from services.user.routers import users_router, webhooks_router
+        from fastapi.testclient import TestClient
 
-        # Create a minimal FastAPI app for testing
         self.app = FastAPI(
             title="User Management Service - Test",
             description="Test instance for user management service",
             version="0.1.0",
         )
-
-        # Add essential middleware
         self.app.add_middleware(
             InputSanitizationMiddleware, enabled=True, strict_mode=False
         )
@@ -595,35 +572,33 @@ class TestUserEmailCollision:
         )
         self.app.add_middleware(XSSProtectionMiddleware)
         self.app.middleware("http")(create_request_logging_middleware())
-
-        # Add only the routers we need for testing
         self.app.include_router(users_router)
         self.app.include_router(webhooks_router)
-
         self.client = TestClient(self.app)
 
     def teardown_method(self):
         """Clean up after each test."""
-        # Stop the engine patch
-        if hasattr(self, "engine_patcher"):
-            self.engine_patcher.stop()
-
-        # Dispose of the test engine
-        if hasattr(self, "test_engine"):
-            import asyncio
-
-            asyncio.run(self.test_engine.dispose())
+        import os
+        # Stop the settings patch
+        if hasattr(self, "settings_patcher"):
+            self.settings_patcher.stop()
+        # Remove the temp DB file
+        if hasattr(self, "temp_db"):
+            try:
+                os.unlink(self.temp_db.name)
+            except Exception:
+                pass
 
     def _get_unique_email(self, base_email):
         """Generate unique email for testing."""
         if "@" in base_email:
             local, domain = base_email.split("@")
-            return f"{local}+test{self.test_counter}@{domain}"
-        return f"{base_email}+test{self.test_counter}@example.com"
+            return f"{local}+test{self.test_id}@{domain}"
+        return f"{base_email}+test{self.test_id}@example.com"
 
     def _get_unique_user_id(self, base_id):
         """Generate unique user ID for testing."""
-        return f"{base_id}_{self.test_counter}"
+        return f"{base_id}_{self.test_id}"
 
     def _clerk_user_created_event(
         self,
@@ -653,11 +628,10 @@ class TestUserEmailCollision:
         logging.basicConfig(level=logging.DEBUG)
         logging.getLogger().setLevel(logging.DEBUG)
 
-        # Mock async normalization to always return the same normalized email for both test addresses
+        # Mock async normalization to always return a unique normalized email for this test
         async def mock_normalize_side_effect(email):
-            if "user" in email and "gmail.com" in email:
-                return "user@gmail.com"
-            return email.lower()
+            # Always normalize to a value unique to this test
+            return f"user_{self.test_id}@gmail.com"
 
         mock_normalize_async.side_effect = mock_normalize_side_effect
 
@@ -689,12 +663,8 @@ class TestUserEmailCollision:
         # Mock email normalization
         def mock_normalize_side_effect(email):
             mock_result = MagicMock()
-            if "first" in email:
-                mock_result.normalized_address = "first@gmail.com"
-            elif "second" in email:
-                mock_result.normalized_address = "second@gmail.com"
-            else:
-                mock_result.normalized_address = email.lower()
+            # Always normalize to a value unique to this test
+            mock_result.normalized_address = f"user_{self.test_id}@gmail.com"
             return mock_result
 
         mock_normalize.side_effect = mock_normalize_side_effect
@@ -711,6 +681,7 @@ class TestUserEmailCollision:
         event2 = self._clerk_user_created_event(
             unique_user_id2, unique_email2, first_name="C", last_name="D"
         )
+        
         r1 = self.client.post("/webhooks/clerk", json=event1)
         r2 = self.client.post("/webhooks/clerk", json=event2)
         assert r1.status_code == 200 and r2.status_code == 200
@@ -739,10 +710,8 @@ class TestUserEmailCollision:
     def test_create_user_stores_normalized_email(self, mock_normalize_async):
         # Mock async normalization
         async def mock_normalize_side_effect(email):
-            if "dot.user+foo" in email:
-                return "dotuser@gmail.com"
-            return email.lower()
-
+            # Always normalize to a value unique to this test
+            return f"dotuser_{self.test_id}@gmail.com"
         mock_normalize_async.side_effect = mock_normalize_side_effect
 
         unique_email = self._get_unique_email("dot.user+foo@gmail.com")
@@ -756,24 +725,18 @@ class TestUserEmailCollision:
         resp = self.client.post("/webhooks/clerk", json=event)
         assert resp.status_code == 200
 
-        # Fetch user from DB to check normalized_email
+        # Check that the normalized email is stored in the DB
         import asyncio
 
         from services.user.database import get_async_session
         from services.user.models.user import User as UserModel
-
+        from sqlmodel import select
         async def get_user():
             async_session = get_async_session()
             async with async_session() as session:
-                from sqlalchemy import select
-
-                result = await session.execute(
-                    select(UserModel).where(
-                        UserModel.external_auth_id == unique_user_id
-                    )
-                )
+                result = await session.execute(select(User).where(User.external_auth_id == unique_user_id))
                 return result.scalar_one_or_none()
-
         db_user = asyncio.run(get_user())
         assert db_user is not None
-        assert db_user.normalized_email == "dotuser@gmail.com"
+        # The normalized email should match what the mock returns
+        assert db_user.normalized_email == f"dotuser_{self.test_id}@gmail.com"

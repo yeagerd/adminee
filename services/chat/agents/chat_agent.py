@@ -324,7 +324,13 @@ class ChatAgent:
             response_obj = await self.llm.achat(
                 [ChatMessage(role=MessageRole.USER, content=user_input)]
             )
-            response = response_obj.content or ""
+            # Handle both ChatMessage and ChatResponse objects
+            if hasattr(response_obj, "message"):
+                # ChatResponse object
+                response = response_obj.message.content or ""
+            else:
+                # ChatMessage object (fallback)
+                response = response_obj.content or ""
             await history_manager.append_message(self.thread_id, "assistant", response)
             logger.info(f"FakeLLM response: {response}")
             return response

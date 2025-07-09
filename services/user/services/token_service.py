@@ -30,7 +30,7 @@ from services.user.schemas.integration import (
     TokenRevocationResponse,
 )
 from services.user.security.encryption import TokenEncryption
-from services.user.services.audit_service import audit_logger
+from services.user.services.audit_service import get_audit_logger
 from services.user.services.integration_service import (
     get_integration_service,
 )
@@ -116,7 +116,7 @@ class TokenService:
                     scopes=scopes,
                 )
 
-            await audit_logger.log_user_action(
+            await get_audit_logger().log_user_action(
                 user_id=user_id,
                 action="tokens_stored",
                 resource_type="token",
@@ -276,7 +276,7 @@ class TokenService:
                     error=f"Insufficient scopes. Required: {required_scopes}, Granted: {granted_scopes}",
                 )
 
-            await audit_logger.log_user_action(
+            await get_audit_logger().log_user_action(
                 user_id=user_id,
                 action="token_retrieved",
                 resource_type="token",
@@ -638,7 +638,7 @@ class TokenService:
             errors = [str(r.get("error")) for r in revocation_results if r.get("error")]
 
             # Log audit event
-            await audit_logger.log_user_action(
+            await get_audit_logger().log_user_action(
                 user_id=user_id,
                 action="tokens_revoked",
                 resource_type="token",
@@ -741,7 +741,7 @@ class TokenService:
                     )
                     revocation_responses.append(response)
 
-            await audit_logger.log_user_action(
+            await get_audit_logger().log_user_action(
                 user_id=user_id,
                 action="all_tokens_revoked",
                 resource_type="token",
@@ -851,7 +851,7 @@ class TokenService:
                         error=str(e),
                     )
 
-            await audit_logger.log_system_action(
+            await get_audit_logger().log_system_action(
                 action="emergency_token_revocation",
                 resource_type="token",
                 details={
@@ -983,13 +983,6 @@ class TokenService:
             }
 
 
-# Global token service instance
-_token_service: TokenService | None = None
-
-
 def get_token_service() -> TokenService:
-    """Get the global token service instance, creating it if necessary."""
-    global _token_service
-    if _token_service is None:
-        _token_service = TokenService()
-    return _token_service
+    """Get token service instance (lazy singleton)."""
+    return TokenService()

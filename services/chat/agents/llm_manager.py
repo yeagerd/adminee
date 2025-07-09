@@ -8,6 +8,7 @@ import os
 from typing import Any, Dict, List, Union
 
 from litellm.utils import get_llm_provider
+from llama_index.core.base.llms.types import ChatResponse
 from llama_index.core.llms import ChatMessage, MessageRole
 from llama_index.core.llms.function_calling import FunctionCallingLLM
 from llama_index.llms.litellm import LiteLLM as LlamaLiteLLM
@@ -193,11 +194,14 @@ class FakeLLM(FunctionCallingLLM):
         """Fake chat with tools method."""
         return self._chat(*args, **kwargs)
 
-    async def achat_with_tools(self, *args, **kwargs):
+    async def achat_with_tools(self, messages=None, **kwargs):
         """Fake async chat with tools method."""
-        return await self._chat(*args, **kwargs)
+        # Extract messages from kwargs if not provided directly
+        if messages is None:
+            messages = kwargs.get("messages", [])
+        return await self.achat(messages, **kwargs)
 
-    def chat(self, messages: List[Union[ChatMessage, Dict]], **kwargs) -> ChatMessage:
+    def chat(self, messages: List[Union[ChatMessage, Dict]], **kwargs) -> ChatResponse:
         """Fake chat method that just echoes back the last user message."""
         # Convert dict messages to ChatMessage if needed
         processed_messages = []
@@ -222,12 +226,22 @@ class FakeLLM(FunctionCallingLLM):
             user_messages[-1].content if user_messages else "No user message found"
         )
 
-        return ChatMessage(
+        response_message = ChatMessage(
             role=MessageRole.ASSISTANT,
             content=f"[FAKE LLM RESPONSE] You said: {last_user_message}",
         )
 
-    async def achat(self, messages: List[ChatMessage], **kwargs) -> ChatMessage:
+        # Return ChatResponse for compatibility with agent system
+        from llama_index.core.base.llms.types import ChatResponse
+
+        return ChatResponse(
+            message=response_message,
+            delta=response_message.content,
+            raw={"model": "fake-model", "usage": {"total_tokens": 0}},
+            logprobs=None,
+        )
+
+    async def achat(self, messages: List[ChatMessage], **kwargs) -> ChatResponse:
         """Async fake chat method that just echoes back the last user message."""
         return self.chat(messages, **kwargs)
 
@@ -265,20 +279,12 @@ class FakeLLM(FunctionCallingLLM):
         messages = chat_history or kwargs.get("messages", [])
 
         # For fake LLM, create a mock response and yield it
-        from llama_index.core.base.llms.types import ChatResponse
 
         # Create a fake response
         response_message = await self.achat(messages, **kwargs)
 
-        # Create ChatResponse object that mimics real LLM behavior
-        response = ChatResponse(
-            message=response_message,
-            delta=response_message.content,
-            raw={"model": "fake-model", "usage": {"total_tokens": 0}},
-            logprobs=None,
-        )
-
-        yield response
+        # response_message is already a ChatResponse, so we can yield it directly
+        yield response_message
 
 
 class _LLMManager:

@@ -11,11 +11,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 import pytest_asyncio
 
+from services.user.settings import Settings
 from services.user.database import create_all_tables, get_async_session
 from services.user.models.user import User
 from services.user.utils.email_collision import (
     EmailCollisionDetector,
-    email_collision_detector,
+    get_email_collision_detector,
 )
 
 # ------------------- Normalization Unit Tests (No DB) -------------------
@@ -37,7 +38,7 @@ class TestEmailNormalization:
         ]
         for input_email, expected in test_cases:
             with patch(
-                "services.user.utils.email_collision.normalize"
+                "email_normalize.normalize"
             ) as mock_normalize:
                 mock_result = MagicMock()
                 mock_result.normalized_address = expected
@@ -55,7 +56,7 @@ class TestEmailNormalization:
         ]
         for input_email, expected in test_cases:
             with patch(
-                "services.user.utils.email_collision.normalize"
+                "email_normalize.normalize"
             ) as mock_normalize:
                 mock_result = MagicMock()
                 mock_result.normalized_address = expected
@@ -73,7 +74,7 @@ class TestEmailNormalization:
         ]
         for input_email, expected in test_cases:
             with patch(
-                "services.user.utils.email_collision.normalize"
+                "email_normalize.normalize"
             ) as mock_normalize:
                 mock_result = MagicMock()
                 mock_result.normalized_address = expected
@@ -90,7 +91,7 @@ class TestEmailNormalization:
         ]
         for input_email, expected in test_cases:
             with patch(
-                "services.user.utils.email_collision.normalize"
+                "email_normalize.normalize"
             ) as mock_normalize:
                 mock_result = MagicMock()
                 mock_result.normalized_address = expected
@@ -105,7 +106,7 @@ class TestEmailNormalization:
 
     @pytest.mark.asyncio
     async def test_normalize_email_fallback(self):
-        with patch("services.user.utils.email_collision.normalize") as mock_normalize:
+        with patch("email_normalize.normalize") as mock_normalize:
             mock_normalize.side_effect = Exception("Normalization failed")
             result = self.detector.normalize_email("User@Gmail.com")
             assert result == "user@gmail.com"
@@ -115,17 +116,24 @@ class TestEmailNormalization:
 
 
 @pytest_asyncio.fixture(scope="function")
-async def db_setup(monkeypatch):
+async def db_setup():
     db_fd, db_path = tempfile.mkstemp(suffix=".db")
-    os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite+aiosqlite:///{db_path}"
+    db_url = f"sqlite+aiosqlite:///{db_path}"
+    settings_patcher = patch(
+        "services.user.settings.get_settings",
+        return_value=Settings(db_url_user_management=db_url)
+    )
+    settings_patcher.start()
     await create_all_tables()
     yield
+    settings_patcher.stop()
     os.close(db_fd)
-    os.unlink(db_path)
+    if os.path.exists(db_path):
+        os.unlink(db_path)
 
 
 @pytest_asyncio.fixture(scope="function")
-def detector_fixture():
+async def detector_fixture():
     return EmailCollisionDetector()
 
 
@@ -198,7 +206,7 @@ class TestEmailCollisionDB:
     @pytest.mark.asyncio
     async def test_get_email_info_valid_email(self, db_setup, detector_fixture):
         detector = detector_fixture
-        with patch("services.user.utils.email_collision.normalize") as mock_normalize:
+        with patch("email_normalize.Normalizer.normalize") as mock_normalize:
             mock_result = MagicMock()
             mock_result.normalized_address = "user@gmail.com"
             mock_result.mailbox_provider = "Google"
@@ -213,7 +221,7 @@ class TestEmailCollisionDB:
     @pytest.mark.asyncio
     async def test_get_email_info_invalid_email(self, db_setup, detector_fixture):
         detector = detector_fixture
-        with patch("services.user.utils.email_collision.normalize") as mock_normalize:
+        with patch("email_normalize.Normalizer.normalize") as mock_normalize:
             mock_normalize.side_effect = Exception("Invalid email")
             result = await detector.get_email_info("invalid-email")
             assert result["original_email"] == "invalid-email"
@@ -228,16 +236,16 @@ class TestEmailCollisionDB:
 
 class TestEmailCollisionDetectorGlobal:
     def test_global_instance_exists(self):
-        assert email_collision_detector is not None
-        assert isinstance(email_collision_detector, EmailCollisionDetector)
+        assert get_email_collision_detector() is not None
+        assert isinstance(get_email_collision_detector(), EmailCollisionDetector)
 
     @pytest.mark.asyncio
     async def test_global_instance_functionality(self):
-        with patch("services.user.utils.email_collision.normalize") as mock_normalize:
+        with patch("email_normalize.Normalizer.normalize") as mock_normalize:
             mock_result = MagicMock()
             mock_result.normalized_address = "test@example.com"
             mock_normalize.return_value = mock_result
-            result = await email_collision_detector.normalize_email_async(
+            result = await get_email_collision_detector().normalize_email_async(
                 "test@example.com"
             )
             assert result == "test@example.com"

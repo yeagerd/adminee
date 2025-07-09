@@ -21,27 +21,42 @@ class TestClerkWebhookEndpoint(BaseUserManagementTest):
     """Test cases for Clerk webhook endpoint."""
 
     def setup_method(self):
-        super().setup_method()
+        # Patch get_settings to use a temp file DB for each test function
+        import tempfile
+        import os
+        from unittest.mock import patch
+        from services.user.settings import Settings
+        import asyncio
+        from services.user.database import create_all_tables
 
-        # Force reload of database-related modules to pick up new database path
-        try:
-            modules_to_reload = [
-                "services.user.database",
-                "services.user.settings",
-                "services.user.services.webhook_service",
-            ]
-
-            for module_name in modules_to_reload:
-                if module_name in sys.modules:
-                    importlib.reload(sys.modules[module_name])
-        finally:
-            pass
-
+        self.temp_db = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
+        self.temp_db.close()
+        self.db_url = f"sqlite+aiosqlite:///{self.temp_db.name}"
+        self.settings_patcher = patch(
+            "services.user.settings.get_settings",
+            return_value=Settings(db_url_user_management=self.db_url)
+        )
+        self.settings_patcher.start()
         asyncio.run(create_all_tables())
+        super().setup_method()
         self.client = TestClient(self.app)
         self.sample_user_created_payload = self._get_sample_user_created_payload()
         self.sample_user_updated_payload = self._get_sample_user_updated_payload()
         self.sample_user_deleted_payload = self._get_sample_user_deleted_payload()
+
+    def teardown_method(self):
+        """Clean up after each test."""
+        # Stop the settings patch
+        if hasattr(self, "settings_patcher"):
+            self.settings_patcher.stop()
+        if hasattr(self, "temp_db"):
+            import os
+            try:
+                os.unlink(self.temp_db.name)
+            except Exception:
+                pass
+        # Call parent teardown for other cleanup
+        super().teardown_method()
 
     def _get_sample_user_created_payload(self):
         """Sample Clerk user.created webhook payload."""
@@ -94,16 +109,16 @@ class TestClerkWebhookEndpoint(BaseUserManagementTest):
         }
 
     @patch("services.user.auth.webhook_auth.verify_webhook_signature")
-    @patch("services.user.routers.webhooks.webhook_service")
+    @patch("services.user.routers.webhooks.get_webhook_service")
     def test_clerk_webhook_user_created_success(
-        self, mock_webhook_service, mock_verify
+        self, mock_get_webhook_service, mock_verify
     ):
         """Test successful user.created webhook processing."""
         # Mock signature verification to pass
         mock_verify.return_value = None
 
         # Mock successful user creation
-        mock_webhook_service.process_user_created = AsyncMock(
+        mock_get_webhook_service.return_value.process_user_created = AsyncMock(
             return_value={
                 "action": "user_created",
                 "user_id": "user_2abc123def456",
@@ -127,21 +142,21 @@ class TestClerkWebhookEndpoint(BaseUserManagementTest):
         assert data["event_id"] == "user_2abc123def456"
 
         # Verify service was called with correct data
-        mock_webhook_service.process_user_created.assert_called_once_with(
+        mock_get_webhook_service.return_value.process_user_created.assert_called_once_with(
             self.sample_user_created_payload["data"]
         )
 
     @patch("services.user.auth.webhook_auth.verify_webhook_signature")
-    @patch("services.user.routers.webhooks.webhook_service")
+    @patch("services.user.routers.webhooks.get_webhook_service")
     def test_clerk_webhook_user_updated_success(
-        self, mock_webhook_service, mock_verify
+        self, mock_get_webhook_service, mock_verify
     ):
         """Test successful user.updated webhook processing."""
         # Mock signature verification to pass
         mock_verify.return_value = None
 
         # Mock successful user update
-        mock_webhook_service.process_user_updated = AsyncMock(
+        mock_get_webhook_service.return_value.process_user_updated = AsyncMock(
             return_value={
                 "action": "user_updated",
                 "user_id": "user_2abc123def456",
@@ -165,21 +180,21 @@ class TestClerkWebhookEndpoint(BaseUserManagementTest):
         assert data["event_id"] == "user_2abc123def456"
 
         # Verify service was called
-        mock_webhook_service.process_user_updated.assert_called_once_with(
+        mock_get_webhook_service.return_value.process_user_updated.assert_called_once_with(
             self.sample_user_updated_payload["data"]
         )
 
     @patch("services.user.auth.webhook_auth.verify_webhook_signature")
-    @patch("services.user.routers.webhooks.webhook_service")
+    @patch("services.user.routers.webhooks.get_webhook_service")
     def test_clerk_webhook_user_deleted_success(
-        self, mock_webhook_service, mock_verify
+        self, mock_get_webhook_service, mock_verify
     ):
         """Test successful user.deleted webhook processing."""
         # Mock signature verification to pass
         mock_verify.return_value = None
 
         # Mock successful user deletion
-        mock_webhook_service.process_user_deleted = AsyncMock(
+        mock_get_webhook_service.return_value.process_user_deleted = AsyncMock(
             return_value={
                 "action": "user_deleted",
                 "user_id": "user_2abc123def456",
@@ -203,7 +218,7 @@ class TestClerkWebhookEndpoint(BaseUserManagementTest):
         assert data["event_id"] == "user_2abc123def456"
 
         # Verify service was called
-        mock_webhook_service.process_user_deleted.assert_called_once_with(
+        mock_get_webhook_service.return_value.process_user_deleted.assert_called_once_with(
             self.sample_user_deleted_payload["data"]
         )
 
@@ -337,14 +352,14 @@ class TestClerkWebhookEndpoint(BaseUserManagementTest):
         assert "unsupported" in data.get("message", "").lower()
 
     @patch("services.user.auth.webhook_auth.verify_webhook_signature")
-    @patch("services.user.routers.webhooks.webhook_service")
-    def test_clerk_webhook_processing_error(self, mock_webhook_service, mock_verify):
+    @patch("services.user.routers.webhooks.get_webhook_service")
+    def test_clerk_webhook_processing_error(self, mock_get_webhook_service, mock_verify):
         """Test webhook processing error handling."""
         # Mock signature verification to pass
         mock_verify.return_value = None
 
         # Mock service to raise processing error
-        mock_webhook_service.process_user_created = AsyncMock(
+        mock_get_webhook_service.return_value.process_user_created = AsyncMock(
             side_effect=WebhookProcessingError("Processing failed")
         )
 
@@ -363,14 +378,14 @@ class TestClerkWebhookEndpoint(BaseUserManagementTest):
         assert "detail" in data  # FastAPI error format
 
     @patch("services.user.auth.webhook_auth.verify_webhook_signature")
-    @patch("services.user.routers.webhooks.webhook_service")
-    def test_clerk_webhook_database_error(self, mock_webhook_service, mock_verify):
+    @patch("services.user.routers.webhooks.get_webhook_service")
+    def test_clerk_webhook_database_error(self, mock_get_webhook_service, mock_verify):
         """Test webhook database error handling."""
         # Mock signature verification to pass
         mock_verify.return_value = None
 
         # Mock service to raise database error
-        mock_webhook_service.process_user_created = AsyncMock(
+        mock_get_webhook_service.return_value.process_user_created = AsyncMock(
             side_effect=DatabaseError("Database connection failed")
         )
 
@@ -389,14 +404,14 @@ class TestClerkWebhookEndpoint(BaseUserManagementTest):
         assert "detail" in data  # FastAPI error format
 
     @patch("services.user.auth.webhook_auth.verify_webhook_signature")
-    @patch("services.user.routers.webhooks.webhook_service")
-    def test_clerk_webhook_unexpected_error(self, mock_webhook_service, mock_verify):
+    @patch("services.user.routers.webhooks.get_webhook_service")
+    def test_clerk_webhook_unexpected_error(self, mock_get_webhook_service, mock_verify):
         """Test webhook unexpected error handling."""
         # Mock signature verification to pass
         mock_verify.return_value = None
 
         # Mock service to raise unexpected error
-        mock_webhook_service.process_user_created = AsyncMock(
+        mock_get_webhook_service.return_value.process_user_created = AsyncMock(
             side_effect=Exception("Unexpected error")
         )
 
@@ -455,11 +470,11 @@ class TestClerkTestWebhookEndpoint(BaseUserManagementTest):
             "timestamp": 1234567890,
         }
 
-    @patch("services.user.routers.webhooks.webhook_service")
-    def test_test_webhook_user_created_success(self, mock_webhook_service):
+    @patch("services.user.routers.webhooks.get_webhook_service")
+    def test_test_webhook_user_created_success(self, mock_get_webhook_service):
         """Test successful test webhook processing."""
         # Mock the entire webhook_service module properly
-        mock_webhook_service.process_clerk_webhook = AsyncMock(
+        mock_get_webhook_service.return_value.process_clerk_webhook = AsyncMock(
             return_value={
                 "action": "user_created",
                 "user_id": "user_2abc123def456",
@@ -478,11 +493,11 @@ class TestClerkTestWebhookEndpoint(BaseUserManagementTest):
         assert data["success"] is True
         assert data["event_id"] == "user_2abc123def456"
 
-    @patch("services.user.routers.webhooks.webhook_service")
-    def test_test_webhook_processing_error(self, mock_webhook_service):
+    @patch("services.user.routers.webhooks.get_webhook_service")
+    def test_test_webhook_processing_error(self, mock_get_webhook_service):
         """Test test webhook processing error."""
         # Mock service to raise processing error
-        mock_webhook_service.process_clerk_webhook = AsyncMock(
+        mock_get_webhook_service.return_value.process_clerk_webhook = AsyncMock(
             side_effect=WebhookProcessingError("Test processing failed")
         )
 

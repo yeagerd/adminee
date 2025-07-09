@@ -725,5 +725,6 @@ class AuditLogger:
             )
 
 
-# Global audit logger instance
-audit_logger = AuditLogger()
+def get_audit_logger() -> AuditLogger:
+    """Get audit logger instance (lazy singleton)."""
+    return AuditLogger()

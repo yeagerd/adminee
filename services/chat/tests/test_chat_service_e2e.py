@@ -22,13 +22,22 @@ def test_env():
     """Set up test environment variables."""
     env_vars = {
         "DB_URL_CHAT": "sqlite+aiosqlite:///file::memory:?cache=shared",
-        "OPENAI_API_KEY": "test-key-for-multi-agent",
-        "LLM_MODEL": "gpt-4.1-nano",
-        "LLM_PROVIDER": "openai",
+        "OPENAI_API_KEY": "",  # Force FakeLLM by removing API key
+        "LLM_MODEL": "fake-model",
+        "LLM_PROVIDER": "fake",
         "API_FRONTEND_CHAT_KEY": TEST_API_KEY,
     }
     with patch.dict("os.environ", env_vars):
         yield env_vars
+
+
+@pytest.fixture(autouse=True)
+def mock_settings():
+    """Mock the settings to use in-memory database."""
+    with patch("services.chat.history_manager.get_settings") as mock_get_settings:
+        mock_settings = mock_get_settings.return_value
+        mock_settings.db_url_chat = "sqlite+aiosqlite:///file::memory:?cache=shared"
+        yield mock_settings
 
 
 @pytest.fixture
