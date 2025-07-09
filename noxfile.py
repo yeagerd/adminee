@@ -6,6 +6,12 @@ nox.options.sessions = [
 nox.options.reuse_existing_virtualenvs = True
 
 @nox.session(venv_backend="none")
+def fix(session):
+    session.run("black", "services/", external=True)
+    session.run("isort", "services/", external=True)
+    session.run("ruff", "check", "--fix", "services/", external=True)
+
+@nox.session(venv_backend="none")
 def format(session):
     session.run("black", "--check", "--diff", "services/", external=True)
     session.run("isort", "--check-only", "--diff", "services/", external=True)
