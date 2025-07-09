@@ -52,12 +52,12 @@ jobs:
       run: |
         uv venv
         uv pip install --system -e .
-        uv pip install tox tox-gh-actions
+        uv pip install nox
 
-    - name: Run tox (format, lint)
+    - name: Run nox (format, lint)
       run:  |
         source .venv/bin/activate
-        tox -e format,lint -p auto --parallel-live
+        nox -s format,lint -p auto --parallel-live
 
   typecheck:
     name: Python Type Checking
@@ -92,13 +92,13 @@ jobs:
       run: |
         uv venv
         uv pip install --system -e .
-        uv pip install tox tox-gh-actions
+        uv pip install nox
         uv pip install pytest-asyncio
 
-    - name: Run tox (typecheck)
+    - name: Run nox (typecheck)
       run: |
         source .venv/bin/activate
-        tox -e typecheck
+        nox -s typecheck
 
   test:
     name: Python Tests
@@ -129,15 +129,12 @@ jobs:
         curl -LsSf https://astral.sh/uv/install.sh | sh
         echo "$HOME/.cargo/bin" >> $GITHUB_PATH
     - name: Install dependencies with UV
-      run: |
-        uv venv
-        uv pip install --system -e .
-        uv pip install tox tox-gh-actions
+      run: ./install.sh
 
-    - name: Run tox (test)
+    - name: Run nox (test)
       run: |
         source .venv/bin/activate
-        tox -e test
+        nox -s test
 
   coverage:
     name: Python Coverage
@@ -168,13 +165,10 @@ jobs:
         curl -LsSf https://astral.sh/uv/install.sh | sh
         echo "$HOME/.cargo/bin" >> $GITHUB_PATH
     - name: Install dependencies with UV
-      run: |
-        uv venv
-        uv pip install --system -e .
-        uv pip install tox tox-gh-actions
+      run: ./install.sh
 
-    - name: Run tox (coverage)
-      run: tox -e cov
+    - name: Run nox (coverage)
+      run: nox -s cov
 
     - name: Upload coverage reports
       uses: codecov/codecov-action@v3
