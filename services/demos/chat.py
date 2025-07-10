@@ -21,8 +21,6 @@ import asyncio
 import logging
 import os
 import sys
-import time
-from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 # Add the services directory to the path
@@ -329,7 +327,7 @@ class ChatServiceClient(ServiceClient):
         """Send a message to the chat service."""
         try:
             response = requests.post(
-                f"{self.base_url}/chat/message",
+                f"{self.base_url}/chat",
                 json={
                     "user_id": user_id,
                     "message": message,
@@ -339,7 +337,11 @@ class ChatServiceClient(ServiceClient):
                 timeout=self.timeout,
             )
             if response.status_code == 200:
-                return response.json().get("response")
+                # The chat API returns a ChatResponse with 'messages' (list of MessageResponse)
+                data = response.json()
+                messages = data.get("messages", [])
+                if messages:
+                    return messages[-1].get("content")
         except Exception as e:
             logger.error(f"Chat service error: {e}")
         return None
@@ -529,48 +531,39 @@ class FullDemo:
             logger.info(f"User {user_id} already exists")
             return True
         else:
-            logger.info(f"User {user_id} not found, creating via webhook")
-            # Create user via webhook simulation
-            webhook_payload = {
-                "type": "user.created",
-                "object": "event",
-                "data": {
-                    "id": user_id,
-                    "email_addresses": [
-                        {
-                            "email_address": email,
-                            "verification": {"status": "verified"},
-                        }
-                    ],
-                    "first_name": "Demo",
-                    "last_name": "User",
-                    "image_url": "https://images.clerk.dev/demo-avatar.png",
-                    "created_at": int(datetime.now(timezone.utc).timestamp() * 1000),
-                    "updated_at": int(datetime.now(timezone.utc).timestamp() * 1000),
-                },
+            logger.info(f"User {user_id} not found, creating via API")
+            # Patch: Use public /users/ endpoint for NextAuth/OAuth flows
+            # TODO: Refactor to detect provider dynamically if needed
+            user_create_payload = {
+                "external_auth_id": user_id,
+                "auth_provider": "nextauth",  # or 'google', 'microsoft' if you want to be more specific
+                "email": email,
+                "first_name": "Demo",
+                "last_name": "User",
+                "profile_image_url": "https://images.clerk.dev/demo-avatar.png",
             }
             try:
                 async with httpx.AsyncClient(timeout=self.timeout) as client:
                     response = await client.post(
-                        f"{self.user_client.base_url}/webhooks/clerk",
-                        json=webhook_payload,
-                        headers={
-                            "Content-Type": "application/json",
-                            "svix-id": "msg_demo_12345",
-                            "svix-timestamp": str(int(time.time())),
-                            "svix-signature": "v1,demo_signature",
-                        },
+                        f"{self.user_client.base_url}/users/",
+                        json=user_create_payload,
+                        headers={"Content-Type": "application/json"},
                     )
                     if response.status_code in [200, 201]:
-                        logger.info(f"Successfully created user {user_id} via webhook")
+                        logger.info(
+                            f"Successfully created user {user_id} via /users/ API"
+                        )
                         return True
+                    elif response.status_code == 409:
+                        logger.error(f"Email collision for {email} (user {user_id})")
+                        return False
                     else:
                         logger.error(
-                            f"Failed to create user via webhook: {response.status_code}"
+                            f"Failed to create user via /users/: {response.status_code} {response.text}"
                         )
                         return False
-            except Exception as webhook_error:
-                logger.error(f"Webhook creation failed: {webhook_error}")
+            except Exception as api_error:
+                logger.error(f"User creation via /users/ API failed: {api_error}")
                 return False
 
     async def setup_oauth_integration(self, provider: str) -> bool:
@@ -590,8 +583,13 @@ class FullDemo:
                 print(f"❌ Failed to start {provider} OAuth flow")
                 return False
 
-            print(f"🔗 Starting {provider} OAuth flow...")
-            print(f"   URL: {auth_url}")
+            print(
+                f"\n🔗 Please visit this URL to authenticate with {provider.capitalize()}:\n   {auth_url}\n"
+            )
+            print("🌐 Open this link in your browser to continue the OAuth flow.")
+            # TODO: Optionally, add a flag to auto-open in the future
+            # if auto_open:
+            #     webbrowser.open(auth_url)
 
             # Start callback server
             callback_server = OAuthCallbackServer()
@@ -848,6 +846,8 @@ class FullDemo:
         if not self.auth_methods.get("nextauth"):
             return "❌ NextAuth test server not available. Start with: python services/demos/nextauth_test_server.py"
 
+        provider = provider.lower()
+        print(f"[DEBUG] NextAuth provider received: '{provider}'")
         if provider not in ["google", "microsoft"]:
             return "❌ Supported providers: google, microsoft"
 
@@ -966,7 +966,9 @@ class FullDemo:
 
                 # Handle NextAuth commands
                 if user_input.lower().startswith("nextauth "):
-                    provider = user_input[10:].strip()
+                    # Robustly extract provider argument (after 'nextauth ')
+                    parts = user_input.strip().split(None, 1)
+                    provider = parts[1].strip() if len(parts) > 1 else ""
                     result = await self.handle_nextauth_command(provider)
                     print(f"\n{result}")
                     continue

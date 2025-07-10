@@ -12,10 +12,12 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
 from services.user.auth import get_current_user
 from services.user.exceptions import (
+    UserAlreadyExistsException,
     UserNotFoundException,
     ValidationException,
 )
 from services.user.schemas.user import (
+    UserCreate,
     UserDeleteResponse,
     UserListResponse,
     UserOnboardingUpdate,
@@ -353,6 +355,54 @@ async def update_user_onboarding(
                 "message": "Failed to update onboarding",
             },
         )
+
+
+@router.post(
+    "/",
+    response_model=UserResponse,
+    status_code=201,
+    summary="Create or upsert user (OAuth/NextAuth)",
+    description="Create a new user or return existing user by external_auth_id and auth_provider. Public endpoint for OAuth/NextAuth flows. TODO: Add rate limiting/auth in production.",
+    responses={
+        200: {"description": "User already exists, returned successfully"},
+        201: {"description": "User created successfully"},
+        409: {"description": "Email collision detected"},
+        422: {"description": "Validation error in request data"},
+    },
+)
+async def create_or_upsert_user(user_data: UserCreate):
+    """
+    Create or upsert a user by external_auth_id and auth_provider.
+    - If user exists, return it (200)
+    - If not, create and return (201)
+    - If email collision, return 409
+    Public: for OAuth/NextAuth flows. TODO: Add rate limiting/auth in production.
+    """
+    try:
+        user_service = get_user_service()
+        try:
+            user = await user_service.get_user_by_external_auth_id(
+                user_data.external_auth_id, user_data.auth_provider
+            )
+            logger.info(
+                f"User already exists: {user_data.external_auth_id} ({user_data.auth_provider})"
+            )
+            return UserResponse.from_orm(user)
+        except UserNotFoundException:
+            user = await user_service.create_user(user_data)
+            logger.info(
+                f"Created new user: {user_data.external_auth_id} ({user_data.auth_provider})"
+            )
+            return UserResponse.from_orm(user)
+    except UserAlreadyExistsException as e:
+        logger.warning(f"Email collision for {user_data.email}: {e}")
+        raise HTTPException(status_code=409, detail=str(e))
+    except ValidationException as e:
+        logger.warning(f"Validation error creating user: {e}")
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logger.error(f"Unexpected error creating user: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get(

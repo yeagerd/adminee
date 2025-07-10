@@ -9,8 +9,8 @@ This allows testing the proposed NextAuth approach alongside the existing Clerk 
 import asyncio
 import logging
 import os
+import sys
 import time
-import webbrowser
 from typing import Dict, Optional
 
 import httpx
@@ -200,65 +200,81 @@ async def test_nextauth_flow(provider: str = "google") -> Optional[str]:
     print(f"   {auth_url}")
     print()
 
-    # Try to open browser automatically
-    try:
-        webbrowser.open(auth_url)
-        print("🌐 Browser opened automatically")
-    except Exception:
-        print("🌐 Could not open browser automatically")
+    # After printing the OAuth URL and instructions...
+    print("\nWhen you have completed the OAuth flow and copied your JWT token:")
+    print(
+        "Type 'vi' (or your preferred editor command) and press Enter to open the editor for pasting the token."
+    )
+    print(
+        "Or just press Enter to paste the token directly into the terminal (Ctrl+D to finish).\n"
+    )
+    editor_choice = input("Editor command (default: vi): ").strip()
+    if editor_choice:
+        editor = editor_choice
+    else:
+        editor = os.environ.get("EDITOR", "vi")
 
-    print("\n📋 After completing OAuth:")
-    print("1. You'll see a success page with your JWT token")
-    print("2. Copy the JWT token from the textarea")
-    print("3. Paste it below")
-    print()
+    token = None
+    if editor_choice:
+        import subprocess
+        import tempfile
 
-    # Get JWT token from user
-    while True:
-        token = input(
-            "🔑 Paste your NextAuth JWT token (or 'skip' to cancel): "
-        ).strip()
-
-        if token.lower() == "skip":
-            print("⏭️  NextAuth test skipped")
-            return None
-
-        if not token:
-            print("❌ Please enter a token or 'skip'")
-            continue
-
-        # Verify token
-        print("🔍 Verifying token...")
-        verification = await client.verify_token(token)
-
-        if verification and verification.get("valid"):
-            print("✅ Token verified successfully!")
-            print(f"   User: {verification.get('email')}")
-            print(f"   Provider: {verification.get('provider')}")
-
-            # Set token in client
-            client.set_token(token)
-
-            # Test session
-            session = await client.get_session()
-            if session:
-                print("✅ Session retrieved successfully!")
-                print(
-                    f"   Access Token: {'✅ Available' if session.get('access_token') else '❌ Not available'}"
-                )
-                print(
-                    f"   Refresh Token: {'✅ Available' if session.get('refresh_token') else '❌ Not available'}"
-                )
-
-            return token
-        else:
-            error = (
-                verification.get("error", "Unknown error")
-                if verification
-                else "Verification failed"
+        with tempfile.NamedTemporaryFile(suffix=".jwt", mode="r+", delete=False) as tf:
+            temp_path = tf.name
+        try:
+            print(
+                f"\n📝 Opening {editor}. Paste your NextAuth JWT token, save, and close the editor."
             )
-            print(f"❌ Token verification failed: {error}")
-            print("   Please try again or type 'skip' to cancel")
+            subprocess.call([editor, temp_path])
+            with open(temp_path, "r") as tf:
+                token = tf.read().strip()
+            if not token:
+                print("❌ No token entered in editor.")
+                token = None
+        finally:
+            os.unlink(temp_path)
+
+    if not token:
+        print(
+            "Paste your NextAuth JWT token below. Press Ctrl+D (Unix/macOS/Linux) or Ctrl+Z then Enter (Windows) when done:"
+        )
+        token = sys.stdin.read().strip()
+
+    if token.lower() == "skip":
+        print("⏭️  NextAuth test skipped")
+        return None
+    if not token:
+        print("❌ Please enter a token or 'skip'")
+        return None
+    # Verify token
+    print("🔍 Verifying token...")
+    verification = await client.verify_token(token)
+    if verification and verification.get("valid"):
+        print("✅ Token verified successfully!")
+        print(f"   User: {verification.get('email')}")
+        print(f"   Provider: {verification.get('provider')}")
+        # Set token in client
+        client.set_token(token)
+        # Test session
+        session = await client.get_session()
+        if session:
+            print("✅ Session retrieved successfully!")
+            print(
+                f"   Access Token: {'✅ Available' if session.get('access_token') else '❌ Not available'}"
+            )
+            print(
+                f"   Refresh Token: {'✅ Available' if session.get('refresh_token') else '❌ Not available'}"
+            )
+        return token
+    else:
+        error = (
+            verification.get("error", "Unknown error")
+            if verification
+            else "Verification failed"
+        )
+        print(f"❌ Token verification failed: {error}")
+        print("   Please try again or type 'skip' to cancel")
+        return None
 
 
 def create_nextauth_jwt_for_demo(
