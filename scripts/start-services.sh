@@ -68,26 +68,26 @@ trap cleanup SIGINT SIGTERM
 echo "📡 Starting all services..."
 
 # Start User Management Service
-start_service "user-management" "services.user.main:app" 8000
+start_service "user-management" "services.user.main:app" 8001
 
 # Start Chat Service  
-start_service "chat-service" "services.chat.main:app" 8001
+start_service "chat-service" "services.chat.main:app" 8002
 
 # Start Office Service
-start_service "office-service" "services.office.app.main:app" 8002
+start_service "office-service" "services.office.app.main:app" 8003
 
 echo ""
 echo "🎉 All services started successfully!"
 echo ""
 echo "📋 Service URLs:"
-echo "   • User Management: http://localhost:8000"
-echo "   • Chat Service:     http://localhost:8001"
-echo "   • Office Service:   http://localhost:8002"
+echo "   • User Management: http://localhost:8001"
+echo "   • Chat Service:     http://localhost:8002"
+echo "   • Office Service:   http://localhost:8003"
 echo ""
 echo "🔍 Health checks:"
-echo "   • User Management: http://localhost:8000/health"
-echo "   • Chat Service:     http://localhost:8001/health"
-echo "   • Office Service:   http://localhost:8002/health"
+echo "   • User Management: http://localhost:8001/health"
+echo "   • Chat Service:     http://localhost:8002/health"
+echo "   • Office Service:   http://localhost:8003/health"
 echo ""
 echo "⏹️  Press Ctrl+C to stop all services"
 echo ""

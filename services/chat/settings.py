@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     # Service Configuration
     service_name: str = Field(default="chat-service", description="Service name")
     host: str = Field(default="0.0.0.0", description="Host to bind to")
-    port: int = Field(default=8000, description="Port to bind to")
+    port: int = Field(default=8002, description="Port to bind to")
     debug: bool = Field(default=False, description="Debug mode")
     environment: str = Field(
         default="development",
@@ -51,7 +51,7 @@ class Settings(BaseSettings):
     # Service URLs
     user_management_service_url: str = Field(
         default="http://localhost:8001",
-        description="User Management service URL",
+        description="User management service URL",
     )
     office_service_url: str = Field(
         default="http://localhost:8003",
