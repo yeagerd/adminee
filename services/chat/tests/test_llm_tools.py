@@ -42,11 +42,11 @@ def clear_drafts():
 
 @pytest.fixture(autouse=True)
 def mock_settings():
-    """Mock settings for all tests to work in parallel execution."""
+    """Mock settings for all tests with enhanced CI compatibility."""
     # Import the settings module to access the global _settings variable
     from services.chat import settings
 
-    # Store the original _settings value
+    # Store the original _settings value for cleanup
     original_settings = settings._settings
 
     # Create a mock settings object with all required attributes
@@ -69,20 +69,29 @@ def mock_settings():
     mock_settings_obj.log_level = "INFO"
     mock_settings_obj.log_format = "json"
 
-    # Force the global _settings to our mock (even if it was already initialized)
+    # AGGRESSIVE MOCKING: Force the global _settings to our mock immediately
     settings._settings = mock_settings_obj
 
-    # Patch ALL possible imports of get_settings to ensure our mock is used everywhere
-    with patch("services.chat.settings.get_settings", return_value=mock_settings_obj):
+    # Create a mock function that ALWAYS returns our mock object
+    def always_return_mock():
+        return mock_settings_obj
+
+    # Patch at the module level for maximum coverage
+    original_get_settings = settings.get_settings
+    settings.get_settings = always_return_mock
+
+    # Also patch any imports that might have already happened
+    with patch("services.chat.settings.get_settings", side_effect=always_return_mock):
         with patch(
             "services.chat.agents.llm_tools.get_settings",
-            return_value=mock_settings_obj,
+            side_effect=always_return_mock,
         ):
             try:
                 yield mock_settings_obj
             finally:
-                # Restore the original _settings value
+                # Restore everything
                 settings._settings = original_settings
+                settings.get_settings = original_get_settings
 
 
 @pytest.fixture(autouse=True)
