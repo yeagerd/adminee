@@ -509,6 +509,9 @@ class FullDemo:
                     f"Could not verify integrations, but user was created: {e}"
                 )
 
+            # Update self.user_id to use the generated user ID for all service calls
+            self.user_id = user_id
+
             self.authenticated = True
             print(f"✅ Authenticated as {auth_email} (ID: {user_id})")
             return True
