@@ -8,7 +8,7 @@ from services.chat.settings import get_settings
 
 
 def format_event_time_for_display(
-    start_time_utc: str, end_time_utc: str, timezone: str = None
+    start_time_utc: str, end_time_utc: str, timezone: str | None = None
 ) -> str:
     """
     Format calendar event times from UTC to a human-readable local time format.
@@ -75,8 +75,11 @@ def get_calendar_events(
 ) -> Dict[str, Any]:
     # Use service-to-service authentication
     headers = {"Content-Type": "application/json"}
-    if get_settings().api_chat_office_key:
-        headers["X-API-Key"] = get_settings().api_chat_office_key
+    if not get_settings().api_chat_office_key:
+        return {
+            "error": "Could not retrieve calendar events due to an internal server error"
+        }
+    headers["X-API-Key"] = get_settings().api_chat_office_key  # type: ignore[assignment]
 
     params: Dict[str, str | List[str]] = {"user_id": user_id}
     if start_date:
@@ -146,7 +149,7 @@ def get_calendar_events(
                 # Add a formatted time field for display
                 event["display_time"] = format_event_time_for_display(
                     event["start_time"], event["end_time"], time_zone
-                )
+                )  # type: ignore[arg-type]
 
         return {"events": events}
     except requests.Timeout:
@@ -172,8 +175,9 @@ def get_user_available_providers(user_id: str) -> List[str]:
     try:
         # Use service-to-service authentication to get user integrations
         headers = {"Content-Type": "application/json"}
-        if get_settings().api_chat_user_key:
-            headers["X-API-Key"] = get_settings().api_chat_user_key
+        if not get_settings().api_chat_user_key:
+            return []
+        headers["X-API-Key"] = get_settings().api_chat_user_key  # type: ignore[assignment]
 
         user_service_url = get_settings().user_management_service_url
         response = requests.get(
@@ -216,8 +220,9 @@ def get_emails(
 ) -> Dict[str, Any]:
     # Use service-to-service authentication
     headers = {"Content-Type": "application/json"}
-    if get_settings().api_chat_office_key:
-        headers["X-API-Key"] = get_settings().api_chat_office_key
+    if not get_settings().api_chat_office_key:
+        return {"error": "Could not retrieve emails due to an internal server error"}
+    headers["X-API-Key"] = get_settings().api_chat_office_key  # type: ignore[assignment]
 
     params = {"user_id": user_id}
     if start_date:
@@ -276,8 +281,9 @@ def get_notes(
 ) -> Dict[str, Any]:
     # Use service-to-service authentication
     headers = {"Content-Type": "application/json"}
-    if get_settings().api_chat_office_key:
-        headers["X-API-Key"] = get_settings().api_chat_office_key
+    if not get_settings().api_chat_office_key:
+        return {"error": "Could not retrieve notes due to an internal server error"}
+    headers["X-API-Key"] = get_settings().api_chat_office_key  # type: ignore[assignment]
 
     params = {"user_id": user_id}
     if notebook:
@@ -335,8 +341,9 @@ def get_documents(
 ) -> Dict[str, Any]:
     # Use service-to-service authentication
     headers = {"Content-Type": "application/json"}
-    if get_settings().api_chat_office_key:
-        headers["X-API-Key"] = get_settings().api_chat_office_key
+    if not get_settings().api_chat_office_key:
+        return {"error": "Could not retrieve documents due to an internal server error"}
+    headers["X-API-Key"] = get_settings().api_chat_office_key  # type: ignore[assignment]
 
     params = {"user_id": user_id}
     if document_type:
@@ -741,7 +748,7 @@ class ToolRegistry:
         schemas = {}
         for name, tool in self._tools.items():
             if hasattr(tool, "to_openai_tool"):
-                schemas[name] = tool.to_openai_tool()
+                schemas[name] = tool.to_openai_tool()  # type: ignore[attr-defined]
             else:
                 schemas[name] = {}
         return schemas

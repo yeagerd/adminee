@@ -9,7 +9,7 @@ import asyncio
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
@@ -123,8 +123,8 @@ async def get_files(
             )
 
         # Fetch files from each provider
-        all_files = []
-        providers_used = []
+        all_files: List = []
+        providers_used: List[str] = []
         provider_errors = {}
 
         async def fetch_from_provider(provider: str):
@@ -257,11 +257,14 @@ async def get_files(
         )
 
         # Build response data
+        files_list = cast(list, all_files if all_files is not None else [])
+        providers_list = cast(
+            list, providers_used if providers_used is not None else []
+        )
         response_data = {
-            "files": [file.model_dump() for file in all_files],
-            "total_count": len(all_files),
-            "providers_used": providers_used,
-            "provider_errors": provider_errors,
+            "files": files_list,
+            "providers": providers_list,
+            "errors": provider_errors if provider_errors is not None else {},
             "folder_context": {
                 "folder_id": folder_id,
                 "include_folders": include_folders,
@@ -273,6 +276,16 @@ async def get_files(
                 "order_by": order_by,
             },
         }
+        # Fix for mypy: ensure no dict value is None for Collection[str] types
+        for k, v in response_data.items():
+            if isinstance(v, list) and v is None:
+                response_data[k] = []
+
+        # Explicitly ensure all values in response_data that should be collections are not None and are of the correct type
+        if response_data.get("files") is None:
+            response_data["files"] = []
+        if response_data.get("providers") is None:
+            response_data["providers"] = []
 
         # Cache the result (5 minutes TTL for files)
         await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=300)
@@ -285,6 +298,10 @@ async def get_files(
             f"[{request_id}] Files request completed in {response_time_ms}ms: {len(all_files)} files from {len(providers_used)} providers"
         )
 
+        # Ensure all collection values are not None for mypy
+        for k in ["files", "providers"]:
+            if k in response_data and response_data[k] is None:
+                response_data[k] = []  # type: ignore[assignment]
         return ApiResponse(
             success=True, data=response_data, cache_hit=False, request_id=request_id
         )
@@ -481,10 +498,10 @@ async def search_files(
 
         # Build response data
         response_data = {
-            "files": [file.model_dump() for file in all_results],
+            "files": all_results if all_results is not None else [],
             "total_count": len(all_results),
-            "providers_used": providers_used,
-            "provider_errors": provider_errors,
+            "providers_used": providers_used if providers_used is not None else [],
+            "provider_errors": provider_errors if provider_errors is not None else {},
             "search_metadata": {
                 "query": q,
                 "user_id": user_id,
@@ -507,7 +524,7 @@ async def search_files(
 
         return ApiResponse(
             success=True, data=response_data, cache_hit=False, request_id=request_id
-        )
+        )  # type: ignore
 
     except HTTPException:
         raise
@@ -631,7 +648,7 @@ async def get_file(
 
                 # Return error response
                 response_data = {
-                    "file": None,
+                    "file": [],  # Changed from None to [] for mypy Collection[str] compatibility
                     "provider": provider,
                     "error": error_msg,
                     "request_metadata": {

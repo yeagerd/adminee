@@ -14,7 +14,9 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
-from services.common.secrets import get_token_encryption_salt  # type: ignore[misc]
+from services.common.config_secrets import (
+    get_token_encryption_salt,  # type: ignore[misc]
+)
 from services.user.exceptions import EncryptionException
 from services.user.settings import Settings
 

@@ -188,7 +188,7 @@ class WorkflowAgent:
             logger.error(f"Error loading chat history from database: {e}")
             return []
 
-    def _create_specialized_agents(self) -> Dict[str, FunctionAgent]:
+    def _create_specialized_agents(self) -> Dict[str, Any]:
         """Create specialized agents for multi-agent mode."""
         agents = {}
 
@@ -200,37 +200,41 @@ class WorkflowAgent:
             **self.llm_kwargs,
         )
 
-        agents["CalendarAgent"] = CalendarAgent(
+        calendar_agent = CalendarAgent(
             llm_model=self.llm_model,
             llm_provider=self.llm_provider,
             user_id=self.user_id,
             user_timezone=self.user_timezone,  # Pass user timezone to calendar agent
             **self.llm_kwargs,
         )
+        agents["CalendarAgent"] = calendar_agent  # type: ignore[assignment]
 
-        agents["EmailAgent"] = EmailAgent(
+        email_agent = EmailAgent(
             llm_model=self.llm_model,
             llm_provider=self.llm_provider,
             user_id=self.user_id,
             **self.llm_kwargs,
         )
+        agents["EmailAgent"] = email_agent  # type: ignore[assignment]
 
-        agents["DocumentAgent"] = DocumentAgent(
+        document_agent = DocumentAgent(
             llm_model=self.llm_model,
             llm_provider=self.llm_provider,
             user_id=self.user_id,
             **self.llm_kwargs,
         )
+        agents["DocumentAgent"] = document_agent  # type: ignore[assignment]
 
-        agents["DraftAgent"] = DraftAgent(
+        draft_agent = DraftAgent(
             llm_model=self.llm_model,
             llm_provider=self.llm_provider,
             thread_id=self.thread_id,  # Pass thread_id directly
             **self.llm_kwargs,
         )
+        agents["DraftAgent"] = draft_agent  # type: ignore[assignment]
 
         logger.debug(f"Created {len(agents)} specialized agents")
-        return agents
+        return agents  # type: ignore[return-value]
 
     async def build_agent(self, user_input: str = "") -> None:
         """
@@ -249,7 +253,7 @@ class WorkflowAgent:
             # Create AgentWorkflow with specialized agents
             agents_list = list(self.specialized_agents.values())
             self.agent_workflow = AgentWorkflow(
-                agents=agents_list,
+                agents=agents_list,  # type: ignore[arg-type]
                 root_agent="CoordinatorAgent",  # Coordinator starts first
                 initial_state={
                     "thread_id": str(self.thread_id),
@@ -490,6 +494,7 @@ class WorkflowAgent:
         """
         if not self.agent_workflow or not self.context:
             await self.build_agent(user_input)
+        assert self.agent_workflow is not None
 
         from services.chat import history_manager
 
@@ -502,6 +507,7 @@ class WorkflowAgent:
             )
 
             # Run the multi-agent workflow
+            assert self.agent_workflow is not None
             response = await self.agent_workflow.run(
                 user_msg=user_input, ctx=self.context
             )
@@ -568,6 +574,7 @@ class WorkflowAgent:
         """
         if not self.agent_workflow or not self.context:
             await self.build_agent(user_input)
+        assert self.agent_workflow is not None
 
         try:
             # Save user message to database
@@ -578,6 +585,7 @@ class WorkflowAgent:
             )
 
             # Run workflow with streaming
+            assert self.agent_workflow is not None
             handler = self.agent_workflow.run(user_msg=user_input, ctx=self.context)
 
             full_response = ""
@@ -669,8 +677,9 @@ class WorkflowAgent:
 
     async def load_context(self, context_dict: Dict[str, Any]) -> None:
         """Load workflow context from a serialized format."""
-        if not self.agent_workflow:
+        if self.agent_workflow is None:
             await self.build_agent()
+        assert self.agent_workflow is not None
 
         from llama_index.core.workflow import JsonSerializer
 

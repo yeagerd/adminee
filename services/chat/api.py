@@ -104,6 +104,8 @@ async def chat_endpoint(
     thread = cast(history_manager.Thread, thread)
 
     # Initialize the multi-agent workflow with user timezone
+    if thread.id is None:
+        raise ValueError("thread.id cannot be None")
     agent = WorkflowAgent(
         thread_id=int(thread.id),
         user_id=user_id,
@@ -132,9 +134,9 @@ async def chat_endpoint(
         if draft_type == "email":
             structured_drafts.append(DraftEmail(**draft))
         elif draft_type == "calendar_event":
-            structured_drafts.append(DraftCalendarEvent(**draft))
+            structured_drafts.append(DraftCalendarEvent(**draft))  # type: ignore[arg-type]
         elif draft_type == "calendar_change":
-            structured_drafts.append(DraftCalendarChange(**draft))
+            structured_drafts.append(DraftCalendarChange(**draft))  # type: ignore[arg-type]
 
     # CONVERSION PATTERN: Create API response model from data
     # Note: This creates MessageResponse (API model) directly rather than
@@ -152,7 +154,7 @@ async def chat_endpoint(
     return ChatResponse(
         thread_id=str(agent.thread_id),
         messages=pydantic_messages,
-        drafts=structured_drafts if structured_drafts else None,
+        drafts=structured_drafts if structured_drafts else None,  # type: ignore[arg-type]
     )
 
 
@@ -209,6 +211,8 @@ async def chat_stream_endpoint(
         """Generate streaming response using Server-Sent Events format."""
         try:
             # Initialize the multi-agent workflow with user timezone
+            if thread.id is None:
+                raise ValueError("thread.id cannot be None")
             agent = WorkflowAgent(
                 thread_id=int(thread.id),
                 user_id=user_id,
@@ -235,8 +239,8 @@ async def chat_stream_endpoint(
 
                 # Extract delta if available
                 if hasattr(event, "delta") and event.delta:
-                    event_data["delta"] = event.delta
-                    full_response += event.delta
+                    event_data["delta"] = event.delta  # type: ignore[attr-defined]
+                    full_response += event.delta  # type: ignore[attr-defined]
 
                 yield f"event: chunk\ndata: {json.dumps(event_data)}\n\n"
 

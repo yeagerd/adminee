@@ -900,6 +900,8 @@ class IntegrationService:
                     issues.append("No recent synchronization activity")
                     recommendations.append("Verify integration is working properly")
 
+            if integration.id is None:
+                raise ValueError("integration.id cannot be None")
             return IntegrationHealthResponse(
                 integration_id=integration.id,
                 provider=provider,

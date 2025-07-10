@@ -10,7 +10,9 @@ import socket
 from opentelemetry import trace
 
 try:
-    from opentelemetry.exporter.gcp.trace import CloudTraceSpanExporter
+    from opentelemetry.exporter.gcp.trace import (
+        CloudTraceSpanExporter,  # type: ignore[import]
+    )
 except ImportError:
     CloudTraceSpanExporter = None
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
@@ -53,15 +55,15 @@ def setup_telemetry(service_name: str, service_version: str = "1.0.0") -> None:
         # Use Google Cloud Trace in production
         if CloudTraceSpanExporter:
             cloud_trace_exporter = CloudTraceSpanExporter(project_id=project_id)
-            tracer_provider.add_span_processor(BatchSpanProcessor(cloud_trace_exporter))
+            tracer_provider.add_span_processor(BatchSpanProcessor(cloud_trace_exporter))  # type: ignore[attr-defined]
     else:
         # In development, you could add console exporter or other exporters
         # For now, we'll just set up the basics
         pass
 
     # Auto-instrument FastAPI and HTTPX
-    FastAPIInstrumentor.instrument()
-    HTTPXClientInstrumentor.instrument()
+    FastAPIInstrumentor.instrument()  # type: ignore[attr-defined]
+    HTTPXClientInstrumentor.instrument()  # type: ignore[attr-defined]
 
 
 def get_tracer(name: str) -> trace.Tracer:

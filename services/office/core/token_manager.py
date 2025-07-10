@@ -29,6 +29,8 @@ class TokenData(BaseModel):
     scopes: List[str] = []
     provider: str
     user_id: str
+    success: bool = True
+    error: Optional[str] = None
 
 
 class CachedToken:
@@ -55,12 +57,12 @@ class TokenManager:
     - httpx.AsyncClient integration
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.http_client: Optional[httpx.AsyncClient] = None
         self._token_cache: Dict[str, CachedToken] = {}
         self._cache_lock = asyncio.Lock()
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "TokenManager":
         """Async context manager entry"""
         # Use API key for user management service if available
         headers = {}
@@ -73,7 +75,7 @@ class TokenManager:
         )
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Async context manager exit"""
         if self.http_client:
             await self.http_client.aclose()

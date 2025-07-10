@@ -60,7 +60,7 @@ class WebhookSignatureVerifier:
 
             # Verify against each signature
             expected_signature = WebhookSignatureVerifier._compute_clerk_signature(
-                signed_payload, get_settings().clerk_webhook_secret
+                signed_payload, get_settings().clerk_webhook_secret or ""
             )
 
             signature_valid = any(

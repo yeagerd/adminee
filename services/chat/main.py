@@ -16,19 +16,18 @@ from services.common.logging_config import (
     setup_service_logging,
 )
 
-# Set up centralized logging
-settings = get_settings()
-setup_service_logging(
-    service_name="chat-service",
-    log_level=settings.log_level,
-    log_format=settings.log_format,
-)
-
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    # Set up centralized logging
+    settings = get_settings()
+    setup_service_logging(
+        service_name="chat-service",
+        log_level=settings.log_level,
+        log_format=settings.log_format,
+    )
     # Startup: Ensure the database is created and tables exist
     log_service_startup(
         "chat-service",
