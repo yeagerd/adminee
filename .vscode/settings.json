@@ -1,8 +1,196 @@
 {
-    "python.defaultInterpreterPath": "venv/bin/python",
+    // Python Configuration
+    "python.defaultInterpreterPath": "./.venv/bin/python",
+    "python.terminal.activateEnvironment": true,
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    // Python Analysis and IntelliSense
+    "python.analysis.extraPaths": [
+        "./services",
+        "./services/chat",
+        "./services/user",
+        "./services/office",
+        "./services/common",
+        "./services/vector-db",
+        "./services/demos"
+    ],
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.autoSearchPaths": true,
+    "python.analysis.diagnosticMode": "workspace",
+    "python.analysis.include": [
+        "services/**/*.py",
+        "scripts/**/*.py"
+    ],
+    "python.analysis.exclude": [
+        "**/__pycache__",
+        "**/tests",
+        "**/.tox",
+        "**/venv",
+        "**/.venv",
+        "**/node_modules",
+        "**/.git",
+        "**/alembic/versions",
+        "**/*.egg-info"
+    ],
+    // Linting and Formatting
+    "python.linting.enabled": true,
+    "python.linting.mypyEnabled": true,
+    "python.linting.ruffEnabled": true,
+    "python.linting.pylintEnabled": false,
+    "python.linting.flake8Enabled": false,
+    "python.formatting.provider": "black",
+    "python.formatting.blackArgs": [
+        "--line-length=88",
+        "--target-version=py312"
+    ],
+    "python.sortImports.args": [
+        "--profile=black",
+        "--line-length=88"
+    ],
+    // Testing
+    "python.testing.pytestEnabled": true,
     "python.testing.pytestArgs": [
         "services"
     ],
     "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true
+    "python.testing.nosetestsEnabled": false,
+    // File Associations
+    "files.associations": {
+        "*.py": "python",
+        "pyproject.toml": "toml",
+        "tox.ini": "ini",
+        "alembic.ini": "ini"
+    },
+    // Search and Exclude
+    "search.exclude": {
+        "**/__pycache__": true,
+        "**/venv": true,
+        "**/.venv": true,
+        "**/.tox": true,
+        "**/node_modules": true,
+        "**/.git": true,
+        "**/alembic/versions": true,
+        "**/*.egg-info": true,
+        "**/coverage": true,
+        "**/.mypy_cache": true,
+        "**/.pytest_cache": true
+    },
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "**/*.pyo": true,
+        "**/*.pyd": true,
+        "**/.Python": true,
+        "**/venv": true,
+        "**/.venv": true,
+        "**/.tox": true,
+        "**/*.egg-info": true,
+        "**/.mypy_cache": true,
+        "**/.pytest_cache": true
+    },
+    // Editor Settings
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "explicit"
+    },
+    "editor.rulers": [
+        88
+    ],
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "editor.detectIndentation": false,
+    // Terminal
+    "terminal.integrated.env.osx": {
+        "PYTHONPATH": "${workspaceFolder}/services:${workspaceFolder}"
+    },
+    "terminal.integrated.env.linux": {
+        "PYTHONPATH": "${workspaceFolder}/services:${workspaceFolder}"
+    },
+    "terminal.integrated.env.windows": {
+        "PYTHONPATH": "${workspaceFolder}/services;${workspaceFolder}"
+    },
+    // Workspace-specific settings
+    "python.analysis.packageIndexDepths": [
+        {
+            "name": "services",
+            "depth": 5
+        }
+    ],
+    // Debugging
+    "python.debugging.console": "integratedTerminal",
+    "python.debugging.justMyCode": false,
+    // Extensions
+    "extensions.recommendations": [
+        "ms-python.python",
+        "ms-python.black-formatter",
+        "ms-python.isort",
+        "charliermarsh.ruff",
+        "ms-python.mypy-type-checker",
+        "ms-python.pylint",
+        "ms-toolsai.jupyter",
+        "ms-vscode.vscode-json"
+    ],
+    // Git
+    "git.ignoreLimitWarning": true,
+    // Auto-save
+    "files.autoSave": "onFocusChange",
+    // Breadcrumbs
+    "breadcrumbs.enabled": true,
+    "breadcrumbs.showFiles": true,
+    "breadcrumbs.showSymbols": true,
+    // Minimap
+    "editor.minimap.enabled": true,
+    "editor.minimap.showSlider": "always",
+    // Word wrap
+    "editor.wordWrap": "off",
+    // Line numbers
+    "editor.lineNumbers": "on",
+    // Folding
+    "editor.foldingStrategy": "indentation",
+    // Bracket pair colorization
+    "editor.bracketPairColorization.enabled": true,
+    "editor.guides.bracketPairs": true,
+    // Semantic highlighting
+    "editor.semanticHighlighting.enabled": true,
+    // Inline suggestions
+    "editor.inlineSuggest.enabled": true,
+    // Parameter hints
+    "editor.parameterHints.enabled": true,
+    // Quick suggestions
+    "editor.quickSuggestions": {
+        "other": true,
+        "comments": false,
+        "strings": true
+    },
+    // Accept suggestion on commit character
+    "editor.acceptSuggestionOnCommitCharacter": true,
+    // Accept suggestion on enter
+    "editor.acceptSuggestionOnEnter": "on",
+    // Tab completion
+    "editor.tabCompletion": "on",
+    // Word based suggestions
+    "editor.wordBasedSuggestions": "off",
+    // Suggest on trigger characters
+    "editor.suggestOnTriggerCharacters": true,
+    // Accept suggestion on enter
+    "editor.acceptSuggestionOnEnter": "on",
+    // Show status bar
+    "workbench.statusBar.visible": true,
+    // Show side bar
+    "workbench.sideBar.visible": true,
+    // Show panel
+    "workbench.panel.opensMaximized": "preserve",
+    // Explorer settings
+    "explorer.confirmDelete": false,
+    "explorer.confirmDragAndDrop": false,
+    // File watching
+    "files.watcherExclude": {
+        "**/venv/**": true,
+        "**/.venv/**": true,
+        "**/.tox/**": true,
+        "**/__pycache__/**": true,
+        "**/*.pyc": true,
+        "**/.git/**": true,
+        "**/node_modules/**": true
+    }
 }

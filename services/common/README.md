@@ -86,7 +86,7 @@ redis_url = get_redis_url()
 
 **Direct import from module:**
 ```python
-from services.common.secrets import get_secret, clear_cache
+from services.common.config_secrets import get_secret, clear_cache
 
 # For testing - clear the secret cache
 clear_cache()

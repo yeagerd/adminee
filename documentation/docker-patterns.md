@@ -225,7 +225,7 @@ ENV GOOGLE_CLOUD_PROJECT=""
 ```python
 # config/settings.py
 import os
-from .secrets import get_secret
+from .config_secrets import get_secret
 
 class Settings:
     def __init__(self):

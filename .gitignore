@@ -140,6 +140,11 @@ venv/
 .venv/
 .env/
 .tox/
+
+# UV-specific files
+.uv/
+uv.lock.bak
+
 # Python bytecode
 __pycache__/
 *.py[cod]
@@ -149,7 +154,7 @@ __pycache__/
 *.pyc
 # Python coverage files
 .coverage
-coverage.xml
+coverage*.xml
 # Python build directories
 build/
 dist/
