@@ -30,10 +30,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 
 import httpx
 import requests
-from pydantic import ConfigDict
-from pydantic_settings import BaseSettings
 
 from services.chat.agents.workflow_agent import WorkflowAgent
+from services.common.settings import BaseSettings, SettingsConfigDict
 
 # Try to import OAuth utilities
 try:
@@ -62,7 +61,7 @@ except ImportError:
 class DemoSettings(BaseSettings):
     """Demo settings loaded from environment variables."""
 
-    model_config = ConfigDict(extra="ignore")
+    model_config = SettingsConfigDict(extra="ignore")
     API_FRONTEND_USER_KEY: str = "test-FRONTEND_USER_KEY"
     API_FRONTEND_OFFICE_KEY: str = "test-FRONTEND_OFFICE_KEY"
     API_FRONTEND_CHAT_KEY: str = "test-FRONTEND_CHAT_KEY"

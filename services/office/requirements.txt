@@ -2,7 +2,6 @@
 fastapi
 uvicorn[standard]
 pydantic>=2.0,<2.9.0
-pydantic-settings
 python-dotenv
 email-validator
 structlog
