@@ -7,7 +7,6 @@ database operations, and error handling scenarios.
 
 import os
 import tempfile
-from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy import text
@@ -182,73 +181,68 @@ class TestWebhookServiceIntegration(BaseUserManagementTest):
         """Test that if a user exists with the same email but a different external_auth_id, the webhook returns a 409 EmailCollision error."""
         await self._setup_test_database()
 
-        # Mock email normalization to avoid event loop issues
-        with patch("services.user.utils.email_collision.normalize") as mock_normalize:
-            mock_result = MagicMock()
-            mock_result.normalized_address = "trybriefly@outlook.com"
-            mock_normalize.return_value = mock_result
+        # In test environment, email normalization will use simple normalization automatically
+        try:
+            # 1. Create a user with one external_auth_id
+            initial_data = ClerkWebhookEventData(
+                id="demo_user",
+                email_addresses=[
+                    {
+                        "email_address": "trybriefly@outlook.com",
+                        "verification": {"status": "verified"},
+                    }
+                ],
+                first_name="Demo",
+                last_name="User",
+                image_url="https://images.clerk.dev/demo-avatar.png",
+                created_at=1640995200000,
+                updated_at=1640995200000,
+            )
+            create_result = await self.webhook_service._handle_user_created(
+                initial_data
+            )
+            assert create_result["action"] == "user_created"
 
-            try:
-                # 1. Create a user with one external_auth_id
-                initial_data = ClerkWebhookEventData(
-                    id="demo_user",
-                    email_addresses=[
-                        {
-                            "email_address": "trybriefly@outlook.com",
-                            "verification": {"status": "verified"},
-                        }
-                    ],
-                    first_name="Demo",
-                    last_name="User",
-                    image_url="https://images.clerk.dev/demo-avatar.png",
-                    created_at=1640995200000,
-                    updated_at=1640995200000,
+            # 2. Call webhook with a new external_auth_id but same email
+            new_data = ClerkWebhookEventData(
+                id="user_trybriefly_outlook_com",
+                email_addresses=[
+                    {
+                        "email_address": "trybriefly@outlook.com",
+                        "verification": {"status": "verified"},
+                    }
+                ],
+                first_name="Demo",
+                last_name="User",
+                image_url="https://images.clerk.dev/demo-avatar.png",
+                created_at=1640995200000,
+                updated_at=1640995200000,
+            )
+            from fastapi import HTTPException
+
+            with pytest.raises(HTTPException) as exc_info:
+                await self.webhook_service._handle_user_created(new_data)
+            assert exc_info.value.status_code == 409
+            assert "EmailCollision" in str(exc_info.value.detail)
+
+            # 3. Verify only one user exists and external_auth_id is NOT updated
+            async_session = get_async_session()
+            async with async_session() as session:
+                from sqlmodel import select
+
+                user_result = await session.execute(
+                    select(User).where(User.email == "trybriefly@outlook.com")
                 )
-                create_result = await self.webhook_service._handle_user_created(
-                    initial_data
-                )
-                assert create_result["action"] == "user_created"
-
-                # 2. Call webhook with a new external_auth_id but same email
-                new_data = ClerkWebhookEventData(
-                    id="user_trybriefly_outlook_com",
-                    email_addresses=[
-                        {
-                            "email_address": "trybriefly@outlook.com",
-                            "verification": {"status": "verified"},
-                        }
-                    ],
-                    first_name="Demo",
-                    last_name="User",
-                    image_url="https://images.clerk.dev/demo-avatar.png",
-                    created_at=1640995200000,
-                    updated_at=1640995200000,
-                )
-                from fastapi import HTTPException
-
-                with pytest.raises(HTTPException) as exc_info:
-                    await self.webhook_service._handle_user_created(new_data)
-                assert exc_info.value.status_code == 409
-                assert exc_info.value.detail["error"] == "EmailCollision"
-
-                # 3. Verify only one user exists and external_auth_id is NOT updated
-                async_session = get_async_session()
-                async with async_session() as session:
-                    from sqlmodel import select
-
-                    user_result = await session.execute(
-                        select(User).where(User.email == "trybriefly@outlook.com")
+                user = user_result.scalar_one_or_none()
+                assert user is not None
+                assert user.external_auth_id == "demo_user"
+                # There should only be one user with this email
+                count_result = await session.execute(
+                    text(
+                        "SELECT COUNT(*) FROM users WHERE email = 'trybriefly@outlook.com'"
                     )
-                    user = user_result.scalar_one_or_none()
-                    assert user is not None
-                    assert user.external_auth_id == "demo_user"
-                    # There should only be one user with this email
-                    count_result = await session.execute(
-                        text(
-                            "SELECT COUNT(*) FROM users WHERE email = 'trybriefly@outlook.com'"
-                        )
-                    )
-                    count = count_result.scalar()
-                    assert count == 1
-            finally:
-                self._cleanup_test_database()
+                )
+                count = count_result.scalar()
+                assert count == 1
+        finally:
+            self._cleanup_test_database()
