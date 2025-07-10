@@ -1,8 +1,6 @@
 """
-Cache Manager for the Office Service.
-
-Provides Redis-based caching with TTL, key generation, and error handling
-for API responses to improve performance and reduce external API calls.
+Cache manager for the Office Service using Redis.
+Provides async methods for caching API responses with TTL support.
 """
 
 import asyncio
@@ -27,7 +25,7 @@ class CacheManager:
     Provides async methods for caching API responses and other data with TTL support.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._redis: Optional[Redis] = None
         self._connection_lock = asyncio.Lock()
 
@@ -102,7 +100,7 @@ class CacheManager:
 
             # Use default TTL if not specified
             if ttl_seconds is None:
-                ttl_seconds = get_settings().DEFAULT_CACHE_TTL_SECONDS
+                ttl_seconds = get_settings().CACHE_TTL
 
             # Set data with TTL
             await redis_client.setex(key, ttl_seconds, serialized_data)
@@ -231,7 +229,7 @@ class CacheManager:
             self._redis = None
             logger.info("Redis connection closed")
 
-    def _json_serializer(self, obj):
+    def _json_serializer(self, obj: Any) -> str:
         """Custom JSON serializer for datetime objects."""
         if isinstance(obj, datetime):
             return obj.isoformat()

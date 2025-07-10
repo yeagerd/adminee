@@ -387,7 +387,7 @@ class AuditLogger:
 
                 # Order by most recent first and apply pagination
                 query = (
-                    query.order_by(AuditLog.created_at.desc())
+                    query.order_by(AuditLog.created_at.desc())  # type: ignore[attr-defined]
                     .offset(offset)
                     .limit(limit)
                 )
@@ -534,7 +534,7 @@ class AuditLogger:
                     AuditActions.TOKEN_ROTATION,
                 ]
 
-                query = query.where(AuditLog.action.in_(security_actions))
+                query = query.where(AuditLog.action.in_(security_actions))  # type: ignore[attr-defined]
 
                 # Apply date filters
                 if start_date:
@@ -545,9 +545,9 @@ class AuditLogger:
                 # Filter by severity if specified
                 if severity:
                     # Note: JSON filtering might need adjustment based on database
-                    query = query.where(AuditLog.details["severity"].astext == severity)
+                    query = query.where(AuditLog.details["severity"].astext == severity)  # type: ignore[index]
 
-                query = query.order_by(AuditLog.created_at.desc()).limit(limit)
+                query = query.order_by(AuditLog.created_at.desc()).limit(limit)  # type: ignore[attr-defined]
                 result = await session.execute(query)
                 security_events = list(result.scalars().all())
 

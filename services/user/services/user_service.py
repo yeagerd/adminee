@@ -136,11 +136,7 @@ class UserService:
                 existing_user = result.scalar_one_or_none()
 
                 if existing_user and existing_user.deleted_at is None:
-                    raise UserAlreadyExistsException(
-                        field="external_auth_id",
-                        value=user_data.external_auth_id,
-                        reason=f"User with {user_data.auth_provider} ID {user_data.external_auth_id} already exists",
-                    )
+                    raise UserAlreadyExistsException(user_data.email)
 
                 # Check for email collision using normalized_email
                 collision = await detector.get_collision_details(user_data.email)
@@ -294,6 +290,8 @@ class UserService:
                 )
 
             # Then use the existing update method with the internal ID
+            if user.id is None:
+                raise ValueError("user.id cannot be None")
             return await self.update_user(user.id, user_data)
 
         except UserNotFoundException:
@@ -389,6 +387,8 @@ class UserService:
                 )
 
             # Then use the existing onboarding update method with the internal ID
+            if user.id is None:
+                raise ValueError("user.id cannot be None")
             return await self.update_user_onboarding(user.id, onboarding_data)
 
         except UserNotFoundException:
@@ -480,6 +480,8 @@ class UserService:
                 )
 
             # Then use the existing delete method with the internal ID
+            if user.id is None:
+                raise ValueError("user.id cannot be None")
             return await self.delete_user(user.id)
 
         except UserNotFoundException:

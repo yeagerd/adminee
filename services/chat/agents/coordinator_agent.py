@@ -11,7 +11,7 @@ Part of the multi-agent workflow system.
 """
 
 import logging
-from typing import List
+from typing import Any, Callable, List, Sequence
 
 from llama_index.core.agent.workflow import FunctionAgent
 from llama_index.core.tools import FunctionTool
@@ -192,7 +192,7 @@ class CoordinatorAgent(FunctionAgent):
         )
 
         # Create coordinator-specific tools
-        tools = self._create_coordinator_tools()
+        tools: Sequence[Callable[..., Any]] = self._create_coordinator_tools()
 
         # Create context-aware system prompt based on existing drafts
         context_aware_prompt = self._create_context_aware_prompt(str(thread_id))
@@ -207,7 +207,7 @@ class CoordinatorAgent(FunctionAgent):
             ),
             system_prompt=context_aware_prompt,
             llm=llm,
-            tools=tools,
+            tools=tools,  # type: ignore[arg-type]
             can_handoff_to=[
                 "CalendarAgent",
                 "EmailAgent",
@@ -215,10 +215,7 @@ class CoordinatorAgent(FunctionAgent):
                 "DraftAgent",
             ],
         )
-
-        # Store thread_id using object.__setattr__ to bypass Pydantic validation
-        object.__setattr__(self, "_thread_id", str(thread_id))
-
+        self._thread_id = str(thread_id)
         logger.debug(
             f"CoordinatorAgent initialized as main orchestrator with thread_id={self._thread_id}"
         )

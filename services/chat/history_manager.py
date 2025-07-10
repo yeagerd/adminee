@@ -284,6 +284,14 @@ async def create_thread(user_id: str, title: Optional[str] = None) -> Thread:
         session.add(thread)
         await session.commit()
         await session.refresh(thread)
+
+        # Ensure the ID was properly assigned by the database
+        if thread.id is None:
+            raise RuntimeError(
+                f"Failed to create thread for user {user_id}: "
+                "Database did not assign an ID after commit"
+            )
+
         return thread
 
 
@@ -299,6 +307,14 @@ async def append_message(thread_id: int, user_id: str, content: str) -> Message:
         session.add(message)
         await session.commit()
         await session.refresh(message)
+
+        # Ensure the ID was properly assigned by the database
+        if message.id is None:
+            raise RuntimeError(
+                f"Failed to create message for thread {thread_id}: "
+                "Database did not assign an ID after commit"
+            )
+
         return message
 
 
@@ -335,6 +351,14 @@ async def create_or_update_draft(
 
         await session.commit()
         await session.refresh(draft)
+
+        # Ensure the ID was properly assigned by the database
+        if draft.id is None:
+            raise RuntimeError(
+                f"Failed to create/update draft for thread {thread_id}: "
+                "Database did not assign an ID after commit"
+            )
+
         return draft
 
 

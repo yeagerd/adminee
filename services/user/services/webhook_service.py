@@ -8,7 +8,7 @@ import logging
 from datetime import datetime, timezone
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import and_, select
 
 from services.user.database import get_async_session
 from services.user.exceptions import DatabaseError, WebhookProcessingError
@@ -120,8 +120,7 @@ class WebhookService:
                 # Check if user already exists by external_auth_id (idempotency)
                 result = await session.execute(
                     select(User).where(
-                        User.external_auth_id == user_data.id,
-                        User.auth_provider == "clerk",
+                        and_(User.external_auth_id == user_data.id, User.auth_provider == "clerk")  # type: ignore[arg-type]
                     )
                 )
                 existing_user = result.scalar_one_or_none()
@@ -208,6 +207,8 @@ class WebhookService:
                 await session.commit()
                 await session.refresh(user)
 
+                assert user.id is not None
+
                 # Create default UserPreferences
                 preferences = UserPreferences(
                     user_id=user.id,
@@ -252,8 +253,7 @@ class WebhookService:
                 # Find existing user
                 result = await session.execute(
                     select(User).where(
-                        User.external_auth_id == user_data.id,
-                        User.auth_provider == "clerk",
+                        and_(User.external_auth_id == user_data.id, User.auth_provider == "clerk")  # type: ignore[arg-type]
                     )
                 )
                 user = result.scalar_one_or_none()
@@ -348,8 +348,7 @@ class WebhookService:
                 # Find existing user
                 result = await session.execute(
                     select(User).where(
-                        User.external_auth_id == user_data.id,
-                        User.auth_provider == "clerk",
+                        and_(User.external_auth_id == user_data.id, User.auth_provider == "clerk")  # type: ignore[arg-type]
                     )
                 )
                 user = result.scalar_one_or_none()

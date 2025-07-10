@@ -57,18 +57,18 @@ class JSONFormatter(logging.Formatter):
         }
 
         # Add request context if available
-        if hasattr(record, "request_id") and record.request_id:
-            log_entry["request_id"] = record.request_id
-        if hasattr(record, "user_id") and record.user_id:
-            log_entry["user_id"] = record.user_id
-        if hasattr(record, "method"):
-            log_entry["method"] = record.method
-        if hasattr(record, "path"):
-            log_entry["path"] = record.path
-        if hasattr(record, "status_code"):
-            log_entry["status_code"] = record.status_code
-        if hasattr(record, "process_time"):
-            log_entry["process_time"] = record.process_time
+        if hasattr(record, "request_id") and record.request_id:  # type: ignore[attr-defined]
+            log_entry["request_id"] = record.request_id  # type: ignore[attr-defined]
+        if hasattr(record, "user_id") and record.user_id:  # type: ignore[attr-defined]
+            log_entry["user_id"] = record.user_id  # type: ignore[attr-defined]
+        if hasattr(record, "method"):  # type: ignore[attr-defined]
+            log_entry["method"] = record.method  # type: ignore[attr-defined]
+        if hasattr(record, "path"):  # type: ignore[attr-defined]
+            log_entry["path"] = record.path  # type: ignore[attr-defined]
+        if hasattr(record, "status_code"):  # type: ignore[attr-defined]
+            log_entry["status_code"] = record.status_code  # type: ignore[attr-defined]
+        if hasattr(record, "process_time"):  # type: ignore[attr-defined]
+            log_entry["process_time"] = record.process_time  # type: ignore[attr-defined]
 
         # Add exception info if present
         if record.exc_info:
@@ -153,7 +153,7 @@ def setup_service_logging(
 
     # Set up standard logging
     if log_format == "json":
-        formatter = JSONFormatter()
+        formatter: logging.Formatter = JSONFormatter()
     else:
         formatter = logging.Formatter(
             "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

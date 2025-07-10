@@ -72,8 +72,12 @@ async def get_user_tokens(
         # Return error in response rather than raising HTTP exception
         return InternalTokenResponse(
             success=False,
+            access_token=None,
+            refresh_token=None,
+            expires_at=None,
             provider=request.provider,
             user_id=request.user_id,
+            integration_id=None,
             error=str(e),
         )
 
@@ -123,8 +127,12 @@ async def refresh_user_tokens(
         # Return error in response rather than raising HTTP exception
         return InternalTokenResponse(
             success=False,
+            access_token=None,
+            refresh_token=None,
+            expires_at=None,
             provider=request.provider,
             user_id=request.user_id,
+            integration_id=None,
             error=str(e),
         )
 
