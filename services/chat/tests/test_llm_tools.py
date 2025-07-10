@@ -32,6 +32,29 @@ class MockResponse:
             raise requests.HTTPError()
 
 
+def setup_chat_settings_env(monkeypatch):
+    monkeypatch.setenv("DB_URL_CHAT", "sqlite:///test.db")
+    monkeypatch.setenv("API_CHAT_USER_KEY", "test-api-key")
+    monkeypatch.setenv("API_CHAT_OFFICE_KEY", "test-api-key")
+    monkeypatch.setenv("API_FRONTEND_CHAT_KEY", "test-api-key")
+    monkeypatch.setenv("USER_MANAGEMENT_SERVICE_URL", "http://test-user-server")
+    monkeypatch.setenv("OFFICE_SERVICE_URL", "http://test-office-server")
+    monkeypatch.setenv("LLM_PROVIDER", "fake")
+    monkeypatch.setenv("LLM_MODEL", "fake-model")
+    monkeypatch.setenv("MAX_TOKENS", "2000")
+    monkeypatch.setenv("SERVICE_NAME", "chat-service")
+    monkeypatch.setenv("HOST", "0.0.0.0")
+    monkeypatch.setenv("PORT", "8000")
+    monkeypatch.setenv("DEBUG", "False")
+    monkeypatch.setenv("ENVIRONMENT", "test")
+    monkeypatch.setenv("LOG_LEVEL", "INFO")
+    monkeypatch.setenv("LOG_FORMAT", "json")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    import services.chat.settings as chat_settings
+
+    chat_settings._settings = None
+
+
 @pytest.fixture(autouse=True)
 def clear_drafts():
     """Clear all drafts before each test."""
@@ -87,31 +110,7 @@ def mock_requests():
 
 
 def test_get_calendar_events_success(mock_requests, monkeypatch):
-    # 1. Set environment variables
-    monkeypatch.setenv("DB_URL_CHAT", "sqlite:///test.db")
-    monkeypatch.setenv("API_CHAT_USER_KEY", "test-api-key")
-    monkeypatch.setenv("API_CHAT_OFFICE_KEY", "test-api-key")
-    monkeypatch.setenv("API_FRONTEND_CHAT_KEY", "test-api-key")
-    monkeypatch.setenv("USER_MANAGEMENT_SERVICE_URL", "http://test-user-server")
-    monkeypatch.setenv("OFFICE_SERVICE_URL", "http://test-office-server")
-    monkeypatch.setenv("LLM_PROVIDER", "fake")
-    monkeypatch.setenv("LLM_MODEL", "fake-model")
-    monkeypatch.setenv("MAX_TOKENS", "2000")
-    monkeypatch.setenv("SERVICE_NAME", "chat-service")
-    monkeypatch.setenv("HOST", "0.0.0.0")
-    monkeypatch.setenv("PORT", "8000")
-    monkeypatch.setenv("DEBUG", "False")
-    monkeypatch.setenv("ENVIRONMENT", "test")
-    monkeypatch.setenv("LOG_LEVEL", "INFO")
-    monkeypatch.setenv("LOG_FORMAT", "json")
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-
-    # 2. Reset the settings singleton
-    import services.chat.settings as chat_settings
-    chat_settings._settings = None
-
-    # 3. Import the code under test AFTER env and singleton are set/reset
-    from services.chat.agents.llm_tools import get_calendar_events
+    setup_chat_settings_env(monkeypatch)
 
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
@@ -159,7 +158,9 @@ def test_get_calendar_events_success(mock_requests, monkeypatch):
     assert result["events"][0]["title"] == "Meeting"
 
 
-def test_get_calendar_events_malformed(mock_requests):
+def test_get_calendar_events_malformed(mock_requests, monkeypatch):
+    setup_chat_settings_env(monkeypatch)
+
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
         if "internal/users" in url and "integrations" in url:
@@ -189,7 +190,9 @@ def test_get_calendar_events_malformed(mock_requests):
     assert "Malformed" in result["error"]
 
 
-def test_get_calendar_events_timeout(mock_requests):
+def test_get_calendar_events_timeout(mock_requests, monkeypatch):
+    setup_chat_settings_env(monkeypatch)
+
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
         if "internal/users" in url and "integrations" in url:
@@ -219,7 +222,9 @@ def test_get_calendar_events_timeout(mock_requests):
     assert "timed out" in result["error"]
 
 
-def test_get_calendar_events_http_error(mock_requests):
+def test_get_calendar_events_http_error(mock_requests, monkeypatch):
+    setup_chat_settings_env(monkeypatch)
+
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
         if "internal/users" in url and "integrations" in url:
@@ -241,7 +246,7 @@ def test_get_calendar_events_http_error(mock_requests):
                 200,
             )
         else:
-            return MockResponse({}, 500)
+            raise requests.HTTPError()
 
     mock_requests.side_effect = mock_get
     result = get_calendar_events("user123")
@@ -249,7 +254,9 @@ def test_get_calendar_events_http_error(mock_requests):
     assert "HTTP error" in result["error"]
 
 
-def test_get_calendar_events_unexpected(mock_requests):
+def test_get_calendar_events_unexpected(mock_requests, monkeypatch):
+    setup_chat_settings_env(monkeypatch)
+
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
         if "internal/users" in url and "integrations" in url:
@@ -271,7 +278,7 @@ def test_get_calendar_events_unexpected(mock_requests):
                 200,
             )
         else:
-            raise Exception("boom")
+            raise Exception("kaboom")
 
     mock_requests.side_effect = mock_get
     result = get_calendar_events("user123")
@@ -279,34 +286,74 @@ def test_get_calendar_events_unexpected(mock_requests):
     assert "Unexpected error" in result["error"]
 
 
-def test_get_emails_success(mock_requests):
+def test_get_emails_success(mock_requests, monkeypatch):
+    setup_chat_settings_env(monkeypatch)
+
     def mock_get(*args, **kwargs):
-        return MockResponse(
-            {
-                "success": True,
-                "data": {
-                    "emails": [
+        url = args[0] if args else ""
+        if "internal/users" in url and "integrations" in url:
+            return MockResponse(
+                {
+                    "integrations": [
                         {
-                            "id": "1",
-                            "subject": "Test Email",
-                            "from": "test@example.com",
-                            "to": "user123@example.com",
+                            "id": 1,
+                            "provider": "google",
+                            "status": "active",
+                            "external_user_id": "user123",
+                            "scopes": ["calendar"],
                         }
-                    ]
+                    ],
+                    "total": 1,
+                    "active_count": 1,
+                    "error_count": 0,
                 },
-            },
-            200,
-        )
+                200,
+            )
+        else:
+            return MockResponse(
+                {
+                    "success": True,
+                    "data": {
+                        "emails": [{"id": "1", "subject": "Test"}],
+                        "total_count": 1,
+                        "providers_used": ["google"],
+                        "provider_errors": None,
+                    },
+                },
+                200,
+            )
 
     mock_requests.side_effect = mock_get
-    result = get_emails("user123", unread_only=True, folder="inbox", max_results=10)
+    result = get_emails("user123")
     assert "emails" in result
-    assert result["emails"][0]["subject"] == "Test Email"
+    assert result["emails"][0]["subject"] == "Test"
 
 
-def test_get_emails_malformed(mock_requests):
+def test_get_emails_malformed(mock_requests, monkeypatch):
+    setup_chat_settings_env(monkeypatch)
+
     def mock_get(*args, **kwargs):
-        return MockResponse({"success": True, "data": {"bad": "data"}}, 200)
+        url = args[0] if args else ""
+        if "internal/users" in url and "integrations" in url:
+            return MockResponse(
+                {
+                    "integrations": [
+                        {
+                            "id": 1,
+                            "provider": "google",
+                            "status": "active",
+                            "external_user_id": "user123",
+                            "scopes": ["calendar"],
+                        }
+                    ],
+                    "total": 1,
+                    "active_count": 1,
+                    "error_count": 0,
+                },
+                200,
+            )
+        else:
+            return MockResponse({"success": True, "data": {"bad": "data"}}, 200)
 
     mock_requests.side_effect = mock_get
     result = get_emails("user123")
@@ -314,9 +361,31 @@ def test_get_emails_malformed(mock_requests):
     assert "Malformed" in result["error"]
 
 
-def test_get_emails_timeout(mock_requests):
+def test_get_emails_timeout(mock_requests, monkeypatch):
+    setup_chat_settings_env(monkeypatch)
+
     def mock_get(*args, **kwargs):
-        raise requests.Timeout()
+        url = args[0] if args else ""
+        if "internal/users" in url and "integrations" in url:
+            return MockResponse(
+                {
+                    "integrations": [
+                        {
+                            "id": 1,
+                            "provider": "google",
+                            "status": "active",
+                            "external_user_id": "user123",
+                            "scopes": ["calendar"],
+                        }
+                    ],
+                    "total": 1,
+                    "active_count": 1,
+                    "error_count": 0,
+                },
+                200,
+            )
+        else:
+            raise requests.Timeout()
 
     mock_requests.side_effect = mock_get
     result = get_emails("user123")
@@ -324,9 +393,31 @@ def test_get_emails_timeout(mock_requests):
     assert "timed out" in result["error"]
 
 
-def test_get_emails_http_error(mock_requests):
+def test_get_emails_http_error(mock_requests, monkeypatch):
+    setup_chat_settings_env(monkeypatch)
+
     def mock_get(*args, **kwargs):
-        return MockResponse({}, 404)
+        url = args[0] if args else ""
+        if "internal/users" in url and "integrations" in url:
+            return MockResponse(
+                {
+                    "integrations": [
+                        {
+                            "id": 1,
+                            "provider": "google",
+                            "status": "active",
+                            "external_user_id": "user123",
+                            "scopes": ["calendar"],
+                        }
+                    ],
+                    "total": 1,
+                    "active_count": 1,
+                    "error_count": 0,
+                },
+                200,
+            )
+        else:
+            raise requests.HTTPError()
 
     mock_requests.side_effect = mock_get
     result = get_emails("user123")
@@ -334,9 +425,31 @@ def test_get_emails_http_error(mock_requests):
     assert "HTTP error" in result["error"]
 
 
-def test_get_emails_unexpected(mock_requests):
+def test_get_emails_unexpected(mock_requests, monkeypatch):
+    setup_chat_settings_env(monkeypatch)
+
     def mock_get(*args, **kwargs):
-        raise Exception("boom")
+        url = args[0] if args else ""
+        if "internal/users" in url and "integrations" in url:
+            return MockResponse(
+                {
+                    "integrations": [
+                        {
+                            "id": 1,
+                            "provider": "google",
+                            "status": "active",
+                            "external_user_id": "user123",
+                            "scopes": ["calendar"],
+                        }
+                    ],
+                    "total": 1,
+                    "active_count": 1,
+                    "error_count": 0,
+                },
+                200,
+            )
+        else:
+            raise Exception("kaboom")
 
     mock_requests.side_effect = mock_get
     result = get_emails("user123")
@@ -344,60 +457,90 @@ def test_get_emails_unexpected(mock_requests):
     assert "Unexpected error" in result["error"]
 
 
-def test_get_notes_success(mock_requests):
+def test_get_notes_success(mock_requests, monkeypatch):
+    setup_chat_settings_env(monkeypatch)
+
     def mock_get(*args, **kwargs):
-        return MockResponse(
-            {
-                "success": True,
-                "data": {
-                    "notes": [
+        url = args[0] if args else ""
+        if "internal/users" in url and "integrations" in url:
+            return MockResponse(
+                {
+                    "integrations": [
                         {
-                            "id": "1",
-                            "title": "Test Note",
-                            "content": "This is a test note.",
+                            "id": 1,
+                            "provider": "google",
+                            "status": "active",
+                            "external_user_id": "user123",
+                            "scopes": ["calendar"],
                         }
-                    ]
+                    ],
+                    "total": 1,
+                    "active_count": 1,
+                    "error_count": 0,
                 },
-            },
-            200,
-        )
+                200,
+            )
+        else:
+            return MockResponse(
+                {
+                    "success": True,
+                    "data": {
+                        "notes": [{"id": "1", "content": "Note"}],
+                        "total_count": 1,
+                        "providers_used": ["google"],
+                        "provider_errors": None,
+                    },
+                },
+                200,
+            )
 
     mock_requests.side_effect = mock_get
-    result = get_notes(
-        "user123",
-        notebook="work",
-        tags="important",
-        search_query="test",
-        max_results=5,
-    )
+    result = get_notes("user123")
     assert "notes" in result
-    assert result["notes"][0]["title"] == "Test Note"
+    assert result["notes"][0]["content"] == "Note"
 
 
-def test_get_documents_success(mock_requests):
+def test_get_documents_success(mock_requests, monkeypatch):
+    setup_chat_settings_env(monkeypatch)
+
     def mock_get(*args, **kwargs):
-        return MockResponse(
-            {
-                "success": True,
-                "data": {
-                    "documents": [
+        url = args[0] if args else ""
+        if "internal/users" in url and "integrations" in url:
+            return MockResponse(
+                {
+                    "integrations": [
                         {
-                            "id": "1",
-                            "title": "Test Document",
-                            "type": "word",
+                            "id": 1,
+                            "provider": "google",
+                            "status": "active",
+                            "external_user_id": "user123",
+                            "scopes": ["calendar"],
                         }
-                    ]
+                    ],
+                    "total": 1,
+                    "active_count": 1,
+                    "error_count": 0,
                 },
-            },
-            200,
-        )
+                200,
+            )
+        else:
+            return MockResponse(
+                {
+                    "success": True,
+                    "data": {
+                        "documents": [{"id": "1", "title": "Doc"}],
+                        "total_count": 1,
+                        "providers_used": ["google"],
+                        "provider_errors": None,
+                    },
+                },
+                200,
+            )
 
     mock_requests.side_effect = mock_get
-    result = get_documents(
-        "user123", document_type="word", search_query="project", max_results=10
-    )
+    result = get_documents("user123")
     assert "documents" in result
-    assert result["documents"][0]["title"] == "Test Document"
+    assert result["documents"][0]["title"] == "Doc"
 
 
 def test_create_draft_email():
