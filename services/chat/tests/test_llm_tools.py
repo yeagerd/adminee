@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 import requests
@@ -41,57 +41,42 @@ def clear_drafts():
 
 
 @pytest.fixture(autouse=True)
-def mock_settings():
-    """Mock settings for all tests with enhanced CI compatibility."""
-    # Import the settings module to access the global _settings variable
-    from services.chat import settings
+def mock_settings_env(monkeypatch):
+    """
+    Mocks environment variables to control application settings for tests.
 
-    # Store the original _settings value for cleanup
-    original_settings = settings._settings
+    This approach is more robust than patching get_settings because it
+    modifies the source of the settings (environment variables) before the
+    Settings object is ever created, avoiding import-order issues in CI.
+    """
+    # Import here to avoid potential circular dependencies or load-order issues
+    from services.chat import settings as chat_settings
 
-    # Create a mock settings object with all required attributes
-    mock_settings_obj = MagicMock()
-    mock_settings_obj.db_url_chat = "sqlite:///test.db"
-    mock_settings_obj.api_chat_user_key = "test-api-key"
-    mock_settings_obj.api_chat_office_key = "test-api-key"
-    mock_settings_obj.api_frontend_chat_key = "test-api-key"
-    mock_settings_obj.user_management_service_url = "http://test-user-server"
-    mock_settings_obj.office_service_url = "http://test-office-server"
-    mock_settings_obj.llm_provider = "fake"
-    mock_settings_obj.llm_model = "fake-model"
-    mock_settings_obj.max_tokens = 2000
-    mock_settings_obj.openai_api_key = None
-    mock_settings_obj.service_name = "chat-service"
-    mock_settings_obj.host = "0.0.0.0"
-    mock_settings_obj.port = 8000
-    mock_settings_obj.debug = False
-    mock_settings_obj.environment = "test"
-    mock_settings_obj.log_level = "INFO"
-    mock_settings_obj.log_format = "json"
+    # 1. Force the settings to be reloaded by clearing the cached instance.
+    monkeypatch.setattr(chat_settings, "_settings", None)
 
-    # AGGRESSIVE MOCKING: Force the global _settings to our mock immediately
-    settings._settings = mock_settings_obj
+    # 2. Set environment variables that the Settings class will load.
+    monkeypatch.setenv("DB_URL_CHAT", "sqlite:///test.db")
+    monkeypatch.setenv("API_CHAT_USER_KEY", "test-api-key")
+    monkeypatch.setenv("API_CHAT_OFFICE_KEY", "test-api-key")
+    monkeypatch.setenv("API_FRONTEND_CHAT_KEY", "test-api-key")
+    monkeypatch.setenv("USER_MANAGEMENT_SERVICE_URL", "http://test-user-server")
+    monkeypatch.setenv("OFFICE_SERVICE_URL", "http://test-office-server")
+    monkeypatch.setenv("LLM_PROVIDER", "fake")
+    monkeypatch.setenv("LLM_MODEL", "fake-model")
+    monkeypatch.setenv("MAX_TOKENS", "2000")
+    monkeypatch.setenv("SERVICE_NAME", "chat-service")
+    monkeypatch.setenv("HOST", "0.0.0.0")
+    monkeypatch.setenv("PORT", "8000")
+    monkeypatch.setenv("DEBUG", "False")
+    monkeypatch.setenv("ENVIRONMENT", "test")
+    monkeypatch.setenv("LOG_LEVEL", "INFO")
+    monkeypatch.setenv("LOG_FORMAT", "json")
 
-    # Create a mock function that ALWAYS returns our mock object
-    def always_return_mock():
-        return mock_settings_obj
+    # Ensure this optional key is not present in the environment
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
-    # Patch at the module level for maximum coverage
-    original_get_settings = settings.get_settings
-    settings.get_settings = always_return_mock
-
-    # Also patch any imports that might have already happened
-    with patch("services.chat.settings.get_settings", side_effect=always_return_mock):
-        with patch(
-            "services.chat.agents.llm_tools.get_settings",
-            side_effect=always_return_mock,
-        ):
-            try:
-                yield mock_settings_obj
-            finally:
-                # Restore everything
-                settings._settings = original_settings
-                settings.get_settings = original_get_settings
+    # monkeypatch fixture handles cleanup automatically.
 
 
 @pytest.fixture(autouse=True)
