@@ -38,7 +38,7 @@ def test_serial(session):
 @nox.session(venv_backend="none")
 def test(session):
     # Use in-memory databases for parallel execution
-    session.run("pytest", "services/", "-n", "auto", "-q", "--tb=short", "--dist=worksteal", "--timeout=5", external=True)
+    session.run("pytest", "services/", "-n", "auto", "-q", "--tb=short", "--timeout=5", external=True)
 
 @nox.session(venv_backend="none")
 def test_fast(session):

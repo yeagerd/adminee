@@ -127,9 +127,6 @@ jobs:
       run: |
         uv sync --all-packages --all-extras --active
 
-    - name: Copy .example.env to .env
-      run: cp .example.env .env
-
     - name: Run nox (test)
       run: |
         source .venv/bin/activate
@@ -166,9 +163,6 @@ jobs:
     - name: Install dependencies with UV
       run: |
         uv sync --all-packages --all-extras --active
-
-    - name: Copy .example.env to .env
-      run: cp .example.env .env
 
     - name: Run nox (coverage)
       run: |
