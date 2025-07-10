@@ -1,53 +1,153 @@
 import nox
 
 nox.options.sessions = [
-    "format", "lint", "typecheck", "typecheck_strict", "test", "test_fast", "test_cov", "test_serial"
+    "format",
+    "lint",
+    "typecheck",
+    "typecheck_strict",
+    "test",
+    "test_fast",
+    "test_cov",
+    "test_serial",
 ]
-nox.options.reuse_existing_virtualenvs = True
+# Create fresh isolated environments using uv backend
+nox.options.reuse_existing_virtualenvs = False
+nox.options.default_venv_backend = "uv"
 
-@nox.session(venv_backend="none")
+
+@nox.session(python="3.12")
 def fix(session):
-    session.run("black", "services/", external=True)
-    session.run("isort", "services/", external=True)
-    session.run("ruff", "check", "--fix", "services/", external=True)
+    """Format and fix code issues."""
+    session.install("black", "isort", "ruff")
+    session.run("black", "services/")
+    session.run("isort", "services/")
+    session.run("ruff", "check", "--fix", "services/")
 
-@nox.session(venv_backend="none")
+
+@nox.session(python="3.12")
 def format(session):
-    session.run("black", "--check", "--diff", "services/", external=True)
-    session.run("isort", "--check-only", "--diff", "services/", external=True)
+    """Check code formatting."""
+    session.install("black", "isort")
+    session.run("black", "--check", "--diff", "services/")
+    session.run("isort", "--check-only", "--diff", "services/")
 
-@nox.session(venv_backend="none")
+
+@nox.session(python="3.12")
 def lint(session):
-    session.run("ruff", "check", "services/", external=True)
+    """Run linting."""
+    session.install("ruff")
+    session.run("ruff", "check", "services/")
 
-@nox.session(venv_backend="none")
+
+@nox.session(python="3.12")
 def typecheck(session):
-    session.run("bash", "-c", "cd services/user && python -m mypy . --ignore-missing-imports --no-strict-optional --exclude='alembic/'", external=True)
-    session.run("bash", "-c", "cd services/chat && python -m mypy . --ignore-missing-imports --no-strict-optional --exclude='alembic/'", external=True)
-    session.run("bash", "-c", "cd services/office && python -m mypy . --ignore-missing-imports --no-strict-optional --exclude='alembic/'", external=True)
+    """Run type checking."""
+    session.install("mypy")
+    session.install("-e", "services/common")
+    session.run("mypy", "services/common")
 
-@nox.session(venv_backend="none")
+
+@nox.session(python="3.12")
 def typecheck_strict(session):
-    session.run("mypy", "services", "--strict", external=True)
+    """Run strict type checking."""
+    session.install("mypy")
+    session.install("-e", "services/common")
+    session.run("mypy", "services/common", "--strict")
 
-@nox.session(venv_backend="none")
-def test_serial(session):
-    # Use sequential execution to avoid SQLite conflicts
-    session.run("pytest", "services/", "-q", "--tb=short", "--timeout=5", external=True)
 
-@nox.session(venv_backend="none")
+@nox.session(python="3.12")
 def test(session):
-    # Use in-memory databases for parallel execution
-    session.run("pytest", "services/", "-n", "auto", "-q", "--tb=short", "--timeout=5", external=True)
+    """Run tests for all services."""
+    # Install common dependencies
+    session.install(
+        "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio"
+    )
 
-@nox.session(venv_backend="none")
+    # Install services
+    session.install("-e", "services/common")
+    session.install("-e", "services/user")
+    session.install("-e", "services/chat")
+    session.install("-e", "services/office")
+
+    # Run tests
+    session.run("python", "-m", "pytest", "services/user/tests/", "-v")
+    session.run("python", "-m", "pytest", "services/chat/tests/", "-v")
+    session.run("python", "-m", "pytest", "services/office/tests/", "-v")
+
+
+@nox.session(python="3.12")
 def test_fast(session):
-    session.run("bash", "-c", "cd services/user && python -m pytest tests/ -x -q --timeout=5", external=True)
-    session.run("bash", "-c", "cd services/chat && python -m pytest tests/ -x -q --timeout=5", external=True)
-    session.run("bash", "-c", "cd services/office && python -m pytest tests/ -x -q --timeout=5", external=True)
+    """Run fast tests only."""
+    session.install(
+        "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio"
+    )
+    session.install("-e", "services/common")
+    session.install("-e", "services/user")
+    session.install("-e", "services/chat")
+    session.install("-e", "services/office")
 
-@nox.session(venv_backend="none")
+    session.run(
+        "python", "-m", "pytest", "services/user/tests/", "-v", "-k", "not slow"
+    )
+    session.run(
+        "python", "-m", "pytest", "services/chat/tests/", "-v", "-k", "not slow"
+    )
+    session.run(
+        "python", "-m", "pytest", "services/office/tests/", "-v", "-k", "not slow"
+    )
+
+
+@nox.session(python="3.12")
 def test_cov(session):
-    session.run("python", "-m", "pytest", "services/user/tests/", "--cov=services/user", "--cov-report=xml:coverage-user-management.xml", "--cov-report=term-missing", "-x", "-q", "--timeout=5", external=True)
-    session.run("python", "-m", "pytest", "services/chat/tests/", "--cov=services/chat", "--cov-report=xml:coverage-chat-service.xml", "--cov-report=term-missing", "-x", "-q", "--timeout=5", external=True)
-    session.run("python", "-m", "pytest", "services/office/tests/", "--cov=services/office", "--cov-report=xml:coverage-office-service.xml", "--cov-report=term-missing", "-x", "-q", "--timeout=5", external=True) 
+    """Run tests with coverage."""
+    session.install(
+        "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio"
+    )
+    session.install("-e", "services/common")
+    session.install("-e", "services/user")
+    session.install("-e", "services/chat")
+    session.install("-e", "services/office")
+
+    session.run(
+        "python",
+        "-m",
+        "pytest",
+        "services/user/tests/",
+        "--cov=services/user",
+        "--cov-report=xml:coverage-user-management.xml",
+        "-v",
+    )
+    session.run(
+        "python",
+        "-m",
+        "pytest",
+        "services/chat/tests/",
+        "--cov=services/chat",
+        "--cov-report=xml:coverage-chat-service.xml",
+        "-v",
+    )
+    session.run(
+        "python",
+        "-m",
+        "pytest",
+        "services/office/tests/",
+        "--cov=services/office",
+        "--cov-report=xml:coverage-office-service.xml",
+        "-v",
+    )
+
+
+@nox.session(python="3.12")
+def test_serial(session):
+    """Run tests serially (not in parallel)."""
+    session.install(
+        "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio"
+    )
+    session.install("-e", "services/common")
+    session.install("-e", "services/user")
+    session.install("-e", "services/chat")
+    session.install("-e", "services/office")
+
+    session.run("python", "-m", "pytest", "services/user/tests/", "-v", "--tb=short")
+    session.run("python", "-m", "pytest", "services/chat/tests/", "-v", "--tb=short")
+    session.run("python", "-m", "pytest", "services/office/tests/", "-v", "--tb=short")
