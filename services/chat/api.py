@@ -61,7 +61,7 @@ async def chat_endpoint(
     client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
 ) -> ChatResponse:
     """
-    Chat endpoint using llama_manager ChatAgentManager.
+    Chat endpoint using WorkflowAgent multi-agent system.
 
     Demonstrates database model to API model conversion pattern.
     """
