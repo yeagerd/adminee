@@ -12,10 +12,37 @@ import logging
 import os
 from typing import Optional
 
+from .settings import BaseSettings, Field, SettingsConfigDict
+
 logger = logging.getLogger(__name__)
 
 # Cache for secrets to avoid repeated API calls
 _secret_cache: dict[str, str] = {}
+
+
+class SecretsSettings(BaseSettings):
+    """Settings for loading secrets from .env files."""
+    
+    environment: str = Field(..., description="Environment mode")
+    
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+
+# Global settings instance for loading from .env
+_secrets_settings: Optional[SecretsSettings] = None
+
+
+def get_secrets_settings() -> SecretsSettings:
+    """Get the global secrets settings instance."""
+    global _secrets_settings
+    if _secrets_settings is None:
+        _secrets_settings = SecretsSettings()
+    return _secrets_settings
 
 
 def ensure_str(val: Optional[str]) -> str:
@@ -40,12 +67,22 @@ def get_secret(secret_id: str, default: str = "") -> str:
     if secret_id in _secret_cache:
         return _secret_cache[secret_id]
 
-    environment = os.getenv("ENVIRONMENT", "local")
+    # Get environment from settings (which loads from .env file)
+    settings = get_secrets_settings()
+    environment = settings.environment
 
-    # Local development: use environment variables
+    # Local development: use environment variables and .env files
     if environment == "local":
-        env_value = os.getenv(secret_id, default)
-        value = env_value or default
+        # First try os.getenv (for shell environment variables)
+        env_value = os.getenv(secret_id)
+        if env_value:
+            value = env_value
+        else:
+            # Try to get from .env file via settings
+            env_vars = settings._load_env_file(".env")
+            value = env_vars.get(secret_id, default)
+        
+        value = value or default
         _secret_cache[secret_id] = value
         return value
 
