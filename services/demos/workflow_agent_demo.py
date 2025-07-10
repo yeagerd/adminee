@@ -3,7 +3,7 @@
 Demo script for the new WorkflowAgent implementation.
 
 This script demonstrates how to use the WorkflowAgent which integrates
-LlamaIndex's AgentWorkflow with the existing ChatAgent and LLM manager
+LlamaIndex's AgentWorkflow with the existing LLM manager
 infrastructure.
 
 Usage:
