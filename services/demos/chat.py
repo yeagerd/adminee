@@ -21,8 +21,6 @@ import asyncio
 import logging
 import os
 import sys
-import time
-from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 # Add the services directory to the path
@@ -329,7 +327,7 @@ class ChatServiceClient(ServiceClient):
         """Send a message to the chat service."""
         try:
             response = requests.post(
-                f"{self.base_url}/chat/message",
+                f"{self.base_url}/chat",
                 json={
                     "user_id": user_id,
                     "message": message,
@@ -339,7 +337,11 @@ class ChatServiceClient(ServiceClient):
                 timeout=self.timeout,
             )
             if response.status_code == 200:
-                return response.json().get("response")
+                # The chat API returns a ChatResponse with 'messages' (list of MessageResponse)
+                data = response.json()
+                messages = data.get("messages", [])
+                if messages:
+                    return messages[-1].get("content")
         except Exception as e:
             logger.error(f"Chat service error: {e}")
         return None
@@ -548,7 +550,9 @@ class FullDemo:
                         headers={"Content-Type": "application/json"},
                     )
                     if response.status_code in [200, 201]:
-                        logger.info(f"Successfully created user {user_id} via /users/ API")
+                        logger.info(
+                            f"Successfully created user {user_id} via /users/ API"
+                        )
                         return True
                     elif response.status_code == 409:
                         logger.error(f"Email collision for {email} (user {user_id})")
@@ -579,7 +583,9 @@ class FullDemo:
                 print(f"❌ Failed to start {provider} OAuth flow")
                 return False
 
-            print(f"\n🔗 Please visit this URL to authenticate with {provider.capitalize()}:\n   {auth_url}\n")
+            print(
+                f"\n🔗 Please visit this URL to authenticate with {provider.capitalize()}:\n   {auth_url}\n"
+            )
             print("🌐 Open this link in your browser to continue the OAuth flow.")
             # TODO: Optionally, add a flag to auto-open in the future
             # if auto_open:
@@ -840,6 +846,8 @@ class FullDemo:
         if not self.auth_methods.get("nextauth"):
             return "❌ NextAuth test server not available. Start with: python services/demos/nextauth_test_server.py"
 
+        provider = provider.lower()
+        print(f"[DEBUG] NextAuth provider received: '{provider}'")
         if provider not in ["google", "microsoft"]:
             return "❌ Supported providers: google, microsoft"
 
@@ -958,7 +966,9 @@ class FullDemo:
 
                 # Handle NextAuth commands
                 if user_input.lower().startswith("nextauth "):
-                    provider = user_input[10:].strip()
+                    # Robustly extract provider argument (after 'nextauth ')
+                    parts = user_input.strip().split(None, 1)
+                    provider = parts[1].strip() if len(parts) > 1 else ""
                     result = await self.handle_nextauth_command(provider)
                     print(f"\n{result}")
                     continue
