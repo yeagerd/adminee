@@ -22,9 +22,9 @@ _secret_cache: dict[str, str] = {}
 
 class SecretsSettings(BaseSettings):
     """Settings for loading secrets from .env files."""
-    
+
     environment: str = Field(..., description="Environment mode")
-    
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -81,7 +81,7 @@ def get_secret(secret_id: str, default: str = "") -> str:
             # Try to get from .env file via settings
             env_vars = settings._load_env_file(".env")
             value = env_vars.get(secret_id, default)
-        
+
         value = value or default
         _secret_cache[secret_id] = value
         return value

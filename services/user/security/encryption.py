@@ -71,21 +71,40 @@ class TokenEncryption:
             # - Production: Secret Manager first, then env vars
             salt_b64 = get_token_encryption_salt()
             if not salt_b64:
-                logger.error("Failed to get service salt - TOKEN_ENCRYPTION_SALT environment variable not set")
-                raise EncryptionException("token_initialization", {"error": "TOKEN_ENCRYPTION_SALT environment variable not set"})
-            
+                logger.error(
+                    "Failed to get service salt - TOKEN_ENCRYPTION_SALT environment variable not set"
+                )
+                raise EncryptionException(
+                    "token_initialization",
+                    {"error": "TOKEN_ENCRYPTION_SALT environment variable not set"},
+                )
+
             # Validate base64 encoding
             try:
                 salt_bytes = base64.b64decode(salt_b64)
             except Exception as decode_error:
-                logger.error("Failed to decode service salt - invalid base64 format", error=str(decode_error))
-                raise EncryptionException("token_initialization", {"error": f"Invalid base64 salt format: {decode_error}"})
-            
+                logger.error(
+                    "Failed to decode service salt - invalid base64 format",
+                    error=str(decode_error),
+                )
+                raise EncryptionException(
+                    "token_initialization",
+                    {"error": f"Invalid base64 salt format: {decode_error}"},
+                )
+
             # Validate salt length (should be at least 16 bytes)
             if len(salt_bytes) < 16:
-                logger.error("Service salt too short - must be at least 16 bytes", salt_length=len(salt_bytes))
-                raise EncryptionException("token_initialization", {"error": f"Salt too short: {len(salt_bytes)} bytes (minimum 16 required)"})
-            
+                logger.error(
+                    "Service salt too short - must be at least 16 bytes",
+                    salt_length=len(salt_bytes),
+                )
+                raise EncryptionException(
+                    "token_initialization",
+                    {
+                        "error": f"Salt too short: {len(salt_bytes)} bytes (minimum 16 required)"
+                    },
+                )
+
             return salt_bytes
 
         except EncryptionException:
