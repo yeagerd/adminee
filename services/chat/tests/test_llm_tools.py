@@ -86,8 +86,32 @@ def mock_requests():
         yield mock_get
 
 
-def test_get_calendar_events_success(mock_requests):
-    """Test successful calendar events retrieval."""
+def test_get_calendar_events_success(mock_requests, monkeypatch):
+    # 1. Set environment variables
+    monkeypatch.setenv("DB_URL_CHAT", "sqlite:///test.db")
+    monkeypatch.setenv("API_CHAT_USER_KEY", "test-api-key")
+    monkeypatch.setenv("API_CHAT_OFFICE_KEY", "test-api-key")
+    monkeypatch.setenv("API_FRONTEND_CHAT_KEY", "test-api-key")
+    monkeypatch.setenv("USER_MANAGEMENT_SERVICE_URL", "http://test-user-server")
+    monkeypatch.setenv("OFFICE_SERVICE_URL", "http://test-office-server")
+    monkeypatch.setenv("LLM_PROVIDER", "fake")
+    monkeypatch.setenv("LLM_MODEL", "fake-model")
+    monkeypatch.setenv("MAX_TOKENS", "2000")
+    monkeypatch.setenv("SERVICE_NAME", "chat-service")
+    monkeypatch.setenv("HOST", "0.0.0.0")
+    monkeypatch.setenv("PORT", "8000")
+    monkeypatch.setenv("DEBUG", "False")
+    monkeypatch.setenv("ENVIRONMENT", "test")
+    monkeypatch.setenv("LOG_LEVEL", "INFO")
+    monkeypatch.setenv("LOG_FORMAT", "json")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+    # 2. Reset the settings singleton
+    import services.chat.settings as chat_settings
+    chat_settings._settings = None
+
+    # 3. Import the code under test AFTER env and singleton are set/reset
+    from services.chat.agents.llm_tools import get_calendar_events
 
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
