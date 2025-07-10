@@ -69,14 +69,16 @@ def mock_settings():
     mock_settings_obj.log_level = "INFO"
     mock_settings_obj.log_format = "json"
 
-    # Set the global _settings to our mock
+    # Force the global _settings to our mock (even if it was already initialized)
     settings._settings = mock_settings_obj
 
-    try:
-        yield mock_settings_obj
-    finally:
-        # Restore the original _settings value
-        settings._settings = original_settings
+    # Also patch get_settings to ensure it returns our mock
+    with patch("services.chat.settings.get_settings", return_value=mock_settings_obj):
+        try:
+            yield mock_settings_obj
+        finally:
+            # Restore the original _settings value
+            settings._settings = original_settings
 
 
 @pytest.fixture(autouse=True)
