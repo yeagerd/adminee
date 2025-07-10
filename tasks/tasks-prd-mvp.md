@@ -24,7 +24,7 @@
 
 
 ### Vector Database
-- `services/vector-db/` - Vector database management
+- `services/vector_db/` - Vector database management
   - `embeddings.py` - Embedding generation utilities
   - `pinecone_client.py` - Pinecone vector DB client
   - `indexing_service.py` - Document indexing service

@@ -1,7 +1,7 @@
 # Dockerfile for User Management Service (Python/FastAPI)
 
 # Use an official Python runtime as a parent image
-FROM python:3.11-slim-bullseye
+FROM python:3.12-slim-bullseye
 
 # Set environment variables for Python
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -18,9 +18,18 @@ RUN apt-get update \
         curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements file and install Python dependencies
-COPY services/user/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install UV
+RUN pip install uv
+
+# Copy pyproject.toml and uv.lock files
+COPY pyproject.toml uv.lock ./
+COPY services/user/pyproject.toml ./services/user/
+COPY services/common/setup.py ./services/common/
+
+# Install Python dependencies using UV (system-wide installation)
+RUN uv pip install --system -e .
+RUN uv pip install --system -e services/user
+RUN uv pip install --system -e services/common
 
 # Copy the common module first (shared dependencies)
 COPY services/common/ ./services/common/

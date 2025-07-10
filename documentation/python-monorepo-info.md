@@ -27,19 +27,19 @@ This script will:
 
 ### 1. Package Structure
 - `services/common/`: Contains telemetry and shared utilities
-- `services/vector-db/`: Contains vector database utilities (Pinecone client, indexing)
+- `services/vector_db/`: Contains vector database utilities (Pinecone client, indexing)
 
 ### 2. Setup Files Created
 - `services/common/setup.py`: Makes common installable as a package
-- `services/vector-db/setup.py`: Makes vector-db installable as `vector_db` package
-- `services/vector-db/__init__.py`: Makes the directory a proper Python package
+- `services/vector_db/setup.py`: Makes vector_db installable as `vector_db` package
+- `services/vector_db/__init__.py`: Makes the directory a proper Python package
 
 ### 3. VS Code Configuration
 Each service's `.vscode/settings.json` includes:
 ```json
 {
   "python.defaultInterpreterPath": "venv/bin/python",
-  "python.analysis.extraPaths": ["../common", "../vector-db"]
+  "python.analysis.extraPaths": ["../common", "../vector_db"]
 }
 ```
 
@@ -48,7 +48,7 @@ The VS Code workspace (`briefly.code-workspace`) includes:
 - Root directory (`.`) for running `tox` and accessing shared configurations
 - Individual service directories for development
 
-**Important**: `services/common` and `services/vector-db` are NOT included as separate workspace folders since they're shared libraries, not services. Including them would cause VS Code to expect them to have their own Python interpreters.
+**Important**: `services/common` and `services/vector_db` are NOT included as separate workspace folders since they're shared libraries, not services. Including them would cause VS Code to expect them to have their own Python interpreters.
 
 ## Usage
 
@@ -78,7 +78,7 @@ For manual installation (if needed):
 cd services/{service-name}
 source ../../venv/bin/activate  # Use unified venv
 pip install -e ../common
-pip install -e ../vector-db
+pip install -e ../vector_db
 ```
 
 ## Verification
@@ -98,7 +98,7 @@ To verify the setup works:
 
 3. Check installed packages:
    ```bash
-   pip list | grep -E "(common|vector-db)"
+   pip list | grep -E "(common|vector_db)"
    ```
 
 ## Services Configured
@@ -110,8 +110,8 @@ To verify the setup works:
 ## Files Created/Modified
 
 - `services/common/setup.py` (new)
-- `services/vector-db/setup.py` (new)
-- `services/vector-db/__init__.py` (new)
+- `services/vector_db/setup.py` (new)
+- `services/vector_db/__init__.py` (new)
 - `services/office/.vscode/settings.json` (updated)
 - `services/chat/.vscode/settings.json` (updated)
 - `services/user/.vscode/settings.json` (updated)
