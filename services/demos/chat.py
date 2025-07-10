@@ -248,12 +248,16 @@ class UserServiceClient(ServiceClient):
         """Return True if user exists, False if not. Raise if service is down."""
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
+                # Use the preferences endpoint to check if user exists
+                # This endpoint properly checks the database for user existence
                 response = await client.get(
-                    f"{self.base_url}/internal/users/{user_id}/integrations",
+                    f"{self.base_url}/internal/users/{user_id}/preferences",
                     headers={"X-API-Key": settings.API_FRONTEND_USER_KEY},
                 )
                 if response.status_code == 200:
-                    return True
+                    # Check if response is None (user doesn't exist) or has data
+                    data = response.json()
+                    return data is not None  # None means user doesn't exist
                 elif response.status_code == 404:
                     return False
                 else:
