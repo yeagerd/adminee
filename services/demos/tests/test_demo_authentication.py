@@ -72,17 +72,19 @@ class TestDemoAuthentication:
             call_args = mock_http_client.post.call_args
 
             # Check URL - call_args[0] contains positional args, call_args[1] contains keyword args
-            assert (
-                call_args[0][0]
-                == f"{demo_instance.user_client.base_url}/webhooks/clerk"
-            )
+            assert call_args[0][0] == f"{demo_instance.user_client.base_url}/users/"
 
-            # Check payload structure
+            # Check payload structure for /users/ endpoint
             payload = call_args[1]["json"]
-            assert payload["type"] == "user.created"
-            assert payload["object"] == "event"
-            assert payload["data"]["id"] == user_id
-            assert payload["data"]["email_addresses"][0]["email_address"] == email
+            assert payload["external_auth_id"] == user_id
+            assert payload["email"] == email
+            assert payload["auth_provider"] == "nextauth"
+            assert payload["first_name"] == "Demo"
+            assert payload["last_name"] == "User"
+            assert (
+                payload["profile_image_url"]
+                == "https://images.clerk.dev/demo-avatar.png"
+            )
 
     @pytest.mark.asyncio
     async def test_create_user_if_not_exists_already_exists(self, demo_instance):
@@ -168,8 +170,8 @@ class TestDemoAuthentication:
                 if "/internal/users/" in url and "/integrations" in url:
                     # User existence check
                     return mock_get_response
-                elif "/webhooks/clerk" in url:
-                    # User creation webhook
+                elif "/users/" in url:
+                    # User creation
                     return mock_create_response
                 elif "/integrations/" in url and "/webhooks/clerk" not in url:
                     # Integrations status check
@@ -193,7 +195,7 @@ class TestDemoAuthentication:
             create_calls = [
                 call
                 for call in mock_http_client.post.call_args_list
-                if "/webhooks/clerk" in str(call)
+                if "/users/" in str(call)
             ]
             assert len(create_calls) > 0
 
@@ -232,7 +234,7 @@ class TestDemoAuthentication:
             mock_http_client = mock_client.return_value.__aenter__.return_value
 
             def side_effect(url, **kwargs):
-                if "/webhooks/clerk" in url:
+                if "/users/" in url:
                     return mock_create_response
                 elif "/integrations/" in url:
                     # Simulate authentication failure due to non-existent user
