@@ -2,7 +2,7 @@
 LlamaIndex Multi-Agent Workflow implementation for chat_service.
 
 This module provides a specialized multi-agent architecture using LlamaIndex's AgentWorkflow
-with domain-specific agents. It integrates with the existing ChatAgent and LLM manager
+with domain-specific agents. It integrates with the existing LLM manager
 infrastructure while providing modern workflow capabilities including:
 
 - Multi-agent orchestration with specialized agents
@@ -52,7 +52,6 @@ class WorkflowAgent:
 
     This class provides a specialized multi-agent architecture that:
     - Uses AgentWorkflow for multi-agent orchestration
-    - Integrates with existing ChatAgent for memory management
     - Supports context persistence and state management across agents
     - Provides streaming and human-in-the-loop capabilities
     - Uses existing LLM manager and tools
@@ -106,7 +105,7 @@ class WorkflowAgent:
         # Initialize tool registry for additional office tools
         self.tool_registry = get_tool_registry()
 
-        # Store configuration for direct database operations (no ChatAgent needed)
+        # Store configuration for direct database operations
         self.max_tokens = max_tokens
         self.chat_history_token_ratio = chat_history_token_ratio
         self.token_flush_size = token_flush_size
@@ -241,7 +240,6 @@ class WorkflowAgent:
         Build the multi-agent workflow components.
 
         This method initializes:
-        - The underlying ChatAgent for memory management
         - Specialized agents for different domains
         - AgentWorkflow for orchestration
         - Context for state management
