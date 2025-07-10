@@ -3,21 +3,6 @@ from unittest.mock import patch
 import pytest
 import requests
 
-from services.chat.agents.llm_tools import (
-    _draft_storage,
-    create_draft_calendar_change,
-    create_draft_calendar_event,
-    create_draft_email,
-    delete_draft_calendar_edit,
-    delete_draft_calendar_event,
-    delete_draft_email,
-    get_calendar_events,
-    get_documents,
-    get_emails,
-    get_notes,
-    get_tool_registry,
-)
-
 
 class MockResponse:
     def __init__(self, json_data, status_code):
@@ -56,50 +41,11 @@ def setup_chat_settings_env(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
-def clear_drafts():
-    """Clear all drafts before each test."""
+def clear_drafts(monkeypatch):
+    setup_chat_settings_env(monkeypatch)
     from services.chat.agents.llm_tools import _draft_storage
 
     _draft_storage.clear()
-
-
-@pytest.fixture(autouse=True)
-def mock_settings_env(monkeypatch):
-    """
-    Mocks environment variables to control application settings for tests.
-
-    This approach is more robust than patching get_settings because it
-    modifies the source of the settings (environment variables) before the
-    Settings object is ever created, avoiding import-order issues in CI.
-    """
-    # Import here to avoid potential circular dependencies or load-order issues
-    from services.chat import settings as chat_settings
-
-    # 1. Force the settings to be reloaded by clearing the cached instance.
-    monkeypatch.setattr(chat_settings, "_settings", None)
-
-    # 2. Set environment variables that the Settings class will load.
-    monkeypatch.setenv("DB_URL_CHAT", "sqlite:///test.db")
-    monkeypatch.setenv("API_CHAT_USER_KEY", "test-api-key")
-    monkeypatch.setenv("API_CHAT_OFFICE_KEY", "test-api-key")
-    monkeypatch.setenv("API_FRONTEND_CHAT_KEY", "test-api-key")
-    monkeypatch.setenv("USER_MANAGEMENT_SERVICE_URL", "http://test-user-server")
-    monkeypatch.setenv("OFFICE_SERVICE_URL", "http://test-office-server")
-    monkeypatch.setenv("LLM_PROVIDER", "fake")
-    monkeypatch.setenv("LLM_MODEL", "fake-model")
-    monkeypatch.setenv("MAX_TOKENS", "2000")
-    monkeypatch.setenv("SERVICE_NAME", "chat-service")
-    monkeypatch.setenv("HOST", "0.0.0.0")
-    monkeypatch.setenv("PORT", "8000")
-    monkeypatch.setenv("DEBUG", "False")
-    monkeypatch.setenv("ENVIRONMENT", "test")
-    monkeypatch.setenv("LOG_LEVEL", "INFO")
-    monkeypatch.setenv("LOG_FORMAT", "json")
-
-    # Ensure this optional key is not present in the environment
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-
-    # monkeypatch fixture handles cleanup automatically.
 
 
 @pytest.fixture(autouse=True)
@@ -111,6 +57,7 @@ def mock_requests():
 
 def test_get_calendar_events_success(mock_requests, monkeypatch):
     setup_chat_settings_env(monkeypatch)
+    from services.chat.agents.llm_tools import get_calendar_events
 
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
@@ -160,6 +107,7 @@ def test_get_calendar_events_success(mock_requests, monkeypatch):
 
 def test_get_calendar_events_malformed(mock_requests, monkeypatch):
     setup_chat_settings_env(monkeypatch)
+    from services.chat.agents.llm_tools import get_calendar_events
 
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
@@ -192,6 +140,7 @@ def test_get_calendar_events_malformed(mock_requests, monkeypatch):
 
 def test_get_calendar_events_timeout(mock_requests, monkeypatch):
     setup_chat_settings_env(monkeypatch)
+    from services.chat.agents.llm_tools import get_calendar_events
 
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
@@ -224,6 +173,7 @@ def test_get_calendar_events_timeout(mock_requests, monkeypatch):
 
 def test_get_calendar_events_http_error(mock_requests, monkeypatch):
     setup_chat_settings_env(monkeypatch)
+    from services.chat.agents.llm_tools import get_calendar_events
 
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
@@ -256,6 +206,7 @@ def test_get_calendar_events_http_error(mock_requests, monkeypatch):
 
 def test_get_calendar_events_unexpected(mock_requests, monkeypatch):
     setup_chat_settings_env(monkeypatch)
+    from services.chat.agents.llm_tools import get_calendar_events
 
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
@@ -288,6 +239,7 @@ def test_get_calendar_events_unexpected(mock_requests, monkeypatch):
 
 def test_get_emails_success(mock_requests, monkeypatch):
     setup_chat_settings_env(monkeypatch)
+    from services.chat.agents.llm_tools import get_emails
 
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
@@ -331,6 +283,7 @@ def test_get_emails_success(mock_requests, monkeypatch):
 
 def test_get_emails_malformed(mock_requests, monkeypatch):
     setup_chat_settings_env(monkeypatch)
+    from services.chat.agents.llm_tools import get_emails
 
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
@@ -363,6 +316,7 @@ def test_get_emails_malformed(mock_requests, monkeypatch):
 
 def test_get_emails_timeout(mock_requests, monkeypatch):
     setup_chat_settings_env(monkeypatch)
+    from services.chat.agents.llm_tools import get_emails
 
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
@@ -395,6 +349,7 @@ def test_get_emails_timeout(mock_requests, monkeypatch):
 
 def test_get_emails_http_error(mock_requests, monkeypatch):
     setup_chat_settings_env(monkeypatch)
+    from services.chat.agents.llm_tools import get_emails
 
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
@@ -427,6 +382,7 @@ def test_get_emails_http_error(mock_requests, monkeypatch):
 
 def test_get_emails_unexpected(mock_requests, monkeypatch):
     setup_chat_settings_env(monkeypatch)
+    from services.chat.agents.llm_tools import get_emails
 
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
@@ -459,6 +415,7 @@ def test_get_emails_unexpected(mock_requests, monkeypatch):
 
 def test_get_notes_success(mock_requests, monkeypatch):
     setup_chat_settings_env(monkeypatch)
+    from services.chat.agents.llm_tools import get_notes
 
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
@@ -502,6 +459,7 @@ def test_get_notes_success(mock_requests, monkeypatch):
 
 def test_get_documents_success(mock_requests, monkeypatch):
     setup_chat_settings_env(monkeypatch)
+    from services.chat.agents.llm_tools import get_documents
 
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
@@ -543,7 +501,10 @@ def test_get_documents_success(mock_requests, monkeypatch):
     assert result["documents"][0]["title"] == "Doc"
 
 
-def test_create_draft_email():
+def test_create_draft_email(monkeypatch):
+    setup_chat_settings_env(monkeypatch)
+    from services.chat.agents.llm_tools import create_draft_email
+
     result = create_draft_email(
         thread_id="thread123", to="test@example.com", subject="Test", body="Body"
     )
@@ -552,14 +513,20 @@ def test_create_draft_email():
     assert result["draft"]["to"] == "test@example.com"
 
 
-def test_delete_draft_email():
+def test_delete_draft_email(monkeypatch):
+    setup_chat_settings_env(monkeypatch)
+    from services.chat.agents.llm_tools import create_draft_email, delete_draft_email
+
     create_draft_email(thread_id="thread123", to="test@example.com")
     result = delete_draft_email(thread_id="thread123")
     assert result["success"] is True
     assert "deleted" in result["message"]
 
 
-def test_create_draft_calendar_event():
+def test_create_draft_calendar_event(monkeypatch):
+    setup_chat_settings_env(monkeypatch)
+    from services.chat.agents.llm_tools import create_draft_calendar_event
+
     result = create_draft_calendar_event(
         thread_id="thread123",
         title="Meeting",
@@ -571,14 +538,23 @@ def test_create_draft_calendar_event():
     assert result["draft"]["title"] == "Meeting"
 
 
-def test_delete_draft_calendar_event():
+def test_delete_draft_calendar_event(monkeypatch):
+    setup_chat_settings_env(monkeypatch)
+    from services.chat.agents.llm_tools import (
+        create_draft_calendar_event,
+        delete_draft_calendar_event,
+    )
+
     create_draft_calendar_event(thread_id="thread123", title="Meeting")
     result = delete_draft_calendar_event(thread_id="thread123")
     assert result["success"] is True
     assert "deleted" in result["message"]
 
 
-def test_create_draft_calendar_change():
+def test_create_draft_calendar_change(monkeypatch):
+    setup_chat_settings_env(monkeypatch)
+    from services.chat.agents.llm_tools import create_draft_calendar_change
+
     result = create_draft_calendar_change(
         thread_id="thread123",
         event_id="event456",
@@ -591,7 +567,13 @@ def test_create_draft_calendar_change():
     assert result["draft"]["event_id"] == "event456"
 
 
-def test_delete_draft_calendar_change():
+def test_delete_draft_calendar_change(monkeypatch):
+    setup_chat_settings_env(monkeypatch)
+    from services.chat.agents.llm_tools import (
+        create_draft_calendar_change,
+        delete_draft_calendar_edit,
+    )
+
     create_draft_calendar_change(
         thread_id="thread123",
         event_id="event456",
@@ -603,7 +585,14 @@ def test_delete_draft_calendar_change():
     assert "deleted" in result["message"]
 
 
-def test_draft_tools_thread_isolation():
+def test_draft_tools_thread_isolation(monkeypatch):
+    setup_chat_settings_env(monkeypatch)
+    from services.chat.agents.llm_tools import (
+        _draft_storage,
+        create_draft_calendar_event,
+        create_draft_email,
+    )
+
     create_draft_email(thread_id="thread1", to="user1@example.com")
     create_draft_email(thread_id="thread2", to="user2@example.com")
     create_draft_calendar_event(thread_id="thread1", title="Meeting 1")
@@ -618,7 +607,10 @@ def test_draft_tools_thread_isolation():
     assert _draft_storage["thread2_calendar_event"]["title"] == "Meeting 2"
 
 
-def test_tool_registry(mock_requests):
+def test_tool_registry(mock_requests, monkeypatch):
+    setup_chat_settings_env(monkeypatch)
+    from services.chat.agents.llm_tools import get_tool_registry
+
     def mock_get(*args, **kwargs):
         url = args[0]
         if "internal/users" in url and "integrations" in url:
@@ -673,7 +665,10 @@ def test_tool_registry(mock_requests):
     assert "emails" in email_result.raw_output
 
 
-def test_tool_registry_tooloutput_success(mock_requests):
+def test_tool_registry_tooloutput_success(mock_requests, monkeypatch):
+    setup_chat_settings_env(monkeypatch)
+    from services.chat.agents.llm_tools import get_tool_registry
+
     def mock_get(*args, **kwargs):
         url = args[0]
         if "internal/users" in url and "integrations" in url:
@@ -723,14 +718,20 @@ def test_tool_registry_tooloutput_success(mock_requests):
     assert "events" in calendar_result.raw_output
 
 
-def test_tool_registry_tooloutput_error(mock_requests):
+def test_tool_registry_tooloutput_error(mock_requests, monkeypatch):
+    setup_chat_settings_env(monkeypatch)
+    from services.chat.agents.llm_tools import get_tool_registry
+
     registry = get_tool_registry()
     error_result = registry.execute_tool("calendar")
     assert hasattr(error_result, "raw_output")
     assert "error" in error_result.raw_output
 
 
-def test_tool_registry_tooloutput_for_get_tools(mock_requests):
+def test_tool_registry_tooloutput_for_get_tools(mock_requests, monkeypatch):
+    setup_chat_settings_env(monkeypatch)
+    from services.chat.agents.llm_tools import get_tool_registry
+
     def mock_get(*args, **kwargs):
         url = args[0]
         if "internal/users" in url and "integrations" in url:
@@ -781,7 +782,10 @@ def test_tool_registry_tooloutput_for_get_tools(mock_requests):
     assert "emails" in email_result.raw_output
 
 
-def test_tool_registry_execute_tool_returns_tooloutput(mock_requests):
+def test_tool_registry_execute_tool_returns_tooloutput(mock_requests, monkeypatch):
+    setup_chat_settings_env(monkeypatch)
+    from services.chat.agents.llm_tools import get_tool_registry
+
     def mock_get(*args, **kwargs):
         url = args[0]
         if "internal/users" in url and "integrations" in url:
@@ -834,14 +838,20 @@ def test_tool_registry_execute_tool_returns_tooloutput(mock_requests):
     assert "events" in calendar_result.raw_output
 
 
-def test_tool_registry_execute_tool_error(mock_requests):
+def test_tool_registry_execute_tool_error(mock_requests, monkeypatch):
+    setup_chat_settings_env(monkeypatch)
+    from services.chat.agents.llm_tools import get_tool_registry
+
     registry = get_tool_registry()
     result = registry.execute_tool("calendar")
     assert hasattr(result, "raw_output")
     assert "error" in result.raw_output
 
 
-def test_get_tool_registry_singleton(mock_requests):
+def test_get_tool_registry_singleton(mock_requests, monkeypatch):
+    setup_chat_settings_env(monkeypatch)
+    from services.chat.agents.llm_tools import get_tool_registry
+
     registry1 = get_tool_registry()
     registry2 = get_tool_registry()
     assert registry1 is registry2
