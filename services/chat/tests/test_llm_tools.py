@@ -72,13 +72,17 @@ def mock_settings():
     # Force the global _settings to our mock (even if it was already initialized)
     settings._settings = mock_settings_obj
 
-    # Also patch get_settings to ensure it returns our mock
+    # Patch ALL possible imports of get_settings to ensure our mock is used everywhere
     with patch("services.chat.settings.get_settings", return_value=mock_settings_obj):
-        try:
-            yield mock_settings_obj
-        finally:
-            # Restore the original _settings value
-            settings._settings = original_settings
+        with patch(
+            "services.chat.agents.llm_tools.get_settings",
+            return_value=mock_settings_obj,
+        ):
+            try:
+                yield mock_settings_obj
+            finally:
+                # Restore the original _settings value
+                settings._settings = original_settings
 
 
 @pytest.fixture(autouse=True)
@@ -89,6 +93,8 @@ def mock_requests():
 
 
 def test_get_calendar_events_success(mock_requests):
+    """Test successful calendar events retrieval."""
+
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
         if "internal/users" in url and "integrations" in url:
