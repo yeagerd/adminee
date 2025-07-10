@@ -39,6 +39,13 @@ from fastapi import FastAPI, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    pass
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -50,8 +57,8 @@ logger = logging.getLogger(__name__)
 NEXTAUTH_SECRET = os.getenv("NEXTAUTH_SECRET", "demo-nextauth-secret")
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
-MICROSOFT_CLIENT_ID = os.getenv("MICROSOFT_CLIENT_ID")
-MICROSOFT_CLIENT_SECRET = os.getenv("MICROSOFT_CLIENT_SECRET")
+MICROSOFT_CLIENT_ID = os.getenv("AZURE_AD_CLIENT_ID")
+MICROSOFT_CLIENT_SECRET = os.getenv("AZURE_AD_CLIENT_SECRET")
 
 # In-memory storage for demo purposes
 users_db: Dict[str, Dict] = {}
