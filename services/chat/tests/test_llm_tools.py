@@ -34,7 +34,8 @@ class MockResponse:
 
 @pytest.fixture(autouse=True)
 def clear_drafts():
-    """Clear draft storage before each test."""
+    """Clear all drafts before each test."""
+    from services.chat.agents.llm_tools import _draft_storage
     _draft_storage.clear()
 
 
