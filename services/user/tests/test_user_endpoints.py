@@ -684,10 +684,10 @@ class TestUserEmailCollision:
         data = resp.json()
         assert data["detail"]["error"] == "EmailCollision"
 
-    @patch("email_normalize.normalize")
+    @patch("email_normalize.Normalizer.normalize")
     def test_update_user_email_collision(self, mock_normalize):
         # Mock email normalization
-        def mock_normalize_side_effect(email):
+        async def mock_normalize_side_effect(email):
             mock_result = MagicMock()
             if "first" in email:
                 mock_result.normalized_address = "first@gmail.com"
