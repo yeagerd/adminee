@@ -60,7 +60,7 @@ def test(session):
     """Run tests for all services."""
     # Install common dependencies
     session.install(
-        "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio"
+        "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio", "pytest-xdist"
     )
 
     # Install services
@@ -70,9 +70,7 @@ def test(session):
     session.install("-e", "services/office")
 
     # Run tests
-    session.run("python", "-m", "pytest", "services/user/tests/", "-v")
-    session.run("python", "-m", "pytest", "services/chat/tests/", "-v")
-    session.run("python", "-m", "pytest", "services/office/tests/", "-v")
+    session.run("python", "-m", "pytest", "services/", "-v", "-n", "auto")
 
 
 @nox.session(python="3.12")
