@@ -139,8 +139,11 @@ class TestDemoAuthentication:
         demo_instance.services_available = {"user": True, "chat": True, "office": True}
 
         # Mock user existence check (GET request) - user doesn't exist initially
-        mock_get_response = MagicMock()
-        mock_get_response.status_code = 404
+        mock_existence_response = MagicMock()
+        mock_existence_response.status_code = 200
+        mock_existence_response.json.return_value = (
+            None  # None means user doesn't exist
+        )
 
         # Mock successful user creation via webhook (POST request)
         mock_create_response = MagicMock()
@@ -167,18 +170,15 @@ class TestDemoAuthentication:
 
             # Setup different responses for different endpoints
             def side_effect(url, **kwargs):
-                if "/internal/users/" in url and "/integrations" in url:
-                    # User existence check
-                    return mock_get_response
+                if "/internal/users/" in url and "/preferences" in url:
+                    # User existence check (now uses preferences endpoint)
+                    return mock_existence_response
                 elif "/users/" in url:
                     # User creation
                     return mock_create_response
                 elif "/integrations/" in url and "/webhooks/clerk" not in url:
                     # Integrations status check
                     return mock_integrations_response
-                elif "/preferences/" in url:
-                    # Preferences check
-                    return mock_preferences_response
                 else:
                     return MagicMock(status_code=200)
 

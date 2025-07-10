@@ -248,12 +248,16 @@ class UserServiceClient(ServiceClient):
         """Return True if user exists, False if not. Raise if service is down."""
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
+                # Use the preferences endpoint to check if user exists
+                # This endpoint properly checks the database for user existence
                 response = await client.get(
-                    f"{self.base_url}/internal/users/{user_id}/integrations",
+                    f"{self.base_url}/internal/users/{user_id}/preferences",
                     headers={"X-API-Key": settings.API_FRONTEND_USER_KEY},
                 )
                 if response.status_code == 200:
-                    return True
+                    # Check if response is None (user doesn't exist) or has data
+                    data = response.json()
+                    return data is not None  # None means user doesn't exist
                 elif response.status_code == 404:
                     return False
                 else:
@@ -266,15 +270,15 @@ class UserServiceClient(ServiceClient):
             raise RuntimeError(f"Unexpected error: {e}")
 
     async def get_user_preferences(self) -> Optional[Dict[str, Any]]:
-        """Get user preferences."""
-        if not self.auth_token or not self.user_id:
+        """Get user preferences using frontend API key."""
+        if not self.user_id:
             return None
 
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.get(
-                    f"{self.base_url}/users/{self.user_id}/preferences/",
-                    headers={"Authorization": f"Bearer {self.auth_token}"},
+                    f"{self.base_url}/internal/users/{self.user_id}/preferences",
+                    headers={"X-API-Key": settings.API_FRONTEND_USER_KEY},
                 )
 
                 if response.status_code == 200:
@@ -298,18 +302,15 @@ class UserServiceClient(ServiceClient):
             return None
 
     async def update_user_preferences(self, preferences_update: Dict[str, Any]) -> bool:
-        """Update user preferences."""
-        if not self.auth_token or not self.user_id:
+        """Update user preferences using frontend API key."""
+        if not self.user_id:
             return False
 
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.put(
-                    f"{self.base_url}/users/{self.user_id}/preferences/",
-                    json=preferences_update,
-                    headers={"Authorization": f"Bearer {self.auth_token}"},
-                )
-                return response.status_code == 200
+            # For now, preferences update is not implemented via internal API
+            # This is a limitation of the current demo setup
+            logger.warning("Preferences update not available via internal API")
+            return False
         except Exception as e:
             logger.error(f"Error updating user preferences: {e}")
             return False
@@ -507,6 +508,9 @@ class FullDemo:
                 logger.warning(
                     f"Could not verify integrations, but user was created: {e}"
                 )
+
+            # Update self.user_id to use the generated user ID for all service calls
+            self.user_id = user_id
 
             self.authenticated = True
             print(f"✅ Authenticated as {auth_email} (ID: {user_id})")
