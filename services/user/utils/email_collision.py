@@ -45,7 +45,7 @@ class EmailCollisionDetector:
 
         email = email.strip().lower()
 
-        # Handle Gmail-style normalization
+        # Handle Gmail-style normalization (remove dots and plus addressing)
         if email.endswith("@gmail.com") or email.endswith("@googlemail.com"):
             local, domain = email.split("@")
             # Remove dots and plus addressing
@@ -54,7 +54,16 @@ class EmailCollisionDetector:
                 local = local.split("+")[0]
             return f"{local}@gmail.com"
 
-        # Handle Outlook/Hotmail plus addressing
+        # Handle Yahoo-style normalization (remove dots and plus addressing)
+        elif email.endswith("@yahoo.com"):
+            local, domain = email.split("@")
+            # Remove dots and plus addressing
+            local = local.replace(".", "")
+            if "+" in local:
+                local = local.split("+")[0]
+            return f"{local}@{domain}"
+
+        # Handle Outlook/Hotmail plus addressing (only remove plus, keep dots)
         elif email.endswith("@outlook.com") or email.endswith("@hotmail.com"):
             local, domain = email.split("@")
             if "+" in local:
@@ -81,7 +90,11 @@ class EmailCollisionDetector:
 
         # In test environments, use simple normalization without DNS lookups
         if os.getenv("PYTEST_CURRENT_TEST") or os.getenv("TESTING"):
-            return self._simple_email_normalize(email)
+            try:
+                return self._simple_email_normalize(email)
+            except Exception as e:
+                logger.warning(f"Failed to normalize email {email}: {e}")
+                return email.strip().lower()
 
         try:
             # Use the email-normalize library (async)
@@ -109,7 +122,11 @@ class EmailCollisionDetector:
 
         # In test environments, use simple normalization without DNS lookups
         if os.getenv("PYTEST_CURRENT_TEST") or os.getenv("TESTING"):
-            return self._simple_email_normalize(email)
+            try:
+                return self._simple_email_normalize(email)
+            except Exception as e:
+                logger.warning(f"Failed to normalize email {email}: {e}")
+                return email.strip().lower()
 
         try:
             # Use the email-normalize library (async)
@@ -240,14 +257,24 @@ class EmailCollisionDetector:
 
         # In test environments, use simple normalization without DNS lookups
         if os.getenv("PYTEST_CURRENT_TEST") or os.getenv("TESTING"):
-            normalized_email = self._simple_email_normalize(email)
-            return {
-                "original_email": email,
-                "normalized_email": normalized_email,
-                "mailbox_provider": "unknown",
-                "mx_records": [],
-                "is_valid": True,
-            }
+            try:
+                normalized_email = self._simple_email_normalize(email)
+                return {
+                    "original_email": email,
+                    "normalized_email": normalized_email,
+                    "mailbox_provider": "unknown",
+                    "mx_records": [],
+                    "is_valid": True,
+                }
+            except Exception as e:
+                return {
+                    "original_email": email,
+                    "normalized_email": email.strip().lower(),
+                    "mailbox_provider": "unknown",
+                    "mx_records": [],
+                    "is_valid": False,
+                    "error": str(e),
+                }
 
         try:
             # Use async call to properly handle the async library
