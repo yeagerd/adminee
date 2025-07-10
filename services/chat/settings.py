@@ -1,13 +1,17 @@
 """
 Settings and configuration for Chat Service.
 
-Uses Pydantic Settings to manage environment variables and configuration.
+Uses custom BaseSettings to manage environment variables and configuration.
 """
 
 from typing import Optional
 
-from pydantic import AliasChoices, Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from services.common.settings import (
+    AliasChoices,
+    BaseSettings,
+    Field,
+    SettingsConfigDict,
+)
 
 
 class Settings(BaseSettings):

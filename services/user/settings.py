@@ -1,14 +1,15 @@
 """
 Settings and configuration for User Management Service.
 
-Uses Pydantic Settings to manage environment variables and configuration.
+Uses custom BaseSettings to manage environment variables and configuration.
 """
 
 from typing import List, Optional
 
-from pydantic import AliasChoices, Field  # Removed ConfigDict
-from pydantic_settings import (  # Added SettingsConfigDict
+from services.common.settings import (
+    AliasChoices,
     BaseSettings,
+    Field,
     SettingsConfigDict,
 )
 
