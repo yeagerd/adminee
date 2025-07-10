@@ -48,6 +48,6 @@ def test_fast(session):
 
 @nox.session(venv_backend="none")
 def test_cov(session):
-    session.run("bash", "-c", "cd services/user && python -m pytest tests/ --cov=. --cov-report=xml:../../coverage-user-management.xml --cov-report=term-missing -x -q --timeout=5", external=True)
-    session.run("bash", "-c", "cd services/chat && python -m pytest tests/ --cov=. --cov-report=xml:../../coverage-chat-service.xml --cov-report=term-missing -x -q --timeout=5", external=True)
-    session.run("bash", "-c", "cd services/office && python -m pytest tests/ --cov=. --cov-report=xml:../../coverage-office-service.xml --cov-report=term-missing -x -q --timeout=5", external=True) 
+    session.run("python", "-m", "pytest", "services/user/tests/", "--cov=services/user", "--cov-report=xml:coverage-user-management.xml", "--cov-report=term-missing", "-x", "-q", "--timeout=5", external=True)
+    session.run("python", "-m", "pytest", "services/chat/tests/", "--cov=services/chat", "--cov-report=xml:coverage-chat-service.xml", "--cov-report=term-missing", "-x", "-q", "--timeout=5", external=True)
+    session.run("python", "-m", "pytest", "services/office/tests/", "--cov=services/office", "--cov-report=xml:coverage-office-service.xml", "--cov-report=term-missing", "-x", "-q", "--timeout=5", external=True) 
