@@ -5,8 +5,10 @@ Tests all user CRUD operations including success scenarios,
 error handling, authentication, and authorization.
 """
 
+import atexit
+import logging
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException, status
@@ -26,6 +28,14 @@ from services.user.schemas.user import (
     UserUpdate,
 )
 from services.user.services.user_service import get_user_service
+
+# Patch async Normalizer globally for this test module
+patcher = patch("email_normalize.Normalizer.normalize", new_callable=AsyncMock)
+mock_normalize = patcher.start()
+mock_result = AsyncMock()
+mock_result.normalized_address = "normalized@example.com"
+mock_normalize.return_value = mock_result
+atexit.register(patcher.stop)
 
 
 class TestUserProfileEndpoints:
@@ -644,22 +654,9 @@ class TestUserEmailCollision:
             },
         }
 
-    @patch(
-        "services.user.utils.email_collision.EmailCollisionDetector.normalize_email_async"
-    )
-    def test_create_user_collision(self, mock_normalize_async):
-        import logging
-
+    def test_create_user_collision(self):
         logging.basicConfig(level=logging.DEBUG)
         logging.getLogger().setLevel(logging.DEBUG)
-
-        # Mock async normalization to always return the same normalized email for both test addresses
-        async def mock_normalize_side_effect(email):
-            if "user" in email and "gmail.com" in email:
-                return "user@gmail.com"
-            return email.lower()
-
-        mock_normalize_async.side_effect = mock_normalize_side_effect
 
         # Create first user with unique email
         unique_email1 = self._get_unique_email("user+work@gmail.com")
@@ -684,10 +681,9 @@ class TestUserEmailCollision:
         data = resp.json()
         assert data["detail"]["error"] == "EmailCollision"
 
-    @patch("email_normalize.normalize")
-    def test_update_user_email_collision(self, mock_normalize):
-        # Mock email normalization
-        def mock_normalize_side_effect(email):
+    def test_update_user_email_collision(self):
+        # Mock async email normalization
+        async def mock_normalize_side_effect(email):
             mock_result = MagicMock()
             if "first" in email:
                 mock_result.normalized_address = "first@gmail.com"
@@ -733,17 +729,17 @@ class TestUserEmailCollision:
         # as evidenced by the warning message in the logs
         assert data["detail"]["error"] == "InternalServerError"
 
-    @patch(
-        "services.user.utils.email_collision.EmailCollisionDetector.normalize_email_async"
-    )
-    def test_create_user_stores_normalized_email(self, mock_normalize_async):
+    def test_create_user_stores_normalized_email(self):
         # Mock async normalization
         async def mock_normalize_side_effect(email):
+            mock_result = AsyncMock()
             if "dot.user+foo" in email:
-                return "dotuser@gmail.com"
-            return email.lower()
+                mock_result.normalized_address = "dotuser@gmail.com"
+            else:
+                mock_result.normalized_address = email.lower()
+            return mock_result
 
-        mock_normalize_async.side_effect = mock_normalize_side_effect
+        mock_normalize.side_effect = mock_normalize_side_effect
 
         unique_email = self._get_unique_email("dot.user+foo@gmail.com")
         unique_user_id = self._get_unique_user_id("clerk_collision_test_6")

@@ -9,7 +9,7 @@ import logging
 from typing import Any, Dict, Optional
 
 from email_normalize import normalize
-from sqlalchemy import and_, select
+from sqlalchemy import select
 
 from services.user.database import get_async_session
 from services.user.models.user import User
@@ -80,10 +80,8 @@ class EmailCollisionDetector:
         async_session = get_async_session()
         async with async_session() as session:
             stmt = select(User).where(
-                and_(
-                    User.normalized_email == normalized_email,  # type: ignore[comparison-overlap]
-                    User.deleted_at.is_(None),  # type: ignore[arg-type]
-                )
+                (User.normalized_email == normalized_email)
+                & (User.deleted_at == None)  # noqa: E711  # type: ignore[arg-type]
             )
             result = await session.execute(stmt)
             user = result.scalar_one_or_none()

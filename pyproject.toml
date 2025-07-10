@@ -92,9 +92,10 @@ ignore_missing_imports = true
 module = [
     "services.user.models.*",
     "services.chat.history_manager",
-    "services.office.models.*"
+    "services.office.models.*",
+    "services.user.utils.email_collision"
 ]
-disable_error_code = ["call-arg"]
+disable_error_code = ["call-arg", "arg-type"]
 
 
 

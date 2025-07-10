@@ -66,8 +66,9 @@ class TokenManager:
         """Async context manager entry"""
         # Use API key for user management service if available
         headers = {}
-        if get_settings().api_office_user_key:
-            headers["X-API-Key"] = get_settings().api_office_user_key
+        api_key = get_settings().api_office_user_key
+        if api_key is not None:
+            headers["X-API-Key"] = api_key
 
         self.http_client = httpx.AsyncClient(
             timeout=httpx.Timeout(10.0),  # 10 second timeout

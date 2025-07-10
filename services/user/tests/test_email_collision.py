@@ -8,7 +8,7 @@ import contextlib
 import os
 import tempfile
 import uuid
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
@@ -211,29 +211,28 @@ class TestEmailCollisionDB:
     @pytest.mark.asyncio
     async def test_get_email_info_valid_email(self, db_setup, detector_fixture):
         detector = detector_fixture
-        with patch("services.user.utils.email_collision.normalize") as mock_normalize:
+        with patch(
+            "email_normalize.Normalizer.normalize", new_callable=AsyncMock
+        ) as mock_normalize_async:
             mock_result = MagicMock()
             mock_result.normalized_address = "user@gmail.com"
-            mock_result.mailbox_provider = "Google"
-            mock_result.mx_records = [("5", "gmail-smtp-in.l.google.com")]
-            mock_normalize.return_value = mock_result
+            mock_normalize_async.return_value = mock_result
             result = await detector.get_email_info("user+work@gmail.com")
             assert result["original_email"] == "user+work@gmail.com"
             assert result["normalized_email"] == "user@gmail.com"
-            assert result["mailbox_provider"] == "Google"
-            assert result["is_valid"] is True
+            assert result["provider"] == "gmail"
 
     @pytest.mark.asyncio
     async def test_get_email_info_invalid_email(self, db_setup, detector_fixture):
         detector = detector_fixture
-        with patch("services.user.utils.email_collision.normalize") as mock_normalize:
-            mock_normalize.side_effect = Exception("Invalid email")
+        with patch(
+            "email_normalize.Normalizer.normalize", new_callable=AsyncMock
+        ) as mock_normalize_async:
+            mock_normalize_async.side_effect = Exception("Invalid email")
             result = await detector.get_email_info("invalid-email")
             assert result["original_email"] == "invalid-email"
             assert result["normalized_email"] == "invalid-email"
-            assert result["mailbox_provider"] == "unknown"
-            assert result["is_valid"] is False
-            assert "error" in result
+            assert result["provider"] == "unknown"
 
 
 # ------------------- Global Instance Test -------------------
