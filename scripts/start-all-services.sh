@@ -1,11 +1,16 @@
 #!/bin/bash
 
-# Briefly Service Startup Script with UV
-# This script starts all services using UV for better performance
+# Start All Services Script
+# This script starts the chat, user, and office services with proper process management
 
 set -e
 
-echo "🚀 Starting Briefly services with UV..."
+# Ensure we're in the project root (parent of where this script is located)
+cd "$(dirname "$0")/.."
+
+echo "🚀 Starting all Briefly services..."
+echo "📁 Working directory: $(pwd)"
+echo ""
 
 # Check if virtual environment exists
 if [ ! -d ".venv" ]; then
@@ -61,7 +66,7 @@ cleanup() {
     exit 0
 }
 
-# Set up signal handlers
+# Set up signal handlers for proper Ctrl+C handling
 trap cleanup SIGINT SIGTERM
 
 # Start services
@@ -75,6 +80,23 @@ start_service "chat-service" "services.chat.main:app" 8002
 
 # Start Office Service
 start_service "office-service" "services.office.app.main:app" 8003
+
+echo ""
+echo "⏳ Waiting for services to start..."
+sleep 5
+
+echo ""
+echo "🔍 Checking service health..."
+echo "User Service (8001):"
+curl -s http://localhost:8001/health | jq . || echo "❌ User service not responding"
+
+echo ""
+echo "Chat Service (8002):"
+curl -s http://localhost:8002/health | jq . || echo "❌ Chat service not responding"
+
+echo ""
+echo "Office Service (8003):"
+curl -s http://localhost:8003/health/ | jq . || echo "❌ Office service not responding"
 
 echo ""
 echo "🎉 All services started successfully!"
@@ -92,5 +114,5 @@ echo ""
 echo "⏹️  Press Ctrl+C to stop all services"
 echo ""
 
-# Wait for all background processes
+# Wait for all background processes - this allows Ctrl+C to work
 wait 
