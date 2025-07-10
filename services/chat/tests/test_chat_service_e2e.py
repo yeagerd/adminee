@@ -22,9 +22,9 @@ def test_env():
     """Set up test environment variables."""
     env_vars = {
         "DB_URL_CHAT": "sqlite+aiosqlite:///file::memory:?cache=shared",
-        "OPENAI_API_KEY": "test-key-for-multi-agent",
-        "LLM_MODEL": "gpt-4.1-nano",
-        "LLM_PROVIDER": "openai",
+        # Don't set OPENAI_API_KEY so it falls back to FakeLLM
+        "LLM_MODEL": "fake-model",
+        "LLM_PROVIDER": "fake",
         "API_FRONTEND_CHAT_KEY": TEST_API_KEY,
     }
     with patch.dict("os.environ", env_vars):

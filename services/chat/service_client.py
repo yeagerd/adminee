@@ -36,9 +36,9 @@ class ServiceClient:
         headers = {"Content-Type": "application/json"}
 
         if service_name == "user-management" and get_settings().api_chat_user_key:
-            headers["X-API-Key"] = get_settings().api_chat_user_key
+            headers["X-API-Key"] = get_settings().api_chat_user_key  # type: ignore[assignment]
         elif service_name == "office" and get_settings().api_chat_office_key:
-            headers["X-API-Key"] = get_settings().api_chat_office_key
+            headers["X-API-Key"] = get_settings().api_chat_office_key  # type: ignore[assignment]
 
         return headers
 
@@ -47,8 +47,9 @@ class ServiceClient:
         try:
             headers = self._get_headers_for_service("user-management")
 
+            url = get_settings().user_management_service_url or ""  # type: ignore[assignment]
             response = await self.http_client.get(
-                f"{get_settings().user_management_service_url}/users/{user_id}",
+                f"{url}/users/{user_id}",
                 headers=headers,
             )
 
@@ -72,8 +73,9 @@ class ServiceClient:
         try:
             headers = self._get_headers_for_service("user-management")
 
+            url = get_settings().user_management_service_url or ""  # type: ignore[assignment]
             response = await self.http_client.get(
-                f"{get_settings().user_management_service_url}/internal/users/{user_id}/preferences",
+                f"{url}/internal/users/{user_id}/preferences",
                 headers=headers,
             )
 

@@ -10,7 +10,7 @@ Part of the multi-agent workflow system.
 """
 
 import logging
-from typing import Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 from llama_index.core.agent.workflow import FunctionAgent
 from llama_index.core.tools import FunctionTool
@@ -168,7 +168,7 @@ class DraftAgent(FunctionAgent):
         # Create draft-specific tools - create them first before we store thread_id
         # We'll pass the thread_id to the tool creation method
         thread_id_str = str(thread_id)
-        tools = self._create_draft_tools(thread_id_str)
+        tools: Sequence[Callable[..., Any]] = self._create_draft_tools(thread_id_str)
 
         # Create context-aware system prompt based on existing drafts
         context_aware_prompt = self._create_context_aware_prompt(thread_id_str)
@@ -183,13 +183,10 @@ class DraftAgent(FunctionAgent):
             ),
             system_prompt=context_aware_prompt,
             llm=llm,
-            tools=tools,
+            tools=tools,  # type: ignore[arg-type]
             can_handoff_to=["CoordinatorAgent"],
         )
-
-        # Store thread_id using object.__setattr__ to bypass Pydantic validation
-        object.__setattr__(self, "_thread_id", thread_id_str)
-
+        self._thread_id = str(thread_id)
         logger.debug(f"DraftAgent initialized with thread_id={self._thread_id}")
 
     @property

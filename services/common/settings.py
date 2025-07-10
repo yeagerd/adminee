@@ -5,6 +5,8 @@ This module provides a mockable alternative to pydantic_settings that
 allows for easier testing while maintaining similar functionality.
 """
 
+from __future__ import annotations
+
 import os
 from abc import ABC
 from pathlib import Path
@@ -20,7 +22,7 @@ class FieldInfo:
         self,
         default: Any = None,
         description: str = "",
-        validation_alias: Optional[Union[str, list]] = None,
+        validation_alias: Optional[Union[str, list, AliasChoices]] = None,
         required: bool = False,
     ):
         self.default = default
@@ -33,7 +35,7 @@ def Field(
     default: Any = None,
     *,
     description: str = "",
-    validation_alias: Optional[Union[str, list]] = None,
+    validation_alias: Optional[Union[str, list, AliasChoices]] = None,
     **kwargs,
 ) -> Any:
     """Create a field descriptor for settings."""

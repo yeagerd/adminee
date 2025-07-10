@@ -95,6 +95,10 @@ class PreferencesService:
                     )
                     # Create default preferences
                     default_prefs = PreferencesService._get_default_preferences()
+                    if user.id is None:
+                        raise ValueError(
+                            "user.id cannot be None when creating preferences"
+                        )
                     preferences = UserPreferences(
                         user_id=user.id, version="1.0", **default_prefs
                     )
@@ -212,10 +216,7 @@ class PreferencesService:
                 # Return current preferences if nothing to update
                 return await PreferencesService.get_user_preferences(user_id)
 
-            # Update timestamp
-            update_data["updated_at"] = datetime.now(timezone.utc)
-
-            # Update preferences
+            # Update timestamp directly on the preferences model after updating fields
             async_session = get_async_session()
             async with async_session() as session:
                 # Re-fetch preferences in the new session
@@ -226,6 +227,7 @@ class PreferencesService:
 
                 for key, value in update_data.items():
                     setattr(preferences, key, value)
+                preferences.updated_at = datetime.now(timezone.utc)
                 session.add(preferences)
                 await session.commit()
 
@@ -337,10 +339,7 @@ class PreferencesService:
                             f"Unknown preference category: {category}",
                         )
 
-            # Update timestamp
-            reset_data["updated_at"] = datetime.now(timezone.utc)
-
-            # Reset preferences
+            # Update timestamp directly on the preferences model after updating fields
             async_session = get_async_session()
             async with async_session() as session:
                 # Re-fetch preferences in the new session
@@ -351,6 +350,7 @@ class PreferencesService:
 
                 for key, value in reset_data.items():
                     setattr(preferences, key, value)
+                preferences.updated_at = datetime.now(timezone.utc)
                 session.add(preferences)
                 await session.commit()
 

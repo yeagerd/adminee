@@ -2,7 +2,7 @@
 Common utilities and configurations for Briefly services.
 """
 
-from .secrets import (
+from .config_secrets import (
     clear_cache,
     get_clerk_publishable_key,
     get_clerk_secret_key,

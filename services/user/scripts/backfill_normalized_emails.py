@@ -46,7 +46,7 @@ async def backfill_normalized_emails(batch_size: int = 100) -> None:
             result = await session.execute(
                 select(User)
                 .where(
-                    User.normalized_email.is_(None)
+                    User.normalized_email.is_(None)  # type: ignore[attr-defined,union-attr]
                 )  # Only process users without normalized_email
                 .limit(batch_size)
                 .offset(offset)
@@ -90,7 +90,7 @@ async def verify_backfill() -> None:
     async with async_session() as session:
         # Count users without normalized_email
         result = await session.execute(
-            select(User).where(User.normalized_email.is_(None))
+            select(User).where(User.normalized_email.is_(None))  # type: ignore[attr-defined,union-attr]
         )
         users_without_normalized = len(result.scalars().all())
 

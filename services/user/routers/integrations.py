@@ -26,6 +26,7 @@ from services.user.schemas.integration import (
     IntegrationHealthResponse,
     IntegrationListResponse,
     IntegrationProviderInfo,
+    IntegrationScopeResponse,
     IntegrationStatsResponse,
     OAuthCallbackRequest,
     OAuthCallbackResponse,
@@ -229,6 +230,11 @@ async def complete_oauth_flow(
             )
 
         # Complete the OAuth flow
+        if request.code is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Authorization code is required",
+            )
         result = await get_integration_service().complete_oauth_flow(
             user_id=user_id,
             provider=provider,
@@ -388,7 +394,7 @@ async def disconnect_integration(
 async def refresh_integration_tokens(
     user_id: str,
     provider: IntegrationProvider,
-    request: TokenRefreshRequest = None,
+    request: TokenRefreshRequest | None = None,
     current_user: str = Depends(get_current_user),
 ):
     """
@@ -410,7 +416,7 @@ async def refresh_integration_tokens(
     await verify_user_ownership(current_user, user_id)
 
     if request is None:
-        request = TokenRefreshRequest()
+        request = TokenRefreshRequest()  # type: ignore[assignment]
 
     try:
         result = await get_integration_service().refresh_integration_tokens(
@@ -518,7 +524,9 @@ async def list_oauth_providers(
                     name=provider_config.name,
                     provider=provider,
                     available=True,
-                    supported_scopes=supported_scopes,
+                    supported_scopes=[
+                        IntegrationScopeResponse(**scope) for scope in supported_scopes
+                    ],
                     default_scopes=provider_config.default_scopes,
                 )
                 providers.append(provider_info)
@@ -599,11 +607,9 @@ async def validate_oauth_scopes(
 
         return ScopeValidationResponse(
             provider=request.provider,
-            requested_scopes=request.scopes,
+            requested_scopes=required_scopes,
             valid_scopes=valid_scopes,
             invalid_scopes=invalid_scopes,
-            required_scopes=required_scopes,
-            sensitive_scopes=sensitive_scopes,
             warnings=warnings,
         )
 
