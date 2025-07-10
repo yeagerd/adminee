@@ -1,6 +1,11 @@
 from typing import Optional
 
-from services.common.settings import AliasChoices, BaseSettings, Field, SettingsConfigDict
+from services.common.settings import (
+    AliasChoices,
+    BaseSettings,
+    Field,
+    SettingsConfigDict,
+)
 
 
 class Settings(BaseSettings):

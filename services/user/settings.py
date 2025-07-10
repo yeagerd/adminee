@@ -6,7 +6,12 @@ Uses custom BaseSettings to manage environment variables and configuration.
 
 from typing import List, Optional
 
-from services.common.settings import AliasChoices, BaseSettings, Field, SettingsConfigDict
+from services.common.settings import (
+    AliasChoices,
+    BaseSettings,
+    Field,
+    SettingsConfigDict,
+)
 
 
 class Settings(BaseSettings):
