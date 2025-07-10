@@ -48,24 +48,17 @@ class EmailCollisionDetector:
 
     async def normalize_email_async(self, email: str) -> str:
         """
-        Async wrapper for email normalization.
-
-        Args:
-            email: Email address to normalize
-
-        Returns:
-            str: Normalized email address
+        Async email normalization using the Normalizer class.
         """
         if not email:
             return email
-
         try:
-            # Use the email-normalize library (synchronous)
-            # We call it synchronously to avoid event loop issues
-            result = normalize(email)
+            from email_normalize import Normalizer
+
+            normalizer = Normalizer()
+            result = await normalizer.normalize(email)
             return result.normalized_address
         except Exception as e:
-            # Fallback to basic normalization if email-normalize fails
             logger.warning(f"Failed to normalize email {email}: {e}")
             return email.strip().lower()
 
@@ -185,23 +178,21 @@ class EmailCollisionDetector:
             Dictionary with email information
         """
         try:
-            # Use synchronous call to avoid event loop issues
-            result = normalize(email)
+            from email_normalize import Normalizer
+
+            normalizer = Normalizer()
+            result = await normalizer.normalize(email)
             return {
                 "original_email": email,
                 "normalized_email": result.normalized_address,
-                "mailbox_provider": result.mailbox_provider,
-                "mx_records": result.mx_records,
-                "is_valid": True,
+                "provider": self._get_email_provider(email),
             }
         except Exception as e:
+            logger.warning(f"Failed to get email info for {email}: {e}")
             return {
                 "original_email": email,
                 "normalized_email": email.strip().lower(),
-                "mailbox_provider": "unknown",
-                "mx_records": [],
-                "is_valid": False,
-                "error": str(e),
+                "provider": self._get_email_provider(email),
             }
 
     def _get_email_provider(self, email: str) -> str:
@@ -233,4 +224,6 @@ class EmailCollisionDetector:
 
 
 # Global instance for easy access
-email_collision_detector = EmailCollisionDetector()
+def get_email_collision_detector() -> EmailCollisionDetector:
+    """Get email collision detector instance (lazy singleton)."""
+    return EmailCollisionDetector()

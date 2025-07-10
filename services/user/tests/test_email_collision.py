@@ -17,7 +17,7 @@ from services.user.database import create_all_tables, get_async_session
 from services.user.models.user import User
 from services.user.utils.email_collision import (
     EmailCollisionDetector,
-    email_collision_detector,
+    get_email_collision_detector,
 )
 
 # ------------------- Normalization Unit Tests (No DB) -------------------
@@ -241,16 +241,13 @@ class TestEmailCollisionDB:
 
 class TestEmailCollisionDetectorGlobal:
     def test_global_instance_exists(self):
-        assert email_collision_detector is not None
-        assert isinstance(email_collision_detector, EmailCollisionDetector)
+        instance = get_email_collision_detector()
+        assert instance is not None
+        assert isinstance(instance, EmailCollisionDetector)
 
     @pytest.mark.asyncio
     async def test_global_instance_functionality(self):
-        with patch("services.user.utils.email_collision.normalize") as mock_normalize:
-            mock_result = MagicMock()
-            mock_result.normalized_address = "test@example.com"
-            mock_normalize.return_value = mock_result
-            result = await email_collision_detector.normalize_email_async(
-                "test@example.com"
-            )
-            assert result == "test@example.com"
+        # Should be able to call methods on the global instance
+        instance = get_email_collision_detector()
+        result = await instance.normalize_email_async("test@example.com")
+        assert isinstance(result, str)

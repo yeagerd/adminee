@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 
 import pytz
 
-from services.user.utils.email_collision import email_collision_detector
+from services.user.utils.email_collision import get_email_collision_detector
 
 # Security patterns for input sanitization
 HTML_TAG_PATTERN = re.compile(r"<[^>]*>")
@@ -181,7 +181,7 @@ async def validate_email_with_collision_check(email: str) -> str:
 
     # Then normalize using email-normalize library
     try:
-        normalized_email = await email_collision_detector.normalize_email_async(
+        normalized_email = await get_email_collision_detector().normalize_email_async(
             validated_email
         )
         return normalized_email
