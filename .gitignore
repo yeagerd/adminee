@@ -154,7 +154,7 @@ __pycache__/
 *.pyc
 # Python coverage files
 .coverage
-coverage.xml
+coverage*.xml
 # Python build directories
 build/
 dist/
