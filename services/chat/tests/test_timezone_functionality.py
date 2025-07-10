@@ -17,7 +17,7 @@ from services.chat.models import ChatRequest
 
 
 @pytest.fixture(autouse=True)
-def mock_settings():
+def mock_settings_for_timezone_tests():
     with patch("services.chat.agents.llm_tools.get_settings") as mock_get_settings:
         # Create a mock settings object with all required attributes
         mock_settings_obj = MagicMock()

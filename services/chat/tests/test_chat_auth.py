@@ -22,7 +22,7 @@ class TestChatServiceAuth:
     """Test cases for ChatServiceAuth class."""
 
     @pytest.fixture(autouse=True)
-    def setup_chat_auth(self):
+    def setup_chat_auth_for_service_tests(self):
         """Set up chat auth with test API key."""
         with patch("services.chat.auth.get_settings") as mock_settings:
             mock_settings.return_value.api_frontend_chat_key = "test-frontend-chat-key"
@@ -164,7 +164,7 @@ class TestChatAuthIntegration:
     """Integration tests for chat authentication."""
 
     @pytest.fixture(autouse=True)
-    def setup_chat_auth(self):
+    def setup_chat_auth_for_integration_tests(self):
         """Set up chat auth with test API key."""
         with patch("services.chat.auth.get_settings") as mock_settings:
             mock_settings.return_value.api_frontend_chat_key = "test-frontend-chat-key"
