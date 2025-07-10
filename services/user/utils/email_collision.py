@@ -33,34 +33,34 @@ class EmailCollisionDetector:
     def _simple_email_normalize(self, email: str) -> str:
         """
         Simple email normalization without DNS lookups (for testing).
-        
+
         Args:
             email: Email address to normalize
-            
+
         Returns:
             str: Normalized email address
         """
         if not email:
             return email
-            
+
         email = email.strip().lower()
-        
+
         # Handle Gmail-style normalization
-        if email.endswith('@gmail.com') or email.endswith('@googlemail.com'):
-            local, domain = email.split('@')
+        if email.endswith("@gmail.com") or email.endswith("@googlemail.com"):
+            local, domain = email.split("@")
             # Remove dots and plus addressing
-            local = local.replace('.', '')
-            if '+' in local:
-                local = local.split('+')[0]
+            local = local.replace(".", "")
+            if "+" in local:
+                local = local.split("+")[0]
             return f"{local}@gmail.com"
-        
+
         # Handle Outlook/Hotmail plus addressing
-        elif email.endswith('@outlook.com') or email.endswith('@hotmail.com'):
-            local, domain = email.split('@')
-            if '+' in local:
-                local = local.split('+')[0]
+        elif email.endswith("@outlook.com") or email.endswith("@hotmail.com"):
+            local, domain = email.split("@")
+            if "+" in local:
+                local = local.split("+")[0]
             return f"{local}@{domain}"
-        
+
         # Basic normalization for other domains
         return email
 
@@ -78,8 +78,9 @@ class EmailCollisionDetector:
             return email
 
         import os
+
         # In test environments, use simple normalization without DNS lookups
-        if os.getenv('PYTEST_CURRENT_TEST') or os.getenv('TESTING'):
+        if os.getenv("PYTEST_CURRENT_TEST") or os.getenv("TESTING"):
             return self._simple_email_normalize(email)
 
         try:
@@ -105,8 +106,9 @@ class EmailCollisionDetector:
             return email
 
         import os
+
         # In test environments, use simple normalization without DNS lookups
-        if os.getenv('PYTEST_CURRENT_TEST') or os.getenv('TESTING'):
+        if os.getenv("PYTEST_CURRENT_TEST") or os.getenv("TESTING"):
             return self._simple_email_normalize(email)
 
         try:
@@ -235,8 +237,9 @@ class EmailCollisionDetector:
             Dictionary with email information
         """
         import os
+
         # In test environments, use simple normalization without DNS lookups
-        if os.getenv('PYTEST_CURRENT_TEST') or os.getenv('TESTING'):
+        if os.getenv("PYTEST_CURRENT_TEST") or os.getenv("TESTING"):
             normalized_email = self._simple_email_normalize(email)
             return {
                 "original_email": email,
