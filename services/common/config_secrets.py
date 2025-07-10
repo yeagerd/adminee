@@ -44,27 +44,29 @@ def get_secret(secret_id: str, default: str = "") -> str:
 
     # Local development: use environment variables
     if environment == "local":
-        value = os.getenv(secret_id, default) or default
-        _secret_cache[secret_id] = str(value)
+        env_value = os.getenv(secret_id, default)
+        value = env_value or default
+        _secret_cache[secret_id] = value
         return value
 
     # Production: try Secret Manager first, fallback to env vars
     try:
-        value = _get_secret_from_manager(secret_id)
-        if value:
-            _secret_cache[secret_id] = value
-            return value
+        secret_value = _get_secret_from_manager(secret_id)
+        if secret_value:
+            _secret_cache[secret_id] = secret_value
+            return secret_value
     except Exception as e:
         logger.warning(f"Failed to get secret {secret_id} from Secret Manager: {e}")
 
     # Fallback to environment variables (Cloud Run secret mounts)
-    value = os.getenv(secret_id, default) or default
+    env_value = os.getenv(secret_id, default)
+    value = env_value or default
     if not value and environment == "production":
         logger.error(f"Secret {secret_id} not found in Secret Manager or environment")
         # In production, we might want to raise an error for critical secrets
         # raise RuntimeError(f"Required secret {secret_id} not found")
 
-    final_value = value if value is not None else ""
+    final_value = value if value else ""
     _secret_cache[secret_id] = final_value
     return final_value
 
