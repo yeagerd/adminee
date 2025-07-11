@@ -78,6 +78,122 @@ async def get_current_user_profile(
 
 
 @router.get(
+    "/id",
+    response_model=UserResponse,
+    summary="Get user by email lookup",
+    description="Find a user by exact email address match. Returns 404 if user doesn't exist. Clean RESTful design that abstracts internal email normalization.",
+    responses={
+        200: {"description": "User found"},
+        404: {"description": "User not found"},
+        422: {"description": "Invalid email format or validation error"},
+    },
+)
+async def get_user_by_email(
+    email: str = Query(..., description="Email address to lookup"),
+    provider: Optional[str] = Query(
+        None, description="OAuth provider (google, microsoft, etc.)"
+    ),
+) -> UserResponse:
+    """
+    Get user by exact email lookup.
+
+    This endpoint provides a clean RESTful way to find users by email address
+    without exposing internal email normalization implementation details.
+    Perfect for NextAuth integration where you need to check user existence
+    before deciding whether to create a new user.
+
+    Args:
+        email: Email address to lookup
+        provider: OAuth provider for context (optional)
+
+    Returns:
+        UserResponse if user found
+
+    Raises:
+        404: If no user found for the email
+        422: If email format is invalid
+    """
+    try:
+        # Create email resolution request (reusing existing internal logic)
+        email_request = EmailResolutionRequest(email=email, provider=provider)
+
+        # Use existing resolution service (abstracts normalization)
+        resolution_result = await get_user_service().resolve_email_to_user_id(
+            email_request
+        )
+
+        # Get full user data to return
+        user = await get_user_service().get_user_by_external_auth_id_auto_detect(
+            resolution_result.external_auth_id
+        )
+
+        user_response = UserResponse.from_orm(user)
+
+        logger.info(
+            f"Successfully found user for email {email} with provider {provider}: {user.external_auth_id}"
+        )
+        return user_response
+
+    except NotFoundError as e:
+        logger.info(f"User lookup failed - no user found for email {email}")
+        raise e
+    except ValidationError as e:
+        logger.warning(f"User lookup failed - validation error: {e.message}")
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error during user lookup: {e}")
+        raise ServiceError(message="Failed to lookup user")
+
+
+@router.get(
+    "/search",
+    response_model=UserListResponse,
+    summary="Search users",
+    description="Search users with filtering and pagination. For admin/service use.",
+    responses={
+        200: {"description": "User search results retrieved successfully"},
+        401: {"description": "Authentication required"},
+        422: {"description": "Validation error in search parameters"},
+    },
+)
+async def search_users(
+    query: Optional[str] = Query(None, max_length=255, description="Search query"),
+    email: Optional[str] = Query(None, description="Filter by email"),
+    onboarding_completed: Optional[bool] = Query(
+        None, description="Filter by onboarding status"
+    ),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(20, ge=1, le=100, description="Number of results per page"),
+    current_user_id: str = Depends(get_current_user),
+) -> UserListResponse:
+    """
+    Search users with filtering and pagination.
+
+    This endpoint is primarily for administrative or service use.
+    Regular users should use other endpoints for their own data.
+    """
+    try:
+        search_request = UserSearchRequest(
+            query=query,
+            email=email,
+            onboarding_completed=onboarding_completed,
+            page=page,
+            page_size=page_size,
+        )
+
+        search_results = await get_user_service().search_users(search_request)
+
+        logger.info(
+            f"User search performed by {current_user_id}, found {search_results.total} results"
+        )
+        return search_results
+
+    except Exception as e:
+        logger.error(f"Unexpected error in user search: {e}")
+        raise ServiceError(message="Failed to search users")
+
+
+@router.get(
     "/{user_id}",
     response_model=UserResponse,
     summary="Get user profile",
@@ -282,74 +398,6 @@ async def update_user_onboarding(
         raise ServiceError(message="Failed to update onboarding")
 
 
-@router.get(
-    "/id",
-    response_model=UserResponse,
-    summary="Get user by email lookup", 
-    description="Find a user by exact email address match. Returns 404 if user doesn't exist. Clean RESTful design that abstracts internal email normalization.",
-    responses={
-        200: {"description": "User found"},
-        404: {"description": "User not found"},
-        422: {"description": "Invalid email format or validation error"},
-    },
-)
-async def get_user_by_email(
-    email: str = Query(..., description="Email address to lookup"),
-    provider: Optional[str] = Query(
-        None, description="OAuth provider (google, microsoft, etc.)"
-    ),
-) -> UserResponse:
-    """
-    Get user by exact email lookup.
-
-    This endpoint provides a clean RESTful way to find users by email address
-    without exposing internal email normalization implementation details.
-    Perfect for NextAuth integration where you need to check user existence
-    before deciding whether to create a new user.
-
-    Args:
-        email: Email address to lookup
-        provider: OAuth provider for context (optional)
-
-    Returns:
-        UserResponse if user found
-
-    Raises:
-        404: If no user found for the email
-        422: If email format is invalid
-    """
-    try:
-        # Create email resolution request (reusing existing internal logic)
-        email_request = EmailResolutionRequest(email=email, provider=provider)
-
-        # Use existing resolution service (abstracts normalization)
-        resolution_result = await get_user_service().resolve_email_to_user_id(
-            email_request
-        )
-
-        # Get full user data to return
-        user = await get_user_service().get_user_by_external_auth_id_auto_detect(
-            resolution_result.external_auth_id
-        )
-
-        user_response = UserResponse.from_orm(user)
-
-        logger.info(
-            f"Successfully found user for email {email} with provider {provider}: {user.external_auth_id}"
-        )
-        return user_response
-
-    except NotFoundError as e:
-        logger.info(f"User lookup failed - no user found for email {email}")
-        raise e
-    except ValidationError as e:
-        logger.warning(f"User lookup failed - validation error: {e.message}")
-        raise e
-    except Exception as e:
-        logger.error(f"Unexpected error during user lookup: {e}")
-        raise ServiceError(message="Failed to lookup user")
-
-
 @router.post(
     "/",
     response_model=UserResponse,
@@ -414,51 +462,3 @@ async def create_or_upsert_user(user_data: UserCreate):
     except Exception as e:
         logger.error(f"Unexpected error in create_or_upsert_user: {e}")
         raise ServiceError(message="Failed to create or retrieve user")
-
-
-@router.get(
-    "/search",
-    response_model=UserListResponse,
-    summary="Search users",
-    description="Search users with filtering and pagination. For admin/service use.",
-    responses={
-        200: {"description": "User search results retrieved successfully"},
-        401: {"description": "Authentication required"},
-        422: {"description": "Validation error in search parameters"},
-    },
-)
-async def search_users(
-    query: Optional[str] = Query(None, max_length=255, description="Search query"),
-    email: Optional[str] = Query(None, description="Filter by email"),
-    onboarding_completed: Optional[bool] = Query(
-        None, description="Filter by onboarding status"
-    ),
-    page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(20, ge=1, le=100, description="Number of results per page"),
-    current_user_id: str = Depends(get_current_user),
-) -> UserListResponse:
-    """
-    Search users with filtering and pagination.
-
-    This endpoint is primarily for administrative or service use.
-    Regular users should use other endpoints for their own data.
-    """
-    try:
-        search_request = UserSearchRequest(
-            query=query,
-            email=email,
-            onboarding_completed=onboarding_completed,
-            page=page,
-            page_size=page_size,
-        )
-
-        search_results = await get_user_service().search_users(search_request)
-
-        logger.info(
-            f"User search performed by {current_user_id}, found {search_results.total} results"
-        )
-        return search_results
-
-    except Exception as e:
-        logger.error(f"Unexpected error in user search: {e}")
-        raise ServiceError(message="Failed to search users")

@@ -605,6 +605,11 @@ class FullDemo:
                 print(f"❌ Failed to resolve email {auth_email} to user ID")
                 return False
 
+            # ALWAYS update user_id to use the resolved external_auth_id
+            # This ensures we use the correct ID even if OAuth setup fails
+            self.user_id = user_id
+            self.user_client.user_id = user_id
+
             # Now create a demo NextAuth JWT token with the resolved user ID and email
             if NEXTAUTH_AVAILABLE:
                 # Check if a provider has been set
@@ -615,6 +620,7 @@ class FullDemo:
                     print(
                         "   Please run 'oauth google' or 'oauth microsoft' to set up authentication."
                     )
+                    print(f"   Using resolved user ID: {user_id}")
                     self.authenticated = False
                     return False
 
@@ -624,10 +630,10 @@ class FullDemo:
                 )
             else:
                 print("❌ NextAuth utilities not available for token creation.")
+                print(f"   Using resolved user ID: {user_id}")
                 return False
 
             self.user_client.auth_token = self.auth_token
-            self.user_client.user_id = user_id
 
             # Verify the token works by trying to get integrations
             try:
@@ -636,7 +642,6 @@ class FullDemo:
             except Exception:
                 logger.warning("")
 
-            self.user_id = user_id
             self.authenticated = True
             print(
                 f"✅ Authenticated as {auth_email} (ID: {user_id}) via {provider.title()}"
