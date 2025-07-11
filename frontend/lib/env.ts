@@ -10,10 +10,9 @@ export const env = {
     OFFICE_SERVICE_URL: process.env.OFFICE_SERVICE_URL || 'http://localhost:8002',
 
     // API Keys for service-to-service communication
-    API_CHAT_USER_KEY: process.env.API_CHAT_USER_KEY!,
+    API_FRONTEND_CHAT_KEY: process.env.API_FRONTEND_CHAT_KEY!,
     API_FRONTEND_USER_KEY: process.env.API_FRONTEND_USER_KEY!,
     API_FRONTEND_OFFICE_KEY: process.env.API_FRONTEND_OFFICE_KEY!,
-    API_FRONTEND_CHAT_KEY: process.env.API_FRONTEND_CHAT_KEY!,
 
     // OAuth configuration
     AZURE_AD_CLIENT_ID: process.env.AZURE_AD_CLIENT_ID!,
@@ -41,7 +40,7 @@ export function validateOAuthEnv() {
 }
 
 export function validateChatServiceEnv() {
-    const required = ['API_CHAT_USER_KEY'];
+    const required = ['API_FRONTEND_CHAT_KEY'];
     for (const envVar of required) {
         if (!process.env[envVar]) {
             throw new Error(`Missing required environment variable: ${envVar}`);
@@ -72,10 +71,9 @@ export function validateAllEnv() {
     const requiredEnvVars = [
         'NEXTAUTH_URL',
         'NEXTAUTH_SECRET',
-        'API_CHAT_USER_KEY',
+        'API_FRONTEND_CHAT_KEY',
         'API_FRONTEND_USER_KEY',
         'API_FRONTEND_OFFICE_KEY',
-        'API_FRONTEND_CHAT_KEY',
         'AZURE_AD_CLIENT_ID',
         'AZURE_AD_CLIENT_SECRET',
         'AZURE_AD_TENANT_ID',

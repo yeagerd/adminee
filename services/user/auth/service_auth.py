@@ -45,16 +45,17 @@ class ServiceAPIKeyAuth:
         self.api_key_value_to_client: Dict[str, str] = {}
 
         # Register API keys that can access this user service
-        if get_settings().api_frontend_user_key:
-            self.api_key_value_to_client[get_settings().api_frontend_user_key] = (
-                "frontend"
-            )
+        frontend_key = get_settings().api_frontend_user_key
+        if frontend_key:
+            self.api_key_value_to_client[frontend_key] = "frontend"
 
-        if get_settings().api_chat_user_key:
-            self.api_key_value_to_client[get_settings().api_chat_user_key] = "chat"
+        chat_key = get_settings().api_chat_user_key
+        if chat_key:
+            self.api_key_value_to_client[chat_key] = "chat"
 
-        if get_settings().api_office_user_key:
-            self.api_key_value_to_client[get_settings().api_office_user_key] = "office"
+        office_key = get_settings().api_office_user_key
+        if office_key:
+            self.api_key_value_to_client[office_key] = "office"
 
         logger.info(
             f"ServiceAPIKeyAuth initialized with {len(self.api_key_value_to_client)} API keys"
@@ -198,7 +199,7 @@ async def get_current_service(request: Request) -> str:
         raise ServiceError(message="Authentication failed")
 
 
-def require_service_auth(allowed_clients: list = None):
+def require_service_auth(allowed_clients: Optional[List[str]] = None):
     """
     Decorator factory for service authentication with specific client restrictions.
 

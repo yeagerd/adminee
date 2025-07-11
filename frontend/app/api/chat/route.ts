@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     try {
         // Verify user is authenticated
         const session = await getServerSession(authOptions);
-        if (!session?.user?.email) {
+        if (!session?.user?.email || !session?.user?.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -21,10 +21,13 @@ export async function POST(request: NextRequest) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${env.API_CHAT_USER_KEY}`,
+                'Authorization': `Bearer ${env.API_FRONTEND_CHAT_KEY}`,
                 'X-User-Email': session.user.email,
             },
-            body: JSON.stringify(body),
+            body: JSON.stringify({
+                ...body,
+                user_id: session.user.id,
+            }),
         });
 
         if (!response.ok) {
@@ -60,7 +63,7 @@ export async function GET(request: NextRequest) {
         const response = await fetch(`${env.CHAT_SERVICE_URL}/chat`, {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${env.API_CHAT_USER_KEY}`,
+                'Authorization': `Bearer ${env.API_FRONTEND_CHAT_KEY}`,
                 'X-User-Email': session.user.email,
             },
         });
