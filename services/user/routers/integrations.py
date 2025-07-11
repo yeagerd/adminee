@@ -10,7 +10,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from services.user.auth.clerk import get_current_user, verify_user_ownership
+from services.user.auth.nextauth import get_current_user, verify_user_ownership
 from services.user.exceptions import (
     IntegrationException,
     NotFoundException,

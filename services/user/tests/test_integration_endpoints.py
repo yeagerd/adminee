@@ -664,7 +664,7 @@ class TestIntegrationEndpointSecurity(BaseUserManagementIntegrationTest):
     def test_endpoints_require_authentication(self):
         """Test that endpoints require proper authentication."""
         # Clear authentication override to test unauthenticated access
-        from services.user.auth.clerk import get_current_user
+        from services.user.auth.nextauth import get_current_user
 
         if get_current_user in self.app.dependency_overrides:
             del self.app.dependency_overrides[get_current_user]
@@ -704,7 +704,7 @@ class TestIntegrationEndpointSecurity(BaseUserManagementIntegrationTest):
 
     def test_user_ownership_verification(self):
         """Test that users can only access their own resources."""
-        from services.user.auth.clerk import get_current_user
+        from services.user.auth.nextauth import get_current_user
 
         # Mock a different user
         async def mock_different_user():
