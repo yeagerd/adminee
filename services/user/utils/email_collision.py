@@ -85,6 +85,18 @@ class EmailCollisionDetector:
             logger.warning(f"Failed to normalize email {email}: {e}")
             return email.strip().lower()
 
+    async def normalize_email_async(self, email: str) -> str:
+        """
+        Async wrapper for normalize_email method.
+
+        Args:
+            email: Email address to normalize
+
+        Returns:
+            str: Normalized email address
+        """
+        return self.normalize_email(email)
+
     async def check_collision(self, email: str) -> Optional[User]:
         """
         Check if normalized email already exists.
@@ -288,7 +300,7 @@ class EmailCollisionDetector:
         domain = email.split("@")[1].lower()
 
         # Common providers
-        if "gmail.com" in domain:
+        if "gmail.com" in domain or "googlemail.com" in domain:
             return "gmail"
         elif "outlook.com" in domain or "hotmail.com" in domain:
             return "outlook"

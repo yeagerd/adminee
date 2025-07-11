@@ -28,8 +28,7 @@ class TestEmailNormalization:
     def setup_method(self):
         self.detector = EmailCollisionDetector()
 
-    @pytest.mark.asyncio
-    async def test_normalize_email_gmail(self):
+    def test_normalize_email_gmail(self):
         test_cases = [
             ("user@gmail.com", "user@gmail.com"),
             ("User@gmail.com", "user@gmail.com"),
@@ -40,11 +39,10 @@ class TestEmailNormalization:
         ]
         for input_email, expected in test_cases:
             # Fast local normalization handles Gmail rules (dots and plus addressing)
-            result = await self.detector.normalize_email(input_email)
+            result = self.detector.normalize_email(input_email)
             assert result == expected
 
-    @pytest.mark.asyncio
-    async def test_normalize_email_outlook(self):
+    def test_normalize_email_outlook(self):
         test_cases = [
             ("user@outlook.com", "user@outlook.com"),
             ("user+work@outlook.com", "user@outlook.com"),
@@ -53,11 +51,10 @@ class TestEmailNormalization:
         ]
         for input_email, expected in test_cases:
             # Fast local normalization handles Outlook rules (plus addressing only)
-            result = await self.detector.normalize_email(input_email)
+            result = self.detector.normalize_email(input_email)
             assert result == expected
 
-    @pytest.mark.asyncio
-    async def test_normalize_email_yahoo(self):
+    def test_normalize_email_yahoo(self):
         test_cases = [
             ("user@yahoo.com", "user@yahoo.com"),
             ("user+work@yahoo.com", "user@yahoo.com"),
@@ -66,11 +63,10 @@ class TestEmailNormalization:
         ]
         for input_email, expected in test_cases:
             # Fast local normalization handles Yahoo rules (dots and plus addressing)
-            result = await self.detector.normalize_email(input_email)
+            result = self.detector.normalize_email(input_email)
             assert result == expected
 
-    @pytest.mark.asyncio
-    async def test_normalize_email_custom_domain(self):
+    def test_normalize_email_custom_domain(self):
         test_cases = [
             ("user@company.com", "user@company.com"),
             ("User@Company.com", "user@company.com"),
@@ -78,23 +74,21 @@ class TestEmailNormalization:
         ]
         for input_email, expected in test_cases:
             # Fast local normalization handles custom domains with basic lowercasing
-            result = await self.detector.normalize_email(input_email)
+            result = self.detector.normalize_email(input_email)
             assert result == expected
 
-    @pytest.mark.asyncio
-    async def test_normalize_email_empty_input(self):
-        result = await self.detector.normalize_email("")
+    def test_normalize_email_empty_input(self):
+        result = self.detector.normalize_email("")
         assert result == ""
 
-    @pytest.mark.asyncio
-    async def test_normalize_email_fallback(self):
+    def test_normalize_email_fallback(self):
         # Test the fallback behavior by mocking the simple_email_normalize to fail
         with patch.object(
             self.detector,
             "_simple_email_normalize",
             side_effect=Exception("Normalization failed"),
         ):
-            result = await self.detector.normalize_email("User@Gmail.com")
+            result = self.detector.normalize_email("User@Gmail.com")
             # Should fallback to basic strip().lower()
             assert result == "user@gmail.com"
 

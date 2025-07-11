@@ -99,7 +99,7 @@ class TestEmailResolutionService:
         with (
             patch.object(
                 EmailCollisionDetector,
-                "normalize_email_async",
+                "_simple_email_normalize",
                 return_value="test@gmail.com",
             ),
             patch.object(
@@ -127,7 +127,7 @@ class TestEmailResolutionService:
         with (
             patch.object(
                 EmailCollisionDetector,
-                "normalize_email_async",
+                "_simple_email_normalize",
                 return_value="johndoe@gmail.com",
             ),
             patch.object(
@@ -292,7 +292,7 @@ class TestEmailResolutionService:
 
         with patch.object(
             EmailCollisionDetector,
-            "normalize_email_async",
+            "_simple_email_normalize",
             side_effect=Exception("Normalization failed"),
         ):
 

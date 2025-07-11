@@ -554,6 +554,9 @@ class FullDemo:
             "nextauth": NEXTAUTH_AVAILABLE,
         }
 
+        # Default preferred provider for email resolution
+        self.preferred_provider = None
+
     async def check_services(self):
         """Check availability of all services including NextAuth server."""
         print("🔍 Checking service availability...")
