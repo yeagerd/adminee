@@ -38,7 +38,6 @@ dependencies = [
     "opentelemetry-exporter-gcp-trace",
     # GCP
     "google-cloud-secret-manager",
-    "email-normalize>=2.0.0",
 ]
 
 [project.optional-dependencies]

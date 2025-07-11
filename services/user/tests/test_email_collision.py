@@ -1,7 +1,8 @@
 """
 Unit tests for email collision detection functionality.
 
-Tests email normalization and collision detection using the email-normalize library.
+Tests email normalization and collision detection using fast local provider-specific rules.
+No DNS lookups are performed - all normalization uses local rules for Gmail, Outlook, Yahoo, etc.
 """
 
 import contextlib
@@ -38,7 +39,7 @@ class TestEmailNormalization:
             ("user+work+personal@gmail.com", "user@gmail.com"),
         ]
         for input_email, expected in test_cases:
-            # In test environment, our simple normalization should handle Gmail rules
+            # Fast local normalization handles Gmail rules (dots and plus addressing)
             result = await self.detector.normalize_email(input_email)
             assert result == expected
 
@@ -51,7 +52,7 @@ class TestEmailNormalization:
             ("User@Outlook.com", "user@outlook.com"),
         ]
         for input_email, expected in test_cases:
-            # In test environment, our simple normalization should handle Outlook rules
+            # Fast local normalization handles Outlook rules (plus addressing only)
             result = await self.detector.normalize_email(input_email)
             assert result == expected
 
@@ -64,7 +65,7 @@ class TestEmailNormalization:
             ("User@Yahoo.com", "user@yahoo.com"),
         ]
         for input_email, expected in test_cases:
-            # In test environment, our simple normalization should handle Yahoo rules
+            # Fast local normalization handles Yahoo rules (dots and plus addressing)
             result = await self.detector.normalize_email(input_email)
             assert result == expected
 
@@ -76,7 +77,7 @@ class TestEmailNormalization:
             ("user+work@company.com", "user+work@company.com"),
         ]
         for input_email, expected in test_cases:
-            # In test environment, our simple normalization should handle custom domains with basic lowercasing
+            # Fast local normalization handles custom domains with basic lowercasing
             result = await self.detector.normalize_email(input_email)
             assert result == expected
 
@@ -96,6 +97,80 @@ class TestEmailNormalization:
             result = await self.detector.normalize_email("User@Gmail.com")
             # Should fallback to basic strip().lower()
             assert result == "user@gmail.com"
+
+    def test_normalize_email_by_provider_google(self):
+        test_cases = [
+            ("user@gmail.com", "google", "user@gmail.com"),
+            ("user+work@gmail.com", "google", "user@gmail.com"),
+            ("first.last@gmail.com", "google", "firstlast@gmail.com"),
+            ("user@googlemail.com", "google", "user@gmail.com"),  # Domain normalization
+            ("User@Gmail.com", "google", "user@gmail.com"),
+        ]
+        for input_email, provider, expected in test_cases:
+            result = self.detector.normalize_email_by_provider(input_email, provider)
+            assert result == expected
+
+    def test_normalize_email_by_provider_microsoft(self):
+        test_cases = [
+            ("user@outlook.com", "microsoft", "user@outlook.com"),
+            ("user+work@outlook.com", "microsoft", "user@outlook.com"),
+            (
+                "first.last@outlook.com",
+                "microsoft",
+                "first.last@outlook.com",
+            ),  # Keep dots
+            (
+                "user@hotmail.com",
+                "microsoft",
+                "user@outlook.com",
+            ),  # Domain normalization
+            ("User@Live.com", "microsoft", "user@outlook.com"),  # Domain normalization
+        ]
+        for input_email, provider, expected in test_cases:
+            result = self.detector.normalize_email_by_provider(input_email, provider)
+            assert result == expected
+
+    def test_normalize_email_by_provider_yahoo(self):
+        test_cases = [
+            ("user@yahoo.com", "yahoo", "user@yahoo.com"),
+            ("user+work@yahoo.com", "yahoo", "user@yahoo.com"),
+            ("first.last@yahoo.com", "yahoo", "firstlast@yahoo.com"),
+            ("User@Yahoo.com", "yahoo", "user@yahoo.com"),
+        ]
+        for input_email, provider, expected in test_cases:
+            result = self.detector.normalize_email_by_provider(input_email, provider)
+            assert result == expected
+
+    def test_normalize_email_by_provider_unknown(self):
+        # Unknown providers should only get basic normalization
+        test_cases = [
+            ("user@company.com", "unknown", "user@company.com"),
+            ("User@Company.com", "other", "user@company.com"),
+            (
+                "user+work@company.com",
+                "custom",
+                "user+work@company.com",
+            ),  # Plus addressing preserved
+        ]
+        for input_email, provider, expected in test_cases:
+            result = self.detector.normalize_email_by_provider(input_email, provider)
+            assert result == expected
+
+    def test_get_email_provider(self):
+        test_cases = [
+            ("user@gmail.com", "gmail"),
+            ("user@googlemail.com", "gmail"),
+            ("user@outlook.com", "outlook"),
+            ("user@hotmail.com", "outlook"),
+            ("user@yahoo.com", "yahoo"),
+            ("user@icloud.com", "icloud"),
+            ("user@me.com", "icloud"),
+            ("user@company.com", "company.com"),
+            ("invalid-email", "unknown"),
+        ]
+        for input_email, expected in test_cases:
+            result = self.detector._get_email_provider(input_email)
+            assert result == expected
 
 
 # ------------------- DB Collision Tests (with DB) -------------------
@@ -196,11 +271,11 @@ class TestEmailCollisionDB:
     @pytest.mark.asyncio
     async def test_get_email_info_valid_email(self, db_setup, detector_fixture):
         detector = detector_fixture
-        # In test environment, get_email_info uses simple mock data
+        # get_email_info now provides real provider detection using local rules
         result = await detector.get_email_info("user+work@gmail.com")
         assert result["original_email"] == "user+work@gmail.com"
         assert result["normalized_email"] == "user@gmail.com"  # Gmail normalization
-        assert result["mailbox_provider"] == "unknown"  # Test mock value
+        assert result["mailbox_provider"] == "gmail"  # Detected from domain
         assert result["is_valid"] is True
 
     @pytest.mark.asyncio
@@ -230,7 +305,7 @@ class TestEmailCollisionDetectorGlobal:
 
     @pytest.mark.asyncio
     async def test_global_instance_functionality(self):
-        # In test environment, should use simple normalization
+        # Global instance should use fast local normalization
         result = await email_collision_detector.normalize_email_async(
             "Test@Example.com"
         )

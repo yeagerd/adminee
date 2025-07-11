@@ -207,6 +207,62 @@ class TestEmailResolutionService:
             assert result.auth_provider == "clerk"
 
     @pytest.mark.asyncio
+    async def test_resolve_email_with_provider_google(
+        self, email_resolution_service, gmail_user
+    ):
+        """Test email resolution with provider-aware normalization for Google."""
+        request = EmailResolutionRequest(
+            email="j.o.h.n.d.o.e+work+test@gmail.com", provider="google"
+        )
+
+        with (
+            patch.object(
+                EmailCollisionDetector,
+                "normalize_email_by_provider",
+                return_value="johndoe@gmail.com",
+            ),
+            patch.object(
+                email_resolution_service,
+                "_find_user_by_normalized_email",
+                return_value=gmail_user,
+            ),
+        ):
+
+            result = await email_resolution_service.resolve_email_to_user_id(request)
+
+            assert result.external_auth_id == "user_gmail456"
+            assert result.normalized_email == "johndoe@gmail.com"
+            assert result.auth_provider == "clerk"
+
+    @pytest.mark.asyncio
+    async def test_resolve_email_with_provider_microsoft(
+        self, email_resolution_service, outlook_user
+    ):
+        """Test email resolution with provider-aware normalization for Microsoft."""
+        request = EmailResolutionRequest(
+            email="jane.smith+shopping@outlook.com", provider="microsoft"
+        )
+
+        with (
+            patch.object(
+                EmailCollisionDetector,
+                "normalize_email_by_provider",
+                return_value="jane.smith@outlook.com",
+            ),
+            patch.object(
+                email_resolution_service,
+                "_find_user_by_normalized_email",
+                return_value=outlook_user,
+            ),
+        ):
+
+            result = await email_resolution_service.resolve_email_to_user_id(request)
+
+            assert result.external_auth_id == "user_outlook789"
+            assert result.normalized_email == "jane.smith@outlook.com"
+            assert result.auth_provider == "nextauth"
+
+    @pytest.mark.asyncio
     async def test_resolve_email_user_not_found(self, email_resolution_service):
         """Test email resolution when user doesn't exist."""
         request = EmailResolutionRequest(email="nonexistent@example.com")
@@ -343,12 +399,20 @@ class TestEmailResolutionRequestSchema:
         """Test valid email resolution request."""
         request = EmailResolutionRequest(email="test@gmail.com")
         assert request.email == "test@gmail.com"
+        assert request.provider is None  # Default is None
+
+    def test_valid_email_request_with_provider(self):
+        """Test valid email resolution request with provider."""
+        request = EmailResolutionRequest(email="test@gmail.com", provider="google")
+        assert request.email == "test@gmail.com"
+        assert request.provider == "google"
 
     def test_email_normalization_in_schema(self):
         """Test email normalization in schema validation."""
         # Test with email that should be normalized by Pydantic EmailStr
         request = EmailResolutionRequest(email="  TEST@GMAIL.COM  ")
         assert request.email == "test@gmail.com"  # EmailStr normalizes to lowercase
+        assert request.provider is None
 
     def test_invalid_email_format(self):
         """Test invalid email format raises validation error."""
