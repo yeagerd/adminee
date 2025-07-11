@@ -12,8 +12,11 @@ from fastapi import APIRouter, Depends, Path, Query
 
 from services.common.http_errors import (
     AuthError,
+    BrieflyAPIException,
+    ErrorCode,
     NotFoundError,
     ServiceError,
+    ValidationError,
 )
 from services.user.auth import get_current_user
 from services.user.schemas.user import (
@@ -315,6 +318,22 @@ async def create_or_upsert_user(user_data: UserCreate):
                 f"Created new user: {user_data.external_auth_id} ({user_data.auth_provider})"
             )
             return UserResponse.from_orm(user)
+    except ValidationError as e:
+        # Check if this is an email collision case
+        if e.details and e.details.get("collision") is True:
+            logger.warning(f"Email collision detected: {e.message}")
+            # Convert to a 409 Conflict error for email collisions
+            raise BrieflyAPIException(
+                message=e.message,
+                details=e.details,
+                error_type="email_collision",
+                error_code=ErrorCode.ALREADY_EXISTS,
+                status_code=409,
+            )
+        else:
+            # Other validation errors should be 422
+            logger.warning(f"Validation error creating user: {e.message}")
+            raise e
     except Exception as e:
         logger.error(f"Unexpected error creating user: {e}")
         raise ServiceError(message="Internal server error")

@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
+from services.common.http_errors import register_briefly_exception_handlers
 from services.common.logging_config import (
     create_request_logging_middleware,
     log_service_shutdown,
@@ -166,6 +167,9 @@ def create_app() -> FastAPI:
 
     # Add centralized request logging middleware
     app.middleware("http")(create_request_logging_middleware())
+
+    # Register exception handlers
+    register_briefly_exception_handlers(app)
 
     # Register API routers
     app.include_router(users_router)
