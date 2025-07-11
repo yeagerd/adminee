@@ -38,7 +38,6 @@ from services.user.routers import (
     preferences_router,
     provider_router,
     users_router,
-    webhooks_router,
 )
 from services.user.services.integration_service import (
     get_integration_service,
@@ -176,7 +175,6 @@ def create_app() -> FastAPI:
     app.include_router(preferences_router)
     app.include_router(integrations_router)
     app.include_router(provider_router)
-    app.include_router(webhooks_router)
     app.include_router(internal_router)
 
     return app
@@ -557,8 +555,6 @@ async def readiness_check() -> JSONResponse:
     )
 
     if not is_test_env:
-        if not getattr(current_settings, "clerk_secret_key", None):
-            config_issues.append("CLERK_SECRET_KEY not configured")
         if not getattr(current_settings, "token_encryption_salt", None):
             config_issues.append("TOKEN_ENCRYPTION_SALT not configured")
         if not getattr(current_settings, "api_frontend_user_key", None):

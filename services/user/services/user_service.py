@@ -65,7 +65,7 @@ class UserService:
             raise NotFoundError(resource="User", identifier=str(user_id))
 
     async def get_user_by_external_auth_id(
-        self, external_auth_id: str, auth_provider: str = "clerk"
+        self, external_auth_id: str, auth_provider: str = "nextauth"
     ) -> User:
         """
         Get user by external authentication ID.
@@ -616,8 +616,8 @@ class UserService:
         """
         # Try different auth providers in order of preference
         providers_to_try = [
-            "clerk",
             "nextauth",
+            "clerk",
             "custom",
             "auth0",
             "firebase",

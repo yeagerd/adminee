@@ -86,7 +86,7 @@ class UserCreate(UserBase):
         description="External authentication provider user ID",
     )
     auth_provider: str = Field(
-        default="clerk", max_length=50, description="Authentication provider name"
+        default="nextauth", max_length=50, description="Authentication provider name"
     )
 
     @field_validator("external_auth_id")

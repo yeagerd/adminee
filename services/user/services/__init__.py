@@ -13,13 +13,11 @@ from services.user.services.preferences_service import (
 )
 from services.user.services.token_service import get_token_service
 from services.user.services.user_service import get_user_service
-from services.user.services.webhook_service import get_webhook_service
 
 __all__ = [
     "get_user_service",
     "get_preferences_service",
     "get_integration_service",
     "get_token_service",
-    "get_webhook_service",
     "audit_logger",
 ]
