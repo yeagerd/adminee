@@ -6,9 +6,9 @@ import { apiClient } from '@/lib/api-client';
 import { ArrowLeft, CheckCircle, Loader2, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 
-export default function OAuthCallbackPage() {
+function OAuthCallbackContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -148,4 +148,24 @@ export default function OAuthCallbackPage() {
             </Card>
         </div>
     );
-} 
+}
+
+export default function OAuthCallbackPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <Card className="w-full max-w-md">
+                    <CardHeader className="text-center">
+                        <div className="flex justify-center mb-4">
+                            <Loader2 className="h-12 w-12 text-blue-600 animate-spin" />
+                        </div>
+                        <CardTitle className="text-xl">Loading...</CardTitle>
+                        <CardDescription>Processing your OAuth callback</CardDescription>
+                    </CardHeader>
+                </Card>
+            </div>
+        }>
+            <OAuthCallbackContent />
+        </Suspense>
+    );
+}

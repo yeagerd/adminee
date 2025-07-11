@@ -2,14 +2,14 @@ import { authOptions } from '@/lib/auth';
 import { getServerSession } from 'next-auth/next';
 import { NextRequest, NextResponse } from 'next/server';
 
-const USER_SERVICE_URL = process.env.USER_SERVICE_URL;
-
-if (!USER_SERVICE_URL) {
-    throw new Error('USER_SERVICE_URL environment variable is required');
-}
-
 export async function POST(request: NextRequest) {
     try {
+        const USER_SERVICE_URL = process.env.USER_SERVICE_URL;
+
+        if (!USER_SERVICE_URL) {
+            return NextResponse.json({ error: 'USER_SERVICE_URL environment variable is required' }, { status: 500 });
+        }
+
         const session = await getServerSession(authOptions);
 
         if (!session?.user?.id || !session?.accessToken) {
