@@ -133,7 +133,7 @@ class TestDemoAuthentication:
         but the demo continued, leading to 404 errors when accessing preferences.
         """
         email = "integration_test@example.com"
-        user_id = f"nextauth_{email.replace('@', '_').replace('.', '_')}"
+        user_id = f"{email.replace('@', '_').replace('.', '_')}"
 
         # Mock services as available
         demo_instance.services_available = {"user": True, "chat": True, "office": True}

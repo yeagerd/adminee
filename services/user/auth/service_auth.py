@@ -14,12 +14,9 @@ import logging
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
-from fastapi import HTTPException, Request, status
+from fastapi import Request
 
-from services.user.exceptions import (
-    AuthenticationException,
-    AuthorizationException,
-)
+from services.common.http_errors import AuthError, ServiceError
 from services.user.settings import get_settings
 
 logger = logging.getLogger(__name__)
@@ -155,21 +152,13 @@ async def verify_service_authentication(request: Request) -> str:
 
     if not api_key_value:
         logger.warning("Missing API key in request headers")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="API key required",
-            headers={"WWW-Authenticate": "ApiKey"},
-        )
+        raise AuthError(message="API key required")
 
     client_name = get_service_auth().verify_api_key_value(api_key_value)
 
     if not client_name:
         logger.warning(f"Invalid API key value: {api_key_value[:8]}...")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid API key",
-            headers={"WWW-Authenticate": "ApiKey"},
-        )
+        raise AuthError(message="Invalid API key")
 
     # Store API key and client info in request state
     request.state.api_key_value = api_key_value
@@ -196,30 +185,17 @@ async def get_current_service(request: Request) -> str:
         client_name = await verify_service_authentication(request)
         return client_name
 
-    except AuthenticationException as e:
+    except AuthError as e:
         logger.warning(f"Service authentication failed: {e.message}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": "ServiceAuthenticationError", "message": e.message},
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise e
 
-    except AuthorizationException as e:
+    except ServiceError as e:
         logger.warning(f"Service authorization failed: {e.message}")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"error": "ServiceAuthorizationError", "message": e.message},
-        )
+        raise e
 
     except Exception as e:
         logger.error(f"Unexpected service authentication error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error": "ServiceAuthenticationError",
-                "message": "Authentication failed",
-            },
-        )
+        raise ServiceError(message="Authentication failed")
 
 
 def require_service_auth(allowed_clients: list = None):
@@ -240,12 +216,8 @@ def require_service_auth(allowed_clients: list = None):
             logger.warning(
                 f"Client {client_name} not in allowed list: {allowed_clients}"
             )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error": "ServiceAuthorizationError",
-                    "message": f"Client {client_name} not authorized for this endpoint",
-                },
+            raise AuthError(
+                message=f"Client {client_name} not authorized for this endpoint"
             )
 
         return client_name

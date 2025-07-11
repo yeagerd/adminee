@@ -7,9 +7,10 @@ Provides API key based authentication for incoming requests from the frontend.
 import logging
 from typing import Dict, List, Optional
 
-from fastapi import HTTPException, Request, status
+from fastapi import Request
 
 from services.chat.settings import get_settings
+from services.common.http_errors import AuthError
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +27,9 @@ class ChatServiceAuth:
         self.api_key_value_to_client: Dict[str, str] = {}
 
         # Register API keys that can access this chat service
-        if get_settings().api_frontend_chat_key:
-            self.api_key_value_to_client[get_settings().api_frontend_chat_key] = (
-                "frontend"
-            )
+        api_key = get_settings().api_frontend_chat_key
+        if api_key is not None:
+            self.api_key_value_to_client[api_key] = "frontend"
 
         logger.info(
             f"ChatServiceAuth initialized with {len(self.api_key_value_to_client)} API keys"
@@ -123,21 +123,13 @@ async def verify_chat_authentication(request: Request) -> str:
 
     if not api_key_value:
         logger.warning("Missing API key in request headers")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="API key required",
-            headers={"WWW-Authenticate": "ApiKey"},
-        )
+        raise AuthError(message="API key required")
 
     client_name = get_chat_auth().verify_api_key_value(api_key_value)
 
     if not client_name:
         logger.warning(f"Invalid API key value: {api_key_value[:8]}...")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid API key",
-            headers={"WWW-Authenticate": "ApiKey"},
-        )
+        raise AuthError(message="Invalid API key")
 
     # Store API key and client info in request state
     request.state.api_key_value = api_key_value
@@ -147,7 +139,7 @@ async def verify_chat_authentication(request: Request) -> str:
     return client_name
 
 
-def require_chat_auth(allowed_clients: List[str] = None):
+def require_chat_auth(allowed_clients: Optional[List[str]] = None):
     """
     Decorator factory for chat authentication with specific client restrictions.
 
@@ -158,19 +150,16 @@ def require_chat_auth(allowed_clients: List[str] = None):
         FastAPI dependency function
     """
 
+    allowed = allowed_clients if allowed_clients is not None else []
+
     async def chat_dependency(request: Request) -> str:
         client_name = await verify_chat_authentication(request)
 
-        if allowed_clients and client_name not in allowed_clients:
-            logger.warning(
-                f"Client {client_name} not in allowed list: {allowed_clients}"
-            )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error": "ChatAuthorizationError",
-                    "message": f"Client {client_name} not authorized for this endpoint",
-                },
+        if allowed and client_name is not None and client_name not in allowed:
+            logger.warning(f"Client {client_name} not in allowed list: {allowed}")
+            raise AuthError(
+                message=f"Client {client_name} not authorized for this endpoint",
+                status_code=403,
             )
 
         return client_name

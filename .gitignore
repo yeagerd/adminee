@@ -145,6 +145,8 @@ venv/
 .uv/
 uv.lock.bak
 
+.nox/
+
 # Python bytecode
 __pycache__/
 *.py[cod]

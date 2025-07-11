@@ -218,12 +218,13 @@ class TestWebhookServiceIntegration(BaseUserManagementTest):
                 created_at=1640995200000,
                 updated_at=1640995200000,
             )
-            from fastapi import HTTPException
+            import pytest
 
-            with pytest.raises(HTTPException) as exc_info:
+            from services.common.http_errors import ServiceError
+
+            with pytest.raises(ServiceError) as exc_info:
                 await self.webhook_service._handle_user_created(new_data)
-            assert exc_info.value.status_code == 409
-            assert "EmailCollision" in str(exc_info.value.detail)
+            assert "already exists with a different user" in str(exc_info.value)
 
             # 3. Verify only one user exists and external_auth_id is NOT updated
             async_session = get_async_session()

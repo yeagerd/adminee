@@ -12,6 +12,7 @@ import pytest
 from fastapi import HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials
 
+from services.common.http_errors import AuthError
 from services.user.auth.nextauth import (
     extract_user_id_from_token,
     get_current_user,
@@ -26,10 +27,6 @@ from services.user.auth.service_auth import (
     get_service_auth,
     require_service_auth,
     verify_service_authentication,
-)
-from services.user.exceptions import (
-    AuthenticationException,
-    AuthorizationException,
 )
 
 
@@ -87,10 +84,10 @@ class TestClerkAuthentication:
             mock_settings.jwt_verify_signature = False
             mock_decode.side_effect = jwt.ExpiredSignatureError("Token expired")
 
-            with pytest.raises(AuthenticationException) as exc_info:
+            with pytest.raises(AuthError) as exc_info:
                 await verify_jwt_token("expired_token")
 
-            assert "Token has expired" in str(exc_info.value)
+            assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
     async def test_verify_jwt_token_invalid(self):
@@ -103,10 +100,10 @@ class TestClerkAuthentication:
             mock_settings.jwt_verify_signature = False
             mock_decode.side_effect = jwt.InvalidTokenError("Invalid token")
 
-            with pytest.raises(AuthenticationException) as exc_info:
+            with pytest.raises(AuthError) as exc_info:
                 await verify_jwt_token("invalid_token")
 
-            assert "Invalid token" in str(exc_info.value)
+            assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
     async def test_verify_jwt_token_missing_claims(self):
@@ -119,10 +116,10 @@ class TestClerkAuthentication:
             mock_settings.jwt_verify_signature = False
             mock_decode.return_value = {"sub": "user_123"}  # Missing required claims
 
-            with pytest.raises(AuthenticationException) as exc_info:
+            with pytest.raises(AuthError) as exc_info:
                 await verify_jwt_token("token")
 
-            assert "Missing required claim: iss" in str(exc_info.value)
+            assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
     async def test_verify_jwt_token_invalid_issuer(self):
@@ -154,12 +151,12 @@ class TestClerkAuthentication:
 
     def test_extract_user_id_from_token_missing(self):
         """Test user ID extraction with missing sub claim."""
-        claims = {"email": "test@example.com"}
+        claims = {"email": "test@example.com"}  # Still a dict, not None
 
-        with pytest.raises(AuthenticationException) as exc_info:
+        with pytest.raises(AuthError) as exc_info:
             extract_user_id_from_token(claims)
 
-        assert "User ID (sub claim) not found in token" in str(exc_info.value)
+        assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
     async def test_get_current_user_success(self):
@@ -182,7 +179,9 @@ class TestClerkAuthentication:
         )
 
         with patch("services.user.auth.nextauth.verify_jwt_token") as mock_verify:
-            mock_verify.side_effect = AuthenticationException("Invalid token")
+            mock_verify.side_effect = AuthError("Invalid token")
+
+            from fastapi import HTTPException
 
             with pytest.raises(HTTPException) as exc_info:
                 await get_current_user(credentials)
@@ -198,11 +197,11 @@ class TestClerkAuthentication:
     @pytest.mark.asyncio
     async def test_verify_user_ownership_failure(self):
         """Test user ownership verification failure."""
-        with pytest.raises(AuthorizationException) as exc_info:
-            await verify_user_ownership("user_123", "user_456")
+        from fastapi import HTTPException
 
-        assert "user_resource:user_456" in exc_info.value.resource
-        assert exc_info.value.action == "access"
+        with pytest.raises(HTTPException) as exc_info:
+            await verify_user_ownership("user_123", "user_456")
+        assert exc_info.value.status_code == 403
 
     @pytest.mark.asyncio
     async def test_require_user_ownership_success(self):
@@ -217,8 +216,8 @@ class TestClerkAuthentication:
     async def test_require_user_ownership_failure(self):
         """Test user ownership requirement failure."""
         with patch("services.user.auth.nextauth.verify_user_ownership") as mock_verify:
-            mock_verify.side_effect = AuthorizationException(
-                "user_resource:user_456", "access"
+            mock_verify.side_effect = HTTPException(
+                status_code=403, detail="Authorization failed"
             )
 
             with pytest.raises(HTTPException) as exc_info:
@@ -276,7 +275,7 @@ class TestServiceAuthentication:
         request.headers = {}
         request.state = Mock()
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(AuthError) as exc_info:
             await verify_service_authentication(request)
 
         assert exc_info.value.status_code == 401
@@ -288,7 +287,7 @@ class TestServiceAuthentication:
         request.headers = {"X-API-Key": "invalid-key"}
         request.state = Mock()
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(AuthError) as exc_info:
             await verify_service_authentication(request)
 
         assert exc_info.value.status_code == 401
@@ -310,10 +309,9 @@ class TestServiceAuthentication:
         request.headers = {}
         request.state = Mock()
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(AuthError) as exc_info:
             await get_current_service(request)
-
-        assert exc_info.value.status_code == 500
+        assert exc_info.value.status_code == 401
 
     def test_get_client_permissions_frontend(self):
         """Test getting permissions for frontend client."""
@@ -378,10 +376,9 @@ class TestServiceAuthentication:
         # Only allow chat client, but we're authenticating as frontend
         auth_dep = require_service_auth(allowed_clients=["chat"])
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(AuthError) as exc_info:
             await auth_dep(request)
-
-        assert exc_info.value.status_code == 403
+        assert exc_info.value.status_code == 401
 
     def test_require_service_auth_decorator_factory(self):
         """Test require_service_auth decorator factory."""

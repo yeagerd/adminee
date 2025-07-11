@@ -9,9 +9,9 @@ import hmac
 import logging
 from typing import Optional
 
-from fastapi import HTTPException, Request, status
+from fastapi import Request
 
-from services.user.exceptions import WebhookValidationException
+from services.common.http_errors import AuthError, ServiceError, ValidationError
 from services.user.settings import get_settings
 
 logger = logging.getLogger(__name__)
@@ -33,20 +33,20 @@ class WebhookSignatureVerifier:
             timestamp_header: The svix-timestamp header value
 
         Raises:
-            WebhookValidationException: If signature verification fails
+            ValidationError: If signature verification fails
         """
         if not get_settings().clerk_webhook_secret:
             logger.warning("Clerk webhook secret not configured, skipping verification")
             return
 
         if not signature_header:
-            raise WebhookValidationException(
-                provider="clerk", reason="Missing signature header"
+            raise ValidationError(
+                message="Missing signature header", details={"provider": "clerk"}
             )
 
         if not timestamp_header:
-            raise WebhookValidationException(
-                provider="clerk", reason="Missing timestamp header"
+            raise ValidationError(
+                message="Missing timestamp header", details={"provider": "clerk"}
             )
 
         try:
@@ -68,18 +68,19 @@ class WebhookSignatureVerifier:
             )
 
             if not signature_valid:
-                raise WebhookValidationException(
-                    provider="clerk", reason="Invalid signature"
+                raise ValidationError(
+                    message="Invalid signature", details={"provider": "clerk"}
                 )
 
             logger.debug("Clerk webhook signature verified successfully")
 
         except Exception as e:
-            if isinstance(e, WebhookValidationException):
+            if isinstance(e, ValidationError):
                 raise
             logger.error(f"Webhook signature verification failed: {str(e)}")
-            raise WebhookValidationException(
-                provider="clerk", reason=f"Signature verification error: {str(e)}"
+            raise ValidationError(
+                message=f"Signature verification error: {str(e)}",
+                details={"provider": "clerk"},
             )
 
     @staticmethod
@@ -144,22 +145,9 @@ async def verify_webhook_signature(request: Request) -> None:
             body, signature_header, timestamp_header
         )
 
-    except WebhookValidationException as e:
+    except ValidationError as e:
         logger.warning(f"Webhook signature verification failed: {e.message}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "error": "WebhookValidationError",
-                "message": e.message,
-                "provider": e.provider,
-            },
-        )
+        raise AuthError(message=e.message)
     except Exception as e:
         logger.error(f"Webhook verification error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error": "WebhookVerificationError",
-                "message": "Internal verification error",
-            },
-        )
+        raise ServiceError(message="Internal verification error")

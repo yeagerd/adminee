@@ -10,14 +10,10 @@ import time  # Added for is_token_expired
 from typing import Dict, Optional
 
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-# Assuming AuthorizationException might be needed by verify_user_ownership
-# If it's defined in services.user.exceptions, it should be imported from there.
-# For now, I'll keep the local import style as in clerk.py for verify_user_ownership
-# but ideally, this should be a top-level import if not causing circular dependencies.
-from services.user.exceptions import AuthenticationException  # , AuthorizationException
+from services.common.http_errors import AuthError
 from services.user.logging_config import get_logger
 from services.user.settings import get_settings
 
@@ -38,7 +34,7 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
         Decoded token claims
 
     Raises:
-        AuthenticationException: If token is invalid
+        AuthError: If token is invalid
     """
     logger_instance = get_logger(__name__)  # Use a local logger instance
 
@@ -72,7 +68,7 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
         for claim in required_claims:
             if claim not in decoded_token:
                 logger_instance.error(f"Missing required claim: {claim}")
-                raise AuthenticationException(f"Missing required claim: {claim}")
+                raise AuthError(f"Missing required claim: {claim}")
 
         logger_instance.info(
             "Token validated successfully",
@@ -86,26 +82,87 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
 
     except jwt.ExpiredSignatureError:
         logger_instance.warning("JWT token has expired")
-        raise AuthenticationException("Token has expired")
+        raise AuthError("Token has expired")
 
     except jwt.InvalidAudienceError:
         logger_instance.warning("Invalid JWT audience")
-        raise AuthenticationException("Invalid token audience")
+        raise AuthError("Invalid token audience")
 
     except jwt.InvalidIssuerError:
         logger_instance.warning("Invalid JWT issuer")
-        raise AuthenticationException("Invalid token issuer")
+        raise AuthError("Invalid token issuer")
 
     except jwt.InvalidTokenError as e:
         logger_instance.warning(f"Invalid JWT token: {e}")
-        raise AuthenticationException(f"Invalid token: {e}")
-
-    except AuthenticationException:
-        raise
+        raise AuthError("Invalid token")
 
     except Exception as e:
         logger_instance.error(f"Token verification failed: {e}")
-        raise AuthenticationException(f"Token verification failed: {e}")
+        raise AuthError("Token verification failed")
+
+
+async def get_user_from_clerk(user_id: str) -> Optional[Dict]:
+    """
+    Retrieve user information from Clerk via API.
+
+    This function makes an HTTP request to Clerk's API to fetch user details.
+    In development/testing, it can work without Clerk credentials by returning None.
+
+    Args:
+        user_id: Clerk user ID
+
+    Returns:
+        User information dictionary or None if not found
+
+    Raises:
+        AuthError: If API request fails
+    """
+    import os
+
+    import httpx
+
+    # Check if we have Clerk credentials
+    clerk_secret_key = os.getenv("CLERK_SECRET_KEY")
+    if not clerk_secret_key:
+        logger.warning("get_user_from_clerk called but CLERK_SECRET_KEY not available")
+        return None
+
+    try:
+        # Make API request to Clerk
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"https://api.clerk.com/v1/users/{user_id}",
+                headers={
+                    "Authorization": f"Bearer {clerk_secret_key}",
+                    "Content-Type": "application/json",
+                },
+                timeout=10.0,
+            )
+
+            if response.status_code == 404:
+                logger.info(f"User {user_id} not found in Clerk")
+                return None
+
+            if response.status_code == 200:
+                user_data = response.json()
+                logger.debug(f"Successfully retrieved user {user_id} from Clerk")
+                return user_data
+
+            # Handle other error codes
+            logger.error(
+                f"Clerk API request failed with status {response.status_code}: {response.text}"
+            )
+            return None
+
+    except httpx.TimeoutException:
+        logger.error(f"Timeout while fetching user {user_id} from Clerk")
+        raise AuthError("Clerk API timeout")
+    except httpx.RequestError as e:
+        logger.error(f"Request error while fetching user {user_id} from Clerk: {e}")
+        raise AuthError("Clerk API request failed")
+    except Exception as e:
+        logger.error(f"Unexpected error fetching user {user_id} from Clerk: {e}")
+        raise AuthError("Failed to retrieve user from Clerk")
 
 
 def extract_user_id_from_token(token_claims: Dict[str, str]) -> str:
@@ -119,12 +176,12 @@ def extract_user_id_from_token(token_claims: Dict[str, str]) -> str:
         User ID from token
 
     Raises:
-        AuthenticationException: If user ID (sub claim) cannot be extracted
+        AuthError: If user ID cannot be extracted
     """
     user_id = token_claims.get("sub")
     if not user_id:
-        # This case should ideally be caught by 'sub' in required_claims in verify_jwt_token
-        raise AuthenticationException("User ID (sub claim) not found in token")
+        raise AuthError("User ID not found in token")
+
     return user_id
 
 
@@ -143,7 +200,7 @@ def extract_user_email_from_token(token_claims: Dict[str, str]) -> Optional[str]
 
 
 def validate_token_permissions(
-    token_claims: Dict[str, str], required_permissions: list = None
+    token_claims: Dict[str, str], required_permissions: Optional[list] = None
 ) -> bool:
     """
     Validate that the token has required permissions.
@@ -156,6 +213,8 @@ def validate_token_permissions(
     Returns:
         True if token has required permissions
     """
+    if required_permissions is None:
+        required_permissions = []
     if not required_permissions:
         return True
 
@@ -229,20 +288,12 @@ async def get_current_user(
             "User authenticated successfully", extra={"user_id": user_id}
         )
         return user_id
-    except AuthenticationException as e:
+    except AuthError as e:
         logger_instance.warning(f"Authentication failed: {e.message}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": "AuthenticationError", "message": e.message},
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise HTTPException(status_code=401, detail=e.message)
     except Exception as e:
         logger_instance.error(f"Unexpected authentication error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": "AuthenticationError", "message": "Authentication failed"},
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise HTTPException(status_code=401, detail="Authentication failed")
 
 
 async def get_current_user_with_claims(
@@ -268,20 +319,12 @@ async def get_current_user_with_claims(
             extra={"user_id": token_claims.get("sub")},
         )
         return token_claims
-    except AuthenticationException as e:
+    except AuthError as e:
         logger_instance.warning(f"Authentication failed: {e.message}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": "AuthenticationError", "message": e.message},
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise AuthError(message=e.message)
     except Exception as e:
         logger_instance.error(f"Unexpected authentication error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": "AuthenticationError", "message": "Authentication failed"},
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise AuthError(message="Authentication failed")
 
 
 async def verify_user_ownership(current_user_id: str, resource_user_id: str) -> bool:
@@ -296,19 +339,14 @@ async def verify_user_ownership(current_user_id: str, resource_user_id: str) -> 
         True if user owns the resource
 
     Raises:
-        AuthorizationException: If user doesn't own the resource (imported locally)
+        HTTPException: If user doesn't own the resource
     """
     logger_instance = get_logger(__name__)
     if current_user_id != resource_user_id:
         logger_instance.warning(
             f"User {current_user_id} attempted to access resource owned by {resource_user_id}"
         )
-        # This import should ideally be at the top-level if it doesn't cause circular dependencies
-        from services.user.exceptions import AuthorizationException
-
-        raise AuthorizationException(
-            resource=f"user_resource:{resource_user_id}", action="access"
-        )
+        raise HTTPException(status_code=403, detail="User does not own the resource.")
     return True
 
 
@@ -333,36 +371,9 @@ async def require_user_ownership(
     try:
         await verify_user_ownership(current_user_id, resource_user_id)
         return current_user_id
+    except HTTPException as e:
+        logger_instance.warning(f"User ownership verification failed: {e.detail}")
+        raise
     except Exception as e:
-        # This import should ideally be at the top-level
-        from services.user.exceptions import AuthorizationException
-
-        if isinstance(e, AuthorizationException):
-            logger_instance.warning(f"User ownership verification failed: {e.message}")
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error": "AuthorizationError",
-                    "message": "Access denied: You can only access your own resources.",
-                    "resource": e.resource,  # Make sure AuthorizationException has these attributes
-                    "action": e.action,
-                },
-            )
-        # Handle other potential exceptions from get_current_user if they are not AuthenticationException
-        elif isinstance(
-            e, AuthenticationException
-        ):  # Should be caught by get_current_user itself
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"error": "AuthenticationError", "message": e.message},
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        else:
-            logger_instance.error(f"Unexpected ownership verification error: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,  # Or 403 if preferred for general auth failures
-                detail={
-                    "error": "AuthorizationError",  # Or "InternalServerError"
-                    "message": "Access verification failed unexpectedly.",
-                },
-            )
+        logger_instance.error(f"Unexpected ownership verification error: {e}")
+        raise HTTPException(status_code=403, detail="Access verification failed")

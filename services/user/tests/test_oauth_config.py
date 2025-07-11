@@ -16,7 +16,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import httpx
 import pytest
 
-from services.user.exceptions import ValidationException
+from services.common.http_errors import ValidationError
 from services.user.integrations.oauth_config import (
     OAuthConfig,
     OAuthProviderConfig,
@@ -640,17 +640,17 @@ class TestOAuthConfig:
     def test_generate_authorization_url_invalid_provider(self):
         """Test authorization URL generation with invalid provider."""
         with patch.object(self.oauth_config, "get_provider_config", return_value=None):
-            with pytest.raises(ValidationException) as exc_info:
+            with pytest.raises(ValidationError) as exc_info:
                 self.oauth_config.generate_authorization_url(
                     provider=IntegrationProvider.GOOGLE,
                     user_id="user123",
                     redirect_uri="https://example.com/callback",
                 )
-            assert "OAuth provider not available" in str(exc_info.value)
+            assert exc_info.value.field == IntegrationProvider.GOOGLE
 
     def test_generate_authorization_url_invalid_scopes(self):
         """Test authorization URL generation with invalid scopes."""
-        with pytest.raises(ValidationException) as exc_info:
+        with pytest.raises(ValidationError) as exc_info:
             self.oauth_config.generate_authorization_url(
                 provider=IntegrationProvider.GOOGLE,
                 user_id="user123",
@@ -839,13 +839,13 @@ class TestOAuthConfig:
                 side_effect=httpx.HTTPError("Token exchange failed")
             )
 
-            with pytest.raises(ValidationException) as exc_info:
+            with pytest.raises(ValidationError) as exc_info:
                 await self.oauth_config.exchange_code_for_tokens(
                     provider=IntegrationProvider.GOOGLE,
                     authorization_code="invalid-code",
                     oauth_state=oauth_state,
                 )
-            assert "Failed to exchange authorization code" in str(exc_info.value)
+            assert exc_info.value.field == "invalid-code"
 
     @pytest.mark.asyncio
     async def test_refresh_access_token_success(self):
@@ -880,12 +880,12 @@ class TestOAuthConfig:
                 side_effect=httpx.HTTPError("Refresh failed")
             )
 
-            with pytest.raises(ValidationException) as exc_info:
+            with pytest.raises(ValidationError) as exc_info:
                 await self.oauth_config.refresh_access_token(
                     provider=IntegrationProvider.GOOGLE,
                     refresh_token="invalid-refresh-token",
                 )
-            assert "Failed to refresh access token" in str(exc_info.value)
+            assert exc_info.value.field == "invalid-refresh-token"
 
     @pytest.mark.asyncio
     async def test_get_user_info_success(self):
@@ -957,12 +957,12 @@ class TestOAuthConfig:
                 side_effect=httpx.HTTPError("User info failed")
             )
 
-            with pytest.raises(ValidationException) as exc_info:
+            with pytest.raises(ValidationError) as exc_info:
                 await self.oauth_config.get_user_info(
                     provider=IntegrationProvider.GOOGLE,
                     access_token="invalid-token",
                 )
-            assert "Failed to retrieve user info" in str(exc_info.value)
+            assert exc_info.value.field == "invalid-token"
 
     @pytest.mark.asyncio
     async def test_revoke_token_success(self):

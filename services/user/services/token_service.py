@@ -12,11 +12,8 @@ import httpx
 import structlog
 from sqlmodel import select
 
+from services.common.http_errors import NotFoundError, ServiceError
 from services.user.database import get_async_session
-from services.user.exceptions import (
-    IntegrationException,
-    NotFoundException,
-)
 from services.user.models.integration import (
     Integration,
     IntegrationProvider,
@@ -69,8 +66,8 @@ class TokenService:
             scopes: OAuth scopes associated with the tokens
 
         Raises:
-            NotFoundException: If user or integration not found
-            IntegrationException: If token storage fails
+            NotFoundError: If user or integration not found
+            ServiceError: If token storage fails
         """
         try:
             # Get user integration
@@ -142,9 +139,9 @@ class TokenService:
                 provider=provider.value,
                 error=str(e),
             )
-            if isinstance(e, (NotFoundException, IntegrationException)):
+            if isinstance(e, (NotFoundError, ServiceError)):
                 raise
-            raise IntegrationException(f"Failed to store tokens: {str(e)}")
+            raise ServiceError(message=f"Failed to store tokens: {str(e)}")
 
     async def get_valid_token(
         self,
@@ -166,7 +163,7 @@ class TokenService:
             InternalTokenResponse with token data or error
 
         Raises:
-            NotFoundException: If user or integration not found
+            NotFoundError: If user or integration not found
         """
         try:
             # Get user integration
@@ -319,7 +316,7 @@ class TokenService:
                 provider=provider.value,
                 error=str(e),
             )
-            if isinstance(e, NotFoundException):
+            if isinstance(e, NotFoundError):
                 raise
             return InternalTokenResponse(
                 success=False,
@@ -413,7 +410,7 @@ class TokenService:
                 )
                 user = user_result.scalar_one_or_none()
                 if not user:
-                    raise NotFoundException(f"User not found: {user_id}")
+                    raise NotFoundError(resource="User", identifier=str(user_id))
 
                 # Get all user integrations
                 integrations_result = await session.execute(
@@ -451,9 +448,9 @@ class TokenService:
                 user_id=user_id,
                 error=str(e),
             )
-            if isinstance(e, NotFoundException):
+            if isinstance(e, NotFoundError):
                 raise
-            raise IntegrationException(f"Failed to get user status: {str(e)}")
+            raise ServiceError(message=f"Failed to get user status: {str(e)}")
 
     async def _get_user_integration(
         self, user_id: str, provider: IntegrationProvider
@@ -467,7 +464,7 @@ class TokenService:
             )
             user = user_result.scalar_one_or_none()
             if not user:
-                raise NotFoundException(f"User not found: {user_id}")
+                raise NotFoundError(resource="User", identifier=str(user_id))
 
             # Then get the integration
             integration_result = await session.execute(
@@ -478,8 +475,8 @@ class TokenService:
             integration = integration_result.scalar_one_or_none()
 
         if not integration:
-            raise NotFoundException(
-                f"Integration not found for user {user_id} and provider {provider.value}"
+            raise NotFoundError(
+                resource="Integration", identifier=f"{user_id}:{provider.value}"
             )
         return integration
 
@@ -864,21 +861,29 @@ class TokenService:
 
             # Revoke tokens for matching integrations
             for integration in integrations:
-                try:
-                    response = await self.revoke_tokens(
-                        user_id=integration.user.external_auth_id,
-                        provider=integration.provider,
-                        reason=reason,
-                    )
-                    if response.success:
-                        revocation_count += 1
-                except Exception as e:
-                    self.logger.error(
-                        "Failed to revoke tokens for integration",
+                if integration.user is not None:
+                    try:
+                        response = await self.revoke_tokens(
+                            user_id=integration.user.external_auth_id,
+                            provider=integration.provider,
+                            reason=reason,
+                        )
+                        if response.success:
+                            revocation_count += 1
+                    except Exception as e:
+                        self.logger.error(
+                            "Failed to revoke tokens for integration",
+                            integration_id=integration.id,
+                            user_id=integration.user.external_auth_id,
+                            provider=integration.provider.value,
+                            error=str(e),
+                        )
+                else:
+                    self.logger.warning(
+                        "Integration has no associated user; skipping revocation.",
                         integration_id=integration.id,
-                        user_id=integration.user.external_auth_id,
                         provider=integration.provider.value,
-                        error=str(e),
+                        reason=reason,
                     )
 
             await audit_logger.log_system_action(

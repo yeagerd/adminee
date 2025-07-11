@@ -11,8 +11,12 @@ import uuid
 from datetime import datetime, timezone
 from typing import List, Optional, cast
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, Path, Query
 
+from services.common.http_errors import (
+    ServiceError,
+    ValidationError,
+)
 from services.office.core.api_client_factory import APIClientFactory
 from services.office.core.auth import ServicePermissionRequired
 from services.office.core.cache_manager import cache_manager, generate_cache_key
@@ -100,7 +104,7 @@ async def get_files(
                 logger.warning(f"[{request_id}] Invalid provider: {provider}")
 
         if not valid_providers:
-            raise HTTPException(status_code=400, detail="No valid providers specified")
+            raise ValidationError(message="No valid providers specified")
 
         # Build cache key
         cache_params = {
@@ -306,11 +310,11 @@ async def get_files(
             success=True, data=response_data, cache_hit=False, request_id=request_id
         )
 
-    except HTTPException:
+    except ValidationError:
         raise
     except Exception as e:
         logger.error(f"[{request_id}] Files request failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch files: {str(e)}")
+        raise ServiceError(message=f"Failed to fetch files: {str(e)}")
 
 
 @router.get("/search", response_model=ApiResponse)
@@ -365,7 +369,7 @@ async def search_files(
                 logger.warning(f"[{request_id}] Invalid provider: {provider}")
 
         if not valid_providers:
-            raise HTTPException(status_code=400, detail="No valid providers specified")
+            raise ValidationError(message="No valid providers specified")
 
         # Build cache key for search results
         cache_params = {
@@ -526,11 +530,11 @@ async def search_files(
             success=True, data=response_data, cache_hit=False, request_id=request_id
         )  # type: ignore
 
-    except HTTPException:
+    except ValidationError:
         raise
     except Exception as e:
         logger.error(f"[{request_id}] File search failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to search files: {str(e)}")
+        raise ServiceError(message=f"Failed to search files: {str(e)}")
 
 
 @router.get("/{file_id}", response_model=ApiResponse)
@@ -609,9 +613,7 @@ async def get_file(
                     normalized_file = normalize_microsoft_drive_file(response, user_id)
 
                 else:
-                    raise HTTPException(
-                        status_code=400, detail=f"Unsupported provider: {provider}"
-                    )
+                    raise ValidationError(message=f"Unsupported provider: {provider}")
 
                 # Build response data
                 response_data = {
@@ -666,11 +668,11 @@ async def get_file(
                     request_id=request_id,
                 )
 
-    except HTTPException:
+    except ValidationError:
         raise
     except Exception as e:
         logger.error(f"[{request_id}] File detail request failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch file: {str(e)}")
+        raise ServiceError(message=f"Failed to fetch file: {str(e)}")
 
 
 def parse_file_id(file_id: str) -> tuple[str, str]:
@@ -688,7 +690,7 @@ def parse_file_id(file_id: str) -> tuple[str, str]:
     """
     try:
         if "_" not in file_id:
-            raise ValueError("Invalid file ID format")
+            raise ValidationError(message="Invalid file ID format")
 
         parts = file_id.split("_", 1)
         provider_prefix = parts[0].lower()
@@ -699,12 +701,13 @@ def parse_file_id(file_id: str) -> tuple[str, str]:
 
         provider = provider_map.get(provider_prefix)
         if not provider:
-            raise ValueError(f"Unknown provider prefix: {provider_prefix}")
+            raise ValidationError(message=f"Unknown provider prefix: {provider_prefix}")
 
         return provider, original_id
 
     except Exception:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid file ID format: {file_id}. Expected format: 'provider_originalId'",
+        raise ValidationError(
+            message=f"Invalid file ID format: {file_id}. Expected format: 'provider_originalId'",
+            field="file_id",
+            value=file_id,
         )

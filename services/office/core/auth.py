@@ -9,8 +9,9 @@ import logging
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
-from fastapi import HTTPException, Request, status
+from fastapi import Request
 
+from services.common.http_errors import AuthError, ServiceError
 from services.office.core.settings import get_settings
 
 logger = logging.getLogger(__name__)
@@ -208,21 +209,13 @@ async def verify_service_authentication(request: Request) -> str:
 
     if not api_key:
         logger.warning("Missing API key in request headers")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="API key required",
-            headers={"WWW-Authenticate": "ApiKey"},
-        )
+        raise AuthError(message="API key required", status_code=401)
 
     service_name = verify_api_key(api_key)
 
     if not service_name:
         logger.warning(f"Invalid API key: {api_key[:8]}...")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid API key",
-            headers={"WWW-Authenticate": "ApiKey"},
-        )
+        raise AuthError(message="Invalid API key", status_code=401)
 
     # Store API key and client info in request state for permission checking
     request.state.api_key = api_key
@@ -256,9 +249,8 @@ class ServicePermissionRequired:
         # Check if the API key has the required permissions
         api_key = getattr(request.state, "api_key", None)
         if not api_key:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="API key not found in request state",
+            raise ServiceError(
+                message="API key not found in request state", status_code=500
             )
 
         # Validate permissions
@@ -275,9 +267,9 @@ class ServicePermissionRequired:
                     "api_key_prefix": api_key[:8] if api_key else None,
                 },
             )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Insufficient permissions. Required: {self.required_permissions}",
+            raise AuthError(
+                message=f"Insufficient permissions. Required: {self.required_permissions}",
+                status_code=403,
             )
 
         return service_name
@@ -298,7 +290,7 @@ async def optional_service_auth(request: Request) -> Optional[str]:
     """
     try:
         return await verify_service_authentication(request)
-    except HTTPException:
+    except AuthError:
         return None
 
 
