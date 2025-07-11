@@ -33,7 +33,7 @@ from services.common.settings import BaseSettings, SettingsConfigDict
 
 # Try to import OAuth utilities
 try:
-    from oauth_callback_handler import OAuthCallbackServer
+    from demo_jwt_utils import create_bearer_token
 
     OAUTH_AVAILABLE = True
 except ImportError:
@@ -55,6 +55,83 @@ try:
     NEXTAUTH_AVAILABLE = True
 except ImportError:
     NEXTAUTH_AVAILABLE = False
+
+import threading
+
+import uvicorn
+
+# --- FastAPI OAuth Callback Server for Local Demo ---
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
+
+
+class FastAPICallbackServer:
+    def __init__(self, port: int = 8080):
+        self.port = port
+        self.app = FastAPI()
+        self.code = None
+        self.state = None
+        self.error = None
+        self.error_description = None
+        self._event = threading.Event()
+        self._thread = None
+        self._setup_routes()
+
+    def _setup_routes(self):
+        @self.app.get("/oauth/callback", response_class=HTMLResponse)
+        async def oauth_callback(request: Request):
+            params = dict(request.query_params)
+            self.code = params.get("code")
+            self.state = params.get("state")
+            self.error = params.get("error")
+            self.error_description = params.get("error_description")
+            self._event.set()
+            if self.error:
+                return HTMLResponse(
+                    f"""
+                <html><head><meta charset='UTF-8'><title>OAuth Error</title></head>
+                <body><h1>❌ OAuth Error</h1><p>{self.error}: {self.error_description or ''}</p></body></html>""",
+                    status_code=400,
+                )
+            elif self.code:
+                return HTMLResponse(
+                    """
+                <html><head><meta charset='UTF-8'><title>OAuth Success</title></head>
+                <body><h1>🎉 OAuth Success!</h1><p>✅ Authorization code received.</p></body></html>"""
+                )
+            else:
+                return HTMLResponse(
+                    "<html><head><meta charset='UTF-8'><title>Invalid</title></head><body><h1>⚠️ Invalid OAuth Callback</h1></body></html>",
+                    status_code=400,
+                )
+
+    def start(self):
+        def run():
+            uvicorn.run(self.app, host="0.0.0.0", port=self.port, log_level="warning")
+
+        self._thread = threading.Thread(target=run, daemon=True)
+        self._thread.start()
+        print(f"🚀 FastAPI Callback Server started on http://localhost:{self.port}")
+        print(
+            f"🔗 Ready to handle OAuth callbacks at http://localhost:{self.port}/oauth/callback"
+        )
+
+    def wait_for_callback(self, timeout: int = 300):
+        print(f"⏳ Waiting for OAuth callback (timeout: {timeout}s)...")
+        received = self._event.wait(timeout)
+        if not received:
+            print("⏰ Timeout waiting for OAuth callback")
+            return None
+        return {
+            "code": self.code,
+            "state": self.state,
+            "error": self.error,
+            "error_description": self.error_description,
+        }
+
+    def stop(self):
+        # No explicit stop for uvicorn in thread, but thread is daemonized
+        pass
 
 
 class DemoSettings(BaseSettings):
@@ -166,7 +243,49 @@ class UserServiceClient(ServiceClient):
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
                     f"{self.base_url}/users/{self.user_id}/integrations/oauth/start",
-                    json={"provider": provider, "scopes": scopes},
+                    json={
+                        "provider": provider,
+                        "scopes": scopes,
+                        "redirect_uri": "http://localhost:8080/oauth/callback",
+                    },
+                    headers={"Authorization": f"Bearer {self.auth_token}"},
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    return data.get("authorization_url")
+        except Exception as e:
+            logger.error(f"OAuth start failed: {e}")
+        return None
+
+    async def start_oauth_flow_with_redirect(
+        self, provider: str, redirect_uri: str
+    ) -> Optional[str]:
+        """Start OAuth flow for a provider, specifying redirect_uri."""
+        if not self.auth_token:
+            return None
+        try:
+            # Use provider-specific default scopes
+            if provider == "microsoft":
+                scopes = [
+                    "openid",
+                    "email",
+                    "profile",
+                    "offline_access",
+                    "https://graph.microsoft.com/User.Read",
+                    "https://graph.microsoft.com/Calendars.ReadWrite",
+                ]
+            elif provider == "google":
+                scopes = ["read", "write"]
+            else:
+                scopes = ["read"]
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.post(
+                    f"{self.base_url}/users/{self.user_id}/integrations/oauth/start",
+                    json={
+                        "provider": provider,
+                        "scopes": scopes,
+                        "redirect_uri": redirect_uri,
+                    },
                     headers={"Authorization": f"Bearer {self.auth_token}"},
                 )
                 if response.status_code == 200:
@@ -569,23 +688,26 @@ class FullDemo:
                             f"Failed to create user via /users/: {response.status_code} {response.text}"
                         )
                         return False
-            except Exception as api_error:
+            except Exception as e:
                 logger.error("")
                 return False
 
     async def setup_oauth_integration(self, provider: str) -> bool:
-        """Set up OAuth integration for a provider."""
+        """Set up OAuth integration for a provider using FastAPI callback server."""
         if not self.authenticated:
             print("❌ Not authenticated")
             return False
 
-        if not OAUTH_AVAILABLE:
-            print("❌ OAuth utilities not available")
-            return False
+        # Use FastAPI callback server
+        callback_server = FastAPICallbackServer()
+        callback_server.start()
+        redirect_uri = f"http://localhost:{callback_server.port}/oauth/callback"
 
         try:
-            # Start OAuth flow
-            auth_url = await self.user_client.start_oauth_flow(provider)
+            # Start OAuth flow, passing the FastAPI callback URL
+            auth_url = await self.user_client.start_oauth_flow_with_redirect(
+                provider, redirect_uri
+            )
             if not auth_url:
                 print(f"❌ Failed to start {provider} OAuth flow")
                 return False
@@ -594,36 +716,34 @@ class FullDemo:
                 f"\n🔗 Please visit this URL to authenticate with {provider.capitalize()}:\n   {auth_url}\n"
             )
             print("🌐 Open this link in your browser to continue the OAuth flow.")
-            # TODO: Optionally, add a flag to auto-open in the future
-            # if auto_open:
-            #     webbrowser.open(auth_url)
 
-            # Start callback server
-            callback_server = OAuthCallbackServer()
-            await callback_server.start()
+            # Wait for callback (run blocking call in a thread)
+            import asyncio
 
-            try:
-                # Wait for callback
-                code, state = await callback_server.wait_for_callback()
-                print(f"✅ Received OAuth callback: code={code[:10]}..., state={state}")
+            data = await asyncio.to_thread(callback_server.wait_for_callback)
+            if (
+                not data
+                or "code" not in data
+                or not data["code"]
+                or "state" not in data
+                or not data["state"]
+            ):
+                print(f"❌ OAuth callback did not return code and state: {data}")
+                return False
+            code, state = data["code"], data["state"]
+            print(f"✅ Received OAuth callback: code={code[:10]}..., state={state}")
 
-                # Complete OAuth flow
-                success = await self.user_client.complete_oauth_flow(
-                    provider, code, state
-                )
-                if success:
-                    print(f"✅ {provider.title()} OAuth integration successful!")
-                    return True
-                else:
-                    print(f"❌ {provider.title()} OAuth integration failed")
-                    return False
+            # Complete OAuth flow
+            success = await self.user_client.complete_oauth_flow(provider, code, state)
+            if success:
+                print(f"✅ {provider.title()} OAuth integration successful!")
+                return True
+            else:
+                print(f"❌ {provider.title()} OAuth integration failed")
+                return False
 
-            finally:
-                await callback_server.stop()
-
-        except Exception as e:
-            print(f"❌ OAuth setup failed: {e}")
-            return False
+        finally:
+            callback_server.stop()
 
     async def create_agent(self) -> Optional[WorkflowAgent]:
         """Create a workflow agent for local mode."""
