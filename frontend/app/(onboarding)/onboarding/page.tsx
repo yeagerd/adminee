@@ -1,74 +1,253 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation'; // For redirecting
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { apiClient, Integration } from '@/lib/api-client';
+import { Calendar, CheckCircle, Loader2, Mail, Shield } from 'lucide-react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 const OnboardingPage = () => {
-  const router = useRouter();
-  const [calendarConnected, setCalendarConnected] = useState(false);
+    const router = useRouter();
+    const { data: session, status } = useSession();
+    const [integrations, setIntegrations] = useState<Integration[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
 
-  const handleConnectCalendar = () => {
-    // Simulate API call or OAuth flow for connecting calendar
-    console.log('Simulating calendar connection...');
-    // For MVP, we'll just toggle a state and assume success
-    setTimeout(() => {
-      setCalendarConnected(true);
-      console.log('Calendar connection successful (mock)');
-    }, 1000);
-  };
+    useEffect(() => {
+        if (session) {
+            loadIntegrations();
+        }
+    }, [session]);
 
-  const handleCompleteOnboarding = () => {
-    if (!calendarConnected) {
-      alert('Please connect your calendar first.');
-      return;
+    const loadIntegrations = async () => {
+        try {
+            const data = await apiClient.getIntegrations();
+            setIntegrations(data);
+        } catch (error) {
+            console.error('Failed to load integrations:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleConnectIntegration = async (provider: string, scopes: string[]) => {
+        try {
+            setConnectingProvider(provider);
+            const response = await apiClient.startOAuthFlow(provider, scopes);
+            // Redirect to OAuth provider
+            window.location.href = response.authorization_url;
+        } catch (error) {
+            console.error('Failed to start OAuth flow:', error);
+            setConnectingProvider(null);
+        }
+    };
+
+    const handleCompleteOnboarding = async () => {
+        try {
+            // Mark onboarding as completed in user service
+            await apiClient.updateUser({ onboarding_completed: true });
+            router.push('/dashboard');
+        } catch (error) {
+            console.error('Failed to complete onboarding:', error);
+            // Still redirect to dashboard
+            router.push('/dashboard');
+        }
+    };
+
+    if (status === 'loading') {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
+            </div>
+        );
     }
-    // Here you would typically make an API call to mark onboarding as complete for the user.
-    console.log('Completing onboarding...');
-    // For MVP, redirect to dashboard
-    router.push('/dashboard');
-  };
 
-  return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6 text-center">Welcome to Briefly!</h1>
-      <p className="text-gray-600 mb-6 text-center">
-        Let's get your account set up so we can help you prepare for your meetings.
-      </p>
+    if (!session) {
+        return (
+            <div className="text-center">
+                <h1 className="text-2xl font-bold mb-4">Authentication Required</h1>
+                <p className="text-gray-600 mb-6">Please sign in to complete your onboarding</p>
+                <Button onClick={() => router.push('/login')}>
+                    Sign In
+                </Button>
+            </div>
+        );
+    }
 
-      <div className="mb-6 p-4 border rounded-lg bg-gray-50">
-        <h2 className="text-xl font-semibold mb-3">1. Connect Your Calendar</h2>
-        {calendarConnected ? (
-          <div className="text-green-600 font-semibold p-3 bg-green-100 border border-green-300 rounded">
-            ✓ Calendar Connected Successfully!
-          </div>
-        ) : (
-          <>
-            <p className="text-sm text-gray-600 mb-3">
-              Connect your primary calendar (e.g., Google Calendar, Outlook Calendar) to allow Briefly to analyze your schedule.
-            </p>
-            <button
-              onClick={handleConnectCalendar}
-              className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              Connect Calendar (Mock)
-            </button>
-          </>
-        )}
-      </div>
+    const activeIntegrations = integrations.filter(i => i.status === 'ACTIVE');
+    const hasGoogleIntegration = activeIntegrations.some(i => i.provider === 'google');
+    const hasMicrosoftIntegration = activeIntegrations.some(i => i.provider === 'microsoft');
+    const hasAnyIntegration = activeIntegrations.length > 0;
 
-      {/* You could add other onboarding steps here, e.g., notification preferences */}
+    return (
+        <div className="space-y-6">
+            <div className="text-center">
+                <h1 className="text-2xl font-bold mb-2">Welcome to Briefly!</h1>
+                <p className="text-gray-600">
+                    Let's connect your calendar and email to get started with intelligent meeting preparation.
+                </p>
+            </div>
 
-      <div className="mt-8">
-        <button
-          onClick={handleCompleteOnboarding}
-          disabled={!calendarConnected} // Only enable if calendar is connected
-          className={`w-full px-4 py-2 font-semibold text-white rounded focus:outline-none focus:ring-2 focus:ring-offset-2 ${calendarConnected ? 'bg-green-500 hover:bg-green-600 focus:ring-green-500' : 'bg-gray-400 cursor-not-allowed'}`}
-        >
-          Complete Onboarding & Go to Dashboard
-        </button>
-      </div>
-    </div>
-  );
+            {/* Step 1: Google Integration */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Calendar className="h-5 w-5 text-blue-600" />
+                        1. Connect Google Services
+                    </CardTitle>
+                    <CardDescription>
+                        Connect your Gmail and Google Calendar for comprehensive meeting insights
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {hasGoogleIntegration ? (
+                        <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                            <CheckCircle className="h-5 w-5 text-green-600" />
+                            <span className="text-green-800 font-medium">Google services connected!</span>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            <div className="text-sm text-gray-600">
+                                <p><strong>Permissions needed:</strong></p>
+                                <ul className="list-disc list-inside mt-1 space-y-1">
+                                    <li>Gmail - Read emails for meeting context</li>
+                                    <li>Google Calendar - Access your schedule</li>
+                                </ul>
+                            </div>
+                            <Button
+                                onClick={() => handleConnectIntegration('google', [
+                                    'https://www.googleapis.com/auth/gmail.readonly',
+                                    'https://www.googleapis.com/auth/calendar'
+                                ])}
+                                disabled={connectingProvider === 'google'}
+                                className="w-full"
+                            >
+                                {connectingProvider === 'google' ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        Connecting...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Shield className="h-4 w-4 mr-2" />
+                                        Connect Google
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Step 2: Microsoft Integration */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Mail className="h-5 w-5 text-orange-600" />
+                        2. Connect Microsoft Services (Optional)
+                    </CardTitle>
+                    <CardDescription>
+                        Connect Outlook and Microsoft Calendar for additional coverage
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {hasMicrosoftIntegration ? (
+                        <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                            <CheckCircle className="h-5 w-5 text-green-600" />
+                            <span className="text-green-800 font-medium">Microsoft services connected!</span>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            <div className="text-sm text-gray-600">
+                                <p><strong>Permissions needed:</strong></p>
+                                <ul className="list-disc list-inside mt-1 space-y-1">
+                                    <li>Outlook Mail - Read emails for context</li>
+                                    <li>Microsoft Calendar - Access your schedule</li>
+                                </ul>
+                            </div>
+                            <Button
+                                onClick={() => handleConnectIntegration('microsoft', [
+                                    'https://graph.microsoft.com/User.Read',
+                                    'https://graph.microsoft.com/Calendars.ReadWrite',
+                                    'https://graph.microsoft.com/Mail.Read'
+                                ])}
+                                disabled={connectingProvider === 'microsoft'}
+                                variant="outline"
+                                className="w-full"
+                            >
+                                {connectingProvider === 'microsoft' ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        Connecting...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Shield className="h-4 w-4 mr-2" />
+                                        Connect Microsoft
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Completion */}
+            <Card className={hasAnyIntegration ? 'border-green-200 bg-green-50' : ''}>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <CheckCircle className={`h-5 w-5 ${hasAnyIntegration ? 'text-green-600' : 'text-gray-400'}`} />
+                        3. Complete Setup
+                    </CardTitle>
+                    <CardDescription>
+                        {hasAnyIntegration
+                            ? "You're all set! You can always add more integrations later."
+                            : "Connect at least one service to get started with Briefly."
+                        }
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-4">
+                        {hasAnyIntegration && (
+                            <div className="text-sm text-gray-600">
+                                <p><strong>Connected services:</strong></p>
+                                <div className="flex gap-2 mt-2">
+                                    {hasGoogleIntegration && (
+                                        <Badge variant="default">Google</Badge>
+                                    )}
+                                    {hasMicrosoftIntegration && (
+                                        <Badge variant="default">Microsoft</Badge>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex gap-3">
+                            <Button
+                                onClick={handleCompleteOnboarding}
+                                disabled={!hasAnyIntegration}
+                                className="flex-1"
+                            >
+                                {hasAnyIntegration ? 'Complete Setup & Go to Dashboard' : 'Connect a Service First'}
+                            </Button>
+
+                            {hasAnyIntegration && (
+                                <Button
+                                    variant="outline"
+                                    onClick={() => router.push('/integrations')}
+                                >
+                                    Add More Services
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+    );
 };
 
 export default OnboardingPage; 
