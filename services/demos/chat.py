@@ -554,8 +554,8 @@ class FullDemo:
             "nextauth": NEXTAUTH_AVAILABLE,
         }
 
-        # Default preferred provider for email resolution
-        self.preferred_provider = None
+        # Track the preferred OAuth provider (must be set explicitly)
+        self.preferred_provider: Optional[str] = None
 
     async def check_services(self):
         """Check availability of all services including NextAuth server."""
@@ -607,8 +607,20 @@ class FullDemo:
 
             # Now create a demo NextAuth JWT token with the resolved user ID and email
             if NEXTAUTH_AVAILABLE:
+                # Check if a provider has been set
+                if not self.preferred_provider:
+                    print(
+                        "❌ No OAuth provider detected for this email. This might be a new user."
+                    )
+                    print(
+                        "   Please run 'oauth google' or 'oauth microsoft' to set up authentication."
+                    )
+                    self.authenticated = False
+                    return False
+
+                provider = self.preferred_provider
                 self.auth_token = create_nextauth_jwt_for_demo(
-                    user_id, email=auth_email
+                    user_id, email=auth_email, provider=provider
                 )
             else:
                 print("❌ NextAuth utilities not available for token creation.")
@@ -626,7 +638,9 @@ class FullDemo:
 
             self.user_id = user_id
             self.authenticated = True
-            print(f"✅ Authenticated as {auth_email} (ID: {user_id})")
+            print(
+                f"✅ Authenticated as {auth_email} (ID: {user_id}) via {provider.title()}"
+            )
             return True
 
         except Exception as e:
@@ -661,6 +675,16 @@ class FullDemo:
                     # Handle both 200 (existing user found) and 201 (new user created)
                     data = response.json()
                     external_auth_id = data.get("external_auth_id")
+                    auth_provider = data.get("auth_provider")
+
+                    # Automatically set the provider based on what's stored for this user
+                    if auth_provider and auth_provider in ["google", "microsoft"]:
+                        self.preferred_provider = auth_provider
+                        logger.info(f"Auto-detected OAuth provider: {auth_provider}")
+                        print(
+                            f"🔍 Detected previous {auth_provider.title()} authentication for this email"
+                        )
+
                     logger.info(
                         f"Successfully resolved email {email} to external_auth_id {external_auth_id}"
                     )
@@ -1131,7 +1155,7 @@ class FullDemo:
         print("=" * 50)
 
         demo_result = await demonstrate_nextauth_integration()
-        return demo_result
+        return demo_result or "Demo completed"
 
     def handle_api_commands(self, command: str) -> tuple[bool, str]:
         """Handle API-specific commands."""
@@ -1202,10 +1226,21 @@ class FullDemo:
                 if user_input.lower().startswith("oauth "):
                     provider = user_input[6:].strip()
                     if provider in ["google", "microsoft"]:
-                        result = await self.setup_oauth_integration(provider)
+                        # Store the provider choice
+                        self.preferred_provider = provider
                         print(
-                            f"\n{'✅ OAuth setup successful' if result else '❌ OAuth setup failed'}"
+                            f"🔧 Setting preferred auth provider to {provider.title()}"
                         )
+
+                        # Re-authenticate with the new provider
+                        success = await self.authenticate()
+                        if success:
+                            result = await self.setup_oauth_integration(provider)
+                            print(
+                                f"\n{'✅ OAuth setup successful' if result else '❌ OAuth setup failed'}"
+                            )
+                        else:
+                            print("\n❌ Authentication failed, cannot set up OAuth")
                     else:
                         print("❌ Supported providers: google, microsoft")
                     continue
@@ -1382,7 +1417,7 @@ async def main():
             # Run comparison if requested
             if args.compare:
                 print("\n🔍 Running authentication comparison...")
-                comparison = await compare_auth_approaches(None, None)
+                comparison = compare_auth_approaches(None, None)
                 print(comparison)
 
             return
@@ -1407,13 +1442,17 @@ async def main():
                 print("NextAuth utilities are not available in this environment.")
             return
 
-        # Authenticate
-        if not await demo.authenticate():
-            print("❌ Authentication failed")
-            return
+        # Try to authenticate (will fail gracefully if no provider set)
+        authenticated = await demo.authenticate()
+        if not authenticated and not args.no_auth:
+            print("\n💡 To get started, choose an OAuth provider:")
+            print("   • Type 'oauth google' for Google authentication")
+            print("   • Type 'oauth microsoft' for Microsoft authentication")
+            print("   • Or use --no-auth flag to skip authentication\n")
 
-        # Load user timezone
-        await demo.load_user_timezone()
+        # Load user timezone (only if authenticated)
+        if authenticated:
+            await demo.load_user_timezone()
 
         # Create agent for local mode
         if not use_api:
