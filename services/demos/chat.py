@@ -666,7 +666,7 @@ class FullDemo:
 
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.get(
-                    f"{self.user_client.base_url}/users",
+                    f"{self.user_client.base_url}/users/id",
                     params=params,
                 )
 

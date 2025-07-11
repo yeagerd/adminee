@@ -283,9 +283,9 @@ async def update_user_onboarding(
 
 
 @router.get(
-    "/",
+    "/id",
     response_model=UserResponse,
-    summary="Get user by email lookup",
+    summary="Get user by email lookup", 
     description="Find a user by exact email address match. Returns 404 if user doesn't exist. Clean RESTful design that abstracts internal email normalization.",
     responses={
         200: {"description": "User found"},
