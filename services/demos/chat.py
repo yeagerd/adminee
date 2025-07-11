@@ -596,16 +596,13 @@ class FullDemo:
         auth_email = email or self.user_id
 
         try:
-            # Generate a NextAuth-style user ID from the email
-            user_id = f"{auth_email.replace('@', '_').replace('.', '_')}"
-
-            # Create user if it doesn't exist (before creating the token)
-            user_created = await self._create_user_if_not_exists(auth_email, user_id)
-            if not user_created:
-                print(f"❌ Failed to create user {auth_email}")
+            # Use the new email resolution endpoint to get external_auth_id
+            user_id = await self._resolve_email_to_user_id(auth_email)
+            if not user_id:
+                print(f"❌ Failed to resolve email {auth_email} to user ID")
                 return False
 
-            # Now create a demo NextAuth JWT token with the user ID and email
+            # Now create a demo NextAuth JWT token with the resolved user ID and email
             if NEXTAUTH_AVAILABLE:
                 self.auth_token = create_nextauth_jwt_for_demo(
                     user_id, email=auth_email
@@ -633,6 +630,141 @@ class FullDemo:
             print(f"❌ Authentication failed: {e}")
             self.authenticated = False
             return False
+
+    async def _resolve_email_to_user_id(self, email: str) -> Optional[str]:
+        """
+        Resolve email address to external_auth_id using the user service endpoint.
+
+        Args:
+            email: Email address to resolve
+
+        Returns:
+            external_auth_id if found, None otherwise
+        """
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.post(
+                    f"{self.user_client.base_url}/users/resolve-email",
+                    json={"email": email},
+                    headers={"Content-Type": "application/json"},
+                )
+
+                if response.status_code in [200, 201]:
+                    # Handle both 200 (existing user found) and 201 (new user created)
+                    data = response.json()
+                    external_auth_id = data.get("external_auth_id")
+                    logger.info(
+                        f"Successfully resolved email {email} to external_auth_id {external_auth_id}"
+                    )
+                    return external_auth_id
+                elif response.status_code == 404:
+                    logger.info(
+                        f"No user found for email {email}, will try to create one"
+                    )
+                    # Try to create the user if they don't exist
+                    return await self._create_user_for_email(email)
+                elif response.status_code == 422:
+                    logger.error(f"Invalid email format for {email}")
+                    print(f"❌ Invalid email format: {email}")
+                    return None
+                elif response.status_code == 500:
+                    logger.error("User service internal error during email resolution")
+                    print("❌ User service temporarily unavailable")
+                    return None
+                else:
+                    logger.error(
+                        f"Email resolution failed: {response.status_code} {response.text}"
+                    )
+                    print(
+                        f"❌ Email resolution failed with status {response.status_code}"
+                    )
+                    return None
+
+        except httpx.TimeoutException:
+            logger.error(f"Timeout resolving email {email}")
+            print("❌ Request timeout - user service may be slow")
+            return None
+        except httpx.NetworkError:
+            logger.error(f"Network error resolving email {email}")
+            print("❌ Network error - check user service connectivity")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error resolving email {email}: {e}")
+            print(f"❌ Unexpected error during email resolution: {str(e)}")
+            return None
+
+    async def _create_user_for_email(self, email: str) -> Optional[str]:
+        """
+        Create a new user for the given email if they don't exist.
+
+        Args:
+            email: Email address for the new user
+
+        Returns:
+            external_auth_id of created user, None if creation failed
+        """
+        try:
+            # Generate a temporary external_auth_id for the new user
+            import hashlib
+
+            temp_user_id = f"user_{hashlib.md5(email.encode()).hexdigest()[:12]}"
+
+            user_create_payload = {
+                "external_auth_id": temp_user_id,
+                "auth_provider": "nextauth",
+                "email": email,
+                "first_name": "Demo",
+                "last_name": "User",
+                "profile_image_url": "https://images.clerk.dev/demo-avatar.png",
+            }
+
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.post(
+                    f"{self.user_client.base_url}/users/",
+                    json=user_create_payload,
+                    headers={"Content-Type": "application/json"},
+                )
+
+                if response.status_code in [200, 201]:
+                    logger.info(
+                        f"Successfully created user {temp_user_id} for email {email}"
+                    )
+                    print(f"✅ Created new user for {email}")
+                    return temp_user_id
+                elif response.status_code == 409:
+                    logger.warning(
+                        f"Email collision for {email}, trying to resolve again"
+                    )
+                    print(
+                        f"⚠️  Email collision detected for {email}, retrying resolution..."
+                    )
+                    # If there's a collision, try to resolve the email again
+                    return await self._resolve_email_to_user_id(email)
+                elif response.status_code == 422:
+                    logger.error(
+                        f"Validation error creating user for {email}: {response.text}"
+                    )
+                    print(f"❌ Invalid user data for {email}")
+                    return None
+                else:
+                    logger.error(
+                        f"Failed to create user: {response.status_code} {response.text}"
+                    )
+                    print(f"❌ Failed to create user: HTTP {response.status_code}")
+                    return None
+
+        except httpx.TimeoutException:
+            logger.error(f"Timeout creating user for email {email}")
+            print("❌ Request timeout during user creation")
+            return None
+        except httpx.NetworkError:
+            logger.error(f"Network error creating user for email {email}")
+            print("❌ Network error during user creation")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error creating user for email {email}: {e}")
+            print(f"❌ Unexpected error during user creation: {str(e)}")
+            return None
 
     async def _create_user_if_not_exists(self, email: str, user_id: str) -> bool:
         """Create a user if they don't exist."""

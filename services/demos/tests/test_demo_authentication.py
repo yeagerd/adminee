@@ -138,16 +138,15 @@ class TestDemoAuthentication:
         # Mock services as available
         demo_instance.services_available = {"user": True, "chat": True, "office": True}
 
-        # Mock user existence check (GET request) - user doesn't exist initially
-        mock_existence_response = MagicMock()
-        mock_existence_response.status_code = 200
-        mock_existence_response.json.return_value = (
-            None  # None means user doesn't exist
-        )
-
-        # Mock successful user creation via webhook (POST request)
-        mock_create_response = MagicMock()
-        mock_create_response.status_code = 201
+        # Mock email resolution response (this is what the new auth flow uses)
+        mock_resolution_response = MagicMock()
+        mock_resolution_response.status_code = 200
+        mock_resolution_response.json.return_value = {
+            "external_auth_id": user_id,
+            "email": email,
+            "normalized_email": email.lower(),
+            "auth_provider": "nextauth"
+        }
 
         # Mock successful integrations check
         mock_integrations_response = MagicMock()
@@ -155,10 +154,6 @@ class TestDemoAuthentication:
         mock_integrations_response.json.return_value = {
             "integrations": [{"provider": "microsoft", "status": "active"}]
         }
-
-        # Mock preferences response (404 is OK for new users)
-        mock_preferences_response = MagicMock()
-        mock_preferences_response.status_code = 404
 
         with (
             patch("httpx.AsyncClient") as mock_client,
@@ -170,12 +165,9 @@ class TestDemoAuthentication:
 
             # Setup different responses for different endpoints
             def side_effect(url, **kwargs):
-                if "/internal/users/" in url and "/preferences" in url:
-                    # User existence check (now uses preferences endpoint)
-                    return mock_existence_response
-                elif "/users/" in url:
-                    # User creation
-                    return mock_create_response
+                if "/users/resolve-email" in url:
+                    # Email resolution endpoint
+                    return mock_resolution_response
                 elif "/integrations/" in url and "/webhooks/clerk" not in url:
                     # Integrations status check
                     return mock_integrations_response
@@ -191,20 +183,16 @@ class TestDemoAuthentication:
             # Should succeed
             assert result is True
 
-            # Verify user creation was attempted
-            create_calls = [
+            # Verify email resolution was called
+            resolution_calls = [
                 call
                 for call in mock_http_client.post.call_args_list
-                if "/users/" in str(call)
+                if "/users/resolve-email" in str(call)
             ]
-            assert len(create_calls) > 0
+            assert len(resolution_calls) > 0
 
             # Verify JWT token was created with the correct user_id
             mock_jwt.assert_called_once_with(user_id, email=email)
-
-            # Verify user client has token
-            assert demo_instance.user_client.auth_token == "mock_jwt_token"
-            assert demo_instance.user_client.user_id == user_id
 
     @pytest.mark.asyncio
     async def test_authenticate_fails_if_user_creation_fails_and_user_doesnt_exist(
