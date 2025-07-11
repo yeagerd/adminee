@@ -504,7 +504,7 @@ export LOG_LEVEL=INFO
   5. **Deploy Vector Database:** Ensure your Pinecone index is set up and accessible.
   6. **Deploy Backend Services:** Deploy the containerized backend services, configuring them to connect to the database, Pinecone, and each other.
   7. **Build and Deploy Frontend:** Build the Next.js application and deploy it. Configure it to point to the deployed API gateway/proxy endpoint.
-  8. **Set up Authentication:** Ensure Microsoft OAuth and Clerk (if used) are configured with the correct redirect URIs and credentials for the deployed environment.
+  8. **Set up Authentication:** Ensure Microsoft OAuth is configured with the correct redirect URIs and credentials for the deployed environment.
 
 - *(Specific deployment scripts and platform guides will be added as the target deployment environment is finalized.)*
 

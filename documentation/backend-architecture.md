@@ -11,7 +11,7 @@ Client ↔ Next.js (Frontend + API Routes) ↔ [Service Auth] ↔ Cloud Run Serv
 ## Gateway Layer (Next.js API Routes)
 
 ### Responsibilities
-- Validate Clerk sessions (built-in SDK)
+- Validate NextAuth sessions
 - Handle OAuth flows for Google/Microsoft integrations
 - Route requests to appropriate backend services
 - Request/response transformation and error handling
@@ -19,7 +19,7 @@ Client ↔ Next.js (Frontend + API Routes) ↔ [Service Auth] ↔ Cloud Run Serv
 
 ### Benefits
 - No CORS configuration needed
-- Seamless Clerk integration with webhooks
+- Seamless NextAuth integration with webhooks
 - Better OAuth UX (no external redirects)
 - TypeScript end-to-end
 
@@ -104,7 +104,7 @@ Client ↔ Next.js (Frontend + API Routes) ↔ [Service Auth] ↔ Cloud Run Serv
 ## Authentication & Security
 
 ### Client-to-Gateway (Next.js)
-- Clerk session validation (built-in)
+- NextAuth session validation
 - CSRF protection via Next.js
 - Secure cookie handling
 
@@ -149,12 +149,12 @@ Client EventSource ↔ Next.js API Route ↔ AI Chat Service
 
 **Implementation**:
 - Client opens EventSource connection to `/api/chat/stream`
-- Next.js validates Clerk session (standard HTTP auth)
+- Next.js validates NextAuth session (standard HTTP auth)
 - Next.js streams responses from AI Chat Service to client
 - Automatic reconnection and error handling built-in
 
 **Benefits for MVP**:
-- Simple authentication (reuses existing Clerk session)
+- Simple authentication (reuses existing NextAuth session)
 - No WebSocket complexity or connection management
 - Built-in browser reconnection on network issues
 - Standard HTTP request/response pattern
