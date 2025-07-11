@@ -411,7 +411,7 @@ class TestEmailCollisionIntegration:
         
         # Create first user
         user1_data = UserCreate(
-            external_auth_id="clerk_1",
+            external_auth_id="nextauth_1",
             email="user+work@gmail.com"
         )
         user1 = await user_service.create_user(user1_data)
@@ -419,7 +419,7 @@ class TestEmailCollisionIntegration:
         
         # Try to create second user with colliding email
         user2_data = UserCreate(
-            external_auth_id="clerk_2",
+            external_auth_id="nextauth_2",
             email="user@gmail.com"  # Should collide with user+work@gmail.com
         )
         
