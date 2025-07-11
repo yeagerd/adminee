@@ -10,10 +10,9 @@ import importlib
 import sys
 from unittest.mock import AsyncMock, patch
 
-import pytest
+from fastapi import status
 from fastapi.testclient import TestClient
 
-from services.common.http_errors import ServiceError, ValidationError
 from services.user.database import create_all_tables
 from services.user.tests.test_base import BaseUserManagementTest
 
@@ -225,17 +224,18 @@ class TestClerkWebhookEndpoint(BaseUserManagementTest):
         """Test webhook with invalid payload format."""
         mock_verify.return_value = None
         invalid_payload = "invalid json"
-        with pytest.raises(ValidationError) as exc_info:
-            self.client.post(
-                "/webhooks/clerk",
-                content=invalid_payload,
-                headers={
-                    "svix-signature": "v1=test_signature",
-                    "svix-timestamp": "1234567890",
-                    "content-type": "application/json",
-                },
-            )
-        assert "Invalid JSON payload format" in str(exc_info.value)
+        response = self.client.post(
+            "/webhooks/clerk",
+            content=invalid_payload,
+            headers={
+                "svix-signature": "v1=test_signature",
+                "svix-timestamp": "1234567890",
+                "content-type": "application/json",
+            },
+        )
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        data = response.json()
+        assert "Invalid JSON payload format" in data["message"]
 
     @patch("services.user.auth.webhook_auth.verify_webhook_signature")
     def test_clerk_webhook_missing_type_field(self, mock_verify):
@@ -245,16 +245,17 @@ class TestClerkWebhookEndpoint(BaseUserManagementTest):
             "object": "event",
             "data": {"id": "user_123"},
         }
-        with pytest.raises(ValidationError) as exc_info:
-            self.client.post(
-                "/webhooks/clerk",
-                json=invalid_payload,
-                headers={
-                    "svix-signature": "v1=test_signature",
-                    "svix-timestamp": "1234567890",
-                },
-            )
-        assert "missing required 'type' field" in str(exc_info.value)
+        response = self.client.post(
+            "/webhooks/clerk",
+            json=invalid_payload,
+            headers={
+                "svix-signature": "v1=test_signature",
+                "svix-timestamp": "1234567890",
+            },
+        )
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        data = response.json()
+        assert "missing required 'type' field" in data["message"]
 
     @patch("services.user.auth.webhook_auth.verify_webhook_signature")
     def test_clerk_webhook_missing_data_field(self, mock_verify):
@@ -264,32 +265,34 @@ class TestClerkWebhookEndpoint(BaseUserManagementTest):
             "type": "user.created",
             "object": "event",
         }
-        with pytest.raises(ValidationError) as exc_info:
-            self.client.post(
-                "/webhooks/clerk",
-                json=invalid_payload,
-                headers={
-                    "svix-signature": "v1=test_signature",
-                    "svix-timestamp": "1234567890",
-                },
-            )
-        assert "missing required 'data' field" in str(exc_info.value)
+        response = self.client.post(
+            "/webhooks/clerk",
+            json=invalid_payload,
+            headers={
+                "svix-signature": "v1=test_signature",
+                "svix-timestamp": "1234567890",
+            },
+        )
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        data = response.json()
+        assert "missing required 'data' field" in data["message"]
 
     @patch("services.user.auth.webhook_auth.verify_webhook_signature")
     def test_clerk_webhook_invalid_json(self, mock_verify):
         """Test webhook with completely invalid JSON."""
         mock_verify.return_value = None
-        with pytest.raises(ValidationError) as exc_info:
-            self.client.post(
-                "/webhooks/clerk",
-                content="{invalid json}",
-                headers={
-                    "svix-signature": "v1=test_signature",
-                    "svix-timestamp": "1234567890",
-                    "content-type": "application/json",
-                },
-            )
-        assert "Invalid JSON payload format" in str(exc_info.value)
+        response = self.client.post(
+            "/webhooks/clerk",
+            content="{invalid json}",
+            headers={
+                "svix-signature": "v1=test_signature",
+                "svix-timestamp": "1234567890",
+                "content-type": "application/json",
+            },
+        )
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        data = response.json()
+        assert "Invalid JSON payload format" in data["message"]
 
     @patch("services.user.auth.webhook_auth.verify_webhook_signature")
     def test_clerk_webhook_unsupported_event_type(self, mock_verify):
@@ -328,16 +331,17 @@ class TestClerkWebhookEndpoint(BaseUserManagementTest):
         mock_webhook_service.process_user_created = AsyncMock(
             side_effect=Exception("Processing failed")
         )
-        with pytest.raises(ServiceError) as exc_info:
-            self.client.post(
-                "/webhooks/clerk",
-                json=self.sample_user_created_payload,
-                headers={
-                    "svix-signature": "v1=test_signature",
-                    "svix-timestamp": "1234567890",
-                },
-            )
-        assert "An unexpected error occurred" in str(exc_info.value)
+        response = self.client.post(
+            "/webhooks/clerk",
+            json=self.sample_user_created_payload,
+            headers={
+                "svix-signature": "v1=test_signature",
+                "svix-timestamp": "1234567890",
+            },
+        )
+        assert response.status_code == status.HTTP_502_BAD_GATEWAY
+        data = response.json()
+        assert "An unexpected error occurred" in data["message"]
 
     @patch("services.user.auth.webhook_auth.verify_webhook_signature")
     @patch("services.user.routers.webhooks.webhook_service")
@@ -348,16 +352,17 @@ class TestClerkWebhookEndpoint(BaseUserManagementTest):
         mock_webhook_service.process_user_created = AsyncMock(
             side_effect=Exception("Database connection failed")
         )
-        with pytest.raises(ServiceError) as exc_info:
-            self.client.post(
-                "/webhooks/clerk",
-                json=self.sample_user_created_payload,
-                headers={
-                    "svix-signature": "v1=test_signature",
-                    "svix-timestamp": "1234567890",
-                },
-            )
-        assert "An unexpected error occurred" in str(exc_info.value)
+        response = self.client.post(
+            "/webhooks/clerk",
+            json=self.sample_user_created_payload,
+            headers={
+                "svix-signature": "v1=test_signature",
+                "svix-timestamp": "1234567890",
+            },
+        )
+        assert response.status_code == status.HTTP_502_BAD_GATEWAY
+        data = response.json()
+        assert "An unexpected error occurred" in data["message"]
 
     @patch("services.user.auth.webhook_auth.verify_webhook_signature")
     @patch("services.user.routers.webhooks.webhook_service")
@@ -368,16 +373,17 @@ class TestClerkWebhookEndpoint(BaseUserManagementTest):
         mock_webhook_service.process_user_created = AsyncMock(
             side_effect=Exception("Unexpected error")
         )
-        with pytest.raises(ServiceError) as exc_info:
-            self.client.post(
-                "/webhooks/clerk",
-                json=self.sample_user_created_payload,
-                headers={
-                    "svix-signature": "v1=test_signature",
-                    "svix-timestamp": "1234567890",
-                },
-            )
-        assert "An unexpected error occurred" in str(exc_info.value)
+        response = self.client.post(
+            "/webhooks/clerk",
+            json=self.sample_user_created_payload,
+            headers={
+                "svix-signature": "v1=test_signature",
+                "svix-timestamp": "1234567890",
+            },
+        )
+        assert response.status_code == status.HTTP_502_BAD_GATEWAY
+        data = response.json()
+        assert "An unexpected error occurred" in data["message"]
 
 
 class TestClerkTestWebhookEndpoint(BaseUserManagementTest):
@@ -446,19 +452,16 @@ class TestClerkTestWebhookEndpoint(BaseUserManagementTest):
     @patch("services.user.routers.webhooks.webhook_service")
     def test_test_webhook_processing_error(self, mock_webhook_service):
         """Test test webhook processing error."""
-        import pytest
-
-        from services.common.http_errors import ValidationError
-
         mock_webhook_service.process_clerk_webhook = AsyncMock(
             side_effect=Exception("Test processing failed")
         )
-        with pytest.raises(ValidationError) as exc_info:
-            self.client.post(
-                "/webhooks/clerk/test",
-                json=self._get_sample_user_created_payload(),
-            )
-        assert "Test webhook processing failed" in str(exc_info.value)
+        response = self.client.post(
+            "/webhooks/clerk/test",
+            json=self._get_sample_user_created_payload(),
+        )
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        data = response.json()
+        assert "Test webhook processing failed" in data["message"]
 
 
 class TestWebhookHealthEndpoint(BaseUserManagementTest):

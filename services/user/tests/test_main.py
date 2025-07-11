@@ -8,6 +8,7 @@ exception handling, middleware, and API documentation.
 from unittest.mock import patch
 
 from fastapi import status
+
 from services.common.http_errors import (
     AuthError,
     NotFoundError,
@@ -40,11 +41,14 @@ class TestApplicationStartup(BaseUserManagementIntegrationTest):
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
         data = response.json()
         assert "Access denied" in data["message"]
-        
+
         # /users/me may return 401 or 404
         response = self.client.get("/users/me")
-        assert response.status_code in [status.HTTP_401_UNAUTHORIZED, status.HTTP_404_NOT_FOUND]
-        
+        assert response.status_code in [
+            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_404_NOT_FOUND,
+        ]
+
         # /webhooks/clerk may still be accessible
         response = self.client.get("/webhooks/clerk")
         assert response.status_code in [200, 405, 422]
