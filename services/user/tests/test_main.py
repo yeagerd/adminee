@@ -77,10 +77,6 @@ class TestApplicationStartup(BaseUserManagementIntegrationTest):
 
         self.app.dependency_overrides[get_current_user] = mock_get_current_user
 
-        # Test: /webhooks/clerk endpoint (should be accessible)
-        response = self.client.get("/webhooks/clerk")
-        assert response.status_code in [200, 405, 422]
-
 
 class TestHealthEndpoint(BaseUserManagementIntegrationTest):
     """Test cases for health check endpoint (liveness probe)."""

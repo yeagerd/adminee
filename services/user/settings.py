@@ -58,22 +58,6 @@ class Settings(BaseSettings):
         description="Base64-encoded service salt for token encryption key derivation",
     )
 
-    # Clerk Configuration
-    clerk_secret_key: Optional[str] = Field(
-        default=None, description="Clerk secret key for JWT validation"
-    )
-    clerk_webhook_secret: Optional[str] = Field(
-        default=None, description="Clerk webhook secret for signature verification"
-    )
-    clerk_jwt_key: Optional[str] = Field(
-        default=None,
-        description="Clerk JWKS public key for networkless JWT verification",
-    )
-    jwt_verify_signature: bool = Field(
-        default=True,
-        description="Enable JWT signature verification (requires Clerk public key)",
-    )
-
     # Redis Configuration (for caching and background jobs)
     redis_url: str = Field(
         default="redis://localhost:6379", description="Redis connection string"

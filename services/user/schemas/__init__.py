@@ -41,11 +41,6 @@ from services.user.schemas.user import (
     UserSearchRequest,
     UserUpdate,
 )
-from services.user.schemas.webhook import (
-    ClerkWebhookEvent,
-    ClerkWebhookEventData,
-    WebhookResponse,
-)
 
 __all__ = [
     "UserBase",
@@ -82,8 +77,4 @@ __all__ = [
     "ProviderListResponse",
     "ScopeValidationRequest",
     "ScopeValidationResponse",
-    # Webhook schemas
-    "ClerkWebhookEvent",
-    "ClerkWebhookEventData",
-    "WebhookResponse",
 ]

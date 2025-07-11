@@ -35,7 +35,7 @@ class User(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     external_auth_id: str = Field(unique=True, index=True, max_length=255)
-    auth_provider: str = Field(default="clerk", max_length=50)
+    auth_provider: str = Field(default="nextauth", max_length=50)
     email: EmailStr = Field(unique=True, max_length=255)
     normalized_email: Optional[str] = Field(default=None, max_length=255, index=True)
     first_name: Optional[str] = Field(default=None, max_length=100)
