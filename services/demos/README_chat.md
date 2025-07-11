@@ -52,7 +52,7 @@ python chat.py --local
 
 The demo now uses **email-to-user-ID resolution** for a more robust authentication experience:
 
-1. **Email Resolution**: The demo calls `/users/resolve-email` to convert email addresses to `external_auth_id`
+1. **Email Resolution**: The demo calls `GET /users?email=...` to convert email addresses to `external_auth_id`
 2. **Email Normalization**: Handles provider-specific email formats automatically:
    - **Gmail**: Removes dots and plus addressing (`john.doe+work@gmail.com` → `johndoe@gmail.com`)
    - **Outlook**: Removes plus addressing (`jane.smith+news@outlook.com` → `jane.smith@outlook.com`) 
@@ -186,9 +186,7 @@ curl http://localhost:8002/health
 curl http://localhost:8003/health
 
 # Test email resolution directly
-curl -X POST http://localhost:8001/users/resolve-email \
-  -H "Content-Type: application/json" \
-  -d '{"email": "test@gmail.com"}'
+curl -X GET "http://localhost:8001/users?email=test@gmail.com"
 ```
 
 ## Example API Calls
@@ -196,9 +194,7 @@ curl -X POST http://localhost:8001/users/resolve-email \
 ### Email Resolution
 ```bash
 # Resolve email to user ID
-curl -X POST http://localhost:8001/users/resolve-email \
-  -H "Content-Type: application/json" \
-  -d '{"email": "john.doe+work@gmail.com"}'
+curl -X GET "http://localhost:8001/users?email=john.doe+work@gmail.com"
 
 # Response:
 {

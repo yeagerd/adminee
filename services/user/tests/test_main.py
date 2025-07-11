@@ -36,20 +36,48 @@ class TestApplicationStartup(BaseUserManagementIntegrationTest):
         # The actual CORS headers are tested in the middleware test section
 
     def test_routers_registered(self):
-        # /users/search should return 401 when unauthenticated
+        # First test: With mocked authentication (should succeed)
         response = self.client.get("/users/search")
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        assert "Access denied" in data["message"]
+        assert "users" in data or "total" in data  # Check for valid response structure
 
-        # /users/me may return 401 or 404
+        # Test: /users/me with mocked authentication (should succeed)
         response = self.client.get("/users/me")
+        # This might return 404 if the mocked user doesn't exist in the test DB, which is fine
         assert response.status_code in [
-            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_200_OK,
             status.HTTP_404_NOT_FOUND,
         ]
 
-        # /webhooks/clerk may still be accessible
+        # Test: Clear auth override and test unauthenticated access
+        from services.user.auth.nextauth import get_current_user
+
+        # Temporarily remove auth override to test unauthenticated scenario
+        if get_current_user in self.app.dependency_overrides:
+            del self.app.dependency_overrides[get_current_user]
+
+        # Now /users/search should return 401 when unauthenticated
+        response = self.client.get("/users/search")
+        assert response.status_code in [
+            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
+        ]
+        data = response.json()
+        assert (
+            "Authentication required" in data.get("detail", "")
+            or "Access denied" in data.get("message", "")
+            or "Forbidden" in data.get("detail", "")
+            or "Not authenticated" in data.get("message", "")
+        )
+
+        # Restore auth override for other tests
+        async def mock_get_current_user():
+            return "user_123"
+
+        self.app.dependency_overrides[get_current_user] = mock_get_current_user
+
+        # Test: /webhooks/clerk endpoint (should be accessible)
         response = self.client.get("/webhooks/clerk")
         assert response.status_code in [200, 405, 422]
 

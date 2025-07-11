@@ -605,6 +605,11 @@ class FullDemo:
                 print(f"❌ Failed to resolve email {auth_email} to user ID")
                 return False
 
+            # ALWAYS update user_id to use the resolved external_auth_id
+            # This ensures we use the correct ID even if OAuth setup fails
+            self.user_id = user_id
+            self.user_client.user_id = user_id
+
             # Now create a demo NextAuth JWT token with the resolved user ID and email
             if NEXTAUTH_AVAILABLE:
                 # Check if a provider has been set
@@ -615,6 +620,7 @@ class FullDemo:
                     print(
                         "   Please run 'oauth google' or 'oauth microsoft' to set up authentication."
                     )
+                    print(f"   Using resolved user ID: {user_id}")
                     self.authenticated = False
                     return False
 
@@ -624,10 +630,10 @@ class FullDemo:
                 )
             else:
                 print("❌ NextAuth utilities not available for token creation.")
+                print(f"   Using resolved user ID: {user_id}")
                 return False
 
             self.user_client.auth_token = self.auth_token
-            self.user_client.user_id = user_id
 
             # Verify the token works by trying to get integrations
             try:
@@ -636,7 +642,6 @@ class FullDemo:
             except Exception:
                 logger.warning("")
 
-            self.user_id = user_id
             self.authenticated = True
             print(
                 f"✅ Authenticated as {auth_email} (ID: {user_id}) via {provider.title()}"
@@ -659,20 +664,19 @@ class FullDemo:
             external_auth_id if found, None otherwise
         """
         try:
-            # Include provider in the request for faster normalization
-            request_data = {"email": email}
+            # Use the new RESTful lookup endpoint
+            params = {"email": email}
             if self.preferred_provider:
-                request_data["provider"] = self.preferred_provider
+                params["provider"] = self.preferred_provider
 
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(
-                    f"{self.user_client.base_url}/users/resolve-email",
-                    json=request_data,
-                    headers={"Content-Type": "application/json"},
+                response = await client.get(
+                    f"{self.user_client.base_url}/users/id",
+                    params=params,
                 )
 
-                if response.status_code in [200, 201]:
-                    # Handle both 200 (existing user found) and 201 (new user created)
+                if response.status_code == 200:
+                    # User found - extract external_auth_id from full user response
                     data = response.json()
                     external_auth_id = data.get("external_auth_id")
                     auth_provider = data.get("auth_provider")
