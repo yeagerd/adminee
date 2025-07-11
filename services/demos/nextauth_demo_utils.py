@@ -277,9 +277,7 @@ async def test_nextauth_flow(provider: str = "google") -> Optional[str]:
         return None
 
 
-def create_nextauth_jwt_for_demo(
-    user_id: str, email: str, provider: str = "google"
-) -> str:
+def create_nextauth_jwt_for_demo(user_id: str, email: str, provider: str) -> str:
     """
     Create a demo NextAuth JWT token for testing purposes.
 
@@ -295,7 +293,7 @@ def create_nextauth_jwt_for_demo(
     expires = now + 3600  # 1 hour
 
     payload = {
-        "sub": f"{provider}_{user_id}",
+        "sub": user_id,
         "email": email,
         "name": email.split("@")[0].title(),
         "provider": provider,
