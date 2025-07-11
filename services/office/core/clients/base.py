@@ -85,7 +85,7 @@ class BaseAPIClient(ABC):
         random_suffix = str(random.randint(1000, 9999))
         return f"{self._session_id}-{timestamp}-{random_suffix}"
 
-    def _parse_microsoft_error(self, response_text: str, status_code: int) -> str:
+    def _parse_microsoft_error(self, response_text: str, status_code: int) -> tuple[str, str]:
         """
         Parse Microsoft Graph API error responses to provide user-friendly messages.
 
@@ -94,7 +94,7 @@ class BaseAPIClient(ABC):
             status_code: HTTP status code
 
         Returns:
-            User-friendly error message
+            Tuple of (user-friendly error message, provider-specific error code)
         """
         try:
             import json
@@ -113,70 +113,66 @@ class BaseAPIClient(ABC):
                         "JWT is not well formed" in error_message
                         or "no dots" in error_message
                     ):
-                        return "Authentication token is malformed or invalid. Please refresh your Microsoft token."
+                        return "Authentication token is malformed or invalid. Please refresh your Microsoft token.", "MICROSOFT_TOKEN_MALFORMED"
                     elif (
                         "Lifetime validation failed" in error_message
                         or "expired" in error_message.lower()
                     ):
-                        return "Microsoft token has expired. Please refresh your authentication."
+                        return "Microsoft token has expired. Please refresh your authentication.", "MICROSOFT_TOKEN_EXPIRED"
                     elif "NotBefore" in error_message or "nbf" in error_message:
-                        return "Microsoft token is not yet valid. Please check your system time."
+                        return "Microsoft token is not yet valid. Please check your system time.", "MICROSOFT_TOKEN_NOT_YET_VALID"
                     elif "Signature validation failed" in error_message:
-                        return "Microsoft token signature is invalid. Please re-authenticate."
+                        return "Microsoft token signature is invalid. Please re-authenticate.", "MICROSOFT_TOKEN_SIGNATURE_INVALID"
                     elif (
                         "audience" in error_message.lower()
                         and "invalid" in error_message.lower()
                     ):
-                        return "Microsoft token audience is invalid. Please re-authenticate with correct permissions."
+                        return "Microsoft token audience is invalid. Please re-authenticate with correct permissions.", "MICROSOFT_TOKEN_AUDIENCE_INVALID"
                     elif "issuer" in error_message.lower() and (
                         "invalid" in error_message.lower()
                         or "untrusted" in error_message.lower()
                     ):
-                        return (
-                            "Microsoft token issuer is invalid. Please re-authenticate."
-                        )
+                        return "Microsoft token issuer is invalid. Please re-authenticate.", "MICROSOFT_TOKEN_ISSUER_INVALID"
                     else:
-                        return f"Microsoft authentication failed: {error_message}"
+                        return f"Microsoft authentication failed: {error_message}", "MICROSOFT_AUTH_FAILED"
                 elif "TokenExpired" in error_code:
-                    return "Microsoft token has expired. Please refresh your authentication."
+                    return "Microsoft token has expired. Please refresh your authentication.", "MICROSOFT_TOKEN_EXPIRED"
                 elif "Unauthorized" in error_code:
-                    return "Access denied. Please check your Microsoft permissions."
+                    return "Access denied. Please check your Microsoft permissions.", "MICROSOFT_UNAUTHORIZED"
                 elif "TokenNotFound" in error_code:
-                    return "Microsoft token not found. Please authenticate first."
+                    return "Microsoft token not found. Please authenticate first.", "MICROSOFT_TOKEN_NOT_FOUND"
                 elif "CompactToken" in error_code:
-                    return (
-                        "Microsoft token format is invalid. Please refresh your token."
-                    )
+                    return "Microsoft token format is invalid. Please refresh your token.", "MICROSOFT_TOKEN_FORMAT_INVALID"
                 else:
-                    return f"Microsoft authentication error: {error_message}"
+                    return f"Microsoft authentication error: {error_message}", "MICROSOFT_AUTH_ERROR"
             elif status_code == 403:
                 if "Forbidden" in error_code:
-                    return "Access forbidden. Insufficient permissions for Microsoft resource."
+                    return "Access forbidden. Insufficient permissions for Microsoft resource.", "MICROSOFT_ACCESS_FORBIDDEN"
                 elif "InsufficientPermissions" in error_code:
-                    return "Insufficient Microsoft permissions. Please grant additional scopes."
+                    return "Insufficient Microsoft permissions. Please grant additional scopes.", "MICROSOFT_INSUFFICIENT_PERMISSIONS"
                 elif "ApplicationPermissionsRequired" in error_code:
-                    return "Application permissions required. Please configure app permissions in Azure."
+                    return "Application permissions required. Please configure app permissions in Azure.", "MICROSOFT_APP_PERMISSIONS_REQUIRED"
                 else:
-                    return f"Microsoft access denied: {error_message}"
+                    return f"Microsoft access denied: {error_message}", "MICROSOFT_ACCESS_DENIED"
             elif status_code == 429:
-                return "Microsoft API rate limit exceeded. Please try again later."
+                return "Microsoft API rate limit exceeded. Please try again later.", "MICROSOFT_RATE_LIMITED"
             elif status_code >= 500:
-                return f"Microsoft service error: {error_message}"
+                return f"Microsoft service error: {error_message}", "MICROSOFT_SERVICE_ERROR"
             else:
-                return f"Microsoft API error ({error_code}): {error_message}"
+                return f"Microsoft API error ({error_code}): {error_message}", "MICROSOFT_API_ERROR"
 
         except (json.JSONDecodeError, KeyError):
             # Fall back to generic message if parsing fails
             if status_code == 401:
-                return "Microsoft authentication failed. Please refresh your token."
+                return "Microsoft authentication failed. Please refresh your token.", "MICROSOFT_AUTH_FAILED"
             elif status_code == 403:
-                return "Microsoft access denied. Please check your permissions."
+                return "Microsoft access denied. Please check your permissions.", "MICROSOFT_ACCESS_DENIED"
             elif status_code == 429:
-                return "Microsoft API rate limit exceeded."
+                return "Microsoft API rate limit exceeded.", "MICROSOFT_RATE_LIMITED"
             else:
-                return f"Microsoft API error (HTTP {status_code})"
+                return f"Microsoft API error (HTTP {status_code})", "MICROSOFT_API_ERROR"
 
-    def _parse_google_error(self, response_text: str, status_code: int) -> str:
+    def _parse_google_error(self, response_text: str, status_code: int) -> tuple[str, str]:
         """
         Parse Google API error responses to provide user-friendly messages.
 
@@ -185,7 +181,7 @@ class BaseAPIClient(ABC):
             status_code: HTTP status code
 
         Returns:
-            User-friendly error message
+            Tuple of (user-friendly error message, provider-specific error code)
         """
         try:
             import json
@@ -207,42 +203,40 @@ class BaseAPIClient(ABC):
                     "Invalid Credentials" in error_message
                     or "unauthorized" in error_message.lower()
                 ):
-                    return "Google authentication failed. Please refresh your Google token."
+                    return "Google authentication failed. Please refresh your Google token.", "GOOGLE_AUTH_FAILED"
                 elif "Token has been expired" in error_message:
-                    return (
-                        "Google token has expired. Please refresh your authentication."
-                    )
+                    return "Google token has expired. Please refresh your authentication.", "GOOGLE_TOKEN_EXPIRED"
                 elif "insufficient authentication scopes" in error_message.lower():
-                    return "Insufficient Google permissions. Please re-authenticate with required scopes."
+                    return "Insufficient Google permissions. Please re-authenticate with required scopes.", "GOOGLE_INSUFFICIENT_SCOPES"
                 else:
-                    return f"Google authentication error: {error_message}"
+                    return f"Google authentication error: {error_message}", "GOOGLE_AUTH_ERROR"
             elif status_code == 403:
                 if (
                     "insufficientPermissions" in error_code
                     or "forbidden" in error_message.lower()
                 ):
-                    return "Insufficient Google permissions. Please grant additional access."
+                    return "Insufficient Google permissions. Please grant additional access.", "GOOGLE_INSUFFICIENT_PERMISSIONS"
                 elif "quotaExceeded" in error_code:
-                    return "Google API quota exceeded. Please try again later."
+                    return "Google API quota exceeded. Please try again later.", "GOOGLE_QUOTA_EXCEEDED"
                 else:
-                    return f"Google access denied: {error_message}"
+                    return f"Google access denied: {error_message}", "GOOGLE_ACCESS_DENIED"
             elif status_code == 429:
-                return "Google API rate limit exceeded. Please try again later."
+                return "Google API rate limit exceeded. Please try again later.", "GOOGLE_RATE_LIMITED"
             elif status_code >= 500:
-                return f"Google service error: {error_message}"
+                return f"Google service error: {error_message}", "GOOGLE_SERVICE_ERROR"
             else:
-                return f"Google API error: {error_message}"
+                return f"Google API error: {error_message}", "GOOGLE_API_ERROR"
 
         except (json.JSONDecodeError, KeyError):
             # Fall back to generic message if parsing fails
             if status_code == 401:
-                return "Google authentication failed. Please refresh your token."
+                return "Google authentication failed. Please refresh your token.", "GOOGLE_AUTH_FAILED"
             elif status_code == 403:
-                return "Google access denied. Please check your permissions."
+                return "Google access denied. Please check your permissions.", "GOOGLE_ACCESS_DENIED"
             elif status_code == 429:
-                return "Google API rate limit exceeded."
+                return "Google API rate limit exceeded.", "GOOGLE_RATE_LIMITED"
             else:
-                return f"Google API error (HTTP {status_code})"
+                return f"Google API error (HTTP {status_code})", "GOOGLE_API_ERROR"
 
     async def _log_api_call(
         self,
@@ -381,7 +375,7 @@ class BaseAPIClient(ABC):
 
             raise ProviderError(
                 message=f"Request timeout: {error_msg}",
-                provider=self.provider,
+                provider=self.provider.value,
                 details={
                     "endpoint": endpoint,
                     "method": method.upper(),
@@ -393,19 +387,20 @@ class BaseAPIClient(ABC):
         except httpx.HTTPStatusError as e:
             response_time_ms = int((time.time() - start_time) * 1000)
 
-            # Parse provider-specific error messages
+            # Parse provider-specific error messages and codes
             if self.provider == Provider.MICROSOFT:
-                user_friendly_error = self._parse_microsoft_error(
+                user_friendly_error, provider_code = self._parse_microsoft_error(
                     e.response.text, e.response.status_code
                 )
             elif self.provider == Provider.GOOGLE:
-                user_friendly_error = self._parse_google_error(
+                user_friendly_error, provider_code = self._parse_google_error(
                     e.response.text, e.response.status_code
                 )
             else:
                 user_friendly_error = (
                     f"HTTP {e.response.status_code}: {e.response.text}"
                 )
+                provider_code = "PROVIDER_ERROR"
 
             # Determine status based on response code
             if e.response.status_code == 429:
@@ -440,8 +435,11 @@ class BaseAPIClient(ABC):
 
             raise ProviderError(
                 message=user_friendly_error,
-                provider=self.provider,
+                provider=self.provider.value,
                 status_code=e.response.status_code,
+                response_body=e.response.text,
+                retry_after=retry_after,
+                code=provider_code,
                 details={
                     "endpoint": endpoint,
                     "method": method.upper(),
@@ -471,7 +469,7 @@ class BaseAPIClient(ABC):
 
             raise ProviderError(
                 message=f"Request failed: {error_msg}",
-                provider=self.provider,
+                provider=self.provider.value,
                 details={
                     "endpoint": endpoint,
                     "method": method.upper(),
@@ -501,7 +499,7 @@ class BaseAPIClient(ABC):
 
             raise ProviderError(
                 message=f"Unexpected error: {error_msg}",
-                provider=self.provider,
+                provider=self.provider.value,
                 details={
                     "endpoint": endpoint,
                     "method": method.upper(),

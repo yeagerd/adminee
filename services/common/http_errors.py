@@ -156,10 +156,16 @@ class ProviderError(BrieflyAPIException):
         details: Optional[Dict[str, Any]] = None,
         code: str = "PROVIDER_ERROR",
         status_code: int = 502,
+        response_body: Optional[str] = None,
+        retry_after: Optional[int] = None,
     ):
         provider_details = details or {}
         if provider:
             provider_details["provider"] = provider
+        if response_body:
+            provider_details["response_body"] = response_body
+        if retry_after is not None:
+            provider_details["retry_after"] = retry_after
         super().__init__(
             message=message,
             details=provider_details,
@@ -168,6 +174,8 @@ class ProviderError(BrieflyAPIException):
             status_code=status_code,
         )
         self.provider = provider
+        self.response_body = response_body
+        self.retry_after = retry_after
 
 
 class RateLimitError(BrieflyAPIException):
