@@ -178,7 +178,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-API-Key': process.env.USER_SERVICE_API_KEY!,
+          'X-API-Key': process.env.API_FRONTEND_USER_KEY!,
         },
         body: JSON.stringify({
           email: data.email,
@@ -236,7 +236,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Get user data from user service
     const userResponse = await fetch(`${process.env.USER_SERVICE_URL}/users/${user_id}`, {
       headers: {
-        'X-API-Key': process.env.USER_SERVICE_API_KEY!,
+        'X-API-Key': process.env.API_FRONTEND_USER_KEY!,
       },
     });
 
@@ -271,7 +271,7 @@ async function storeOAuthTokens(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-Key': process.env.USER_SERVICE_API_KEY!,
+        'X-API-Key': process.env.API_FRONTEND_USER_KEY!,
       },
       body: JSON.stringify({
         provider,
@@ -682,7 +682,7 @@ BFF_API_KEY=your-bff-api-key
 
 # User Service
 USER_SERVICE_URL=http://localhost:8001
-USER_SERVICE_API_KEY=your-user-service-api-key
+API_FRONTEND_USER_KEY=your-user-service-api-key
 ```
 
 ### 5.2 User Service Environment Variables
