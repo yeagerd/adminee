@@ -35,7 +35,7 @@ class TestTokenService(BaseUserManagementTest):
     def _create_mock_user(self):
         """Create a mock user for testing."""
         user = MagicMock(spec=User)
-        user.clerk_id = "test_user_123"
+        user.external_auth_id = "test_user_123"
         user.id = 1
         return user
 

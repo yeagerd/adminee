@@ -24,8 +24,8 @@ class TestUserModel:
     def test_user_creation_valid(self):
         """Test creating a valid user."""
         user_data = {
-            "external_auth_id": "clerk_123",
-            "auth_provider": "clerk",
+            "external_auth_id": "nextauth_123",
+            "auth_provider": "nextauth",
             "email": "test@example.com",
             "first_name": "John",
             "last_name": "Doe",
@@ -35,7 +35,7 @@ class TestUserModel:
         }
 
         user = User(**user_data)
-        assert user.external_auth_id == "clerk_123"
+        assert user.external_auth_id == "nextauth_123"
         assert user.auth_provider == "clerk"
         assert user.email == "test@example.com"
         assert user.first_name == "John"
@@ -48,11 +48,11 @@ class TestUserModel:
     def test_user_creation_minimal(self):
         """Test creating user with minimal required fields."""
         user = User(
-            external_auth_id="clerk_456",
-            auth_provider="clerk",
+            external_auth_id="nextauth_456",
+            auth_provider="nextauth",
             email="minimal@example.com",
         )
-        assert user.external_auth_id == "clerk_456"
+        assert user.external_auth_id == "nextauth_456"
         assert user.auth_provider == "clerk"
         assert user.email == "minimal@example.com"
         assert user.first_name is None
@@ -64,8 +64,8 @@ class TestUserModel:
         """Test email validation."""
         # Test with a valid email first
         user = User(
-            external_auth_id="clerk_789",
-            auth_provider="clerk",
+            external_auth_id="nextauth_789",
+            auth_provider="nextauth",
             email="valid@example.com",
         )
         assert user.email == "valid@example.com"
@@ -77,8 +77,8 @@ class TestUserModel:
     def test_user_defaults(self):
         """Test default values are set correctly."""
         user = User(
-            external_auth_id="clerk_default",
-            auth_provider="clerk",
+            external_auth_id="nextauth_default",
+            auth_provider="nextauth",
             email="default@example.com",
         )
         assert user.onboarding_completed is False
@@ -94,7 +94,7 @@ class TestUserPreferencesModel:
         # Create a user first (foreign key dependency)
         user = User(
             external_auth_id="pref_user",
-            auth_provider="clerk",
+            auth_provider="nextauth",
             email="pref@example.com",
         )
 
@@ -110,7 +110,7 @@ class TestUserPreferencesModel:
         """Test creating preferences with custom values."""
         user = User(
             external_auth_id="custom_user",
-            auth_provider="clerk",
+            auth_provider="nextauth",
             email="custom@example.com",
         )
 
@@ -144,7 +144,7 @@ class TestIntegrationModel:
         """Test creating an integration."""
         user = User(
             external_auth_id="int_user",
-            auth_provider="clerk",
+            auth_provider="nextauth",
             email="integration@example.com",
         )
 
@@ -182,7 +182,7 @@ class TestIntegrationModel:
         """Test integration default values."""
         user = User(
             external_auth_id="default_int_user",
-            auth_provider="clerk",
+            auth_provider="nextauth",
             email="default@example.com",
         )
 
@@ -204,7 +204,7 @@ class TestEncryptedTokenModel:
         """Test creating an encrypted token."""
         user = User(
             external_auth_id="token_user",
-            auth_provider="clerk",
+            auth_provider="nextauth",
             email="token@example.com",
         )
         integration = Integration(
@@ -236,7 +236,7 @@ class TestEncryptedTokenModel:
         """Test creating a refresh token."""
         user = User(
             external_auth_id="refresh_user",
-            auth_provider="clerk",
+            auth_provider="nextauth",
             email="refresh@example.com",
         )
         integration = Integration(
@@ -264,7 +264,7 @@ class TestAuditLogModel:
         """Test creating an audit log entry."""
         user = User(
             external_auth_id="audit_user",
-            auth_provider="clerk",
+            auth_provider="nextauth",
             email="audit@example.com",
         )
 
@@ -323,7 +323,7 @@ class TestModelRelationships:
         """Test one-to-one relationship between User and UserPreferences."""
         user = User(
             external_auth_id="rel_user",
-            auth_provider="clerk",
+            auth_provider="nextauth",
             email="relationship@example.com",
         )
         preferences = UserPreferences(
@@ -339,7 +339,7 @@ class TestModelRelationships:
         """Test one-to-many relationship between User and Integrations."""
         user = User(
             external_auth_id="multi_int_user",
-            auth_provider="clerk",
+            auth_provider="nextauth",
             email="multi@example.com",
         )
 
@@ -363,7 +363,7 @@ class TestModelRelationships:
         """Test one-to-many relationship between Integration and EncryptedTokens."""
         user = User(
             external_auth_id="token_rel_user",
-            auth_provider="clerk",
+            auth_provider="nextauth",
             email="tokenrel@example.com",
         )
         integration = Integration(
@@ -397,7 +397,7 @@ class TestModelRelationships:
         """Test many-to-one relationship between AuditLog and User."""
         user = User(
             external_auth_id="audit_rel_user",
-            auth_provider="clerk",
+            auth_provider="nextauth",
             email="auditrel@example.com",
         )
 

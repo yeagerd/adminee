@@ -58,7 +58,7 @@ class TestUserProfileEndpoints:
         mock_response = UserResponse(
             id=1,
             external_auth_id="user_123",
-            auth_provider="clerk",
+            auth_provider="nextauth",
             email="test@example.com",
             first_name="Test",
             last_name="User",
@@ -151,7 +151,7 @@ class TestUserProfileEndpoints:
             mock_response = UserResponse(
                 id=1,
                 external_auth_id="user_123",
-                auth_provider="clerk",
+                auth_provider="nextauth",
                 email="test@example.com",
                 first_name="Updated",
                 last_name="Name",
@@ -276,7 +276,7 @@ class TestUserProfileEndpoints:
             mock_response = UserResponse(
                 id=1,
                 external_auth_id="user_123",
-                auth_provider="clerk",
+                auth_provider="nextauth",
                 email="test@example.com",
                 first_name="Test",
                 last_name="User",
@@ -310,7 +310,7 @@ class TestUserProfileEndpoints:
                 UserResponse(
                     id=1,
                     external_auth_id="user_123",
-                    auth_provider="clerk",
+                    auth_provider="nextauth",
                     email="test@example.com",
                     first_name="Test",
                     last_name="User",
@@ -388,7 +388,7 @@ class TestUserProfileEndpoints:
             mock_response = UserResponse(
                 id=1,
                 external_auth_id="user_123",
-                auth_provider="clerk",
+                auth_provider="nextauth",
                 email="test@example.com",
                 first_name="Test",
                 last_name="User",
@@ -408,7 +408,7 @@ class TestUserProfileEndpoints:
 
             assert result.external_auth_id == "user_123"
             get_user_service().get_user_by_external_auth_id.assert_called_once_with(
-                "user_123", "clerk"
+                "user_123", "nextauth"
             )
 
     @pytest.mark.asyncio

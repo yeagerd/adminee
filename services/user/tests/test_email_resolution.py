@@ -28,7 +28,7 @@ def sample_user():
     return User(
         id=1,
         external_auth_id="user_test123",
-        auth_provider="clerk",
+        auth_provider="nextauth",
         email="test@gmail.com",
         normalized_email="test@gmail.com",
         first_name="Test",
@@ -44,7 +44,7 @@ def gmail_user():
     return User(
         id=2,
         external_auth_id="user_gmail456",
-        auth_provider="clerk",
+        auth_provider="nextauth",
         email="john.doe+work@gmail.com",
         normalized_email="johndoe@gmail.com",  # Normalized: removed dots and plus addressing
         first_name="John",
@@ -76,7 +76,7 @@ def yahoo_user():
     return User(
         id=4,
         external_auth_id="user_yahoo999",
-        auth_provider="clerk",
+        auth_provider="nextauth",
         email="bob.wilson+alerts@yahoo.com",
         normalized_email="bobwilson@yahoo.com",  # Normalized: removed dots and plus addressing
         first_name="Bob",
@@ -115,7 +115,7 @@ class TestEmailResolutionService:
             assert result.external_auth_id == "user_test123"
             assert result.email == "test@gmail.com"
             assert result.normalized_email == "test@gmail.com"
-            assert result.auth_provider == "clerk"
+            assert result.auth_provider == "nextauth"
 
     @pytest.mark.asyncio
     async def test_resolve_email_gmail_normalization(
@@ -142,7 +142,7 @@ class TestEmailResolutionService:
             assert result.external_auth_id == "user_gmail456"
             assert result.email == "john.doe+work@gmail.com"  # Original email from DB
             assert result.normalized_email == "johndoe@gmail.com"  # Normalized email
-            assert result.auth_provider == "clerk"
+            assert result.auth_provider == "nextauth"
 
     @pytest.mark.asyncio
     async def test_resolve_email_outlook_normalization(
@@ -204,7 +204,7 @@ class TestEmailResolutionService:
                 result.email == "bob.wilson+alerts@yahoo.com"
             )  # Original email from DB
             assert result.normalized_email == "bobwilson@yahoo.com"  # Normalized email
-            assert result.auth_provider == "clerk"
+            assert result.auth_provider == "nextauth"
 
     @pytest.mark.asyncio
     async def test_resolve_email_with_provider_google(
@@ -232,7 +232,7 @@ class TestEmailResolutionService:
 
             assert result.external_auth_id == "user_gmail456"
             assert result.normalized_email == "johndoe@gmail.com"
-            assert result.auth_provider == "clerk"
+            assert result.auth_provider == "nextauth"
 
     @pytest.mark.asyncio
     async def test_resolve_email_with_provider_microsoft(
@@ -434,7 +434,7 @@ class TestEmailResolutionResponseSchema:
             external_auth_id="user_test123",
             email="test@gmail.com",
             normalized_email="test@gmail.com",
-            auth_provider="clerk",
+            auth_provider="nextauth",
         )
 
         assert response.external_auth_id == "user_test123"
