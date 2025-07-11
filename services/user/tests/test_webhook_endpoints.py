@@ -10,13 +10,12 @@ import importlib
 import sys
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from fastapi.testclient import TestClient
 
+from services.common.http_errors import ServiceError, ValidationError
 from services.user.database import create_all_tables
 from services.user.tests.test_base import BaseUserManagementTest
-
-import pytest
-from services.common.http_errors import ValidationError, ServiceError
 
 
 class TestClerkWebhookEndpoint(BaseUserManagementTest):
@@ -324,7 +323,7 @@ class TestClerkWebhookEndpoint(BaseUserManagementTest):
     @patch("services.user.routers.webhooks.webhook_service")
     def test_clerk_webhook_processing_error(self, mock_webhook_service, mock_verify):
         """Test webhook processing error handling."""
-        from services.common.http_errors import ServiceError
+
         mock_verify.return_value = None
         mock_webhook_service.process_user_created = AsyncMock(
             side_effect=Exception("Processing failed")
@@ -344,7 +343,7 @@ class TestClerkWebhookEndpoint(BaseUserManagementTest):
     @patch("services.user.routers.webhooks.webhook_service")
     def test_clerk_webhook_database_error(self, mock_webhook_service, mock_verify):
         """Test webhook database error handling."""
-        from services.common.http_errors import ServiceError
+
         mock_verify.return_value = None
         mock_webhook_service.process_user_created = AsyncMock(
             side_effect=Exception("Database connection failed")
@@ -364,7 +363,7 @@ class TestClerkWebhookEndpoint(BaseUserManagementTest):
     @patch("services.user.routers.webhooks.webhook_service")
     def test_clerk_webhook_unexpected_error(self, mock_webhook_service, mock_verify):
         """Test webhook unexpected error handling."""
-        from services.common.http_errors import ServiceError
+
         mock_verify.return_value = None
         mock_webhook_service.process_user_created = AsyncMock(
             side_effect=Exception("Unexpected error")
@@ -447,8 +446,10 @@ class TestClerkTestWebhookEndpoint(BaseUserManagementTest):
     @patch("services.user.routers.webhooks.webhook_service")
     def test_test_webhook_processing_error(self, mock_webhook_service):
         """Test test webhook processing error."""
-        from services.common.http_errors import ValidationError
         import pytest
+
+        from services.common.http_errors import ValidationError
+
         mock_webhook_service.process_clerk_webhook = AsyncMock(
             side_effect=Exception("Test processing failed")
         )

@@ -495,6 +495,7 @@ class AuditLogger:
                 error=str(e),
             )
             from services.common.http_errors import ServiceError
+
             raise ServiceError(
                 message=f"Failed to generate activity summary for user {user_id}: {str(e)}",
                 details={"user_id": user_id, "error": str(e)},
@@ -720,6 +721,7 @@ class AuditLogger:
                 user_id=user_id,
             )
             from services.common.http_errors import ServiceError
+
             raise ServiceError(
                 message=f"Failed to generate compliance report: {str(e)}",
                 details={"user_id": user_id, "error": str(e)},

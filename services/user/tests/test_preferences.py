@@ -12,6 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
+from services.common.http_errors import NotFoundError
 from services.user.auth.nextauth import get_current_user
 from services.user.database import create_all_tables
 from services.user.schemas.preferences import (
@@ -28,7 +29,6 @@ from services.user.schemas.preferences import (
 )
 from services.user.services.preferences_service import PreferencesService
 from services.user.tests.test_base import BaseUserManagementTest
-from services.common.http_errors import NotFoundError
 
 
 class TestPreferencesSchemas:

@@ -113,10 +113,11 @@ class TestIntegrationListEndpoint(BaseUserManagementIntegrationTest):
         with patch(
             "services.user.routers.integrations.get_integration_service"
         ) as mock_service:
-            mock_service.return_value.get_user_integrations.side_effect = (
-                NotFoundError("User not found")
+            mock_service.return_value.get_user_integrations.side_effect = NotFoundError(
+                "User not found"
             )
             import pytest
+
             with pytest.raises(NotFoundError) as exc_info:
                 self.client.get(
                     f"/users/{user_id}/integrations/",
@@ -343,6 +344,7 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
                 side_effect=ServiceError("Service unavailable")
             )
             import pytest
+
             with pytest.raises(ServiceError) as exc_info:
                 self.client.post(
                     "/users/user_123/integrations/oauth/callback?provider=google",
@@ -403,6 +405,7 @@ class TestIntegrationManagementEndpoints(BaseUserManagementIntegrationTest):
                 side_effect=NotFoundError("Integration not found")
             )
             import pytest
+
             with pytest.raises(NotFoundError) as exc_info:
                 self.client.delete(
                     f"/users/{user_id}/integrations/{provider}",
@@ -651,7 +654,9 @@ class TestProviderEndpoints(BaseUserManagementIntegrationTest):
         ) as mock_service:
             mock_service.return_value.oauth_config = mock_oauth_config
             import pytest
+
             from services.common.http_errors import ValidationError
+
             with pytest.raises(ValidationError) as exc_info:
                 self.client.post(
                     "/integrations/validate-scopes",

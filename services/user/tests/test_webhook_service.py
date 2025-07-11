@@ -218,8 +218,10 @@ class TestWebhookServiceIntegration(BaseUserManagementTest):
                 created_at=1640995200000,
                 updated_at=1640995200000,
             )
-            from services.common.http_errors import ServiceError
             import pytest
+
+            from services.common.http_errors import ServiceError
+
             with pytest.raises(ServiceError) as exc_info:
                 await self.webhook_service._handle_user_created(new_data)
             assert "already exists with a different user" in str(exc_info.value)

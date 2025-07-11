@@ -12,16 +12,19 @@ os.environ.setdefault("DB_URL_OFFICE", "sqlite:///test.db")
 os.environ.setdefault("API_OFFICE_USER_KEY", "test-api-key")
 
 
-import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
 from fastapi import Request
-from fastapi.responses import JSONResponse
 
+from services.common.http_errors import (
+    ProviderError,
+    RateLimitError,
+    ServiceError,
+    ValidationError,
+)
 from services.office.core.clients.google import GoogleAPIClient
-from services.common.http_errors import ServiceError, ProviderError, RateLimitError, ValidationError
 from services.office.models import Provider
 
 

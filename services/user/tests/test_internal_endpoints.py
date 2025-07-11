@@ -36,7 +36,9 @@ class TestInternalAPI(BaseUserManagementTest):
         }
 
         import pytest
+
         from services.common.http_errors import AuthError
+
         with pytest.raises(AuthError) as exc_info:
             self.client.post("/internal/tokens/get", json=request_data)
         assert "API key required" in str(exc_info.value)

@@ -431,7 +431,9 @@ class TestIntegrationWithFastAPI:
 
         # Test with chat service key (should fail)
         import pytest
+
         from services.common.http_errors import AuthError
+
         with pytest.raises(AuthError) as exc_info:
             client.post(
                 "/emails/send", headers={"X-API-Key": get_test_api_keys()["chat"]}
@@ -476,7 +478,9 @@ class TestIntegrationWithFastAPI:
         client = TestClient(app)
 
         import pytest
+
         from services.common.http_errors import AuthError
+
         with pytest.raises(AuthError) as exc_info:
             client.get("/protected")
         assert exc_info.value.status_code == 401
@@ -495,7 +499,9 @@ class TestIntegrationWithFastAPI:
         client = TestClient(app)
 
         import pytest
+
         from services.common.http_errors import AuthError
+
         with pytest.raises(AuthError) as exc_info:
             client.get("/protected", headers={"X-API-Key": "invalid-key"})
         assert exc_info.value.status_code == 401

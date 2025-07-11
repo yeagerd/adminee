@@ -11,8 +11,8 @@ import jwt
 import pytest
 from fastapi import HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials
-from services.common.http_errors import AuthError
 
+from services.common.http_errors import AuthError
 from services.user.auth.nextauth import (
     extract_user_id_from_token,
     get_current_user,
@@ -182,6 +182,7 @@ class TestClerkAuthentication:
             mock_verify.side_effect = AuthError("Invalid token")
 
             from fastapi import HTTPException
+
             with pytest.raises(HTTPException) as exc_info:
                 await get_current_user(credentials)
 
@@ -197,6 +198,7 @@ class TestClerkAuthentication:
     async def test_verify_user_ownership_failure(self):
         """Test user ownership verification failure."""
         from fastapi import HTTPException
+
         with pytest.raises(HTTPException) as exc_info:
             await verify_user_ownership("user_123", "user_456")
         assert exc_info.value.status_code == 403

@@ -13,7 +13,6 @@ from fastapi import APIRouter, Depends
 from services.common.http_errors import (
     NotFoundError,
     ServiceError,
-    ValidationError,
 )
 from services.user.auth.nextauth import get_current_user, verify_user_ownership
 from services.user.schemas.preferences import (

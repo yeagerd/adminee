@@ -17,8 +17,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi import status
 
-from services.common.test_utils import BaseOfficeServiceIntegrationTest
 from services.common.http_errors import ProviderError
+from services.common.test_utils import BaseOfficeServiceIntegrationTest
 from services.office.core.settings import get_settings
 from services.office.core.token_manager import TokenData
 
@@ -106,9 +106,7 @@ class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
             else:
                 from services.office.models import Provider
 
-                raise ProviderError(
-                    "Microsoft integration failed", Provider.MICROSOFT
-                )
+                raise ProviderError("Microsoft integration failed", Provider.MICROSOFT)
 
         with patch(
             "services.office.core.token_manager.TokenManager.get_user_token",
@@ -618,9 +616,7 @@ class TestErrorScenarios(BaseOfficeServiceIntegrationTest):
         def failing_http_side_effect(*args, **kwargs):
             from services.office.models import Provider
 
-            raise ProviderError(
-                "Provider API is down", Provider.GOOGLE
-            )
+            raise ProviderError("Provider API is down", Provider.GOOGLE)
 
         with patch(
             "services.office.core.token_manager.TokenManager.get_user_token",

@@ -38,7 +38,9 @@ def mock_email_message():
         provider_message_id="test123",
         subject="Test Email",
         from_address=EmailAddress(email="sender@example.com", name="Test Sender"),
-        to_addresses=[EmailAddress(email="recipient@example.com", name="Test Recipient")],
+        to_addresses=[
+            EmailAddress(email="recipient@example.com", name="Test Recipient")
+        ],
         date=datetime.now(timezone.utc),
         body_text="Test email body",
         body_html="<p>Test email body</p>",
@@ -519,6 +521,7 @@ class TestEmailHelperFunctions:
         """Test parsing invalid message ID format."""
         from services.common.http_errors import ValidationError
         from services.office.api.email import parse_message_id
+
         with pytest.raises(ValidationError) as exc_info:
             parse_message_id("invalid_format_no_underscore")
 
@@ -529,6 +532,7 @@ class TestEmailHelperFunctions:
         """Test parsing message ID with unknown provider."""
         from services.common.http_errors import ValidationError
         from services.office.api.email import parse_message_id
+
         with pytest.raises(ValidationError) as exc_info:
             parse_message_id("unknown_abc123")
 

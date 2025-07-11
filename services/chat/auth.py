@@ -156,12 +156,10 @@ def require_chat_auth(allowed_clients: Optional[List[str]] = None):
         client_name = await verify_chat_authentication(request)
 
         if allowed and client_name is not None and client_name not in allowed:
-            logger.warning(
-                f"Client {client_name} not in allowed list: {allowed}"
-            )
+            logger.warning(f"Client {client_name} not in allowed list: {allowed}")
             raise AuthError(
                 message=f"Client {client_name} not authorized for this endpoint",
-                status_code=403
+                status_code=403,
             )
 
         return client_name

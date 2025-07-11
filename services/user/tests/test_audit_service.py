@@ -11,8 +11,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from services.user.database import create_all_tables
 from services.common.http_errors import ServiceError
+from services.user.database import create_all_tables
 from services.user.models.audit import AuditLog
 from services.user.models.user import User
 from services.user.services.audit_service import (
@@ -327,8 +327,9 @@ class TestAuditLogger(BaseUserManagementTest):
                 await self.audit_service.get_user_activity_summary(user_id="user_123")
 
             # Use the actual error message format from the implementation
-            assert "Failed to generate activity summary for user user_123: Query failed" in str(
-                exc_info.value
+            assert (
+                "Failed to generate activity summary for user user_123: Query failed"
+                in str(exc_info.value)
             )
 
     @pytest.mark.asyncio
@@ -427,7 +428,9 @@ class TestAuditLogger(BaseUserManagementTest):
                     end_date=datetime.now(timezone.utc),
                 )
 
-            assert "Failed to generate compliance report: Query failed" in str(exc_info.value)
+            assert "Failed to generate compliance report: Query failed" in str(
+                exc_info.value
+            )
 
 
 class TestGlobalAuditLogger:
@@ -483,13 +486,16 @@ class TestAuditIntegration:
     def test_security_event_enhancement(self):
         """Test that security events get proper enhancement."""
         from typing import Any
+
         base_details = {"attempt_count": 3}
         security_details: dict[str, Any] = dict(base_details)
-        security_details.update({
-            "security_event": True,
-            "severity": "high",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        })
+        security_details.update(
+            {
+                "security_event": True,
+                "severity": "high",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+        )
 
         # Verify security enhancement
         assert security_details["security_event"] is True

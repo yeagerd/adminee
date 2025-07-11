@@ -99,8 +99,8 @@ class TestUserProfileEndpoints:
             get_user_service(), "get_user_by_id", return_value=mock_target_user
         ):
 
-            from services.user.routers.users import get_user_profile
             from services.common.http_errors import AuthError
+            from services.user.routers.users import get_user_profile
 
             with pytest.raises(AuthError) as exc_info:
                 await get_user_profile(
@@ -117,12 +117,13 @@ class TestUserProfileEndpoints:
             get_user_service(), "get_user_profile_by_external_auth_id"
         ) as mock_get_profile:
             from fastapi import HTTPException
+
             mock_get_profile.side_effect = HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
             )
 
-            from services.user.routers.users import get_user_profile
             from services.common.http_errors import ServiceError
+            from services.user.routers.users import get_user_profile
 
             with pytest.raises(ServiceError) as exc_info:
                 await get_user_profile(
@@ -184,13 +185,14 @@ class TestUserProfileEndpoints:
             get_user_service(), "update_user_by_external_auth_id"
         ) as mock_update:
             from fastapi import HTTPException
+
             mock_update.side_effect = HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Validation error",
             )
 
-            from services.user.routers.users import update_user_profile
             from services.common.http_errors import ServiceError
+            from services.user.routers.users import update_user_profile
 
             with pytest.raises(ServiceError) as exc_info:
                 await update_user_profile(
@@ -242,8 +244,8 @@ class TestUserProfileEndpoints:
             get_user_service(), "get_user_by_id", return_value=mock_target_user
         ):
 
-            from services.user.routers.users import delete_user_profile
             from services.common.http_errors import AuthError
+            from services.user.routers.users import delete_user_profile
 
             with pytest.raises(AuthError) as exc_info:
                 await delete_user_profile(
@@ -419,8 +421,8 @@ class TestUserProfileEndpoints:
                 status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
             )
 
-            from services.user.routers.users import get_current_user_profile
             from services.common.http_errors import ServiceError
+            from services.user.routers.users import get_current_user_profile
 
             with pytest.raises(ServiceError) as exc_info:
                 await get_current_user_profile(current_user_external_auth_id="user_123")
@@ -650,9 +652,11 @@ class TestUserEmailCollision:
         "services.user.utils.email_collision.EmailCollisionDetector.normalize_email_async"
     )
     def test_create_user_collision(self, mock_normalize_async):
-        import logging
-        from services.common.http_errors import ServiceError
         import json
+        import logging
+
+        from services.common.http_errors import ServiceError
+
         logging.basicConfig(level=logging.DEBUG)
         logging.getLogger().setLevel(logging.DEBUG)
 
@@ -682,13 +686,19 @@ class TestUserEmailCollision:
         )
         event2 = self._clerk_user_created_event(unique_user_id2, unique_email2)
         with pytest.raises(ServiceError) as exc_info:
-            self.client.post("/webhooks/clerk", data=json.dumps(event2), headers={"Content-Type": "application/json"})
+            self.client.post(
+                "/webhooks/clerk",
+                data=json.dumps(event2),
+                headers={"Content-Type": "application/json"},
+            )
         assert "An unexpected error occurred" in str(exc_info.value)
 
     @patch("email_normalize.Normalizer.normalize")
     def test_update_user_email_collision(self, mock_normalize):
-        from services.common.http_errors import ServiceError
         import json
+
+        from services.common.http_errors import ServiceError
+
         # Mock email normalization
         async def mock_normalize_side_effect(email):
             mock_result = MagicMock()
@@ -730,7 +740,11 @@ class TestUserEmailCollision:
             },
         }
         with pytest.raises(ServiceError) as exc_info:
-            self.client.post("/webhooks/clerk", data=json.dumps(update_event), headers={"Content-Type": "application/json"})
+            self.client.post(
+                "/webhooks/clerk",
+                data=json.dumps(update_event),
+                headers={"Content-Type": "application/json"},
+            )
         assert "An unexpected error occurred" in str(exc_info.value)
 
     @patch(

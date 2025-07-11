@@ -7,7 +7,12 @@ exception handling, middleware, and API documentation.
 
 from unittest.mock import patch
 
-from services.common.http_errors import NotFoundError, ServiceError, ValidationError, AuthError
+from services.common.http_errors import (
+    AuthError,
+    NotFoundError,
+    ServiceError,
+    ValidationError,
+)
 from services.user.tests.test_base import BaseUserManagementIntegrationTest
 
 
@@ -30,7 +35,9 @@ class TestApplicationStartup(BaseUserManagementIntegrationTest):
 
     def test_routers_registered(self):
         import pytest
+
         from services.common.http_errors import AuthError, NotFoundError
+
         # /users/search should raise AuthError when unauthenticated
         with pytest.raises(AuthError) as exc_info:
             self.client.get("/users/search")
@@ -249,7 +256,11 @@ class TestExceptionHandling(BaseUserManagementIntegrationTest):
         # Removed assertion for exception handler registration
 
     def test_validation_exception(self):
-        exc = ValidationError(message="Validation failed for field 'email': Invalid email format", field="email", value="invalid@")
+        exc = ValidationError(
+            message="Validation failed for field 'email': Invalid email format",
+            field="email",
+            value="invalid@",
+        )
         assert exc.field == "email"
         assert exc.value == "invalid@"
         assert "Validation failed for field 'email'" in exc.message

@@ -145,9 +145,7 @@ class TokenEncryption:
 
         except Exception as e:
             logger.error("Key derivation failed", user_id=user_id, error=str(e))
-            raise ServiceError(
-                f"Failed to derive encryption key for user {user_id}"
-            )
+            raise ServiceError(f"Failed to derive encryption key for user {user_id}")
 
     def encrypt_token(
         self, token: str, user_id: str, additional_data: Optional[str] = None
