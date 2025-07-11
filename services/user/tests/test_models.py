@@ -36,7 +36,7 @@ class TestUserModel:
 
         user = User(**user_data)
         assert user.external_auth_id == "nextauth_123"
-        assert user.auth_provider == "clerk"
+        assert user.auth_provider == "nextauth"
         assert user.email == "test@example.com"
         assert user.first_name == "John"
         assert user.last_name == "Doe"
@@ -53,7 +53,7 @@ class TestUserModel:
             email="minimal@example.com",
         )
         assert user.external_auth_id == "nextauth_456"
-        assert user.auth_provider == "clerk"
+        assert user.auth_provider == "nextauth"
         assert user.email == "minimal@example.com"
         assert user.first_name is None
         assert user.last_name is None

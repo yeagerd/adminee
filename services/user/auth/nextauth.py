@@ -6,7 +6,7 @@ Handles token verification, decoding, and user information extraction.
 """
 
 import logging
-import time  # Added for is_token_expired
+import time
 from typing import Dict, Optional
 
 import jwt
@@ -43,28 +43,35 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
             "Using manual JWT verification (signature verification potentially disabled based on settings)"
         )
 
-        verify_signature = getattr(
-            get_settings(), "jwt_verify_signature", True
-        )  # Default to True for production
-        # In a real NextAuth setup, you'd likely use a public key from a JWKS URL
-        # For now, this mirrors clerk.py's dev-friendly behavior.
-        # Consider making this more robust if NextAuth implies specific signature verification.
+        settings = get_settings()
+        verify_signature = getattr(settings, "jwt_verify_signature", True)
+
+        # Get the JWT secret key from settings
+        jwt_secret = getattr(settings, "nextauth_jwt_key")
+        if not jwt_secret and verify_signature:
+            logger_instance.warning(
+                "JWT verification enabled but no secret key configured"
+            )
+            verify_signature = False
+
+        # Get issuer from settings or use a default
+        issuer = getattr(settings, "nextauth_issuer", "nextauth")
 
         decoded_token = jwt.decode(
             token,
-            # key="YOUR_NEXTAUTH_SECRET_OR_PUBLIC_KEY", # This would be needed for proper verification
+            key=jwt_secret if verify_signature else None,
             options={
                 "verify_signature": verify_signature,
-                # "require": ["exp", "iat", "sub"], # PyJWT handles this with verify_exp, verify_iat
+                "verify_exp": True,
+                "verify_iat": True,
+                "verify_aud": False,  # NextAuth doesn't use audience by default
             },
-            algorithms=["RS256", "HS256"],  # Specify algorithms used by NextAuth
-            # audience="YOUR_AUDIENCE", # If applicable
-            # issuer="YOUR_ISSUER" # If applicable
+            algorithms=["HS256"],  # NextAuth uses HS256 by default
+            issuer=issuer if verify_signature else None,
         )
 
-        # PyJWT's decode handles exp, iat by default if verify_exp, verify_iat are true in options.
-        # Validate required claims manually if not covered by PyJWT options.
-        required_claims = ["sub", "iss"]  # exp, iat are usually handled by PyJWT
+        # Validate required claims
+        required_claims = ["sub", "iss", "exp", "iat"]
         for claim in required_claims:
             if claim not in decoded_token:
                 logger_instance.error(f"Missing required claim: {claim}")
@@ -84,14 +91,6 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
         logger_instance.warning("JWT token has expired")
         raise AuthError("Token has expired")
 
-    except jwt.InvalidAudienceError:
-        logger_instance.warning("Invalid JWT audience")
-        raise AuthError("Invalid token audience")
-
-    except jwt.InvalidIssuerError:
-        logger_instance.warning("Invalid JWT issuer")
-        raise AuthError("Invalid token issuer")
-
     except jwt.InvalidTokenError as e:
         logger_instance.warning(f"Invalid JWT token: {e}")
         raise AuthError("Invalid token")
@@ -101,68 +100,34 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
         raise AuthError("Token verification failed")
 
 
-async def get_user_from_clerk(user_id: str) -> Optional[Dict]:
+async def get_user_from_nextauth(user_id: str) -> Optional[Dict]:
     """
-    Retrieve user information from Clerk via API.
+    Retrieve user information from NextAuth.
 
-    This function makes an HTTP request to Clerk's API to fetch user details.
-    In development/testing, it can work without Clerk credentials by returning None.
+    In a real implementation, this would fetch user data from your user database
+    using the user_id (which comes from the 'sub' claim in the JWT).
 
     Args:
-        user_id: Clerk user ID
+        user_id: NextAuth user ID (from 'sub' claim)
 
     Returns:
         User information dictionary or None if not found
 
     Raises:
-        AuthError: If API request fails
+        AuthError: If user retrieval fails
     """
-    import os
+    # In a real implementation, you would fetch the user from your database
+    # For example:
+    # from services.user.services.user_service import get_user_by_external_id
+    # return await get_user_by_external_id(user_id, "nextauth")
 
-    import httpx
-
-    # Check if we have Clerk credentials
-    clerk_secret_key = os.getenv("CLERK_SECRET_KEY")
-    if not clerk_secret_key:
-        logger.warning("get_user_from_clerk called but CLERK_SECRET_KEY not available")
-        return None
-
-    try:
-        # Make API request to Clerk
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"https://api.clerk.com/v1/users/{user_id}",
-                headers={
-                    "Authorization": f"Bearer {clerk_secret_key}",
-                    "Content-Type": "application/json",
-                },
-                timeout=10.0,
-            )
-
-            if response.status_code == 404:
-                logger.info(f"User {user_id} not found in Clerk")
-                return None
-
-            if response.status_code == 200:
-                user_data = response.json()
-                logger.debug(f"Successfully retrieved user {user_id} from Clerk")
-                return user_data
-
-            # Handle other error codes
-            logger.error(
-                f"Clerk API request failed with status {response.status_code}: {response.text}"
-            )
-            return None
-
-    except httpx.TimeoutException:
-        logger.error(f"Timeout while fetching user {user_id} from Clerk")
-        raise AuthError("Clerk API timeout")
-    except httpx.RequestError as e:
-        logger.error(f"Request error while fetching user {user_id} from Clerk: {e}")
-        raise AuthError("Clerk API request failed")
-    except Exception as e:
-        logger.error(f"Unexpected error fetching user {user_id} from Clerk: {e}")
-        raise AuthError("Failed to retrieve user from Clerk")
+    # For now, return a minimal user object with just the ID
+    return {
+        "id": user_id,
+        "email": f"{user_id}@example.com",  # Placeholder
+        "email_verified": True,
+        "name": f"User {user_id}",
+    }
 
 
 def extract_user_id_from_token(token_claims: Dict[str, str]) -> str:
@@ -188,7 +153,7 @@ def extract_user_id_from_token(token_claims: Dict[str, str]) -> str:
 def extract_user_email_from_token(token_claims: Dict[str, str]) -> Optional[str]:
     """
     Extract user email from validated JWT token claims.
-    NextAuth tokens might store email in 'email' claim.
+    NextAuth stores email in 'email' claim.
 
     Args:
         token_claims: Decoded JWT token claims
@@ -196,7 +161,13 @@ def extract_user_email_from_token(token_claims: Dict[str, str]) -> Optional[str]
     Returns:
         User email from token or None if not present
     """
-    return token_claims.get("email")
+    # NextAuth stores email in 'email' claim
+    # It may also be present in the 'user' object if using a custom session callback
+    email = token_claims.get("email")
+    if not email and "user" in token_claims and isinstance(token_claims["user"], dict):
+        email = token_claims["user"].get("email")
+
+    return email
 
 
 def validate_token_permissions(

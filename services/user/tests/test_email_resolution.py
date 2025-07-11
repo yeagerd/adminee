@@ -440,7 +440,7 @@ class TestEmailResolutionResponseSchema:
         assert response.external_auth_id == "user_test123"
         assert response.email == "test@gmail.com"
         assert response.normalized_email == "test@gmail.com"
-        assert response.auth_provider == "clerk"
+        assert response.auth_provider == "nextauth"
 
     def test_response_from_user_model(self, sample_user):
         """Test creating response from User model using from_attributes."""

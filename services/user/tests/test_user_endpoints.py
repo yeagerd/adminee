@@ -40,7 +40,7 @@ class TestUserProfileEndpoints:
         user = MagicMock(spec=User)
         user.id = user_id
         user.external_auth_id = external_auth_id
-        user.auth_provider = "clerk"
+        user.auth_provider = "google"
         user.email = "test@example.com"
         user.first_name = "Test"
         user.last_name = "User"
@@ -526,7 +526,7 @@ class TestUserServiceIntegration:
         user = MagicMock(spec=User)
         user.id = user_id
         user.external_auth_id = external_auth_id
-        user.auth_provider = "clerk"
+        user.auth_provider = "google"
         user.email = "test@example.com"
         user.first_name = "Test"
         user.last_name = "User"
@@ -629,7 +629,7 @@ class TestUserEmailCollision:
         """Generate unique user ID for testing."""
         return f"{base_id}_{self.test_counter}"
 
-    def _clerk_user_created_event(
+    def _auth_user_created_event(
         self,
         external_auth_id,
         email,
@@ -670,24 +670,24 @@ class TestUserEmailCollision:
 
         # Create first user with unique email
         unique_email1 = self._get_unique_email("user+work@gmail.com")
-        unique_user_id1 = self._get_unique_user_id("clerk_collision_test_2")
+        unique_user_id1 = self._get_unique_user_id("google_collision_test_2")
         print(
             f"TEST: Creating user 1 with email: {unique_email1}, user_id: {unique_user_id1}"
         )
-        event1 = self._clerk_user_created_event(unique_user_id1, unique_email1)
-        resp = self.client.post("/webhooks/clerk", json=event1)
+        event1 = self._auth_user_created_event(unique_user_id1, unique_email1)
+        resp = self.client.post("/webhooks/nextauth", json=event1)
         assert resp.status_code == 200
 
         # Try to create second user with colliding email (should normalize to same email)
         unique_email2 = self._get_unique_email("user@gmail.com")
-        unique_user_id2 = self._get_unique_user_id("clerk_collision_test_3")
+        unique_user_id2 = self._get_unique_user_id("google_collision_test_3")
         print(
             f"TEST: Creating user 2 with email: {unique_email2}, user_id: {unique_user_id2}"
         )
-        event2 = self._clerk_user_created_event(unique_user_id2, unique_email2)
+        event2 = self._auth_user_created_event(unique_user_id2, unique_email2)
         with pytest.raises(ServiceError) as exc_info:
             self.client.post(
-                "/webhooks/clerk",
+                "/webhooks/nextauth",
                 data=json.dumps(event2),
                 headers={"Content-Type": "application/json"},
             )
@@ -715,17 +715,17 @@ class TestUserEmailCollision:
         # Create two users with unique emails
         unique_email1 = self._get_unique_email("first@gmail.com")
         unique_email2 = self._get_unique_email("second@gmail.com")
-        unique_user_id1 = self._get_unique_user_id("clerk_collision_test_4")
-        unique_user_id2 = self._get_unique_user_id("clerk_collision_test_5")
+        unique_user_id1 = self._get_unique_user_id("google_collision_test_4")
+        unique_user_id2 = self._get_unique_user_id("google_collision_test_5")
 
-        event1 = self._clerk_user_created_event(
+        event1 = self._auth_user_created_event(
             unique_user_id1, unique_email1, first_name="A", last_name="B"
         )
-        event2 = self._clerk_user_created_event(
+        event2 = self._auth_user_created_event(
             unique_user_id2, unique_email2, first_name="C", last_name="D"
         )
-        r1 = self.client.post("/webhooks/clerk", json=event1)
-        r2 = self.client.post("/webhooks/clerk", json=event2)
+        r1 = self.client.post("/webhooks/nextauth", json=event1)
+        r2 = self.client.post("/webhooks/nextauth", json=event2)
         assert r1.status_code == 200 and r2.status_code == 200
 
         # Try to update user2's email to collide with user1
@@ -741,7 +741,7 @@ class TestUserEmailCollision:
         }
         with pytest.raises(ServiceError) as exc_info:
             self.client.post(
-                "/webhooks/clerk",
+                "/webhooks/nextauth",
                 data=json.dumps(update_event),
                 headers={"Content-Type": "application/json"},
             )
@@ -760,14 +760,14 @@ class TestUserEmailCollision:
         mock_normalize_async.side_effect = mock_normalize_side_effect
 
         unique_email = self._get_unique_email("dot.user+foo@gmail.com")
-        unique_user_id = self._get_unique_user_id("clerk_collision_test_6")
-        event = self._clerk_user_created_event(
+        unique_user_id = self._get_unique_user_id("google_collision_test_6")
+        event = self._auth_user_created_event(
             unique_user_id,
             unique_email,
             first_name="Norm",
             last_name="Alized",
         )
-        resp = self.client.post("/webhooks/clerk", json=event)
+        resp = self.client.post("/webhooks/nextauth", json=event)
         assert resp.status_code == 200
 
         # Fetch user from DB to check normalized_email

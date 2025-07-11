@@ -30,8 +30,8 @@ from services.user.auth.service_auth import (
 )
 
 
-class TestClerkAuthentication:
-    """Test cases for Clerk JWT authentication."""
+class TestNextAuthAuthentication:
+    """Test cases for NextAuth JWT authentication."""
 
     def create_test_token(self, claims: dict = None, expired: bool = False):
         """Create a test JWT token for testing."""
@@ -39,7 +39,7 @@ class TestClerkAuthentication:
         base_time = 1640995200  # 2022-01-01 00:00:00 UTC
         default_claims = {
             "sub": "user_123",
-            "iss": "https://clerk.example.com",
+            "iss": "https://nextauth.example.com",
             "iat": base_time,
             "exp": base_time + (3600 if not expired else -3600),
             "email": "test@example.com",
@@ -64,14 +64,14 @@ class TestClerkAuthentication:
             mock_settings.jwt_verify_signature = False
             mock_decode.return_value = {
                 "sub": "user_123",
-                "iss": "https://clerk.example.com",
+                "iss": "https://nextauth.example.com",
                 "exp": base_time + 3600,
                 "iat": base_time,
             }
 
             result = await verify_jwt_token(token)
             assert result["sub"] == "user_123"
-            assert result["iss"] == "https://clerk.example.com"
+            assert result["iss"] == "https://nextauth.example.com"
 
     @pytest.mark.asyncio
     async def test_verify_jwt_token_expired(self):

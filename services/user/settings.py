@@ -58,20 +58,20 @@ class Settings(BaseSettings):
         description="Base64-encoded service salt for token encryption key derivation",
     )
 
-    # Clerk Configuration
-    clerk_secret_key: Optional[str] = Field(
-        default=None, description="Clerk secret key for JWT validation"
+    # NextAuth Configuration
+    nextauth_secret_key: Optional[str] = Field(
+        default=None, description="NextAuth secret key for JWT validation"
     )
-    clerk_webhook_secret: Optional[str] = Field(
-        default=None, description="Clerk webhook secret for signature verification"
+    nextauth_webhook_secret: Optional[str] = Field(
+        default=None, description="NextAuth webhook secret for signature verification"
     )
-    clerk_jwt_key: Optional[str] = Field(
+    nextauth_jwt_key: Optional[str] = Field(
         default=None,
-        description="Clerk JWKS public key for networkless JWT verification",
+        description="NextAuth JWKS public key for networkless JWT verification",
     )
     jwt_verify_signature: bool = Field(
         default=True,
-        description="Enable JWT signature verification (requires Clerk public key)",
+        description="Enable JWT signature verification (requires NextAuth public key)",
     )
 
     # Redis Configuration (for caching and background jobs)
