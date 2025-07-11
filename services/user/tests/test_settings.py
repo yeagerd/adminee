@@ -85,8 +85,6 @@ class TestSettings:
                 "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
                 "API_FRONTEND_USER_KEY": "test-api-key",
                 "TOKEN_ENCRYPTION_SALT": "test-salt",
-                "NEXTAUTH_SECRET_KEY": "test-nextauth-key",
-                "NEXTAUTH_WEBHOOK_SECRET": "test-webhook-secret",
             },
             clear=True,
         ):
@@ -94,8 +92,6 @@ class TestSettings:
 
             assert settings.api_frontend_user_key == "test-api-key"
             assert settings.token_encryption_salt == "test-salt"
-            assert settings.nextauth_secret_key == "test-nextauth-key"
-            assert settings.nextauth_webhook_secret == "test-webhook-secret"
 
     def test_oauth_provider_settings(self):
         """Test OAuth provider configuration."""
@@ -148,8 +144,6 @@ class TestSettings:
             settings = _TestableSettings()
 
             assert settings.token_encryption_salt is None
-            assert settings.nextauth_secret_key is None
-            assert settings.nextauth_webhook_secret is None
             assert settings.google_client_id is None
             assert settings.google_client_secret is None
             assert settings.azure_ad_client_id is None

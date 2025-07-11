@@ -19,7 +19,6 @@ from .service_auth import (
     require_service_auth,
     verify_service_authentication,
 )
-from .webhook_auth import WebhookSignatureVerifier, verify_webhook_signature
 
 __all__ = [
     # NextAuth authentication
@@ -34,7 +33,4 @@ __all__ = [
     "require_service_auth",
     "get_client_permissions",
     "client_has_permission",
-    # Webhook authentication
-    "WebhookSignatureVerifier",
-    "verify_webhook_signature",
 ]

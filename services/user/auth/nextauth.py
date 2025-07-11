@@ -100,36 +100,6 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
         raise AuthError("Token verification failed")
 
 
-async def get_user_from_nextauth(user_id: str) -> Optional[Dict]:
-    """
-    Retrieve user information from NextAuth.
-
-    In a real implementation, this would fetch user data from your user database
-    using the user_id (which comes from the 'sub' claim in the JWT).
-
-    Args:
-        user_id: NextAuth user ID (from 'sub' claim)
-
-    Returns:
-        User information dictionary or None if not found
-
-    Raises:
-        AuthError: If user retrieval fails
-    """
-    # In a real implementation, you would fetch the user from your database
-    # For example:
-    # from services.user.services.user_service import get_user_by_external_id
-    # return await get_user_by_external_id(user_id, "nextauth")
-
-    # For now, return a minimal user object with just the ID
-    return {
-        "id": user_id,
-        "email": f"{user_id}@example.com",  # Placeholder
-        "email_verified": True,
-        "name": f"User {user_id}",
-    }
-
-
 def extract_user_id_from_token(token_claims: Dict[str, str]) -> str:
     """
     Extract user ID ('sub' claim) from validated JWT token claims.
