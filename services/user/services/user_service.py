@@ -274,7 +274,10 @@ class UserService:
             )
 
     async def update_user_by_external_auth_id(
-        self, external_auth_id: str, user_data: UserUpdate, auth_provider: str = None
+        self,
+        external_auth_id: str,
+        user_data: UserUpdate,
+        auth_provider: Optional[str] = None,
     ) -> User:
         """
         Update an existing user by external auth ID.
@@ -371,7 +374,7 @@ class UserService:
         self,
         external_auth_id: str,
         onboarding_data: UserOnboardingUpdate,
-        auth_provider: str = None,
+        auth_provider: Optional[str] = None,
     ) -> User:
         """
         Update user onboarding status by external auth ID.
@@ -466,7 +469,7 @@ class UserService:
             )
 
     async def delete_user_by_external_auth_id(
-        self, external_auth_id: str, auth_provider: str = None
+        self, external_auth_id: str, auth_provider: Optional[str] = None
     ) -> UserDeleteResponse:
         """
         Delete (soft delete) a user by external auth ID.
@@ -635,7 +638,7 @@ class UserService:
         raise NotFoundError(resource="User", identifier=str(external_auth_id or ""))
 
     async def get_user_profile_by_external_auth_id(
-        self, external_auth_id: str, auth_provider: str = None
+        self, external_auth_id: str, auth_provider: Optional[str] = None
     ) -> UserResponse:
         """
         Get user profile response by external auth ID.
@@ -758,8 +761,8 @@ class UserService:
         try:
             detector = EmailCollisionDetector()
 
-            # Normalize the email using the existing collision detection utilities
-            normalized_email = await detector.normalize_email_async(email_request.email)
+            # Use fast local normalization (all normalization is now local and instant)
+            normalized_email = detector._simple_email_normalize(email_request.email)
 
             logger.info(
                 f"Resolving email {email_request.email} (normalized: {normalized_email}) to external_auth_id"

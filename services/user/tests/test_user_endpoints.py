@@ -693,22 +693,22 @@ class TestUserEmailCollision:
             )
         assert "An unexpected error occurred" in str(exc_info.value)
 
-    @patch("email_normalize.Normalizer.normalize")
+    @patch(
+        "services.user.utils.email_collision.EmailCollisionDetector._simple_email_normalize"
+    )
     def test_update_user_email_collision(self, mock_normalize):
         import json
 
         from services.common.http_errors import ServiceError
 
         # Mock email normalization
-        async def mock_normalize_side_effect(email):
-            mock_result = MagicMock()
+        def mock_normalize_side_effect(email):
             if "first" in email:
-                mock_result.normalized_address = "first@gmail.com"
+                return "first@gmail.com"
             elif "second" in email:
-                mock_result.normalized_address = "second@gmail.com"
+                return "second@gmail.com"
             else:
-                mock_result.normalized_address = email.lower()
-            return mock_result
+                return email.lower()
 
         mock_normalize.side_effect = mock_normalize_side_effect
 

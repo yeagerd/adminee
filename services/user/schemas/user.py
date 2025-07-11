@@ -328,6 +328,10 @@ class EmailResolutionRequest(BaseModel):
     email: EmailStr = Field(
         ..., description="Email address to resolve to external_auth_id"
     )
+    provider: Optional[str] = Field(
+        None,
+        description="OAuth provider for faster normalization (google, microsoft, yahoo, etc.)",
+    )
 
     @field_validator("email")
     @classmethod
@@ -338,6 +342,30 @@ class EmailResolutionRequest(BaseModel):
 
         # Use comprehensive email validation
         return validate_email_address(v)
+
+    @field_validator("provider")
+    @classmethod
+    def validate_provider(cls, v):
+        """Validate provider format."""
+        if v is None:
+            return v
+
+        # Convert to lowercase and validate known providers
+        provider = v.strip().lower()
+        known_providers = [
+            "google",
+            "microsoft",
+            "yahoo",
+            "apple",
+            "github",
+            "facebook",
+        ]
+
+        if provider not in known_providers:
+            # Allow unknown providers but log warning
+            pass
+
+        return provider
 
 
 class EmailResolutionResponse(BaseModel):

@@ -3,7 +3,7 @@
 Script to backfill normalized_email field for existing users.
 
 This script should be run after the database migration that adds the normalized_email column.
-It will populate the normalized_email field for all existing users using the email-normalize library.
+It will populate the normalized_email field for all existing users using fast local normalization rules.
 """
 
 import asyncio
