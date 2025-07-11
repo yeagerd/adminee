@@ -145,7 +145,7 @@ class TestDemoAuthentication:
             "external_auth_id": user_id,
             "email": email,
             "normalized_email": email.lower(),
-            "auth_provider": "nextauth",
+            "auth_provider": "google",
         }
 
         # Mock successful integrations check
@@ -192,7 +192,7 @@ class TestDemoAuthentication:
             assert len(resolution_calls) > 0
 
             # Verify JWT token was created with the correct user_id
-            mock_jwt.assert_called_once_with(user_id, email=email)
+            mock_jwt.assert_called_once_with(user_id, email=email, provider="google")
 
     @pytest.mark.asyncio
     async def test_authenticate_fails_if_user_creation_fails_and_user_doesnt_exist(
