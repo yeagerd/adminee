@@ -201,8 +201,8 @@ class TestEmailCollisionDB:
         # Use unique email to avoid conflicts with other tests
         unique_email = f"existing_{id(self)}_{uuid.uuid4().hex}@example.com"
         existing_user = User(
-            external_auth_id=f"clerk_collision_test_{id(self)}_{uuid.uuid4().hex}",
-            auth_provider="clerk",
+            external_auth_id=f"nextauth_collision_test_{id(self)}_{uuid.uuid4().hex}",
+            auth_provider="nextauth",
             email=unique_email,
             normalized_email=unique_email,
         )
@@ -247,8 +247,8 @@ class TestEmailCollisionDB:
         unique_email = f"existing_{id(self)}_{uuid.uuid4().hex}@example.com"
         existing_user = User(
             id=1,
-            external_auth_id=f"clerk_123_{uuid.uuid4().hex}",
-            auth_provider="clerk",
+            external_auth_id=f"nextauth_123_{uuid.uuid4().hex}",
+            auth_provider="nextauth",
             email=unique_email,
             normalized_email=unique_email,
         )

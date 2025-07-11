@@ -5,7 +5,7 @@ Provides NextAuth JWT validation, service-to-service authentication,
 and user authorization helpers.
 """
 
-from .nextauth import (  # Changed from .clerk
+from .nextauth import (
     get_current_user,
     get_current_user_with_claims,
     require_user_ownership,
@@ -22,7 +22,7 @@ from .service_auth import (
 from .webhook_auth import WebhookSignatureVerifier, verify_webhook_signature
 
 __all__ = [
-    # Clerk authentication
+    # NextAuth authentication
     "verify_jwt_token",
     "get_current_user",
     "get_current_user_with_claims",

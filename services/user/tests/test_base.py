@@ -24,7 +24,7 @@ class BaseUserManagementTest:
         os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite:///{self.db_path}"
         os.environ["TOKEN_ENCRYPTION_SALT"] = "dGVzdC1zYWx0LTE2Ynl0ZQ=="
         os.environ["API_FRONTEND_USER_KEY"] = "test-api-key"
-        os.environ["CLERK_SECRET_KEY"] = "test-clerk-key"
+        os.environ["NEXTAUTH_SECRET_KEY"] = "test-nextauth-key"
 
         # Optional environment variables with test defaults
         os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
