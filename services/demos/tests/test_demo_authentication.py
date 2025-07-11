@@ -164,15 +164,23 @@ class TestDemoAuthentication:
             mock_http_client = mock_client.return_value.__aenter__.return_value
 
             # Setup different responses for different endpoints
-            def side_effect(url, **kwargs):
-                if "/users/resolve-email" in url:
-                    # Email resolution endpoint
-                    return mock_resolution_response
-                elif "/integrations/" in url and "/webhooks/clerk" not in url:
-                    # Integrations status check
-                    return mock_integrations_response
-                else:
-                    return MagicMock(status_code=200)
+            def side_effect(*args, **kwargs):
+                # For GET requests, check the URL and params
+                if args:  # args[0] should be the URL
+                    url = str(args[0])
+                    params = kwargs.get("params", {})
+
+                    # Match the user lookup pattern: /users with email param
+                    if (
+                        "/users" in url
+                        and "/integrations" not in url
+                        and "email" in params
+                    ):
+                        return mock_resolution_response
+                    elif "/integrations" in url and "webhooks/clerk" not in url:
+                        return mock_integrations_response
+
+                return MagicMock(status_code=200)
 
             mock_http_client.get.side_effect = side_effect
             mock_http_client.post.side_effect = side_effect
@@ -183,13 +191,16 @@ class TestDemoAuthentication:
             # Should succeed
             assert result is True
 
-            # Verify email resolution was called
-            resolution_calls = [
+            # Verify email lookup was called
+            lookup_calls = [
                 call
-                for call in mock_http_client.post.call_args_list
-                if "/users/resolve-email" in str(call)
+                for call in mock_http_client.get.call_args_list
+                if len(call.args) > 0
+                and "/users" in str(call.args[0])
+                and "/integrations" not in str(call.args[0])
+                and call.kwargs.get("params", {}).get("email") == email
             ]
-            assert len(resolution_calls) > 0
+            assert len(lookup_calls) > 0
 
             # Verify JWT token was created with the correct user_id
             mock_jwt.assert_called_once_with(user_id, email=email, provider="google")

@@ -21,7 +21,6 @@ from services.common.http_errors import (
 from services.user.auth import get_current_user
 from services.user.schemas.user import (
     EmailResolutionRequest,
-    EmailResolutionResponse,
     UserCreate,
     UserDeleteResponse,
     UserListResponse,
@@ -283,6 +282,74 @@ async def update_user_onboarding(
         raise ServiceError(message="Failed to update onboarding")
 
 
+@router.get(
+    "/",
+    response_model=UserResponse,
+    summary="Get user by email lookup",
+    description="Find a user by exact email address match. Returns 404 if user doesn't exist. Clean RESTful design that abstracts internal email normalization.",
+    responses={
+        200: {"description": "User found"},
+        404: {"description": "User not found"},
+        422: {"description": "Invalid email format or validation error"},
+    },
+)
+async def get_user_by_email(
+    email: str = Query(..., description="Email address to lookup"),
+    provider: Optional[str] = Query(
+        None, description="OAuth provider (google, microsoft, etc.)"
+    ),
+) -> UserResponse:
+    """
+    Get user by exact email lookup.
+
+    This endpoint provides a clean RESTful way to find users by email address
+    without exposing internal email normalization implementation details.
+    Perfect for NextAuth integration where you need to check user existence
+    before deciding whether to create a new user.
+
+    Args:
+        email: Email address to lookup
+        provider: OAuth provider for context (optional)
+
+    Returns:
+        UserResponse if user found
+
+    Raises:
+        404: If no user found for the email
+        422: If email format is invalid
+    """
+    try:
+        # Create email resolution request (reusing existing internal logic)
+        email_request = EmailResolutionRequest(email=email, provider=provider)
+
+        # Use existing resolution service (abstracts normalization)
+        resolution_result = await get_user_service().resolve_email_to_user_id(
+            email_request
+        )
+
+        # Get full user data to return
+        user = await get_user_service().get_user_by_external_auth_id_auto_detect(
+            resolution_result.external_auth_id
+        )
+
+        user_response = UserResponse.from_orm(user)
+
+        logger.info(
+            f"Successfully found user for email {email} with provider {provider}: {user.external_auth_id}"
+        )
+        return user_response
+
+    except NotFoundError as e:
+        logger.info(f"User lookup failed - no user found for email {email}")
+        raise e
+    except ValidationError as e:
+        logger.warning(f"User lookup failed - validation error: {e.message}")
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error during user lookup: {e}")
+        raise ServiceError(message="Failed to lookup user")
+
+
 @router.post(
     "/",
     response_model=UserResponse,
@@ -347,54 +414,6 @@ async def create_or_upsert_user(user_data: UserCreate):
     except Exception as e:
         logger.error(f"Unexpected error in create_or_upsert_user: {e}")
         raise ServiceError(message="Failed to create or retrieve user")
-
-
-@router.post(
-    "/resolve-email",
-    response_model=EmailResolutionResponse,
-    summary="Resolve email to external_auth_id",
-    description="Resolve an email address to the corresponding external_auth_id using email normalization. Handles provider-specific email formats transparently.",
-    responses={
-        200: {"description": "Email resolved successfully"},
-        404: {"description": "No user found for the provided email"},
-        422: {"description": "Invalid email format or validation error"},
-        500: {"description": "Internal server error during resolution"},
-    },
-)
-async def resolve_email_to_user_id(
-    email_request: EmailResolutionRequest,
-) -> EmailResolutionResponse:
-    """
-    Resolve email address to external_auth_id.
-
-    This endpoint handles email normalization internally, supporting:
-    - Gmail dot and plus addressing normalization
-    - Yahoo dot and plus addressing normalization
-    - Outlook/Hotmail plus addressing normalization
-    - Basic normalization for other providers
-
-    The response includes both the original email from the database
-    and the normalized email used for resolution.
-    """
-    try:
-        resolution_result = await get_user_service().resolve_email_to_user_id(
-            email_request
-        )
-
-        logger.info(
-            f"Successfully resolved email {email_request.email} to external_auth_id {resolution_result.external_auth_id}"
-        )
-        return resolution_result
-
-    except NotFoundError as e:
-        logger.warning(f"Email resolution failed - user not found: {e.message}")
-        raise e
-    except ValidationError as e:
-        logger.warning(f"Email resolution failed - validation error: {e.message}")
-        raise e
-    except Exception as e:
-        logger.error(f"Unexpected error during email resolution: {e}")
-        raise ServiceError(message="Failed to resolve email address")
 
 
 @router.get(

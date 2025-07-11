@@ -659,20 +659,19 @@ class FullDemo:
             external_auth_id if found, None otherwise
         """
         try:
-            # Include provider in the request for faster normalization
-            request_data = {"email": email}
+            # Use the new RESTful lookup endpoint
+            params = {"email": email}
             if self.preferred_provider:
-                request_data["provider"] = self.preferred_provider
+                params["provider"] = self.preferred_provider
 
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(
-                    f"{self.user_client.base_url}/users/resolve-email",
-                    json=request_data,
-                    headers={"Content-Type": "application/json"},
+                response = await client.get(
+                    f"{self.user_client.base_url}/users",
+                    params=params,
                 )
 
-                if response.status_code in [200, 201]:
-                    # Handle both 200 (existing user found) and 201 (new user created)
+                if response.status_code == 200:
+                    # User found - extract external_auth_id from full user response
                     data = response.json()
                     external_auth_id = data.get("external_auth_id")
                     auth_provider = data.get("auth_provider")
