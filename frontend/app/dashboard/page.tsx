@@ -1,9 +1,9 @@
 'use client';
 
 import ChatInterface from '@/components/chat-interface';
+import Navbar from '@/components/navbar';
 import ScheduleList from '@/components/schedule-list';
 import TaskList from '@/components/task-list';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -86,17 +86,9 @@ export default function DashboardPage() {
     const hasGoogleIntegration = activeIntegrations.some(i => i.provider === 'google');
     const hasMicrosoftIntegration = activeIntegrations.some(i => i.provider === 'microsoft');
 
-    const userInitials = session.user?.name
-        ? session.user.name
-            .split(' ')
-            .map((n: any) => n[0])
-            .join('')
-            .toUpperCase()
-            .slice(0, 2)
-        : session.user?.email?.[0]?.toUpperCase() || 'U';
-
     return (
         <div className="min-h-screen bg-gray-50">
+            <Navbar />
             <div className="container mx-auto px-4 py-6 w-full max-w-7xl">
                 {/* Welcome Header */}
                 <div className="mb-6">
@@ -106,12 +98,6 @@ export default function DashboardPage() {
                                 Welcome back, {session.user?.name?.split(' ')[0] || 'User'}!
                             </h1>
                             <p className="text-gray-600 mt-1">{formattedDate}</p>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <Avatar className="h-10 w-10">
-                                <AvatarImage src={session.user?.image || ''} />
-                                <AvatarFallback>{userInitials}</AvatarFallback>
-                            </Avatar>
                         </div>
                     </div>
                 </div>
