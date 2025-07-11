@@ -21,11 +21,11 @@ This task list addresses the areas for improvement identified in the code review
   - [x] 3.3 Remove unused imports from `services/office/core/exceptions.py` references
   - [x] 3.4 Update any remaining legacy exception usages to use common exceptions
 
-- [ ] 4. Standardize Error Code Naming
-  - [ ] 4.1 Review all error codes across services for consistent naming convention
-  - [ ] 4.2 Create error code naming guidelines (e.g., ALL_CAPS with underscores)
-  - [ ] 4.3 Update any inconsistent error codes to follow the standard pattern
-  - [ ] 4.4 Document the error code taxonomy and usage patterns
+- [x] 4. Standardize Error Code Naming
+  - [x] 4.1 Review all error codes across services for consistent naming convention
+  - [x] 4.2 Create error code naming guidelines (e.g., ALL_CAPS with underscores)
+  - [x] 4.3 Update any inconsistent error codes to follow the standard pattern
+  - [x] 4.4 Document the error code taxonomy and usage patterns
 
 - [ ] 5. Improve Documentation and Code Quality
   - [ ] 5.1 Add comprehensive docstrings to all exception classes in `services/common/http_errors.py`

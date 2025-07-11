@@ -7,14 +7,103 @@ Provides:
 - Shared error response model
 - Utility to convert exceptions to error responses
 - (Optional) FastAPI exception handler registration
+
+Error Code Naming Guidelines:
+============================
+1. Use ALL_CAPS with underscores for separating words
+2. Prefer specific descriptive names over generic suffixes
+3. Provider-specific codes follow pattern: {PROVIDER}_{SPECIFIC_ERROR}
+4. Common patterns:
+   - Authentication: {PROVIDER}_AUTH_FAILED, {PROVIDER}_TOKEN_EXPIRED
+   - Authorization: {PROVIDER}_ACCESS_DENIED, {PROVIDER}_INSUFFICIENT_PERMISSIONS
+   - Rate Limiting: {PROVIDER}_RATE_LIMITED, {PROVIDER}_QUOTA_EXCEEDED
+   - API Errors: {PROVIDER}_API_ERROR, {PROVIDER}_SERVICE_ERROR
+   - Validation: VALIDATION_FAILED, INVALID_{FIELD}
+   - Resources: NOT_FOUND, ALREADY_EXISTS
+   - Service: SERVICE_UNAVAILABLE, INTERNAL_ERROR
+
+Error Code Taxonomy:
+===================
+- VALIDATION_* : Input validation errors (422)
+- AUTH_* : Authentication errors (401) 
+- ACCESS_* : Authorization/permission errors (403)
+- NOT_FOUND : Resource not found (404)
+- RATE_LIMITED : Rate limiting (429)
+- SERVICE_* : Internal service errors (5xx)
+- PROVIDER_* : External provider integration errors (502)
+- GOOGLE_* : Google API specific errors
+- MICROSOFT_* : Microsoft API specific errors
 """
 
 import uuid
 from datetime import datetime, timezone
+from enum import Enum
 from typing import Any, Dict, Optional
 
 from fastapi import HTTPException
 from pydantic import BaseModel
+
+
+class ErrorCode(str, Enum):
+    """Standardized error codes for all Briefly services."""
+    
+    # General errors
+    VALIDATION_FAILED = "VALIDATION_FAILED"
+    NOT_FOUND = "NOT_FOUND"
+    ALREADY_EXISTS = "ALREADY_EXISTS"
+    INTERNAL_ERROR = "INTERNAL_ERROR"
+    
+    # Authentication and authorization
+    AUTH_FAILED = "AUTH_FAILED"
+    TOKEN_EXPIRED = "TOKEN_EXPIRED"
+    TOKEN_INVALID = "TOKEN_INVALID"
+    ACCESS_DENIED = "ACCESS_DENIED"
+    INSUFFICIENT_PERMISSIONS = "INSUFFICIENT_PERMISSIONS"
+    
+    # Rate limiting
+    RATE_LIMITED = "RATE_LIMITED"
+    QUOTA_EXCEEDED = "QUOTA_EXCEEDED"
+    
+    # Service errors
+    SERVICE_UNAVAILABLE = "SERVICE_UNAVAILABLE"
+    SERVICE_ERROR = "SERVICE_ERROR"
+    DATABASE_ERROR = "DATABASE_ERROR"
+    
+    # Provider errors (generic)
+    PROVIDER_ERROR = "PROVIDER_ERROR"
+    PROVIDER_UNAVAILABLE = "PROVIDER_UNAVAILABLE"
+    
+    # Google-specific errors
+    GOOGLE_AUTH_FAILED = "GOOGLE_AUTH_FAILED"
+    GOOGLE_TOKEN_EXPIRED = "GOOGLE_TOKEN_EXPIRED"
+    GOOGLE_INSUFFICIENT_SCOPES = "GOOGLE_INSUFFICIENT_SCOPES"
+    GOOGLE_AUTH_ERROR = "GOOGLE_AUTH_ERROR"
+    GOOGLE_INSUFFICIENT_PERMISSIONS = "GOOGLE_INSUFFICIENT_PERMISSIONS"
+    GOOGLE_QUOTA_EXCEEDED = "GOOGLE_QUOTA_EXCEEDED"
+    GOOGLE_ACCESS_DENIED = "GOOGLE_ACCESS_DENIED"
+    GOOGLE_RATE_LIMITED = "GOOGLE_RATE_LIMITED"
+    GOOGLE_SERVICE_ERROR = "GOOGLE_SERVICE_ERROR"
+    GOOGLE_API_ERROR = "GOOGLE_API_ERROR"
+    
+    # Microsoft-specific errors
+    MICROSOFT_TOKEN_MALFORMED = "MICROSOFT_TOKEN_MALFORMED"
+    MICROSOFT_TOKEN_EXPIRED = "MICROSOFT_TOKEN_EXPIRED"
+    MICROSOFT_TOKEN_NOT_YET_VALID = "MICROSOFT_TOKEN_NOT_YET_VALID"
+    MICROSOFT_TOKEN_SIGNATURE_INVALID = "MICROSOFT_TOKEN_SIGNATURE_INVALID"
+    MICROSOFT_TOKEN_AUDIENCE_INVALID = "MICROSOFT_TOKEN_AUDIENCE_INVALID"
+    MICROSOFT_TOKEN_ISSUER_INVALID = "MICROSOFT_TOKEN_ISSUER_INVALID"
+    MICROSOFT_AUTH_FAILED = "MICROSOFT_AUTH_FAILED"
+    MICROSOFT_UNAUTHORIZED = "MICROSOFT_UNAUTHORIZED"
+    MICROSOFT_TOKEN_NOT_FOUND = "MICROSOFT_TOKEN_NOT_FOUND"
+    MICROSOFT_TOKEN_FORMAT_INVALID = "MICROSOFT_TOKEN_FORMAT_INVALID"
+    MICROSOFT_AUTH_ERROR = "MICROSOFT_AUTH_ERROR"
+    MICROSOFT_ACCESS_FORBIDDEN = "MICROSOFT_ACCESS_FORBIDDEN"
+    MICROSOFT_INSUFFICIENT_PERMISSIONS = "MICROSOFT_INSUFFICIENT_PERMISSIONS"
+    MICROSOFT_APP_PERMISSIONS_REQUIRED = "MICROSOFT_APP_PERMISSIONS_REQUIRED"
+    MICROSOFT_ACCESS_DENIED = "MICROSOFT_ACCESS_DENIED"
+    MICROSOFT_RATE_LIMITED = "MICROSOFT_RATE_LIMITED"
+    MICROSOFT_SERVICE_ERROR = "MICROSOFT_SERVICE_ERROR"
+    MICROSOFT_API_ERROR = "MICROSOFT_API_ERROR"
 
 
 # Shared error response model (Pydantic)
@@ -34,7 +123,7 @@ class BrieflyAPIException(Exception):
         message: str,
         details: Optional[Dict[str, Any]] = None,
         error_type: str = "internal_error",
-        error_code: Optional[str] = None,
+        error_code: Optional[ErrorCode] = None,
         status_code: int = 500,
         request_id: Optional[str] = None,
     ):
@@ -51,7 +140,7 @@ class BrieflyAPIException(Exception):
         """Convert exception to ErrorResponse Pydantic model."""
         details = {
             **self.details,
-            **({"code": self.error_code} if self.error_code else {}),
+            **({"code": self.error_code.value} if self.error_code else {}),
         }
         return ErrorResponse(
             type=self.error_type,
@@ -80,7 +169,7 @@ class ValidationError(BrieflyAPIException):
             message=message,
             details=validation_details,
             error_type="validation_error",
-            error_code="VALIDATION_FAILED",
+            error_code=ErrorCode.VALIDATION_FAILED,
             status_code=422,
         )
         self.field = field
@@ -107,7 +196,7 @@ class NotFoundError(BrieflyAPIException):
             message=message,
             details=notfound_details,
             error_type="not_found",
-            error_code="NOT_FOUND",
+            error_code=ErrorCode.NOT_FOUND,
             status_code=404,
         )
         self.resource = resource
@@ -119,7 +208,7 @@ class AuthError(BrieflyAPIException):
         self,
         message: str,
         details: Optional[Dict[str, Any]] = None,
-        code: str = "AUTH_FAILED",
+        code: ErrorCode = ErrorCode.AUTH_FAILED,
         status_code: int = 401,
     ):
         super().__init__(
@@ -136,7 +225,7 @@ class ServiceError(BrieflyAPIException):
         self,
         message: str,
         details: Optional[Dict[str, Any]] = None,
-        code: str = "SERVICE_ERROR",
+        code: ErrorCode = ErrorCode.SERVICE_ERROR,
         status_code: int = 502,
     ):
         super().__init__(
@@ -154,7 +243,7 @@ class ProviderError(BrieflyAPIException):
         message: str,
         provider: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
-        code: str = "PROVIDER_ERROR",
+        code: ErrorCode = ErrorCode.PROVIDER_ERROR,
         status_code: int = 502,
         response_body: Optional[str] = None,
         retry_after: Optional[int] = None,
@@ -184,7 +273,7 @@ class RateLimitError(BrieflyAPIException):
         message: str,
         retry_after: Optional[int] = None,
         details: Optional[Dict[str, Any]] = None,
-        code: str = "RATE_LIMITED",
+        code: ErrorCode = ErrorCode.RATE_LIMITED,
         status_code: int = 429,
     ):
         rate_details = details or {}
