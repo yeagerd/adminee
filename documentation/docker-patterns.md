@@ -44,9 +44,9 @@ substitutions:
   _CLERK_SECRET_KEY: '${_CLERK_SECRET_KEY}'
 availableSecrets:
   secretManager:
-  - versionName: projects/$PROJECT_ID/secrets/clerk-publishable-key/versions/latest
+  - versionName: projects/$PROJECT_ID/secrets/nextauth-publishable-key/versions/latest
     env: '_CLERK_PUBLISHABLE_KEY'
-  - versionName: projects/$PROJECT_ID/secrets/clerk-secret-key/versions/latest
+  - versionName: projects/$PROJECT_ID/secrets/nextauth-secret-key/versions/latest
     env: '_CLERK_SECRET_KEY'
 ```
 
@@ -104,7 +104,7 @@ def get_secret(secret_id: str) -> str:
 
 # Usage in settings
 DB_URL_USER_MANAGEMENT = get_secret("db-url-user-management")
-CLERK_SECRET_KEY = get_secret("clerk-secret-key")
+NEXTAUTH_SECRET_KEY = get_secret("nextauth-secret-key")
 ```
 
 **Option 2: Cloud Run Secret Mounts**
@@ -133,17 +133,17 @@ spec:
 ### Creating Secrets
 ```bash
 # Create secrets in Secret Manager
-gcloud secrets create clerk-publishable-key --data-file=-
-gcloud secrets create clerk-secret-key --data-file=-
+gcloud secrets create nextauth-publishable-key --data-file=-
+gcloud secrets create nextauth-secret-key --data-file=-
 gcloud secrets create db-url-user-management --data-file=-
 gcloud secrets create redis-url --data-file=-
 
 # Grant access to Cloud Build and Cloud Run
-gcloud secrets add-iam-policy-binding clerk-publishable-key \
+gcloud secrets add-iam-policy-binding nextauth-publishable-key \
     --member="serviceAccount:${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com" \
     --role="roles/secretmanager.secretAccessor"
 
-gcloud secrets add-iam-policy-binding clerk-secret-key \
+gcloud secrets add-iam-policy-binding nextauth-secret-key \
     --member="serviceAccount:${CLOUD_RUN_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
     --role="roles/secretmanager.secretAccessor"
 ```
@@ -201,7 +201,7 @@ gcloud builds submit --config=cloudbuild.yaml
 # Cloud Run with secret mounts
 gcloud run deploy briefly-frontend \
   --image=gcr.io/$PROJECT_ID/frontend \
-  --update-secrets=CLERK_SECRET_KEY=clerk-secret-key:latest
+  --update-secrets=NEXTAUTH_SECRET_KEY=nextauth-secret-key:latest
 
 gcloud run deploy briefly-user-service \
   --image=gcr.io/$PROJECT_ID/user-service \
@@ -234,10 +234,10 @@ class Settings:
         # Use Secret Manager in production, env vars locally
         if self.environment == 'production':
             self.db_url = get_secret('db-url-user-management')
-            self.clerk_secret = get_secret('clerk-secret-key')
+            self.nextauth_secret = get_secret('nextauth-secret-key')
         else:
             self.db_url = os.getenv('DB_URL_USER_MANAGEMENT')
-            self.clerk_secret = os.getenv('CLERK_SECRET_KEY')
+            self.nextauth_secret = os.getenv('NEXTAUTH_SECRET_KEY')
 ```
 
 ## Testing

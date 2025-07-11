@@ -80,7 +80,7 @@
     - [x] 1.9.7 Update `services/auth-service/index.js` to expose API endpoints for managing `calendarProvider` and `userSettings` (timezone, email preferences) in the User model.
 
 - [x] 2. Implement Authentication and Microsoft Graph API Integration
-  - [x] 2.1 Set up Clerk for auth / accounts using the instructions in `tasks/clerk-install.md`
+  - [x] 2.1 Set up NextAuth for auth / accounts using the instructions in `tasks/nextauth-install.md`
   - [x] 2.2 Configure Microsoft OAuth (as a social connection) in Clerk and request necessary Graph API scopes
   - [x] 2.3 Implement token management for Microsoft Graph API (retrieving tokens via Clerk)
   - [x] 2.4 Create API client for Microsoft Graph interactions
