@@ -115,12 +115,12 @@ export const authOptions: NextAuthOptions = {
                     throw new Error(`Failed to fetch user from user service: ${getRes.status} ${errorText}`);
                 }
 
-                // 3. Attach internal user ID to user object for session/jwt
-                if (!backendUser || !backendUser.id) {
-                    throw new Error('User service did not return a valid user with ID');
+                // 3. Attach external auth ID to user object for session/jwt
+                if (!backendUser || !backendUser.external_auth_id) {
+                    throw new Error('User service did not return a valid user with external_auth_id');
                 }
 
-                user.id = backendUser.id;
+                user.id = backendUser.external_auth_id;
                 console.log('BFF Debug - Set user.id to:', user.id);
 
             } catch (error) {
@@ -155,7 +155,7 @@ export const authOptions: NextAuthOptions = {
                 if (token.internalUserId) {
                     const customToken = jwt.sign(
                         {
-                            sub: token.internalUserId,
+                            sub: String(token.internalUserId), // Ensure it's a string
                             iss: 'nextauth-frontend',
                             aud: 'briefly-backend',
                             email: session.user?.email,
