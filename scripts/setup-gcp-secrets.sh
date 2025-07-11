@@ -87,8 +87,6 @@ create_secrets() {
     
     # List of secrets to create
     declare -a secrets=(
-        "clerk-publishable-key"
-        "clerk-secret-key"
         "nextauth-url"
         "nextauth-secret"
         "azure-ad-client-id"
@@ -126,8 +124,6 @@ setup_cloudbuild_permissions() {
     
     # Grant Cloud Build service account access to secrets
     declare -a build_secrets=(
-        "clerk-publishable-key"
-        "clerk-secret-key"
         "nextauth-url"
         "nextauth-secret"
         "azure-ad-client-id"
@@ -155,7 +151,6 @@ setup_cloudrun_permissions() {
         "db-url-chat"
         "redis-url"
         "token-encryption-salt"
-        "clerk-secret-key"
         "openai-api-key"
         "pinecone-api-key"
         "pinecone-environment"
@@ -177,10 +172,6 @@ create_sample_env() {
     cat > .env.gcp.sample << 'EOF'
 # GCP Secret Manager Configuration
 # Copy this file to .env.gcp and fill in your actual values
-
-# Clerk Authentication
-CLERK_PUBLISHABLE_KEY=pk_test_your_publishable_key_here
-CLERK_SECRET_KEY=sk_test_your_secret_key_here
 
 # NextAuth Configuration
 NEXTAUTH_URL=https://your-domain.com

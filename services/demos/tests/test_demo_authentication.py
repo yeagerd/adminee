@@ -133,7 +133,7 @@ class TestDemoAuthentication:
         but the demo continued, leading to 404 errors when accessing preferences.
         """
         email = "integration_test@example.com"
-        user_id = f"user_{email.replace('@', '_').replace('.', '_')}"
+        user_id = f"nextauth_{email.replace('@', '_').replace('.', '_')}"
 
         # Mock services as available
         demo_instance.services_available = {"user": True, "chat": True, "office": True}
@@ -162,7 +162,7 @@ class TestDemoAuthentication:
 
         with (
             patch("httpx.AsyncClient") as mock_client,
-            patch("services.demos.chat.create_bearer_token") as mock_jwt,
+            patch("services.demos.chat.create_nextauth_jwt_for_demo") as mock_jwt,
         ):
 
             mock_jwt.return_value = "mock_jwt_token"
@@ -200,7 +200,7 @@ class TestDemoAuthentication:
             assert len(create_calls) > 0
 
             # Verify JWT token was created with the correct user_id
-            mock_jwt.assert_called_once_with(user_id, email)
+            mock_jwt.assert_called_once_with(user_id, email=email)
 
             # Verify user client has token
             assert demo_instance.user_client.auth_token == "mock_jwt_token"
@@ -227,7 +227,7 @@ class TestDemoAuthentication:
         # Mock failed integrations check (user doesn't exist)
         with (
             patch("httpx.AsyncClient") as mock_client,
-            patch("services.demos.chat.create_bearer_token") as mock_jwt,
+            patch("services.demos.chat.create_nextauth_jwt_for_demo") as mock_jwt,
         ):
 
             mock_jwt.return_value = "mock_jwt_token"

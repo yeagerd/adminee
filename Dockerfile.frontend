@@ -6,7 +6,6 @@ FROM node:18-alpine AS base
 # Set working directory
 WORKDIR /app
 
-# Clerk references removed - now using NextAuth
 # NextAuth configuration is handled at runtime through environment variables
 
 # Copy package files and install dependencies

@@ -7,17 +7,17 @@
     *   `(onboarding)`: For the user onboarding flow.
     *   `(main)`: For the main application experience post-login/onboarding (dashboard, settings).
     *   `(public)`: For public-facing pages like a landing page, if needed in the future.
-*   **Middleware:** `src/middleware.ts` (leveraging Clerk.js) will be crucial for protecting routes and redirecting users based on their authentication and onboarding status.
+*   **Middleware:** `src/middleware.ts` (leveraging NextAuth.js) will be crucial for protecting routes and redirecting users based on their authentication and onboarding status.
 
 ## 2. Navigation Flow
 
 *   **Unauthenticated User (New or Logged Out):**
     1.  Accesses the site (e.g., root `/` or `/dashboard`).
-    2.  Middleware intercepts and redirects to `/login` (or your Clerk sign-in page).
-    3.  User signs in/signs up via Clerk.
+    2.  Middleware intercepts and redirects to `/login` (or your NextAuth sign-in page).
+    3.  User signs in/signs up via NextAuth.
 
 *   **Authenticated User - Needs Onboarding:**
-    1.  After successful login, Clerk redirects back to the app.
+    1.  After successful login, NextAuth redirects back to the app.
     2.  Middleware checks if the user has completed onboarding.
     3.  If onboarding is not complete, redirect to `/onboarding`.
     4.  User completes the onboarding steps. Onboarding might involve setting initial preferences, connecting their calendar provider, etc.
@@ -39,7 +39,7 @@ frontend/src/
 │   ├── (auth)/                // Authentication-related routes
 │   │   ├── login/
 │   │   │   └── page.tsx
-│   │   ├── sign-up/           // Example, if using Clerk's hosted pages, these might not be custom
+│   │   ├── sign-up/           // Example, if using NextAuth's hosted pages, these might not be custom
 │   │   │   └── page.tsx
 │   │   └── layout.tsx         // Optional: Layout specific to auth pages
 │   ├── (onboarding)/          // Onboarding flow
@@ -65,17 +65,17 @@ frontend/src/
 ## 4. Key Files & Responsibilities
 
 *   **`src/middleware.ts`:**
-    *   Uses `@clerk/nextjs/server` `authMiddleware`.
+    *   Uses NextAuth.js middleware.
     *   Define `publicRoutes` (e.g., `/`, `/login`, `/sign-up`, API routes if any are public).
-    *   Define `afterAuth` logic:
-        *   If user is authenticated and onboarding is not complete (this check might involve fetching a flag from your DB via an API route or using Clerk's user metadata if onboarding status is stored there), redirect to `/onboarding`.
+    *   Define logic:
+        *   If user is authenticated and onboarding is not complete (this check might involve fetching a flag from your DB via an API route or using NextAuth's user metadata if onboarding status is stored there), redirect to `/onboarding`.
         *   If user is authenticated and onboarding is complete, allow access to main app routes. If they land on `/login` or `/onboarding`, redirect to `/dashboard`.
         *   If user is not authenticated and trying to access a protected route, redirect to `/login`.
 
 *   **`src/app/(main)/layout.tsx`:**
     *   This will be the primary layout for the authenticated and onboarded user experience.
     *   It should include common UI elements like a navigation bar (e.g., `MainNav.tsx`), sidebar, and footer.
-    *   It will fetch user data if necessary (e.g., using `currentUser` from Clerk).
+    *   It will fetch user data if necessary (e.g., using `getSession` from NextAuth).
 
 *   **`src/app/(onboarding)/layout.tsx`:**
     *   A simpler layout, perhaps without the full app navigation, focused on the onboarding steps.

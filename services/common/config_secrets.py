@@ -159,16 +159,6 @@ def get_database_url(service_name: str = "user_management") -> str:
     return get_secret(secret_key)
 
 
-def get_clerk_secret_key() -> str:
-    """Get the Clerk secret key."""
-    return get_secret("CLERK_SECRET_KEY")
-
-
-def get_clerk_publishable_key() -> str:
-    """Get the Clerk publishable key."""
-    return get_secret("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY")
-
-
 def get_redis_url() -> str:
     """Get the Redis URL."""
     return get_secret("REDIS_URL", "redis://redis:6379")
