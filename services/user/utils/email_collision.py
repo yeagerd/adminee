@@ -173,7 +173,7 @@ class EmailCollisionDetector:
                     "email_info": {
                         "original": email,
                         "normalized": normalized_email,
-                        "provider": self._get_email_provider(normalized_email),
+                        "domain": self._get_email_domain(normalized_email),
                     },
                 }
             else:
@@ -188,7 +188,7 @@ class EmailCollisionDetector:
                     "email_info": {
                         "original": email,
                         "normalized": normalized_email,
-                        "provider": self._get_email_provider(normalized_email),
+                        "domain": self._get_email_domain(normalized_email),
                     },
                 }
         except Exception as e:
@@ -217,7 +217,7 @@ class EmailCollisionDetector:
             return {
                 "original_email": email,
                 "normalized_email": normalized_email,
-                "mailbox_provider": self._get_email_provider(normalized_email),
+                "mailbox_domain": self._get_email_domain(normalized_email),
                 "mx_records": [],
                 "is_valid": True,
             }
@@ -225,7 +225,7 @@ class EmailCollisionDetector:
             return {
                 "original_email": email,
                 "normalized_email": email.strip().lower(),
-                "mailbox_provider": "unknown",
+                "mailbox_domain": "unknown",
                 "mx_records": [],
                 "is_valid": False,
                 "error": str(e),
@@ -284,32 +284,21 @@ class EmailCollisionDetector:
 
         return f"{local}@{domain}"
 
-    def _get_email_provider(self, email: str) -> str:
+    def _get_email_domain(self, email: str) -> str:
         """
-        Extract email provider from email address.
+        Extract domain from email address.
 
         Args:
             email: Email address
 
         Returns:
-            str: Email provider (e.g., 'gmail', 'outlook', etc.)
+            str: Email domain (e.g., 'gmail.com', 'company.com', etc.)
         """
         if not email or "@" not in email:
             return "unknown"
 
         domain = email.split("@")[1].lower()
-
-        # Common providers
-        if "gmail.com" in domain or "googlemail.com" in domain:
-            return "gmail"
-        elif "outlook.com" in domain or "hotmail.com" in domain:
-            return "outlook"
-        elif "yahoo.com" in domain:
-            return "yahoo"
-        elif "icloud.com" in domain or "me.com" in domain:
-            return "icloud"
-        else:
-            return domain
+        return domain
 
 
 # Global instance for easy access

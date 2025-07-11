@@ -150,20 +150,20 @@ class TestEmailNormalization:
             result = self.detector.normalize_email_by_provider(input_email, provider)
             assert result == expected
 
-    def test_get_email_provider(self):
+    def test_get_email_domain(self):
         test_cases = [
-            ("user@gmail.com", "gmail"),
-            ("user@googlemail.com", "gmail"),
-            ("user@outlook.com", "outlook"),
-            ("user@hotmail.com", "outlook"),
-            ("user@yahoo.com", "yahoo"),
-            ("user@icloud.com", "icloud"),
-            ("user@me.com", "icloud"),
+            ("user@gmail.com", "gmail.com"),
+            ("user@googlemail.com", "googlemail.com"),
+            ("user@outlook.com", "outlook.com"),
+            ("user@hotmail.com", "hotmail.com"),
+            ("user@yahoo.com", "yahoo.com"),
+            ("user@icloud.com", "icloud.com"),
+            ("user@me.com", "me.com"),
             ("user@company.com", "company.com"),
             ("invalid-email", "unknown"),
         ]
         for input_email, expected in test_cases:
-            result = self.detector._get_email_provider(input_email)
+            result = self.detector._get_email_domain(input_email)
             assert result == expected
 
 
@@ -265,11 +265,11 @@ class TestEmailCollisionDB:
     @pytest.mark.asyncio
     async def test_get_email_info_valid_email(self, db_setup, detector_fixture):
         detector = detector_fixture
-        # get_email_info now provides real provider detection using local rules
+        # get_email_info now provides domain extraction instead of provider detection
         result = await detector.get_email_info("user+work@gmail.com")
         assert result["original_email"] == "user+work@gmail.com"
         assert result["normalized_email"] == "user@gmail.com"  # Gmail normalization
-        assert result["mailbox_provider"] == "gmail"  # Detected from domain
+        assert result["mailbox_domain"] == "gmail.com"  # Domain extracted from email
         assert result["is_valid"] is True
 
     @pytest.mark.asyncio
@@ -284,7 +284,7 @@ class TestEmailCollisionDB:
             assert (
                 result["normalized_email"] == "invalid-email"
             )  # Falls back to basic strip().lower()
-            assert result["mailbox_provider"] == "unknown"
+            assert result["mailbox_domain"] == "unknown"
             assert result["is_valid"] is False
             assert "error" in result
 
