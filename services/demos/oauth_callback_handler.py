@@ -45,13 +45,13 @@ class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
         # Store the captured data
         self.captured_data.update(
             {
-                "code": code,
-                "state": state,
-                "error": error,
-                "error_description": error_description,
+                "code": code or "",
+                "state": state or "",
+                "error": error or "",
+                "error_description": error_description or "",
                 "timestamp": datetime.now().isoformat(),
                 "path": self.path,
-                "query_params": query_params,
+                "query_params": str(query_params),
             }
         )
 
@@ -66,13 +66,14 @@ class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
     def send_success_response(self, code: str, state: Optional[str]):
         """Send success response for OAuth callback."""
         self.send_response(200)
-        self.send_header("Content-type", "text/html")
+        self.send_header("Content-type", "text/html; charset=utf-8")
         self.end_headers()
 
         html = f"""
         <!DOCTYPE html>
         <html>
         <head>
+            <meta charset="UTF-8">
             <title>OAuth Success - User Management Demo</title>
             <style>
                 body {{ font-family: Arial, sans-serif; margin: 40px; }}
@@ -116,13 +117,14 @@ class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
     def send_error_response(self, error: str, error_description: Optional[str]):
         """Send error response for OAuth callback."""
         self.send_response(400)
-        self.send_header("Content-type", "text/html")
+        self.send_header("Content-type", "text/html; charset=utf-8")
         self.end_headers()
 
         html = f"""
         <!DOCTYPE html>
         <html>
         <head>
+            <meta charset="UTF-8">
             <title>OAuth Error - User Management Demo</title>
             <style>
                 body {{ font-family: Arial, sans-serif; margin: 40px; }}
@@ -159,13 +161,14 @@ class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
     def send_invalid_response(self):
         """Send response for invalid OAuth callback."""
         self.send_response(400)
-        self.send_header("Content-type", "text/html")
+        self.send_header("Content-type", "text/html; charset=utf-8")
         self.end_headers()
 
         html = """
         <!DOCTYPE html>
         <html>
         <head>
+            <meta charset="UTF-8">
             <title>Invalid Request - User Management Demo</title>
             <style>
                 body { font-family: Arial, sans-serif; margin: 40px; }

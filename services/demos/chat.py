@@ -165,7 +165,11 @@ class UserServiceClient(ServiceClient):
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
                     f"{self.base_url}/users/{self.user_id}/integrations/oauth/start",
-                    json={"provider": provider, "scopes": scopes},
+                    json={
+                        "provider": provider,
+                        "scopes": scopes,
+                        "redirect_uri": "http://localhost:8080/oauth/callback",
+                    },
                     headers={"Authorization": f"Bearer {self.auth_token}"},
                 )
                 if response.status_code == 200:
