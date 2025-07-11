@@ -15,11 +15,11 @@ This task list addresses the areas for improvement identified in the code review
   - [x] 2.3 Review other provider integrations for any missing error context
   - [x] 2.4 Add provider-specific error codes if needed (e.g., GOOGLE_API_ERROR, MICROSOFT_API_ERROR)
 
-- [ ] 3. Clean Up Legacy Exception Imports
-  - [ ] 3.1 Search for unused imports from old exception modules across all services
-  - [ ] 3.2 Remove unused imports from `services/user/exceptions.py` references
-  - [ ] 3.3 Remove unused imports from `services/office/core/exceptions.py` references
-  - [ ] 3.4 Update any remaining legacy exception usages to use common exceptions
+- [x] 3. Clean Up Legacy Exception Imports
+  - [x] 3.1 Search for unused imports from old exception modules across all services
+  - [x] 3.2 Remove unused imports from `services/user/exceptions.py` references
+  - [x] 3.3 Remove unused imports from `services/office/core/exceptions.py` references
+  - [x] 3.4 Update any remaining legacy exception usages to use common exceptions
 
 - [ ] 4. Standardize Error Code Naming
   - [ ] 4.1 Review all error codes across services for consistent naming convention

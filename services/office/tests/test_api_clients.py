@@ -160,7 +160,7 @@ class TestBaseAPIClient:
                 with pytest.raises(ProviderError) as exc_info:
                     await mock_client.get("/nonexistent")
 
-                # Verify the ProviderAPIError contains the expected details
+                # Verify the ProviderError contains the expected details
                 error = exc_info.value
                 assert error.provider == Provider.GOOGLE
                 assert error.status_code == 404
@@ -177,7 +177,7 @@ class TestBaseAPIClient:
                 with pytest.raises(ProviderError) as exc_info:
                     await mock_client.get("/slow-endpoint")
 
-                # Verify the ProviderAPIError contains the expected details
+                # Verify the ProviderError contains the expected details
                 error = exc_info.value
                 assert error.provider == Provider.GOOGLE
                 assert "timeout" in error.message.lower()
@@ -194,7 +194,7 @@ class TestBaseAPIClient:
                 with pytest.raises(ProviderError) as exc_info:
                     await mock_client.get("/unreachable")
 
-                # Verify the ProviderAPIError contains the expected details
+                # Verify the ProviderError contains the expected details
                 error = exc_info.value
                 assert error.provider == Provider.GOOGLE
                 assert (

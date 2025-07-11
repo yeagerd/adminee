@@ -62,8 +62,8 @@ class PreferencesService:
             UserPreferencesResponse object or None if not found
 
         Raises:
-            UserNotFoundException: If user doesn't exist
-            DatabaseException: If database operation fails
+            NotFoundError: If user doesn't exist
+            ServiceError: If database operation fails
         """
         try:
             logger.info("Getting user preferences", user_id=user_id)
@@ -146,10 +146,10 @@ class PreferencesService:
             Updated UserPreferencesResponse
 
         Raises:
-            UserNotFoundException: If user doesn't exist
-            PreferencesNotFoundException: If preferences don't exist
-            ValidationException: If validation fails
-            DatabaseException: If database operation fails
+            NotFoundError: If user doesn't exist
+            NotFoundError: If preferences don't exist
+            ValidationError: If validation fails
+            ServiceError: If database operation fails
         """
         try:
             logger.info("Updating user preferences", user_id=user_id)
@@ -261,10 +261,10 @@ class PreferencesService:
             Reset UserPreferencesResponse
 
         Raises:
-            UserNotFoundException: If user doesn't exist
-            PreferencesNotFoundException: If preferences don't exist
-            ValidationException: If validation fails
-            DatabaseException: If database operation fails
+            NotFoundError: If user doesn't exist
+            NotFoundError: If preferences don't exist
+            ValidationError: If validation fails
+            ServiceError: If database operation fails
         """
         try:
             logger.info(

@@ -33,7 +33,7 @@ class WebhookSignatureVerifier:
             timestamp_header: The svix-timestamp header value
 
         Raises:
-            WebhookValidationException: If signature verification fails
+            ValidationError: If signature verification fails
         """
         if not get_settings().clerk_webhook_secret:
             logger.warning("Clerk webhook secret not configured, skipping verification")

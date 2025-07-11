@@ -83,7 +83,7 @@ class TestGlobalExceptionHandlers:
 
     @pytest.mark.asyncio
     async def test_office_service_error_handler(self, mock_request):
-        """Test generic OfficeServiceError exception handler"""
+        """Test generic ServiceError exception handler"""
         error = ServiceError(
             message="Service configuration error",
             details={"config_key": "REDIS_URL", "issue": "missing"},
@@ -103,7 +103,7 @@ class TestAPIClientErrorHandling:
 
     @pytest.mark.asyncio
     async def test_timeout_error_handling(self, google_client):
-        """Test that timeout errors are properly converted to ProviderAPIError"""
+        """Test that timeout errors are properly converted to ProviderError"""
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value = mock_client
@@ -124,7 +124,7 @@ class TestAPIClientErrorHandling:
 
     @pytest.mark.asyncio
     async def test_http_status_error_handling(self, google_client):
-        """Test that HTTP status errors are properly converted to ProviderAPIError"""
+        """Test that HTTP status errors are properly converted to ProviderError"""
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value = mock_client
@@ -180,7 +180,7 @@ class TestAPIClientErrorHandling:
 
     @pytest.mark.asyncio
     async def test_request_error_handling(self, google_client):
-        """Test that request errors are properly converted to ProviderAPIError"""
+        """Test that request errors are properly converted to ProviderError"""
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value = mock_client
@@ -199,7 +199,7 @@ class TestAPIClientErrorHandling:
 
     @pytest.mark.asyncio
     async def test_unexpected_error_handling(self, google_client):
-        """Test that unexpected errors are properly converted to ProviderAPIError"""
+        """Test that unexpected errors are properly converted to ProviderError"""
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client_class.return_value = mock_client

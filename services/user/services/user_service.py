@@ -42,7 +42,7 @@ class UserService:
             User model instance
 
         Raises:
-            UserNotFoundException: If user is not found
+            NotFoundError: If user is not found
         """
         try:
             async_session = get_async_session()
@@ -76,7 +76,7 @@ class UserService:
             User model instance
 
         Raises:
-            UserNotFoundException: If user is not found
+            NotFoundError: If user is not found
         """
         try:
             async_session = get_async_session()
@@ -126,7 +126,7 @@ class UserService:
             Created user model instance
 
         Raises:
-            ValidationException: If user data is invalid or external_auth_id already exists
+            ValidationError: If user data is invalid or external_auth_id already exists
         """
         detector = EmailCollisionDetector()
         try:
@@ -206,8 +206,8 @@ class UserService:
             Updated user model instance
 
         Raises:
-            UserNotFoundException: If user is not found
-            ValidationException: If update data is invalid
+            NotFoundError: If user is not found
+            ValidationError: If update data is invalid
         """
         from services.user.utils.email_collision import EmailCollisionDetector
 
@@ -286,8 +286,8 @@ class UserService:
             Updated user model instance
 
         Raises:
-            UserNotFoundException: If user is not found
-            ValidationException: If update data is invalid
+            NotFoundError: If user is not found
+            ValidationError: If update data is invalid
         """
         try:
             # First get the user by external auth ID to get the internal ID
@@ -331,8 +331,8 @@ class UserService:
             Updated user model instance
 
         Raises:
-            UserNotFoundException: If user is not found
-            ValidationException: If onboarding data is invalid
+            NotFoundError: If user is not found
+            ValidationError: If onboarding data is invalid
         """
         try:
             async_session = get_async_session()
@@ -383,8 +383,8 @@ class UserService:
             Updated user model instance
 
         Raises:
-            UserNotFoundException: If user is not found
-            ValidationException: If onboarding data is invalid
+            NotFoundError: If user is not found
+            ValidationError: If onboarding data is invalid
         """
         try:
             # First get the user by external auth ID to get the internal ID
@@ -425,7 +425,7 @@ class UserService:
             Deletion response with status
 
         Raises:
-            UserNotFoundException: If user is not found
+            NotFoundError: If user is not found
         """
         try:
             async_session = get_async_session()
@@ -477,7 +477,7 @@ class UserService:
             UserDeleteResponse with deletion details
 
         Raises:
-            UserNotFoundException: If user is not found
+            NotFoundError: If user is not found
         """
         try:
             # First get the user by external auth ID to get the internal ID
@@ -587,7 +587,7 @@ class UserService:
             User response schema
 
         Raises:
-            UserNotFoundException: If user is not found
+            NotFoundError: If user is not found
         """
         user = await self.get_user_by_id(user_id)
         return UserResponse.from_orm(user)
@@ -607,7 +607,7 @@ class UserService:
             User model instance
 
         Raises:
-            UserNotFoundException: If user is not found with any provider
+            NotFoundError: If user is not found with any provider
         """
         # Try different auth providers in order of preference
         providers_to_try = [
@@ -646,7 +646,7 @@ class UserService:
             User response schema
 
         Raises:
-            UserNotFoundException: If user is not found
+            NotFoundError: If user is not found
         """
         if auth_provider:
             user = await self.get_user_by_external_auth_id(

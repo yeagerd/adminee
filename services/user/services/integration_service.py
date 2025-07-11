@@ -201,8 +201,8 @@ class IntegrationService:
             OAuthStartResponse with authorization URL and state
 
         Raises:
-            NotFoundException: If user not found
-            SimpleValidationException: If provider not available or invalid scopes
+            NotFoundError: If user not found
+            ValidationError: If provider not available or invalid scopes
         """
         try:
             # Verify user exists
@@ -291,9 +291,9 @@ class IntegrationService:
             OAuthCallbackResponse with integration details
 
         Raises:
-            NotFoundException: If user not found
-            SimpleValidationException: If invalid state or authorization code
-            IntegrationException: If OAuth flow fails
+            NotFoundError: If user not found
+            ValidationError: If invalid state or authorization code
+            ServiceError: If OAuth flow fails
         """
         try:
             # Verify user exists
@@ -401,8 +401,8 @@ class IntegrationService:
             TokenRefreshResponse with refresh status
 
         Raises:
-            NotFoundException: If user or integration not found
-            IntegrationException: If refresh fails
+            NotFoundError: If user or integration not found
+            ServiceError: If refresh fails
         """
         try:
             # Get integration
@@ -561,8 +561,8 @@ class IntegrationService:
             Dictionary with disconnection results
 
         Raises:
-            NotFoundException: If integration not found
-            IntegrationException: If disconnect fails
+            NotFoundError: If integration not found
+            ServiceError: If disconnect fails
         """
         try:
             # Get integration
