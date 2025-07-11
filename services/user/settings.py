@@ -99,6 +99,20 @@ class Settings(BaseSettings):
         description="Base URL for OAuth callbacks (used to construct redirect URI)",
     )
 
+    # NextAuth Configuration
+    nextauth_jwt_key: Optional[str] = Field(
+        default=None, description="NextAuth JWT secret key for token verification"
+    )
+    nextauth_issuer: Optional[str] = Field(
+        default="nextauth", description="NextAuth JWT issuer claim"
+    )
+    nextauth_audience: Optional[str] = Field(
+        default=None, description="NextAuth JWT audience claim"
+    )
+    jwt_verify_signature: bool = Field(
+        default=True, description="Whether to verify JWT signatures"
+    )
+
     # Logging Configuration
     log_level: str = Field(default="INFO", description="Logging level")
     log_format: str = Field(default="json", description="Log format (json or text)")

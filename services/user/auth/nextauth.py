@@ -48,27 +48,47 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
 
         # Get the JWT secret key from settings
         jwt_secret = getattr(settings, "nextauth_jwt_key")
-        if not jwt_secret and verify_signature:
-            logger_instance.warning(
-                "JWT verification enabled but no secret key configured"
+        if verify_signature and not jwt_secret:
+            logger_instance.error(
+                "JWT signature verification required but no secret key configured"
             )
-            verify_signature = False
+            raise AuthError("JWT verification configuration error")
 
-        # Get issuer from settings or use a default
+        # Get issuer and audience from settings
         issuer = getattr(settings, "nextauth_issuer", "nextauth")
+        audience = getattr(settings, "nextauth_audience")
 
-        decoded_token = jwt.decode(
-            token,
-            key=jwt_secret if verify_signature else None,
-            options={
-                "verify_signature": verify_signature,
-                "verify_exp": True,
-                "verify_iat": True,
-                "verify_aud": False,  # NextAuth doesn't use audience by default
-            },
-            algorithms=["HS256"],  # NextAuth uses HS256 by default
-            issuer=issuer if verify_signature else None,
-        )
+        if verify_signature and jwt_secret:
+            # Verify signature with secret
+            decoded_token = jwt.decode(
+                token,
+                key=str(jwt_secret),
+                options={
+                    "verify_signature": True,
+                    "verify_exp": True,
+                    "verify_iat": True,
+                    "verify_aud": bool(audience),
+                },
+                algorithms=["HS256"],  # NextAuth uses HS256 by default
+                issuer=issuer,
+                audience=audience if audience else None,
+            )
+        elif not verify_signature:
+            # Decode without signature verification
+            decoded_token = jwt.decode(
+                token,
+                options={
+                    "verify_signature": False,
+                    "verify_exp": True,
+                    "verify_iat": True,
+                    "verify_aud": False,
+                },
+                algorithms=["HS256"],
+            )
+        else:
+            # This should not happen due to the check above, but just in case
+            logger_instance.error("JWT verification configuration error")
+            raise AuthError("JWT verification configuration error")
 
         # Validate required claims
         required_claims = ["sub", "iss", "exp", "iat"]
@@ -87,6 +107,8 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
 
         return decoded_token
 
+    except AuthError:
+        raise
     except jwt.ExpiredSignatureError:
         logger_instance.warning("JWT token has expired")
         raise AuthError("Token has expired")
