@@ -1,14 +1,13 @@
 """
 Email collision detection utilities for user management service.
 
-Provides email normalization and collision detection using the email-normalize library
+Provides email normalization and collision detection using fast local rules
 to handle provider-specific email formatting rules (Gmail dots, plus addressing, etc.).
 """
 
 import logging
 from typing import Any, Dict, Optional
 
-from email_normalize import Normalizer
 from sqlalchemy import and_, select
 
 from services.user.database import get_async_session
@@ -22,17 +21,11 @@ class EmailCollisionDetector:
 
     def __init__(self):
         """Initialize the email collision detector."""
-        self._normalizer = None
-
-    def _get_normalizer(self):
-        """Get or create the normalizer instance."""
-        if self._normalizer is None:
-            self._normalizer = Normalizer()
-        return self._normalizer
+        pass
 
     def _simple_email_normalize(self, email: str) -> str:
         """
-        Simple email normalization without DNS lookups (for testing).
+        Fast email normalization using local provider-specific rules.
 
         Args:
             email: Email address to normalize
@@ -73,9 +66,9 @@ class EmailCollisionDetector:
         # Basic normalization for other domains
         return email
 
-    async def normalize_email(self, email: str) -> str:
+    def normalize_email(self, email: str) -> str:
         """
-        Normalize an email address using provider-specific rules.
+        Normalize an email address using fast local provider-specific rules.
 
         Args:
             email: Email address to normalize
@@ -86,28 +79,15 @@ class EmailCollisionDetector:
         if not email:
             return email
 
-        import os
-
-        # In test environments, use simple normalization without DNS lookups
-        if os.getenv("PYTEST_CURRENT_TEST") or os.getenv("TESTING"):
-            try:
-                return self._simple_email_normalize(email)
-            except Exception as e:
-                logger.warning(f"Failed to normalize email {email}: {e}")
-                return email.strip().lower()
-
         try:
-            # Use the email-normalize library (async)
-            result = await self._get_normalizer().normalize(email)
-            return result.normalized_address
-        except Exception as e:
-            # Fallback to basic normalization if email-normalize fails
-            logger.warning(f"Failed to normalize email {email}: {e}")
             return self._simple_email_normalize(email)
+        except Exception as e:
+            logger.warning(f"Failed to normalize email {email}: {e}")
+            return email.strip().lower()
 
     async def normalize_email_async(self, email: str) -> str:
         """
-        Async wrapper for email normalization.
+        Async wrapper for normalize_email method.
 
         Args:
             email: Email address to normalize
@@ -115,28 +95,7 @@ class EmailCollisionDetector:
         Returns:
             str: Normalized email address
         """
-        if not email:
-            return email
-
-        import os
-
-        # In test environments, use simple normalization without DNS lookups
-        if os.getenv("PYTEST_CURRENT_TEST") or os.getenv("TESTING"):
-            try:
-                return self._simple_email_normalize(email)
-            except Exception as e:
-                logger.warning(f"Failed to normalize email {email}: {e}")
-                return email.strip().lower()
-
-        try:
-            # Use the email-normalize library (async)
-            # We call it asynchronously to properly handle the async library
-            result = await self._get_normalizer().normalize(email)
-            return result.normalized_address
-        except Exception as e:
-            # Fallback to basic normalization if email-normalize fails
-            logger.warning(f"Failed to normalize email {email}: {e}")
-            return self._simple_email_normalize(email)
+        return self.normalize_email(email)
 
     async def check_collision(self, email: str) -> Optional[User]:
         """
@@ -148,7 +107,7 @@ class EmailCollisionDetector:
         Returns:
             Existing user if collision found, None otherwise
         """
-        normalized_email = await self.normalize_email_async(email)
+        normalized_email = self.normalize_email(email)
         logger.debug(
             f"COLLISION: Checking for user with normalized_email={normalized_email}"
         )
@@ -193,7 +152,7 @@ class EmailCollisionDetector:
             }
 
         try:
-            normalized_email = await self.normalize_email_async(email)
+            normalized_email = self.normalize_email(email)
             logger.debug(
                 f"COLLISION: get_collision_details for email={email}, normalized={normalized_email}"
             )
@@ -214,7 +173,7 @@ class EmailCollisionDetector:
                     "email_info": {
                         "original": email,
                         "normalized": normalized_email,
-                        "provider": self._get_email_provider(normalized_email),
+                        "domain": self._get_email_domain(normalized_email),
                     },
                 }
             else:
@@ -229,7 +188,7 @@ class EmailCollisionDetector:
                     "email_info": {
                         "original": email,
                         "normalized": normalized_email,
-                        "provider": self._get_email_provider(normalized_email),
+                        "domain": self._get_email_domain(normalized_email),
                     },
                 }
         except Exception as e:
@@ -245,7 +204,7 @@ class EmailCollisionDetector:
 
     async def get_email_info(self, email: str) -> Dict[str, Any]:
         """
-        Get comprehensive email information including normalization.
+        Get email information including fast local normalization.
 
         Args:
             email: Email address to analyze
@@ -253,75 +212,93 @@ class EmailCollisionDetector:
         Returns:
             Dictionary with email information
         """
-        import os
-
-        # In test environments, use simple normalization without DNS lookups
-        if os.getenv("PYTEST_CURRENT_TEST") or os.getenv("TESTING"):
-            try:
-                normalized_email = self._simple_email_normalize(email)
-                return {
-                    "original_email": email,
-                    "normalized_email": normalized_email,
-                    "mailbox_provider": "unknown",
-                    "mx_records": [],
-                    "is_valid": True,
-                }
-            except Exception as e:
-                return {
-                    "original_email": email,
-                    "normalized_email": email.strip().lower(),
-                    "mailbox_provider": "unknown",
-                    "mx_records": [],
-                    "is_valid": False,
-                    "error": str(e),
-                }
-
         try:
-            # Use async call to properly handle the async library
-            result = await self._get_normalizer().normalize(email)
+            normalized_email = self._simple_email_normalize(email)
             return {
                 "original_email": email,
-                "normalized_email": result.normalized_address,
-                "mailbox_provider": result.mailbox_provider,
-                "mx_records": result.mx_records,
+                "normalized_email": normalized_email,
+                "mailbox_domain": self._get_email_domain(normalized_email),
+                "mx_records": [],
                 "is_valid": True,
             }
         except Exception as e:
             return {
                 "original_email": email,
-                "normalized_email": self._simple_email_normalize(email),
-                "mailbox_provider": "unknown",
+                "normalized_email": email.strip().lower(),
+                "mailbox_domain": "unknown",
                 "mx_records": [],
                 "is_valid": False,
                 "error": str(e),
             }
 
-    def _get_email_provider(self, email: str) -> str:
+    def normalize_email_by_provider(self, email: str, provider: str) -> str:
         """
-        Extract email provider from email address.
+        Normalize email using known provider-specific rules.
+
+        Alternative interface when provider is explicitly known.
+        Performance is equivalent to auto-detection since both use local rules.
+
+        Args:
+            email: Email address to normalize
+            provider: OAuth provider ('google', 'microsoft', 'yahoo', etc.)
+
+        Returns:
+            str: Normalized email address
+        """
+        if not email:
+            return email
+
+        email = email.strip().lower()
+
+        if "@" not in email:
+            return email
+
+        local, domain = email.split("@", 1)
+
+        # Provider-specific normalization rules
+        if provider == "google" or provider == "gmail":
+            # Gmail: Remove dots and plus addressing
+            local = local.replace(".", "")
+            if "+" in local:
+                local = local.split("+")[0]
+            # Normalize domain to gmail.com
+            if domain in ["googlemail.com", "gmail.com"]:
+                domain = "gmail.com"
+
+        elif provider == "microsoft" or provider == "outlook":
+            # Microsoft/Outlook: Remove plus addressing (keep dots)
+            if "+" in local:
+                local = local.split("+")[0]
+            # Normalize common Microsoft domains
+            if domain in ["hotmail.com", "outlook.com", "live.com", "msn.com"]:
+                domain = "outlook.com"
+
+        elif provider == "yahoo":
+            # Yahoo: Remove dots and plus addressing
+            local = local.replace(".", "")
+            if "+" in local:
+                local = local.split("+")[0]
+
+        # For other providers, just basic normalization
+        # (Could add more providers like Apple, etc.)
+
+        return f"{local}@{domain}"
+
+    def _get_email_domain(self, email: str) -> str:
+        """
+        Extract domain from email address.
 
         Args:
             email: Email address
 
         Returns:
-            str: Email provider (e.g., 'gmail', 'outlook', etc.)
+            str: Email domain (e.g., 'gmail.com', 'company.com', etc.)
         """
         if not email or "@" not in email:
             return "unknown"
 
         domain = email.split("@")[1].lower()
-
-        # Common providers
-        if "gmail.com" in domain:
-            return "gmail"
-        elif "outlook.com" in domain or "hotmail.com" in domain:
-            return "outlook"
-        elif "yahoo.com" in domain:
-            return "yahoo"
-        elif "icloud.com" in domain or "me.com" in domain:
-            return "icloud"
-        else:
-            return domain
+        return domain
 
 
 # Global instance for easy access

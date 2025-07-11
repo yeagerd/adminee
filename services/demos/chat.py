@@ -659,10 +659,15 @@ class FullDemo:
             external_auth_id if found, None otherwise
         """
         try:
+            # Include provider in the request for faster normalization
+            request_data = {"email": email}
+            if self.preferred_provider:
+                request_data["provider"] = self.preferred_provider
+
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
                     f"{self.user_client.base_url}/users/resolve-email",
-                    json={"email": email},
+                    json=request_data,
                     headers={"Content-Type": "application/json"},
                 )
 
