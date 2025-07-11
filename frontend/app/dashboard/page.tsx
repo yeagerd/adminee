@@ -38,7 +38,9 @@ export default function DashboardPage() {
     const loadIntegrations = async () => {
         try {
             const data = await apiClient.getIntegrations();
-            setIntegrations(data);
+            // The backend returns { integrations: [...], total: ..., active_count: ..., error_count: ... }
+            // Extract just the integrations array
+            setIntegrations(data.integrations || []);
         } catch (error) {
             console.error('Failed to load integrations:', error);
         } finally {
@@ -80,7 +82,7 @@ export default function DashboardPage() {
         year: "numeric",
     });
 
-    const activeIntegrations = integrations.filter(i => i.status === 'ACTIVE');
+    const activeIntegrations = integrations.filter(i => i.status === 'active');
     const hasGoogleIntegration = activeIntegrations.some(i => i.provider === 'google');
     const hasMicrosoftIntegration = activeIntegrations.some(i => i.provider === 'microsoft');
 

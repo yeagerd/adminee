@@ -68,8 +68,8 @@ class ApiClient {
     }
 
     // Integration Management (via BFF)
-    async getIntegrations() {
-        return this.request('/api/integrations');
+    async getIntegrations(): Promise<IntegrationListResponse> {
+        return this.request<IntegrationListResponse>('/api/integrations');
     }
 
     async startOAuthFlow(provider: string, scopes: string[]) {
@@ -113,12 +113,30 @@ export const apiClient = new ApiClient();
 
 // Export types for TypeScript
 export interface Integration {
-    id: string;
+    id: number;
+    user_id: string;
     provider: string;
     status: string;
     scopes: string[];
+    external_user_id?: string;
+    external_email?: string;
+    external_name?: string;
+    has_access_token: boolean;
+    has_refresh_token: boolean;
+    token_expires_at?: string;
+    token_created_at?: string;
     last_sync_at?: string;
-    error_message?: string;
+    last_error?: string;
+    error_count: number;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface IntegrationListResponse {
+    integrations: Integration[];
+    total: number;
+    active_count: number;
+    error_count: number;
 }
 
 export interface User {
