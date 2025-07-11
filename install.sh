@@ -32,17 +32,6 @@ source .venv/bin/activate
 echo "📥 Installing all workspace and development dependencies..."
 uv sync --all-packages --all-extras --active
 
-# Load environment variables from .env file if it exists
-if [ -f .env ]; then
-  echo "Found .env file, loading variables..."
-  set -a # automatically export all variables
-  source .env
-  set +a # stop automatically exporting
-  echo ".env variables loaded and exported."
-else
-  echo "No .env file found. Proceeding without it. This might cause issues if required variables are not set."
-fi
-
 # Run database migrations from repository root
 echo "🗄️ Setting up databases..."
 alembic -c services/user/alembic.ini upgrade head
