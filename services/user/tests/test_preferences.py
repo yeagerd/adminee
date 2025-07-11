@@ -12,7 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
-from services.user.auth.clerk import get_current_user
+from services.user.auth.nextauth import get_current_user
 from services.user.database import create_all_tables
 from services.user.exceptions import (
     UserNotFoundException,

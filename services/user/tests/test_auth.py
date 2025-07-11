@@ -12,7 +12,7 @@ import pytest
 from fastapi import HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials
 
-from services.user.auth.clerk import (
+from services.user.auth.nextauth import (
     extract_user_id_from_token,
     get_current_user,
     require_user_ownership,
@@ -60,8 +60,8 @@ class TestClerkAuthentication:
         base_time = 1640995200  # 2022-01-01 00:00:00 UTC
 
         with (
-            patch("services.user.auth.clerk.jwt.decode") as mock_decode,
-            patch("services.user.auth.clerk.get_settings") as mock_get_settings,
+            patch("services.user.auth.nextauth.jwt.decode") as mock_decode,
+            patch("services.user.auth.nextauth.get_settings") as mock_get_settings,
         ):
             mock_settings = mock_get_settings.return_value
             mock_settings.jwt_verify_signature = False
@@ -80,8 +80,8 @@ class TestClerkAuthentication:
     async def test_verify_jwt_token_expired(self):
         """Test JWT token verification with expired token."""
         with (
-            patch("services.user.auth.clerk.jwt.decode") as mock_decode,
-            patch("services.user.auth.clerk.get_settings") as mock_get_settings,
+            patch("services.user.auth.nextauth.jwt.decode") as mock_decode,
+            patch("services.user.auth.nextauth.get_settings") as mock_get_settings,
         ):
             mock_settings = mock_get_settings.return_value
             mock_settings.jwt_verify_signature = False
@@ -96,8 +96,8 @@ class TestClerkAuthentication:
     async def test_verify_jwt_token_invalid(self):
         """Test JWT token verification with invalid token."""
         with (
-            patch("services.user.auth.clerk.jwt.decode") as mock_decode,
-            patch("services.user.auth.clerk.get_settings") as mock_get_settings,
+            patch("services.user.auth.nextauth.jwt.decode") as mock_decode,
+            patch("services.user.auth.nextauth.get_settings") as mock_get_settings,
         ):
             mock_settings = mock_get_settings.return_value
             mock_settings.jwt_verify_signature = False
@@ -112,8 +112,8 @@ class TestClerkAuthentication:
     async def test_verify_jwt_token_missing_claims(self):
         """Test JWT token verification with missing required claims."""
         with (
-            patch("services.user.auth.clerk.jwt.decode") as mock_decode,
-            patch("services.user.auth.clerk.get_settings") as mock_get_settings,
+            patch("services.user.auth.nextauth.jwt.decode") as mock_decode,
+            patch("services.user.auth.nextauth.get_settings") as mock_get_settings,
         ):
             mock_settings = mock_get_settings.return_value
             mock_settings.jwt_verify_signature = False
@@ -129,8 +129,8 @@ class TestClerkAuthentication:
         """Test JWT token verification with invalid issuer."""
         base_time = 1640995200  # 2022-01-01 00:00:00 UTC
         with (
-            patch("services.user.auth.clerk.jwt.decode") as mock_decode,
-            patch("services.user.auth.clerk.get_settings") as mock_get_settings,
+            patch("services.user.auth.nextauth.jwt.decode") as mock_decode,
+            patch("services.user.auth.nextauth.get_settings") as mock_get_settings,
         ):
             mock_settings = mock_get_settings.return_value
             mock_settings.jwt_verify_signature = False
@@ -159,7 +159,7 @@ class TestClerkAuthentication:
         with pytest.raises(AuthenticationException) as exc_info:
             extract_user_id_from_token(claims)
 
-        assert "User ID not found in token" in str(exc_info.value)
+        assert "User ID (sub claim) not found in token" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_get_current_user_success(self):
@@ -168,7 +168,7 @@ class TestClerkAuthentication:
             scheme="Bearer", credentials="valid_token"
         )
 
-        with patch("services.user.auth.clerk.verify_jwt_token") as mock_verify:
+        with patch("services.user.auth.nextauth.verify_jwt_token") as mock_verify:
             mock_verify.return_value = {"sub": "user_123"}
 
             user_id = await get_current_user(credentials)
@@ -181,7 +181,7 @@ class TestClerkAuthentication:
             scheme="Bearer", credentials="invalid_token"
         )
 
-        with patch("services.user.auth.clerk.verify_jwt_token") as mock_verify:
+        with patch("services.user.auth.nextauth.verify_jwt_token") as mock_verify:
             mock_verify.side_effect = AuthenticationException("Invalid token")
 
             with pytest.raises(HTTPException) as exc_info:
@@ -207,7 +207,7 @@ class TestClerkAuthentication:
     @pytest.mark.asyncio
     async def test_require_user_ownership_success(self):
         """Test successful user ownership requirement."""
-        with patch("services.user.auth.clerk.verify_user_ownership") as mock_verify:
+        with patch("services.user.auth.nextauth.verify_user_ownership") as mock_verify:
             mock_verify.return_value = True
 
             result = await require_user_ownership("user_123", "user_123")
@@ -216,7 +216,7 @@ class TestClerkAuthentication:
     @pytest.mark.asyncio
     async def test_require_user_ownership_failure(self):
         """Test user ownership requirement failure."""
-        with patch("services.user.auth.clerk.verify_user_ownership") as mock_verify:
+        with patch("services.user.auth.nextauth.verify_user_ownership") as mock_verify:
             mock_verify.side_effect = AuthorizationException(
                 "user_resource:user_456", "access"
             )
