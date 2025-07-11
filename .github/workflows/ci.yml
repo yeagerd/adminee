@@ -210,6 +210,44 @@ jobs:
     - name: Build application
       working-directory: ./frontend
       env:
+          # NextAuth Configuration
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          NEXTAUTH_URL: http://localhost:3000
+          
+          # User Service Configuration
+          USER_SERVICE_URL: http://localhost:8001
+          API_FRONTEND_USER_KEY: ${{ secrets.API_FRONTEND_USER_KEY }}
+          BFF_WEBHOOK_SECRET: ${{ secrets.BFF_WEBHOOK_SECRET }}
+          
+          # Database Configuration (for build-time validation)
+          DB_URL_USER_MANAGEMENT: sqlite:///services/user/user_service.db
+          DB_URL_OFFICE: sqlite:///services/office/office_service.db
+          DB_URL_CHAT: sqlite:///services/chat/chat.db
+          
+          # Redis Configuration
+          REDIS_URL: redis://localhost:6379
+          
+          # Basic Configuration
+          ENVIRONMENT: ci
+          LOG_FORMAT: text
+          LOG_LEVEL: INFO
+          JWT_VERIFY_SIGNATURE: false
+          
+          # OAuth Provider Configuration
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          AZURE_AD_CLIENT_ID: ${{ secrets.AZURE_AD_CLIENT_ID }}
+          AZURE_AD_CLIENT_SECRET: ${{ secrets.AZURE_AD_CLIENT_SECRET }}
+          AZURE_AD_TENANT_ID: ${{ secrets.AZURE_AD_TENANT_ID }}
+          
+          # Other Service Configuration
+          API_FRONTEND_OFFICE_KEY: ${{ secrets.API_FRONTEND_OFFICE_KEY }}
+          API_FRONTEND_CHAT_KEY: ${{ secrets.API_FRONTEND_CHAT_KEY }}
+          API_CHAT_USER_KEY: ${{ secrets.API_CHAT_USER_KEY }}
+          API_CHAT_OFFICE_KEY: ${{ secrets.API_CHAT_OFFICE_KEY }}
+          API_OFFICE_USER_KEY: ${{ secrets.API_OFFICE_USER_KEY }}
+          
+          # Legacy Clerk Configuration (for backward compatibility)
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           TOKEN_ENCRYPTION_SALT: ${{ secrets.TOKEN_ENCRYPTION_SALT }}
@@ -232,7 +270,44 @@ jobs:
 
     - name: Test Docker Compose build
       env:
-          ENVIRONMENT: production
+          # NextAuth Configuration
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          NEXTAUTH_URL: http://localhost:3000
+          
+          # User Service Configuration
+          USER_SERVICE_URL: http://localhost:8001
+          API_FRONTEND_USER_KEY: ${{ secrets.API_FRONTEND_USER_KEY }}
+          BFF_WEBHOOK_SECRET: ${{ secrets.BFF_WEBHOOK_SECRET }}
+          
+          # Database Configuration (for build-time validation)
+          DB_URL_USER_MANAGEMENT: sqlite:///services/user/user_service.db
+          DB_URL_OFFICE: sqlite:///services/office/office_service.db
+          DB_URL_CHAT: sqlite:///services/chat/chat.db
+          
+          # Redis Configuration
+          REDIS_URL: redis://localhost:6379
+          
+          # Basic Configuration
+          ENVIRONMENT: ci
+          LOG_FORMAT: text
+          LOG_LEVEL: INFO
+          JWT_VERIFY_SIGNATURE: false
+          
+          # OAuth Provider Configuration
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          AZURE_AD_CLIENT_ID: ${{ secrets.AZURE_AD_CLIENT_ID }}
+          AZURE_AD_CLIENT_SECRET: ${{ secrets.AZURE_AD_CLIENT_SECRET }}
+          AZURE_AD_TENANT_ID: ${{ secrets.AZURE_AD_TENANT_ID }}
+          
+          # Other Service Configuration
+          API_FRONTEND_OFFICE_KEY: ${{ secrets.API_FRONTEND_OFFICE_KEY }}
+          API_FRONTEND_CHAT_KEY: ${{ secrets.API_FRONTEND_CHAT_KEY }}
+          API_CHAT_USER_KEY: ${{ secrets.API_CHAT_USER_KEY }}
+          API_CHAT_OFFICE_KEY: ${{ secrets.API_CHAT_OFFICE_KEY }}
+          API_OFFICE_USER_KEY: ${{ secrets.API_OFFICE_USER_KEY }}
+          
+          # Legacy Clerk Configuration (for backward compatibility)
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           TOKEN_ENCRYPTION_SALT: ${{ secrets.TOKEN_ENCRYPTION_SALT }}

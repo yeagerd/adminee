@@ -189,9 +189,7 @@ class TestEmailCollisionDB:
     @pytest.mark.asyncio
     async def test_check_collision_no_collision(self, db_setup, detector_fixture):
         detector = detector_fixture
-        with patch.object(
-            detector, "normalize_email_async", return_value="test@example.com"
-        ):
+        with patch.object(detector, "normalize_email", return_value="test@example.com"):
             result = await detector.check_collision("test@example.com")
             assert result is None
 
@@ -216,9 +214,7 @@ class TestEmailCollisionDB:
             async def session_cm():
                 yield session
 
-            with patch.object(
-                detector, "normalize_email_async", return_value=unique_email
-            ):
+            with patch.object(detector, "normalize_email", return_value=unique_email):
                 with patch(
                     "services.user.utils.email_collision.get_async_session",
                     return_value=session_cm,
@@ -232,7 +228,7 @@ class TestEmailCollisionDB:
         detector = detector_fixture
         with patch.object(detector, "check_collision", return_value=None):
             with patch.object(
-                detector, "normalize_email_async", return_value="test@example.com"
+                detector, "normalize_email", return_value="test@example.com"
             ):
                 result = await detector.get_collision_details("test@example.com")
                 assert result["available"] is True
@@ -253,9 +249,7 @@ class TestEmailCollisionDB:
             normalized_email=unique_email,
         )
         with patch.object(detector, "check_collision", return_value=existing_user):
-            with patch.object(
-                detector, "normalize_email_async", return_value=unique_email
-            ):
+            with patch.object(detector, "normalize_email", return_value=unique_email):
                 result = await detector.get_collision_details(unique_email)
                 assert result["collision"] is True
                 assert result["existing_user_id"] == existing_user.external_auth_id
