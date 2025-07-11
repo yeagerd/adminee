@@ -11,8 +11,9 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, cast
 
-from fastapi import APIRouter, HTTPException, Path, Query
+from fastapi import APIRouter, Path, Query
 
+from services.common.http_errors import NotFoundError, ServiceError, ValidationError
 from services.office.core.api_client_factory import APIClientFactory
 from services.office.core.cache_manager import cache_manager, generate_cache_key
 from services.office.core.clients.google import GoogleAPIClient
@@ -102,7 +103,7 @@ async def get_email_messages(
                 logger.warning(f"[{request_id}] Invalid provider: {provider}")
 
         if not valid_providers:
-            raise HTTPException(status_code=400, detail="No valid providers specified")
+            raise ValidationError(message="No valid providers specified")
 
         # Build cache key
         cache_params = {
@@ -210,13 +211,11 @@ async def get_email_messages(
             request_id=request_id,
         )
 
-    except HTTPException:
+    except ValidationError:
         raise
     except Exception as e:
         logger.error(f"[{request_id}] Email messages request failed: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to fetch email messages: {str(e)}"
-        )
+        raise ServiceError(message=f"Failed to fetch email messages: {str(e)}")
 
 
 @router.get("/messages/{message_id}", response_model=EmailMessageList)
@@ -272,9 +271,7 @@ async def get_email_message(
         )
 
         if not message:
-            raise HTTPException(
-                status_code=404, detail=f"Message {message_id} not found"
-            )
+            raise NotFoundError("Message", message_id)
 
         # Build response
         response_data = {
@@ -306,13 +303,13 @@ async def get_email_message(
             request_id=request_id,
         )
 
-    except HTTPException:
+    except NotFoundError:
+        raise
+    except ValidationError:
         raise
     except Exception as e:
         logger.error(f"[{request_id}] Message detail request failed: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to fetch message: {str(e)}"
-        )
+        raise ServiceError(message=f"Failed to fetch message: {str(e)}")
 
 
 @router.post("/send", response_model=SendEmailResponse)
@@ -348,9 +345,8 @@ async def send_email(
 
         # Validate provider
         if provider.lower() not in ["google", "microsoft"]:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid provider: {provider}. Must be 'google' or 'microsoft'",
+            raise ValidationError(
+                message=f"Invalid provider: {provider}. Must be 'google' or 'microsoft'"
             )
 
         provider = provider.lower()
@@ -358,9 +354,8 @@ async def send_email(
         # Get API client for provider
         client = await api_client_factory.create_client(user_id, provider)
         if client is None:
-            raise HTTPException(
-                status_code=503,
-                detail=f"Failed to create API client for provider {provider}. "
+            raise ServiceError(
+                message=f"Failed to create API client for provider {provider}. "
                 "User may not have connected this provider.",
             )
 
@@ -407,11 +402,11 @@ async def send_email(
             request_id=request_id,
         )
 
-    except HTTPException:
+    except ValidationError:
         raise
     except Exception as e:
         logger.error(f"[{request_id}] Send email request failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
+        raise ServiceError(message=f"Failed to send email: {str(e)}")
 
 
 async def send_gmail_message(
@@ -605,7 +600,9 @@ async def fetch_provider_emails(
         # Get API client for provider
         client = await api_client_factory.create_client(user_id, provider)
         if client is None:
-            raise ValueError(f"Failed to create API client for provider {provider}")
+            raise ValidationError(
+                message=f"Failed to create API client for provider {provider}"
+            )
 
         # Use client as async context manager
         async with client:
@@ -690,7 +687,7 @@ async def fetch_provider_emails(
                     normalized_messages.append(normalized_msg)
 
             else:
-                raise ValueError(f"Unsupported provider: {provider}")
+                raise ValidationError(message=f"Unsupported provider: {provider}")
 
             logger.info(
                 f"[{request_id}] Successfully fetched {len(normalized_messages)} messages from {provider}"
@@ -726,7 +723,9 @@ async def fetch_single_message(
         # Get API client for provider
         client = await api_client_factory.create_client(user_id, provider)
         if client is None:
-            raise ValueError(f"Failed to create API client for provider {provider}")
+            raise ValidationError(
+                message=f"Failed to create API client for provider {provider}"
+            )
 
         # Use client as async context manager
         async with client:
@@ -765,7 +764,7 @@ async def fetch_single_message(
                 return normalize_microsoft_email(message, account_email, account_name)
 
             else:
-                raise ValueError(f"Unsupported provider: {provider}")
+                raise ValidationError(message=f"Unsupported provider: {provider}")
 
     except Exception as e:
         logger.error(
@@ -789,7 +788,7 @@ def parse_message_id(message_id: str) -> tuple[str, str]:
     """
     try:
         if "_" not in message_id:
-            raise ValueError("Invalid message ID format")
+            raise ValidationError(message="Invalid message ID format")
 
         parts = message_id.split("_", 1)
         provider_prefix = parts[0].lower()
@@ -805,12 +804,11 @@ def parse_message_id(message_id: str) -> tuple[str, str]:
 
         provider = provider_map.get(provider_prefix)
         if not provider:
-            raise ValueError(f"Unknown provider prefix: {provider_prefix}")
+            raise ValidationError(message=f"Unknown provider prefix: {provider_prefix}")
 
         return provider, original_id
 
     except Exception:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid message ID format: {message_id}. Expected format: 'provider_originalId'",
+        raise ValidationError(
+            message=f"Invalid message ID format: {message_id}. Expected format: 'provider_originalId'"
         )

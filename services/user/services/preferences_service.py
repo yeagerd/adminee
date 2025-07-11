@@ -12,13 +12,8 @@ import structlog
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import select
 
+from services.common.http_errors import NotFoundError, ServiceError, ValidationError
 from services.user.database import get_async_session
-from services.user.exceptions import (
-    DatabaseException,
-    PreferencesNotFoundException,
-    UserNotFoundException,
-    ValidationException,
-)
 from services.user.models.preferences import UserPreferences
 from services.user.models.user import User
 from services.user.schemas.preferences import (
@@ -67,8 +62,8 @@ class PreferencesService:
             UserPreferencesResponse object or None if not found
 
         Raises:
-            UserNotFoundException: If user doesn't exist
-            DatabaseException: If database operation fails
+            NotFoundError: If user doesn't exist
+            ServiceError: If database operation fails
         """
         try:
             logger.info("Getting user preferences", user_id=user_id)
@@ -82,7 +77,7 @@ class PreferencesService:
                 user = user_result.scalar_one_or_none()
                 if not user:
                     logger.warning("User not found", user_id=user_id)
-                    raise UserNotFoundException(f"User {user_id} not found")
+                    raise NotFoundError(resource="User", identifier=user_id)
 
                 # Get or create preferences
                 prefs_result = await session.execute(
@@ -123,18 +118,18 @@ class PreferencesService:
                 updated_at=preferences.updated_at,
             )
 
-        except UserNotFoundException:
+        except NotFoundError:
             raise
         except SQLAlchemyError as e:
             logger.error(
                 "Database error getting preferences", user_id=user_id, error=str(e)
             )
-            raise DatabaseException("Failed to retrieve preferences")
+            raise ServiceError(message="Failed to retrieve preferences")
         except Exception as e:
             logger.error(
                 "Unexpected error getting preferences", user_id=user_id, error=str(e)
             )
-            raise DatabaseException("Failed to retrieve preferences")
+            raise ServiceError(message="Failed to retrieve preferences")
 
     @staticmethod
     async def update_user_preferences(
@@ -151,10 +146,10 @@ class PreferencesService:
             Updated UserPreferencesResponse
 
         Raises:
-            UserNotFoundException: If user doesn't exist
-            PreferencesNotFoundException: If preferences don't exist
-            ValidationException: If validation fails
-            DatabaseException: If database operation fails
+            NotFoundError: If user doesn't exist
+            NotFoundError: If preferences don't exist
+            ValidationError: If validation fails
+            ServiceError: If database operation fails
         """
         try:
             logger.info("Updating user preferences", user_id=user_id)
@@ -168,7 +163,7 @@ class PreferencesService:
                 user = user_result.scalar_one_or_none()
                 if not user:
                     logger.warning("User not found", user_id=user_id)
-                    raise UserNotFoundException(f"User {user_id} not found")
+                    raise NotFoundError(resource="User", identifier=user_id)
 
                 # Get existing preferences
                 prefs_result = await session.execute(
@@ -177,9 +172,7 @@ class PreferencesService:
                 preferences = prefs_result.scalar_one_or_none()
                 if not preferences:
                     logger.warning("Preferences not found", user_id=user_id)
-                    raise PreferencesNotFoundException(
-                        f"Preferences not found for user {user_id}"
-                    )
+                    raise NotFoundError(resource="Preferences", identifier=user_id)
 
             # Prepare update data
             update_data = {}
@@ -240,18 +233,18 @@ class PreferencesService:
             # Return updated preferences
             return await PreferencesService.get_user_preferences(user_id)
 
-        except (UserNotFoundException, PreferencesNotFoundException):
+        except NotFoundError:
             raise
         except SQLAlchemyError as e:
             logger.error(
                 "Database error updating preferences", user_id=user_id, error=str(e)
             )
-            raise DatabaseException("Failed to update preferences")
+            raise ServiceError(message="Failed to update preferences")
         except Exception as e:
             logger.error(
                 "Unexpected error updating preferences", user_id=user_id, error=str(e)
             )
-            raise DatabaseException("Failed to update preferences")
+            raise ServiceError(message="Failed to update preferences")
 
     @staticmethod
     async def reset_user_preferences(
@@ -268,10 +261,10 @@ class PreferencesService:
             Reset UserPreferencesResponse
 
         Raises:
-            UserNotFoundException: If user doesn't exist
-            PreferencesNotFoundException: If preferences don't exist
-            ValidationException: If validation fails
-            DatabaseException: If database operation fails
+            NotFoundError: If user doesn't exist
+            NotFoundError: If preferences don't exist
+            ValidationError: If validation fails
+            ServiceError: If database operation fails
         """
         try:
             logger.info(
@@ -287,7 +280,7 @@ class PreferencesService:
                 user = user_result.scalar_one_or_none()
                 if not user:
                     logger.warning("User not found", user_id=user_id)
-                    raise UserNotFoundException(f"User {user_id} not found")
+                    raise NotFoundError(resource="User", identifier=user_id)
 
                 # Get existing preferences
                 prefs_result = await session.execute(
@@ -296,9 +289,7 @@ class PreferencesService:
                 preferences = prefs_result.scalar_one_or_none()
             if not preferences:
                 logger.warning("Preferences not found", user_id=user_id)
-                raise PreferencesNotFoundException(
-                    f"Preferences not found for user {user_id}"
-                )
+                raise NotFoundError(resource="Preferences", identifier=user_id)
 
             # Get default values
             defaults = PreferencesService._get_default_preferences()
@@ -333,10 +324,10 @@ class PreferencesService:
                             user_id=user_id,
                             category=category,
                         )
-                        raise ValidationException(
-                            "categories",
-                            category,
-                            f"Unknown preference category: {category}",
+                        raise ValidationError(
+                            message="Invalid category for reset_user_preferences",
+                            field="categories",
+                            value=categories,
                         )
 
             # Update timestamp directly on the preferences model after updating fields
@@ -361,22 +352,20 @@ class PreferencesService:
             # Return reset preferences
             return await PreferencesService.get_user_preferences(user_id)
 
-        except (
-            UserNotFoundException,
-            PreferencesNotFoundException,
-            ValidationException,
-        ):
+        except NotFoundError:
+            raise
+        except ValidationError:
             raise
         except SQLAlchemyError as e:
             logger.error(
                 "Database error resetting preferences", user_id=user_id, error=str(e)
             )
-            raise DatabaseException("Failed to reset preferences")
+            raise ServiceError(message="Failed to reset preferences")
         except Exception as e:
             logger.error(
                 "Unexpected error resetting preferences", user_id=user_id, error=str(e)
             )
-            raise DatabaseException("Failed to reset preferences")
+            raise ServiceError(message="Failed to reset preferences")
 
 
 # Global preferences service instance

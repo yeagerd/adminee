@@ -10,10 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi import status
 
-from services.user.exceptions import (
-    IntegrationException,
-    NotFoundException,
-)
+from services.common.http_errors import NotFoundError, ServiceError
 from services.user.models.integration import (
     IntegrationProvider,
     IntegrationStatus,
@@ -116,14 +113,16 @@ class TestIntegrationListEndpoint(BaseUserManagementIntegrationTest):
         with patch(
             "services.user.routers.integrations.get_integration_service"
         ) as mock_service:
-            mock_service.return_value.get_user_integrations.side_effect = (
-                NotFoundException("User not found")
+            mock_service.return_value.get_user_integrations.side_effect = NotFoundError(
+                "User not found"
             )
             response = self.client.get(
                 f"/users/{user_id}/integrations/",
                 headers={"Authorization": "Bearer valid-token"},
             )
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+            assert response.status_code == status.HTTP_404_NOT_FOUND
+            data = response.json()
+            assert "User not found" in data["message"]
 
 
 class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
@@ -341,7 +340,7 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
             "services.user.routers.integrations.get_integration_service"
         ) as mock_service:
             mock_service.return_value.complete_oauth_flow = AsyncMock(
-                side_effect=IntegrationException("Service unavailable")
+                side_effect=ServiceError("Service unavailable")
             )
             response = self.client.post(
                 "/users/user_123/integrations/oauth/callback?provider=google",
@@ -351,8 +350,9 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
                 },
                 headers={"Authorization": "Bearer valid-token"},
             )
-
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+            assert response.status_code == status.HTTP_502_BAD_GATEWAY
+            data = response.json()
+            assert "Service unavailable" in data["message"]
 
 
 class TestIntegrationManagementEndpoints(BaseUserManagementIntegrationTest):
@@ -400,14 +400,15 @@ class TestIntegrationManagementEndpoints(BaseUserManagementIntegrationTest):
             "services.user.routers.integrations.get_integration_service"
         ) as mock_service:
             mock_service.return_value.disconnect_integration = AsyncMock(
-                side_effect=NotFoundException("Integration not found")
+                side_effect=NotFoundError("Integration not found")
             )
             response = self.client.delete(
                 f"/users/{user_id}/integrations/{provider}",
                 headers={"Authorization": "Bearer valid-token"},
             )
-
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+            assert response.status_code == status.HTTP_404_NOT_FOUND
+            data = response.json()
+            assert "Integration not found" in data["message"]
 
     def test_refresh_integration_tokens_success(self):
         """Test successful token refresh."""
@@ -654,8 +655,9 @@ class TestProviderEndpoints(BaseUserManagementIntegrationTest):
                 json=request_data,
                 headers={"Authorization": "Bearer valid-token"},
             )
-
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+            assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+            data = response.json()
+            assert "Provider google is not available" in data["message"]
 
 
 class TestIntegrationEndpointSecurity(BaseUserManagementIntegrationTest):

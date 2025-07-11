@@ -8,16 +8,13 @@ Supports partial updates and preference validation.
 from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 
-from services.user.auth.nextauth import get_current_user, verify_user_ownership
-from services.user.exceptions import (
-    AuthorizationException,
-    DatabaseException,
-    PreferencesNotFoundException,
-    UserNotFoundException,
-    ValidationException,
+from services.common.http_errors import (
+    NotFoundError,
+    ServiceError,
 )
+from services.user.auth.nextauth import get_current_user, verify_user_ownership
 from services.user.schemas.preferences import (
     PreferencesResetRequest,
     UserPreferencesResponse,
@@ -72,42 +69,22 @@ async def get_preferences(
 
         if not preferences:
             logger.warning("Preferences not found", user_id=user_id)
-            raise PreferencesNotFoundException(
-                f"Preferences not found for user {user_id}"
+            raise NotFoundError(
+                "Preferences", identifier=f"Preferences not found for user {user_id}"
             )
 
         logger.info("Successfully retrieved preferences", user_id=user_id)
         return preferences
 
-    except PreferencesNotFoundException:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Preferences not found"
-        )
-    except UserNotFoundException:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
-    except AuthorizationException:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied: You can only access your own preferences",
-        )
-    except DatabaseException as e:
-        logger.error(
-            "Database error getting preferences", user_id=user_id, error=str(e)
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve preferences",
+    except NotFoundError:
+        raise NotFoundError(
+            "Preferences", identifier=f"Preferences not found for user {user_id}"
         )
     except Exception as e:
         logger.error(
             "Unexpected error getting preferences", user_id=user_id, error=str(e)
         )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error",
-        )
+        raise ServiceError(message="Internal server error", details={"error": str(e)})
 
 
 @router.put(
@@ -158,42 +135,11 @@ async def update_preferences(
         logger.info("Successfully updated preferences", user_id=user_id)
         return updated_preferences
 
-    except UserNotFoundException:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
-    except PreferencesNotFoundException:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Preferences not found"
-        )
-    except AuthorizationException:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied: You can only update your own preferences",
-        )
-    except ValidationException as e:
-        logger.warning(
-            "Validation error updating preferences", user_id=user_id, error=str(e)
-        )
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
-        )
-    except DatabaseException as e:
-        logger.error(
-            "Database error updating preferences", user_id=user_id, error=str(e)
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update preferences",
-        )
     except Exception as e:
         logger.error(
             "Unexpected error updating preferences", user_id=user_id, error=str(e)
         )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error",
-        )
+        raise ServiceError(message="Internal server error", details={"error": str(e)})
 
 
 @router.post(
@@ -241,39 +187,8 @@ async def reset_preferences(
         logger.info("Successfully reset preferences", user_id=user_id)
         return reset_preferences
 
-    except UserNotFoundException:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
-    except PreferencesNotFoundException:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Preferences not found"
-        )
-    except AuthorizationException:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied: You can only reset your own preferences",
-        )
-    except ValidationException as e:
-        logger.warning(
-            "Validation error resetting preferences", user_id=user_id, error=str(e)
-        )
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
-        )
-    except DatabaseException as e:
-        logger.error(
-            "Database error resetting preferences", user_id=user_id, error=str(e)
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to reset preferences",
-        )
     except Exception as e:
         logger.error(
             "Unexpected error resetting preferences", user_id=user_id, error=str(e)
         )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error",
-        )
+        raise ServiceError(message="Internal server error", details={"error": str(e)})

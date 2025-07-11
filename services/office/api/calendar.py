@@ -11,8 +11,14 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, cast
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, Path, Query
 
+from services.common.http_errors import (
+    AuthError,
+    NotFoundError,
+    ServiceError,
+    ValidationError,
+)
 from services.office.core.api_client_factory import APIClientFactory
 from services.office.core.auth import ServicePermissionRequired
 from services.office.core.cache_manager import cache_manager, generate_cache_key
@@ -109,7 +115,9 @@ async def get_calendar_events(
                 logger.warning(f"[{request_id}] Invalid provider: {provider}")
 
         if not valid_providers:
-            raise HTTPException(status_code=400, detail="No valid providers specified")
+            raise ValidationError(
+                message="No valid providers specified", field="providers"
+            )
 
         # Parse and validate dates
         if not start_date:
@@ -122,8 +130,9 @@ async def get_calendar_events(
                     tzinfo=timezone.utc
                 )
             except ValueError:
-                raise HTTPException(
-                    status_code=400, detail="Invalid start_date format. Use YYYY-MM-DD"
+                raise ValidationError(
+                    message="Invalid start_date format. Use YYYY-MM-DD",
+                    field="start_date",
                 )
 
         if not end_date:
@@ -134,8 +143,8 @@ async def get_calendar_events(
                     tzinfo=timezone.utc, hour=23, minute=59, second=59
                 )
             except ValueError:
-                raise HTTPException(
-                    status_code=400, detail="Invalid end_date format. Use YYYY-MM-DD"
+                raise ValidationError(
+                    message="Invalid end_date format. Use YYYY-MM-DD", field="end_date"
                 )
 
         # Build cache key
@@ -256,13 +265,11 @@ async def get_calendar_events(
             request_id=request_id,
         )
 
-    except HTTPException:
+    except ValidationError:
         raise
     except Exception as e:
         logger.error(f"[{request_id}] Calendar events request failed: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to fetch calendar events: {str(e)}"
-        )
+        raise ServiceError(message=f"Failed to fetch calendar events: {str(e)}")
 
 
 @router.get("/events/{event_id}", response_model=ApiResponse)
@@ -313,7 +320,7 @@ async def get_calendar_event(
         )
 
         if not event:
-            raise HTTPException(status_code=404, detail=f"Event {event_id} not found")
+            raise NotFoundError("Event", event_id)
 
         # Build response
         response_data = {
@@ -341,11 +348,11 @@ async def get_calendar_event(
             request_id=request_id,
         )
 
-    except HTTPException:
+    except NotFoundError:
         raise
     except Exception as e:
         logger.error(f"[{request_id}] Event detail request failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch event: {str(e)}")
+        raise ServiceError(message=f"Failed to fetch event: {str(e)}")
 
 
 @router.post("/events", response_model=ApiResponse)
@@ -381,9 +388,9 @@ async def create_calendar_event(
 
         # Validate provider
         if provider.lower() not in ["google", "microsoft"]:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid provider: {provider}. Must be 'google' or 'microsoft'",
+            raise ValidationError(
+                message=f"Invalid provider: {provider}. Must be 'google' or 'microsoft'",
+                field="provider",
             )
 
         provider = provider.lower()
@@ -391,10 +398,8 @@ async def create_calendar_event(
         # Get API client for provider
         client = await api_client_factory.create_client(user_id, provider)
         if client is None:
-            raise HTTPException(
-                status_code=503,
-                detail=f"Failed to create API client for provider {provider}. "
-                "User may not have connected this provider.",
+            raise AuthError(
+                message=f"Failed to create API client for provider {provider}. User may not have connected this provider."
             )
 
         # Create event based on provider
@@ -445,13 +450,11 @@ async def create_calendar_event(
             request_id=request_id,
         )
 
-    except HTTPException:
+    except ValidationError:
         raise
     except Exception as e:
         logger.error(f"[{request_id}] Create calendar event request failed: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to create calendar event: {str(e)}"
-        )
+        raise ServiceError(message=f"Failed to create calendar event: {str(e)}")
 
 
 @router.put("/events/{event_id}", response_model=ApiResponse)
@@ -490,10 +493,8 @@ async def update_calendar_event(
         # Get API client for provider
         client = await api_client_factory.create_client(user_id, provider)
         if client is None:
-            raise HTTPException(
-                status_code=503,
-                detail=f"Failed to create API client for provider {provider}. "
-                "User may not have connected this provider.",
+            raise AuthError(
+                message=f"Failed to create API client for provider {provider}. User may not have connected this provider."
             )
 
         # Update event based on provider and capture the updated data
@@ -586,13 +587,11 @@ async def update_calendar_event(
             request_id=request_id,
         )
 
-    except HTTPException:
+    except ValidationError:
         raise
     except Exception as e:
         logger.error(f"[{request_id}] Update calendar event request failed: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to update calendar event: {str(e)}"
-        )
+        raise ServiceError(message=f"Failed to update calendar event: {str(e)}")
 
 
 async def create_google_event(
@@ -921,10 +920,8 @@ async def delete_calendar_event(
         # Get API client for provider
         client = await api_client_factory.create_client(user_id, provider)
         if client is None:
-            raise HTTPException(
-                status_code=503,
-                detail=f"Failed to create API client for provider {provider}. "
-                "User may not have connected this provider.",
+            raise AuthError(
+                message=f"Failed to create API client for provider {provider}. User may not have connected this provider."
             )
 
         # Delete event based on provider
@@ -969,13 +966,11 @@ async def delete_calendar_event(
             request_id=request_id,
         )
 
-    except HTTPException:
+    except AuthError:
         raise
     except Exception as e:
         logger.error(f"[{request_id}] Delete calendar event request failed: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to delete calendar event: {str(e)}"
-        )
+        raise ServiceError(message=f"Failed to delete calendar event: {str(e)}")
 
 
 async def delete_google_event(
@@ -1340,11 +1335,11 @@ def parse_event_id(event_id: str) -> tuple[str, str]:
         Tuple of (provider, original_event_id)
 
     Raises:
-        HTTPException: If event ID format is invalid
+        ValidationError: If event ID format is invalid
     """
     try:
         if "_" not in event_id:
-            raise ValueError("Invalid event ID format")
+            raise ValidationError(message="Invalid event ID format", field="event_id")
 
         parts = event_id.split("_", 1)
         provider_prefix = parts[0].lower()
@@ -1355,12 +1350,14 @@ def parse_event_id(event_id: str) -> tuple[str, str]:
 
         provider = provider_map.get(provider_prefix)
         if not provider:
-            raise ValueError(f"Unknown provider prefix: {provider_prefix}")
+            raise ValidationError(
+                message=f"Unknown provider prefix: {provider_prefix}", field="provider"
+            )
 
         return provider, original_id
 
     except Exception:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid event ID format: {event_id}. Expected format: 'provider_originalId'",
+        raise ValidationError(
+            message=f"Invalid event ID format: {event_id}. Expected format: 'provider_originalId'",
+            field="event_id",
         )

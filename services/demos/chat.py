@@ -597,7 +597,7 @@ class FullDemo:
 
         try:
             # Generate a NextAuth-style user ID from the email
-            user_id = f"nextauth_{auth_email.replace('@', '_').replace('.', '_')}"
+            user_id = f"{auth_email.replace('@', '_').replace('.', '_')}"
 
             # Create user if it doesn't exist (before creating the token)
             user_created = await self._create_user_if_not_exists(auth_email, user_id)

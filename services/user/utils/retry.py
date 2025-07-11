@@ -12,12 +12,7 @@ import random
 from functools import wraps
 from typing import Any, Callable, List, Optional, Type
 
-from services.user.exceptions import (
-    DatabaseException,
-    IntegrationException,
-    ServiceException,
-    TokenNotFoundException,
-)
+from services.common.http_errors import NotFoundError, ServiceError
 
 logger = logging.getLogger(__name__)
 
@@ -42,13 +37,12 @@ def is_transient_error(exception: Exception) -> bool:
     Returns:
         True if the error is transient and should be retried
     """
-    # Database connection issues
-    if isinstance(exception, DatabaseException):
+    # Service errors (including database, network, etc.)
+    if isinstance(exception, ServiceError):
         return True
-
-    # External service errors
-    if isinstance(exception, ServiceException):
-        return True
+    # NotFoundError is not considered transient
+    if isinstance(exception, NotFoundError):
+        return False
 
     # HTTP-related errors that might be transient
     error_message = str(exception).lower()
@@ -317,7 +311,7 @@ def retry_database_operations(max_attempts: int = 3, base_delay: float = 0.5):
         max_attempts=max_attempts,
         base_delay=base_delay,
         max_delay=10.0,
-        retry_exceptions=[DatabaseException],
+        retry_exceptions=[ServiceError],
     )
 
 
@@ -327,7 +321,7 @@ def retry_external_api_calls(max_attempts: int = 3, base_delay: float = 1.0):
         max_attempts=max_attempts,
         base_delay=base_delay,
         max_delay=30.0,
-        retry_exceptions=[ServiceException],
+        retry_exceptions=[ServiceError],
     )
 
 
@@ -337,6 +331,6 @@ def retry_oauth_operations(max_attempts: int = 2, base_delay: float = 1.0):
         max_attempts=max_attempts,
         base_delay=base_delay,
         max_delay=5.0,
-        retry_exceptions=[IntegrationException],
-        ignore_exceptions=[TokenNotFoundException],  # Don't retry on missing tokens
+        retry_exceptions=[ServiceError],
+        ignore_exceptions=[NotFoundError],  # Don't retry on missing tokens
     )

@@ -13,7 +13,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import select
 
 from services.user.database import get_async_session
-from services.user.exceptions import AuditException, DatabaseException
 from services.user.models.audit import AuditLog
 from services.user.models.user import User
 
@@ -126,7 +125,7 @@ class AuditLogger:
             Created AuditLog record
 
         Raises:
-            AuditException: If audit logging fails
+            Exception: If audit logging fails
         """
         try:
             self.logger.info(
@@ -198,7 +197,7 @@ class AuditLogger:
                 action=action,
                 user_id=user_id,
             )
-            raise AuditException(
+            raise Exception(
                 f"Failed to persist audit log for action {action}",
                 {"action": action, "user_id": user_id, "error": str(e)},
             )
@@ -209,7 +208,7 @@ class AuditLogger:
                 action=action,
                 user_id=user_id,
             )
-            raise AuditException(
+            raise Exception(
                 f"Unexpected error during audit logging for action {action}",
                 {"action": action, "user_id": user_id, "error": str(e)},
             )
@@ -360,7 +359,7 @@ class AuditLogger:
             List of matching AuditLog records
 
         Raises:
-            DatabaseException: If query fails
+            Exception: If query fails
         """
         try:
             async_session = get_async_session()
@@ -411,7 +410,7 @@ class AuditLogger:
 
         except SQLAlchemyError as e:
             self.logger.error("audit_query_failed", error=str(e))
-            raise DatabaseException(
+            raise Exception(
                 "Failed to query audit logs",
                 {"error": str(e)},
             )
@@ -495,9 +494,11 @@ class AuditLogger:
                 user_id=user_id,
                 error=str(e),
             )
-            raise AuditException(
-                f"Failed to generate activity summary for user {user_id}",
-                {"user_id": user_id, "error": str(e)},
+            from services.common.http_errors import ServiceError
+
+            raise ServiceError(
+                message=f"Failed to generate activity summary for user {user_id}: {str(e)}",
+                details={"user_id": user_id, "error": str(e)},
             )
 
     async def get_security_events(
@@ -561,7 +562,7 @@ class AuditLogger:
 
         except Exception as e:
             self.logger.error("security_events_query_failed", error=str(e))
-            raise AuditException(
+            raise Exception(
                 "Failed to retrieve security events",
                 {"error": str(e)},
             )
@@ -577,7 +578,7 @@ class AuditLogger:
             Number of logs deleted
 
         Raises:
-            AuditException: If cleanup fails
+            Exception: If cleanup fails
         """
         try:
             cutoff_date = datetime.now(timezone.utc) - timedelta(days=retention_days)
@@ -622,7 +623,7 @@ class AuditLogger:
 
         except SQLAlchemyError as e:
             self.logger.error("audit_cleanup_failed", error=str(e))
-            raise AuditException(
+            raise Exception(
                 "Failed to cleanup old audit logs",
                 {"retention_days": retention_days, "error": str(e)},
             )
@@ -719,9 +720,11 @@ class AuditLogger:
                 error=str(e),
                 user_id=user_id,
             )
-            raise AuditException(
-                "Failed to generate compliance report",
-                {"user_id": user_id, "error": str(e)},
+            from services.common.http_errors import ServiceError
+
+            raise ServiceError(
+                message=f"Failed to generate compliance report: {str(e)}",
+                details={"user_id": user_id, "error": str(e)},
             )
 
 

@@ -8,8 +8,12 @@ with signature verification and event processing.
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Request
 
+from services.common.http_errors import (
+    ServiceError,
+    ValidationError,
+)
 from services.user.auth.webhook_auth import verify_webhook_signature
 from services.user.schemas.webhook import ClerkWebhookEvent, WebhookResponse
 from services.user.services.webhook_service import WebhookService
@@ -60,32 +64,34 @@ async def clerk_webhook(
             webhook_data = await request.json()
         except Exception as e:
             logger.error(f"Failed to parse webhook payload JSON: {str(e)}")
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Invalid JSON payload format",
+            raise ValidationError(
+                message="Invalid JSON payload format", field="payload", value=str(e)
             )
 
         # Validate required fields for webhook structure
         if not isinstance(webhook_data, dict):
             logger.error("Webhook payload is not a JSON object")
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Webhook payload must be a JSON object",
+            raise ValidationError(
+                message="Webhook payload must be a JSON object",
+                field="payload",
+                value=str(webhook_data),
             )
 
         # Check for required webhook structure
         if "type" not in webhook_data:
             logger.error("Webhook payload missing required 'type' field")
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Webhook payload missing required 'type' field",
+            raise ValidationError(
+                message="Webhook payload missing required 'type' field",
+                field="type",
+                value=webhook_data.get("type"),
             )
 
         if "data" not in webhook_data:
             logger.error("Webhook payload missing required 'data' field")
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Webhook payload missing required 'data' field",
+            raise ValidationError(
+                message="Webhook payload missing required 'data' field",
+                field="data",
+                value=webhook_data.get("data"),
             )
 
         event_type = webhook_data.get("type")
@@ -124,17 +130,16 @@ async def clerk_webhook(
             event_id=data.get("id"),
         )
 
-    except HTTPException:
-        # Re-raise HTTP exceptions as-is
-        raise
+    except ValidationError as e:
+        raise e
 
     except Exception as e:
         logger.error(f"Unexpected error processing webhook: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
+        raise ServiceError(
+            message="An unexpected error occurred",
+            details={
                 "error": "InternalServerError",
-                "message": "An unexpected error occurred",
+                "message": str(e),
                 "event_type": event_type,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             },
@@ -173,13 +178,10 @@ async def test_clerk_webhook(
 
     except Exception as e:
         logger.error(f"Test webhook processing failed: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "error": "TestWebhookError",
-                "message": f"Test webhook processing failed: {str(e)}",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            },
+        raise ValidationError(
+            message=f"Test webhook processing failed: {str(e)}",
+            field="test_webhook",
+            value=str(e),
         )
 
 

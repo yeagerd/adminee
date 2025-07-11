@@ -12,11 +12,9 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
+from services.common.http_errors import NotFoundError
 from services.user.auth.nextauth import get_current_user
 from services.user.database import create_all_tables
-from services.user.exceptions import (
-    UserNotFoundException,
-)
 from services.user.schemas.preferences import (
     AIPreferencesSchema,
     IntegrationPreferencesSchema,
@@ -236,9 +234,9 @@ class TestPreferencesService(BaseUserManagementTest):
         with patch.object(
             self.preferences_service,
             "get_user_preferences",
-            side_effect=UserNotFoundException("User not found"),
+            side_effect=NotFoundError("User not found"),
         ):
-            with pytest.raises(UserNotFoundException):
+            with pytest.raises(NotFoundError):
                 await self.preferences_service.get_user_preferences("nonexistent_user")
 
     @pytest.mark.asyncio

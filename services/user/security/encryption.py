@@ -17,7 +17,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from services.common.config_secrets import (
     get_token_encryption_salt,  # type: ignore[misc]
 )
-from services.user.exceptions import EncryptionException
+from services.common.http_errors import ServiceError
 from services.user.settings import Settings
 
 # Set up logging
@@ -63,7 +63,7 @@ class TokenEncryption:
             Service salt as bytes
 
         Raises:
-            EncryptionException: If salt cannot be obtained
+            ServiceError: If salt cannot be obtained
         """
         try:
             # Use config_secrets which respects environment-based priority:
@@ -74,7 +74,7 @@ class TokenEncryption:
                 logger.error(
                     "Failed to get service salt - TOKEN_ENCRYPTION_SALT environment variable not set"
                 )
-                raise EncryptionException("Failed to initialize encryption service")
+                raise ServiceError("Failed to initialize encryption service")
 
             # Validate base64 encoding
             try:
@@ -84,7 +84,7 @@ class TokenEncryption:
                     "Failed to decode service salt - invalid base64 format",
                     error=str(decode_error),
                 )
-                raise EncryptionException("Failed to initialize encryption service")
+                raise ServiceError("Failed to initialize encryption service")
 
             # Validate salt length (should be at least 16 bytes)
             if len(salt_bytes) < 16:
@@ -92,16 +92,16 @@ class TokenEncryption:
                     "Service salt too short - must be at least 16 bytes",
                     salt_length=len(salt_bytes),
                 )
-                raise EncryptionException("Failed to initialize encryption service")
+                raise ServiceError("Failed to initialize encryption service")
 
             return salt_bytes
 
-        except EncryptionException:
-            # Re-raise EncryptionException as-is
+        except ServiceError:
+            # Re-raise ServiceError as-is
             raise
         except Exception as e:
             logger.error("Failed to get service salt", error=str(e))
-            raise EncryptionException("Failed to initialize encryption service")
+            raise ServiceError("Failed to initialize encryption service")
 
     def derive_user_key(self, user_id: str, version: int = KEY_VERSION) -> bytes:
         """
@@ -115,7 +115,7 @@ class TokenEncryption:
             32-byte encryption key
 
         Raises:
-            EncryptionException: If key derivation fails
+            ServiceError: If key derivation fails
         """
         try:
             logger.debug("Deriving user key", user_id=user_id, version=version)
@@ -145,9 +145,7 @@ class TokenEncryption:
 
         except Exception as e:
             logger.error("Key derivation failed", user_id=user_id, error=str(e))
-            raise EncryptionException(
-                f"Failed to derive encryption key for user {user_id}"
-            )
+            raise ServiceError(f"Failed to derive encryption key for user {user_id}")
 
     def encrypt_token(
         self, token: str, user_id: str, additional_data: Optional[str] = None
@@ -164,7 +162,7 @@ class TokenEncryption:
             Base64-encoded encrypted token with embedded metadata
 
         Raises:
-            EncryptionException: If encryption fails
+            ServiceError: If encryption fails
         """
         try:
             logger.debug("Encrypting token", user_id=user_id)
@@ -198,7 +196,7 @@ class TokenEncryption:
 
         except Exception as e:
             logger.error("Token encryption failed", user_id=user_id, error=str(e))
-            raise EncryptionException(f"Failed to encrypt token for user {user_id}")
+            raise ServiceError(f"Failed to encrypt token for user {user_id}")
 
     def decrypt_token(
         self, encrypted_token: str, user_id: str, additional_data: Optional[str] = None
@@ -215,7 +213,7 @@ class TokenEncryption:
             Decrypted token string
 
         Raises:
-            EncryptionException: If decryption fails
+            ServiceError: If decryption fails
         """
         try:
             logger.debug("Decrypting token", user_id=user_id)
@@ -266,7 +264,7 @@ class TokenEncryption:
 
         except Exception as e:
             logger.error("Token decryption failed", user_id=user_id, error=str(e))
-            raise EncryptionException(f"Failed to decrypt token for user {user_id}")
+            raise ServiceError(f"Failed to decrypt token for user {user_id}")
 
     def rotate_user_key(self, user_id: str, old_token: str) -> Tuple[str, int]:
         """
@@ -280,7 +278,7 @@ class TokenEncryption:
             Tuple of (new_encrypted_token, new_version)
 
         Raises:
-            EncryptionException: If key rotation fails
+            ServiceError: If key rotation fails
         """
         try:
             logger.info("Rotating user key", user_id=user_id)
@@ -312,7 +310,7 @@ class TokenEncryption:
 
         except Exception as e:
             logger.error("Key rotation failed", user_id=user_id, error=str(e))
-            raise EncryptionException(f"Failed to rotate key for user {user_id}")
+            raise ServiceError(f"Failed to rotate key for user {user_id}")
 
     def is_encrypted(self, token: str) -> bool:
         """

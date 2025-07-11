@@ -31,7 +31,7 @@ This pattern ensures:
 import json
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
 from services.chat.agents.workflow_agent import WorkflowAgent
@@ -48,6 +48,7 @@ from services.chat.models import (
 )
 from services.chat.service_client import ServiceClient
 from services.chat.settings import get_settings
+from services.common.http_errors import NotFoundError, ValidationError
 
 router = APIRouter()
 
@@ -94,10 +95,12 @@ async def chat_endpoint(
             thread_id_int = int(thread_id)
             thread = await history_manager.get_thread(thread_id=thread_id_int)
             if thread is None:
-                raise HTTPException(status_code=404, detail="Thread not found")
+                raise NotFoundError("Thread", thread_id)
         except (ValueError, TypeError) as e:
-            raise HTTPException(
-                status_code=400, detail="Invalid thread_id format. Must be an integer."
+            raise ValidationError(
+                message="Invalid thread_id format. Must be an integer.",
+                field="thread_id",
+                value=thread_id,
             ) from e
 
     # At this point, thread is guaranteed to be not None
@@ -105,7 +108,7 @@ async def chat_endpoint(
 
     # Initialize the multi-agent workflow with user timezone
     if thread.id is None:
-        raise ValueError("thread.id cannot be None")
+        raise ValidationError(message="thread.id cannot be None", field="thread.id")
     agent = WorkflowAgent(
         thread_id=int(thread.id),
         user_id=user_id,
@@ -190,21 +193,19 @@ async def chat_stream_endpoint(
     # Create or get thread (returns database Thread model)
     thread: Optional[history_manager.Thread]
     if not thread_id:
-        # Always create a new thread if no thread_id is provided
         thread = await history_manager.create_thread(user_id=user_id)
     else:
-        # Fetch the existing thread
         try:
             thread_id_int = int(thread_id)
             thread = await history_manager.get_thread(thread_id=thread_id_int)
             if thread is None:
-                raise HTTPException(status_code=404, detail="Thread not found")
+                raise NotFoundError("Thread", thread_id)
         except (ValueError, TypeError) as e:
-            raise HTTPException(
-                status_code=400, detail="Invalid thread_id format. Must be an integer."
+            raise ValidationError(
+                message="Invalid thread_id format. Must be an integer.",
+                field="thread_id",
+                value=thread_id,
             ) from e
-
-    # At this point, thread is guaranteed to be not None
     thread = cast(history_manager.Thread, thread)
 
     async def generate_streaming_response():
@@ -212,7 +213,9 @@ async def chat_stream_endpoint(
         try:
             # Initialize the multi-agent workflow with user timezone
             if thread.id is None:
-                raise ValueError("thread.id cannot be None")
+                raise ValidationError(
+                    message="thread.id cannot be None", field="thread.id"
+                )
             agent = WorkflowAgent(
                 thread_id=int(thread.id),
                 user_id=user_id,
