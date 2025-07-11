@@ -33,17 +33,6 @@ from services.common.settings import BaseSettings, SettingsConfigDict
 
 # Try to import OAuth utilities
 try:
-    from demo_jwt_utils import create_bearer_token
-
-    OAUTH_AVAILABLE = True
-except ImportError:
-    OAUTH_AVAILABLE = False
-
-# Force NEXTAUTH_AVAILABLE True for test compatibility
-NEXTAUTH_AVAILABLE = True
-
-# Try to import NextAuth utilities
-try:
     from services.demos.nextauth_demo_utils import (
         NextAuthClient,
         compare_auth_approaches,
@@ -630,9 +619,9 @@ class FullDemo:
 
             # Verify the token works by trying to get integrations
             try:
-                result = await self.user_client.get_integrations_status()
+                await self.user_client.get_integrations_status()
                 # Correct: get_integrations_status is async
-            except Exception as e:
+            except Exception:
                 logger.warning("")
 
             self.user_id = user_id
@@ -688,8 +677,8 @@ class FullDemo:
                             f"Failed to create user via /users/: {response.status_code} {response.text}"
                         )
                         return False
-            except Exception as e:
-                logger.error("")
+            except Exception as api_error:
+                logger.error(f"User creation via /users/ API failed: {api_error}")
                 return False
 
     async def setup_oauth_integration(self, provider: str) -> bool:
