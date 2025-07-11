@@ -27,8 +27,8 @@ class ApiClient {
         }
 
         // Add user context if available
-        if (session?.providerUserId) {
-            headers['X-User-ID'] = session.providerUserId;
+        if (session?.user?.id) {
+            headers['X-User-ID'] = session.user.id;
         }
 
         return headers;
@@ -74,18 +74,18 @@ class ApiClient {
     // User Management
     async getCurrentUser() {
         const session = await getSession();
-        if (!session?.providerUserId) {
+        if (!session?.user?.id) {
             throw new Error('No authenticated user');
         }
-        return this.request(`/users/external/${session.providerUserId}`);
+        return this.request(`/users/${session.user.id}`);
     }
 
     async updateUser(userData: any) {
         const session = await getSession();
-        if (!session?.providerUserId) {
+        if (!session?.user?.id) {
             throw new Error('No authenticated user');
         }
-        return this.request(`/users/external/${session.providerUserId}`, {
+        return this.request(`/users/${session.user.id}`, {
             method: 'PUT',
             body: userData,
         });
@@ -94,18 +94,18 @@ class ApiClient {
     // Integration Management
     async getIntegrations() {
         const session = await getSession();
-        if (!session?.providerUserId) {
+        if (!session?.user?.id) {
             throw new Error('No authenticated user');
         }
-        return this.request(`/users/${session.providerUserId}/integrations`);
+        return this.request(`/users/${session.user.id}/integrations`);
     }
 
     async startOAuthFlow(provider: string, scopes: string[]) {
         const session = await getSession();
-        if (!session?.providerUserId) {
+        if (!session?.user?.id) {
             throw new Error('No authenticated user');
         }
-        return this.request(`/users/${session.providerUserId}/integrations/oauth/start`, {
+        return this.request(`/users/${session.user.id}/integrations/oauth/start`, {
             method: 'POST',
             body: {
                 provider,
@@ -117,10 +117,10 @@ class ApiClient {
 
     async completeOAuthFlow(provider: string, code: string, state: string) {
         const session = await getSession();
-        if (!session?.providerUserId) {
+        if (!session?.user?.id) {
             throw new Error('No authenticated user');
         }
-        return this.request(`/users/${session.providerUserId}/integrations/oauth/callback?provider=${provider}`, {
+        return this.request(`/users/${session.user.id}/integrations/oauth/callback?provider=${provider}`, {
             method: 'POST',
             body: { code, state },
         });
@@ -128,20 +128,20 @@ class ApiClient {
 
     async disconnectIntegration(provider: string) {
         const session = await getSession();
-        if (!session?.providerUserId) {
+        if (!session?.user?.id) {
             throw new Error('No authenticated user');
         }
-        return this.request(`/users/${session.providerUserId}/integrations/${provider}`, {
+        return this.request(`/users/${session.user.id}/integrations/${provider}`, {
             method: 'DELETE',
         });
     }
 
     async refreshIntegrationTokens(provider: string) {
         const session = await getSession();
-        if (!session?.providerUserId) {
+        if (!session?.user?.id) {
             throw new Error('No authenticated user');
         }
-        return this.request(`/users/${session.providerUserId}/integrations/${provider}/refresh`, {
+        return this.request(`/users/${session.user.id}/integrations/${provider}/refresh`, {
             method: 'POST',
         });
     }

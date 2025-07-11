@@ -50,7 +50,10 @@ export const authOptions: NextAuthOptions = {
                     body: JSON.stringify(userData),
                 });
 
-                if (!response.ok) {
+                if (response.ok) {
+                    const backendUser = await response.json();
+                    user.id = backendUser.id; // Attach internal user ID
+                } else {
                     console.error('Failed to create/update user in user service:', response.statusText);
                     // Still allow sign in even if webhook fails
                 }
@@ -62,18 +65,24 @@ export const authOptions: NextAuthOptions = {
             return true;
         },
         async jwt({ token, account, user }) {
-            // Store provider information in JWT
+            // Store provider information and internal user ID in JWT
             if (account) {
                 token.provider = account.provider === 'azure-ad' ? 'microsoft' : account.provider;
                 token.providerUserId = account.providerAccountId;
             }
+            if (user) {
+                token.internalUserId = user.id;
+            }
             return token;
         },
         async session({ session, token }) {
-            // Include provider information in session
+            // Include provider information and internal user ID in session
             if (token) {
                 session.provider = token.provider as string;
                 session.providerUserId = token.providerUserId as string;
+                if (session.user) {
+                    session.user.id = token.internalUserId as string;
+                }
             }
             return session;
         },
@@ -90,7 +99,7 @@ export const authOptions: NextAuthOptions = {
 
 // Helper function to get user ID from session for API calls
 export function getUserId(session: any): string | null {
-    return session?.providerUserId || null;
+    return session?.user?.id || null;
 }
 
 // Helper function to get provider from session
