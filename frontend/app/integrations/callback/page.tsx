@@ -51,10 +51,10 @@ export default function OAuthCallbackPage() {
                 setTimeout(() => {
                     router.push('/integrations');
                 }, 2000);
-            } catch (error: any) {
+            } catch (error: unknown) {
                 console.error('OAuth completion failed:', error);
                 setStatus('error');
-                setMessage(`Failed to complete OAuth flow: ${error.message || 'Unknown error'}`);
+                setMessage(`Failed to complete OAuth flow: ${error instanceof Error ? error.message : 'Unknown error'}`);
             }
         };
 

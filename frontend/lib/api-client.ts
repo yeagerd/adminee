@@ -1,7 +1,7 @@
 
 interface ApiClientOptions {
     method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
-    body?: any;
+    body?: unknown;
     headers?: Record<string, string>;
 }
 
@@ -60,7 +60,7 @@ class ApiClient {
         return this.request('/api/user');
     }
 
-    async updateUser(userData: any) {
+    async updateUser(userData: Record<string, unknown>) {
         return this.request('/api/user', {
             method: 'PUT',
             body: userData,

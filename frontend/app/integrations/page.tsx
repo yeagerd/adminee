@@ -62,8 +62,10 @@ export default function IntegrationsPage() {
         try {
             setError(null);
             const data = await apiClient.getIntegrations();
-            setIntegrations(data);
-        } catch (error: any) {
+            // The backend returns { integrations: [...], total: ..., active_count: ..., error_count: ... }
+            // Extract just the integrations array
+            setIntegrations(data.integrations || []);
+        } catch (error: unknown) {
             console.error('Failed to load integrations:', error);
             setError('Failed to load integrations. Please try again.');
         } finally {
@@ -83,7 +85,7 @@ export default function IntegrationsPage() {
 
             // Redirect to OAuth provider
             window.location.href = response.authorization_url;
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Failed to start OAuth flow:', error);
             setError(`Failed to connect ${config.name}. Please try again.`);
             setConnectingProvider(null);
@@ -95,7 +97,7 @@ export default function IntegrationsPage() {
             setError(null);
             await apiClient.disconnectIntegration(provider);
             await loadIntegrations(); // Reload to show updated status
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Failed to disconnect integration:', error);
             setError(`Failed to disconnect ${provider}. Please try again.`);
         }
@@ -106,7 +108,7 @@ export default function IntegrationsPage() {
             setError(null);
             await apiClient.refreshIntegrationTokens(provider);
             await loadIntegrations(); // Reload to show updated status
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Failed to refresh tokens:', error);
             setError(`Failed to refresh ${provider} tokens. Please try again.`);
         }
@@ -129,7 +131,7 @@ export default function IntegrationsPage() {
         }
     };
 
-    const getStatusColor = (status?: string) => {
+    const getStatusColor = (status?: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
         switch (status) {
             case 'ACTIVE':
                 return 'default';
@@ -210,7 +212,7 @@ export default function IntegrationsPage() {
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 {getStatusIcon(integration?.status)}
-                                                <Badge variant={getStatusColor(integration?.status) as any}>
+                                                <Badge variant={getStatusColor(integration?.status)}>
                                                     {integration?.status || 'Not Connected'}
                                                 </Badge>
                                             </div>
@@ -243,9 +245,9 @@ export default function IntegrationsPage() {
                                                         {new Date(integration.last_sync_at).toLocaleString()}
                                                     </div>
                                                 )}
-                                                {integration.error_message && (
+                                                {integration.last_error && (
                                                     <div className="text-xs text-red-600">
-                                                        <span className="font-medium">Error:</span> {integration.error_message}
+                                                        <span className="font-medium">Error:</span> {integration.last_error}
                                                     </div>
                                                 )}
                                             </div>

@@ -13,7 +13,6 @@ const OnboardingPage = () => {
     const router = useRouter();
     const { data: session, status } = useSession();
     const [integrations, setIntegrations] = useState<Integration[]>([]);
-    const [loading, setLoading] = useState(true);
     const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
 
     useEffect(() => {
@@ -25,18 +24,18 @@ const OnboardingPage = () => {
     const loadIntegrations = async () => {
         try {
             const data = await apiClient.getIntegrations();
-            setIntegrations(data);
+            // The backend returns { integrations: [...], total: ..., active_count: ..., error_count: ... }
+            // Extract just the integrations array
+            setIntegrations(data.integrations || []);
         } catch (error) {
             console.error('Failed to load integrations:', error);
-        } finally {
-            setLoading(false);
         }
     };
 
     const handleConnectIntegration = async (provider: string, scopes: string[]) => {
         try {
             setConnectingProvider(provider);
-            const response = await apiClient.startOAuthFlow(provider, scopes);
+            const response = await apiClient.startOAuthFlow(provider, scopes) as { authorization_url: string };
             // Redirect to OAuth provider
             window.location.href = response.authorization_url;
         } catch (error) {

@@ -24,7 +24,9 @@ export default function ProfilePage() {
     const loadIntegrations = async () => {
         try {
             const data = await apiClient.getIntegrations();
-            setIntegrations(data);
+            // The backend returns { integrations: [...], total: ..., active_count: ..., error_count: ... }
+            // Extract just the integrations array
+            setIntegrations(data.integrations || []);
         } catch (error) {
             console.error('Failed to load integrations:', error);
         } finally {
@@ -61,7 +63,7 @@ export default function ProfilePage() {
     const userInitials = session.user?.name
         ? session.user.name
             .split(' ')
-            .map((n: any) => n[0])
+            .map((n: string) => n[0])
             .join('')
             .toUpperCase()
             .slice(0, 2)

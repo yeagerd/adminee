@@ -1,6 +1,6 @@
 import { authOptions } from '@/lib/auth';
 import { getServerSession } from 'next-auth/next';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
 const USER_SERVICE_URL = process.env.USER_SERVICE_URL;
 
@@ -8,7 +8,7 @@ if (!USER_SERVICE_URL) {
     throw new Error('USER_SERVICE_URL environment variable is required');
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
     try {
         const session = await getServerSession(authOptions);
 

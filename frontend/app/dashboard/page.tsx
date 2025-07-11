@@ -27,7 +27,6 @@ import { useEffect, useState } from 'react';
 export default function DashboardPage() {
     const { data: session, status } = useSession();
     const [integrations, setIntegrations] = useState<Integration[]>([]);
-    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (session) {
@@ -43,8 +42,6 @@ export default function DashboardPage() {
             setIntegrations(data.integrations || []);
         } catch (error) {
             console.error('Failed to load integrations:', error);
-        } finally {
-            setLoading(false);
         }
     };
 

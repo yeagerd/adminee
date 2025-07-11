@@ -12,7 +12,7 @@ if (!API_FRONTEND_USER_KEY) {
     throw new Error('API_FRONTEND_USER_KEY environment variable is required');
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
     try {
         const session = await getServerSession(authOptions);
 

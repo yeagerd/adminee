@@ -29,7 +29,7 @@ export const authOptions: NextAuthOptions = {
         }),
     ],
     callbacks: {
-        async signIn({ user, account, profile }) {
+        async signIn({ user, account }) {
             // After OAuth login, fetch or create the user in our user service and get the canonical user id
             const provider = account?.provider === 'azure-ad' ? 'microsoft' : account?.provider;
             const email = user.email!;
@@ -182,11 +182,13 @@ export const authOptions: NextAuthOptions = {
 };
 
 // Helper function to get user ID from session for API calls
-export function getUserId(session: any): string | null {
-    return session?.user?.id || null;
+export function getUserId(session: unknown): string | null {
+    const sessionObj = session as { user?: { id?: string } };
+    return sessionObj?.user?.id || null;
 }
 
 // Helper function to get provider from session
-export function getProvider(session: any): string | null {
-    return session?.provider || null;
+export function getProvider(session: unknown): string | null {
+    const sessionObj = session as { provider?: string };
+    return sessionObj?.provider || null;
 } 
