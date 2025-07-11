@@ -366,7 +366,7 @@ requires-dist = [
     { name = "google-cloud-secret-manager" },
     { name = "greenlet" },
     { name = "httpx", specifier = ">=0.24.0,<1.0.0" },
-    { name = "litellm", specifier = "==1.72.6" },
+    { name = "litellm", specifier = "==1.73.6" },
     { name = "llama-index", specifier = ">=0.12.0,<0.13.0" },
     { name = "llama-index-embeddings-openai", specifier = ">=0.3.0,<0.4.0" },
     { name = "llama-index-llms-litellm", specifier = ">=0.3.0,<0.6.0" },
@@ -1487,7 +1487,7 @@ wheels = [
 
 [[package]]
 name = "litellm"
-version = "1.72.6"
+version = "1.73.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -1502,9 +1502,9 @@ dependencies = [
     { name = "tiktoken" },
     { name = "tokenizers" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8d/15/df75f278fd998f6d6900f692b9de2fba2814b316c123c99072a813668aac/litellm-1.72.6.tar.gz", hash = "sha256:4e5c7e4273b09b765302d2faaec30f77b42255c0055b427b55ea02b8092b8582", size = 8393603 }
+sdist = { url = "https://files.pythonhosted.org/packages/26/58/1a8ecf64b9a1f01dbddc123200f3156638c919fc3de683bd206235ccd33c/litellm-1.73.6.tar.gz", hash = "sha256:072ff9225aaa9caafe0fa9782df0ba4c93f893791cc55dd5ed218a401e788e88", size = 8750656 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/96/c9/4aae0b77632279eef9716dbcb98edd8b36c08a9da070e2470ca9c410c0f8/litellm-1.72.6-py3-none-any.whl", hash = "sha256:e0ae98d25db4910e78b1a0a604f24c0d6875f6cdea02426b264a45d4fbdb8c46", size = 8302810 },
+    { url = "https://files.pythonhosted.org/packages/81/be/3e9a3097c3b25bd1bc24073afdf5e6316120d8f4127e38bd6dcc3e193f55/litellm-1.73.6-py3-none-any.whl", hash = "sha256:98b3c7f436e6521e280f98faf9bad06c4c76d6a1678db2b370ffa175c206d288", size = 8467603 },
 ]
 
 [[package]]
