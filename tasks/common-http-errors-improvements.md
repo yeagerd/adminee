@@ -4,10 +4,10 @@ This task list addresses the areas for improvement identified in the code review
 
 ## Tasks
 
-- [ ] 1. Enhance Error Response Schema Usage
-  - [ ] 1.1 Update `register_briefly_exception_handlers` to use the `ErrorResponse` Pydantic model for response validation
-  - [ ] 1.2 Verify all error responses conform to the standardized schema structure
-  - [ ] 1.3 Add response model validation in FastAPI exception handlers
+- [x] 1. Enhance Error Response Schema Usage
+  - [x] 1.1 Update `register_briefly_exception_handlers` to use the `ErrorResponse` Pydantic model for response validation
+  - [x] 1.2 Verify all error responses conform to the standardized schema structure
+  - [x] 1.3 Add response model validation in FastAPI exception handlers
 
 - [ ] 2. Verify Provider-Specific Error Handling
   - [ ] 2.1 Audit Google API client error handling to ensure `ProviderError` captures all necessary details

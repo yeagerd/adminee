@@ -17,6 +17,15 @@ from fastapi import HTTPException
 from pydantic import BaseModel
 
 
+# Shared error response model (Pydantic)
+class ErrorResponse(BaseModel):
+    type: str
+    message: str
+    details: Optional[Dict[str, Any]] = None
+    timestamp: str
+    request_id: str
+
+
 class BrieflyAPIException(Exception):
     """Base exception for all Briefly API errors."""
 
@@ -38,17 +47,19 @@ class BrieflyAPIException(Exception):
         self.request_id = request_id or str(uuid.uuid4())
         super().__init__(self.message)
 
-    def to_error_response(self) -> Dict[str, Any]:
-        return {
-            "type": self.error_type,
-            "message": self.message,
-            "details": {
-                **self.details,
-                **({"code": self.error_code} if self.error_code else {}),
-            },
-            "timestamp": self.timestamp,
-            "request_id": self.request_id,
+    def to_error_response(self) -> ErrorResponse:
+        """Convert exception to ErrorResponse Pydantic model."""
+        details = {
+            **self.details,
+            **({"code": self.error_code} if self.error_code else {}),
         }
+        return ErrorResponse(
+            type=self.error_type,
+            message=self.message,
+            details=details if details else None,
+            timestamp=self.timestamp,
+            request_id=self.request_id,
+        )
 
 
 # Common subclasses
@@ -181,17 +192,9 @@ class RateLimitError(BrieflyAPIException):
         self.retry_after = retry_after
 
 
-# Shared error response model (Pydantic)
-class ErrorResponse(BaseModel):
-    type: str
-    message: str
-    details: Optional[Dict[str, Any]] = None
-    timestamp: str
-    request_id: str
-
-
 # Utility to convert exceptions to error responses
-def exception_to_response(exc: Exception) -> Dict[str, Any]:
+def exception_to_response(exc: Exception) -> ErrorResponse:
+    """Convert any exception to ErrorResponse Pydantic model."""
     if isinstance(exc, BrieflyAPIException):
         return exc.to_error_response()
     elif isinstance(exc, HTTPException):
@@ -199,40 +202,50 @@ def exception_to_response(exc: Exception) -> Dict[str, Any]:
         detail = (
             exc.detail if isinstance(exc.detail, dict) else {"message": str(exc.detail)}
         )
-        return {
-            "type": "http_error",
-            "message": detail.get("message", "HTTP error"),
-            "details": detail,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "request_id": str(uuid.uuid4()),
-        }
+        return ErrorResponse(
+            type="http_error",
+            message=detail.get("message", "HTTP error"),
+            details=detail,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            request_id=str(uuid.uuid4()),
+        )
     else:
-        return {
-            "type": "internal_error",
-            "message": str(exc),
-            "details": {"error_type": type(exc).__name__},
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "request_id": str(uuid.uuid4()),
-        }
+        return ErrorResponse(
+            type="internal_error",
+            message=str(exc),
+            details={"error_type": type(exc).__name__},
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            request_id=str(uuid.uuid4()),
+        )
 
 
 # Optional: FastAPI exception handler registration utility
 def register_briefly_exception_handlers(app):
+    """
+    Register exception handlers for FastAPI app with ErrorResponse model validation.
+    
+    Args:
+        app: FastAPI application instance
+    """
     from fastapi import Request
     from fastapi.responses import JSONResponse
 
     @app.exception_handler(BrieflyAPIException)
     async def briefly_api_exception_handler(request: Request, exc: BrieflyAPIException):
+        """Handle BrieflyAPIException with validated ErrorResponse."""
+        error_response = exc.to_error_response()
         return JSONResponse(
-            status_code=exc.status_code, content=exc.to_error_response()
+            status_code=exc.status_code, content=error_response.model_dump()
         )
 
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request: Request, exc: HTTPException):
-        content = exception_to_response(exc)
-        return JSONResponse(status_code=exc.status_code, content=content)
+        """Handle HTTPException with validated ErrorResponse."""
+        error_response = exception_to_response(exc)
+        return JSONResponse(status_code=exc.status_code, content=error_response.model_dump())
 
     @app.exception_handler(Exception)
     async def generic_exception_handler(request: Request, exc: Exception):
-        content = exception_to_response(exc)
-        return JSONResponse(status_code=500, content=content)
+        """Handle generic exceptions with validated ErrorResponse."""
+        error_response = exception_to_response(exc)
+        return JSONResponse(status_code=500, content=error_response.model_dump())
