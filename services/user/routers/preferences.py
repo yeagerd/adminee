@@ -10,7 +10,7 @@ from typing import Annotated
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from services.user.auth.clerk import get_current_user, verify_user_ownership
+from services.user.auth.nextauth import get_current_user, verify_user_ownership
 from services.user.exceptions import (
     AuthorizationException,
     DatabaseException,

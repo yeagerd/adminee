@@ -1,11 +1,11 @@
 """
 Authentication package for User Management Service.
 
-Provides Clerk JWT validation, service-to-service authentication,
+Provides NextAuth JWT validation, service-to-service authentication,
 and user authorization helpers.
 """
 
-from .clerk import (
+from .nextauth import (  # Changed from .clerk
     get_current_user,
     get_current_user_with_claims,
     require_user_ownership,
