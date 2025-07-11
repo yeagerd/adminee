@@ -78,10 +78,10 @@ export default function IntegrationsPage() {
             setConnectingProvider(config.provider);
             setError(null);
 
-            const response: OAuthStartResponse = await apiClient.startOAuthFlow(
+            const response = await apiClient.startOAuthFlow(
                 config.provider,
                 config.scopes
-            );
+            ) as OAuthStartResponse;
 
             // Redirect to OAuth provider
             window.location.href = response.authorization_url;
