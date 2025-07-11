@@ -145,7 +145,7 @@ class TestDemoAuthentication:
             "external_auth_id": user_id,
             "email": email,
             "normalized_email": email.lower(),
-            "auth_provider": "nextauth"
+            "auth_provider": "nextauth",
         }
 
         # Mock successful integrations check
