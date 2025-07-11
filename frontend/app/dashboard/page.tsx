@@ -4,7 +4,6 @@ import ChatInterface from '@/components/chat-interface';
 import Navbar from '@/components/navbar';
 import ScheduleList from '@/components/schedule-list';
 import TaskList from '@/components/task-list';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { apiClient, Integration } from '@/lib/api-client';
@@ -16,9 +15,7 @@ import {
     MessageSquare,
     Plus,
     Shield,
-    TrendingUp,
-    User,
-    XCircle
+    User
 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
@@ -99,80 +96,7 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* Integration Status Cards */}
-                <div className="grid gap-4 md:grid-cols-4 mb-6">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Connected Services</CardTitle>
-                            <Shield className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{activeIntegrations.length}</div>
-                            <p className="text-xs text-muted-foreground">
-                                out of 2 available
-                            </p>
-                        </CardContent>
-                    </Card>
 
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Google Services</CardTitle>
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex items-center gap-2">
-                                {hasGoogleIntegration ? (
-                                    <>
-                                        <CheckCircle className="h-5 w-5 text-green-600" />
-                                        <span className="text-sm font-medium">Connected</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <XCircle className="h-5 w-5 text-gray-400" />
-                                        <span className="text-sm text-gray-600">Not connected</span>
-                                    </>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Microsoft Services</CardTitle>
-                            <Mail className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex items-center gap-2">
-                                {hasMicrosoftIntegration ? (
-                                    <>
-                                        <CheckCircle className="h-5 w-5 text-green-600" />
-                                        <span className="text-sm font-medium">Connected</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <XCircle className="h-5 w-5 text-gray-400" />
-                                        <span className="text-sm text-gray-600">Not connected</span>
-                                    </>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Account Status</CardTitle>
-                            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex items-center gap-2">
-                                <Badge variant="default">Active</Badge>
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1">
-                                via {session.provider}
-                            </p>
-                        </CardContent>
-                    </Card>
-                </div>
 
                 {/* Integration Setup */}
                 {activeIntegrations.length === 0 && (
