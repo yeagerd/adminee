@@ -1,0 +1,85 @@
+import { authOptions } from '@/lib/auth';
+import { getServerSession } from 'next-auth/next';
+import { NextRequest, NextResponse } from 'next/server';
+
+const USER_SERVICE_URL = process.env.USER_SERVICE_URL;
+const API_FRONTEND_USER_KEY = process.env.API_FRONTEND_USER_KEY;
+
+if (!USER_SERVICE_URL) {
+    throw new Error('USER_SERVICE_URL environment variable is required');
+}
+if (!API_FRONTEND_USER_KEY) {
+    throw new Error('API_FRONTEND_USER_KEY environment variable is required');
+}
+
+export async function GET(request: NextRequest) {
+    try {
+        const session = await getServerSession(authOptions);
+
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const response = await fetch(`${USER_SERVICE_URL}/users/${session.user.id}`, {
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': API_FRONTEND_USER_KEY!,
+            },
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            return NextResponse.json(
+                { error: `User service error: ${errorText}` },
+                { status: response.status }
+            );
+        }
+
+        const userData = await response.json();
+        return NextResponse.json(userData);
+    } catch (error) {
+        console.error('User API error:', error);
+        return NextResponse.json(
+            { error: 'Internal server error' },
+            { status: 500 }
+        );
+    }
+}
+
+export async function PUT(request: NextRequest) {
+    try {
+        const session = await getServerSession(authOptions);
+
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const body = await request.json();
+
+        const response = await fetch(`${USER_SERVICE_URL}/users/${session.user.id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': API_FRONTEND_USER_KEY!,
+            },
+            body: JSON.stringify(body),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            return NextResponse.json(
+                { error: `User service error: ${errorText}` },
+                { status: response.status }
+            );
+        }
+
+        const userData = await response.json();
+        return NextResponse.json(userData);
+    } catch (error) {
+        console.error('User API error:', error);
+        return NextResponse.json(
+            { error: 'Internal server error' },
+            { status: 500 }
+        );
+    }
+} 

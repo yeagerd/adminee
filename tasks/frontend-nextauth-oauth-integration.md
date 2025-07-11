@@ -197,7 +197,7 @@ AZURE_AD_TENANT_ID=common
 
 # Backend Services
 USER_SERVICE_URL=http://localhost:8001
-USER_SERVICE_API_KEY=your-api-key
+API_FRONTEND_USER_KEY=your-api-key
 BFF_WEBHOOK_SECRET=your-webhook-secret
 ```
 

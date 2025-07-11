@@ -1,6 +1,3 @@
-import { getSession } from 'next-auth/react';
-
-const USER_SERVICE_URL = process.env.NEXT_PUBLIC_USER_SERVICE_URL || 'http://localhost:8001';
 
 interface ApiClientOptions {
     method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -11,27 +8,14 @@ interface ApiClientOptions {
 class ApiClient {
     private baseUrl: string;
 
-    constructor(baseUrl: string = USER_SERVICE_URL) {
+    constructor(baseUrl: string = '') {
         this.baseUrl = baseUrl;
     }
 
     private async getAuthHeaders(): Promise<Record<string, string>> {
-        const session = await getSession();
-        const headers: Record<string, string> = {
+        return {
             'Content-Type': 'application/json',
         };
-
-        // Add API key if available
-        if (process.env.NEXT_PUBLIC_USER_SERVICE_API_KEY) {
-            headers['X-API-Key'] = process.env.NEXT_PUBLIC_USER_SERVICE_API_KEY;
-        }
-
-        // Add user context if available
-        if (session?.user?.id) {
-            headers['X-User-ID'] = session.user.id;
-        }
-
-        return headers;
     }
 
     private async request<T>(endpoint: string, options: ApiClientOptions = {}): Promise<T> {
@@ -71,41 +55,25 @@ class ApiClient {
         }
     }
 
-    // User Management
+    // User Management (via BFF)
     async getCurrentUser() {
-        const session = await getSession();
-        if (!session?.user?.id) {
-            throw new Error('No authenticated user');
-        }
-        return this.request(`/users/${session.user.id}`);
+        return this.request('/api/user');
     }
 
     async updateUser(userData: any) {
-        const session = await getSession();
-        if (!session?.user?.id) {
-            throw new Error('No authenticated user');
-        }
-        return this.request(`/users/${session.user.id}`, {
+        return this.request('/api/user', {
             method: 'PUT',
             body: userData,
         });
     }
 
-    // Integration Management
+    // Integration Management (via BFF)
     async getIntegrations() {
-        const session = await getSession();
-        if (!session?.user?.id) {
-            throw new Error('No authenticated user');
-        }
-        return this.request(`/users/${session.user.id}/integrations`);
+        return this.request('/api/integrations');
     }
 
     async startOAuthFlow(provider: string, scopes: string[]) {
-        const session = await getSession();
-        if (!session?.user?.id) {
-            throw new Error('No authenticated user');
-        }
-        return this.request(`/users/${session.user.id}/integrations/oauth/start`, {
+        return this.request('/api/integrations/oauth/start', {
             method: 'POST',
             body: {
                 provider,
@@ -116,32 +84,20 @@ class ApiClient {
     }
 
     async completeOAuthFlow(provider: string, code: string, state: string) {
-        const session = await getSession();
-        if (!session?.user?.id) {
-            throw new Error('No authenticated user');
-        }
-        return this.request(`/users/${session.user.id}/integrations/oauth/callback?provider=${provider}`, {
+        return this.request(`/api/integrations/oauth/callback?provider=${provider}`, {
             method: 'POST',
             body: { code, state },
         });
     }
 
     async disconnectIntegration(provider: string) {
-        const session = await getSession();
-        if (!session?.user?.id) {
-            throw new Error('No authenticated user');
-        }
-        return this.request(`/users/${session.user.id}/integrations/${provider}`, {
+        return this.request(`/api/integrations/${provider}`, {
             method: 'DELETE',
         });
     }
 
     async refreshIntegrationTokens(provider: string) {
-        const session = await getSession();
-        if (!session?.user?.id) {
-            throw new Error('No authenticated user');
-        }
-        return this.request(`/users/${session.user.id}/integrations/${provider}/refresh`, {
+        return this.request(`/api/integrations/${provider}/refresh`, {
             method: 'POST',
         });
     }

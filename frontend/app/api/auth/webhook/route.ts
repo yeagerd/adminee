@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-API-Key': process.env.USER_SERVICE_API_KEY || '',
+                    'X-API-Key': process.env.API_FRONTEND_USER_KEY || '',
                 },
                 body: JSON.stringify(userData),
             });
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-API-Key': process.env.USER_SERVICE_API_KEY || '',
+                            'X-API-Key': process.env.API_FRONTEND_USER_KEY || '',
                         },
                         body: JSON.stringify(integrationData),
                     });

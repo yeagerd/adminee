@@ -5,6 +5,7 @@ declare module 'next-auth' {
     interface Session {
         provider?: string;
         providerUserId?: string;
+        accessToken?: string;
         user: {
             id: string;
         } & DefaultSession['user'];
@@ -19,5 +20,6 @@ declare module 'next-auth' {
         provider?: string;
         providerUserId?: string;
         internalUserId?: string;
+        accessToken?: string;
     }
 } 

@@ -1,3 +1,4 @@
+import jwt from 'jsonwebtoken';
 import { NextAuthOptions } from 'next-auth';
 import AzureADProvider from 'next-auth/providers/azure-ad';
 import GoogleProvider from 'next-auth/providers/google';
@@ -15,10 +16,11 @@ export const authOptions: NextAuthOptions = {
                 },
             },
         }),
+        // Don't pass in process.env.AZURE_AD_TENANT_ID; it restricts users to those in the tenant
         AzureADProvider({
             clientId: process.env.AZURE_AD_CLIENT_ID!,
             clientSecret: process.env.AZURE_AD_CLIENT_SECRET!,
-            tenantId: process.env.AZURE_AD_TENANT_ID || 'common',
+            tenantId: 'common',
             authorization: {
                 params: {
                     scope: 'openid email profile',
@@ -28,38 +30,103 @@ export const authOptions: NextAuthOptions = {
     ],
     callbacks: {
         async signIn({ user, account, profile }) {
-            // Send user data to our user service for creation/update
+            // After OAuth login, fetch or create the user in our user service and get the canonical user id
+            const provider = account?.provider === 'azure-ad' ? 'microsoft' : account?.provider;
+            const email = user.email!;
+            const external_auth_id = account?.providerAccountId || user.id;
+
+            // Required environment variables - fail fast if missing
+            const userServiceBase = process.env.USER_SERVICE_URL;
+            const apiKey = process.env.API_FRONTEND_USER_KEY;
+
+            if (!userServiceBase) {
+                throw new Error('USER_SERVICE_URL environment variable is required');
+            }
+            if (!apiKey) {
+                throw new Error('API_FRONTEND_USER_KEY environment variable is required');
+            }
+            if (!provider) {
+                throw new Error('OAuth provider is required');
+            }
+            if (!email) {
+                throw new Error('User email is required');
+            }
+
+            // Debug logging
+            console.log('BFF Debug - Environment variables:', {
+                userServiceBase,
+                hasApiKey: !!apiKey,
+                provider,
+                email
+            });
+
             try {
-                const webhookUrl = `${process.env.USER_SERVICE_URL}/users/`;
+                // 1. Try to GET user by email and provider
+                let backendUser = null;
+                const getUrl = `${userServiceBase}/users/id?email=${encodeURIComponent(email)}&provider=${encodeURIComponent(provider)}`;
+                console.log('BFF Debug - GET URL:', getUrl);
 
-                const userData = {
-                    external_auth_id: account?.providerAccountId || user.id,
-                    auth_provider: account?.provider === 'azure-ad' ? 'microsoft' : account?.provider,
-                    email: user.email!,
-                    first_name: user.name?.split(' ')[0] || '',
-                    last_name: user.name?.split(' ').slice(1).join(' ') || '',
-                    profile_image_url: user.image || null,
-                };
-
-                const response = await fetch(webhookUrl, {
-                    method: 'POST',
+                const getRes = await fetch(getUrl, {
+                    method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-API-Key': process.env.USER_SERVICE_API_KEY || '',
+                        'X-API-Key': apiKey,
                     },
-                    body: JSON.stringify(userData),
                 });
 
-                if (response.ok) {
-                    const backendUser = await response.json();
-                    user.id = backendUser.id; // Attach internal user ID
+                console.log('BFF Debug - GET response:', getRes.status);
+
+                if (getRes.ok) {
+                    backendUser = await getRes.json();
+                    console.log('BFF Debug - Found user:', { id: backendUser.id, email: backendUser.email });
+                } else if (getRes.status === 404) {
+                    // 2. If not found, PUT to create user
+                    const putUrl = `${userServiceBase}/users/`;
+                    const userData = {
+                        external_auth_id,
+                        auth_provider: provider,
+                        email,
+                        first_name: user.name?.split(' ')[0] || '',
+                        last_name: user.name?.split(' ').slice(1).join(' ') || '',
+                        profile_image_url: user.image || null,
+                    };
+                    console.log('BFF Debug - Creating user:', userData);
+
+                    const putRes = await fetch(putUrl, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-API-Key': apiKey,
+                        },
+                        body: JSON.stringify(userData),
+                    });
+
+                    console.log('BFF Debug - PUT response:', putRes.status);
+
+                    if (putRes.ok) {
+                        backendUser = await putRes.json();
+                        console.log('BFF Debug - Created user:', { id: backendUser.id, email: backendUser.email });
+                    } else {
+                        const errorText = await putRes.text();
+                        throw new Error(`Failed to create user in user service: ${putRes.status} ${errorText}`);
+                    }
                 } else {
-                    console.error('Failed to create/update user in user service:', response.statusText);
-                    // Still allow sign in even if webhook fails
+                    const errorText = await getRes.text();
+                    throw new Error(`Failed to fetch user from user service: ${getRes.status} ${errorText}`);
                 }
+
+                // 3. Attach internal user ID to user object for session/jwt
+                if (!backendUser || !backendUser.id) {
+                    throw new Error('User service did not return a valid user with ID');
+                }
+
+                user.id = backendUser.id;
+                console.log('BFF Debug - Set user.id to:', user.id);
+
             } catch (error) {
-                console.error('Error sending user creation webhook:', error);
-                // Still allow sign in even if webhook fails
+                console.error('Error in user-service user lookup/creation:', error);
+                // No fallbacks - let the sign-in fail if we can't get the canonical user ID
+                throw error;
             }
 
             return true;
@@ -82,6 +149,23 @@ export const authOptions: NextAuthOptions = {
                 session.providerUserId = token.providerUserId as string;
                 if (session.user) {
                     session.user.id = token.internalUserId as string;
+                }
+
+                // Create a custom JWT token for backend authentication
+                if (token.internalUserId) {
+                    const customToken = jwt.sign(
+                        {
+                            sub: token.internalUserId,
+                            iss: 'nextauth-frontend',
+                            aud: 'briefly-backend',
+                            email: session.user?.email,
+                            iat: Math.floor(Date.now() / 1000),
+                            exp: Math.floor(Date.now() / 1000) + (60 * 60), // 1 hour
+                        },
+                        process.env.NEXTAUTH_SECRET || 'dev-secret',
+                        { algorithm: 'HS256' }
+                    );
+                    session.accessToken = customToken;
                 }
             }
             return session;

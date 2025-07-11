@@ -53,8 +53,11 @@ AZURE_AD_CLIENT_SECRET=your-azure-client-secret
 AZURE_AD_TENANT_ID=common
 
 # Backend Services
-NEXT_PUBLIC_USER_SERVICE_URL=http://localhost:8001
-NEXT_PUBLIC_USER_SERVICE_API_KEY=your-api-key
+USER_SERVICE_URL=http://localhost:8001
+API_FRONTEND_USER_KEY=your-api-key
+
+# JWT Configuration (for development)
+JWT_VERIFY_SIGNATURE=false
 
 # Webhook Security
 BFF_WEBHOOK_SECRET=your-webhook-secret
