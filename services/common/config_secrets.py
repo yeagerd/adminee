@@ -72,13 +72,14 @@ def get_secret(secret_id: str, default: str = "") -> str:
     environment = settings.environment
 
     # Local development: use environment variables and .env files
+    # Priority: shell env vars > .env file > default (matching BaseSettings behavior)
     if environment == "local":
-        # First try os.getenv (for shell environment variables)
+        # First try shell environment variables (highest priority)
         env_value = os.getenv(secret_id)
         if env_value:
             value = env_value
         else:
-            # Try to get from .env file via settings
+            # Fallback to .env file
             env_vars = settings._load_env_file(".env")
             value = env_vars.get(secret_id, default)
 

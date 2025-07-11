@@ -74,10 +74,7 @@ class TokenEncryption:
                 logger.error(
                     "Failed to get service salt - TOKEN_ENCRYPTION_SALT environment variable not set"
                 )
-                raise EncryptionException(
-                    "token_initialization",
-                    {"error": "TOKEN_ENCRYPTION_SALT environment variable not set"},
-                )
+                raise EncryptionException("Failed to initialize encryption service")
 
             # Validate base64 encoding
             try:
@@ -87,10 +84,7 @@ class TokenEncryption:
                     "Failed to decode service salt - invalid base64 format",
                     error=str(decode_error),
                 )
-                raise EncryptionException(
-                    "token_initialization",
-                    {"error": f"Invalid base64 salt format: {decode_error}"},
-                )
+                raise EncryptionException("Failed to initialize encryption service")
 
             # Validate salt length (should be at least 16 bytes)
             if len(salt_bytes) < 16:
@@ -98,12 +92,7 @@ class TokenEncryption:
                     "Service salt too short - must be at least 16 bytes",
                     salt_length=len(salt_bytes),
                 )
-                raise EncryptionException(
-                    "token_initialization",
-                    {
-                        "error": f"Salt too short: {len(salt_bytes)} bytes (minimum 16 required)"
-                    },
-                )
+                raise EncryptionException("Failed to initialize encryption service")
 
             return salt_bytes
 
@@ -112,7 +101,7 @@ class TokenEncryption:
             raise
         except Exception as e:
             logger.error("Failed to get service salt", error=str(e))
-            raise EncryptionException("token_initialization", {"error": str(e)})
+            raise EncryptionException("Failed to initialize encryption service")
 
     def derive_user_key(self, user_id: str, version: int = KEY_VERSION) -> bytes:
         """
@@ -157,8 +146,7 @@ class TokenEncryption:
         except Exception as e:
             logger.error("Key derivation failed", user_id=user_id, error=str(e))
             raise EncryptionException(
-                "key_derivation",
-                {"user_id": user_id, "error": str(e)},
+                f"Failed to derive encryption key for user {user_id}"
             )
 
     def encrypt_token(
@@ -210,10 +198,7 @@ class TokenEncryption:
 
         except Exception as e:
             logger.error("Token encryption failed", user_id=user_id, error=str(e))
-            raise EncryptionException(
-                "token_encryption",
-                {"user_id": user_id, "error": str(e)},
-            )
+            raise EncryptionException(f"Failed to encrypt token for user {user_id}")
 
     def decrypt_token(
         self, encrypted_token: str, user_id: str, additional_data: Optional[str] = None
@@ -281,10 +266,7 @@ class TokenEncryption:
 
         except Exception as e:
             logger.error("Token decryption failed", user_id=user_id, error=str(e))
-            raise EncryptionException(
-                "token_decryption",
-                {"user_id": user_id, "error": str(e)},
-            )
+            raise EncryptionException(f"Failed to decrypt token for user {user_id}")
 
     def rotate_user_key(self, user_id: str, old_token: str) -> Tuple[str, int]:
         """
@@ -330,10 +312,7 @@ class TokenEncryption:
 
         except Exception as e:
             logger.error("Key rotation failed", user_id=user_id, error=str(e))
-            raise EncryptionException(
-                "key_rotation",
-                {"user_id": user_id, "error": str(e)},
-            )
+            raise EncryptionException(f"Failed to rotate key for user {user_id}")
 
     def is_encrypted(self, token: str) -> bool:
         """
