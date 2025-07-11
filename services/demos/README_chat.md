@@ -201,7 +201,7 @@ curl -X GET "http://localhost:8001/users?email=john.doe+work@gmail.com"
   "external_auth_id": "user_abc123",
   "email": "john.doe@gmail.com", 
   "normalized_email": "johndoe@gmail.com",
-  "auth_provider": "clerk"
+  "auth_provider": "nextauth"
 }
 ```
 

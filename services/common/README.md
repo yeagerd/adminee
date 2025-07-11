@@ -66,7 +66,7 @@ api_key = get_secret('OPENAI_API_KEY')
 ```python
 from services.common import (
     get_database_url,
-    get_clerk_secret_key,
+    get_nextauth_secret_key,
     get_redis_url,
     get_openai_api_key
 )
@@ -76,8 +76,8 @@ user_db = get_database_url('user_management')  # Gets DB_URL_USER_MANAGEMENT
 chat_db = get_database_url('chat_service')     # Gets DB_URL_CHAT_SERVICE
 
 # Authentication secrets
-clerk_key = get_clerk_secret_key()
-clerk_publishable = get_clerk_publishable_key()
+nextauth_key = get_nextauth_secret_key()
+nextauth_publishable = get_nextauth_publishable_key()
 
 # External service APIs
 openai_key = get_openai_api_key()
