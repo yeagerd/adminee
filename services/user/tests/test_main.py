@@ -7,6 +7,7 @@ exception handling, middleware, and API documentation.
 
 from unittest.mock import patch
 
+from fastapi import status
 from services.common.http_errors import (
     AuthError,
     NotFoundError,
@@ -34,21 +35,16 @@ class TestApplicationStartup(BaseUserManagementIntegrationTest):
         # The actual CORS headers are tested in the middleware test section
 
     def test_routers_registered(self):
-        import pytest
-
-        from services.common.http_errors import AuthError, NotFoundError
-
-        # /users/search should raise AuthError when unauthenticated
-        with pytest.raises(AuthError) as exc_info:
-            self.client.get("/users/search")
-        assert "Access denied" in str(exc_info.value)
-        # /users/me may raise AuthError or NotFoundError
-        try:
-            self.client.get("/users/me")
-        except AuthError as e:
-            assert "Access denied" in str(e)
-        except NotFoundError as e:
-            assert "not found" in str(e).lower()
+        # /users/search should return 401 when unauthenticated
+        response = self.client.get("/users/search")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        data = response.json()
+        assert "Access denied" in data["message"]
+        
+        # /users/me may return 401 or 404
+        response = self.client.get("/users/me")
+        assert response.status_code in [status.HTTP_401_UNAUTHORIZED, status.HTTP_404_NOT_FOUND]
+        
         # /webhooks/clerk may still be accessible
         response = self.client.get("/webhooks/clerk")
         assert response.status_code in [200, 405, 422]

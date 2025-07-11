@@ -116,14 +116,13 @@ class TestIntegrationListEndpoint(BaseUserManagementIntegrationTest):
             mock_service.return_value.get_user_integrations.side_effect = NotFoundError(
                 "User not found"
             )
-            import pytest
-
-            with pytest.raises(NotFoundError) as exc_info:
-                self.client.get(
-                    f"/users/{user_id}/integrations/",
-                    headers={"Authorization": "Bearer valid-token"},
-                )
-            assert "User not found" in str(exc_info.value)
+            response = self.client.get(
+                f"/users/{user_id}/integrations/",
+                headers={"Authorization": "Bearer valid-token"},
+            )
+            assert response.status_code == status.HTTP_404_NOT_FOUND
+            data = response.json()
+            assert "User not found" in data["message"]
 
 
 class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
@@ -343,18 +342,17 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
             mock_service.return_value.complete_oauth_flow = AsyncMock(
                 side_effect=ServiceError("Service unavailable")
             )
-            import pytest
-
-            with pytest.raises(ServiceError) as exc_info:
-                self.client.post(
-                    "/users/user_123/integrations/oauth/callback?provider=google",
-                    json={
-                        "code": "auth_code_123",
-                        "state": "state_123",
-                    },
-                    headers={"Authorization": "Bearer valid-token"},
-                )
-            assert "Service unavailable" in str(exc_info.value)
+            response = self.client.post(
+                "/users/user_123/integrations/oauth/callback?provider=google",
+                json={
+                    "code": "auth_code_123",
+                    "state": "state_123",
+                },
+                headers={"Authorization": "Bearer valid-token"},
+            )
+            assert response.status_code == status.HTTP_502_BAD_GATEWAY
+            data = response.json()
+            assert "Service unavailable" in data["message"]
 
 
 class TestIntegrationManagementEndpoints(BaseUserManagementIntegrationTest):
@@ -404,14 +402,13 @@ class TestIntegrationManagementEndpoints(BaseUserManagementIntegrationTest):
             mock_service.return_value.disconnect_integration = AsyncMock(
                 side_effect=NotFoundError("Integration not found")
             )
-            import pytest
-
-            with pytest.raises(NotFoundError) as exc_info:
-                self.client.delete(
-                    f"/users/{user_id}/integrations/{provider}",
-                    headers={"Authorization": "Bearer valid-token"},
-                )
-            assert "Integration not found" in str(exc_info.value)
+            response = self.client.delete(
+                f"/users/{user_id}/integrations/{provider}",
+                headers={"Authorization": "Bearer valid-token"},
+            )
+            assert response.status_code == status.HTTP_404_NOT_FOUND
+            data = response.json()
+            assert "Integration not found" in data["message"]
 
     def test_refresh_integration_tokens_success(self):
         """Test successful token refresh."""
@@ -653,17 +650,14 @@ class TestProviderEndpoints(BaseUserManagementIntegrationTest):
             "services.user.routers.integrations.get_integration_service"
         ) as mock_service:
             mock_service.return_value.oauth_config = mock_oauth_config
-            import pytest
-
-            from services.common.http_errors import ValidationError
-
-            with pytest.raises(ValidationError) as exc_info:
-                self.client.post(
-                    "/integrations/validate-scopes",
-                    json=request_data,
-                    headers={"Authorization": "Bearer valid-token"},
-                )
-            assert "Provider google is not available" in str(exc_info.value)
+            response = self.client.post(
+                "/integrations/validate-scopes",
+                json=request_data,
+                headers={"Authorization": "Bearer valid-token"},
+            )
+            assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+            data = response.json()
+            assert "Provider google is not available" in data["message"]
 
 
 class TestIntegrationEndpointSecurity(BaseUserManagementIntegrationTest):
