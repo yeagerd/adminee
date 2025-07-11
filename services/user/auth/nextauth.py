@@ -6,7 +6,7 @@ Handles token verification, decoding, and user information extraction.
 """
 
 import logging
-import time # Added for is_token_expired
+import time  # Added for is_token_expired
 from typing import Dict, Optional
 
 import jwt
@@ -17,7 +17,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 # If it's defined in services.user.exceptions, it should be imported from there.
 # For now, I'll keep the local import style as in clerk.py for verify_user_ownership
 # but ideally, this should be a top-level import if not causing circular dependencies.
-from services.user.exceptions import AuthenticationException #, AuthorizationException
+from services.user.exceptions import AuthenticationException  # , AuthorizationException
 from services.user.logging_config import get_logger
 from services.user.settings import get_settings
 
@@ -40,12 +40,16 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
     Raises:
         AuthenticationException: If token is invalid
     """
-    logger_instance = get_logger(__name__) # Use a local logger instance
+    logger_instance = get_logger(__name__)  # Use a local logger instance
 
     try:
-        logger_instance.info("Using manual JWT verification (signature verification potentially disabled based on settings)")
+        logger_instance.info(
+            "Using manual JWT verification (signature verification potentially disabled based on settings)"
+        )
 
-        verify_signature = getattr(get_settings(), "jwt_verify_signature", True) # Default to True for production
+        verify_signature = getattr(
+            get_settings(), "jwt_verify_signature", True
+        )  # Default to True for production
         # In a real NextAuth setup, you'd likely use a public key from a JWKS URL
         # For now, this mirrors clerk.py's dev-friendly behavior.
         # Consider making this more robust if NextAuth implies specific signature verification.
@@ -57,14 +61,14 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
                 "verify_signature": verify_signature,
                 # "require": ["exp", "iat", "sub"], # PyJWT handles this with verify_exp, verify_iat
             },
-            algorithms=["RS256", "HS256"], # Specify algorithms used by NextAuth
+            algorithms=["RS256", "HS256"],  # Specify algorithms used by NextAuth
             # audience="YOUR_AUDIENCE", # If applicable
             # issuer="YOUR_ISSUER" # If applicable
         )
 
         # PyJWT's decode handles exp, iat by default if verify_exp, verify_iat are true in options.
         # Validate required claims manually if not covered by PyJWT options.
-        required_claims = ["sub", "iss"] # exp, iat are usually handled by PyJWT
+        required_claims = ["sub", "iss"]  # exp, iat are usually handled by PyJWT
         for claim in required_claims:
             if claim not in decoded_token:
                 logger_instance.error(f"Missing required claim: {claim}")
@@ -176,7 +180,7 @@ def validate_token_permissions(
                 extra={
                     "user_id": token_claims.get("sub"),
                     "required": required_permissions,
-                    "present": list(token_permissions)
+                    "present": list(token_permissions),
                 },
             )
             return False
@@ -197,7 +201,7 @@ def is_token_expired(token_claims: Dict[str, str]) -> bool:
         True if token is expired
     """
     exp_timestamp = token_claims.get("exp")
-    if exp_timestamp is None: # No expiration claim, treat as problematic or expired
+    if exp_timestamp is None:  # No expiration claim, treat as problematic or expired
         return True
     return time.time() >= int(exp_timestamp)
 
@@ -221,7 +225,9 @@ async def get_current_user(
     try:
         token_claims = await verify_jwt_token(credentials.credentials)
         user_id = extract_user_id_from_token(token_claims)
-        logger_instance.debug("User authenticated successfully", extra={"user_id": user_id})
+        logger_instance.debug(
+            "User authenticated successfully", extra={"user_id": user_id}
+        )
         return user_id
     except AuthenticationException as e:
         logger_instance.warning(f"Authentication failed: {e.message}")
@@ -299,6 +305,7 @@ async def verify_user_ownership(current_user_id: str, resource_user_id: str) -> 
         )
         # This import should ideally be at the top-level if it doesn't cause circular dependencies
         from services.user.exceptions import AuthorizationException
+
         raise AuthorizationException(
             resource=f"user_resource:{resource_user_id}", action="access"
         )
@@ -329,6 +336,7 @@ async def require_user_ownership(
     except Exception as e:
         # This import should ideally be at the top-level
         from services.user.exceptions import AuthorizationException
+
         if isinstance(e, AuthorizationException):
             logger_instance.warning(f"User ownership verification failed: {e.message}")
             raise HTTPException(
@@ -336,13 +344,15 @@ async def require_user_ownership(
                 detail={
                     "error": "AuthorizationError",
                     "message": "Access denied: You can only access your own resources.",
-                    "resource": e.resource, # Make sure AuthorizationException has these attributes
+                    "resource": e.resource,  # Make sure AuthorizationException has these attributes
                     "action": e.action,
                 },
             )
         # Handle other potential exceptions from get_current_user if they are not AuthenticationException
-        elif isinstance(e, AuthenticationException): # Should be caught by get_current_user itself
-             raise HTTPException(
+        elif isinstance(
+            e, AuthenticationException
+        ):  # Should be caught by get_current_user itself
+            raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={"error": "AuthenticationError", "message": e.message},
                 headers={"WWW-Authenticate": "Bearer"},
@@ -350,9 +360,9 @@ async def require_user_ownership(
         else:
             logger_instance.error(f"Unexpected ownership verification error: {e}")
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, # Or 403 if preferred for general auth failures
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,  # Or 403 if preferred for general auth failures
                 detail={
-                    "error": "AuthorizationError", # Or "InternalServerError"
+                    "error": "AuthorizationError",  # Or "InternalServerError"
                     "message": "Access verification failed unexpectedly.",
                 },
             )

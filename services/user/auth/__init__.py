@@ -5,7 +5,7 @@ Provides NextAuth JWT validation, service-to-service authentication,
 and user authorization helpers.
 """
 
-from .nextauth import ( # Changed from .clerk
+from .nextauth import (  # Changed from .clerk
     get_current_user,
     get_current_user_with_claims,
     require_user_ownership,
