@@ -5,10 +5,10 @@ Provides secure endpoints for other services to retrieve user tokens
 and integration status with service authentication.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 
+from services.common.http_errors import NotFoundError, ServiceError
 from services.user.auth.service_auth import get_current_service
-from services.user.exceptions import IntegrationException, NotFoundException
 from services.user.schemas.integration import (
     InternalTokenRefreshRequest,
     InternalTokenRequest,
@@ -66,9 +66,9 @@ async def get_user_tokens(
             required_scopes=request.required_scopes,
             refresh_if_needed=request.refresh_if_needed,
         )
-    except NotFoundException as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except IntegrationException as e:
+    except NotFoundError:
+        raise NotFoundError("User", request.user_id)
+    except ServiceError as e:
         # Return error in response rather than raising HTTP exception
         return InternalTokenResponse(
             success=False,
@@ -121,9 +121,9 @@ async def refresh_user_tokens(
             provider=request.provider,
             force=request.force,
         )
-    except NotFoundException as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except IntegrationException as e:
+    except NotFoundError:
+        raise NotFoundError("User", request.user_id)
+    except ServiceError as e:
         # Return error in response rather than raising HTTP exception
         return InternalTokenResponse(
             success=False,
@@ -171,12 +171,10 @@ async def get_user_status(
     """
     try:
         return await get_token_service().get_user_status(user_id=user_id)
-    except NotFoundException as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except IntegrationException as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+    except NotFoundError:
+        raise NotFoundError("User", user_id)
+    except ServiceError as e:
+        raise ServiceError(message=str(e))
 
 
 @router.get("/users/{user_id}/preferences")

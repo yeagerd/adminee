@@ -37,8 +37,8 @@ def mock_email_message():
         provider=Provider.GOOGLE,
         provider_message_id="test123",
         subject="Test Email",
-        sender=EmailAddress(email="sender@example.com", name="Test Sender"),
-        recipients=[EmailAddress(email="recipient@example.com", name="Test Recipient")],
+        from_address=EmailAddress(email="sender@example.com", name="Test Sender"),
+        to_addresses=[EmailAddress(email="recipient@example.com", name="Test Recipient")],
         date=datetime.now(timezone.utc),
         body_text="Test email body",
         body_html="<p>Test email body</p>",
@@ -156,8 +156,8 @@ class TestEmailMessagesEndpoint:
         """Test email messages with invalid provider names."""
         response = client.get("/email/messages?user_id=test_user&providers=invalid")
 
-        assert response.status_code == 400
-        assert "No valid providers specified" in response.json()["detail"]
+        assert response.status_code == 422  # ValidationError now returns 422
+        assert "No valid providers specified" in response.json()["message"]
 
     @pytest.mark.asyncio
     async def test_get_email_messages_missing_user_id(self, client):
@@ -208,7 +208,7 @@ class TestEmailMessageDetailEndpoint:
         response = client.get("/email/messages/gmail_nonexistent?user_id=test_user")
 
         assert response.status_code == 404
-        assert "not found" in response.json()["detail"]
+        assert "not found" in response.json()["message"]
 
 
 class TestSendEmailEndpoint:
@@ -343,7 +343,7 @@ class TestSendEmailEndpoint:
         )
 
         # Should fail because no client available, but verify it tried Google
-        assert response.status_code == 503
+        assert response.status_code == 502  # ServiceError now returns 502
         mock_create_client.assert_called_once_with("test_user", "google")
 
     @pytest.mark.asyncio
@@ -361,8 +361,8 @@ class TestSendEmailEndpoint:
             json=request_data,
         )
 
-        assert response.status_code == 400
-        assert "Invalid provider" in response.json()["detail"]
+        assert response.status_code == 422  # ValidationError now returns 422
+        assert "Invalid provider" in response.json()["message"]
 
     @patch("services.office.api.email.api_client_factory.create_client")
     @pytest.mark.asyncio
@@ -381,8 +381,8 @@ class TestSendEmailEndpoint:
             json=send_email_request.model_dump(),
         )
 
-        assert response.status_code == 503
-        assert "Failed to create API client" in response.json()["detail"]
+        assert response.status_code == 502  # ServiceError now returns 502
+        assert "Failed to create API client" in response.json()["message"]
 
     @pytest.mark.asyncio
     async def test_send_email_missing_user_id(self, send_email_request, client):
@@ -470,11 +470,10 @@ class TestSendEmailEndpoint:
 
     @pytest.mark.asyncio
     async def test_get_email_message_invalid_id_format(self, client):
-        """Test email message with invalid ID format."""
-        response = client.get("/email/messages/invalid_format?user_id=test_user")
-
-        assert response.status_code == 400
-        assert "Invalid message ID format" in response.json()["detail"]
+        """Test invalid message ID format."""
+        response = client.get("/email/messages/invalid_id?user_id=test_user")
+        assert response.status_code == 422  # ValidationError now returns 422
+        assert "Invalid message ID format" in response.json()["message"]
 
     @pytest.mark.asyncio
     async def test_get_email_message_with_cache_hit(self, mock_cache_manager, client):
@@ -518,27 +517,23 @@ class TestEmailHelperFunctions:
 
     def test_parse_message_id_invalid_format(self):
         """Test parsing invalid message ID format."""
-        from fastapi import HTTPException
-
+        from services.common.http_errors import ValidationError
         from services.office.api.email import parse_message_id
-
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(ValidationError) as exc_info:
             parse_message_id("invalid_format_no_underscore")
 
-        assert exc_info.value.status_code == 400
-        assert "Invalid message ID format" in str(exc_info.value.detail)
+        assert exc_info.value.status_code == 422
+        assert "Invalid message ID format" in str(exc_info.value.message)
 
     def test_parse_message_id_unknown_provider(self):
         """Test parsing message ID with unknown provider."""
-        from fastapi import HTTPException
-
+        from services.common.http_errors import ValidationError
         from services.office.api.email import parse_message_id
-
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(ValidationError) as exc_info:
             parse_message_id("unknown_abc123")
 
-        assert exc_info.value.status_code == 400
-        assert "Invalid message ID format" in str(exc_info.value.detail)
+        assert exc_info.value.status_code == 422
+        assert "Invalid message ID format" in str(exc_info.value.message)
 
 
 class TestFetchProviderEmails:

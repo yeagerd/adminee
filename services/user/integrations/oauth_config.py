@@ -17,7 +17,7 @@ import httpx
 import structlog
 from pydantic import BaseModel, Field, field_validator
 
-from services.user.exceptions import ValidationException
+from services.common.http_errors import ValidationError
 from services.user.models.integration import IntegrationProvider
 from services.user.settings import Settings, get_settings
 
@@ -515,7 +515,7 @@ class OAuthConfig:
         """Generate OAuth authorization URL."""
         provider_config = self.get_provider_config(provider)
         if not provider_config:
-            raise ValidationException(
+            raise ValidationError(
                 "provider",
                 provider.value,
                 "OAuth provider not available or configured",
@@ -549,10 +549,10 @@ class OAuthConfig:
                 invalid_scopes=invalid_scopes,
                 available_scopes=[scope.name for scope in provider_config.scopes],
             )
-            raise ValidationException(
-                "scopes",
-                invalid_scopes,
+            raise ValidationError(
                 f"Invalid scopes for provider {provider.value}",
+                field="scopes",
+                value=invalid_scopes,
             )
 
         # Ensure required scopes are included
@@ -616,7 +616,7 @@ class OAuthConfig:
         """Exchange authorization code for access and refresh tokens."""
         provider_config = self.get_provider_config(provider)
         if not provider_config:
-            raise ValidationException(
+            raise ValidationError(
                 "provider",
                 provider.value,
                 "OAuth provider not available or configured",
@@ -665,7 +665,7 @@ class OAuthConfig:
                 user_id=oauth_state.user_id,
                 error=str(e),
             )
-            raise ValidationException(
+            raise ValidationError(
                 "authorization_code",
                 authorization_code,
                 f"Failed to exchange authorization code: {str(e)}",
@@ -679,7 +679,7 @@ class OAuthConfig:
         """Refresh access token using refresh token."""
         provider_config = self.get_provider_config(provider)
         if not provider_config:
-            raise ValidationException(
+            raise ValidationError(
                 "provider",
                 provider.value,
                 "OAuth provider not available or configured",
@@ -721,7 +721,7 @@ class OAuthConfig:
                 provider=provider.value,
                 error=str(e),
             )
-            raise ValidationException(
+            raise ValidationError(
                 "refresh_token",
                 refresh_token,
                 f"Failed to refresh access token: {str(e)}",
@@ -735,7 +735,7 @@ class OAuthConfig:
         """Get user information using access token."""
         provider_config = self.get_provider_config(provider)
         if not provider_config:
-            raise ValidationException(
+            raise ValidationError(
                 "provider",
                 provider.value,
                 "OAuth provider not available or configured",
@@ -765,7 +765,7 @@ class OAuthConfig:
                 provider=provider.value,
                 error=str(e),
             )
-            raise ValidationException(
+            raise ValidationError(
                 "access_token",
                 access_token,
                 f"Failed to retrieve user info: {str(e)}",

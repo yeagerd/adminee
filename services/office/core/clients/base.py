@@ -14,7 +14,7 @@ from typing import Any, Dict, Optional
 
 import httpx
 
-from services.office.core.exceptions import ProviderAPIError
+from services.common.http_errors import ProviderError
 from services.office.models import ApiCall, ApiCallStatus, Provider
 
 # Configure logging
@@ -379,7 +379,7 @@ class BaseAPIClient(ABC):
                 error_message=error_msg,
             )
 
-            raise ProviderAPIError(
+            raise ProviderError(
                 message=f"Request timeout: {error_msg}",
                 provider=self.provider,
                 details={
@@ -438,12 +438,10 @@ class BaseAPIClient(ABC):
                     except ValueError:
                         pass
 
-            raise ProviderAPIError(
+            raise ProviderError(
                 message=user_friendly_error,
                 provider=self.provider,
                 status_code=e.response.status_code,
-                response_body=e.response.text,
-                retry_after=retry_after,
                 details={
                     "endpoint": endpoint,
                     "method": method.upper(),
@@ -471,7 +469,7 @@ class BaseAPIClient(ABC):
                 error_message=error_msg,
             )
 
-            raise ProviderAPIError(
+            raise ProviderError(
                 message=f"Request failed: {error_msg}",
                 provider=self.provider,
                 details={
@@ -501,7 +499,7 @@ class BaseAPIClient(ABC):
                 error_message=error_msg,
             )
 
-            raise ProviderAPIError(
+            raise ProviderError(
                 message=f"Unexpected error: {error_msg}",
                 provider=self.provider,
                 details={

@@ -8,14 +8,14 @@ and provider configuration with comprehensive authentication and validation.
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query
 
-from services.user.auth.nextauth import get_current_user, verify_user_ownership
-from services.user.exceptions import (
-    IntegrationException,
-    NotFoundException,
-    SimpleValidationException,
+from services.common.http_errors import (
+    NotFoundError,
+    ServiceError,
+    ValidationError,
 )
+from services.user.auth.nextauth import get_current_user, verify_user_ownership
 from services.user.models.integration import (
     IntegrationProvider,
     IntegrationStatus,
@@ -105,16 +105,12 @@ async def list_user_integrations(
             status=integration_status,
             include_token_info=include_token_info,
         )
-    except NotFoundException as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except SimpleValidationException as e:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
-        )
-    except IntegrationException as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+    except NotFoundError as e:
+        raise e
+    except ValidationError as e:
+        raise e
+    except Exception as e:
+        raise ServiceError(message=str(e))
 
 
 @router.post("/oauth/start", response_model=OAuthStartResponse)
@@ -158,16 +154,12 @@ async def start_oauth_flow(
             scopes=request.scopes,
             state_data=request.state_data,
         )
-    except NotFoundException as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except SimpleValidationException as e:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
-        )
-    except IntegrationException as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+    except NotFoundError as e:
+        raise e
+    except ValidationError as e:
+        raise e
+    except Exception as e:
+        raise ServiceError(message=str(e))
 
 
 @router.post("/oauth/callback", response_model=OAuthCallbackResponse)
@@ -231,9 +223,8 @@ async def complete_oauth_flow(
 
         # Complete the OAuth flow
         if request.code is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Authorization code is required",
+            raise ValidationError(
+                message="Authorization code is required", field="code", value=None
             )
         result = await get_integration_service().complete_oauth_flow(
             user_id=user_id,
@@ -245,12 +236,12 @@ async def complete_oauth_flow(
         # If the service returned an error result, still return it as 200 with success=False
         return result
 
-    except NotFoundException as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except SimpleValidationException as e:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
-        )
+    except NotFoundError as e:
+        raise e
+    except ValidationError as e:
+        raise e
+    except Exception as e:
+        raise ServiceError(message=str(e))
 
 
 @router.get("/stats", response_model=IntegrationStatsResponse)
@@ -283,12 +274,10 @@ async def get_integration_statistics(
         return await get_integration_service().get_integration_statistics(
             user_id=user_id
         )
-    except NotFoundException as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except IntegrationException as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+    except NotFoundError as e:
+        raise e
+    except Exception as e:
+        raise ServiceError(message=str(e))
 
 
 @router.get("/{provider}")
@@ -322,24 +311,17 @@ async def get_specific_integration(
         )
 
         if not integrations_response.integrations:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Integration not found for provider: {provider.value}",
-            )
+            raise NotFoundError("Integration", identifier=f"provider: {provider.value}")
 
         # Return the first (and should be only) integration for this provider
         return integrations_response.integrations[0]
 
-    except NotFoundException as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except SimpleValidationException as e:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
-        )
-    except IntegrationException as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+    except NotFoundError as e:
+        raise e
+    except ValidationError as e:
+        raise e
+    except Exception as e:
+        raise ServiceError(message=str(e))
 
 
 @router.delete("/{provider}", response_model=IntegrationDisconnectResponse)
@@ -382,12 +364,10 @@ async def disconnect_integration(
 
         return IntegrationDisconnectResponse(**result)
 
-    except NotFoundException as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except IntegrationException as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+    except NotFoundError as e:
+        raise e
+    except Exception as e:
+        raise ServiceError(message=str(e))
 
 
 @router.put("/{provider}/refresh", response_model=TokenRefreshResponse)
@@ -426,9 +406,9 @@ async def refresh_integration_tokens(
         )
 
         return result
-    except NotFoundException as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except IntegrationException as e:
+    except NotFoundError as e:
+        raise e
+    except Exception as e:
         # Return a failed TokenRefreshResponse instead of raising HTTP error
         return TokenRefreshResponse(
             success=False,
@@ -472,12 +452,10 @@ async def check_integration_health(
             user_id=user_id,
             provider=provider,
         )
-    except NotFoundException as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except IntegrationException as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+    except NotFoundError as e:
+        raise e
+    except Exception as e:
+        raise ServiceError(message=str(e))
 
 
 # Provider-level endpoints (no user_id required)
@@ -538,10 +516,7 @@ async def list_oauth_providers(
         )
 
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to list providers: {str(e)}",
-        )
+        raise ServiceError(message=f"Failed to list providers: {str(e)}")
 
 
 @provider_router.post("/validate-scopes", response_model=ScopeValidationResponse)
@@ -570,9 +545,10 @@ async def validate_oauth_scopes(
         oauth_config = get_integration_service().oauth_config
 
         if not oauth_config.is_provider_available(request.provider):
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Provider {request.provider.value} is not available",
+            raise ValidationError(
+                message=f"Provider {request.provider.value} is not available",
+                field="provider",
+                value=request.provider.value,
             )
 
         provider_config = oauth_config.get_provider_config(request.provider)
@@ -613,13 +589,10 @@ async def validate_oauth_scopes(
             warnings=warnings,
         )
 
-    except HTTPException:
+    except ValidationError:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to validate scopes: {str(e)}",
-        )
+        raise ServiceError(message=f"Failed to validate scopes: {str(e)}")
 
 
 # Include both routers

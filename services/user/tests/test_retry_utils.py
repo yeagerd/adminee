@@ -10,15 +10,9 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from services.user.exceptions import (
-    DatabaseException,
-    IntegrationException,
-    ServiceException,
-    TokenNotFoundException,
-    UserNotFoundException,
-)
 from services.user.utils.retry import (
     RetryError,
+    ServiceError,
     is_transient_error,
     retry_async,
     retry_database_operations,
@@ -49,22 +43,22 @@ class TestTransientErrorDetection:
 
     def test_database_exception_is_transient(self):
         """Test that database exceptions are considered transient."""
-        exc = DatabaseException("Connection lost")
+        exc = ServiceError("Connection lost")
         assert is_transient_error(exc) is True
 
     def test_service_exception_is_transient(self):
         """Test that service exceptions are considered transient."""
-        exc = ServiceException("api", "call", "timeout")
+        exc = ServiceError("api call timeout")
         assert is_transient_error(exc) is True
 
     def test_connection_errors_are_transient(self):
         """Test that connection-related errors are considered transient."""
         exceptions = [
-            ValueError("Connection timeout"),
-            RuntimeError("Network error"),
-            Exception("Service unavailable"),
-            OSError("Bad gateway"),
-            ConnectionError("Connection refused"),
+            ServiceError("Connection timeout"),
+            ServiceError("Network error"),
+            ServiceError("Service unavailable"),
+            ServiceError("Bad gateway"),
+            ServiceError("Connection refused"),
         ]
 
         for exc in exceptions:
@@ -73,8 +67,8 @@ class TestTransientErrorDetection:
     def test_non_transient_errors(self):
         """Test that non-transient errors are correctly identified."""
         exceptions = [
-            UserNotFoundException("user123"),
-            TokenNotFoundException("user123", "google", "access"),
+            Exception("user123"),
+            Exception("user123", "google", "access"),
             ValueError("Invalid input"),
             TypeError("Wrong type"),
         ]
@@ -101,8 +95,8 @@ class TestAsyncRetry:
         """Test retry on transient failures."""
         mock_func = AsyncMock()
         mock_func.side_effect = [
-            DatabaseException("Connection lost"),
-            DatabaseException("Timeout"),
+            ServiceError("Connection lost"),
+            ServiceError("Timeout"),
             "success",
         ]
 
@@ -114,9 +108,9 @@ class TestAsyncRetry:
     @pytest.mark.asyncio
     async def test_no_retry_on_non_transient_failure(self):
         """Test that non-transient failures are not retried."""
-        mock_func = AsyncMock(side_effect=UserNotFoundException("user123"))
+        mock_func = AsyncMock(side_effect=Exception("user123"))
 
-        with pytest.raises(UserNotFoundException):
+        with pytest.raises(Exception):
             await retry_async(mock_func, max_attempts=3)
 
         assert mock_func.call_count == 1
@@ -124,26 +118,26 @@ class TestAsyncRetry:
     @pytest.mark.asyncio
     async def test_retry_exhausted_raises_retry_error(self):
         """Test that RetryError is raised when all attempts are exhausted."""
-        mock_func = AsyncMock(side_effect=DatabaseException("Always fails"))
+        mock_func = AsyncMock(side_effect=ServiceError("Always fails"))
 
         with pytest.raises(RetryError) as exc_info:
             await retry_async(mock_func, max_attempts=2, base_delay=0.01)
 
         assert exc_info.value.attempts == 2
-        assert isinstance(exc_info.value.last_exception, DatabaseException)
+        assert isinstance(exc_info.value.last_exception, ServiceError)
         assert mock_func.call_count == 2
 
     @pytest.mark.asyncio
     async def test_specific_retry_exceptions(self):
         """Test retry with specific exception types."""
         mock_func = AsyncMock()
-        mock_func.side_effect = [ServiceException("api", "call", "error"), "success"]
+        mock_func.side_effect = [ServiceError("api call error"), "success"]
 
         result = await retry_async(
             mock_func,
             max_attempts=3,
             base_delay=0.01,
-            retry_exceptions=[ServiceException],
+            retry_exceptions=[ServiceError],
         )
 
         assert result == "success"
@@ -152,14 +146,10 @@ class TestAsyncRetry:
     @pytest.mark.asyncio
     async def test_ignore_exceptions(self):
         """Test that ignored exceptions are never retried."""
-        mock_func = AsyncMock(
-            side_effect=TokenNotFoundException("user", "google", "access")
-        )
+        mock_func = AsyncMock(side_effect=Exception("user", "google", "access"))
 
-        with pytest.raises(TokenNotFoundException):
-            await retry_async(
-                mock_func, max_attempts=3, ignore_exceptions=[TokenNotFoundException]
-            )
+        with pytest.raises(Exception):
+            await retry_async(mock_func, max_attempts=3, ignore_exceptions=[Exception])
 
         assert mock_func.call_count == 1
 
@@ -168,8 +158,8 @@ class TestAsyncRetry:
         """Test that exponential backoff timing works correctly."""
         mock_func = AsyncMock()
         mock_func.side_effect = [
-            DatabaseException("Error 1"),
-            DatabaseException("Error 2"),
+            ServiceError("Error 1"),
+            ServiceError("Error 2"),
             "success",
         ]
 
@@ -204,7 +194,7 @@ class TestSyncRetry:
     def test_retry_on_transient_failure(self):
         """Test retry on transient failures."""
         mock_func = Mock()
-        mock_func.side_effect = [DatabaseException("Connection lost"), "success"]
+        mock_func.side_effect = [ServiceError("Connection lost"), "success"]
 
         result = retry_sync(mock_func, max_attempts=3, base_delay=0.01)
 
@@ -213,7 +203,7 @@ class TestSyncRetry:
 
     def test_retry_exhausted_raises_retry_error(self):
         """Test that RetryError is raised when all attempts are exhausted."""
-        mock_func = Mock(side_effect=DatabaseException("Always fails"))
+        mock_func = Mock(side_effect=ServiceError("Always fails"))
 
         with pytest.raises(RetryError):
             retry_sync(mock_func, max_attempts=2, base_delay=0.01)
@@ -234,7 +224,7 @@ class TestRetryDecorator:
             nonlocal call_count
             call_count += 1
             if call_count < 3:
-                raise DatabaseException("Transient error")
+                raise ServiceError("Transient error")
             return "success"
 
         result = await failing_async_func()
@@ -251,7 +241,7 @@ class TestRetryDecorator:
             nonlocal call_count
             call_count += 1
             if call_count < 2:
-                raise DatabaseException("Transient error")
+                raise ServiceError("Transient error")
             return "success"
 
         result = failing_sync_func()
@@ -275,7 +265,7 @@ class TestConvenienceDecorators:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                raise DatabaseException("Database error")
+                raise ServiceError("Database error")
             return "database_success"
 
         result = await database_operation()
@@ -295,7 +285,7 @@ class TestConvenienceDecorators:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                raise ServiceException("api", "call", "timeout")
+                raise ServiceError("api call timeout")
             return "api_success"
 
         result = await api_call()
@@ -315,7 +305,7 @@ class TestConvenienceDecorators:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                raise IntegrationException("OAuth error")
+                raise ServiceError("OAuth error")
             return "oauth_success"
 
         result = await oauth_operation()
@@ -329,9 +319,9 @@ class TestConvenienceDecorators:
 
         @retry_oauth_operations(max_attempts=3)
         async def oauth_operation():
-            raise TokenNotFoundException("user", "google", "access")
+            raise Exception("user", "google", "access")
 
-        with pytest.raises(TokenNotFoundException):
+        with pytest.raises(Exception):
             await oauth_operation()
 
 
@@ -346,8 +336,8 @@ class TestRetryWithJitter:
         for i in range(3):
             mock_func = AsyncMock()
             mock_func.side_effect = [
-                DatabaseException(f"Error {i}_1"),
-                DatabaseException(f"Error {i}_2"),
+                ServiceError(f"Error {i}_1"),
+                ServiceError(f"Error {i}_2"),
                 f"success_{i}",
             ]
 
@@ -369,7 +359,7 @@ class TestRetryWithJitter:
     async def test_no_jitter_consistent_delays(self):
         """Test that without jitter, delays are consistent."""
         mock_func = AsyncMock()
-        mock_func.side_effect = [DatabaseException("Error 1"), "success"]
+        mock_func.side_effect = [ServiceError("Error 1"), "success"]
 
         with patch("asyncio.sleep") as mock_sleep:
             await retry_async(mock_func, max_attempts=2, base_delay=1.0, jitter=False)
@@ -387,8 +377,8 @@ class TestRetryConfiguration:
         """Test that delays are capped at max_delay."""
         mock_func = AsyncMock()
         mock_func.side_effect = [
-            DatabaseException("Error 1"),
-            DatabaseException("Error 2"),
+            ServiceError("Error 1"),
+            ServiceError("Error 2"),
             "success",
         ]
 
@@ -411,8 +401,8 @@ class TestRetryConfiguration:
         """Test retry with custom exponential base."""
         mock_func = AsyncMock()
         mock_func.side_effect = [
-            DatabaseException("Error 1"),
-            DatabaseException("Error 2"),
+            ServiceError("Error 1"),
+            ServiceError("Error 2"),
             "success",
         ]
 

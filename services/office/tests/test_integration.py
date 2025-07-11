@@ -18,7 +18,7 @@ import pytest
 from fastapi import status
 
 from services.common.test_utils import BaseOfficeServiceIntegrationTest
-from services.office.core.exceptions import ProviderAPIError
+from services.common.http_errors import ProviderError
 from services.office.core.settings import get_settings
 from services.office.core.token_manager import TokenData
 
@@ -106,7 +106,7 @@ class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
             else:
                 from services.office.models import Provider
 
-                raise ProviderAPIError(
+                raise ProviderError(
                     "Microsoft integration failed", Provider.MICROSOFT
                 )
 
@@ -305,12 +305,12 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
         integration_setup = self._get_integration_test_setup()
         user_id = integration_setup["user_id"]
 
-        # Test with invalid message ID format (should return 400)
+        # Test with invalid message ID format (should return 422)
         response = self.client.get(f"/email/messages/invalid-format?user_id={user_id}")
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
         data = response.json()
-        assert "Invalid message ID format" in data["detail"]
+        assert "Invalid message ID format" in data["message"]
 
     def test_send_email_success(self):
         """Test successful email sending."""
@@ -618,7 +618,9 @@ class TestErrorScenarios(BaseOfficeServiceIntegrationTest):
         def failing_http_side_effect(*args, **kwargs):
             from services.office.models import Provider
 
-            raise ProviderAPIError("Provider API is down", Provider.GOOGLE)
+            raise ProviderError(
+                "Provider API is down", Provider.GOOGLE
+            )
 
         with patch(
             "services.office.core.token_manager.TokenManager.get_user_token",

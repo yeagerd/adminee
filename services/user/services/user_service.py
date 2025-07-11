@@ -10,12 +10,8 @@ from typing import List
 
 from sqlmodel import func, select
 
+from services.common.http_errors import NotFoundError, ValidationError
 from services.user.database import get_async_session
-from services.user.exceptions import (
-    UserAlreadyExistsException,
-    UserNotFoundException,
-    ValidationException,
-)
 from services.user.models.user import User
 from services.user.schemas.user import (
     UserCreate,
@@ -55,16 +51,16 @@ class UserService:
                 user = result.scalar_one_or_none()
 
                 if user is None or user.deleted_at is not None:
-                    raise UserNotFoundException(str(user_id))
+                    raise NotFoundError(resource="User", identifier=str(user_id or ""))
 
                 logger.info(f"Retrieved user by ID: {user_id}")
                 return user
 
-        except UserNotFoundException:
+        except NotFoundError:
             raise
         except Exception as e:
             logger.error(f"Error retrieving user by ID {user_id}: {e}")
-            raise UserNotFoundException(str(user_id))
+            raise NotFoundError(resource="User", identifier=str(user_id))
 
     async def get_user_by_external_auth_id(
         self, external_auth_id: str, auth_provider: str = "clerk"
@@ -94,20 +90,30 @@ class UserService:
                 user = result.scalar_one_or_none()
 
                 if user is None or user.deleted_at is not None:
-                    raise UserNotFoundException(f"{auth_provider}:{external_auth_id}")
+                    id_str = (
+                        f"{auth_provider}:{external_auth_id}"
+                        if auth_provider
+                        else str(external_auth_id or "")
+                    )
+                    raise NotFoundError(resource="User", identifier=str(id_str or ""))
 
                 logger.info(
                     f"Retrieved user by external auth ID: {auth_provider}:{external_auth_id}"
                 )
                 return user
 
-        except UserNotFoundException:
+        except NotFoundError:
             raise
         except Exception as e:
             logger.error(
                 f"Error retrieving user by external auth ID {auth_provider}:{external_auth_id}: {e}"
             )
-            raise UserNotFoundException(f"{auth_provider}:{external_auth_id}")
+            id_str = (
+                f"{auth_provider}:{external_auth_id}"
+                if auth_provider
+                else str(external_auth_id or "")
+            )
+            raise NotFoundError(resource="User", identifier=str(id_str or ""))
 
     async def create_user(self, user_data: UserCreate) -> User:
         """
@@ -136,15 +142,20 @@ class UserService:
                 existing_user = result.scalar_one_or_none()
 
                 if existing_user and existing_user.deleted_at is None:
-                    raise UserAlreadyExistsException(user_data.email)
+                    raise ValidationError(
+                        message="User already exists",
+                        field="email",
+                        value=user_data.email,
+                        details={"collision": True},
+                    )
 
                 # Check for email collision using normalized_email
                 collision = await detector.get_collision_details(user_data.email)
                 if collision["collision"]:
-                    raise ValidationException(
+                    raise ValidationError(
+                        message="Email collision detected",
                         field="email",
                         value=user_data.email,
-                        reason="Email collision detected",
                         details=collision,
                     )
 
@@ -173,14 +184,14 @@ class UserService:
                 )
                 return user
 
-        except UserAlreadyExistsException:
+        except ValidationError:
             raise
         except Exception as e:
             logger.error(f"Error creating user: {e}")
-            raise ValidationException(
+            raise ValidationError(
+                message=f"Failed to create user: {str(e)}",
                 field="user_data",
                 value=str(user_data),
-                reason=f"Failed to create user: {str(e)}",
             )
 
     async def update_user(self, user_id: int, user_data: UserUpdate) -> User:
@@ -209,7 +220,7 @@ class UserService:
                 user = result.scalar_one_or_none()
 
                 if user is None or user.deleted_at is not None:
-                    raise UserNotFoundException(str(user_id))
+                    raise NotFoundError(resource="User", identifier=str(user_id or ""))
 
                 # Update only provided fields
                 update_fields = {}
@@ -220,10 +231,10 @@ class UserService:
                             user_data.email
                         )
                         if collision["collision"]:
-                            raise ValidationException(
+                            raise ValidationError(
+                                message="Email collision detected",
                                 field="email",
                                 value=user_data.email,
-                                reason="Email collision detected",
                                 details=collision,
                             )
                         # Normalize the new email
@@ -250,14 +261,14 @@ class UserService:
                 )
                 return user
 
-        except UserNotFoundException:
+        except NotFoundError:
             raise
         except Exception as e:
             logger.error(f"Error updating user {user_id}: {e}")
-            raise ValidationException(
+            raise ValidationError(
+                message=f"Failed to update user: {str(e)}",
                 field="user_data",
                 value=str(user_data),
-                reason=f"Failed to update user: {str(e)}",
             )
 
     async def update_user_by_external_auth_id(
@@ -294,16 +305,16 @@ class UserService:
                 raise ValueError("user.id cannot be None")
             return await self.update_user(user.id, user_data)
 
-        except UserNotFoundException:
+        except NotFoundError:
             raise
         except Exception as e:
             logger.error(
                 f"Error updating user by external auth ID {external_auth_id}: {e}"
             )
-            raise ValidationException(
+            raise ValidationError(
+                message=f"Failed to update user: {str(e)}",
                 field="user_data",
                 value=str(user_data),
-                reason=f"Failed to update user: {str(e)}",
             )
 
     async def update_user_onboarding(
@@ -331,7 +342,7 @@ class UserService:
                 user = result.scalar_one_or_none()
 
                 if user is None or user.deleted_at is not None:
-                    raise UserNotFoundException(str(user_id))
+                    raise NotFoundError(resource="User", identifier=str(user_id or ""))
 
                 user.onboarding_completed = onboarding_data.onboarding_completed
                 user.onboarding_step = onboarding_data.onboarding_step
@@ -344,14 +355,14 @@ class UserService:
                 )
                 return user
 
-        except UserNotFoundException:
+        except NotFoundError:
             raise
         except Exception as e:
             logger.error(f"Error updating onboarding for user {user_id}: {e}")
-            raise ValidationException(
+            raise ValidationError(
+                message=f"Failed to update onboarding: {str(e)}",
                 field="onboarding_data",
                 value=str(onboarding_data),
-                reason=f"Failed to update onboarding: {str(e)}",
             )
 
     async def update_user_onboarding_by_external_auth_id(
@@ -391,16 +402,16 @@ class UserService:
                 raise ValueError("user.id cannot be None")
             return await self.update_user_onboarding(user.id, onboarding_data)
 
-        except UserNotFoundException:
+        except NotFoundError:
             raise
         except Exception as e:
             logger.error(
                 f"Error updating user onboarding by external auth ID {external_auth_id}: {e}"
             )
-            raise ValidationException(
+            raise ValidationError(
+                message=f"Failed to update user onboarding: {str(e)}",
                 field="onboarding_data",
                 value=str(onboarding_data),
-                reason=f"Failed to update user onboarding: {str(e)}",
             )
 
     async def delete_user(self, user_id: int) -> UserDeleteResponse:
@@ -424,7 +435,7 @@ class UserService:
                 user = result.scalar_one_or_none()
 
                 if user is None or user.deleted_at is not None:
-                    raise UserNotFoundException(str(user_id))
+                    raise NotFoundError(resource="User", identifier=str(user_id or ""))
 
                 # Perform soft delete
                 deleted_at = datetime.now(timezone.utc)
@@ -442,14 +453,14 @@ class UserService:
                     deleted_at=deleted_at,
                 )
 
-        except UserNotFoundException:
+        except NotFoundError:
             raise
         except Exception as e:
             logger.error(f"Error deleting user {user_id}: {e}")
-            raise ValidationException(
+            raise ValidationError(
+                message=f"Failed to delete user: {str(e)}",
                 field="user_id",
-                value=user_id,
-                reason=f"Failed to delete user: {str(e)}",
+                value=str(user_id) if user_id is not None else "",
             )
 
     async def delete_user_by_external_auth_id(
@@ -484,16 +495,21 @@ class UserService:
                 raise ValueError("user.id cannot be None")
             return await self.delete_user(user.id)
 
-        except UserNotFoundException:
+        except NotFoundError:
             raise
         except Exception as e:
             logger.error(
                 f"Error deleting user by external auth ID {external_auth_id}: {e}"
             )
-            raise ValidationException(
-                field="external_auth_id",
-                value=external_auth_id,
-                reason=f"Failed to delete user: {str(e)}",
+            value = (
+                str(user.id)
+                if "user" in locals() and hasattr(user, "id") and user.id is not None
+                else ""
+            )
+            raise ValidationError(
+                message=f"Failed to delete user: {str(e)}",
+                field="user_id",
+                value=value,
             )
 
     async def search_users(self, search_request: UserSearchRequest) -> UserListResponse:
@@ -528,7 +544,7 @@ class UserService:
                 # Get total count
                 count_query = select(func.count()).select_from(query.subquery())
                 total_result = await session.execute(count_query)
-                total = total_result.scalar()
+                total = total_result.scalar() or 0
 
                 # Apply pagination
                 offset = (search_request.page - 1) * search_request.page_size
@@ -554,10 +570,10 @@ class UserService:
 
         except Exception as e:
             logger.error(f"Error searching users: {e}")
-            raise ValidationException(
+            raise ValidationError(
+                message=f"Failed to search users: {str(e)}",
                 field="search_request",
                 value=str(search_request),
-                reason=f"Failed to search users: {str(e)}",
             )
 
     async def get_user_profile(self, user_id: int) -> UserResponse:
@@ -610,11 +626,11 @@ class UserService:
                 )
                 logger.info(f"Found user {external_auth_id} with provider {provider}")
                 return user
-            except UserNotFoundException:
+            except NotFoundError:
                 continue
 
         # If we get here, user was not found with any provider
-        raise UserNotFoundException(external_auth_id)
+        raise NotFoundError(resource="User", identifier=str(external_auth_id or ""))
 
     async def get_user_profile_by_external_auth_id(
         self, external_auth_id: str, auth_provider: str = None
@@ -653,7 +669,7 @@ class UserService:
         try:
             await self.get_user_by_id(user_id)
             return True
-        except UserNotFoundException:
+        except NotFoundError:
             return False
 
     async def get_users_by_ids(self, user_ids: List[int]) -> List[User]:

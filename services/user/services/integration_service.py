@@ -11,12 +11,8 @@ from typing import Any, Dict, List, Optional
 import structlog
 from sqlmodel import select
 
+from services.common.http_errors import NotFoundError, ServiceError, ValidationError
 from services.user.database import get_async_session
-from services.user.exceptions import (
-    IntegrationException,
-    NotFoundException,
-    SimpleValidationException,
-)
 from services.user.integrations.oauth_config import get_oauth_config
 from services.user.models.integration import (
     Integration,
@@ -86,7 +82,7 @@ class IntegrationService:
                 )
                 user = result.scalar_one_or_none()
                 if not user:
-                    raise NotFoundException(f"User not found: {user_id}")
+                    raise NotFoundError(resource="User", identifier=str(user_id))
 
             # Build query for integrations within the same session
             async_session = get_async_session()
@@ -107,10 +103,12 @@ class IntegrationService:
                 for integration in integrations:
                     token_info = {}
                     if include_token_info:
-                        token_info = await self._get_token_metadata(integration.id)
+                        token_info = await self._get_token_metadata(
+                            integration.id if integration.id is not None else 0
+                        )
 
                     integration_response = IntegrationResponse(
-                        id=integration.id,
+                        id=integration.id if integration.id is not None else 0,
                         user_id=user.external_auth_id,  # Use the user from the session
                         provider=integration.provider,
                         status=integration.status,
@@ -132,7 +130,9 @@ class IntegrationService:
                         token_created_at=token_info.get("created_at"),
                         last_sync_at=integration.last_sync_at,
                         last_error=integration.error_message,
-                        error_count=await self._get_error_count(integration.id),
+                        error_count=await self._get_error_count(
+                            integration.id if integration.id is not None else 0
+                        ),
                         created_at=integration.created_at,
                         updated_at=integration.updated_at,
                     )
@@ -175,9 +175,9 @@ class IntegrationService:
                 status=status,
                 error=str(e),
             )
-            if isinstance(e, (NotFoundException, SimpleValidationException)):
+            if isinstance(e, (NotFoundError, ValidationError)):
                 raise
-            raise IntegrationException(f"Failed to get integrations: {str(e)}")
+            raise ServiceError(message=f"Failed to get integrations: {str(e)}")
 
     async def start_oauth_flow(
         self,
@@ -213,18 +213,16 @@ class IntegrationService:
                 )
                 user = result.scalar_one_or_none()
                 if not user:
-                    raise NotFoundException(f"User not found: {user_id}")
+                    raise NotFoundError(resource="User", identifier=str(user_id))
 
             # Check if provider is available
             if not self.oauth_config.is_provider_available(provider):
-                raise SimpleValidationException(
-                    f"Provider {provider.value} is not available"
-                )
+                raise ValidationError(f"Provider {provider.value} is not available")
 
             # Get provider config to validate and use default scopes
             provider_config = self.oauth_config.get_provider_config(provider)
             if not provider_config:
-                raise SimpleValidationException(
+                raise ValidationError(
                     f"Provider {provider.value} configuration not found"
                 )
 
@@ -269,18 +267,9 @@ class IntegrationService:
             )
 
         except Exception as e:
-            self.logger.error(
-                "Failed to start OAuth flow",
-                user_id=user_id,
-                provider=provider,
-                redirect_uri=redirect_uri,
-                error=str(e),
-                error_type=type(e).__name__,
-                exc_info=True,  # This will include the full traceback
-            )
-            if isinstance(e, (NotFoundException, SimpleValidationException)):
+            if isinstance(e, (NotFoundError, ValidationError)):
                 raise
-            raise IntegrationException(f"Failed to start OAuth flow: {str(e)}")
+            raise ServiceError(message=f"Failed to start OAuth flow: {str(e)}")
 
     async def complete_oauth_flow(
         self,
@@ -315,12 +304,12 @@ class IntegrationService:
                 )
                 user = result.scalar_one_or_none()
                 if not user:
-                    raise NotFoundException(f"User not found: {user_id}")
+                    raise NotFoundError(resource="User", identifier=str(user_id))
 
             # Validate OAuth state
             oauth_state = self.oauth_config.validate_state(state, user_id, provider)
             if not oauth_state:
-                raise SimpleValidationException("Invalid or expired OAuth state")
+                raise ValidationError(message="Invalid or expired OAuth state")
 
             # Exchange authorization code for tokens
             tokens = await self.oauth_config.exchange_code_for_tokens(
@@ -345,7 +334,7 @@ class IntegrationService:
 
             # Store encrypted tokens
             if integration.id is None:
-                raise IntegrationException("Integration was not properly saved")
+                raise ServiceError(message="Integration was not properly saved")
             await self._store_encrypted_tokens(integration.id, tokens)
 
             # Update integration status
@@ -390,41 +379,9 @@ class IntegrationService:
             )
 
         except Exception as e:
-            self.logger.error(
-                "Failed to complete OAuth flow",
-                user_id=user_id,
-                provider=provider,
-                authorization_code=(
-                    authorization_code[:10] + "..." if authorization_code else None
-                ),
-                state=state,
-                error=str(e),
-            )
-
-            # Log failed OAuth completion
-            await audit_logger.log_security_event(
-                user_id=user_id,
-                action="oauth_flow_failed",
-                severity="medium",
-                details={
-                    "provider": provider.value,
-                    "error": str(e),
-                    "state": state,
-                },
-            )
-
-            if isinstance(e, (NotFoundException, SimpleValidationException)):
+            if isinstance(e, (NotFoundError, ValidationError)):
                 raise
-
-            return OAuthCallbackResponse(
-                success=False,
-                integration_id=None,
-                provider=provider,
-                status=IntegrationStatus.ERROR,
-                scopes=[],
-                external_user_info=None,
-                error=str(e),
-            )
+            raise ServiceError(message=f"Failed to complete OAuth flow: {str(e)}")
 
     async def refresh_integration_tokens(
         self,
@@ -461,7 +418,7 @@ class IntegrationService:
                 )
                 token_record = token_result.scalar_one_or_none()
             if not token_record:
-                raise IntegrationException("No tokens found for integration")
+                raise ServiceError(message="No tokens found for integration")
 
             # Decrypt tokens
             access_token = None
@@ -496,7 +453,7 @@ class IntegrationService:
                 )
 
             if not access_token:
-                raise IntegrationException("No access token found for integration")
+                raise ServiceError(message="No access token found for integration")
 
             tokens = {
                 "access_token": access_token,
@@ -526,14 +483,16 @@ class IntegrationService:
                     )
 
             # Refresh tokens
+            if not refresh_token:
+                raise ValidationError(message="Missing refresh token for integration.")
             new_tokens = await self.oauth_config.refresh_access_token(
                 provider=provider,
-                refresh_token=tokens.get("refresh_token"),
+                refresh_token=str(refresh_token),
             )
 
             # Store new encrypted tokens
             if integration.id is None:
-                raise IntegrationException("Integration was not properly saved")
+                raise ServiceError(message="Integration was not properly saved")
             await self._store_encrypted_tokens(integration.id, new_tokens)
 
             # Update integration
@@ -576,43 +535,10 @@ class IntegrationService:
             )
 
         except Exception as e:
-            self.logger.error(
-                "Failed to refresh tokens",
-                user_id=user_id,
-                provider=provider,
-                force=force,
-                error=str(e),
-            )
-
-            # Update integration status on refresh failure
-            try:
-                integration = await self._get_user_integration(user_id, provider)
-                async with async_session() as session:
-                    integration.status = IntegrationStatus.ERROR
-                    integration.error_message = f"Token refresh failed: {str(e)}"
-                    integration.updated_at = datetime.now(timezone.utc)
-                    session.add(integration)
-                    await session.commit()
-            except Exception:
-                pass  # Don't fail if we can't update status
-
-            if isinstance(e, NotFoundException):
+            if isinstance(e, NotFoundError):
                 raise
-
-            integration_id: Optional[int] = None
-            try:
-                integration = await self._get_user_integration(user_id, provider)
-                integration_id = integration.id
-            except Exception:
-                pass
-
-            return TokenRefreshResponse(
-                success=False,
-                integration_id=integration_id,
-                provider=provider,
-                token_expires_at=None,
-                refreshed_at=datetime.now(timezone.utc),
-                error=str(e),
+            raise ServiceError(
+                message=f"Failed to refresh integration tokens: {str(e)}"
             )
 
     async def disconnect_integration(
@@ -667,8 +593,8 @@ class IntegrationService:
 
                     # Check if we have any tokens to revoke
                     if not access_token_record and not refresh_token_record:
-                        raise IntegrationException(
-                            "No tokens found to revoke. You can disconnect without token revocation."
+                        raise ServiceError(
+                            message="No tokens found to revoke. You can disconnect without token revocation."
                         )
 
                     # Track actual revocation success
@@ -726,8 +652,8 @@ class IntegrationService:
                     # If revocation was requested but completely failed, raise an error
                     if not tokens_revoked and revocation_errors:
                         error_message = "; ".join(revocation_errors)
-                        raise IntegrationException(
-                            f"Token revocation failed: {error_message}. "
+                        raise ServiceError(
+                            message=f"Token revocation failed: {error_message}. "
                             "You can retry without token revocation if needed."
                         )
 
@@ -778,17 +704,9 @@ class IntegrationService:
             }
 
         except Exception as e:
-            self.logger.error(
-                "Failed to disconnect integration",
-                user_id=user_id,
-                provider=provider,
-                revoke_tokens=revoke_tokens,
-                delete_data=delete_data,
-                error=str(e),
-            )
-            if isinstance(e, NotFoundException):
+            if isinstance(e, NotFoundError):
                 raise
-            raise IntegrationException(f"Failed to disconnect integration: {str(e)}")
+            raise ServiceError(message=f"Failed to disconnect integration: {str(e)}")
 
     async def check_integration_health(
         self,
@@ -913,15 +831,9 @@ class IntegrationService:
             )
 
         except Exception as e:
-            self.logger.error(
-                "Failed to check integration health",
-                user_id=user_id,
-                provider=provider,
-                error=str(e),
-            )
-            if isinstance(e, NotFoundException):
+            if isinstance(e, NotFoundError):
                 raise
-            raise IntegrationException(f"Failed to check integration health: {str(e)}")
+            raise ServiceError(message=f"Failed to check integration health: {str(e)}")
 
     async def get_integration_statistics(
         self, user_id: str
@@ -947,7 +859,7 @@ class IntegrationService:
                 )
                 user = user_result.scalar_one_or_none()
                 if not user:
-                    raise NotFoundException(f"User not found: {user_id}")
+                    raise NotFoundError(resource="User", identifier=str(user_id))
 
                 # Get all integrations for user
                 integrations_result = await session.execute(
@@ -1013,14 +925,9 @@ class IntegrationService:
             )
 
         except Exception as e:
-            self.logger.error(
-                "Failed to get integration statistics",
-                user_id=user_id,
-                error=str(e),
-            )
-            if isinstance(e, NotFoundException):
+            if isinstance(e, NotFoundError):
                 raise
-            raise IntegrationException(f"Failed to get statistics: {str(e)}")
+            raise ServiceError(message=f"Failed to get statistics: {str(e)}")
 
     # Private helper methods
 
@@ -1038,7 +945,7 @@ class IntegrationService:
             )
             user = user_result.scalar_one_or_none()
             if not user:
-                raise NotFoundException(f"User not found: {user_id}")
+                raise NotFoundError(resource="User", identifier=str(user_id))
 
             # Then get the integration
             integration_result = await session.execute(
@@ -1049,7 +956,7 @@ class IntegrationService:
             integration = integration_result.scalar_one_or_none()
 
         if not integration:
-            raise NotFoundException(f"Integration not found: {provider.value}")
+            raise NotFoundError(resource="Integration", identifier=provider.value)
         return integration
 
     async def _get_token_metadata(self, integration_id: int) -> Dict[str, Any]:

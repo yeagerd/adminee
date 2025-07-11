@@ -12,7 +12,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from services.user.database import create_all_tables
-from services.user.exceptions import AuditException, DatabaseException
+from services.common.http_errors import ServiceError
 from services.user.models.audit import AuditLog
 from services.user.models.user import User
 from services.user.services.audit_service import (
@@ -167,9 +167,9 @@ class TestAuditLogger(BaseUserManagementTest):
         with patch.object(
             self.audit_service,
             "log_audit_event",
-            side_effect=AuditException("Database error"),
+            side_effect=ServiceError("Database error"),
         ):
-            with pytest.raises(AuditException) as exc_info:
+            with pytest.raises(ServiceError) as exc_info:
                 await self.audit_service.log_audit_event(
                     action="test_action",
                     resource_type="test_resource",
@@ -282,9 +282,9 @@ class TestAuditLogger(BaseUserManagementTest):
         with patch.object(
             self.audit_service,
             "query_audit_logs",
-            side_effect=DatabaseException("Query failed"),
+            side_effect=ServiceError("Query failed"),
         ):
-            with pytest.raises(DatabaseException) as exc_info:
+            with pytest.raises(ServiceError) as exc_info:
                 await self.audit_service.query_audit_logs(user_id="test_user")
 
             assert "Query failed" in str(exc_info.value)
@@ -321,13 +321,13 @@ class TestAuditLogger(BaseUserManagementTest):
         with patch.object(
             self.audit_service,
             "query_audit_logs",
-            side_effect=DatabaseException("Query failed"),
+            side_effect=ServiceError("Query failed"),
         ):
-            with pytest.raises(AuditException) as exc_info:
+            with pytest.raises(ServiceError) as exc_info:
                 await self.audit_service.get_user_activity_summary(user_id="user_123")
 
             # Use the actual error message format from the implementation
-            assert "Failed to generate activity summary for user user_123" in str(
+            assert "Failed to generate activity summary for user user_123: Query failed" in str(
                 exc_info.value
             )
 
@@ -419,15 +419,15 @@ class TestAuditLogger(BaseUserManagementTest):
         with patch.object(
             self.audit_service,
             "query_audit_logs",
-            side_effect=DatabaseException("Query failed"),
+            side_effect=ServiceError("Query failed"),
         ):
-            with pytest.raises(AuditException) as exc_info:
+            with pytest.raises(ServiceError) as exc_info:
                 await self.audit_service.generate_compliance_report(
                     start_date=datetime.now(timezone.utc) - timedelta(days=30),
                     end_date=datetime.now(timezone.utc),
                 )
 
-            assert "Failed to generate compliance report" in str(exc_info.value)
+            assert "Failed to generate compliance report: Query failed" in str(exc_info.value)
 
 
 class TestGlobalAuditLogger:
@@ -482,15 +482,14 @@ class TestAuditIntegration:
 
     def test_security_event_enhancement(self):
         """Test that security events get proper enhancement."""
+        from typing import Any
         base_details = {"attempt_count": 3}
-        security_details = base_details.copy()
-        security_details.update(
-            {
-                "security_event": True,
-                "severity": "high",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            }
-        )
+        security_details: dict[str, Any] = dict(base_details)
+        security_details.update({
+            "security_event": True,
+            "severity": "high",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
 
         # Verify security enhancement
         assert security_details["security_event"] is True
@@ -568,6 +567,7 @@ class TestAuditIntegration:
 
             # Verify the result has expected structure
             assert result.action == "threat_detected"
+            assert result.details is not None
             assert result.details["threat_type"] == "brute_force"
             assert result.details["security_event"] is True
             assert "timestamp" in result.details

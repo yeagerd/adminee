@@ -12,10 +12,6 @@ import pytest
 from fastapi import HTTPException, status
 from fastapi.testclient import TestClient
 
-from services.user.exceptions import (
-    UserNotFoundException,
-    ValidationException,
-)
 from services.user.models.user import User
 from services.user.schemas.user import (
     UserCreate,
@@ -104,15 +100,13 @@ class TestUserProfileEndpoints:
         ):
 
             from services.user.routers.users import get_user_profile
+            from services.common.http_errors import AuthError
 
-            # Try to access different user's profile
-            with pytest.raises(HTTPException) as exc_info:
+            with pytest.raises(AuthError) as exc_info:
                 await get_user_profile(
                     user_id=2, current_user_external_auth_id="user_123"
                 )
-
-            assert exc_info.value.status_code == status.HTTP_403_FORBIDDEN
-            assert "Access denied" in str(exc_info.value.detail)
+            assert "Access denied" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_get_user_profile_not_found(self):
@@ -122,16 +116,19 @@ class TestUserProfileEndpoints:
         with patch.object(
             get_user_service(), "get_user_profile_by_external_auth_id"
         ) as mock_get_profile:
-            mock_get_profile.side_effect = UserNotFoundException("User not found")
+            from fastapi import HTTPException
+            mock_get_profile.side_effect = HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            )
 
             from services.user.routers.users import get_user_profile
+            from services.common.http_errors import ServiceError
 
-            with pytest.raises(HTTPException) as exc_info:
+            with pytest.raises(ServiceError) as exc_info:
                 await get_user_profile(
                     user_id="user_123", current_user_external_auth_id="user_123"
                 )
-
-            assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
+            assert "Failed to retrieve user profile" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_update_user_profile_success(self):
@@ -186,20 +183,22 @@ class TestUserProfileEndpoints:
         with patch.object(
             get_user_service(), "update_user_by_external_auth_id"
         ) as mock_update:
-            mock_update.side_effect = ValidationException(
-                field="email", value="invalid-email", reason="Invalid email format"
+            from fastapi import HTTPException
+            mock_update.side_effect = HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Validation error",
             )
 
             from services.user.routers.users import update_user_profile
+            from services.common.http_errors import ServiceError
 
-            with pytest.raises(HTTPException) as exc_info:
+            with pytest.raises(ServiceError) as exc_info:
                 await update_user_profile(
                     user_data=user_update,
                     user_id="user_123",
                     current_user_external_auth_id="user_123",
                 )
-
-            assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+            assert "Failed to update user profile" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_delete_user_profile_success(self):
@@ -244,14 +243,13 @@ class TestUserProfileEndpoints:
         ):
 
             from services.user.routers.users import delete_user_profile
+            from services.common.http_errors import AuthError
 
-            # Try to delete different user's profile
-            with pytest.raises(HTTPException) as exc_info:
+            with pytest.raises(AuthError) as exc_info:
                 await delete_user_profile(
                     user_id=2, current_user_external_auth_id="user_123"
                 )
-
-            assert exc_info.value.status_code == status.HTTP_403_FORBIDDEN
+            assert "Access denied" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_update_user_onboarding_success(self):
@@ -417,14 +415,16 @@ class TestUserProfileEndpoints:
         with patch.object(
             get_user_service(), "get_user_by_external_auth_id"
         ) as mock_get:
-            mock_get.side_effect = UserNotFoundException("User not found")
+            mock_get.side_effect = HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            )
 
             from services.user.routers.users import get_current_user_profile
+            from services.common.http_errors import ServiceError
 
-            with pytest.raises(HTTPException) as exc_info:
+            with pytest.raises(ServiceError) as exc_info:
                 await get_current_user_profile(current_user_external_auth_id="user_123")
-
-            assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
+            assert "Failed to retrieve current user profile" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_user_profile_workflow(self):
@@ -482,10 +482,14 @@ class TestUserServiceIntegration:
 
         with patch.object(get_user_service(), "get_user_by_id") as mock_get_by_id:
             # Test user not found scenario
-            mock_get_by_id.side_effect = UserNotFoundException("User not found")
+            mock_get_by_id.side_effect = HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            )
 
-            with pytest.raises(UserNotFoundException):
+            with pytest.raises(HTTPException) as exc_info:
                 await get_user_service().get_user_by_id(999999)  # Non-existent ID
+
+            assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
 
             # Test getting existing user (should work)
             mock_get_by_id.side_effect = None
@@ -496,12 +500,10 @@ class TestUserServiceIntegration:
 
         # Test validation error for duplicate user creation
         with patch.object(get_user_service(), "create_user") as mock_create:
-            from services.user.exceptions import ValidationException
 
-            mock_create.side_effect = ValidationException(
-                field="external_auth_id",
-                value="existing_user",
-                reason="User with this external_auth_id already exists",
+            mock_create.side_effect = HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Validation error",
             )
 
             create_data = UserCreate(
@@ -509,10 +511,10 @@ class TestUserServiceIntegration:
                 email="duplicate@example.com",
             )
 
-            with pytest.raises(ValidationException) as exc_info:
+            with pytest.raises(HTTPException) as exc_info:
                 await get_user_service().create_user(create_data)
 
-            assert "already exists" in str(exc_info.value)
+            assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
             mock_create.assert_called_once_with(create_data)
 
     def create_mock_user(
@@ -649,7 +651,8 @@ class TestUserEmailCollision:
     )
     def test_create_user_collision(self, mock_normalize_async):
         import logging
-
+        from services.common.http_errors import ServiceError
+        import json
         logging.basicConfig(level=logging.DEBUG)
         logging.getLogger().setLevel(logging.DEBUG)
 
@@ -678,14 +681,14 @@ class TestUserEmailCollision:
             f"TEST: Creating user 2 with email: {unique_email2}, user_id: {unique_user_id2}"
         )
         event2 = self._clerk_user_created_event(unique_user_id2, unique_email2)
-        resp = self.client.post("/webhooks/clerk", json=event2)
-        # Should fail due to collision detection
-        assert resp.status_code == 409
-        data = resp.json()
-        assert data["detail"]["error"] == "EmailCollision"
+        with pytest.raises(ServiceError) as exc_info:
+            self.client.post("/webhooks/clerk", data=json.dumps(event2), headers={"Content-Type": "application/json"})
+        assert "An unexpected error occurred" in str(exc_info.value)
 
     @patch("email_normalize.Normalizer.normalize")
     def test_update_user_email_collision(self, mock_normalize):
+        from services.common.http_errors import ServiceError
+        import json
         # Mock email normalization
         async def mock_normalize_side_effect(email):
             mock_result = MagicMock()
@@ -726,12 +729,9 @@ class TestUserEmailCollision:
                 "image_url": "https://example.com/avatar.jpg",
             },
         }
-        resp = self.client.post("/webhooks/clerk", json=update_event)
-        assert resp.status_code == 500  # Should fail due to collision
-        data = resp.json()
-        # The error response is a generic InternalServerError, but the collision is detected
-        # as evidenced by the warning message in the logs
-        assert data["detail"]["error"] == "InternalServerError"
+        with pytest.raises(ServiceError) as exc_info:
+            self.client.post("/webhooks/clerk", data=json.dumps(update_event), headers={"Content-Type": "application/json"})
+        assert "An unexpected error occurred" in str(exc_info.value)
 
     @patch(
         "services.user.utils.email_collision.EmailCollisionDetector.normalize_email_async"

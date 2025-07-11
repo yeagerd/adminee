@@ -21,7 +21,7 @@ from services.office.core.api_client_factory import APIClientFactory
 from services.office.core.clients.base import BaseAPIClient
 from services.office.core.clients.google import GoogleAPIClient
 from services.office.core.clients.microsoft import MicrosoftAPIClient
-from services.office.core.exceptions import ProviderAPIError
+from services.common.http_errors import ProviderError
 from services.office.core.token_manager import TokenData
 from services.office.models import Provider
 
@@ -157,7 +157,7 @@ class TestBaseAPIClient:
                 )
                 mock_request.return_value = mock_response
 
-                with pytest.raises(ProviderAPIError) as exc_info:
+                with pytest.raises(ProviderError) as exc_info:
                     await mock_client.get("/nonexistent")
 
                 # Verify the ProviderAPIError contains the expected details
@@ -174,7 +174,7 @@ class TestBaseAPIClient:
             ) as mock_request:
                 mock_request.side_effect = httpx.TimeoutException("Request timeout")
 
-                with pytest.raises(ProviderAPIError) as exc_info:
+                with pytest.raises(ProviderError) as exc_info:
                     await mock_client.get("/slow-endpoint")
 
                 # Verify the ProviderAPIError contains the expected details
@@ -191,7 +191,7 @@ class TestBaseAPIClient:
             ) as mock_request:
                 mock_request.side_effect = httpx.NetworkError("Connection failed")
 
-                with pytest.raises(ProviderAPIError) as exc_info:
+                with pytest.raises(ProviderError) as exc_info:
                     await mock_client.get("/unreachable")
 
                 # Verify the ProviderAPIError contains the expected details

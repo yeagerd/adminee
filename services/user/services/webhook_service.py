@@ -7,11 +7,10 @@ Handles business logic for processing webhook events from external providers.
 import logging
 from datetime import datetime, timezone
 
-from fastapi import HTTPException
 from sqlalchemy import and_, select
 
+from services.common.http_errors import ServiceError, ValidationError
 from services.user.database import get_async_session
-from services.user.exceptions import DatabaseError, WebhookProcessingError
 from services.user.models.preferences import UserPreferences
 from services.user.models.user import User
 from services.user.schemas.webhook import (
@@ -40,7 +39,8 @@ class WebhookService:
             dict: Processing result with status and details
 
         Raises:
-            WebhookProcessingError: If event processing fails
+            ValidationError: If event processing fails due to invalid data
+            ServiceError: If event processing fails due to server error
         """
         logger.info(f"Processing Clerk webhook: {event.type} for user {event.data.id}")
 
@@ -52,13 +52,13 @@ class WebhookService:
             elif event.type == "user.deleted":
                 result = await self._handle_user_deleted(event.data)
             else:
-                raise WebhookProcessingError(f"Unsupported event type: {event.type}")
+                raise ValidationError(message=f"Unsupported event type: {event.type}")
 
             return result
 
         except Exception as e:
             logger.error(f"Unexpected error processing webhook: {str(e)}")
-            raise DatabaseError(f"Webhook processing failed: {str(e)}")
+            raise ServiceError(message=f"Webhook processing failed: {str(e)}")
 
     async def process_user_created(self, user_data: dict) -> dict:
         """
@@ -129,8 +129,8 @@ class WebhookService:
                     # User exists, check if email changed
                     primary_email = user_data.primary_email
                     if not primary_email:
-                        raise WebhookProcessingError(
-                            "No primary email found in user data"
+                        raise ValidationError(
+                            message="No primary email found in user data"
                         )
 
                     if existing_user.email != primary_email:
@@ -164,7 +164,7 @@ class WebhookService:
                 # Extract primary email
                 primary_email = user_data.primary_email
                 if not primary_email:
-                    raise WebhookProcessingError("No primary email found in user data")
+                    raise ValidationError(message="No primary email found in user data")
 
                 # Check for email collision using the new EmailCollisionDetector
                 collision_details = await self.email_detector.get_collision_details(
@@ -177,12 +177,8 @@ class WebhookService:
                     )
                     logger.debug("Raising HTTPException 409 for email collision!")
                     # Instead of updating the existing user's external_auth_id, raise a 409 Conflict
-                    raise HTTPException(
-                        status_code=409,
-                        detail={
-                            "error": "EmailCollision",
-                            "message": f"Email {primary_email} already exists with a different user.",
-                        },
+                    raise ServiceError(
+                        message=f"Email {primary_email} already exists with a different user."
                     )
 
                 # Normalize email for storage
@@ -229,11 +225,11 @@ class WebhookService:
                     "preferences_id": preferences.id,
                 }
 
-        except HTTPException:
+        except ServiceError:
             raise
         except Exception as e:
             logger.error(f"Failed to create user {user_data.id}: {str(e)}")
-            raise DatabaseError(f"User creation failed: {str(e)}")
+            raise ServiceError(message=f"User creation failed: {str(e)}")
 
     async def _handle_user_updated(self, user_data: ClerkWebhookEventData) -> dict:
         """
@@ -278,8 +274,8 @@ class WebhookService:
                         logger.warning(
                             f"Email collision on update: {user_data.primary_email} exists with external_auth_id {collision_details['existing_user_id']}, but update user has external_auth_id {user_data.id}"
                         )
-                        raise WebhookProcessingError(
-                            f"Email {user_data.primary_email} already exists with different external ID {collision_details['existing_user_id']}"
+                        raise ServiceError(
+                            message=f"Email {user_data.primary_email} already exists with different external ID {collision_details['existing_user_id']}"
                         )
 
                     # Normalize the new email
@@ -328,7 +324,7 @@ class WebhookService:
 
         except Exception as e:
             logger.error(f"Failed to update user {user_data.id}: {str(e)}")
-            raise DatabaseError(f"User update failed: {str(e)}")
+            raise ServiceError(message=f"User update failed: {str(e)}")
 
     async def _handle_user_deleted(self, user_data: ClerkWebhookEventData) -> dict:
         """
@@ -378,7 +374,7 @@ class WebhookService:
 
         except Exception as e:
             logger.error(f"Failed to delete user {user_data.id}: {str(e)}")
-            raise DatabaseError(f"User deletion failed: {str(e)}")
+            raise ServiceError(message=f"User deletion failed: {str(e)}")
 
     def _is_event_duplicate(self, event_id: str, user_id: str) -> bool:
         """

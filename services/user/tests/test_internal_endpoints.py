@@ -35,13 +35,11 @@ class TestInternalAPI(BaseUserManagementTest):
             "required_scopes": ["read"],
         }
 
-        # No authentication headers
-        response = self.client.post("/internal/tokens/get", json=request_data)
-        assert response.status_code in [
-            status.HTTP_401_UNAUTHORIZED,
-            status.HTTP_403_FORBIDDEN,
-            status.HTTP_500_INTERNAL_SERVER_ERROR,  # Wrapped by get_current_service
-        ]
+        import pytest
+        from services.common.http_errors import AuthError
+        with pytest.raises(AuthError) as exc_info:
+            self.client.post("/internal/tokens/get", json=request_data)
+        assert "API key required" in str(exc_info.value)
 
     def test_internal_user_status_endpoint_exists(self):
         """Test that the user status endpoint exists and returns proper error for non-existent user."""

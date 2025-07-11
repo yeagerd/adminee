@@ -2,13 +2,14 @@ import logging
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from sqlmodel import select
 
 from services.chat import history_manager
 from services.chat.api import router
 from services.chat.settings import get_settings
+from services.common.http_errors import register_briefly_exception_handlers
 from services.common.logging_config import (
     create_request_logging_middleware,
     log_service_shutdown,
@@ -73,47 +74,7 @@ app = FastAPI(title="Chat Service", version="0.1.0", lifespan=lifespan)
 # Add centralized request logging middleware
 app.middleware("http")(create_request_logging_middleware())
 
-
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    """
-    Global exception handler for unhandled exceptions.
-
-    Logs the error with full traceback and returns a generic error response
-    to avoid exposing internal details in production.
-    """
-    import uuid
-    from datetime import datetime, timezone
-
-    request_id = str(uuid.uuid4())
-
-    logger.error(
-        "Unhandled exception occurred",
-        extra={
-            "path": request.url.path,
-            "method": request.method,
-            "error": str(exc),
-            "error_type": type(exc).__name__,
-            "request_id": request_id,
-        },
-        exc_info=True,  # This includes the full traceback
-    )
-
-    return JSONResponse(
-        status_code=500,
-        content={
-            "type": "internal_error",
-            "message": "An unexpected error occurred. Please try again later.",
-            "details": {
-                "error_type": type(exc).__name__,
-                "path": request.url.path,
-                "method": request.method,
-                "code": "INTERNAL_SERVER_ERROR",
-            },
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "request_id": request_id,
-        },
-    )
+register_briefly_exception_handlers(app)
 
 
 @app.get("/ready")

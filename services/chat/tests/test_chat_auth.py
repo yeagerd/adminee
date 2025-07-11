@@ -7,7 +7,7 @@ Tests the API key authentication system for the chat service.
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from fastapi import HTTPException, Request
+from fastapi import Request
 
 from services.chat.auth import (
     client_has_permission,
@@ -16,6 +16,7 @@ from services.chat.auth import (
     require_chat_auth,
     verify_chat_authentication,
 )
+from services.common.http_errors import AuthError
 
 
 class TestChatServiceAuth:
@@ -65,10 +66,11 @@ class TestChatServiceAuth:
         request.headers = {}
         request.state = Mock()
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(AuthError) as exc_info:
             await verify_chat_authentication(request)
 
         assert exc_info.value.status_code == 401
+        assert "API key required" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_verify_chat_authentication_invalid_key(self):
@@ -77,10 +79,11 @@ class TestChatServiceAuth:
         request.headers = {"X-API-Key": "invalid-key"}
         request.state = Mock()
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(AuthError) as exc_info:
             await verify_chat_authentication(request)
 
         assert exc_info.value.status_code == 401
+        assert "Invalid API key" in str(exc_info.value)
 
     def test_get_client_permissions_frontend(self):
         """Test getting permissions for frontend client."""
@@ -132,10 +135,11 @@ class TestChatServiceAuth:
         # Only allow invalid client, but we're authenticating as frontend
         auth_dep = require_chat_auth(allowed_clients=["invalid-client"])
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(AuthError) as exc_info:
             await auth_dep(request)
 
         assert exc_info.value.status_code == 403
+        assert "not authorized" in str(exc_info.value).lower()
 
     def test_require_chat_auth_decorator_factory(self):
         """Test require_chat_auth decorator factory."""

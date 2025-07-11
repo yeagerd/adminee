@@ -8,14 +8,14 @@ authorization, and comprehensive error handling.
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, Depends, Path, Query
 
-from services.user.auth import get_current_user
-from services.user.exceptions import (
-    UserAlreadyExistsException,
-    UserNotFoundException,
-    ValidationException,
+from services.common.http_errors import (
+    AuthError,
+    NotFoundError,
+    ServiceError,
 )
+from services.user.auth import get_current_user
 from services.user.schemas.user import (
     UserCreate,
     UserDeleteResponse,
@@ -65,21 +65,12 @@ async def get_current_user_profile(
         )
         return user_response
 
-    except UserNotFoundException as e:
+    except NotFoundError as e:
         logger.warning(f"Current user not found: {e.message}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error": "UserNotFound", "message": e.message},
-        )
+        raise e
     except Exception as e:
         logger.error(f"Unexpected error retrieving current user profile: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error": "InternalServerError",
-                "message": "Failed to retrieve current user profile",
-            },
-        )
+        raise ServiceError(message="Failed to retrieve current user profile")
 
 
 @router.get(
@@ -110,12 +101,8 @@ async def get_user_profile(
             logger.warning(
                 f"User {current_user_external_auth_id} attempted to access profile of user {user_id}"
             )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error": "AuthorizationError",
-                    "message": "Access denied: You can only access your own profile",
-                },
+            raise AuthError(
+                message="Access denied: You can only access your own profile"
             )
 
         # Get the user profile by external auth ID
@@ -126,23 +113,14 @@ async def get_user_profile(
         logger.info(f"Retrieved profile for user {user_id}")
         return user_profile
 
-    except UserNotFoundException as e:
+    except NotFoundError as e:
         logger.warning(f"User not found: {e.message}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error": "UserNotFound", "message": e.message},
-        )
-    except HTTPException:
+        raise e
+    except AuthError:
         raise
     except Exception as e:
         logger.error(f"Unexpected error retrieving user profile {user_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error": "InternalServerError",
-                "message": "Failed to retrieve user profile",
-            },
-        )
+        raise ServiceError(message="Failed to retrieve user profile")
 
 
 @router.put(
@@ -175,12 +153,8 @@ async def update_user_profile(
             logger.warning(
                 f"User {current_user_external_auth_id} attempted to update profile of user {user_id}"
             )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error": "AuthorizationError",
-                    "message": "Access denied: You can only update your own profile",
-                },
+            raise AuthError(
+                message="Access denied: You can only update your own profile"
             )
 
         updated_user = await get_user_service().update_user_by_external_auth_id(
@@ -191,29 +165,12 @@ async def update_user_profile(
         logger.info(f"Updated profile for user {user_id}")
         return user_response
 
-    except UserNotFoundException as e:
+    except NotFoundError as e:
         logger.warning(f"User not found: {e.message}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error": "UserNotFound", "message": e.message},
-        )
-    except ValidationException as e:
-        logger.warning(f"Validation error updating user {user_id}: {e.message}")
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"error": "ValidationError", "message": e.message},
-        )
-    except HTTPException:
-        raise
+        raise e
     except Exception as e:
         logger.error(f"Unexpected error updating user profile {user_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error": "InternalServerError",
-                "message": "Failed to update user profile",
-            },
-        )
+        raise ServiceError(message="Failed to update user profile")
 
 
 @router.delete(
@@ -244,12 +201,8 @@ async def delete_user_profile(
             logger.warning(
                 f"User {current_user_external_auth_id} attempted to delete profile of user {user_id}"
             )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error": "AuthorizationError",
-                    "message": "Access denied: You can only delete your own profile",
-                },
+            raise AuthError(
+                message="Access denied: You can only delete your own profile"
             )
 
         delete_response = await get_user_service().delete_user_by_external_auth_id(
@@ -259,23 +212,14 @@ async def delete_user_profile(
         logger.info(f"Deleted profile for user {user_id}")
         return delete_response
 
-    except UserNotFoundException as e:
+    except NotFoundError as e:
         logger.warning(f"User not found: {e.message}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error": "UserNotFound", "message": e.message},
-        )
-    except HTTPException:
+        raise e
+    except AuthError:
         raise
     except Exception as e:
         logger.error(f"Unexpected error deleting user profile {user_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error": "InternalServerError",
-                "message": "Failed to delete user profile",
-            },
-        )
+        raise ServiceError(message="Failed to delete user profile")
 
 
 @router.put(
@@ -310,12 +254,8 @@ async def update_user_onboarding(
             logger.warning(
                 f"User {current_user_external_auth_id} attempted to update onboarding of user {user_id}"
             )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error": "AuthorizationError",
-                    "message": "Access denied: You can only update your own onboarding",
-                },
+            raise AuthError(
+                message="Access denied: You can only update your own onboarding"
             )
 
         updated_user = (
@@ -330,31 +270,12 @@ async def update_user_onboarding(
         )
         return user_response
 
-    except UserNotFoundException as e:
+    except NotFoundError as e:
         logger.warning(f"User not found: {e.message}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error": "UserNotFound", "message": e.message},
-        )
-    except ValidationException as e:
-        logger.warning(
-            f"Validation error updating onboarding for user {user_id}: {e.message}"
-        )
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"error": "ValidationError", "message": e.message},
-        )
-    except HTTPException:
-        raise
+        raise e
     except Exception as e:
         logger.error(f"Unexpected error updating onboarding for user {user_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error": "InternalServerError",
-                "message": "Failed to update onboarding",
-            },
-        )
+        raise ServiceError(message="Failed to update onboarding")
 
 
 @router.post(
@@ -388,21 +309,15 @@ async def create_or_upsert_user(user_data: UserCreate):
                 f"User already exists: {user_data.external_auth_id} ({user_data.auth_provider})"
             )
             return UserResponse.from_orm(user)
-        except UserNotFoundException:
+        except NotFoundError:
             user = await user_service.create_user(user_data)
             logger.info(
                 f"Created new user: {user_data.external_auth_id} ({user_data.auth_provider})"
             )
             return UserResponse.from_orm(user)
-    except UserAlreadyExistsException as e:
-        logger.warning(f"Email collision for {user_data.email}: {e}")
-        raise HTTPException(status_code=409, detail=str(e))
-    except ValidationException as e:
-        logger.warning(f"Validation error creating user: {e}")
-        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         logger.error(f"Unexpected error creating user: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise ServiceError(message="Internal server error")
 
 
 @router.get(
@@ -448,18 +363,6 @@ async def search_users(
         )
         return search_results
 
-    except ValidationException as e:
-        logger.warning(f"Validation error in user search: {e.message}")
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"error": "ValidationError", "message": e.message},
-        )
     except Exception as e:
         logger.error(f"Unexpected error in user search: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error": "InternalServerError",
-                "message": "Failed to search users",
-            },
-        )
+        raise ServiceError(message="Failed to search users")
