@@ -11,7 +11,7 @@ The `chat-service` is a backend microservice responsible for providing conversat
 ### 1.1. Chat Endpoint
 - **POST /chat**
     - **Input:**
-        - `user_id` (from Next.js API proxy, e.g., Clerk ID)
+        - `user_id` (from Next.js API proxy, e.g., NextAuth ID)
         - `thread_id` (optional; blank to start a new thread)
         - `user_input` (string)
     - **Output:**
@@ -87,7 +87,7 @@ The `chat-service` is a backend microservice responsible for providing conversat
 ---
 
 ## 4. Security & Authentication
-- All endpoints require authentication (validated via API proxy, e.g., Clerk session).
+- All endpoints require authentication (validated via API proxy, e.g., NextAuth session).
 - Sensitive actions (e.g., creating/deleting drafts) are authorized per user.
 - No sensitive tokens are logged.
 
@@ -148,8 +148,8 @@ Tool commands returned to the frontend will use a standardized JSON format:
 
 ## 9. Authentication/Authorization (MVP)
 
-- All endpoints require a valid user token (e.g., Clerk JWT) passed via the API proxy in the `Authorization` header.
-- The service validates the token using Clerk's backend SDK or via a shared secret/public key.
+- All endpoints require a valid user token (e.g., NextAuth JWT) passed via the API proxy in the `Authorization` header.
+- The service validates the token using NextAuth's backend SDK or via a shared secret/public key.
 - User identity (`user_id`) is extracted from the token and used for all data access and downstream service calls.
 - When calling `office-service`, the same user token is forwarded in the request headers for authorization.
 

@@ -3,11 +3,10 @@
 Enhanced Briefly Demo with NextAuth Testing.
 
 This demo provides a comprehensive testing environment for the Briefly platform,
-including authentication testing with both Clerk and NextAuth, OAuth integration,
+including authentication testing with NextAuth, OAuth integration,
 and multi-agent workflow capabilities.
 
 Features:
-- Clerk authentication with JWT tokens
 - NextAuth integration testing
 - OAuth flow simulation (Google, Microsoft)
 - Multi-agent workflow testing
@@ -442,7 +441,6 @@ class FullDemo:
 
         # Track available authentication methods
         self.auth_methods = {
-            "clerk": True,  # Always available in base demo
             "nextauth": NEXTAUTH_AVAILABLE,
         }
 
@@ -488,16 +486,25 @@ class FullDemo:
         auth_email = email or self.user_id
 
         try:
-            # Generate a Clerk-style user ID from the email
-            user_id = f"user_{auth_email.replace('@', '_').replace('.', '_')}"
+            # Generate a NextAuth-style user ID from the email
+            # This might vary based on the provider, e.g., google_123, microsoft_abc
+            # For demo purposes, we'll use a generic format.
+            user_id = f"nextauth_{auth_email.replace('@', '_').replace('.', '_')}"
 
             # Create user if it doesn't exist (before creating the token)
             if not await self._create_user_if_not_exists(auth_email, user_id):
                 print(f"❌ Failed to create user {auth_email}")
                 return False
 
-            # Now create a demo JWT token with the user ID and email
-            self.auth_token = create_bearer_token(user_id, auth_email)
+            # Now create a demo NextAuth JWT token with the user ID and email
+            # Assuming create_nextauth_jwt_for_demo can be used here, or a similar function
+            if NEXTAUTH_AVAILABLE:
+                self.auth_token = create_nextauth_jwt_for_demo(user_id, email=auth_email) # Use NextAuth token creation
+            else:
+                # Fallback or error if NextAuth utils are not available but are expected
+                print("❌ NextAuth utilities not available for token creation.")
+                return False
+
             self.user_client.auth_token = self.auth_token
             self.user_client.user_id = user_id
 
@@ -675,19 +682,19 @@ class FullDemo:
             status = "✅ Available" if available else "❌ Unavailable"
             print(f"  {method.title()}: {status}")
 
-        print("\n💡 Enhanced Commands (NextAuth Testing):")
+        print("\n💡 NextAuth Testing Commands:")
         print("  • 'nextauth google' - Test NextAuth with Google OAuth")
         print("  • 'nextauth microsoft' - Test NextAuth with Microsoft OAuth")
-        print("  • 'compare' - Compare Clerk vs NextAuth tokens")
         print("  • 'demo-nextauth' - Run NextAuth integration demonstration")
 
-        print("\n💡 Original Commands:")
+        print("\n💡 General Commands:")
         print("  • Type any message to chat")
         print("  • 'delete' - Delete current draft")
         print("  • 'send' - Send current draft via email")
         print("  • 'status' - Show service status")
-        print("  • 'auth' - Re-authenticate (prompts for email)")
-        print("  • 'oauth google' - Set up Google integration (Clerk)")
+        print("  • 'auth' - Authenticate with NextAuth (prompts for email)")
+        print("  • 'oauth google' - Set up Google integration (NextAuth)")
+        print("  • 'oauth microsoft' - Set up Microsoft integration (NextAuth)")
         print("  • 'help' - Show all commands")
         print("  • 'exit' - Exit demo")
 
@@ -707,7 +714,6 @@ class FullDemo:
         print("\n🔵 NextAuth Testing Commands:")
         print("  • 'nextauth google' - Test NextAuth OAuth flow with Google")
         print("  • 'nextauth microsoft' - Test NextAuth OAuth flow with Microsoft")
-        print("  • 'compare' - Compare Clerk vs NextAuth authentication approaches")
         print("  • 'demo-nextauth' - Run full NextAuth integration demonstration")
 
         print("\n🗣️  Chat Commands:")
@@ -725,16 +731,11 @@ class FullDemo:
 
         print("\n🔧 System Commands:")
         print("  • 'status' - Show service and integration status")
-        print("  • 'auth' - Re-authenticate with Clerk")
-        print("  • 'oauth google' - Set up Google OAuth integration (Clerk)")
-        print("  • 'oauth microsoft' - Set up Microsoft OAuth integration (Clerk)")
+        print("  • 'auth' - Authenticate with NextAuth")
+        print("  • 'oauth google' - Set up Google OAuth integration (NextAuth)")
+        print("  • 'oauth microsoft' - Set up Microsoft OAuth integration (NextAuth)")
         print("  • 'help' - Show this help message")
         print("  • 'exit' or 'quit' - Exit the demo")
-
-        print("\n💡 Comparison Examples:")
-        print("  1. Run 'auth' to set up Clerk authentication")
-        print("  2. Run 'nextauth google' to test NextAuth with Google")
-        print("  3. Run 'compare' to see the differences")
 
     async def send_message_local(self, message: str) -> str:
         """Send a message using local agent."""
@@ -870,15 +871,10 @@ class FullDemo:
         if not NEXTAUTH_AVAILABLE:
             return "❌ NextAuth utilities not available"
 
-        if not self.auth_token:
-            return "❌ No Clerk token available. Run 'auth' first."
-
-        if not self.nextauth_token:
-            return "❌ No NextAuth token available. Run 'nextauth <provider>' first."
-
-        print("\n🔍 Running authentication comparison...")
-        comparison = await compare_auth_approaches(self.auth_token, self.nextauth_token)
-        return comparison
+        # This command is being removed as Clerk is no longer part of the demo.
+        # If specific comparison logic is needed for different NextAuth providers,
+        # it should be implemented here. For now, it's a no-op.
+        return "ℹ️ The 'compare' command is deprecated as Clerk is no longer used."
 
     async def handle_demo_nextauth_command(self) -> str:
         """Handle demo-nextauth command."""
@@ -1150,12 +1146,13 @@ async def main():
             print("🔍 Authentication Comparison Mode")
             print("=" * 30)
 
-            # Create demo tokens for comparison
-            clerk_token = create_bearer_token(user_id)
-            nextauth_token = create_nextauth_jwt_for_demo(user_id)
-
-            comparison = await compare_auth_approaches(clerk_token, nextauth_token)
-            print(comparison)
+            # The comparison functionality is deprecated.
+            # This mode will now just print a message.
+            print("ℹ️ The '--compare' flag is deprecated as Clerk is no longer used.")
+            if NEXTAUTH_AVAILABLE:
+                print("To test NextAuth, run the demo and use 'nextauth <provider>' commands.")
+            else:
+                print("NextAuth utilities are not available in this environment.")
             return
 
         # Authenticate

@@ -1,13 +1,12 @@
 # NextAuth Testing with Briefly Demo
 
-This guide shows you how to test NextAuth authentication flows alongside the existing Clerk setup using the enhanced chat demo.
+This guide shows you how to test NextAuth authentication flows using the enhanced chat demo.
 
 ## Overview
 
 The NextAuth testing setup allows you to:
 - Test real Google/Microsoft OAuth flows
-- Compare NextAuth vs Clerk authentication approaches
-- See how NextAuth would work with Briefly services
+- See how NextAuth works with Briefly services
 - Experience the simplified single-login flow
 
 ## Quick Start
@@ -58,46 +57,19 @@ python services/demos/chat_nextauth.py
 
 ## Testing Scenarios
 
-### Scenario 1: Compare Authentication Approaches
-
-1. **Test Clerk Authentication:**
-   ```
-   auth
-   ```
-   Follow the prompts to set up Clerk authentication.
-
-2. **Test NextAuth Authentication:**
+### Test NextAuth Authentication:
    ```
    nextauth google
    ```
    This will:
    - Open your browser to Google OAuth
    - Show you the NextAuth JWT token after authentication
-   - Store the token for comparison
 
-3. **Compare the Approaches:**
-   ```
-   compare
-   ```
-   This shows a side-by-side comparison of Clerk vs NextAuth tokens.
-
-### Scenario 2: NextAuth-Only Testing
-
-Run the demo in NextAuth-only mode:
+### Run the Demo with NextAuth:
 
 ```bash
-python services/demos/chat_nextauth.py --nextauth-only
+python services/demos/chat_nextauth.py
 ```
-
-This skips Clerk setup and focuses on NextAuth testing.
-
-### Scenario 3: Quick Comparison Demo
-
-```bash
-python services/demos/chat_nextauth.py --compare
-```
-
-This creates demo tokens and shows the architectural differences.
 
 ## Available Commands
 
@@ -105,14 +77,11 @@ This creates demo tokens and shows the architectural differences.
 
 - `nextauth google` - Test NextAuth with Google OAuth
 - `nextauth microsoft` - Test NextAuth with Microsoft OAuth  
-- `compare` - Compare Clerk vs NextAuth tokens
 - `demo-nextauth` - Run full NextAuth integration demonstration
 
 ### Original Commands
 
 All original chat demo commands work:
-- `auth` - Clerk authentication
-- `oauth google` - Clerk OAuth setup
 - Chat functionality, draft management, etc.
 
 ## What You'll See
@@ -124,20 +93,20 @@ All original chat demo commands work:
 3. **Success Page:** Shows your NextAuth JWT token with embedded OAuth tokens
 4. **Token Analysis:** The demo decodes and analyzes the token structure
 
-### Token Comparison
+### Token Structure
 
-The comparison shows key differences:
+The NextAuth JWT token contains the following key information:
 
-| Field | Clerk | NextAuth |
-|-------|-------|----------|
-| User ID | `user_123` | `google_456` |
-| Provider | Not included | `google` |
-| Access Token | Stored separately | Embedded in JWT |
-| OAuth Setup | Separate step | Combined with login |
+| Field | Example Value | Description |
+|-------|---------------|-------------|
+| User ID | `google_456` | The unique ID for the user from the OAuth provider. |
+| Provider | `google` | The OAuth provider used for authentication (e.g., google, microsoft). |
+| Access Token | (embedded) | The OAuth access token from the provider. |
+| Scopes | `openid email profile https://www.googleapis.com/auth/calendar` | The permissions granted by the user. |
 
 ### Architecture Insights
 
-The demo highlights how NextAuth would:
+The demo highlights how NextAuth:
 - ✅ Combine authentication + OAuth in one step
 - ✅ Include OAuth tokens directly in the JWT
 - ✅ Eliminate the need for separate OAuth setup
@@ -161,25 +130,20 @@ The demo highlights how NextAuth would:
 4. Create a client secret
 5. Set the environment variables and test
 
-## Key Benefits Demonstrated
-
-### Current Clerk Approach
-```
-User → Clerk Login → App → "Connect Google" → OAuth → Separate Token Storage
-```
+## Key Benefits of NextAuth
 
 ### NextAuth Approach
 ```
 User → NextAuth (Google/Microsoft) → App + Tokens (Done!)
 ```
 
-### Advantages Shown
+### Advantages
 
-1. **Single Login Flow:** One step instead of two
-2. **Better UX:** No "connect your calendar" step needed
-3. **Embedded Tokens:** OAuth tokens included in JWT
-4. **Provider Context:** JWT includes which provider was used
-5. **Simplified Architecture:** Fewer moving parts
+1. **Single Login Flow:** Authentication and OAuth token retrieval happen in a single step.
+2. **Better UX:** Users don't need a separate step to "connect their calendar" or other services.
+3. **Embedded Tokens:** OAuth access tokens are embedded directly within the NextAuth JWT.
+4. **Provider Context:** The JWT includes information about which OAuth provider was used (e.g., Google, Microsoft).
+5. **Simplified Architecture:** This approach reduces the number of moving parts in the authentication system.
 
 ## Troubleshooting
 
@@ -208,9 +172,8 @@ pip install fastapi uvicorn httpx pyjwt python-multipart
 
 After testing, you can:
 
-1. **Evaluate the UX:** Compare the user experience of both approaches
-2. **Assess Complexity:** Consider the architectural trade-offs
-3. **Plan Migration:** Use insights to plan a potential NextAuth migration
-4. **Prototype Integration:** Extend the test server for your specific needs
+1. **Evaluate the UX:** Observe the streamlined user experience with NextAuth.
+2. **Assess Complexity:** Note the simplified architecture.
+3. **Prototype Integration:** Extend the test server for any specific needs or further exploration.
 
-The testing setup provides a realistic preview of how NextAuth would work with Briefly, helping you make an informed decision about authentication architecture. 
+This testing setup provides a realistic preview of how NextAuth works with Briefly.

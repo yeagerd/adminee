@@ -237,7 +237,7 @@ MICROSOFT_CLIENT_SECRET=your_microsoft_client_secret
 
 # Service Configuration
 DB_URL_USER=postgresql://user:pass@localhost/briefly_user_mgmt
-CLERK_SECRET_KEY=your_clerk_secret_key
+NEXTAUTH_SECRET=your_nextauth_secret # Replaced CLERK_SECRET_KEY
 TOKEN_ENCRYPTION_SALT=your_encryption_salt
 ```
 
@@ -280,7 +280,7 @@ TOKEN_ENCRYPTION_SALT=your_encryption_salt
 ```bash
 🔴 403 Forbidden - Authentication failed
 ```
-**Solution:** The demo uses mock JWT tokens. In production, you'd need valid Clerk JWT tokens.
+**Solution:** The demo uses mock JWT tokens. In production, you'd need valid NextAuth JWT tokens.
 
 ## Security Notes
 

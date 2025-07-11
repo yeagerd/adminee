@@ -10,7 +10,7 @@ The `user-management-service` is a core backend microservice responsible for man
 
 ### 1.1. User Profile Management
 - **GET /users/{user_id}**
-    - **Input:** `user_id` (from Next.js API proxy, e.g., Clerk ID)
+    - **Input:** `user_id` (from Next.js API proxy, e.g., NextAuth ID)
     - **Output:** Complete user profile including preferences and integration status
     - **Authentication:** Requires valid user token, only returns data for authenticated user
 
@@ -65,8 +65,8 @@ The `user-management-service` is a core backend microservice responsible for man
     - **Authentication:** Service-to-service API key
 
 ### 1.5. User Lifecycle Events
-- **POST /webhooks/clerk**
-    - **Input:** Clerk webhook payload (user.created, user.updated, user.deleted)
+- **POST /webhooks/nextauth**
+    - **Input:** NextAuth webhook payload (user.created, user.updated, user.deleted)
     - **Output:** Webhook processing status
     - **Security:** Webhook signature validation
 
@@ -76,7 +76,7 @@ The `user-management-service` is a core backend microservice responsible for man
 
 ### 2.1. User Profile Manager
 - Handles user CRUD operations and profile management
-- Manages user lifecycle events from Clerk webhooks
+- Manages user lifecycle events from NextAuth webhooks
 - Supports profile data validation and sanitization
 - Provides user search and lookup capabilities
 
@@ -95,7 +95,7 @@ The `user-management-service` is a core backend microservice responsible for man
 ### 2.4. Token Storage & Encryption
 - Encrypts/decrypts OAuth tokens using user-specific keys
 - Manages token lifecycle (storage, refresh, revocation)
-- Implements secure key derivation from Clerk user IDs
+- Implements secure key derivation from NextAuth user IDs
 - Provides token retrieval with automatic refresh logic
 
 ### 2.5. Integration Status Tracker
@@ -141,8 +141,8 @@ async def get_user_token(user_id: str, provider: str, scopes: List[str]):
 ## 4. Security & Authentication
 
 ### 4.1. User Authentication
-- All user-facing endpoints require valid Clerk JWT tokens
-- Token validation using Clerk's public key verification
+- All user-facing endpoints require valid NextAuth JWT tokens
+- Token validation using NextAuth's public key verification
 - User identity extraction from JWT claims
 - Rate limiting per user to prevent abuse
 
@@ -154,7 +154,7 @@ async def get_user_token(user_id: str, provider: str, scopes: List[str]):
 
 ### 4.3. Token Encryption Strategy
 - **Encryption Method:** AES-256-GCM with user-specific keys
-- **Key Derivation:** PBKDF2 using Clerk user ID and service salt
+- **Key Derivation:** PBKDF2 using NextAuth user ID and service salt
 - **Storage:** Encrypted tokens in PostgreSQL, keys in memory/env
 - **Rotation:** Support for key rotation without service downtime
 
@@ -368,8 +368,8 @@ audit_logs_created_at_idx = Index(
 ## 8. Authentication & Authorization
 
 ### 8.1. User Authentication Flow
-1. Next.js API route validates Clerk session
-2. Extracts user ID from Clerk JWT token
+1. Next.js API route validates NextAuth session
+2. Extracts user ID from NextAuth JWT token
 3. Forwards request to User Management Service with user context
 4. Service validates user exists and is active
 5. Processes request with appropriate authorization checks
@@ -499,20 +499,22 @@ async def get_valid_token(user_id: str, provider: str, required_scopes: List[str
 
 ## 10. Integration with External Services
 
-### 10.1. Clerk Webhook Integration
+### 10.1. NextAuth Webhook Integration
 ```python
-from clerk_backend_api import Clerk
+# Assuming NextAuth uses a similar webhook pattern; adjust as needed
+# from nextauth_backend_api import NextAuth # Example, replace with actual SDK
 
-clerk = Clerk(bearer_auth=os.getenv("CLERK_SECRET_KEY"))
+# nextauth = NextAuth(secret_key=os.getenv("NEXTAUTH_SECRET")) # Example
 
-@app.post("/webhooks/clerk")
-async def handle_clerk_webhook(request: Request):
-    # Verify webhook signature
-    signature = request.headers.get("svix-signature")
-    webhook_secret = os.getenv("CLERK_WEBHOOK_SECRET")
+@app.post("/webhooks/nextauth") # Changed endpoint
+async def handle_nextauth_webhook(request: Request): # Changed function name
+    # Verify webhook signature (adjust based on NextAuth's mechanism)
+    signature = request.headers.get("nextauth-signature") # Example header
+    webhook_secret = os.getenv("NEXTAUTH_WEBHOOK_SECRET") # Example secret variable
     
-    if not verify_webhook_signature(signature, await request.body(), webhook_secret):
-        raise HTTPException(status_code=401, detail="Invalid signature")
+    # Replace with NextAuth's signature verification method
+    # if not verify_webhook_signature(signature, await request.body(), webhook_secret):
+    #     raise HTTPException(status_code=401, detail="Invalid signature")
     
     payload = await request.json()
     event_type = payload.get("type")
@@ -568,7 +570,7 @@ async def handle_clerk_webhook(request: Request):
         #         user_id=user_data["id"],
         #         action="user_deleted",
         #         resource_type="user",
-        #         details={"source": "clerk_webhook"}
+        #         details={"source": "nextauth_webhook"} # Changed source
         #     )
         #     session.add(audit_log)
         #     await session.commit()
@@ -680,7 +682,7 @@ async def cleanup_deleted_user_data():
 - **Database Operations**: Test CRUD operations, constraints, migrations
 - **External API Integration**: Test OAuth flows with mock providers
 - **Service-to-Service**: Test token retrieval by other services
-- **Webhook Processing**: Test Clerk webhook handling end-to-end
+- **Webhook Processing**: Test NextAuth webhook handling end-to-end
 
 ### 12.3. Security Tests
 - **Token Security**: Test encryption strength, key derivation
@@ -799,7 +801,7 @@ async def get_user_profile(
 - Basic user profile CRUD operations
 - Preference management with validation
 - Database schema and migrations
-- Clerk webhook integration
+- NextAuth webhook integration
 
 ### 17.2. Phase 2: OAuth & Token Management (Week 3-4)
 - OAuth flow implementation (Google, Microsoft)

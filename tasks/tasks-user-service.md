@@ -37,7 +37,7 @@
 ## Relevant Files
 
 ### Phase 1: Project Setup & Foundation
-- `requirements.txt` - Added FastAPI, Ormar, Pydantic, cryptography, clerk-backend-api, celery, structlog dependencies
+- `requirements.txt` - Added FastAPI, Ormar, Pydantic, cryptography, next-auth, celery, structlog dependencies # Replaced clerk-backend-api with next-auth
 - `services/user/` - Main service directory with auth, models, routers, services, utils subdirectories
 - `services/user/main.py` - FastAPI application entry point with health check endpoint
 - `services/user/settings.py` - Pydantic Settings configuration for environment variables
@@ -49,7 +49,7 @@
 - `services/user/tests/test_settings.py` - Unit tests for settings configuration
 
 ### Phase 2: Database Models & Schema
-- `services/user/models/user.py` - User model with Clerk ID, email, profile info, onboarding status
+- `services/user/models/user.py` - User model with NextAuth ID, email, profile info, onboarding status
 - `services/user/models/preferences.py` - UserPreferences model with UI, notification, AI, integration, privacy settings
 - `services/user/models/integration.py` - Integration model with provider/status enums, OAuth metadata
 - `services/user/models/token.py` - EncryptedToken model for secure OAuth token storage with user-specific encryption
@@ -74,7 +74,7 @@
 
 ### Phase 2: User Authentication & Authorization
 - `requirements.txt` - Added PyJWT dependency for JWT token handling
-- `services/user/auth/clerk.py` - Clerk JWT token validation with verify_jwt_token, get_current_user, and user ownership verification
+- `services/user/auth/nextauth.py` - NextAuth JWT token validation with verify_jwt_token, get_current_user, and user ownership verification (Replaced clerk.py)
 - `services/user/auth/service_auth.py` - Service-to-service API key authentication with multiple header format support and permission validation
 - `services/user/auth/__init__.py` - Authentication package exports for easy importing
 - `services/user/tests/test_auth.py` - Comprehensive unit tests for JWT validation, service authentication, and authorization checks
@@ -83,10 +83,10 @@
 - `services/user/services/user_service.py` - User service business logic for profile operations, onboarding, and search functionality
 - `services/user/routers/users.py` - Enhanced user profile management router with full CRUD operations, authentication, and authorization
 - `services/user/tests/test_user_endpoints.py` - Comprehensive unit tests for all user profile endpoints including success and error scenarios
-- `services/user/schemas/webhook.py` - Pydantic schemas for Clerk webhook events with validation and email extraction
-- `services/user/services/webhook_service.py` - Webhook service business logic for processing Clerk user lifecycle events
-- `services/user/auth/webhook_auth.py` - Webhook signature verification for Clerk webhooks with HMAC validation
-- `services/user/routers/webhooks.py` - Enhanced webhook router with Clerk event handling, signature verification, and comprehensive error handling
+- `services/user/schemas/webhook.py` - Pydantic schemas for NextAuth webhook events with validation and email extraction
+- `services/user/services/webhook_service.py` - Webhook service business logic for processing NextAuth user lifecycle events
+- `services/user/auth/webhook_auth.py` - Webhook signature verification for NextAuth webhooks with HMAC validation
+- `services/user/routers/webhooks.py` - Enhanced webhook router with NextAuth event handling, signature verification, and comprehensive error handling
 - `services/user/tests/test_webhook_endpoints.py` - Comprehensive unit tests for webhook processing including signature validation and event handling
 
 ### Phase 3: User Preferences Management
@@ -174,8 +174,8 @@
 ### Phase 2: User Authentication & Authorization
 
 * [x] 4. Authentication Middleware
-* [x] 4.1 Create `auth/clerk.py` with Clerk JWT token validation using clerk-sdk-python
-* [x] 4.2 Implement `verify_jwt_token()` function to validate and decode Clerk JWT tokens
+* [x] 4.1 Create `auth/nextauth.py` with NextAuth JWT token validation using appropriate NextAuth SDK/library (Replaced clerk.py task)
+* [x] 4.2 Implement `verify_jwt_token()` function to validate and decode NextAuth JWT tokens
 * [x] 4.3 Create `get_current_user()` dependency to extract user_id from JWT claims
 * [x] 4.4 Implement service-to-service API key authentication in `auth/service_auth.py`
 * [ ] 4.5 Create rate limiting middleware using fastapi-limiter with Redis backend
@@ -195,10 +195,10 @@
 * [x] 5.8 Run `./fix` to format and lint code
 * [x] 5.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
 
-* [x] 6. Clerk Webhook Integration
-* [x] 6.1 Install and configure Clerk Python SDK with webhook signature verification
-* [x] 6.2 Create `POST /webhooks/clerk` endpoint in `routers/webhooks.py`
-* [x] 6.3 Implement webhook signature verification using Clerk's webhook secret
+* [x] 6. NextAuth Webhook Integration (Replaced Clerk Webhook Integration)
+* [x] 6.1 Install and configure NextAuth webhook handling (e.g., using its SDK or manual signature verification if applicable)
+* [x] 6.2 Create `POST /webhooks/nextauth` endpoint in `routers/webhooks.py` (or adjust existing if path is generic)
+* [x] 6.3 Implement webhook signature verification using NextAuth's webhook secret/mechanism
 * [x] 6.4 Handle `user.created` event: create User record and default UserPreferences
 * [x] 6.5 Handle `user.updated` event: update User record with new information
 * [x] 6.6 Handle `user.deleted` event: soft delete User and cascade to related records
@@ -364,7 +364,7 @@
 * [ ] 21.3 Implement OAuth flow testing with mock provider responses using httpx-mock
 * [ ] 21.4 Add database transaction testing to ensure data consistency
 * [ ] 21.5 Create service-to-service communication tests with mock internal API calls
-* [ ] 21.6 Implement webhook integration testing with mock Clerk webhook events
+* [ ] 21.6 Implement webhook integration testing with mock NextAuth webhook events (Replaced Clerk)
 * [ ] 21.7 Add performance testing for token operations and database queries
 * [ ] 21.8 Run `./fix` to format and lint code
 * [ ] 21.9 Run `tox -p auto` to run lint, type checking, and tests, fixing all errors
