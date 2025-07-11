@@ -20,6 +20,8 @@ from services.common.http_errors import (
 )
 from services.user.auth import get_current_user
 from services.user.schemas.user import (
+    EmailResolutionRequest,
+    EmailResolutionResponse,
     UserCreate,
     UserDeleteResponse,
     UserListResponse,
@@ -296,47 +298,103 @@ async def update_user_onboarding(
 )
 async def create_or_upsert_user(user_data: UserCreate):
     """
-    Create or upsert a user by external_auth_id and auth_provider.
-    - If user exists, return it (200)
-    - If not, create and return (201)
-    - If email collision, return 409
-    Public: for OAuth/NextAuth flows. TODO: Add rate limiting/auth in production.
+    Create a new user or return existing user by external_auth_id and auth_provider.
+
+    This is a public endpoint designed for OAuth/NextAuth flows where
+    we want to create users if they don't exist, or return existing
+    users if they do.
+
+    TODO: Add rate limiting and authentication in production.
     """
     try:
-        user_service = get_user_service()
+        # Try to find existing user first
+        existing_user = (
+            await get_user_service().get_user_by_external_auth_id_auto_detect(
+                user_data.external_auth_id
+            )
+        )
+        user_response = UserResponse.from_orm(existing_user)
+
+        logger.info(
+            f"Found existing user for {user_data.auth_provider} ID: {user_data.external_auth_id}"
+        )
+        return user_response
+
+    except NotFoundError:
+        # User doesn't exist, create new one
         try:
-            user = await user_service.get_user_by_external_auth_id(
-                user_data.external_auth_id, user_data.auth_provider
-            )
+            new_user = await get_user_service().create_user(user_data)
+            user_response = UserResponse.from_orm(new_user)
+
             logger.info(
-                f"User already exists: {user_data.external_auth_id} ({user_data.auth_provider})"
+                f"Created new user with {user_data.auth_provider} ID: {user_data.external_auth_id}"
             )
-            return UserResponse.from_orm(user)
-        except NotFoundError:
-            user = await user_service.create_user(user_data)
-            logger.info(
-                f"Created new user: {user_data.external_auth_id} ({user_data.auth_provider})"
-            )
-            return UserResponse.from_orm(user)
-    except ValidationError as e:
-        # Check if this is an email collision case
-        if e.details and e.details.get("collision") is True:
-            logger.warning(f"Email collision detected: {e.message}")
-            # Convert to a 409 Conflict error for email collisions
-            raise BrieflyAPIException(
-                message=e.message,
-                details=e.details,
-                error_type="email_collision",
-                error_code=ErrorCode.ALREADY_EXISTS,
-                status_code=409,
-            )
-        else:
-            # Other validation errors should be 422
-            logger.warning(f"Validation error creating user: {e.message}")
-            raise e
+            return user_response
+
+        except ValidationError as e:
+            if "collision" in str(e.message).lower():
+                logger.warning(f"Email collision during user creation: {e.message}")
+                raise BrieflyAPIException(
+                    status_code=409,
+                    error_code=ErrorCode.ALREADY_EXISTS,
+                    message="Email collision detected",
+                    details=e.details,
+                )
+            else:
+                logger.warning(f"Validation error during user creation: {e.message}")
+                raise e
+
     except Exception as e:
-        logger.error(f"Unexpected error creating user: {e}")
-        raise ServiceError(message="Internal server error")
+        logger.error(f"Unexpected error in create_or_upsert_user: {e}")
+        raise ServiceError(message="Failed to create or retrieve user")
+
+
+@router.post(
+    "/resolve-email",
+    response_model=EmailResolutionResponse,
+    summary="Resolve email to external_auth_id",
+    description="Resolve an email address to the corresponding external_auth_id using email normalization. Handles provider-specific email formats transparently.",
+    responses={
+        200: {"description": "Email resolved successfully"},
+        404: {"description": "No user found for the provided email"},
+        422: {"description": "Invalid email format or validation error"},
+        500: {"description": "Internal server error during resolution"},
+    },
+)
+async def resolve_email_to_user_id(
+    email_request: EmailResolutionRequest,
+) -> EmailResolutionResponse:
+    """
+    Resolve email address to external_auth_id.
+
+    This endpoint handles email normalization internally, supporting:
+    - Gmail dot and plus addressing normalization
+    - Yahoo dot and plus addressing normalization
+    - Outlook/Hotmail plus addressing normalization
+    - Basic normalization for other providers
+
+    The response includes both the original email from the database
+    and the normalized email used for resolution.
+    """
+    try:
+        resolution_result = await get_user_service().resolve_email_to_user_id(
+            email_request
+        )
+
+        logger.info(
+            f"Successfully resolved email {email_request.email} to external_auth_id {resolution_result.external_auth_id}"
+        )
+        return resolution_result
+
+    except NotFoundError as e:
+        logger.warning(f"Email resolution failed - user not found: {e.message}")
+        raise e
+    except ValidationError as e:
+        logger.warning(f"Email resolution failed - validation error: {e.message}")
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error during email resolution: {e}")
+        raise ServiceError(message="Failed to resolve email address")
 
 
 @router.get(

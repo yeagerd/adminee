@@ -6,7 +6,7 @@ profile management, and user lifecycle management.
 """
 
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional
 
 from sqlmodel import func, select
 
@@ -14,6 +14,8 @@ from services.common.http_errors import NotFoundError, ValidationError
 from services.user.database import get_async_session
 from services.user.models.user import User
 from services.user.schemas.user import (
+    EmailResolutionRequest,
+    EmailResolutionResponse,
     UserCreate,
     UserDeleteResponse,
     UserListResponse,
@@ -709,6 +711,9 @@ class UserService:
 
         Args:
             user_id: Internal database ID of the user
+
+        Raises:
+            NotFoundError: If user is not found
         """
         try:
             async_session = get_async_session()
@@ -717,14 +722,142 @@ class UserService:
                 result = await session.execute(select(User).where(User.id == user_id))
                 user = result.scalar_one_or_none()
 
-                if user and user.deleted_at is None:
-                    user.updated_at = datetime.now(timezone.utc)
-                    await session.commit()
-                    logger.debug(f"Updated last login for user {user_id}")
+                if user is None or user.deleted_at is not None:
+                    raise NotFoundError(resource="User", identifier=str(user_id or ""))
 
+                # Update last login timestamp
+                user.updated_at = datetime.now(timezone.utc)
+                await session.commit()
+
+                logger.info(f"Updated last login for user {user_id}")
+
+        except NotFoundError:
+            raise
         except Exception as e:
-            # Don't raise exception for this non-critical operation
-            logger.warning(f"Failed to update last login for user {user_id}: {e}")
+            logger.error(f"Error updating last login for user {user_id}: {e}")
+            raise NotFoundError(
+                resource="User", identifier=str(user_id) if user_id else ""
+            )
+
+    async def resolve_email_to_user_id(
+        self, email_request: EmailResolutionRequest
+    ) -> EmailResolutionResponse:
+        """
+        Resolve an email address to external_auth_id using email normalization.
+
+        Args:
+            email_request: Email resolution request containing the email to resolve
+
+        Returns:
+            EmailResolutionResponse: Contains external_auth_id and related user information
+
+        Raises:
+            NotFoundError: If no user is found for the resolved email
+            ValidationError: If email format is invalid
+        """
+        try:
+            detector = EmailCollisionDetector()
+
+            # Normalize the email using the existing collision detection utilities
+            normalized_email = await detector.normalize_email_async(email_request.email)
+
+            logger.info(
+                f"Resolving email {email_request.email} (normalized: {normalized_email}) to external_auth_id"
+            )
+
+            # Query database by normalized email
+            user = await self._find_user_by_normalized_email(normalized_email)
+
+            if not user:
+                raise NotFoundError(
+                    resource="User", identifier=f"email:{email_request.email}"
+                )
+
+            # Create response with user information
+            response = EmailResolutionResponse(
+                external_auth_id=user.external_auth_id,
+                email=user.email,  # Original email from database
+                normalized_email=normalized_email,
+                auth_provider=user.auth_provider,
+            )
+
+            logger.info(
+                f"Successfully resolved email {email_request.email} to external_auth_id {user.external_auth_id}"
+            )
+            return response
+
+        except NotFoundError:
+            raise
+        except Exception as e:
+            logger.error(f"Error resolving email {email_request.email}: {e}")
+            raise ValidationError(
+                message=f"Failed to resolve email: {str(e)}",
+                field="email",
+                value=email_request.email,
+            )
+
+    async def _find_user_by_normalized_email(
+        self, normalized_email: str
+    ) -> Optional[User]:
+        """
+        Find user by normalized email address.
+
+        Args:
+            normalized_email: Normalized email address to search for
+
+        Returns:
+            User model instance if found, None otherwise
+
+        Raises:
+            ValidationError: If multiple users found for the same normalized email (data integrity issue)
+        """
+        try:
+            async_session = get_async_session()
+            async with async_session() as session:
+                # Query users by normalized_email
+                result = await session.execute(
+                    select(User).where(
+                        User.normalized_email == normalized_email,
+                        User.deleted_at == None,  # noqa: E711 # Only active users
+                    )
+                )
+                users = result.scalars().all()
+
+                if not users:
+                    logger.debug(
+                        f"No user found for normalized email: {normalized_email}"
+                    )
+                    return None
+
+                if len(users) > 1:
+                    # This shouldn't happen due to normalized_email uniqueness, but handle gracefully
+                    logger.error(
+                        f"Multiple users found for normalized email {normalized_email}: "
+                        f"{[u.external_auth_id for u in users]}"
+                    )
+                    raise ValidationError(
+                        message="Data integrity error: multiple users found for email",
+                        field="normalized_email",
+                        value=normalized_email,
+                        details={
+                            "user_count": len(users),
+                            "user_ids": [u.external_auth_id for u in users],
+                        },
+                    )
+
+                user = users[0]
+                logger.debug(
+                    f"Found user {user.external_auth_id} for normalized email: {normalized_email}"
+                )
+                return user
+
+        except ValidationError:
+            raise
+        except Exception as e:
+            logger.error(
+                f"Database error finding user by normalized email {normalized_email}: {e}"
+            )
+            return None
 
 
 # Global user service instance
@@ -732,7 +865,7 @@ _user_service: UserService | None = None
 
 
 def get_user_service() -> UserService:
-    """Get the global user service instance, creating it if necessary."""
+    """Get UserService instance."""
     global _user_service
     if _user_service is None:
         _user_service = UserService()

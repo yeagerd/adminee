@@ -791,3 +791,12 @@ class TestUserEmailCollision:
         db_user = asyncio.run(get_user())
         assert db_user is not None
         assert db_user.normalized_email == "dotuser@gmail.com"
+
+
+class TestEmailResolutionEndpoint:
+    """Integration tests for email resolution endpoint."""
+
+    # TODO: Add proper integration tests following the existing pattern
+    # For now, the email resolution functionality is tested via unit tests
+    # in test_email_resolution.py which provide comprehensive coverage
+    pass

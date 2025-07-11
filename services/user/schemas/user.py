@@ -299,7 +299,7 @@ class UserSearchRequest(BaseModel):
     @field_validator("query")
     @classmethod
     def validate_query(cls, v):
-        """Validate and sanitize search query."""
+        """Validate search query format."""
         if v is None:
             return v
 
@@ -314,9 +314,47 @@ class UserSearchRequest(BaseModel):
     @field_validator("email")
     @classmethod
     def validate_email_search(cls, v):
-        """Enhanced email validation for search."""
+        """Enhanced email validation for search filters."""
         if v is None:
             return v
 
         # Use comprehensive email validation
         return validate_email_address(v)
+
+
+class EmailResolutionRequest(BaseModel):
+    """Schema for email resolution requests."""
+
+    email: EmailStr = Field(
+        ..., description="Email address to resolve to external_auth_id"
+    )
+
+    @field_validator("email")
+    @classmethod
+    def validate_email_resolution(cls, v):
+        """Enhanced email validation for resolution requests."""
+        if v is None:
+            raise ValueError("Email cannot be empty")
+
+        # Use comprehensive email validation
+        return validate_email_address(v)
+
+
+class EmailResolutionResponse(BaseModel):
+    """Schema for email resolution responses."""
+
+    external_auth_id: str = Field(
+        ...,
+        description="External authentication provider user ID for the resolved email",
+    )
+    email: EmailStr = Field(
+        ..., description="Original email address stored in the database"
+    )
+    normalized_email: str = Field(
+        ..., description="Normalized email address used for resolution"
+    )
+    auth_provider: str = Field(
+        ..., description="Authentication provider name for the user"
+    )
+
+    model_config = ConfigDict(from_attributes=True)
