@@ -43,7 +43,11 @@ def lint(session):
 def typecheck(session):
     """Run type checking."""
     session.install("mypy")
+    # Install all services for comprehensive type checking
     session.install("-e", "services/common")
+    session.install("-e", "services/user")
+    session.install("-e", "services/chat")
+    session.install("-e", "services/office")
     session.run("mypy", "services/common")
     session.run("npx", "pyright", "services/", external=True)
 
