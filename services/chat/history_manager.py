@@ -113,7 +113,7 @@ class Thread(ChatSQLModel, table=True):
     - ThreadResponse excludes internal relationships
     """
 
-    __tablename__ = "threads"
+    __tablename__ = "threads"  # type: ignore[assignment]
     __table_args__ = {"extend_existing": True}
 
     # Primary key - integer for database efficiency
@@ -165,7 +165,7 @@ class Message(ChatSQLModel, table=True):
     - MessageResponse excludes internal relationships
     """
 
-    __tablename__ = "messages"
+    __tablename__ = "messages"  # type: ignore[assignment]
     __table_args__ = {"extend_existing": True}
 
     # Primary key - integer for database efficiency
@@ -210,7 +210,7 @@ class Draft(ChatSQLModel, table=True):
     - Includes proper datetime objects with timezone support
     """
 
-    __tablename__ = "drafts"
+    __tablename__ = "drafts"  # type: ignore[assignment]
     __table_args__ = (
         UniqueConstraint("thread_id", "type", name="uq_thread_type"),
         {"extend_existing": True},

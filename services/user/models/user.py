@@ -31,7 +31,7 @@ class User(SQLModel, table=True):
     Uses internal database ID as primary key with external auth ID for authentication providers.
     """
 
-    __tablename__ = "users"
+    __tablename__ = "users"  # type: ignore[assignment]
 
     id: Optional[int] = Field(default=None, primary_key=True)
     external_auth_id: str = Field(unique=True, index=True, max_length=255)

@@ -35,7 +35,7 @@ class EncryptedToken(SQLModel, table=True):
     Linked to specific integrations and users for proper access control.
     """
 
-    __tablename__ = "encrypted_tokens"
+    __tablename__ = "encrypted_tokens"  # type: ignore[assignment]
 
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="users.id", ondelete="CASCADE")

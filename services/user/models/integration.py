@@ -44,7 +44,7 @@ class Integration(SQLModel, table=True):
     Links to encrypted tokens for secure credential storage.
     """
 
-    __tablename__ = "integrations"
+    __tablename__ = "integrations"  # type: ignore[assignment]
 
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="users.id", ondelete="CASCADE")

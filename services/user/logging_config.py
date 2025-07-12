@@ -54,7 +54,7 @@ def setup_logging() -> None:
     configure_logging()
 
 
-def get_logger(name: str = None) -> structlog.BoundLogger:
+def get_logger(name: str | None = None) -> structlog.BoundLogger:
     """Get a configured structlog logger."""
     return structlog.get_logger(name)
 
@@ -64,10 +64,10 @@ def log_audit_event(
     user_id: str,
     action: str,
     resource_type: str,
-    resource_id: str = None,
-    details: Dict[str, Any] = None,
-    ip_address: str = None,
-    user_agent: str = None,
+    resource_id: str | None = None,
+    details: Dict[str, Any] | None = None,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
 ) -> None:
     """
     Log an audit event with structured data.

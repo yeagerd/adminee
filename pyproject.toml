@@ -25,6 +25,8 @@ dev = [
     "pytest-xdist",
     "pytest-cov",
     "pytest-timeout",
+    # "pre-commit",  # Uncomment to add automatic pre-commit hooks
+    # "bandit",  # Uncomment for security linting
 ]
 
 # UV workspace configuration
@@ -140,3 +142,18 @@ markers = [
 dev = [
     "pytest-timeout>=2.4.0",
 ]
+
+[tool.pyright]
+# Disable specific pyright rules that are too strict for this codebase
+# We rely on mypy and pylance for type checking instead
+reportMissingImports = false
+reportIncompatibleMethodOverride = false
+reportAttributeAccessIssue = false
+reportOptionalSubscript = false
+reportPossiblyUnboundVariable = false
+reportCallIssue = false
+reportArgumentType = false
+reportOptionalIterable = false
+reportOperatorIssue = false
+reportOptionalMemberAccess = false
+reportFunctionMemberAccess = false
