@@ -1,5 +1,9 @@
 import { headers } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
+import { env, validateUserServiceEnv } from '../../../../lib/env';
+
+// Validate user service environment variables
+validateUserServiceEnv();
 
 interface WebhookPayload {
     type: string;
@@ -37,7 +41,7 @@ export async function POST(request: NextRequest) {
 
         if (payload.type === 'oauth.user_authenticated') {
             // Call user service to create or update user
-            const userServiceUrl = `${process.env.USER_SERVICE_URL}/users/`;
+            const userServiceUrl = `${env.USER_SERVICE_URL}/users/`;
 
             const userData = {
                 external_auth_id: payload.data.providerUserId,
@@ -52,7 +56,7 @@ export async function POST(request: NextRequest) {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-API-Key': process.env.API_FRONTEND_USER_KEY || '',
+                    'X-API-Key': env.API_FRONTEND_USER_KEY,
                 },
                 body: JSON.stringify(userData),
             });
@@ -78,12 +82,12 @@ export async function POST(request: NextRequest) {
                         expires_at: payload.data.expiresAt,
                     };
 
-                    const integrationUrl = `${process.env.USER_SERVICE_URL}/users/${user.id}/integrations`;
+                    const integrationUrl = `${env.USER_SERVICE_URL}/users/${user.id}/integrations`;
                     const integrationResponse = await fetch(integrationUrl, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-API-Key': process.env.API_FRONTEND_USER_KEY || '',
+                            'X-API-Key': env.API_FRONTEND_USER_KEY,
                         },
                         body: JSON.stringify(integrationData),
                     });

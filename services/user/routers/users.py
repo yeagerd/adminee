@@ -19,6 +19,7 @@ from services.common.http_errors import (
     ValidationError,
 )
 from services.user.auth import get_current_user
+from services.user.auth.service_auth import get_current_service
 from services.user.schemas.user import (
     EmailResolutionRequest,
     UserCreate,
@@ -81,9 +82,10 @@ async def get_current_user_profile(
     "/id",
     response_model=UserResponse,
     summary="Get user by email lookup",
-    description="Find a user by exact email address match. Returns 404 if user doesn't exist. Clean RESTful design that abstracts internal email normalization.",
+    description="Find a user by exact email address match. Returns 404 if user doesn't exist. Protected endpoint for service-to-service communication.",
     responses={
         200: {"description": "User found"},
+        401: {"description": "Service authentication required"},
         404: {"description": "User not found"},
         422: {"description": "Invalid email format or validation error"},
     },
@@ -93,6 +95,7 @@ async def get_user_by_email(
     provider: Optional[str] = Query(
         None, description="OAuth provider (google, microsoft, etc.)"
     ),
+    current_service: str = Depends(get_current_service),
 ) -> UserResponse:
     """
     Get user by exact email lookup.
@@ -101,6 +104,10 @@ async def get_user_by_email(
     without exposing internal email normalization implementation details.
     Perfect for NextAuth integration where you need to check user existence
     before deciding whether to create a new user.
+
+    **Authentication:**
+    - Requires service-to-service API key authentication
+    - Only authorized services (frontend, chat, office) can lookup users
 
     Args:
         email: Email address to lookup
@@ -403,23 +410,29 @@ async def update_user_onboarding(
     response_model=UserResponse,
     status_code=201,
     summary="Create or upsert user (OAuth/NextAuth)",
-    description="Create a new user or return existing user by external_auth_id and auth_provider. Public endpoint for OAuth/NextAuth flows. TODO: Add rate limiting/auth in production.",
+    description="Create a new user or return existing user by external_auth_id and auth_provider. Protected endpoint for OAuth/NextAuth flows with service authentication.",
     responses={
         200: {"description": "User already exists, returned successfully"},
         201: {"description": "User created successfully"},
+        401: {"description": "Service authentication required"},
         409: {"description": "Email collision detected"},
         422: {"description": "Validation error in request data"},
     },
 )
-async def create_or_upsert_user(user_data: UserCreate):
+async def create_or_upsert_user(
+    user_data: UserCreate,
+    current_service: str = Depends(get_current_service),
+):
     """
     Create a new user or return existing user by external_auth_id and auth_provider.
 
-    This is a public endpoint designed for OAuth/NextAuth flows where
+    This is a protected endpoint designed for OAuth/NextAuth flows where
     we want to create users if they don't exist, or return existing
-    users if they do.
+    users if they do. Requires service authentication (API key).
 
-    TODO: Add rate limiting and authentication in production.
+    **Authentication:**
+    - Requires service-to-service API key authentication
+    - Only authorized services (frontend, chat, office) can create users
     """
     try:
         # Try to find existing user first

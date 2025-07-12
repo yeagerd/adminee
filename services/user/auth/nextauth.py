@@ -52,14 +52,14 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
 
         decoded_token = jwt.decode(
             token,
-            # key="YOUR_NEXTAUTH_SECRET_OR_PUBLIC_KEY", # This would be needed for proper verification
             options={
                 "verify_signature": verify_signature,
-                # "require": ["exp", "iat", "sub"], # PyJWT handles this with verify_exp, verify_iat
+                "verify_exp": False,  # Don't verify expiration for now
+                "verify_iat": False,  # Don't verify issued at for now
             },
-            algorithms=["RS256", "HS256"],  # Specify algorithms used by NextAuth
-            # audience="YOUR_AUDIENCE", # If applicable
-            # issuer="YOUR_ISSUER" # If applicable
+            algorithms=(
+                ["RS256", "HS256"] if verify_signature else None
+            ),  # Only specify algorithms if verifying signature
         )
 
         # PyJWT's decode handles exp, iat by default if verify_exp, verify_iat are true in options.

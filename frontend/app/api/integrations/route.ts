@@ -1,22 +1,17 @@
-import { authOptions } from '@/lib/auth';
 import { getServerSession } from 'next-auth/next';
 import { NextResponse } from 'next/server';
+import { authOptions } from '../../../lib/auth';
+import { env } from '../../../lib/env';
 
 export async function GET() {
     try {
-        const USER_SERVICE_URL = process.env.USER_SERVICE_URL;
-
-        if (!USER_SERVICE_URL) {
-            return NextResponse.json({ error: 'USER_SERVICE_URL environment variable is required' }, { status: 500 });
-        }
-
         const session = await getServerSession(authOptions);
 
         if (!session?.user?.id || !session?.accessToken) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const response = await fetch(`${USER_SERVICE_URL}/users/${session.user.id}/integrations`, {
+        const response = await fetch(`${env.USER_SERVICE_URL}/users/${session.user.id}/integrations`, {
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${session.accessToken}`,

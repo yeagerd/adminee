@@ -57,6 +57,10 @@ class Settings(BaseSettings):
         default=None,
         description="Base64-encoded service salt for token encryption key derivation",
     )
+    jwt_verify_signature: bool = Field(
+        default=True,
+        description="Whether to verify JWT signatures (set to False for development)",
+    )
 
     # Redis Configuration (for caching and background jobs)
     redis_url: str = Field(
