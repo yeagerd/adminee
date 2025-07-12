@@ -52,7 +52,7 @@ class InputSanitizationMiddleware(BaseHTTPMiddleware):
             "key",
             "signature",
             "authorization",
-            "clerk_id",
+            "user_id",  # Generic user identifier
             "access_token",
             "refresh_token",
             "api_key",
@@ -317,7 +317,14 @@ def sanitize_user_input(
         Sanitized dictionary
     """
     if skip_fields is None:
-        skip_fields = {"password", "token", "secret", "key", "clerk_id"}
+        skip_fields = {
+            "password",
+            "token",
+            "secret",
+            "key",
+            "user_id",
+            "sub",
+        }  # 'sub' is standard OIDC claim for subject identifier
 
     def sanitize_dict_recursive(data_item):
         """Recursively sanitize dictionary data."""

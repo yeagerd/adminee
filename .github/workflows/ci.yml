@@ -203,16 +203,11 @@ jobs:
       working-directory: ./frontend
       run: npx tsc --noEmit
 
-    - name: Copy .example.env to .env
-      working-directory: ./frontend
-      run: cp ../.example.env .env
+    - name: Copy .example.env to frontend/.env
+      run: cp .example.env frontend/.env
 
     - name: Build application
       working-directory: ./frontend
-      env:
-          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          TOKEN_ENCRYPTION_SALT: ${{ secrets.TOKEN_ENCRYPTION_SALT }}
       run: npm run build
 
   docker-build:
@@ -232,8 +227,6 @@ jobs:
 
     - name: Test Docker Compose build
       env:
-          ENVIRONMENT: production
-          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          TOKEN_ENCRYPTION_SALT: ${{ secrets.TOKEN_ENCRYPTION_SALT }}
+          # Only set essential variables needed for build validation
+          ENVIRONMENT: ci
       run: docker compose build

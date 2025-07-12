@@ -3,6 +3,24 @@ import { NextAuthOptions } from 'next-auth';
 import AzureADProvider from 'next-auth/providers/azure-ad';
 import GoogleProvider from 'next-auth/providers/google';
 
+// Environment validation
+function validateEnvironment() {
+    const required = [
+        'NEXTAUTH_SECRET',
+        'USER_SERVICE_URL',
+        'API_FRONTEND_USER_KEY'
+    ];
+
+    for (const var_name of required) {
+        if (!process.env[var_name]) {
+            throw new Error(`${var_name} environment variable is required`);
+        }
+    }
+}
+
+// Validate environment on module load
+validateEnvironment();
+
 export const authOptions: NextAuthOptions = {
     providers: [
         GoogleProvider({
@@ -162,7 +180,7 @@ export const authOptions: NextAuthOptions = {
                             iat: Math.floor(Date.now() / 1000),
                             exp: Math.floor(Date.now() / 1000) + (60 * 60), // 1 hour
                         },
-                        process.env.NEXTAUTH_SECRET || 'dev-secret',
+                        process.env.NEXTAUTH_SECRET!,
                         { algorithm: 'HS256' }
                     );
                     session.accessToken = customToken;

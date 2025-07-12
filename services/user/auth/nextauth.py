@@ -6,7 +6,7 @@ Handles token verification, decoding, and user information extraction.
 """
 
 import logging
-import time  # Added for is_token_expired
+import time
 from typing import Dict, Optional
 
 import jwt
@@ -43,28 +43,48 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
             "Using manual JWT verification (signature verification potentially disabled based on settings)"
         )
 
-        verify_signature = getattr(
-            get_settings(), "jwt_verify_signature", True
-        )  # Default to True for production
-        # In a real NextAuth setup, you'd likely use a public key from a JWKS URL
-        # For now, this mirrors clerk.py's dev-friendly behavior.
-        # Consider making this more robust if NextAuth implies specific signature verification.
+        settings = get_settings()
+        verify_signature = getattr(settings, "jwt_verify_signature", True)
 
-        decoded_token = jwt.decode(
-            token,
-            options={
-                "verify_signature": verify_signature,
-                "verify_exp": False,  # Don't verify expiration for now
-                "verify_iat": False,  # Don't verify issued at for now
-            },
-            algorithms=(
-                ["RS256", "HS256"] if verify_signature else None
-            ),  # Only specify algorithms if verifying signature
-        )
+        # Get issuer, audience, and JWT key from settings
+        issuer = getattr(settings, "nextauth_issuer", "nextauth")
+        audience = getattr(settings, "nextauth_audience")
+        jwt_secret = getattr(settings, "nextauth_jwt_key")
 
-        # PyJWT's decode handles exp, iat by default if verify_exp, verify_iat are true in options.
-        # Validate required claims manually if not covered by PyJWT options.
-        required_claims = ["sub", "iss"]  # exp, iat are usually handled by PyJWT
+        if verify_signature and jwt_secret:
+            # Verify signature with secret
+            decoded_token = jwt.decode(
+                token,
+                key=str(jwt_secret),
+                options={
+                    "verify_signature": True,
+                    "verify_exp": True,
+                    "verify_iat": True,
+                    "verify_aud": bool(audience),
+                },
+                algorithms=["HS256"],  # NextAuth uses HS256 by default
+                issuer=issuer,
+                audience=audience if audience else None,
+            )
+        elif not verify_signature:
+            # Decode without signature verification
+            decoded_token = jwt.decode(
+                token,
+                options={
+                    "verify_signature": False,
+                    "verify_exp": True,
+                    "verify_iat": True,
+                    "verify_aud": False,
+                },
+                algorithms=["HS256"],
+            )
+        else:
+            # Signature verification is required but no secret is configured
+            logger_instance.error("JWT verification configuration error")
+            raise AuthError("JWT verification configuration error")
+
+        # Validate required claims
+        required_claims = ["sub", "iss", "exp", "iat"]
         for claim in required_claims:
             if claim not in decoded_token:
                 logger_instance.error(f"Missing required claim: {claim}")
@@ -80,17 +100,11 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
 
         return decoded_token
 
+    except AuthError:
+        raise
     except jwt.ExpiredSignatureError:
         logger_instance.warning("JWT token has expired")
         raise AuthError("Token has expired")
-
-    except jwt.InvalidAudienceError:
-        logger_instance.warning("Invalid JWT audience")
-        raise AuthError("Invalid token audience")
-
-    except jwt.InvalidIssuerError:
-        logger_instance.warning("Invalid JWT issuer")
-        raise AuthError("Invalid token issuer")
 
     except jwt.InvalidTokenError as e:
         logger_instance.warning(f"Invalid JWT token: {e}")
@@ -124,7 +138,7 @@ def extract_user_id_from_token(token_claims: Dict[str, str]) -> str:
 def extract_user_email_from_token(token_claims: Dict[str, str]) -> Optional[str]:
     """
     Extract user email from validated JWT token claims.
-    NextAuth tokens might store email in 'email' claim.
+    NextAuth stores email in 'email' claim.
 
     Args:
         token_claims: Decoded JWT token claims
@@ -132,7 +146,13 @@ def extract_user_email_from_token(token_claims: Dict[str, str]) -> Optional[str]
     Returns:
         User email from token or None if not present
     """
-    return token_claims.get("email")
+    # NextAuth stores email in 'email' claim
+    # It may also be present in the 'user' object if using a custom session callback
+    email = token_claims.get("email")
+    if not email and "user" in token_claims and isinstance(token_claims["user"], dict):
+        email = token_claims["user"].get("email")
+
+    return email
 
 
 def validate_token_permissions(
