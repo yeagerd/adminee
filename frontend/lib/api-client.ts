@@ -1,4 +1,6 @@
 
+import { getSession } from 'next-auth/react';
+
 interface ApiClientOptions {
     method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
     body?: unknown;
@@ -13,9 +15,18 @@ class ApiClient {
     }
 
     private async getAuthHeaders(): Promise<Record<string, string>> {
-        return {
+        const session = await getSession();
+
+        const headers: Record<string, string> = {
             'Content-Type': 'application/json',
         };
+
+        // Add JWT token if available
+        if (session?.accessToken) {
+            headers['Authorization'] = `Bearer ${session.accessToken}`;
+        }
+
+        return headers;
     }
 
     private async request<T>(endpoint: string, options: ApiClientOptions = {}): Promise<T> {

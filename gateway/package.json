@@ -1,0 +1,35 @@
+{
+    "name": "briefly-gateway",
+    "version": "1.0.0",
+    "description": "Express API Gateway for Briefly with NextAuth integration",
+    "main": "express_gateway.tsx",
+    "scripts": {
+        "start": "node express_gateway.tsx",
+        "dev": "nodemon express_gateway.tsx",
+        "test": "node test_gateway.js"
+    },
+    "dependencies": {
+        "express": "^4.18.2",
+        "http-proxy-middleware": "^2.0.6",
+        "jsonwebtoken": "^9.0.2",
+        "cookie-parser": "^1.4.6",
+        "cors": "^2.8.5",
+        "express-rate-limit": "^7.1.5",
+        "helmet": "^7.1.0",
+        "dotenv": "^16.3.1"
+    },
+    "devDependencies": {
+        "nodemon": "^3.0.2",
+        "@types/node": "^20.10.0"
+    },
+    "keywords": [
+        "api-gateway",
+        "express",
+        "nextauth",
+        "proxy",
+        "websocket",
+        "sse"
+    ],
+    "author": "Briefly Team",
+    "license": "MIT"
+}

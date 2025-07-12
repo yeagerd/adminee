@@ -4,6 +4,7 @@ import type React from "react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Bot, Loader2, Send, User } from "lucide-react"
@@ -33,6 +34,7 @@ export default function ChatInterface() {
     const [messages, setMessages] = useState<Message[]>(initialMessages)
     const [input, setInput] = useState("")
     const [isLoading, setIsLoading] = useState(false)
+    const [enableStreaming, setEnableStreaming] = useState(false)
     const messagesEndRef = useRef<HTMLDivElement>(null)
 
     const scrollToBottom = () => {
@@ -58,37 +60,85 @@ export default function ChatInterface() {
             setIsLoading(true)
 
             try {
-                // Send message to chat service via frontend API
-                const response = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        message: currentInput,
-                        user_email: session.user.email,
-                    }),
-                })
+                if (enableStreaming) {
+                    // Streaming implementation
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            message: currentInput,
+                            user_email: session.user.email,
+                            stream: true,
+                        }),
+                    })
 
-                if (!response.ok) {
-                    throw new Error('Failed to send message')
+                    if (!response.ok) {
+                        throw new Error('Failed to send message')
+                    }
+
+                    const reader = response.body?.getReader()
+                    const decoder = new TextDecoder()
+
+                    // Add AI message placeholder
+                    const aiMessage: Message = {
+                        id: messages.length + 2,
+                        content: "",
+                        sender: "ai",
+                        timestamp: new Date(),
+                    }
+                    setMessages((prev) => [...prev, aiMessage])
+
+                    if (reader) {
+                        while (true) {
+                            const { done, value } = await reader.read()
+                            if (done) break
+
+                            const chunk = decoder.decode(value)
+                            setMessages((prev) => {
+                                const newMessages = [...prev]
+                                const lastMessage = newMessages[newMessages.length - 1]
+                                if (lastMessage.sender === "ai") {
+                                    lastMessage.content += chunk
+                                }
+                                return newMessages
+                            })
+                        }
+                    }
+                } else {
+                    // Non-streaming implementation
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            message: currentInput,
+                            user_email: session.user.email,
+                        }),
+                    })
+
+                    if (!response.ok) {
+                        throw new Error('Failed to send message')
+                    }
+
+                    const data = await response.json()
+
+                    // Extract the AI response from the backend response structure
+                    const aiResponse = data.messages && data.messages.length > 0
+                        ? data.messages[data.messages.length - 1].content
+                        : "I'm sorry, I couldn't process your request. Please try again."
+
+                    // Add AI response
+                    const aiMessage: Message = {
+                        id: messages.length + 2,
+                        content: aiResponse,
+                        sender: "ai",
+                        timestamp: new Date(),
+                    }
+                    setMessages((prev) => [...prev, aiMessage])
                 }
-
-                const data = await response.json()
-
-                // Extract the AI response from the backend response structure
-                const aiResponse = data.messages && data.messages.length > 0
-                    ? data.messages[data.messages.length - 1].content
-                    : "I'm sorry, I couldn't process your request. Please try again."
-
-                // Add AI response
-                const aiMessage: Message = {
-                    id: messages.length + 2,
-                    content: aiResponse,
-                    sender: "ai",
-                    timestamp: new Date(),
-                }
-                setMessages((prev) => [...prev, aiMessage])
             } catch (error) {
                 console.error('Chat error:', error)
                 // Add error message
@@ -114,6 +164,20 @@ export default function ChatInterface() {
 
     return (
         <div className="flex flex-col h-[300px]">
+            {/* Development streaming toggle process.env.NODE_ENV === 'development' && {(*/}
+
+            <div className="flex items-center space-x-2 p-2 bg-gray-50 border-b">
+                <Checkbox
+                    id="streaming"
+                    checked={enableStreaming}
+                    onCheckedChange={(checked) => setEnableStreaming(checked as boolean)}
+                />
+                <label htmlFor="streaming" className="text-sm text-gray-600">
+                    Enable streaming (dev only)
+                </label>
+            </div>
+
+
             <ScrollArea className="flex-1 p-4">
                 <div className="space-y-4">
                     {messages.map((message) => (
@@ -122,7 +186,6 @@ export default function ChatInterface() {
                                 <Avatar className="h-8 w-8">
                                     {message.sender === "ai" ? (
                                         <>
-                                            {/* <AvatarImage src="/placeholder.svg?height=32&width=32" /> */}
                                             <AvatarImage className="bg-teal-100 text-teal-600">
                                                 <Bot className="h-4 w-4" />
                                             </AvatarImage>
@@ -132,7 +195,6 @@ export default function ChatInterface() {
                                         </>
                                     ) : (
                                         <>
-                                            {/* <AvatarImage src="/placeholder.svg?height=32&width=32" /> */}
                                             <AvatarImage className="bg-gray-100">
                                                 <User className="h-4 w-4" />
                                             </AvatarImage>
@@ -143,8 +205,7 @@ export default function ChatInterface() {
                                     )}
                                 </Avatar>
                                 <div
-                                    className={`rounded-lg p-3 ${message.sender === "user" ? "bg-teal-600 text-white" : "bg-gray-100 text-gray-800"
-                                        }`}
+                                    className={`rounded-lg p-3 ${message.sender === "user" ? "bg-teal-600 text-white" : "bg-gray-100 text-gray-800"}`}
                                 >
                                     <p>{message.content}</p>
                                     <p className="text-xs opacity-70 mt-1">
