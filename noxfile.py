@@ -37,7 +37,6 @@ def lint(session):
     """Run linting."""
     session.install("ruff")
     session.run("ruff", "check", "services/")
-    session.run("npx", "pyright", "services/", external=True)
 
 
 @nox.session(python="3.12")
@@ -46,6 +45,7 @@ def typecheck(session):
     session.install("mypy")
     session.install("-e", "services/common")
     session.run("mypy", "services/common")
+    session.run("npx", "pyright", "services/", external=True)
 
 
 @nox.session(python="3.12")
