@@ -223,7 +223,10 @@ jobs:
       uses: docker/setup-buildx-action@v3
 
     - name: Copy .example.env to .env
-      run: cp .example.env .env
+      run: |
+        cp .example.env .env
+        cp .example.env gateway/.env
+        cp .example.env frontend/.env
 
     - name: Test Docker Compose build
       env:
