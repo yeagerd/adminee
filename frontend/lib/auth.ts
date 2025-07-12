@@ -98,8 +98,8 @@ export const authOptions: NextAuthOptions = {
                     backendUser = await getRes.json();
                     console.log('BFF Debug - Found user:', { id: backendUser.id, email: backendUser.email });
                 } else if (getRes.status === 404) {
-                    // 2. If not found, PUT to create user
-                    const putUrl = `${userServiceBase}/users/`;
+                    // 2. If not found, POST to create user
+                    const postUrl = `${userServiceBase}/users/`;
                     const userData = {
                         external_auth_id,
                         auth_provider: provider,
@@ -110,8 +110,8 @@ export const authOptions: NextAuthOptions = {
                     };
                     console.log('BFF Debug - Creating user:', userData);
 
-                    const putRes = await fetch(putUrl, {
-                        method: 'PUT',
+                    const postRes = await fetch(postUrl, {
+                        method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                             'X-API-Key': apiKey,
@@ -119,14 +119,14 @@ export const authOptions: NextAuthOptions = {
                         body: JSON.stringify(userData),
                     });
 
-                    console.log('BFF Debug - PUT response:', putRes.status);
+                    console.log('BFF Debug - POST response:', postRes.status);
 
-                    if (putRes.ok) {
-                        backendUser = await putRes.json();
+                    if (postRes.ok) {
+                        backendUser = await postRes.json();
                         console.log('BFF Debug - Created user:', { id: backendUser.id, email: backendUser.email });
                     } else {
-                        const errorText = await putRes.text();
-                        throw new Error(`Failed to create user in user service: ${putRes.status} ${errorText}`);
+                        const errorText = await postRes.text();
+                        throw new Error(`Failed to create user in user service: ${postRes.status} ${errorText}`);
                     }
                 } else {
                     const errorText = await getRes.text();
