@@ -460,7 +460,7 @@ class TestNextAuthSecurity:
     @pytest.mark.asyncio
     async def test_jwt_signature_verification_disabled(self):
         """Test that JWT decoding works when signature verification is disabled."""
-        with patch("services.user.settings.get_settings") as mock_settings:
+        with patch("services.user.auth.nextauth.get_settings") as mock_settings:
             mock_settings.return_value.jwt_verify_signature = False
             mock_settings.return_value.nextauth_jwt_key = None
 
@@ -481,7 +481,7 @@ class TestNextAuthSecurity:
     @pytest.mark.asyncio
     async def test_jwt_audience_validation(self):
         """Test JWT audience validation when configured."""
-        with patch("services.user.settings.get_settings") as mock_settings:
+        with patch("services.user.auth.nextauth.get_settings") as mock_settings:
             mock_settings.return_value.jwt_verify_signature = True
             mock_settings.return_value.nextauth_jwt_key = "test-secret"
             mock_settings.return_value.nextauth_issuer = "nextauth"
@@ -505,7 +505,7 @@ class TestNextAuthSecurity:
     @pytest.mark.asyncio
     async def test_jwt_invalid_audience(self):
         """Test that JWT with invalid audience is rejected."""
-        with patch("services.user.settings.get_settings") as mock_settings:
+        with patch("services.user.auth.nextauth.get_settings") as mock_settings:
             mock_settings.return_value.jwt_verify_signature = True
             mock_settings.return_value.nextauth_jwt_key = "test-secret"
             mock_settings.return_value.nextauth_issuer = "nextauth"
@@ -520,7 +520,7 @@ class TestNextAuthSecurity:
     @pytest.mark.asyncio
     async def test_jwt_invalid_issuer(self):
         """Test that JWT with invalid issuer is rejected."""
-        with patch("services.user.settings.get_settings") as mock_settings:
+        with patch("services.user.auth.nextauth.get_settings") as mock_settings:
             mock_settings.return_value.jwt_verify_signature = True
             mock_settings.return_value.nextauth_jwt_key = "test-secret"
             mock_settings.return_value.nextauth_issuer = "nextauth"
