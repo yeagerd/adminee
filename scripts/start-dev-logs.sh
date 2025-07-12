@@ -15,7 +15,8 @@ export LOG_LEVEL=INFO
 SCRIPT_DIR="$(dirname "$0")"
 
 # Start all services (now with proper process management and waiting)
-"$SCRIPT_DIR/start-all-services.sh"
+# Pass through all command line arguments
+"$SCRIPT_DIR/start-all-services.sh" "$@"
 
 echo ""
 echo "📝 Log format set to 'text' for easier reading"
