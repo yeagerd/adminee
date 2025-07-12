@@ -58,9 +58,10 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
             ),  # Only specify algorithms if verifying signature
         )
 
-        # Get issuer and audience from settings
+        # Get issuer, audience, and JWT key from settings
         issuer = getattr(settings, "nextauth_issuer", "nextauth")
         audience = getattr(settings, "nextauth_audience")
+        jwt_secret = getattr(settings, "nextauth_jwt_key")
 
         if verify_signature and jwt_secret:
             # Verify signature with secret
