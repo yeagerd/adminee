@@ -57,7 +57,9 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
                 "verify_exp": False,  # Don't verify expiration for now
                 "verify_iat": False,  # Don't verify issued at for now
             },
-            algorithms=["RS256", "HS256"] if verify_signature else None,  # Only specify algorithms if verifying signature
+            algorithms=(
+                ["RS256", "HS256"] if verify_signature else None
+            ),  # Only specify algorithms if verifying signature
         )
 
         # PyJWT's decode handles exp, iat by default if verify_exp, verify_iat are true in options.

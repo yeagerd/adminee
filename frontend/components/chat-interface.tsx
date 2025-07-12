@@ -76,10 +76,15 @@ export default function ChatInterface() {
 
                 const data = await response.json()
 
+                // Extract the AI response from the backend response structure
+                const aiResponse = data.messages && data.messages.length > 0
+                    ? data.messages[data.messages.length - 1].content
+                    : "I'm sorry, I couldn't process your request. Please try again."
+
                 // Add AI response
                 const aiMessage: Message = {
                     id: messages.length + 2,
-                    content: data.response || "I'm sorry, I couldn't process your request. Please try again.",
+                    content: aiResponse,
                     sender: "ai",
                     timestamp: new Date(),
                 }
