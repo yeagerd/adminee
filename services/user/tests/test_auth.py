@@ -464,19 +464,19 @@ class TestNextAuthSecurity:
             mock_settings.return_value.jwt_verify_signature = False
             mock_settings.return_value.nextauth_jwt_key = None
 
-        with patch("services.user.auth.nextauth.jwt.decode") as mock_decode:
-            base_time = 1640995200  # 2022-01-01 00:00:00 UTC
-            mock_decode.return_value = {
-                "sub": "user_123",
-                "iss": "nextauth",
-                "exp": base_time + 3600,
-                "iat": base_time,
-                "email": "test@example.com",
-            }
+            with patch("services.user.auth.nextauth.jwt.decode") as mock_decode:
+                base_time = 1640995200  # 2022-01-01 00:00:00 UTC
+                mock_decode.return_value = {
+                    "sub": "user_123",
+                    "iss": "nextauth",
+                    "exp": base_time + 3600,
+                    "iat": base_time,
+                    "email": "test@example.com",
+                }
 
-            result = await verify_jwt_token("test-token")
-            assert result["sub"] == "user_123"
-            assert result["iss"] == "nextauth"
+                result = await verify_jwt_token("test-token")
+                assert result["sub"] == "user_123"
+                assert result["iss"] == "nextauth"
 
     @pytest.mark.asyncio
     async def test_jwt_audience_validation(self):
@@ -487,20 +487,20 @@ class TestNextAuthSecurity:
             mock_settings.return_value.nextauth_issuer = "nextauth"
             mock_settings.return_value.nextauth_audience = "briefly-backend"
 
-        with patch("services.user.auth.nextauth.jwt.decode") as mock_decode:
-            base_time = 1640995200  # 2022-01-01 00:00:00 UTC
-            mock_decode.return_value = {
-                "sub": "user_123",
-                "iss": "nextauth",
-                "aud": "briefly-backend",
-                "exp": base_time + 3600,
-                "iat": base_time,
-                "email": "test@example.com",
-            }
+            with patch("services.user.auth.nextauth.jwt.decode") as mock_decode:
+                base_time = 1640995200  # 2022-01-01 00:00:00 UTC
+                mock_decode.return_value = {
+                    "sub": "user_123",
+                    "iss": "nextauth",
+                    "aud": "briefly-backend",
+                    "exp": base_time + 3600,
+                    "iat": base_time,
+                    "email": "test@example.com",
+                }
 
-            result = await verify_jwt_token("test-token")
-            assert result["sub"] == "user_123"
-            assert result["aud"] == "briefly-backend"
+                result = await verify_jwt_token("test-token")
+                assert result["sub"] == "user_123"
+                assert result["aud"] == "briefly-backend"
 
     @pytest.mark.asyncio
     async def test_jwt_invalid_audience(self):
@@ -511,11 +511,11 @@ class TestNextAuthSecurity:
             mock_settings.return_value.nextauth_issuer = "nextauth"
             mock_settings.return_value.nextauth_audience = "briefly-backend"
 
-        with patch("services.user.auth.nextauth.jwt.decode") as mock_decode:
-            mock_decode.side_effect = jwt.InvalidAudienceError("Invalid audience")
+            with patch("services.user.auth.nextauth.jwt.decode") as mock_decode:
+                mock_decode.side_effect = jwt.InvalidAudienceError("Invalid audience")
 
-            with pytest.raises(AuthError, match="Invalid token"):
-                await verify_jwt_token("test-token")
+                with pytest.raises(AuthError, match="Invalid token"):
+                    await verify_jwt_token("test-token")
 
     @pytest.mark.asyncio
     async def test_jwt_invalid_issuer(self):
@@ -526,8 +526,8 @@ class TestNextAuthSecurity:
             mock_settings.return_value.nextauth_issuer = "nextauth"
             mock_settings.return_value.nextauth_audience = None
 
-        with patch("services.user.auth.nextauth.jwt.decode") as mock_decode:
-            mock_decode.side_effect = jwt.InvalidIssuerError("Invalid issuer")
+            with patch("services.user.auth.nextauth.jwt.decode") as mock_decode:
+                mock_decode.side_effect = jwt.InvalidIssuerError("Invalid issuer")
 
-            with pytest.raises(AuthError, match="Invalid token"):
-                await verify_jwt_token("test-token")
+                with pytest.raises(AuthError, match="Invalid token"):
+                    await verify_jwt_token("test-token")
