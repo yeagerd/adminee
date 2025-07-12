@@ -177,7 +177,7 @@ class TestPreferencesService(BaseUserManagementTest):
         """Mock user object."""
         user = Mock()
         user.id = 1
-        user.clerk_id = "user_123"
+        user.external_auth_id = "user_123"
         user.email = "test@example.com"
         return user
 
@@ -404,7 +404,7 @@ class TestPreferencesEndpoints(BaseUserManagementTest):
 
         async def mock_get_current_user():
             return {
-                "clerk_id": "user_123",
+                "external_auth_id": "user_123",
                 "email": "test@example.com",
                 "first_name": "Test",
                 "last_name": "User",

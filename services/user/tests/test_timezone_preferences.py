@@ -18,7 +18,7 @@ class TestTimezonePreferences(BaseUserManagementIntegrationTest):
         # Create a test user first
         user = User(
             external_auth_id="test_user_timezone",
-            auth_provider="clerk",
+            auth_provider="microsoft",
             email="timezone@test.com",
             first_name="Timezone",
             last_name="User",
@@ -40,7 +40,7 @@ class TestTimezonePreferences(BaseUserManagementIntegrationTest):
         # Create a test user first
         user = User(
             external_auth_id="test_user_default_tz",
-            auth_provider="clerk",
+            auth_provider="microsoft",
             email="defaulttz@test.com",
             first_name="Default",
             last_name="Timezone",
@@ -57,7 +57,7 @@ class TestTimezonePreferences(BaseUserManagementIntegrationTest):
         # Create a test user first
         user = User(
             external_auth_id="test_user_validation",
-            auth_provider="clerk",
+            auth_provider="microsoft",
             email="validation@test.com",
             first_name="Validation",
             last_name="User",

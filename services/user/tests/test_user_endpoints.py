@@ -39,7 +39,7 @@ class TestUserProfileEndpoints:
         user = MagicMock(spec=User)
         user.id = user_id
         user.external_auth_id = external_auth_id
-        user.auth_provider = "clerk"
+        user.auth_provider = "google"
         user.email = "test@example.com"
         user.first_name = "Test"
         user.last_name = "User"
@@ -57,7 +57,7 @@ class TestUserProfileEndpoints:
         mock_response = UserResponse(
             id=1,
             external_auth_id="user_123",
-            auth_provider="clerk",
+            auth_provider="nextauth",
             email="test@example.com",
             first_name="Test",
             last_name="User",
@@ -150,7 +150,7 @@ class TestUserProfileEndpoints:
             mock_response = UserResponse(
                 id=1,
                 external_auth_id="user_123",
-                auth_provider="clerk",
+                auth_provider="nextauth",
                 email="test@example.com",
                 first_name="Updated",
                 last_name="Name",
@@ -275,7 +275,7 @@ class TestUserProfileEndpoints:
             mock_response = UserResponse(
                 id=1,
                 external_auth_id="user_123",
-                auth_provider="clerk",
+                auth_provider="nextauth",
                 email="test@example.com",
                 first_name="Test",
                 last_name="User",
@@ -309,7 +309,7 @@ class TestUserProfileEndpoints:
                 UserResponse(
                     id=1,
                     external_auth_id="user_123",
-                    auth_provider="clerk",
+                    auth_provider="nextauth",
                     email="test@example.com",
                     first_name="Test",
                     last_name="User",
@@ -387,7 +387,7 @@ class TestUserProfileEndpoints:
             mock_response = UserResponse(
                 id=1,
                 external_auth_id="user_123",
-                auth_provider="clerk",
+                auth_provider="nextauth",
                 email="test@example.com",
                 first_name="Test",
                 last_name="User",
