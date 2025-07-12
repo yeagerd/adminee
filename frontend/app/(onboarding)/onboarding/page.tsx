@@ -3,7 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { apiClient, Integration } from '@/lib/api-client';
+import { gatewayClient, Integration } from '@/lib/gateway-client';
 import { Calendar, CheckCircle, Loader2, Mail, Shield } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -23,7 +23,7 @@ const OnboardingPage = () => {
 
     const loadIntegrations = async () => {
         try {
-            const data = await apiClient.getIntegrations();
+            const data = await gatewayClient.getIntegrations();
             // The backend returns { integrations: [...], total: ..., active_count: ..., error_count: ... }
             // Extract just the integrations array
             setIntegrations(data.integrations || []);
@@ -35,7 +35,7 @@ const OnboardingPage = () => {
     const handleConnectIntegration = async (provider: string, scopes: string[]) => {
         try {
             setConnectingProvider(provider);
-            const response = await apiClient.startOAuthFlow(provider, scopes) as { authorization_url: string };
+            const response = await gatewayClient.startOAuthFlow(provider, scopes) as { authorization_url: string };
             // Redirect to OAuth provider
             window.location.href = response.authorization_url;
         } catch (error) {
@@ -47,7 +47,7 @@ const OnboardingPage = () => {
     const handleCompleteOnboarding = async () => {
         try {
             // Mark onboarding as completed in user service
-            await apiClient.updateUser({ onboarding_completed: true });
+            await gatewayClient.updateUser({ onboarding_completed: true });
             router.push('/dashboard');
         } catch (error) {
             console.error('Failed to complete onboarding:', error);

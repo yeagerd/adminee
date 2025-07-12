@@ -4,7 +4,10 @@ export const env = {
     NEXTAUTH_URL: process.env.NEXTAUTH_URL!,
     NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET!,
 
-    // Service URLs
+    // Gateway URL (for client-side use)
+    GATEWAY_URL: process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:3001',
+
+    // Service URLs (for server-side use)
     CHAT_SERVICE_URL: process.env.CHAT_SERVICE_URL || 'http://localhost:8001',
     USER_SERVICE_URL: process.env.USER_SERVICE_URL || 'http://localhost:8000',
     OFFICE_SERVICE_URL: process.env.OFFICE_SERVICE_URL || 'http://localhost:8002',

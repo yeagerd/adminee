@@ -5,6 +5,7 @@ AI-powered calendar and task management platform with intelligent scheduling, do
 ## Architecture
 
 - **Frontend:** Next.js 14 with TypeScript, Tailwind CSS, and shadcn/ui components
+- **API Gateway:** Express.js with NextAuth JWT validation, rate limiting, and security filtering
 - **Backend Services:** Python microservices with FastAPI
   - `services/chat/` - AI chat and workflow automation
   - `services/user/` - User management and authentication
@@ -13,6 +14,15 @@ AI-powered calendar and task management platform with intelligent scheduling, do
   - `services/vector_db/` - Vector database operations
 - **Database:** PostgreSQL
 - **Vector Database:** Pinecone
+
+### Service Communication Flow
+
+```
+User → NextAuth BFF → Express Gateway → Backend Services
+  ↓         ↓              ↓                ↓
+OAuth   JWT Token    Auth Validation   Business Logic
+Login   Session      Rate Limiting     API Key Auth
+```
 
 ## Development with UV
 
@@ -36,7 +46,7 @@ This project uses [UV](https://github.com/astral-sh/uv) for Python package manag
 
 2. **Start all services**:
    ```bash
-   ./scripts/start-services.sh
+   ./scripts/start-all-services.sh
    ```
 
 ### Development Workflow
@@ -57,13 +67,16 @@ uv pip install -e ".[dev]"
 
 **Run services:**
 ```bash
+# Start all services (recommended)
+./scripts/start-all-services.sh
+
 # Start individual services
 uv run python -m uvicorn services.chat.main:app --port 8001 --reload
 uv run python -m uvicorn services.user.main:app --port 8000 --reload
 uv run python -m uvicorn services.office.app.main:app --port 8002 --reload
 
-# Or use the convenience script
-./scripts/start-services.sh
+# Start gateway separately
+./scripts/start-gateway.sh
 ```
 
 **Run tests:**
