@@ -26,7 +26,7 @@ services:
       - db
       - redis
     environment:
-      - ENVIRONMENT=${ENVIRONMENT}  # Required: local|staging|production
+      - ENVIRONMENT=${ENVIRONMENT}  # Required: local|staging|production|ci
       - DB_URL_USER_MANAGEMENT=${DB_URL_USER_MANAGEMENT}
       - REDIS_URL=redis://redis:6379
       - CELERY_BROKER_URL=redis://redis:6379/0
@@ -55,7 +55,7 @@ services:
       - redis
       - user-management
     environment:
-      - ENVIRONMENT=${ENVIRONMENT}  # Required: local|staging|production
+      - ENVIRONMENT=${ENVIRONMENT}  # Required: local|staging|production|ci
       - DB_URL_OFFICE=${DB_URL_OFFICE}
       - REDIS_URL=redis://redis:6379
       - USER_MANAGEMENT_SERVICE_URL=http://user-management:8001
@@ -78,7 +78,7 @@ services:
       - user-management # If it needs to authenticate/call user-management
       - office-service # If it needs to call office-service
     environment:
-      - ENVIRONMENT=${ENVIRONMENT}  # Required: local|staging|production
+      - ENVIRONMENT=${ENVIRONMENT}  # Required: local|staging|production|ci
       - DB_URL_CHAT=${DB_URL_CHAT}
       - USER_MANAGEMENT_SERVICE_URL=http://user-management:8001
       - OFFICE_SERVICE_URL=http://office-service:8003
