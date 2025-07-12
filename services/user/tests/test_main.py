@@ -92,7 +92,8 @@ class TestHealthEndpoint(BaseUserManagementIntegrationTest):
         assert data["service"] == "user-management"
         assert data["version"] == "0.1.0"
         assert "status" in data
-        assert "database" in data
+        assert "checks" in data
+        assert "database" in data["checks"]
         assert "timestamp" in data
 
     @patch("services.user.main.get_settings")
@@ -104,7 +105,7 @@ class TestHealthEndpoint(BaseUserManagementIntegrationTest):
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "healthy"
-        assert data["database"]["status"] == "healthy"
+        assert data["checks"]["database"]["status"] == "healthy"
 
     @patch("services.user.main.text")
     def test_health_check_database_disconnected(self, mock_text):
@@ -116,7 +117,7 @@ class TestHealthEndpoint(BaseUserManagementIntegrationTest):
         assert response.status_code == 503
         data = response.json()
         assert data["status"] == "unhealthy"
-        assert data["database"]["status"] == "error"
+        assert data["checks"]["database"]["status"] == "unhealthy"
 
     @patch("services.user.main.text")
     def test_health_check_database_error(self, mock_text):
@@ -127,8 +128,8 @@ class TestHealthEndpoint(BaseUserManagementIntegrationTest):
         assert response.status_code == 503
         data = response.json()
         assert data["status"] == "unhealthy"
-        assert data["database"]["status"] == "error"
-        assert "error" in data["database"]
+        assert data["checks"]["database"]["status"] == "unhealthy"
+        assert "error" in data["checks"]["database"]
 
     @patch("services.user.main.text")
     @patch("services.user.main.get_settings")
@@ -141,7 +142,7 @@ class TestHealthEndpoint(BaseUserManagementIntegrationTest):
         response = self.client.get("/health")
         assert response.status_code == 503
         data = response.json()
-        assert "error" in data["database"]
+        assert "error" in data["checks"]["database"]
 
     @patch("services.user.main.text")
     @patch("services.user.main.get_settings")
@@ -156,7 +157,7 @@ class TestHealthEndpoint(BaseUserManagementIntegrationTest):
         response = self.client.get("/health")
         assert response.status_code == 503
         data = response.json()
-        assert "error" in data["database"]
+        assert "error" in data["checks"]["database"]
 
 
 class TestReadinessEndpoint(BaseUserManagementIntegrationTest):

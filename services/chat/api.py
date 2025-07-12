@@ -241,9 +241,10 @@ async def chat_stream_endpoint(
                 }
 
                 # Extract delta if available
-                if hasattr(event, "delta") and event.delta:
-                    event_data["delta"] = event.delta  # type: ignore[attr-defined]
-                    full_response += event.delta  # type: ignore[attr-defined]
+                delta_value = getattr(event, "delta", None)
+                if delta_value:
+                    event_data["delta"] = delta_value
+                    full_response += delta_value
 
                 yield f"event: chunk\ndata: {json.dumps(event_data)}\n\n"
 

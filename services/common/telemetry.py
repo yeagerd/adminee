@@ -7,19 +7,23 @@ This module provides shared OpenTelemetry setup that can be used across all serv
 import os
 import socket
 
-from opentelemetry import trace
+from opentelemetry import trace  # type: ignore[import-unresolved]
 
 try:
-    from opentelemetry.exporter.gcp.trace import (
-        CloudTraceSpanExporter,  # type: ignore[import]
-    )
+    from opentelemetry.exporter.gcp.trace import CloudTraceSpanExporter  # type: ignore
 except ImportError:
     CloudTraceSpanExporter = None
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.instrumentation.fastapi import (
+    FastAPIInstrumentor,  # type: ignore[import-unresolved]
+)
+from opentelemetry.instrumentation.httpx import (
+    HTTPXClientInstrumentor,  # type: ignore[import-unresolved]
+)
+from opentelemetry.sdk.resources import Resource  # type: ignore[import-unresolved]
+from opentelemetry.sdk.trace import TracerProvider  # type: ignore[import-unresolved]
+from opentelemetry.sdk.trace.export import (
+    BatchSpanProcessor,  # type: ignore[import-unresolved]
+)
 
 
 def setup_telemetry(service_name: str, service_version: str = "1.0.0") -> None:

@@ -102,7 +102,9 @@ def generate_state() -> str:
     return secrets.token_urlsafe(32)
 
 
-def create_nextauth_jwt(user_data: Dict, provider: str, tokens: Dict = None) -> str:
+def create_nextauth_jwt(
+    user_data: Dict, provider: str, tokens: Dict | None = None
+) -> str:
     """Create a NextAuth-style JWT token."""
     now = int(time.time())
     expires = now + 3600  # 1 hour
