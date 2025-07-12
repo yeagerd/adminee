@@ -568,18 +568,37 @@ class TestProviderEndpoints(BaseUserManagementIntegrationTest):
         """Test successful OAuth provider listing."""
         # Mock OAuth config
         mock_oauth_config = MagicMock()
-        mock_oauth_config.get_available_providers.return_value = [
-            "google",
-            "microsoft",
-            "slack",
-        ]
-        mock_provider_config = MagicMock()
-        mock_provider_config.name = "google"
-        mock_provider_config.display_name = "Google"
-        mock_provider_config.description = "Google OAuth integration"
-        mock_provider_config.scopes = ["email", "profile"]
-        mock_provider_config.required_scopes = ["email"]
-        mock_oauth_config.get_provider_config.return_value = mock_provider_config
+        provider_names = ["google", "microsoft", "slack"]
+        mock_oauth_config.get_available_providers.return_value = provider_names
+        mock_oauth_config.is_provider_available.side_effect = lambda provider: (
+            provider.name in provider_names
+            if hasattr(provider, "name")
+            else provider in provider_names
+        )
+
+        def get_provider_config_side_effect(provider):
+            mock_provider_config = MagicMock()
+            mock_provider_config.name = (
+                provider.name if hasattr(provider, "name") else provider
+            )
+            mock_provider_config.display_name = (
+                provider.name.capitalize()
+                if hasattr(provider, "name")
+                else provider.capitalize()
+            )
+            mock_provider_config.description = (
+                f"{mock_provider_config.display_name} OAuth integration"
+            )
+            mock_provider_config.scopes = [
+                MagicMock(name="email"),
+                MagicMock(name="profile"),
+            ]
+            mock_provider_config.default_scopes = ["email"]
+            return mock_provider_config
+
+        mock_oauth_config.get_provider_config.side_effect = (
+            get_provider_config_side_effect
+        )
 
         with patch(
             "services.user.routers.integrations.get_integration_service"
