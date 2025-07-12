@@ -377,9 +377,11 @@ async def oauth_callback_redirect(
         },
     },
 )
-async def health_check() -> ReadinessStatus:
+async def health_check():
     import time
     from datetime import datetime, timezone
+
+    from fastapi.responses import JSONResponse
 
     start_time = time.time()
     # Database health check
@@ -420,13 +422,16 @@ async def health_check() -> ReadinessStatus:
     # Performance metrics
     total_duration = round((time.time() - start_time) * 1000, 2)
 
+    # Determine overall status
+    overall_status = (
+        "healthy"
+        if db_status == "healthy" and config_status == "healthy"
+        else "unhealthy"
+    )
+
     # Compose the response using the Pydantic model
-    return ReadinessStatus(
-        status=(
-            "healthy"
-            if db_status == "healthy" and config_status == "healthy"
-            else "unhealthy"
-        ),
+    response_data = ReadinessStatus(
+        status=overall_status,
         service="user-management",
         version="0.1.0",
         timestamp=datetime.now(timezone.utc).isoformat(),
@@ -450,6 +455,13 @@ async def health_check() -> ReadinessStatus:
         performance=PerformanceStatus(
             total_check_time_ms=total_duration,
         ),
+    )
+
+    # Return appropriate status code based on health
+    status_code = 503 if overall_status == "unhealthy" else 200
+    return JSONResponse(
+        status_code=status_code,
+        content=response_data.model_dump(),
     )
 
 
@@ -525,9 +537,11 @@ async def health_check() -> ReadinessStatus:
         },
     },
 )
-async def readiness_check() -> ReadinessStatus:
+async def readiness_check():
     import time
     from datetime import datetime, timezone
+
+    from fastapi.responses import JSONResponse
 
     start_time = time.time()
     # Database readiness check
@@ -600,13 +614,14 @@ async def readiness_check() -> ReadinessStatus:
     # Performance metrics
     total_duration = round((time.time() - start_time) * 1000, 2)
 
+    # Determine overall status
+    overall_status = (
+        "ready" if db_status == "ready" and config_status == "ready" else "not_ready"
+    )
+
     # Compose the response using the Pydantic model
-    return ReadinessStatus(
-        status=(
-            "ready"
-            if db_status == "ready" and config_status == "ready"
-            else "not_ready"
-        ),
+    response_data = ReadinessStatus(
+        status=overall_status,
         service="user-management",
         version="0.1.0",
         timestamp=datetime.now(timezone.utc).isoformat(),
@@ -630,6 +645,13 @@ async def readiness_check() -> ReadinessStatus:
         performance=PerformanceStatus(
             total_check_time_ms=total_duration,
         ),
+    )
+
+    # Return appropriate status code based on readiness
+    status_code = 503 if overall_status == "not_ready" else 200
+    return JSONResponse(
+        status_code=status_code,
+        content=response_data.model_dump(),
     )
 
 
