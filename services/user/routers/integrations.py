@@ -484,16 +484,19 @@ async def list_oauth_providers(
         for provider in IntegrationProvider:
             if oauth_config.is_provider_available(provider):
                 provider_config = oauth_config.get_provider_config(provider)
+                if provider_config is None:
+                    continue
 
                 # Get scope information
                 supported_scopes = []
-                for scope_name, scope_info in provider_config.scope_definitions.items():
+                scope_dict = {scope.name: scope for scope in provider_config.scopes}
+                for scope_name, scope_obj in scope_dict.items():
                     supported_scopes.append(
                         {
                             "name": scope_name,
-                            "description": scope_info.get("description", ""),
-                            "required": scope_info.get("required", False),
-                            "sensitive": scope_info.get("sensitive", False),
+                            "description": getattr(scope_obj, "description", ""),
+                            "required": getattr(scope_obj, "required", False),
+                            "sensitive": getattr(scope_obj, "sensitive", False),
                             "granted": False,  # Not applicable for provider listing
                         }
                     )
@@ -552,18 +555,30 @@ async def validate_oauth_scopes(
             )
 
         provider_config = oauth_config.get_provider_config(request.provider)
+        if provider_config is None:
+            raise ValidationError(
+                message=f"Provider {request.provider.value} is not available",
+                field="provider",
+                value=request.provider.value,
+            )
         valid_scopes, invalid_scopes = provider_config.validate_scopes(request.scopes)
 
         # Identify scope types
         required_scopes = [
             s
             for s in valid_scopes
-            if provider_config.scope_definitions.get(s, {}).get("required", False)
+            if any(
+                scope.name == s and getattr(scope, "required", False)
+                for scope in provider_config.scopes
+            )
         ]
         sensitive_scopes = [
             s
             for s in valid_scopes
-            if provider_config.scope_definitions.get(s, {}).get("sensitive", False)
+            if any(
+                scope.name == s and getattr(scope, "sensitive", False)
+                for scope in provider_config.scopes
+            )
         ]
 
         # Generate warnings

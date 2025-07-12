@@ -90,7 +90,6 @@ async def demo_email_agent():
         user_id="demo_email_user",
         llm_model="fake-model",
         llm_provider="fake",
-        use_multi_agent=True,
     )
 
     # Email-focused request
@@ -125,7 +124,6 @@ async def demo_draft_agent():
         user_id="demo_draft_user",
         llm_model="fake-model",
         llm_provider="fake",
-        use_multi_agent=True,
     )
 
     # Drafting-focused request
@@ -146,7 +144,6 @@ async def demo_agent_handoffs():
         user_id="demo_handoff_user",
         llm_model="fake-model",
         llm_provider="fake",
-        use_multi_agent=True,
     )
 
     # Request that requires multiple agents
@@ -168,7 +165,6 @@ async def demo_state_sharing():
         user_id="demo_state_user",
         llm_model="fake-model",
         llm_provider="fake",
-        use_multi_agent=True,
     )
 
     # First, have agents gather information
@@ -196,7 +192,6 @@ async def demo_single_vs_multi_agent():
         user_id="demo_single",
         llm_model="fake-model",
         llm_provider="fake",
-        use_multi_agent=False,  # Single-agent mode
     )
 
     single_response = await single_agent.chat(request)
@@ -207,7 +202,6 @@ async def demo_single_vs_multi_agent():
         user_id="demo_multi",
         llm_model="fake-model",
         llm_provider="fake",
-        use_multi_agent=True,  # Multi-agent mode
     )
 
     multi_response = await multi_agent.chat(request)
@@ -226,7 +220,6 @@ async def demo_context_persistence():
         user_id="demo_context",
         llm_model="fake-model",
         llm_provider="fake",
-        use_multi_agent=True,
     )
 
     # Build up context across multiple interactions
@@ -243,7 +236,6 @@ async def demo_context_persistence():
         user_id="demo_context",
         llm_model="fake-model",
         llm_provider="fake",
-        use_multi_agent=True,
     )
 
     await new_agent.load_context(context_data)

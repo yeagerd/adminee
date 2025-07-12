@@ -8,9 +8,9 @@ Provides user profile management, preferences, and OAuth integrations.
 import logging
 import os
 from contextlib import asynccontextmanager
-from typing import Optional, Dict, Any
+from typing import Optional
 
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
@@ -39,11 +39,18 @@ from services.user.routers import (
     provider_router,
     users_router,
 )
+from services.user.schemas.health import (
+    ConfigurationStatus,
+    DatabaseStatus,
+    DependencyStatus,
+    PerformanceStatus,
+    ReadinessChecks,
+    ReadinessStatus,
+)
 from services.user.services.integration_service import (
     get_integration_service,
 )
 from services.user.settings import Settings, get_settings
-from services.user.schemas.health import ReadinessStatus, ReadinessChecks, DatabaseStatus, ConfigurationStatus, DependencyStatus, PerformanceStatus
 
 # Set up centralized logging
 settings = get_settings()
@@ -415,7 +422,11 @@ async def health_check() -> ReadinessStatus:
 
     # Compose the response using the Pydantic model
     return ReadinessStatus(
-        status="healthy" if db_status == "healthy" and config_status == "healthy" else "unhealthy",
+        status=(
+            "healthy"
+            if db_status == "healthy" and config_status == "healthy"
+            else "unhealthy"
+        ),
         service="user-management",
         version="0.1.0",
         timestamp=datetime.now(timezone.utc).isoformat(),
@@ -591,7 +602,11 @@ async def readiness_check() -> ReadinessStatus:
 
     # Compose the response using the Pydantic model
     return ReadinessStatus(
-        status="ready" if db_status == "ready" and config_status == "ready" else "not_ready",
+        status=(
+            "ready"
+            if db_status == "ready" and config_status == "ready"
+            else "not_ready"
+        ),
         service="user-management",
         version="0.1.0",
         timestamp=datetime.now(timezone.utc).isoformat(),

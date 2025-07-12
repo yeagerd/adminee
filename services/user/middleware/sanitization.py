@@ -303,9 +303,7 @@ class XSSProtectionMiddleware(BaseHTTPMiddleware):
 
 
 # Utility functions for manual sanitization
-def sanitize_user_input(
-    data: Dict[str, Any], skip_fields: set | None = None
-) -> Any:
+def sanitize_user_input(data: Dict[str, Any], skip_fields: set | None = None) -> Any:
     """
     Manually sanitize user input dictionary.
 

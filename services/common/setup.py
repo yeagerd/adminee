@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup  # type: ignore[import-unresolved]
 
 setup(
     name="common",

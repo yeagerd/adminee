@@ -510,7 +510,12 @@ class TokenService:
                 session.add(existing_record)
                 await session.commit()
             else:
+                if integration.id is None:
+                    raise ValueError(
+                        "Integration ID cannot be None when creating a token record."
+                    )
                 new_token = EncryptedToken(
+                    user_id=integration.user_id,
                     integration_id=integration.id,
                     token_type=token_type,
                     encrypted_value=encrypted_value,

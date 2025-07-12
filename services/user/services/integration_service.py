@@ -1051,6 +1051,10 @@ class IntegrationService:
                 await session.commit()
                 await session.refresh(integration)
             else:
+                if user.id is None:
+                    raise ValueError(
+                        "User ID cannot be None when creating an integration."
+                    )
                 # Create new integration
                 integration = Integration(
                     user_id=user.id,

@@ -22,7 +22,7 @@ class UserPreferences(SQLModel, table=True):
     Each user has exactly one preferences record.
     """
 
-    __tablename__ = "user_preferences"
+    __tablename__ = "user_preferences"  # type: ignore[assignment]
 
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="users.id", ondelete="CASCADE")

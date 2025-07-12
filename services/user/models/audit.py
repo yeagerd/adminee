@@ -22,7 +22,7 @@ class AuditLog(SQLModel, table=True):
     Stores structured data about user actions, API calls, and system changes.
     """
 
-    __tablename__ = "audit_logs"
+    __tablename__ = "audit_logs"  # type: ignore[assignment]
 
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: Optional[int] = Field(
