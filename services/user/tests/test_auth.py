@@ -16,7 +16,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from services.common.http_errors import AuthError
 from services.user.auth.nextauth import (
     extract_user_id_from_token,
-    get_current_user,
+    get_current_user_flexible,
     require_user_ownership,
     verify_jwt_token,
     verify_user_ownership,
@@ -165,11 +165,13 @@ class TestNextAuthAuthentication:
         credentials = HTTPAuthorizationCredentials(
             scheme="Bearer", credentials="valid_token"
         )
+        request = MagicMock(spec=Request)
+        request.headers = {}
 
         with patch("services.user.auth.nextauth.verify_jwt_token") as mock_verify:
             mock_verify.return_value = {"sub": "user_123"}
 
-            user_id = await get_current_user(credentials)
+            user_id = await get_current_user_flexible(request, credentials)
             assert user_id == "user_123"
 
     @pytest.mark.asyncio
@@ -178,6 +180,8 @@ class TestNextAuthAuthentication:
         credentials = HTTPAuthorizationCredentials(
             scheme="Bearer", credentials="invalid_token"
         )
+        request = MagicMock(spec=Request)
+        request.headers = {}
 
         with patch("services.user.auth.nextauth.verify_jwt_token") as mock_verify:
             mock_verify.side_effect = AuthError("Invalid token")
@@ -185,7 +189,7 @@ class TestNextAuthAuthentication:
             from fastapi import HTTPException
 
             with pytest.raises(HTTPException) as exc_info:
-                await get_current_user(credentials)
+                await get_current_user_flexible(request, credentials)
 
             assert exc_info.value.status_code == 401
 

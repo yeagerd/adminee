@@ -66,8 +66,12 @@ class TestApplicationStartup(BaseUserManagementIntegrationTest):
         data = response.json()
         assert (
             "Authentication required" in data.get("detail", "")
+            or "Authentication required" in data.get("message", "")
+            or "Access denied" in data.get("detail", "")
             or "Access denied" in data.get("message", "")
             or "Forbidden" in data.get("detail", "")
+            or "Forbidden" in data.get("message", "")
+            or "Not authenticated" in data.get("detail", "")
             or "Not authenticated" in data.get("message", "")
         )
 

@@ -224,27 +224,26 @@ def is_token_expired(token_claims: Dict[str, str]) -> bool:
 async def get_current_user_from_gateway_headers(request: Request) -> Optional[str]:
     """
     Extract user ID from gateway headers (X-User-Id).
-    
+
     This function handles authentication when the request comes through the gateway,
     which forwards user identity via custom headers instead of JWT tokens.
-    
+
     Args:
         request: FastAPI request object
-        
+
     Returns:
         User ID from gateway headers or None if not present
     """
     logger_instance = get_logger(__name__)
-    
+
     # Check for gateway headers
-    user_id = request.headers.get('X-User-Id')
+    user_id = request.headers.get("X-User-Id")
     if user_id:
         logger_instance.debug(
-            "User authenticated via gateway headers", 
-            extra={"user_id": user_id}
+            "User authenticated via gateway headers", extra={"user_id": user_id}
         )
         return user_id
-    
+
     return None
 
 
@@ -254,39 +253,38 @@ async def get_current_user_flexible(
 ) -> str:
     """
     Flexible authentication that supports both gateway headers and JWT tokens.
-    
+
     This function first checks for gateway headers (X-User-Id), and if not present,
     falls back to JWT token validation. This allows the service to work both
     directly (with JWT tokens) and through the gateway (with custom headers).
-    
+
     Args:
         request: FastAPI request object
         credentials: HTTP Bearer token credentials (optional)
-        
+
     Returns:
         User ID from either gateway headers or JWT token
-        
+
     Raises:
         HTTPException: If authentication fails
     """
     logger_instance = get_logger(__name__)
-    
+
     # First try gateway headers
     user_id = await get_current_user_from_gateway_headers(request)
     if user_id:
         return user_id
-    
+
     # Fall back to JWT token if no gateway headers
     if not credentials:
         logger_instance.warning("No authentication credentials provided")
         raise HTTPException(status_code=401, detail="Authentication required")
-    
+
     try:
         token_claims = await verify_jwt_token(credentials.credentials)
         user_id = extract_user_id_from_token(token_claims)
         logger_instance.debug(
-            "User authenticated via JWT token", 
-            extra={"user_id": user_id}
+            "User authenticated via JWT token", extra={"user_id": user_id}
         )
         return user_id
     except AuthError as e:
@@ -303,7 +301,7 @@ async def get_current_user(
 ) -> str:
     """
     FastAPI dependency to extract and validate current user ID.
-    
+
     This function supports both gateway headers and JWT tokens for authentication.
     It first checks for gateway headers (X-User-Id), and if not present,
     falls back to JWT token validation.
@@ -327,7 +325,7 @@ async def get_current_user_with_claims(
 ) -> Dict[str, str]:
     """
     FastAPI dependency to extract current user's full token claims.
-    
+
     This function supports both gateway headers and JWT tokens for authentication.
     When using gateway headers, it returns a minimal claims object with the user ID.
 
@@ -342,7 +340,7 @@ async def get_current_user_with_claims(
         HTTPException: If authentication fails
     """
     logger_instance = get_logger(__name__)
-    
+
     # First try gateway headers
     user_id = await get_current_user_from_gateway_headers(request)
     if user_id:
@@ -358,12 +356,12 @@ async def get_current_user_with_claims(
             extra={"user_id": user_id},
         )
         return claims
-    
+
     # Fall back to JWT token if no gateway headers
     if not credentials:
         logger_instance.warning("No authentication credentials provided")
         raise AuthError(message="Authentication required")
-    
+
     try:
         token_claims = await verify_jwt_token(credentials.credentials)
         logger_instance.debug(

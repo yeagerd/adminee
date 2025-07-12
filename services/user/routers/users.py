@@ -6,7 +6,6 @@ authorization, and comprehensive error handling.
 """
 
 import logging
-from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Path, Query
@@ -21,6 +20,10 @@ from services.common.http_errors import (
 )
 from services.user.auth import get_current_user
 from services.user.auth.service_auth import get_current_service
+from services.user.models.integration import IntegrationProvider, IntegrationStatus
+from services.user.schemas.integration import (
+    IntegrationListResponse,
+)
 from services.user.schemas.user import (
     EmailResolutionRequest,
     UserCreate,
@@ -31,18 +34,6 @@ from services.user.schemas.user import (
     UserSearchRequest,
     UserUpdate,
 )
-from services.user.schemas.integration import (
-    IntegrationListResponse,
-    OAuthStartResponse,
-    OAuthStartRequest,
-    OAuthCallbackResponse,
-    OAuthCallbackRequest,
-    IntegrationDisconnectResponse,
-    IntegrationDisconnectRequest,
-    TokenRefreshResponse,
-    TokenRefreshRequest,
-)
-from services.user.models.integration import IntegrationProvider, IntegrationStatus
 from services.user.services.user_service import get_user_service
 
 logger = logging.getLogger(__name__)
