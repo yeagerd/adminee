@@ -8,7 +8,7 @@ Provides user profile management, preferences, and OAuth integrations.
 import logging
 import os
 from contextlib import asynccontextmanager
-from typing import Optional
+from typing import Optional, Dict, Any
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -43,6 +43,7 @@ from services.user.services.integration_service import (
     get_integration_service,
 )
 from services.user.settings import Settings, get_settings
+from services.user.schemas.health import ReadinessStatus, ReadinessChecks, DatabaseStatus, ConfigurationStatus, DependencyStatus, PerformanceStatus
 
 # Set up centralized logging
 settings = get_settings()
@@ -302,6 +303,7 @@ async def oauth_callback_redirect(
     tags=["Health"],
     summary="Service health check",
     description="Basic health check for load balancer liveness probes",
+    response_model=ReadinessStatus,
     responses={
         200: {
             "description": "Service is healthy and ready to handle requests",
@@ -313,7 +315,22 @@ async def oauth_callback_redirect(
                         "version": "0.1.0",
                         "timestamp": "2024-01-01T00:00:00Z",
                         "environment": "production",
-                        "database": {"status": "healthy"},
+                        "checks": {
+                            "database": {
+                                "status": "healthy",
+                                "response_time_ms": 5.2,
+                                "connected": True,
+                            },
+                            "configuration": {"status": "healthy", "issues": []},
+                            "dependencies": {
+                                "status": "healthy",
+                                "services": {
+                                    "encryption_service": True,
+                                    "audit_logging": True,
+                                },
+                            },
+                        },
+                        "performance": {"total_check_time_ms": 12.5},
                     }
                 }
             },
@@ -328,69 +345,100 @@ async def oauth_callback_redirect(
                         "version": "0.1.0",
                         "timestamp": "2024-01-01T00:00:00Z",
                         "environment": "production",
-                        "database": {
-                            "status": "error",
-                            "error": "Database unavailable",
+                        "checks": {
+                            "database": {
+                                "status": "unhealthy",
+                                "connected": False,
+                                "error": "Database unavailable",
+                            },
+                            "configuration": {
+                                "status": "unhealthy",
+                                "issues": ["DB_URL_USER_MANAGEMENT not configured"],
+                            },
+                            "dependencies": {
+                                "status": "unhealthy",
+                                "services": {
+                                    "encryption_service": False,
+                                    "audit_logging": False,
+                                },
+                            },
                         },
+                        "performance": {"total_check_time_ms": 0.0},
                     }
                 }
             },
         },
     },
 )
-async def health_check() -> JSONResponse:
-    """
-    Basic health check endpoint for load balancer liveness probes.
-
-    This endpoint performs minimal checks to determine if the service
-    is alive and can handle requests. Used by load balancers to determine
-    if traffic should be routed to this instance.
-
-    Returns:
-        dict: Service health status with minimal checks
-
-    Status Codes:
-        200: Service is healthy and can handle requests
-        503: Service is unhealthy and should not receive traffic
-    """
+async def health_check() -> ReadinessStatus:
+    import time
     from datetime import datetime, timezone
 
-    health_status = {
-        "status": "healthy",
-        "service": "user-management",
-        "version": "0.1.0",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "environment": str(getattr(get_settings(), "environment", "unknown")),
-    }
-
-    # Basic database connectivity check
+    start_time = time.time()
+    # Database health check
+    db_status = "healthy"
+    db_connected = True
+    db_error = None
+    db_response_time = None
     try:
         async_session = get_async_session()
         async with async_session() as session:
+            db_start = time.time()
             await session.execute(text("SELECT 1"))
-            health_status["database"] = {"status": "healthy"}
+            db_response_time = round((time.time() - db_start) * 1000, 2)
     except Exception as e:
-        logger.warning(f"Database health check failed: {e}")
-        health_status["database"] = {
-            "status": "error",
-            "error": (
-                str(e)
-                if getattr(get_settings(), "debug", False)
-                else "Database unavailable"
+        db_status = "unhealthy"
+        db_connected = False
+        db_error = (
+            str(e)
+            if getattr(get_settings(), "debug", False)
+            else "Database unavailable"
+        )
+
+    # Configuration check
+    config_issues = []
+    current_settings = Settings()
+    db_url = getattr(current_settings, "db_url_user_management", None)
+    if not db_url:
+        config_issues.append("DB_URL_USER_MANAGEMENT not configured")
+    config_status = "healthy" if not config_issues else "unhealthy"
+
+    # Dependencies (for now, always healthy)
+    dependencies = {
+        "encryption_service": True,
+        "audit_logging": True,
+    }
+    dependencies_status = "healthy"
+
+    # Performance metrics
+    total_duration = round((time.time() - start_time) * 1000, 2)
+
+    # Compose the response using the Pydantic model
+    return ReadinessStatus(
+        status="healthy" if db_status == "healthy" and config_status == "healthy" else "unhealthy",
+        service="user-management",
+        version="0.1.0",
+        timestamp=datetime.now(timezone.utc).isoformat(),
+        environment=str(getattr(get_settings(), "environment", "unknown")),
+        checks=ReadinessChecks(
+            database=DatabaseStatus(
+                status=db_status,
+                response_time_ms=db_response_time,
+                connected=db_connected,
+                error=db_error,
             ),
-        }
-        health_status["status"] = "unhealthy"
-
-    # Return appropriate HTTP status code
-    status_code = (
-        status.HTTP_200_OK
-        if health_status["status"] == "healthy"
-        else status.HTTP_503_SERVICE_UNAVAILABLE
-    )
-
-    return JSONResponse(
-        status_code=status_code,
-        content=health_status,
+            configuration=ConfigurationStatus(
+                status=config_status,
+                issues=config_issues,
+            ),
+            dependencies=DependencyStatus(
+                status=dependencies_status,
+                services=dependencies,
+            ),
+        ),
+        performance=PerformanceStatus(
+            total_check_time_ms=total_duration,
+        ),
     )
 
 
@@ -399,6 +447,7 @@ async def health_check() -> JSONResponse:
     tags=["Health"],
     summary="Service readiness check",
     description="Comprehensive readiness check for load balancer readiness probes",
+    response_model=ReadinessStatus,
     responses={
         200: {
             "description": "Service is ready to handle requests",
@@ -450,48 +499,31 @@ async def health_check() -> JSONResponse:
                                 "status": "not_ready",
                                 "issues": ["DB_URL_USER_MANAGEMENT not configured"],
                             },
+                            "dependencies": {
+                                "status": "not_ready",
+                                "services": {
+                                    "encryption_service": False,
+                                    "audit_logging": False,
+                                },
+                            },
                         },
+                        "performance": {"total_check_time_ms": 0.0},
                     }
                 }
             },
         },
     },
 )
-async def readiness_check() -> JSONResponse:
-    """
-    Readiness check endpoint for load balancer readiness probes.
-
-    This endpoint performs comprehensive checks to determine if the service
-    is ready to handle requests. Used by load balancers and orchestrators
-    to determine when to start routing traffic to a new instance.
-
-    Performs deeper health checks including:
-    - Database connectivity and query performance
-    - Essential service dependencies
-    - Configuration validation
-    - Resource availability
-
-    Returns:
-        dict: Detailed readiness status with comprehensive checks
-
-    Status Codes:
-        200: Service is ready to handle requests
-        503: Service is not ready (dependencies unavailable, etc.)
-    """
+async def readiness_check() -> ReadinessStatus:
     import time
     from datetime import datetime, timezone
 
     start_time = time.time()
-    readiness_status = {
-        "status": "ready",
-        "service": "user-management",
-        "version": "0.1.0",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "environment": str(getattr(get_settings(), "environment", "unknown")),
-        "checks": {},
-    }
-
     # Database readiness check
+    db_status = "ready"
+    db_connected = True
+    db_error = None
+    db_response_time = None
     try:
         async_session = get_async_session()
         async with async_session() as session:
@@ -500,7 +532,6 @@ async def readiness_check() -> JSONResponse:
             try:
                 await session.execute(text("SELECT COUNT(*) FROM users LIMIT 1"))
             except Exception as table_error:
-                # In test environments, try to create tables if they don't exist
                 if (
                     os.environ.get("PYTEST_CURRENT_TEST") is not None
                     or "pytest" in str(table_error).lower()
@@ -518,25 +549,15 @@ async def readiness_check() -> JSONResponse:
                     raise Exception(
                         "Database tables not initialized (run alembic upgrade head)"
                     )
-            db_duration = (time.time() - db_start) * 1000
-            readiness_status["checks"]["database"] = {
-                "status": "ready",
-                "response_time_ms": round(db_duration, 2),
-                "connected": True,
-            }
-        readiness_status["status"] = "ready"
+            db_response_time = round((time.time() - db_start) * 1000, 2)
     except Exception as e:
-        logger.warning(f"Database readiness check failed: {e}")
-        readiness_status["checks"]["database"] = {
-            "status": "not_ready",
-            "connected": False,
-            "error": (
-                str(e)
-                if getattr(get_settings(), "debug", False)
-                else "Database check failed"
-            ),
-        }
-        readiness_status["status"] = "not_ready"
+        db_status = "not_ready"
+        db_connected = False
+        db_error = (
+            str(e)
+            if getattr(get_settings(), "debug", False)
+            else "Database check failed"
+        )
 
     # Configuration check
     config_issues = []
@@ -544,8 +565,6 @@ async def readiness_check() -> JSONResponse:
     db_url = getattr(current_settings, "db_url_user_management", None)
     if not db_url:
         config_issues.append("DB_URL_USER_MANAGEMENT not configured")
-
-    # In test environments, be more lenient with configuration requirements
     is_test_env = (
         getattr(current_settings, "environment", "").lower() in ["test", "testing"]
         or os.environ.get("PYTEST_CURRENT_TEST") is not None
@@ -553,48 +572,49 @@ async def readiness_check() -> JSONResponse:
             "pytest" in module for module in globals().get("__name__", "").split(".")
         )
     )
-
     if not is_test_env:
         if not getattr(current_settings, "token_encryption_salt", None):
             config_issues.append("TOKEN_ENCRYPTION_SALT not configured")
         if not getattr(current_settings, "api_frontend_user_key", None):
             config_issues.append("API_FRONTEND_USER_KEY not configured")
+    config_status = "ready" if not config_issues else "not_ready"
 
-    readiness_status["checks"]["configuration"] = {
-        "status": "ready" if not config_issues else "not_ready",
-        "issues": config_issues,
-    }
-
-    if config_issues:
-        readiness_status["status"] = "not_ready"
-
-    # Service dependencies check
+    # Dependencies (for now, always ready)
     dependencies = {
-        "encryption_service": True,  # Always available as it's internal
-        "audit_logging": True,  # Always available as it's internal
+        "encryption_service": True,
+        "audit_logging": True,
     }
-
-    readiness_status["checks"]["dependencies"] = {
-        "status": "ready",
-        "services": dependencies,
-    }
+    dependencies_status = "ready"
 
     # Performance metrics
-    total_duration = (time.time() - start_time) * 1000
-    readiness_status["performance"] = {
-        "total_check_time_ms": round(total_duration, 2),
-    }
+    total_duration = round((time.time() - start_time) * 1000, 2)
 
-    # Return appropriate HTTP status code
-    status_code = (
-        status.HTTP_200_OK
-        if readiness_status["status"] == "ready"
-        else status.HTTP_503_SERVICE_UNAVAILABLE
-    )
-
-    return JSONResponse(
-        status_code=status_code,
-        content=readiness_status,
+    # Compose the response using the Pydantic model
+    return ReadinessStatus(
+        status="ready" if db_status == "ready" and config_status == "ready" else "not_ready",
+        service="user-management",
+        version="0.1.0",
+        timestamp=datetime.now(timezone.utc).isoformat(),
+        environment=str(getattr(get_settings(), "environment", "unknown")),
+        checks=ReadinessChecks(
+            database=DatabaseStatus(
+                status=db_status,
+                response_time_ms=db_response_time,
+                connected=db_connected,
+                error=db_error,
+            ),
+            configuration=ConfigurationStatus(
+                status=config_status,
+                issues=config_issues,
+            ),
+            dependencies=DependencyStatus(
+                status=dependencies_status,
+                services=dependencies,
+            ),
+        ),
+        performance=PerformanceStatus(
+            total_check_time_ms=total_duration,
+        ),
     )
 
 

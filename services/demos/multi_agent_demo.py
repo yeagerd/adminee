@@ -41,11 +41,10 @@ async def demo_multi_agent_coordination():
         llm_model="fake-model",  # Using fake model for demo
         llm_provider="fake",
         max_tokens=2000,
-        use_multi_agent=True,  # Enable multi-agent mode
     )
 
     print(f"Created multi-agent WorkflowAgent for user: {agent.user_id}")
-    print(f"Multi-agent mode: {agent.use_multi_agent}")
+    print("Multi-agent mode: Enabled (default)")
     print(
         f"Available agents: {list(agent.specialized_agents.keys()) if agent.specialized_agents else 'None yet (built on first use)'}"
     )
@@ -74,7 +73,6 @@ async def demo_calendar_agent():
         user_id="demo_calendar_user",
         llm_model="fake-model",
         llm_provider="fake",
-        use_multi_agent=True,
     )
 
     # Calendar-focused request
@@ -110,7 +108,6 @@ async def demo_document_agent():
         user_id="demo_document_user",
         llm_model="fake-model",
         llm_provider="fake",
-        use_multi_agent=True,
     )
 
     # Document-focused request

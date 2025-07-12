@@ -37,6 +37,7 @@ def lint(session):
     """Run linting."""
     session.install("ruff")
     session.run("ruff", "check", "services/")
+    session.run("npx", "pyright", "services/", external=True)
 
 
 @nox.session(python="3.12")
