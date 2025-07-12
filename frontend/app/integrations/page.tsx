@@ -4,7 +4,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { apiClient, Integration, OAuthStartResponse } from '@/lib/api-client';
+import { gatewayClient, Integration, OAuthStartResponse } from '@/lib/gateway-client';
 import { AlertCircle, Calendar, CheckCircle, Mail, RefreshCw, Shield, User, XCircle } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
@@ -61,7 +61,7 @@ export default function IntegrationsPage() {
     const loadIntegrations = async () => {
         try {
             setError(null);
-            const data = await apiClient.getIntegrations();
+            const data = await gatewayClient.getIntegrations();
             // The backend returns { integrations: [...], total: ..., active_count: ..., error_count: ... }
             // Extract just the integrations array
             setIntegrations(data.integrations || []);
@@ -78,7 +78,7 @@ export default function IntegrationsPage() {
             setConnectingProvider(config.provider);
             setError(null);
 
-            const response = await apiClient.startOAuthFlow(
+            const response = await gatewayClient.startOAuthFlow(
                 config.provider,
                 config.scopes
             ) as OAuthStartResponse;
@@ -95,7 +95,7 @@ export default function IntegrationsPage() {
     const handleDisconnect = async (provider: string) => {
         try {
             setError(null);
-            await apiClient.disconnectIntegration(provider);
+            await gatewayClient.disconnectIntegration(provider);
             await loadIntegrations(); // Reload to show updated status
         } catch (error: unknown) {
             console.error('Failed to disconnect integration:', error);
@@ -106,7 +106,7 @@ export default function IntegrationsPage() {
     const handleRefresh = async (provider: string) => {
         try {
             setError(null);
-            await apiClient.refreshIntegrationTokens(provider);
+            await gatewayClient.refreshIntegrationTokens(provider);
             await loadIntegrations(); // Reload to show updated status
         } catch (error: unknown) {
             console.error('Failed to refresh tokens:', error);

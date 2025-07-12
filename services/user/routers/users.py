@@ -6,6 +6,7 @@ authorization, and comprehensive error handling.
 """
 
 import logging
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Path, Query
@@ -30,6 +31,18 @@ from services.user.schemas.user import (
     UserSearchRequest,
     UserUpdate,
 )
+from services.user.schemas.integration import (
+    IntegrationListResponse,
+    OAuthStartResponse,
+    OAuthStartRequest,
+    OAuthCallbackResponse,
+    OAuthCallbackRequest,
+    IntegrationDisconnectResponse,
+    IntegrationDisconnectRequest,
+    TokenRefreshResponse,
+    TokenRefreshRequest,
+)
+from services.user.models.integration import IntegrationProvider, IntegrationStatus
 from services.user.services.user_service import get_user_service
 
 logger = logging.getLogger(__name__)
@@ -76,6 +89,56 @@ async def get_current_user_profile(
     except Exception as e:
         logger.error(f"Unexpected error retrieving current user profile: {e}")
         raise ServiceError(message="Failed to retrieve current user profile")
+
+
+@router.get(
+    "/me/integrations",
+    response_model=IntegrationListResponse,
+    summary="Get current user integrations",
+    description="Get all integrations for the currently authenticated user.",
+    responses={
+        200: {"description": "Current user integrations retrieved successfully"},
+        401: {"description": "Authentication required"},
+        404: {"description": "User not found"},
+    },
+)
+async def get_current_user_integrations(
+    provider: Optional[IntegrationProvider] = Query(
+        None, description="Filter by provider"
+    ),
+    integration_status: Optional[IntegrationStatus] = Query(
+        None, description="Filter by status", alias="status"
+    ),
+    include_token_info: bool = Query(True, description="Include token metadata"),
+    current_user_external_auth_id: str = Depends(get_current_user),
+) -> IntegrationListResponse:
+    """
+    Get current user's integrations.
+
+    Convenience endpoint to get the authenticated user's integrations
+    without needing to know their database ID.
+    """
+    try:
+        from services.user.services.integration_service import get_integration_service
+
+        integrations_response = await get_integration_service().get_user_integrations(
+            user_id=current_user_external_auth_id,
+            provider=provider,
+            status=integration_status,
+            include_token_info=include_token_info,
+        )
+
+        logger.info(
+            f"Retrieved current user integrations for {current_user_external_auth_id}"
+        )
+        return integrations_response
+
+    except NotFoundError as e:
+        logger.warning(f"Current user not found: {e.message}")
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error retrieving current user integrations: {e}")
+        raise ServiceError(message="Failed to retrieve current user integrations")
 
 
 @router.get(

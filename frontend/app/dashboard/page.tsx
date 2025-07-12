@@ -6,7 +6,7 @@ import ScheduleList from '@/components/schedule-list';
 import TaskList from '@/components/task-list';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { apiClient, Integration } from '@/lib/api-client';
+import { gatewayClient, Integration } from '@/lib/gateway-client';
 import {
     Calendar,
     CheckCircle,
@@ -33,7 +33,7 @@ export default function DashboardPage() {
 
     const loadIntegrations = async () => {
         try {
-            const data = await apiClient.getIntegrations();
+            const data = await gatewayClient.getIntegrations();
             // The backend returns { integrations: [...], total: ..., active_count: ..., error_count: ... }
             // Extract just the integrations array
             setIntegrations(data.integrations || []);

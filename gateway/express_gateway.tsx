@@ -1,5 +1,52 @@
+// Add Node.js types for require and process
+// @ts-nocheck
 // Load environment variables from .env file
-require('dotenv').config();
+const path = require('path');
+const fs = require('fs');
+
+// Check if .env file exists in current directory
+const envPath = path.join(__dirname, '.env');
+if (!fs.existsSync(envPath)) {
+    console.error('❌ .env file not found in gateway directory');
+    console.error(`   Expected location: ${envPath}`);
+    console.error('   Please create a .env file with:');
+    console.error('   NEXTAUTH_SECRET=your-secret-here');
+    console.error('   USER_SERVICE_URL=http://localhost:8001');
+    console.error('   CHAT_SERVICE_URL=http://localhost:8002');
+    console.error('   OFFICE_SERVICE_URL=http://localhost:8003');
+    console.error('   FRONTEND_URL=http://localhost:3000');
+    process.exit(1);
+}
+
+require('dotenv').config({ path: envPath });
+
+// Validate required environment variables
+if (!process.env.NEXTAUTH_SECRET) {
+    console.error('❌ NEXTAUTH_SECRET is required but not set in .env file');
+    console.error('   Please add NEXTAUTH_SECRET=your-secret-here to your .env file');
+    process.exit(1);
+}
+
+// Validate API keys for backend services
+if (!process.env.API_FRONTEND_USER_KEY) {
+    console.error('❌ API_FRONTEND_USER_KEY is required but not set in .env file');
+    console.error('   Please add API_FRONTEND_USER_KEY=your-frontend-user-api-key to your .env file');
+    process.exit(1);
+}
+
+if (!process.env.API_FRONTEND_CHAT_KEY) {
+    console.error('❌ API_FRONTEND_CHAT_KEY is required but not set in .env file');
+    console.error('   Please add API_FRONTEND_CHAT_KEY=your-frontend-chat-api-key to your .env file');
+    process.exit(1);
+}
+
+if (!process.env.API_FRONTEND_OFFICE_KEY) {
+    console.error('❌ API_FRONTEND_OFFICE_KEY is required but not set in .env file');
+    console.error('   Please add API_FRONTEND_OFFICE_KEY=your-frontend-office-api-key to your .env file');
+    process.exit(1);
+}
+
+console.log('✅ Environment loaded successfully');
 
 const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
@@ -179,24 +226,37 @@ app.use(maliciousTrafficFilter);
 
 // Service routing configuration
 const serviceRoutes = {
-    '/api/users': process.env.USER_SERVICE_URL || 'http://localhost:8001',
-    '/api/chat': process.env.CHAT_SERVICE_URL || 'http://localhost:8002',
-    '/api/calendar': process.env.OFFICE_SERVICE_URL || 'http://localhost:8003',
-    '/api/email': process.env.OFFICE_SERVICE_URL || 'http://localhost:8003',
-    '/api/files': process.env.OFFICE_SERVICE_URL || 'http://localhost:8003',
+    '/api/users': process.env.USER_SERVICE_URL || 'http://127.0.0.1:8001',
+    '/api/chat': process.env.CHAT_SERVICE_URL || 'http://127.0.0.1:8002',
+    '/api/calendar': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
+    '/api/email': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
+    '/api/files': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
 };
 
 // Create proxy middleware factory
-const createServiceProxy = (targetUrl) => {
+const createServiceProxy = (targetUrl, pathRewrite = undefined) => {
     return createProxyMiddleware({
         target: targetUrl,
         changeOrigin: true,
         ws: true, // Enable WebSocket proxying
         timeout: 60000, // 60 second timeout
         proxyTimeout: 60000,
+        pathRewrite,
 
         // Handle proxy requests
         onProxyReq: (proxyReq, req, res) => {
+            // Add service API key for backend authentication
+            if (targetUrl.includes('8001')) {
+                // User service
+                proxyReq.setHeader('X-API-Key', process.env.API_FRONTEND_USER_KEY);
+            } else if (targetUrl.includes('8002')) {
+                // Chat service
+                proxyReq.setHeader('X-API-Key', process.env.API_FRONTEND_CHAT_KEY);
+            } else if (targetUrl.includes('8003')) {
+                // Office service
+                proxyReq.setHeader('X-API-Key', process.env.API_FRONTEND_OFFICE_KEY);
+            }
+
             // Forward user identity to backend
             if (req.user) {
                 proxyReq.setHeader('X-User-Id', req.user.sub || req.user.id || '');
@@ -255,15 +315,20 @@ const createServiceProxy = (targetUrl) => {
     });
 };
 
-// Apply service-specific routes with appropriate rate limiting
-app.use('/api/users', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/users']));
-app.use('/api/chat', validateAuth, strictLimiter, createServiceProxy(serviceRoutes['/api/chat']));
-app.use('/api/calendar', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/calendar']));
-app.use('/api/email', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/email']));
-app.use('/api/files', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/files']));
+// Apply service-specific routes with appropriate rate limiting and path rewrites
+app.use('/api/users', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/users'], { '^/api/users': '/users' }));
+app.use('/api/users/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/users'], { '^/api/users': '/users' }));
+app.use('/api/chat', validateAuth, strictLimiter, createServiceProxy(serviceRoutes['/api/chat'], { '^/api/chat': '/chat' }));
+app.use('/api/chat/*', validateAuth, strictLimiter, createServiceProxy(serviceRoutes['/api/chat'], { '^/api/chat': '/chat' }));
+app.use('/api/calendar', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/calendar'], { '^/api/calendar': '/calendar' }));
+app.use('/api/calendar/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/calendar'], { '^/api/calendar': '/calendar' }));
+app.use('/api/email', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/email'], { '^/api/email': '/email' }));
+app.use('/api/email/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/email'], { '^/api/email': '/email' }));
+app.use('/api/files', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/files'], { '^/api/files': '/files' }));
+app.use('/api/files/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/files'], { '^/api/files': '/files' }));
 
 // Fallback for other API routes (default to user service)
-app.use('/api', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/users']));
+app.use('/api', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/users'], { '^/api': '' }));
 
 // Catch-all for undefined routes
 app.use('*', (req, res) => {

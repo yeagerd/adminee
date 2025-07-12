@@ -38,15 +38,6 @@ else
     echo "✅ Dependencies already installed"
 fi
 
-# Check for required environment variables
-if [ -z "$NEXTAUTH_SECRET" ]; then
-    echo "⚠️  Warning: NEXTAUTH_SECRET not set. Please set it in your environment."
-    echo "   You can create a .env file with:"
-    echo "   NEXTAUTH_SECRET=your-secret-here"
-    echo "   BACKEND_URL=http://localhost:8000"
-    echo "   FRONTEND_URL=http://localhost:3000"
-fi
-
 # Set default values if not provided
 export PORT=${PORT:-3001}
 export NODE_ENV=${NODE_ENV:-development}

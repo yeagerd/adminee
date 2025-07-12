@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { apiClient } from '@/lib/api-client';
+import { gatewayClient } from '@/lib/gateway-client';
 import { ArrowLeft, CheckCircle, Loader2, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -43,7 +43,7 @@ function OAuthCallbackContent() {
             setProvider(providerParam);
 
             try {
-                await apiClient.completeOAuthFlow(providerParam, code, state);
+                await gatewayClient.completeOAuthFlow(providerParam, code, state);
                 setStatus('success');
                 setMessage(`Successfully connected ${providerParam}!`);
 
