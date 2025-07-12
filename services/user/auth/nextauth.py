@@ -46,18 +46,6 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
         settings = get_settings()
         verify_signature = getattr(settings, "jwt_verify_signature", True)
 
-        decoded_token = jwt.decode(
-            token,
-            options={
-                "verify_signature": verify_signature,
-                "verify_exp": False,  # Don't verify expiration for now
-                "verify_iat": False,  # Don't verify issued at for now
-            },
-            algorithms=(
-                ["RS256", "HS256"] if verify_signature else None
-            ),  # Only specify algorithms if verifying signature
-        )
-
         # Get issuer, audience, and JWT key from settings
         issuer = getattr(settings, "nextauth_issuer", "nextauth")
         audience = getattr(settings, "nextauth_audience")
@@ -91,7 +79,7 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
                 algorithms=["HS256"],
             )
         else:
-            # This should not happen due to the check above, but just in case
+            # Signature verification is required but no secret is configured
             logger_instance.error("JWT verification configuration error")
             raise AuthError("JWT verification configuration error")
 
