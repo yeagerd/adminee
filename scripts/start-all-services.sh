@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Start All Services Script
-# This script starts the frontend, and all backend services with proper process management
+# This script starts the gateway, frontend, and all backend services with proper process management
 
 set -e
 
@@ -127,6 +127,7 @@ source .venv/bin/activate
 # Check if ports are already in use
 echo -e "${BLUE}🔍 Checking if ports are available...${NC}"
 
+check_port 3001 "Gateway" || exit 1
 check_port 8001 "User Service" || exit 1
 check_port 8002 "Chat Service" || exit 1
 check_port 8003 "Office Service" || exit 1
@@ -229,6 +230,12 @@ start_python_service "chat-service" "services.chat.main:app" 8002
 # Start Office Service
 start_python_service "office-service" "services.office.app.main:app" 8003
 
+# Start Gateway
+echo -e "${BLUE}🚀 Starting Express Gateway...${NC}"
+./scripts/start-gateway.sh &
+GATEWAY_PID=$!
+echo $GATEWAY_PID > /tmp/briefly-gateway.pid
+
 # Start Frontend (if not skipped)
 if [ "$SKIP_FRONTEND" = false ]; then
     echo -e "${BLUE}🚀 Starting Frontend...${NC}"
@@ -244,6 +251,7 @@ echo -e "${BLUE}⏳ Waiting for all services to be ready...${NC}"
 wait_for_service "User Service" "http://localhost:8001/health"
 wait_for_service "Chat Service" "http://localhost:8002/health"
 wait_for_service "Office Service" "http://localhost:8003/health"
+wait_for_service "Gateway" "http://localhost:3001/health"
 
 if [ "$SKIP_FRONTEND" = false ]; then
     wait_for_service "Frontend" "http://localhost:3000"
@@ -258,6 +266,7 @@ if [ "$SKIP_FRONTEND" = false ]; then
 else
     echo -e "   Frontend:     ${YELLOW}Not started (use --no-frontend flag)${NC}"
 fi
+echo -e "   Gateway:      ${GREEN}http://localhost:3001${NC}"
 echo -e "   User Service: ${GREEN}http://localhost:8001${NC}"
 echo -e "   Chat Service: ${GREEN}http://localhost:8002${NC}"
 echo -e "   Office Service: ${GREEN}http://localhost:8003${NC}"
@@ -268,11 +277,13 @@ if [ "$SKIP_FRONTEND" = false ]; then
 else
     echo -e "   App:          ${YELLOW}Start frontend separately: cd frontend && npm run dev${NC}"
 fi
+echo -e "   Gateway Health: ${GREEN}http://localhost:3001/health${NC}"
 echo -e "   API Docs:     ${GREEN}http://localhost:8001/docs${NC}"
 echo ""
 echo -e "${YELLOW}💡 Tips:${NC}"
 echo -e "   - Use Ctrl+C to stop all services"
 echo -e "   - Check logs in individual service directories"
+echo -e "   - Gateway provides centralized auth and security"
 if [ "$SKIP_FRONTEND" = true ]; then
     echo -e "   - Frontend is not managed by this script - restart it separately"
 fi

@@ -96,46 +96,57 @@ BFF_WEBHOOK_SECRET=your-webhook-secret
 
 ## 🏗️ Architecture Overview
 
-### Two-Step OAuth Approach
+### Three-Layer Architecture
 
-This application implements a two-step OAuth architecture:
+This application implements a three-layer architecture with centralized authentication:
 
-#### Step 1: NextAuth for Identity (Frontend)
-- **Purpose:** Quick user authentication and session management
+#### Layer 1: NextAuth BFF (Frontend)
+- **Purpose:** User authentication and session management
 - **Scopes:** Basic identity only (`openid`, `email`, `profile`)
 - **Providers:** Google and Microsoft (Azure AD)
-- **Flow:** User clicks "Sign in" → OAuth consent → Authenticated session
+- **Flow:** User clicks "Sign in" → OAuth consent → JWT token generation
 
-#### Step 2: User Service for Integrations (Backend)
-- **Purpose:** Granular permissions for specific features
-- **Scopes:** Feature-specific (calendar access, email access, etc.)
-- **API:** Uses existing user service OAuth endpoints
-- **Flow:** User clicks "Connect Calendar" → Feature-specific OAuth → Integration stored
+#### Layer 2: Express Gateway (API Gateway)
+- **Purpose:** Centralized authentication, security, and request routing
+- **Features:** JWT validation, rate limiting, malicious traffic filtering
+- **Flow:** Frontend → Gateway → Backend services
+
+#### Layer 3: Backend Services (Python)
+- **Purpose:** Business logic and data management
+- **Services:** Chat, User Management, Office Integrations
+- **Flow:** Gateway → Backend with user context
 
 ### Benefits
-- ✅ **Granular control:** Users choose which integrations to enable
-- ✅ **Better UX:** Quick authentication followed by optional feature setup
-- ✅ **Leverages existing infrastructure:** Uses robust user service OAuth system
-- ✅ **Flexible:** Can add/remove integrations independently
+- ✅ **Centralized authentication:** Single JWT token for all backend services
+- ✅ **Enhanced security:** Gateway provides rate limiting and malicious traffic filtering
+- ✅ **WebSocket/SSE support:** Real-time communication capabilities
+- ✅ **Clean separation:** Frontend, gateway, and backend have distinct responsibilities
+- ✅ **Scalable architecture:** Easy to migrate to managed API gateways later
 
 ## 📱 User Experience Flow
 
 ### 1. Initial Authentication
 ```
-Visit app → Click "Sign in with Google/Microsoft" → Basic OAuth consent → Dashboard
+Visit app → Click "Sign in with Google/Microsoft" → OAuth consent → JWT token → Dashboard
 ```
 
-### 2. Integration Setup (Optional)
+### 2. API Communication
 ```
-Dashboard → "Connect Google Calendar" → User service OAuth → Calendar access
-Dashboard → "Connect Gmail" → User service OAuth → Email access
+Frontend → Express Gateway (JWT validation) → Backend Services (User context)
 ```
 
-### 3. Ongoing Usage
+### 3. Real-time Features
 ```
-- Authenticated session managed by NextAuth
-- Integration data accessed via user service APIs
-- Individual integrations can be added/removed anytime
+Chat: Frontend → Gateway → Chat Service (WebSocket/SSE)
+Calendar: Frontend → Gateway → Office Service (Calendar data)
+Email: Frontend → Gateway → Office Service (Email data)
+```
+
+### 4. Ongoing Usage
+```
+- JWT tokens automatically included in all API requests
+- Gateway handles authentication and security
+- Backend services receive user context automatically
 ```
 
 ## 🛠️ Available Scripts
@@ -177,12 +188,18 @@ Dashboard → "Connect Gmail" → User service OAuth → Email access
 - `GET/POST /api/auth/[...nextauth]` - NextAuth.js handler
 - `POST /api/auth/webhook` - User service communication
 
-### User Service Integration
-The frontend communicates with the user service for:
-- User creation/updates via NextAuth callbacks
-- Integration management via OAuth start/complete flows
-- Integration status and health monitoring
-- Token refresh and management
+### Express Gateway Integration
+The frontend communicates with backend services through the gateway:
+- **Chat Service**: `/api/chat` (POST), `/api/chat/stream` (SSE)
+- **User Service**: `/api/users/me/*` (user management)
+- **Office Service**: `/api/calendar/*`, `/api/email/*` (integrations)
+- **WebSocket Support**: `ws://gateway/api/chat/ws`
+
+### Authentication Flow
+1. NextAuth generates JWT tokens with user context
+2. Frontend includes JWT in Authorization header
+3. Gateway validates JWT and forwards user context
+4. Backend services receive authenticated requests
 
 ## 🚨 Troubleshooting
 

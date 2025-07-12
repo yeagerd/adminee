@@ -12,7 +12,12 @@ NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=your-nextauth-secret-here
 ```
 
-### Service URLs
+### Gateway URL (for client-side API calls)
+```bash
+NEXT_PUBLIC_GATEWAY_URL=http://localhost:3001
+```
+
+### Service URLs (for server-side use)
 ```bash
 CHAT_SERVICE_URL=http://localhost:8001
 USER_SERVICE_URL=http://localhost:8000
