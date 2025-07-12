@@ -1,6 +1,12 @@
 import os
 
-from pinecone import Pinecone, ServerlessSpec
+try:
+    import pinecone  # type: ignore[import-unresolved]
+
+    pinecone_available = True
+except ImportError:
+    pinecone_available = False
+    # Optionally: raise ImportError("The 'pinecone' package is required for Pinecone vector DB support. Please install it if you need this feature.")
 
 # TODO: Add error handling and logging
 
@@ -14,7 +20,9 @@ class PineconeClient:
                 "PINECONE_API_KEY and PINECONE_ENVIRONMENT must be set in environment variables"
             )
 
-        self.pinecone = Pinecone(api_key=self.api_key, environment=self.environment)
+        self.pinecone = pinecone.Pinecone(
+            api_key=self.api_key, environment=self.environment
+        )
 
     def get_index(self, index_name: str):
         return self.pinecone.Index(index_name)
@@ -25,7 +33,7 @@ class PineconeClient:
                 name=index_name,
                 dimension=dimension,
                 metric=metric,
-                spec=ServerlessSpec(
+                spec=pinecone.ServerlessSpec(
                     cloud="aws",  # Specify your cloud provider
                     region="us-west-2",  # Specify your region
                 ),

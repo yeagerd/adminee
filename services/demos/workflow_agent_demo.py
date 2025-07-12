@@ -143,8 +143,9 @@ async def demo_streaming():
 
     # Stream the response
     async for event in agent.stream_chat("Tell me a story about a robot"):
-        if hasattr(event, "delta") and event.delta:
-            print(event.delta, end="", flush=True)
+        delta_value = getattr(event, "delta", None)
+        if delta_value:
+            print(delta_value, end="", flush=True)
         elif hasattr(event, "error"):
             print(f"\nError: {event['error']}")
             break

@@ -28,7 +28,7 @@ except ImportError:
     exit(1)
 
 
-def create_demo_jwt_token(user_id: str, email: str = None) -> str:
+def create_demo_jwt_token(user_id: str, email: str | None = None) -> str:
     """
     Create a valid JWT token for demo purposes.
 
@@ -91,7 +91,7 @@ def get_demo_tokens() -> Dict[str, str]:
     return tokens
 
 
-def create_bearer_token(user_id: str, email: str = None) -> str:
+def create_bearer_token(user_id: str, email: str | None = None) -> str:
     """
     Create a JWT token for use in Authorization header.
 
