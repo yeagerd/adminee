@@ -28,40 +28,6 @@ export default function ScheduleList({
     const [error, setError] = useState<string | null>(null)
     const [refreshing, setRefreshing] = useState(false)
 
-    const getDateRange = () => {
-        const now = new Date()
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-
-        switch (dateRange) {
-            case 'today':
-                return {
-                    start_date: today.toISOString().split('T')[0],
-                    end_date: today.toISOString().split('T')[0]
-                }
-            case 'week':
-                const weekStart = new Date(today)
-                weekStart.setDate(today.getDate() - today.getDay())
-                const weekEnd = new Date(weekStart)
-                weekEnd.setDate(weekStart.getDate() + 6)
-                return {
-                    start_date: weekStart.toISOString().split('T')[0],
-                    end_date: weekEnd.toISOString().split('T')[0]
-                }
-            case 'month':
-                const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
-                const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-                return {
-                    start_date: monthStart.toISOString().split('T')[0],
-                    end_date: monthEnd.toISOString().split('T')[0]
-                }
-            default:
-                return {
-                    start_date: today.toISOString().split('T')[0],
-                    end_date: new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-                }
-        }
-    }
-
     const fetchEvents = useCallback(async (retryCount = 0) => {
         if (!session?.user?.id) {
             setError('User session not available')
@@ -79,7 +45,36 @@ export default function ScheduleList({
 
         try {
             setError(null)
-            const { start_date, end_date } = getDateRange()
+
+            // Calculate date range inside the callback
+            const now = new Date()
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+            let start_date: string
+            let end_date: string
+
+            switch (dateRange) {
+                case 'today':
+                    start_date = today.toISOString().split('T')[0]
+                    end_date = today.toISOString().split('T')[0]
+                    break
+                case 'week':
+                    const weekStart = new Date(today)
+                    weekStart.setDate(today.getDate() - today.getDay())
+                    const weekEnd = new Date(weekStart)
+                    weekEnd.setDate(weekStart.getDate() + 6)
+                    start_date = weekStart.toISOString().split('T')[0]
+                    end_date = weekEnd.toISOString().split('T')[0]
+                    break
+                case 'month':
+                    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
+                    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+                    start_date = monthStart.toISOString().split('T')[0]
+                    end_date = monthEnd.toISOString().split('T')[0]
+                    break
+                default:
+                    start_date = today.toISOString().split('T')[0]
+                    end_date = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+            }
 
             const response = await gatewayClient.getCalendarEvents(
                 userId,
@@ -125,9 +120,6 @@ export default function ScheduleList({
         setRefreshing(true)
         fetchEvents()
     }
-
-    // Memoize providers string to avoid unnecessary re-renders
-    const providersKey = providers.join(',')
 
     useEffect(() => {
         fetchEvents()
