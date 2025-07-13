@@ -617,6 +617,8 @@ class UserService:
         # Try different auth providers in order of preference
         providers_to_try = [
             "nextauth",
+            "google",
+            "microsoft",
             "clerk",
             "custom",
             "auth0",
