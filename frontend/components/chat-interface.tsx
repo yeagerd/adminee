@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import gatewayClient from "@/lib/gateway-client"
 import { Bot, Loader2, Send, User } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useEffect, useRef, useState } from "react"
@@ -16,6 +17,62 @@ type Message = {
     content: string
     sender: "user" | "ai"
     timestamp: Date
+}
+
+// Draft type interfaces based on chat service Pydantic models
+interface DraftEmail {
+    type: "email"
+    to?: string
+    cc?: string
+    bcc?: string
+    subject?: string
+    body?: string
+    thread_id: string
+    created_at: string
+    updated_at?: string
+}
+
+interface DraftCalendarEvent {
+    type: "calendar_event"
+    title?: string
+    start_time?: string
+    end_time?: string
+    attendees?: string
+    location?: string
+    description?: string
+    thread_id: string
+    created_at: string
+    updated_at?: string
+}
+
+interface DraftCalendarChange {
+    type: "calendar_change"
+    event_id?: string
+    change_type?: string
+    new_title?: string
+    new_start_time?: string
+    new_end_time?: string
+    new_attendees?: string
+    new_location?: string
+    new_description?: string
+    thread_id: string
+    created_at: string
+    updated_at?: string
+}
+
+type DraftData = DraftEmail | DraftCalendarEvent | DraftCalendarChange
+
+interface ChatResponse {
+    thread_id: string
+    messages: Array<{
+        message_id: string
+        thread_id: string
+        user_id: string
+        llm_generated: boolean
+        content: string
+        created_at: string
+    }>
+    drafts?: DraftData[]
 }
 
 // Sample initial messages
@@ -46,7 +103,19 @@ export default function ChatInterface() {
     }, [messages])
 
     const handleSendMessage = async () => {
-        if (input.trim() && session?.user?.email) {
+        if (!session?.user?.email) {
+            // Add message asking user to log in
+            const loginMessage: Message = {
+                id: messages.length + 1,
+                content: "Please log in to use the chat functionality. You can sign in using the button in the top right corner.",
+                sender: "ai",
+                timestamp: new Date(),
+            }
+            setMessages([...messages, loginMessage])
+            return
+        }
+
+        if (input.trim()) {
             // Add user message
             const userMessage: Message = {
                 id: messages.length + 1,
@@ -61,24 +130,9 @@ export default function ChatInterface() {
 
             try {
                 if (enableStreaming) {
-                    // Streaming implementation
-                    const response = await fetch('/api/chat', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            message: currentInput,
-                            user_email: session.user.email,
-                            stream: true,
-                        }),
-                    })
-
-                    if (!response.ok) {
-                        throw new Error('Failed to send message')
-                    }
-
-                    const reader = response.body?.getReader()
+                    // Streaming implementation using GatewayClient
+                    const stream = await gatewayClient.chatStream(currentInput)
+                    const reader = stream.getReader()
                     const decoder = new TextDecoder()
 
                     // Add AI message placeholder
@@ -107,23 +161,8 @@ export default function ChatInterface() {
                         }
                     }
                 } else {
-                    // Non-streaming implementation
-                    const response = await fetch('/api/chat', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            message: currentInput,
-                            user_email: session.user.email,
-                        }),
-                    })
-
-                    if (!response.ok) {
-                        throw new Error('Failed to send message')
-                    }
-
-                    const data = await response.json()
+                    // Non-streaming implementation using GatewayClient
+                    const data = await gatewayClient.chat(currentInput) as ChatResponse
 
                     // Extract the AI response from the backend response structure
                     const aiResponse = data.messages && data.messages.length > 0
@@ -238,13 +277,18 @@ export default function ChatInterface() {
 
             <div className="p-3 border-t flex gap-2">
                 <Input
-                    placeholder="Ask me anything about your schedule..."
+                    placeholder={session?.user?.email ? "Ask me anything about your schedule..." : "Please log in to chat..."}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                     className="flex-1"
+                    disabled={!session?.user?.email}
                 />
-                <Button onClick={handleSendMessage} disabled={isLoading || !input.trim()}>
+                <Button
+                    onClick={handleSendMessage}
+                    disabled={isLoading || !input.trim() || !session?.user?.email}
+                    title={!session?.user?.email ? "Please log in to use chat" : ""}
+                >
                     <Send className="h-4 w-4" />
                 </Button>
             </div>
