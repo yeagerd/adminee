@@ -144,23 +144,19 @@ class TestChatRequestModel:
     def test_chat_request_with_timezone(self):
         """Test ChatRequest model with timezone field."""
         request = ChatRequest(
-            user_id="test_user",
             message="What's on my calendar tomorrow?",
             user_timezone="America/New_York",
         )
 
         assert request.user_timezone == "America/New_York"
-        assert request.user_id == "test_user"
         assert request.message == "What's on my calendar tomorrow?"
 
     def test_chat_request_without_timezone(self):
         """Test ChatRequest model without timezone field."""
-        request = ChatRequest(
-            user_id="test_user", message="What's on my calendar tomorrow?"
-        )
+        request = ChatRequest(message="What's on my calendar tomorrow?")
 
         assert request.user_timezone is None
-        assert request.user_id == "test_user"
+        assert request.message == "What's on my calendar tomorrow?"
 
 
 class TestCalendarAgentTimezone:

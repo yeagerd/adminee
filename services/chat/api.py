@@ -29,11 +29,13 @@ This pattern ensures:
 """
 
 import json
+import logging
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 
+from services.chat import history_manager
 from services.chat.agents.workflow_agent import WorkflowAgent
 from services.chat.auth import require_chat_auth
 from services.chat.models import (
@@ -41,14 +43,14 @@ from services.chat.models import (
     ChatResponse,
     FeedbackRequest,
     FeedbackResponse,
-)
-from services.chat.models import MessageResponse as PydanticMessage
-from services.chat.models import (
+    MessageResponse,
     ThreadResponse,
 )
 from services.chat.service_client import ServiceClient
 from services.chat.settings import get_settings
 from services.common.http_errors import NotFoundError, ValidationError
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -56,9 +58,23 @@ router = APIRouter()
 FEEDBACKS: List[FeedbackRequest] = []
 
 
+async def get_user_id_from_gateway(request: Request) -> str:
+    """
+    Extract user ID from gateway headers.
+
+    The chat service only supports requests through the gateway,
+    which forwards user identity via X-User-Id header.
+    """
+    user_id = request.headers.get("X-User-Id")
+    if not user_id:
+        raise ValidationError(message="X-User-Id header is required", field="X-User-Id")
+    return user_id
+
+
 @router.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(
-    request: ChatRequest,
+    request: Request,
+    chat_request: ChatRequest,
     client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
 ) -> ChatResponse:
     """
@@ -68,12 +84,10 @@ async def chat_endpoint(
     """
     from typing import cast
 
-    from services.chat import history_manager
-
-    user_id = request.user_id
-    thread_id = request.thread_id
-    user_input = request.message
-    user_timezone = request.user_timezone
+    user_id = await get_user_id_from_gateway(request)
+    thread_id = chat_request.thread_id
+    user_input = chat_request.message
+    user_timezone = chat_request.user_timezone
 
     # Get user timezone from preferences if not provided
     if not user_timezone:
@@ -145,7 +159,7 @@ async def chat_endpoint(
     # Note: This creates MessageResponse (API model) directly rather than
     # converting from Message (database model) since this is a new response
     pydantic_messages = [
-        PydanticMessage(
+        MessageResponse(
             message_id="1",  # Simple counter since we're not fetching from DB
             thread_id=str(thread.id),  # Convert int to string for JSON
             user_id="assistant",  # Mark as assistant response
@@ -163,7 +177,8 @@ async def chat_endpoint(
 
 @router.post("/chat/stream")
 async def chat_stream_endpoint(
-    request: ChatRequest,
+    request: Request,
+    chat_request: ChatRequest,
     client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
 ) -> StreamingResponse:
     """
@@ -176,10 +191,10 @@ async def chat_stream_endpoint(
 
     from services.chat import history_manager
 
-    user_id = request.user_id
-    thread_id = request.thread_id
-    user_input = request.message
-    user_timezone = request.user_timezone
+    user_id = await get_user_id_from_gateway(request)
+    thread_id = chat_request.thread_id
+    user_input = chat_request.message
+    user_timezone = chat_request.user_timezone
 
     # Get user timezone from preferences if not provided
     if not user_timezone:
