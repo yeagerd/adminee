@@ -82,9 +82,31 @@ export default function DashboardPage() {
     const hasMicrosoftIntegration = activeIntegrations.some(i => i.provider === 'microsoft');
 
     // Check for integrations with token issues
-    const integrationsWithTokenIssues = integrations.filter(i =>
-        i.status === 'active' && (!i.has_access_token || !i.has_refresh_token)
-    );
+    // Only show warnings for missing access tokens or expired tokens
+    // Missing refresh tokens are acceptable for some providers (like Microsoft)
+    const integrationsWithTokenIssues = integrations.filter(i => {
+        if (i.status !== 'active') return false;
+
+        // Missing access token is always an issue
+        if (!i.has_access_token) return true;
+
+        // Check if access token is expired
+        if (i.token_expires_at) {
+            const expiresAt = new Date(i.token_expires_at);
+            const now = new Date();
+            if (expiresAt <= now) return true;
+        }
+
+        // Missing refresh token is only an issue if the access token is expired or will expire soon
+        if (!i.has_refresh_token && i.token_expires_at) {
+            const expiresAt = new Date(i.token_expires_at);
+            const now = new Date();
+            const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour
+            if (expiresAt <= oneHourFromNow) return true;
+        }
+
+        return false;
+    });
     const hasTokenIssues = integrationsWithTokenIssues.length > 0;
 
     return (
@@ -155,7 +177,17 @@ export default function DashboardPage() {
                                             <span className="font-medium capitalize">{integration.provider}</span>
                                             <span className="text-sm text-orange-600">
                                                 {!integration.has_access_token && "Missing access token"}
-                                                {!integration.has_refresh_token && "Missing refresh token"}
+                                                {integration.has_access_token && !integration.has_refresh_token && integration.token_expires_at && (() => {
+                                                    const expiresAt = new Date(integration.token_expires_at);
+                                                    const now = new Date();
+                                                    const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
+                                                    if (expiresAt <= now) {
+                                                        return "Access token expired";
+                                                    } else if (expiresAt <= oneHourFromNow) {
+                                                        return "Access token expires soon";
+                                                    }
+                                                    return "Missing refresh token";
+                                                })()}
                                             </span>
                                         </div>
                                         <Button variant="outline" size="sm" asChild>
