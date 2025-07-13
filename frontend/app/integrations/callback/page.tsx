@@ -6,9 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { gatewayClient } from '@/lib/gateway-client';
 import { CheckCircle, Loader2, XCircle } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 
-export default function IntegrationCallbackPage() {
+function IntegrationCallbackContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -149,5 +149,31 @@ export default function IntegrationCallbackPage() {
                 </CardContent>
             </Card>
         </div>
+    );
+}
+
+function LoadingFallback() {
+    return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <Card className="w-full max-w-md">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        Loading...
+                    </CardTitle>
+                    <CardDescription>
+                        Please wait while we process your request...
+                    </CardDescription>
+                </CardHeader>
+            </Card>
+        </div>
+    );
+}
+
+export default function IntegrationCallbackPage() {
+    return (
+        <Suspense fallback={<LoadingFallback />}>
+            <IntegrationCallbackContent />
+        </Suspense>
     );
 }
