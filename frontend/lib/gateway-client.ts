@@ -135,18 +135,21 @@ class GatewayClient {
     }
 
     async startOAuthFlow(provider: string, scopes: string[]) {
+        // Use a dedicated integration callback URL to avoid conflicts with NextAuth
+        const redirectUri = `${window.location.origin}/integrations/callback`;
+
         return this.request('/api/users/me/integrations/oauth/start', {
             method: 'POST',
             body: {
                 provider,
                 scopes,
-                redirect_uri: `${window.location.origin}/integrations/callback`,
+                redirect_uri: redirectUri,
             },
         });
     }
 
-    async completeOAuthFlow(provider: string, code: string, state: string) {
-        return this.request(`/api/users/me/integrations/oauth/callback?provider=${provider}`, {
+    async completeOAuthFlow(provider: string, code: string, state: string): Promise<OAuthCallbackResponse> {
+        return this.request<OAuthCallbackResponse>(`/api/users/me/integrations/oauth/callback?provider=${provider}`, {
             method: 'POST',
             body: { code, state },
         });
@@ -160,7 +163,7 @@ class GatewayClient {
 
     async refreshIntegrationTokens(provider: string) {
         return this.request(`/api/users/me/integrations/${provider}/refresh`, {
-            method: 'POST',
+            method: 'PUT',
         });
     }
 
@@ -256,6 +259,16 @@ export interface OAuthStartResponse {
     state: string;
     expires_at: string;
     requested_scopes: string[];
+}
+
+export interface OAuthCallbackResponse {
+    success: boolean;
+    integration_id?: number;
+    provider: string;
+    status: string;
+    scopes: string[];
+    external_user_info?: Record<string, unknown>;
+    error?: string;
 }
 
 export default gatewayClient; 
