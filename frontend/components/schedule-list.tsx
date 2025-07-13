@@ -8,7 +8,7 @@ import { gatewayClient } from "@/lib/gateway-client"
 import { CalendarEvent } from "@/types/office-service"
 import { AlertCircle, RefreshCw } from "lucide-react"
 import { useSession } from "next-auth/react"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { CalendarEventItem } from "./calendar-event-item"
 
 interface ScheduleListProps {
@@ -62,7 +62,7 @@ export default function ScheduleList({
         }
     }
 
-    const fetchEvents = async (retryCount = 0) => {
+    const fetchEvents = useCallback(async (retryCount = 0) => {
         if (!session?.user?.id) {
             setError('User session not available')
             setLoading(false)
@@ -119,23 +119,19 @@ export default function ScheduleList({
             setLoading(false)
             setRefreshing(false)
         }
-    }
-
-    // Handle service unavailability
-    const handleServiceUnavailable = () => {
-        setError('Calendar service is currently unavailable. Please try again later.')
-        setLoading(false)
-        setRefreshing(false)
-    }
+    }, [session?.user?.id, providers, limit, dateRange])
 
     const handleRefresh = () => {
         setRefreshing(true)
         fetchEvents()
     }
 
+    // Memoize providers string to avoid unnecessary re-renders
+    const providersKey = providers.join(',')
+
     useEffect(() => {
         fetchEvents()
-    }, [session?.user?.id, dateRange, providers.join(','), limit])
+    }, [fetchEvents])
 
     if (loading) {
         return (
