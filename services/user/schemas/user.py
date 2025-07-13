@@ -122,6 +122,8 @@ class UserCreate(UserBase):
             "auth0",
             "firebase",
             "supabase",
+            "microsoft",
+            "google",
         ]
         if v not in valid_providers:
             raise ValueError(
