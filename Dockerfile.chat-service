@@ -19,10 +19,10 @@ ENV ENVIRONMENT=${ENVIRONMENT}
 
 # Validate ENVIRONMENT value
 RUN if [ -z "$ENVIRONMENT" ]; then \
-        echo "ERROR: ENVIRONMENT build arg is required (local|staging|production)" && exit 1; \
+        echo "ERROR: ENVIRONMENT build arg is required (local|staging|production|ci)" && exit 1; \
     fi && \
-    if [ "$ENVIRONMENT" != "local" ] && [ "$ENVIRONMENT" != "staging" ] && [ "$ENVIRONMENT" != "production" ]; then \
-        echo "ERROR: ENVIRONMENT must be one of: local, staging, production. Got: $ENVIRONMENT" && exit 1; \
+    if [ "$ENVIRONMENT" != "local" ] && [ "$ENVIRONMENT" != "staging" ] && [ "$ENVIRONMENT" != "production" ] && [ "$ENVIRONMENT" != "ci" ]; then \
+        echo "ERROR: ENVIRONMENT must be one of: local, staging, production, ci. Got: $ENVIRONMENT" && exit 1; \
     fi
 
 # Install system dependencies
