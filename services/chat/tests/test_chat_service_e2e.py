@@ -82,6 +82,7 @@ TEST_HEADERS = {"X-API-Key": TEST_API_KEY}
 def test_end_to_end_chat_flow(app):
     client = TestClient(app)
     user_id = "testuser"
+    headers_with_user = {**TEST_HEADERS, "X-User-Id": user_id}
 
     # List threads (record initial count)
     resp = client.get("/threads", params={"user_id": user_id}, headers=TEST_HEADERS)
@@ -89,9 +90,7 @@ def test_end_to_end_chat_flow(app):
 
     # Start a chat (should create a new thread and return response)
     msg = "Hello, world!"
-    resp = client.post(
-        "/chat", json={"user_id": user_id, "message": msg}, headers=TEST_HEADERS
-    )
+    resp = client.post("/chat", json={"message": msg}, headers=headers_with_user)
     assert resp.status_code == 200
     data = resp.json()
     assert "thread_id" in data
@@ -107,8 +106,8 @@ def test_end_to_end_chat_flow(app):
     msg2 = "How are you?"
     resp = client.post(
         "/chat",
-        json={"user_id": user_id, "thread_id": thread_id, "message": msg2},
-        headers=TEST_HEADERS,
+        json={"thread_id": thread_id, "message": msg2},
+        headers=headers_with_user,
     )
     assert resp.status_code == 200
     data2 = resp.json()
@@ -149,12 +148,13 @@ def test_end_to_end_chat_flow(app):
 def test_multiple_blank_thread_creates_distinct_threads(app):
     client = TestClient(app)
     user_id = "testuser_multi"
+    headers_with_user = {**TEST_HEADERS, "X-User-Id": user_id}
 
     # Send first message with blank thread_id
     resp1 = client.post(
         "/chat",
-        json={"user_id": user_id, "message": "First message"},
-        headers=TEST_HEADERS,
+        json={"message": "First message"},
+        headers=headers_with_user,
     )
     assert resp1.status_code == 200
     data1 = resp1.json()
@@ -163,8 +163,8 @@ def test_multiple_blank_thread_creates_distinct_threads(app):
     # Send second message with blank thread_id
     resp2 = client.post(
         "/chat",
-        json={"user_id": user_id, "message": "Second message"},
-        headers=TEST_HEADERS,
+        json={"message": "Second message"},
+        headers=headers_with_user,
     )
     assert resp2.status_code == 200
     data2 = resp2.json()

@@ -83,13 +83,13 @@ class ChatRequest(BaseModel):
     Request model for chat endpoint.
 
     Represents a user's chat message request with optional thread context.
+    User ID is provided via X-User-Id header from the gateway.
     """
 
-    user_id: str
     thread_id: Optional[str] = None  # String for JSON compatibility
     message: str
     user_timezone: Optional[str] = (
-        None  # e.g., "America/New_York", fallback to stored preference
+        None  # Will be looked up from user preferences if not provided
     )
 
 

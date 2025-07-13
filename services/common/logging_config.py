@@ -216,8 +216,25 @@ def create_request_logging_middleware():
 
         logger = logging.getLogger("http.requests")
 
-        # Extract user context from request
-        user_context = await _extract_user_context(request)
+        # Extract user context from headers only (don't consume request body)
+        # The request body will be consumed by FastAPI for endpoint processing
+        if request.method in ["POST", "PUT", "PATCH"]:
+            # Try to get user context from headers instead of body
+            user_id_header = request.headers.get("X-User-Id")
+            if user_id_header:
+                user_context = f" | User: {user_id_header}"
+
+            # Log that we're not reading the body to avoid conflicts
+            logger.debug(f"[{request_id}] Skipping body read to avoid consumption")
+
+        # Extract user_id from query params if not found in body
+        if not user_context and "user_id" in request.query_params:
+            user_context = f" | User: {request.query_params['user_id']}"
+
+        # Extract from path parameters (e.g., /users/{user_id}/preferences)
+        if not user_context and hasattr(request, "path_params"):
+            if "user_id" in request.path_params:
+                user_context = f" | User: {request.path_params['user_id']}"
 
         # Log incoming request
         logger.info(
@@ -241,22 +258,6 @@ def create_request_logging_middleware():
                 ),
             },
         )
-
-        # Log request body for POST/PUT/PATCH requests
-        if request.method in ["POST", "PUT", "PATCH"]:
-            try:
-                body = await request.body()
-                if body and len(body) > 0:
-                    # Only log first 500 chars to avoid massive logs
-                    body_preview = body.decode("utf-8")[:500]
-                    if len(body) > 500:
-                        body_preview += "... (truncated)"
-                    logger.debug(
-                        f"[{request_id}] Request body: {body_preview}",
-                        extra={"request_id": request_id, "body_size": len(body)},
-                    )
-            except Exception as e:
-                logger.warning(f"[{request_id}] Could not read request body: {e}")
 
         # Process the request
         response = await call_next(request)
@@ -297,33 +298,6 @@ def create_request_logging_middleware():
         return response
 
     return log_requests
-
-
-async def _extract_user_context(request: Request) -> str:
-    """Extract user context from request for logging."""
-    user_context = ""
-
-    # Try to extract from request body for POST/PUT/PATCH
-    if request.method in ["POST", "PUT", "PATCH"]:
-        try:
-            body = await request.body()
-            if body:
-                body_data = json.loads(body.decode("utf-8"))
-                if "user_id" in body_data:
-                    user_context = f" | User: {body_data['user_id']}"
-        except (json.JSONDecodeError, KeyError, UnicodeDecodeError):
-            pass
-
-    # Extract user_id from query params if not found in body
-    if not user_context and "user_id" in request.query_params:
-        user_context = f" | User: {request.query_params['user_id']}"
-
-    # Extract from path parameters (e.g., /users/{user_id}/preferences)
-    if not user_context and hasattr(request, "path_params"):
-        if "user_id" in request.path_params:
-            user_context = f" | User: {request.path_params['user_id']}"
-
-    return user_context
 
 
 def get_logger(name: str) -> structlog.BoundLogger:
