@@ -145,29 +145,16 @@ export default function DashboardPage() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            {hasGoogleIntegration || hasMicrosoftIntegration ? (
-                                <ScheduleList
-                                    dateRange="today"
-                                    providers={[
-                                        ...(hasGoogleIntegration ? ['google'] : []),
-                                        ...(hasMicrosoftIntegration ? ['microsoft'] : [])
-                                    ]}
-                                    limit={10}
-                                />
-                            ) : (
-                                <div className="text-center py-8">
-                                    <Calendar className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                                    <h3 className="text-lg font-medium text-gray-900 mb-2">
-                                        Connect your calendar
-                                    </h3>
-                                    <p className="text-gray-600 mb-4">
-                                        Connect Google or Microsoft calendar to see your schedule
-                                    </p>
-                                    <Button asChild>
-                                        <Link href="/integrations">Connect Calendar</Link>
-                                    </Button>
-                                </div>
-                            )}
+                            <ScheduleList
+                                dateRange="today"
+                                providers={[
+                                    ...(hasGoogleIntegration ? ['google'] : []),
+                                    ...(hasMicrosoftIntegration ? ['microsoft'] : [])
+                                ]}
+                                limit={10}
+                                fallbackToDemo={true}
+                                showDemoIndicator={true}
+                            />
                         </CardContent>
                     </Card>
 
