@@ -19,6 +19,49 @@ type Message = {
     timestamp: Date
 }
 
+// Draft type interfaces based on chat service Pydantic models
+interface DraftEmail {
+    type: "email"
+    to?: string
+    cc?: string
+    bcc?: string
+    subject?: string
+    body?: string
+    thread_id: string
+    created_at: string
+    updated_at?: string
+}
+
+interface DraftCalendarEvent {
+    type: "calendar_event"
+    title?: string
+    start_time?: string
+    end_time?: string
+    attendees?: string
+    location?: string
+    description?: string
+    thread_id: string
+    created_at: string
+    updated_at?: string
+}
+
+interface DraftCalendarChange {
+    type: "calendar_change"
+    event_id?: string
+    change_type?: string
+    new_title?: string
+    new_start_time?: string
+    new_end_time?: string
+    new_attendees?: string
+    new_location?: string
+    new_description?: string
+    thread_id: string
+    created_at: string
+    updated_at?: string
+}
+
+type DraftData = DraftEmail | DraftCalendarEvent | DraftCalendarChange
+
 interface ChatResponse {
     thread_id: string
     messages: Array<{
@@ -29,10 +72,7 @@ interface ChatResponse {
         content: string
         created_at: string
     }>
-    drafts?: Array<{
-        type: string
-        [key: string]: any
-    }>
+    drafts?: DraftData[]
 }
 
 // Sample initial messages
