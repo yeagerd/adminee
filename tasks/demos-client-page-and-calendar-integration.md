@@ -40,29 +40,29 @@ This task list outlines the implementation of (a) a `/demos` client page that di
 
 ### Phase 2: Connect Calendar to Real Office Service Data
 
-- [ ] 5. Update Gateway Client for Calendar Integration
-  - [ ] 5.1 Enhance `gatewayClient.getCalendarEvents()` method to handle date ranges
-  - [ ] 5.2 Add error handling and retry logic for calendar API calls
-  - [ ] 5.3 Implement proper TypeScript interfaces for calendar event responses
-  - [ ] 5.4 Add loading states and error states for calendar data fetching
+- [x] 5. Update Gateway Client for Calendar Integration
+  - [x] 5.1 Fix `gatewayClient.getCalendarEvents()` method to match office service API parameters (providers array, limit, start_date, end_date, etc.)
+  - [x] 5.2 Add proper TypeScript interfaces for the unified `CalendarEvent` schema from office service
+  - [x] 5.3 Add error handling and retry logic for calendar API calls
+  - [x] 5.4 Add loading states and error states for calendar data fetching
 
-- [ ] 6. Update Schedule List Component
-  - [ ] 6.1 Modify `ScheduleList` component to fetch real calendar data via gateway
-  - [ ] 6.2 Add date range filtering (today, this week, custom range)
-  - [ ] 6.3 Implement real-time calendar data refresh functionality
-  - [ ] 6.4 Add loading skeletons and error handling for calendar events
+- [x] 6. Update Schedule List Component
+  - [x] 6.1 Modify `ScheduleList` component to fetch real calendar data via gateway using the unified `CalendarEvent` interface
+  - [x] 6.2 Add date range filtering (today, this week, custom range) using office service date parameters
+  - [x] 6.3 Implement real-time calendar data refresh functionality
+  - [x] 6.4 Add loading skeletons and error handling for calendar events
 
-- [ ] 7. Update Calendar Event Item Component
-  - [ ] 7.1 Modify `CalendarEventItem` to handle real calendar event data structure
-  - [ ] 7.2 Update event item interface to match office service API response format
-  - [ ] 7.3 Add proper date/time formatting for different timezones
-  - [ ] 7.4 Implement real attendee status and organizer information display
+- [x] 7. Update Calendar Event Item Component
+  - [x] 7.1 Modify `CalendarEventItem` to work with the unified `CalendarEvent` schema from office service
+  - [x] 7.2 Update component props interface to match the office service `CalendarEvent` structure
+  - [x] 7.3 Map office service attendee/organizer data to component display format (no timezone conversion needed - office service handles this)
+  - [x] 7.4 Implement proper display of provider information (Google/Microsoft) and account details
 
-- [ ] 8. Implement Calendar Data Transformation
-  - [ ] 8.1 Create data transformation layer to convert office service format to frontend format
-  - [ ] 8.2 Handle different calendar providers (Google, Microsoft) data formats
-  - [ ] 8.3 Implement proper timezone handling for calendar events
-  - [ ] 8.4 Add fallback handling for missing or malformed calendar data
+- [x] 8. Leverage Office Service Data Harmonization
+  - [x] 8.1 Update frontend to use the unified `CalendarEvent` schema from office service
+  - [x] 8.2 Remove any frontend data transformation logic since office service handles Google/Microsoft format differences
+  - [x] 8.3 Update `CalendarEventItem` component to work with the unified `CalendarEvent` interface
+  - [x] 8.4 Add proper TypeScript interfaces that match the office service `CalendarEvent` schema
 
 ### Phase 3: Integration and Testing
 
@@ -81,7 +81,7 @@ This task list outlines the implementation of (a) a `/demos` client page that di
 - [ ] 11. Testing and Validation
   - [ ] 11.1 Create unit tests for demo data components
   - [ ] 11.2 Add integration tests for calendar API calls via gateway
-  - [ ] 11.3 Test calendar data transformation and formatting
+  - [ ] 11.3 Test calendar data display and formatting (no transformation needed)
   - [ ] 11.4 Validate error handling and edge cases
 
 ### Phase 4: Advanced Features
@@ -116,12 +116,13 @@ frontend/
 │   ├── demo-schedule-list.tsx (new)
 │   ├── demo-task-list.tsx (new)
 │   ├── demo-chat-interface.tsx (new)
-│   └── schedule-list.tsx (modified)
+│   ├── schedule-list.tsx (modified)
+│   └── calendar-event-item.tsx (modified)
 ├── lib/
 │   ├── demo-data.ts (new)
 │   └── gateway-client.ts (modified)
 └── types/
-    └── calendar.ts (new)
+    └── office-service.ts (new - unified interfaces from office service)
 ```
 
 ### API Integration Points
@@ -134,16 +135,17 @@ frontend/
 1. User visits `/demos` → Shows dashboard with demo data
 2. User toggles to real mode → Fetches calendar data via gateway
 3. Gateway authenticates and routes to office service
-4. Office service returns unified calendar events
-5. Frontend transforms and displays real calendar data
+4. Office service normalizes Google/Microsoft data and returns unified `CalendarEvent` objects
+5. Frontend displays the unified calendar data directly (no transformation needed)
 
 ### Key Considerations
 - Maintain backward compatibility with existing demo data
 - Handle authentication and authorization properly
 - Implement proper error handling for API failures
-- Consider timezone differences in calendar data
+- Office service already handles timezone differences and provider format normalization
 - Ensure responsive design for mobile devices
 - Add proper loading states and user feedback
+- Leverage existing office service data harmonization instead of creating duplicate logic
 
 ## Success Criteria
 - [ ] Demos page displays current dashboard layout with demo data
