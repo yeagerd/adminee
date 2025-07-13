@@ -14,29 +14,29 @@ This task list outlines the implementation of (a) a `/demos` client page that di
 
 ### Phase 1: Create Demos Client Page
 
-- [ ] 1. Create Demos Page Structure
-  - [ ] 1.1 Create `/frontend/app/demos/page.tsx` with dashboard layout
-  - [ ] 1.2 Add demos route to Next.js routing configuration
-  - [ ] 1.3 Create demos-specific layout component that mirrors dashboard layout
-  - [ ] 1.4 Add navigation link to demos page in navbar component
+- [x] 1. Create Demos Page Structure
+  - [x] 1.1 Create `/frontend/app/demos/page.tsx` with dashboard layout
+  - [x] 1.2 Add demos route to Next.js routing configuration
+  - [x] 1.3 Create demos-specific layout component that mirrors dashboard layout
+  - [x] 1.4 Add navigation link to demos page in navbar component
 
-- [ ] 2. Implement Demo Data Management
-  - [ ] 2.1 Create `/frontend/lib/demo-data.ts` for centralized demo data management
-  - [ ] 2.2 Extract sample events from `calendar-event-item.tsx` into demo data file
-  - [ ] 2.3 Create demo user session data for consistent demo experience
-  - [ ] 2.4 Add demo task list data to complement calendar events
+- [x] 2. Implement Demo Data Management
+  - [x] 2.1 Create `/frontend/lib/demo-data.ts` for centralized demo data management
+  - [x] 2.2 Extract sample events from `calendar-event-item.tsx` into demo data file
+  - [x] 2.3 Create demo user session data for consistent demo experience
+  - [x] 2.4 Add demo task list data to complement calendar events
 
-- [ ] 3. Create Demo-Specific Components
-  - [ ] 3.1 Create `DemoScheduleList` component that uses demo data instead of real API calls
-  - [ ] 3.2 Create `DemoTaskList` component with sample task data
-  - [ ] 3.3 Create `DemoChatInterface` component that simulates AI responses
-  - [ ] 3.4 Add demo mode indicators and watermarks to distinguish from real data
+- [x] 3. Create Demo-Specific Components
+  - [x] 3.1 Create `DemoScheduleList` component that uses demo data instead of real API calls
+  - [x] 3.2 Create `DemoTaskList` component with sample task data
+  - [x] 3.3 Create `DemoChatInterface` component that simulates AI responses
+  - [x] 3.4 Add demo mode indicators and watermarks to distinguish from real data
 
-- [ ] 4. Implement Demo Page Features
-  - [ ] 4.1 Add demo mode toggle to switch between demo and real data
-  - [ ] 4.2 Create demo integration status indicators (Google/Microsoft connected)
-  - [ ] 4.3 Add demo-specific quick actions and buttons
-  - [ ] 4.4 Implement demo data refresh functionality
+- [x] 4. Implement Demo Page Features
+  - [x] 4.1 Add demo mode toggle to switch between demo and real data
+  - [x] 4.2 Create demo integration status indicators (Google/Microsoft connected)
+  - [x] 4.3 Add demo-specific quick actions and buttons
+  - [x] 4.4 Implement demo data refresh functionality
 
 ### Phase 2: Connect Calendar to Real Office Service Data
 
