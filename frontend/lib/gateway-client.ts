@@ -148,8 +148,8 @@ class GatewayClient {
         });
     }
 
-    async completeOAuthFlow(provider: string, code: string, state: string) {
-        return this.request(`/api/users/me/integrations/oauth/callback?provider=${provider}`, {
+    async completeOAuthFlow(provider: string, code: string, state: string): Promise<OAuthCallbackResponse> {
+        return this.request<OAuthCallbackResponse>(`/api/users/me/integrations/oauth/callback?provider=${provider}`, {
             method: 'POST',
             body: { code, state },
         });
@@ -259,6 +259,16 @@ export interface OAuthStartResponse {
     state: string;
     expires_at: string;
     requested_scopes: string[];
+}
+
+export interface OAuthCallbackResponse {
+    success: boolean;
+    integration_id?: number;
+    provider: string;
+    status: string;
+    scopes: string[];
+    external_user_info?: Record<string, unknown>;
+    error?: string;
 }
 
 export default gatewayClient; 

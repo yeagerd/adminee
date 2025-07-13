@@ -47,7 +47,7 @@ export default function IntegrationCallbackPage() {
                 }
 
                 // Complete the OAuth flow
-                const result = await gatewayClient.completeOAuthFlow(detectedProvider, code, state) as any;
+                const result = await gatewayClient.completeOAuthFlow(detectedProvider, code, state);
 
                 if (result?.success) {
                     setStatus('success');
