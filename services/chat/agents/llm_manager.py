@@ -113,6 +113,70 @@ class LoggingLiteLLM(LlamaLiteLLM):
         return response
 
 
+class LoggingFunctionCallingLLM(FunctionCallingLLM):
+    """A FunctionCallingLLM with prompt/response logging."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Create the underlying LLM instance
+        self._llm = LlamaLiteLLM(*args, **kwargs)
+        self._prompt_logger = logging.getLogger(f"{__name__}.prompts")
+
+    def chat(self, messages, **kwargs):
+        self._prompt_logger.info(f"=== CHAT LLM CALL ===\nMessages: {messages}")
+        response = self._llm.chat(messages, **kwargs)
+        self._prompt_logger.info(f"=== CHAT LLM RESPONSE ===\nResponse: {response}")
+        return response
+
+    async def achat(self, messages, **kwargs):
+        self._prompt_logger.info(f"=== ACHAT LLM CALL ===\nMessages: {messages}")
+        response = await self._llm.achat(messages, **kwargs)
+        self._prompt_logger.info(f"=== ACHAT LLM RESPONSE ===\nResponse: {response}")
+        return response
+
+    def complete(self, prompt, **kwargs):
+        self._prompt_logger.info(f"=== COMPLETE LLM CALL ===\nPrompt: {prompt}")
+        response = self._llm.complete(prompt, **kwargs)
+        self._prompt_logger.info(f"=== COMPLETE LLM RESPONSE ===\nResponse: {response}")
+        return response
+
+    async def acomplete(self, prompt, **kwargs):
+        self._prompt_logger.info(f"=== ACOMPLETE LLM CALL ===\nPrompt: {prompt}")
+        response = await self._llm.acomplete(prompt, **kwargs)
+        self._prompt_logger.info(
+            f"=== ACOMPLETE LLM RESPONSE ===\nResponse: {response}"
+        )
+        return response
+
+    # Implement required abstract methods as pass-throughs or raise NotImplementedError
+    @property
+    def metadata(self) -> Any:
+        return self._llm.metadata
+
+    def _prepare_chat_with_tools(self, *args, **kwargs):
+        return self._llm._prepare_chat_with_tools(*args, **kwargs)
+
+    def stream_chat(self, *args, **kwargs):
+        return self._llm.stream_chat(*args, **kwargs)
+
+    async def astream_chat(self, *args, **kwargs):
+        return await self._llm.astream_chat(*args, **kwargs)
+
+    def stream_complete(self, *args, **kwargs):
+        return self._llm.stream_complete(*args, **kwargs)
+
+    async def astream_complete(self, *args, **kwargs):
+        return await self._llm.astream_complete(*args, **kwargs)
+
+    def get_tool_calls_from_response(
+        self, response, error_on_no_tool_call=True, **kwargs
+    ):
+        """Get tool calls from response."""
+        return self._llm.get_tool_calls_from_response(
+            response, error_on_no_tool_call, **kwargs
+        )
+
+
 class FakeLLM(FunctionCallingLLM):
     """A fake LLM for testing and offline mode that's compatible with LlamaIndex and supports function calling."""
 
@@ -356,8 +420,8 @@ class _LLMManager:
         if "language" not in llm_kwargs:
             llm_kwargs["language"] = "en"
 
-        # Return a LoggingLiteLLM instance with language settings for prompt logging
-        return LoggingLiteLLM(model=model, **llm_kwargs)
+        # Always use FunctionCallingLLM for real LLMs
+        return LoggingFunctionCallingLLM(model=model, **llm_kwargs)
 
     def get_model_info(self, model: str) -> Dict[str, Any]:
         """
