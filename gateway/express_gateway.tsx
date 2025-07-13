@@ -271,6 +271,14 @@ const createServiceProxy = (targetUrl, pathRewrite = undefined) => {
             const requestId = req.headers['x-request-id'] || Math.random().toString(36).substr(2, 9);
             proxyReq.setHeader('X-Request-Id', requestId);
 
+            // Re-write the request body for proxying
+            if (req.body && Object.keys(req.body).length > 0) {
+                const bodyData = JSON.stringify(req.body);
+                proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+                proxyReq.write(bodyData);
+                console.log(`Rewriting body for proxy: ${bodyData}`);
+            }
+
             // Log proxied requests
             console.log(`Proxying: ${req.method} ${req.path} -> ${targetUrl}${proxyReq.path}`);
         },
