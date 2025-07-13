@@ -1,171 +1,153 @@
 'use client';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { gatewayClient } from '@/lib/gateway-client';
-import { ArrowLeft, CheckCircle, Loader2, XCircle } from 'lucide-react';
-import Link from 'next/link';
+import { CheckCircle, Loader2, XCircle } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
-function OAuthCallbackContent() {
-    const searchParams = useSearchParams();
+export default function IntegrationCallbackPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-    const [message, setMessage] = useState('');
-    const [provider, setProvider] = useState('');
+    const [error, setError] = useState<string | null>(null);
+    const [provider, setProvider] = useState<string | null>(null);
 
     useEffect(() => {
-        const handleOAuthCallback = async () => {
-            const code = searchParams.get('code');
-            const state = searchParams.get('state');
-            const error = searchParams.get('error');
-            const providerParam = searchParams.get('provider');
-
-            if (error) {
-                setStatus('error');
-                setMessage(`OAuth error: ${error}`);
-                return;
-            }
-
-            if (!code || !state) {
-                setStatus('error');
-                setMessage('Missing OAuth parameters');
-                return;
-            }
-
-            if (!providerParam) {
-                setStatus('error');
-                setMessage('Missing provider information');
-                return;
-            }
-
-            setProvider(providerParam);
-
+        const handleCallback = async () => {
             try {
-                await gatewayClient.completeOAuthFlow(providerParam, code, state);
-                setStatus('success');
-                setMessage(`Successfully connected ${providerParam}!`);
+                // Get OAuth parameters from URL
+                const code = searchParams.get('code');
+                const state = searchParams.get('state');
+                const error = searchParams.get('error');
+                const errorDescription = searchParams.get('error_description');
 
-                // Redirect to integrations page after a short delay
-                setTimeout(() => {
-                    router.push('/integrations');
-                }, 2000);
-            } catch (error: unknown) {
-                console.error('OAuth completion failed:', error);
+                // Determine provider from the callback URL
+                const pathname = window.location.pathname;
+                let detectedProvider = 'microsoft'; // default
+                if (pathname.includes('google')) {
+                    detectedProvider = 'google';
+                } else if (pathname.includes('azure-ad') || pathname.includes('microsoft')) {
+                    detectedProvider = 'microsoft';
+                }
+                setProvider(detectedProvider);
+
+                if (error) {
+                    setError(`OAuth Error: ${error} - ${errorDescription || 'Unknown error'}`);
+                    setStatus('error');
+                    return;
+                }
+
+                if (!code || !state) {
+                    setError('Missing authorization code or state parameter');
+                    setStatus('error');
+                    return;
+                }
+
+                // Complete the OAuth flow
+                const result = await gatewayClient.completeOAuthFlow(detectedProvider, code, state) as any;
+
+                if (result?.success) {
+                    setStatus('success');
+                    // Redirect back to integrations page after a short delay
+                    setTimeout(() => {
+                        router.push('/integrations');
+                    }, 2000);
+                } else {
+                    setError(result?.error || 'Failed to complete OAuth flow');
+                    setStatus('error');
+                }
+            } catch (err) {
+                console.error('OAuth callback error:', err);
+                setError('Failed to complete OAuth flow. Please try again.');
                 setStatus('error');
-                setMessage(`Failed to complete OAuth flow: ${error instanceof Error ? error.message : 'Unknown error'}`);
             }
         };
 
-        handleOAuthCallback();
+        handleCallback();
     }, [searchParams, router]);
 
-    const getStatusIcon = () => {
-        switch (status) {
-            case 'loading':
-                return <Loader2 className="h-12 w-12 text-blue-600 animate-spin" />;
-            case 'success':
-                return <CheckCircle className="h-12 w-12 text-green-600" />;
-            case 'error':
-                return <XCircle className="h-12 w-12 text-red-600" />;
-        }
-    };
-
-    const getStatusColor = () => {
-        switch (status) {
-            case 'loading':
-                return 'border-blue-200 bg-blue-50';
-            case 'success':
-                return 'border-green-200 bg-green-50';
-            case 'error':
-                return 'border-red-200 bg-red-50';
-        }
-    };
-
-    return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-            <Card className={`w-full max-w-md ${getStatusColor()}`}>
-                <CardHeader className="text-center">
-                    <div className="flex justify-center mb-4">
-                        {getStatusIcon()}
-                    </div>
-                    <CardTitle className="text-xl">
-                        {status === 'loading' && 'Completing OAuth...'}
-                        {status === 'success' && 'Integration Successful!'}
-                        {status === 'error' && 'Integration Failed'}
-                    </CardTitle>
-                    <CardDescription>
-                        {status === 'loading' && 'Please wait while we complete your integration'}
-                        {status === 'success' && `${provider} has been successfully connected to your account`}
-                        {status === 'error' && 'There was a problem connecting your account'}
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="text-center">
-                        <p className="text-sm text-gray-600">{message}</p>
-                    </div>
-
-                    {status !== 'loading' && (
-                        <div className="space-y-2">
-                            {status === 'success' ? (
-                                <>
-                                    <Button asChild className="w-full">
-                                        <Link href="/integrations">
-                                            View Integrations
-                                        </Link>
-                                    </Button>
-                                    <Button variant="outline" asChild className="w-full">
-                                        <Link href="/dashboard">
-                                            Go to Dashboard
-                                        </Link>
-                                    </Button>
-                                </>
-                            ) : (
-                                <>
-                                    <Button asChild className="w-full">
-                                        <Link href="/integrations">
-                                            <ArrowLeft className="h-4 w-4 mr-2" />
-                                            Back to Integrations
-                                        </Link>
-                                    </Button>
-                                    <Button variant="outline" asChild className="w-full">
-                                        <Link href="/profile">
-                                            View Profile
-                                        </Link>
-                                    </Button>
-                                </>
-                            )}
-                        </div>
-                    )}
-
-                    {status === 'success' && (
-                        <div className="text-center text-xs text-gray-500">
-                            Redirecting to integrations page in a moment...
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-        </div>
-    );
-}
-
-export default function OAuthCallbackPage() {
-    return (
-        <Suspense fallback={
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    if (status === 'loading') {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <Card className="w-full max-w-md">
-                    <CardHeader className="text-center">
-                        <div className="flex justify-center mb-4">
-                            <Loader2 className="h-12 w-12 text-blue-600 animate-spin" />
-                        </div>
-                        <CardTitle className="text-xl">Loading...</CardTitle>
-                        <CardDescription>Processing your OAuth callback</CardDescription>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            Completing OAuth Flow
+                        </CardTitle>
+                        <CardDescription>
+                            Please wait while we complete your {provider} integration...
+                        </CardDescription>
                     </CardHeader>
                 </Card>
             </div>
-        }>
-            <OAuthCallbackContent />
-        </Suspense>
+        );
+    }
+
+    if (status === 'success') {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <Card className="w-full max-w-md">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-green-600">
+                            <CheckCircle className="h-5 w-5" />
+                            Integration Successful
+                        </CardTitle>
+                        <CardDescription>
+                            Your {provider} integration has been successfully connected!
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button
+                            onClick={() => router.push('/integrations')}
+                            className="w-full"
+                        >
+                            Back to Integrations
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <Card className="w-full max-w-md">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-red-600">
+                        <XCircle className="h-5 w-5" />
+                        Integration Failed
+                    </CardTitle>
+                    <CardDescription>
+                        We couldn't complete your {provider} integration.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {error && (
+                        <Alert variant="destructive">
+                            <AlertDescription>{error}</AlertDescription>
+                        </Alert>
+                    )}
+                    <div className="flex gap-2">
+                        <Button
+                            onClick={() => router.push('/integrations')}
+                            variant="outline"
+                            className="flex-1"
+                        >
+                            Back to Integrations
+                        </Button>
+                        <Button
+                            onClick={() => router.push('/integrations')}
+                            className="flex-1"
+                        >
+                            Try Again
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
     );
 }

@@ -6,6 +6,7 @@ authorization, and comprehensive error handling.
 """
 
 import logging
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Path, Query
@@ -22,7 +23,17 @@ from services.user.auth import get_current_user
 from services.user.auth.service_auth import get_current_service
 from services.user.models.integration import IntegrationProvider, IntegrationStatus
 from services.user.schemas.integration import (
+    IntegrationDisconnectRequest,
+    IntegrationDisconnectResponse,
+    IntegrationHealthResponse,
     IntegrationListResponse,
+    IntegrationResponse,
+    OAuthCallbackRequest,
+    OAuthCallbackResponse,
+    OAuthStartRequest,
+    OAuthStartResponse,
+    TokenRefreshRequest,
+    TokenRefreshResponse,
 )
 from services.user.schemas.user import (
     EmailResolutionRequest,
@@ -34,6 +45,7 @@ from services.user.schemas.user import (
     UserSearchRequest,
     UserUpdate,
 )
+from services.user.services.audit_service import audit_logger
 from services.user.services.user_service import get_user_service
 
 logger = logging.getLogger(__name__)
@@ -130,6 +142,199 @@ async def get_current_user_integrations(
     except Exception as e:
         logger.error(f"Unexpected error retrieving current user integrations: {e}")
         raise ServiceError(message="Failed to retrieve current user integrations")
+
+
+@router.delete(
+    "/me/integrations/{provider}",
+    response_model=IntegrationDisconnectResponse,
+    summary="Disconnect current user integration",
+    description="Disconnect an OAuth integration for the currently authenticated user.",
+    responses={
+        200: {"description": "Integration disconnected successfully"},
+        401: {"description": "Authentication required"},
+        404: {"description": "Integration not found"},
+        422: {"description": "Validation error"},
+    },
+)
+async def disconnect_current_user_integration(
+    provider: IntegrationProvider = Path(..., description="OAuth provider"),
+    request: IntegrationDisconnectRequest | None = None,
+    current_user_external_auth_id: str = Depends(get_current_user),
+) -> IntegrationDisconnectResponse:
+    """
+    Disconnect an OAuth integration for the current user.
+
+    Convenience endpoint to disconnect the authenticated user's integration
+    without needing to know their database ID.
+    """
+    try:
+        from services.user.services.integration_service import get_integration_service
+
+        if request is None:
+            request = IntegrationDisconnectRequest()
+
+        result = await get_integration_service().disconnect_integration(
+            user_id=current_user_external_auth_id,
+            provider=provider,
+            revoke_tokens=request.revoke_tokens,
+            delete_data=request.delete_data,
+        )
+
+        logger.info(
+            f"Disconnected {provider.value} integration for user {current_user_external_auth_id}"
+        )
+        return IntegrationDisconnectResponse(**result)
+
+    except NotFoundError as e:
+        logger.warning(f"Integration not found: {e.message}")
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error disconnecting integration: {e}")
+        raise ServiceError(message="Failed to disconnect integration")
+
+
+@router.put(
+    "/me/integrations/{provider}/refresh",
+    response_model=TokenRefreshResponse,
+    summary="Refresh current user integration tokens",
+    description="Refresh access tokens for an integration of the currently authenticated user.",
+    responses={
+        200: {"description": "Tokens refreshed successfully"},
+        401: {"description": "Authentication required"},
+        404: {"description": "Integration not found"},
+        422: {"description": "Validation error"},
+    },
+)
+async def refresh_current_user_integration_tokens(
+    provider: IntegrationProvider = Path(..., description="OAuth provider"),
+    request: TokenRefreshRequest | None = None,
+    current_user_external_auth_id: str = Depends(get_current_user),
+) -> TokenRefreshResponse:
+    """
+    Refresh access tokens for the current user's integration.
+
+    Convenience endpoint to refresh the authenticated user's integration tokens
+    without needing to know their database ID.
+    """
+    try:
+        from services.user.services.integration_service import get_integration_service
+
+        if request is None:
+            request = TokenRefreshRequest()  # type: ignore[assignment]
+
+        result = await get_integration_service().refresh_integration_tokens(
+            user_id=current_user_external_auth_id,
+            provider=provider,
+            force=request.force,
+        )
+
+        logger.info(
+            f"Refreshed tokens for {provider.value} integration for user {current_user_external_auth_id}"
+        )
+        return result
+    except NotFoundError as e:
+        logger.warning(f"Integration not found: {e.message}")
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error refreshing tokens: {e}")
+        # Return a failed TokenRefreshResponse instead of raising HTTP error
+        return TokenRefreshResponse(
+            success=False,
+            integration_id=None,
+            provider=provider,
+            token_expires_at=None,
+            refreshed_at=datetime.now(timezone.utc),
+            error=str(e),
+        )
+
+
+@router.get(
+    "/me/integrations/{provider}",
+    response_model=IntegrationResponse,
+    summary="Get current user specific integration",
+    description="Get details for a specific integration of the currently authenticated user.",
+    responses={
+        200: {"description": "Integration details retrieved successfully"},
+        401: {"description": "Authentication required"},
+        404: {"description": "Integration not found"},
+    },
+)
+async def get_current_user_specific_integration(
+    provider: IntegrationProvider = Path(..., description="OAuth provider"),
+    current_user_external_auth_id: str = Depends(get_current_user),
+) -> IntegrationResponse:
+    """
+    Get details for a specific integration of the current user.
+
+    Convenience endpoint to get the authenticated user's specific integration
+    without needing to know their database ID.
+    """
+    try:
+        from services.user.services.integration_service import get_integration_service
+
+        # Get all integrations and filter for the specific provider
+        integrations_response = await get_integration_service().get_user_integrations(
+            user_id=current_user_external_auth_id,
+            provider=provider,
+            include_token_info=True,
+        )
+
+        if not integrations_response.integrations:
+            raise NotFoundError("Integration", identifier=f"provider: {provider.value}")
+
+        logger.info(
+            f"Retrieved {provider.value} integration for user {current_user_external_auth_id}"
+        )
+        # Return the first (and should be only) integration for this provider
+        return integrations_response.integrations[0]
+
+    except NotFoundError as e:
+        logger.warning(f"Integration not found: {e.message}")
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error retrieving integration: {e}")
+        raise ServiceError(message="Failed to retrieve integration")
+
+
+@router.get(
+    "/me/integrations/{provider}/health",
+    response_model=IntegrationHealthResponse,
+    summary="Check current user integration health",
+    description="Check the health status of an integration for the currently authenticated user.",
+    responses={
+        200: {"description": "Health check completed successfully"},
+        401: {"description": "Authentication required"},
+        404: {"description": "Integration not found"},
+    },
+)
+async def check_current_user_integration_health(
+    provider: IntegrationProvider = Path(..., description="OAuth provider"),
+    current_user_external_auth_id: str = Depends(get_current_user),
+) -> IntegrationHealthResponse:
+    """
+    Check the health status of the current user's integration.
+
+    Convenience endpoint to check the authenticated user's integration health
+    without needing to know their database ID.
+    """
+    try:
+        from services.user.services.integration_service import get_integration_service
+
+        result = await get_integration_service().check_integration_health(
+            user_id=current_user_external_auth_id,
+            provider=provider,
+        )
+
+        logger.info(
+            f"Checked health for {provider.value} integration for user {current_user_external_auth_id}"
+        )
+        return result
+    except NotFoundError as e:
+        logger.warning(f"Integration not found: {e.message}")
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error checking integration health: {e}")
+        raise ServiceError(message="Failed to check integration health")
 
 
 @router.get(
@@ -488,6 +693,15 @@ async def create_or_upsert_user(
     - Requires service-to-service API key authentication
     - Only authorized services (frontend, chat, office) can create users
     """
+    # Add detailed logging for debugging
+    logger.info(f"User creation request from service: {current_service}")
+    logger.info(
+        f"User data received: external_auth_id={user_data.external_auth_id}, "
+        f"auth_provider={user_data.auth_provider}, email={user_data.email}, "
+        f"first_name={user_data.first_name}, last_name={user_data.last_name}, "
+        f"profile_image_url={user_data.profile_image_url}"
+    )
+
     try:
         # Try to find existing user first
         existing_user = (
@@ -504,6 +718,9 @@ async def create_or_upsert_user(
 
     except NotFoundError:
         # User doesn't exist, create new one
+        logger.info(
+            f"User not found, attempting to create new user with {user_data.auth_provider} ID: {user_data.external_auth_id}"
+        )
         try:
             new_user = await get_user_service().create_user(user_data)
             user_response = UserResponse.from_orm(new_user)
@@ -514,6 +731,8 @@ async def create_or_upsert_user(
             return user_response
 
         except ValidationError as e:
+            logger.error(f"Validation error during user creation: {e.message}")
+            logger.error(f"Validation error details: {e.details}")
             if "collision" in str(e.message).lower():
                 logger.warning(f"Email collision during user creation: {e.message}")
                 raise BrieflyAPIException(
@@ -528,4 +747,117 @@ async def create_or_upsert_user(
 
     except Exception as e:
         logger.error(f"Unexpected error in create_or_upsert_user: {e}")
+        logger.error(f"Error type: {type(e)}")
+        logger.error(f"Error details: {str(e)}")
         raise ServiceError(message="Failed to create or retrieve user")
+
+
+@router.post(
+    "/me/integrations/oauth/start",
+    response_model=OAuthStartResponse,
+    summary="Start OAuth flow for current user",
+    description="Start OAuth authorization flow for the currently authenticated user.",
+    responses={
+        200: {"description": "OAuth flow started successfully"},
+        401: {"description": "Authentication required"},
+        422: {"description": "Validation error"},
+    },
+)
+async def start_current_user_oauth_flow(
+    request: OAuthStartRequest,
+    current_user_external_auth_id: str = Depends(get_current_user),
+) -> OAuthStartResponse:
+    """
+    Start OAuth authorization flow for the current user.
+
+    Convenience endpoint to start OAuth flow for the authenticated user
+    without needing to know their database ID.
+    """
+    try:
+        from services.user.services.integration_service import get_integration_service
+
+        result = await get_integration_service().start_oauth_flow(
+            user_id=current_user_external_auth_id,
+            provider=request.provider,
+            redirect_uri=request.redirect_uri,
+            scopes=request.scopes,
+            state_data=request.state_data,
+        )
+
+        logger.info(
+            f"Started OAuth flow for {request.provider.value} for user {current_user_external_auth_id}"
+        )
+        return result
+
+    except Exception as e:
+        logger.error(f"Unexpected error starting OAuth flow: {e}")
+        raise ServiceError(message="Failed to start OAuth flow")
+
+
+@router.post(
+    "/me/integrations/oauth/callback",
+    response_model=OAuthCallbackResponse,
+    summary="Complete OAuth flow for current user",
+    description="Complete OAuth authorization flow for the currently authenticated user.",
+    responses={
+        200: {"description": "OAuth flow completed successfully"},
+        401: {"description": "Authentication required"},
+        422: {"description": "Validation error"},
+    },
+)
+async def complete_current_user_oauth_flow(
+    request: OAuthCallbackRequest,
+    provider: IntegrationProvider = Query(..., description="OAuth provider"),
+    current_user_external_auth_id: str = Depends(get_current_user),
+) -> OAuthCallbackResponse:
+    """
+    Complete OAuth authorization flow for the current user.
+
+    Convenience endpoint to complete OAuth flow for the authenticated user
+    without needing to know their database ID.
+    """
+    try:
+        from services.user.services.integration_service import get_integration_service
+
+        # Handle OAuth errors from provider
+        if request.error:
+            await audit_logger.log_security_event(
+                user_id=current_user_external_auth_id,
+                action="oauth_callback_error",
+                severity="medium",
+                details={
+                    "provider": provider.value,
+                    "error": request.error,
+                    "error_description": request.error_description,
+                },
+            )
+            return OAuthCallbackResponse(
+                success=False,
+                integration_id=None,
+                provider=provider,
+                status=IntegrationStatus.ERROR,
+                scopes=[],
+                external_user_info=None,
+                error=f"OAuth error: {request.error} - {request.error_description}",
+            )
+
+        # Complete the OAuth flow
+        if request.code is None:
+            raise ValidationError(
+                message="Authorization code is required", field="code", value=None
+            )
+        result = await get_integration_service().complete_oauth_flow(
+            user_id=current_user_external_auth_id,
+            provider=provider,
+            authorization_code=request.code,
+            state=request.state,
+        )
+
+        logger.info(
+            f"Completed OAuth flow for {provider.value} for user {current_user_external_auth_id}"
+        )
+        return result
+
+    except Exception as e:
+        logger.error(f"Unexpected error completing OAuth flow: {e}")
+        raise ServiceError(message="Failed to complete OAuth flow")

@@ -135,12 +135,15 @@ class GatewayClient {
     }
 
     async startOAuthFlow(provider: string, scopes: string[]) {
+        // Use a dedicated integration callback URL to avoid conflicts with NextAuth
+        const redirectUri = `${window.location.origin}/integrations/callback`;
+
         return this.request('/api/users/me/integrations/oauth/start', {
             method: 'POST',
             body: {
                 provider,
                 scopes,
-                redirect_uri: `${window.location.origin}/integrations/callback`,
+                redirect_uri: redirectUri,
             },
         });
     }
@@ -160,7 +163,7 @@ class GatewayClient {
 
     async refreshIntegrationTokens(provider: string) {
         return this.request(`/api/users/me/integrations/${provider}/refresh`, {
-            method: 'POST',
+            method: 'PUT',
         });
     }
 
