@@ -40,13 +40,15 @@ def test_get_llm_fallback_to_fake_llm_if_api_key_missing(llm_manager):
 
 @patch.dict(os.environ, {"OPENAI_API_KEY": "test_key"}, clear=True)
 def test_get_llm_success_real_provider_with_api_key(llm_manager):
-    """Test get_llm returns LoggingLiteLLM for a real provider if API key is present."""
+    """Test get_llm returns LoggingFunctionCallingLLM for a real provider if API key is present."""
     import services.chat.agents.llm_manager as llm_mod
 
     importlib.reload(llm_mod)
     llm_mod._LLMManager._instance = None
-    # Patch LoggingLiteLLM in the module where it is used
-    with patch("services.chat.agents.llm_manager.LoggingLiteLLM") as mock_logging_llm:
+    # Patch LoggingFunctionCallingLLM in the module where it is used
+    with patch(
+        "services.chat.agents.llm_manager.LoggingFunctionCallingLLM"
+    ) as mock_logging_llm:
         mock_logging_llm_instance = MagicMock()
         mock_logging_llm.return_value = mock_logging_llm_instance
 
