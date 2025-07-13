@@ -40,29 +40,29 @@ This task list outlines the implementation of (a) a `/demos` client page that di
 
 ### Phase 2: Connect Calendar to Real Office Service Data
 
-- [ ] 5. Update Gateway Client for Calendar Integration
-  - [ ] 5.1 Fix `gatewayClient.getCalendarEvents()` method to match office service API parameters (providers array, limit, start_date, end_date, etc.)
-  - [ ] 5.2 Add proper TypeScript interfaces for the unified `CalendarEvent` schema from office service
-  - [ ] 5.3 Add error handling and retry logic for calendar API calls
-  - [ ] 5.4 Add loading states and error states for calendar data fetching
+- [x] 5. Update Gateway Client for Calendar Integration
+  - [x] 5.1 Fix `gatewayClient.getCalendarEvents()` method to match office service API parameters (providers array, limit, start_date, end_date, etc.)
+  - [x] 5.2 Add proper TypeScript interfaces for the unified `CalendarEvent` schema from office service
+  - [x] 5.3 Add error handling and retry logic for calendar API calls
+  - [x] 5.4 Add loading states and error states for calendar data fetching
 
-- [ ] 6. Update Schedule List Component
-  - [ ] 6.1 Modify `ScheduleList` component to fetch real calendar data via gateway using the unified `CalendarEvent` interface
-  - [ ] 6.2 Add date range filtering (today, this week, custom range) using office service date parameters
-  - [ ] 6.3 Implement real-time calendar data refresh functionality
-  - [ ] 6.4 Add loading skeletons and error handling for calendar events
+- [x] 6. Update Schedule List Component
+  - [x] 6.1 Modify `ScheduleList` component to fetch real calendar data via gateway using the unified `CalendarEvent` interface
+  - [x] 6.2 Add date range filtering (today, this week, custom range) using office service date parameters
+  - [x] 6.3 Implement real-time calendar data refresh functionality
+  - [x] 6.4 Add loading skeletons and error handling for calendar events
 
-- [ ] 7. Update Calendar Event Item Component
-  - [ ] 7.1 Modify `CalendarEventItem` to work with the unified `CalendarEvent` schema from office service
-  - [ ] 7.2 Update component props interface to match the office service `CalendarEvent` structure
-  - [ ] 7.3 Map office service attendee/organizer data to component display format (no timezone conversion needed - office service handles this)
-  - [ ] 7.4 Implement proper display of provider information (Google/Microsoft) and account details
+- [x] 7. Update Calendar Event Item Component
+  - [x] 7.1 Modify `CalendarEventItem` to work with the unified `CalendarEvent` schema from office service
+  - [x] 7.2 Update component props interface to match the office service `CalendarEvent` structure
+  - [x] 7.3 Map office service attendee/organizer data to component display format (no timezone conversion needed - office service handles this)
+  - [x] 7.4 Implement proper display of provider information (Google/Microsoft) and account details
 
-- [ ] 8. Leverage Office Service Data Harmonization
-  - [ ] 8.1 Update frontend to use the unified `CalendarEvent` schema from office service
-  - [ ] 8.2 Remove any frontend data transformation logic since office service handles Google/Microsoft format differences
-  - [ ] 8.3 Update `CalendarEventItem` component to work with the unified `CalendarEvent` interface
-  - [ ] 8.4 Add proper TypeScript interfaces that match the office service `CalendarEvent` schema
+- [x] 8. Leverage Office Service Data Harmonization
+  - [x] 8.1 Update frontend to use the unified `CalendarEvent` schema from office service
+  - [x] 8.2 Remove any frontend data transformation logic since office service handles Google/Microsoft format differences
+  - [x] 8.3 Update `CalendarEventItem` component to work with the unified `CalendarEvent` interface
+  - [x] 8.4 Add proper TypeScript interfaces that match the office service `CalendarEvent` schema
 
 ### Phase 3: Integration and Testing
 

@@ -1,3 +1,4 @@
+import { ApiResponse, CalendarEventsResponse, CreateCalendarEventRequest } from '@/types/office-service';
 import { getSession } from 'next-auth/react';
 
 interface GatewayClientOptions {
@@ -51,7 +52,19 @@ class GatewayClient {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(`Gateway Error (${response.status}): ${errorText}`);
+                let errorMessage = `Gateway Error (${response.status}): ${errorText}`;
+
+                // Try to parse JSON error response
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    if (errorJson.message) {
+                        errorMessage = errorJson.message;
+                    }
+                } catch {
+                    // If not JSON, use the raw text
+                }
+
+                throw new Error(errorMessage);
             }
 
             const contentType = response.headers.get('content-type');
@@ -168,21 +181,37 @@ class GatewayClient {
     }
 
     // Office Service
-    async getCalendarEvents(provider: string, startDate?: string, endDate?: string) {
+    async getCalendarEvents(
+        user_id: string,
+        providers?: string[],
+        limit: number = 50,
+        start_date?: string,
+        end_date?: string,
+        calendar_ids?: string[],
+        q?: string,
+        time_zone: string = 'UTC'
+    ) {
         const params = new URLSearchParams();
-        if (startDate) params.append('start_date', startDate);
-        if (endDate) params.append('end_date', endDate);
+        params.append('user_id', user_id);
+        if (providers && providers.length > 0) {
+            providers.forEach(provider => params.append('providers', provider));
+        }
+        params.append('limit', limit.toString());
+        if (start_date) params.append('start_date', start_date);
+        if (end_date) params.append('end_date', end_date);
+        if (calendar_ids && calendar_ids.length > 0) {
+            calendar_ids.forEach(id => params.append('calendar_ids', id));
+        }
+        if (q) params.append('q', q);
+        params.append('time_zone', time_zone);
 
-        return this.request(`/api/calendar/events?provider=${provider}&${params.toString()}`);
+        return this.request<ApiResponse<CalendarEventsResponse>>(`/api/calendar/events?${params.toString()}`);
     }
 
-    async createCalendarEvent(provider: string, eventData: Record<string, unknown>) {
-        return this.request('/api/calendar/events', {
+    async createCalendarEvent(user_id: string, eventData: CreateCalendarEventRequest) {
+        return this.request<ApiResponse>(`/api/calendar/events?user_id=${user_id}`, {
             method: 'POST',
-            body: {
-                provider,
-                ...eventData,
-            },
+            body: eventData,
         });
     }
 
