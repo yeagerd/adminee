@@ -7,7 +7,7 @@ import Navbar from '@/components/navbar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { demoIntegrations, demoUser } from '@/lib/demo-data';
+import { demoIntegrations, demoUser, type DemoIntegration } from '@/lib/demo-data';
 import {
     Calendar,
     CheckCircle,
@@ -25,7 +25,6 @@ import Link from 'next/link';
 import { useState } from 'react';
 
 export default function DemosPage() {
-    const [isDemoMode, setIsDemoMode] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
     const handleRefresh = () => {
@@ -42,9 +41,9 @@ export default function DemosPage() {
         year: "numeric",
     });
 
-    const activeIntegrations = demoIntegrations.filter((i: any) => i.status === 'active');
-    const hasGoogleIntegration = activeIntegrations.some((i: any) => i.provider === 'google');
-    const hasMicrosoftIntegration = activeIntegrations.some((i: any) => i.provider === 'microsoft');
+    const activeIntegrations = demoIntegrations.filter((i: DemoIntegration) => i.status === 'active');
+    const hasGoogleIntegration = activeIntegrations.some((i: DemoIntegration) => i.provider === 'google');
+    const hasMicrosoftIntegration = activeIntegrations.some((i: DemoIntegration) => i.provider === 'microsoft');
 
     return (
         <div className="min-h-screen bg-gray-50">
