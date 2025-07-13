@@ -149,7 +149,14 @@ export default function ScheduleList({
                 setIsUsingDemoData(true)
                 setError(null) // Clear error since we're using demo data
             } else {
-                setError(CalendarErrorHandler.createError(new Error(errorMessage)))
+                // Check if this is a token-related error and provide specific guidance
+                if (errorMessage.includes('Missing refresh token') || errorMessage.includes('Token refresh failed')) {
+                    const tokenError = CalendarErrorHandler.createError(new Error(errorMessage))
+                    tokenError.userFriendlyMessage = 'Your calendar connection has expired. Please reconnect your account in the Integrations page.'
+                    setError(tokenError)
+                } else {
+                    setError(CalendarErrorHandler.createError(new Error(errorMessage)))
+                }
             }
         } finally {
             setLoading(false)

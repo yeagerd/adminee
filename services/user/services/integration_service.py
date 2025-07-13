@@ -101,6 +101,9 @@ class IntegrationService:
                 # Convert to response models
                 integration_responses = []
                 for integration in integrations:
+                    # Validate and correct integration status based on actual token state
+                    corrected_status = await self._validate_and_correct_integration_status(integration, session)
+                    
                     token_info = {}
                     if include_token_info:
                         token_info = await self._get_token_metadata(
@@ -111,7 +114,7 @@ class IntegrationService:
                         id=integration.id if integration.id is not None else 0,
                         user_id=user.external_auth_id,  # Use the user from the session
                         provider=integration.provider,
-                        status=integration.status,
+                        status=corrected_status,  # Use corrected status
                         scopes=(
                             list(integration.scopes.keys())
                             if integration.scopes
@@ -1171,6 +1174,88 @@ class IntegrationService:
                     )
                     session.add(new_refresh_token)
                     await session.commit()
+
+    async def _validate_and_correct_integration_status(
+        self, integration: Integration, session=None
+    ) -> IntegrationStatus:
+        """
+        Validate integration status based on actual token availability and correct if needed.
+        
+        Args:
+            integration: The integration to validate
+            session: Optional database session to use (if None, creates new session)
+            
+        Returns:
+            The corrected status
+        """
+        if integration.id is None:
+            return IntegrationStatus.PENDING
+            
+        # Use provided session or create new one
+        if session is None:
+            async_session = get_async_session()
+            async with async_session() as session:
+                return await self._validate_and_correct_integration_status(integration, session)
+        
+        # Check for access token
+        access_token_result = await session.execute(
+            select(EncryptedToken).where(
+                EncryptedToken.integration_id == integration.id,
+                EncryptedToken.token_type == TokenType.ACCESS,
+            )
+        )
+        access_token_record = access_token_result.scalar_one_or_none()
+        
+        # Check for refresh token
+        refresh_token_result = await session.execute(
+            select(EncryptedToken).where(
+                EncryptedToken.integration_id == integration.id,
+                EncryptedToken.token_type == TokenType.REFRESH,
+            )
+        )
+        refresh_token_record = refresh_token_result.scalar_one_or_none()
+        
+        # Determine correct status
+        if not access_token_record:
+            # No access token - should be ERROR
+            if integration.status != IntegrationStatus.ERROR:
+                integration.status = IntegrationStatus.ERROR
+                integration.error_message = "No access token available"
+                integration.updated_at = datetime.now(timezone.utc)
+                session.add(integration)
+            return IntegrationStatus.ERROR
+            
+        elif not refresh_token_record:
+            # Has access token but no refresh token - should be ERROR
+            if integration.status != IntegrationStatus.ERROR:
+                integration.status = IntegrationStatus.ERROR
+                integration.error_message = "Missing refresh token - cannot refresh expired access token"
+                integration.updated_at = datetime.now(timezone.utc)
+                session.add(integration)
+            return IntegrationStatus.ERROR
+            
+        elif access_token_record.expires_at:
+            # Check if access token is expired
+            expires_at = access_token_record.expires_at
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+                
+            if expires_at <= datetime.now(timezone.utc):
+                # Token is expired but we have refresh token - should be ERROR until refreshed
+                if integration.status != IntegrationStatus.ERROR:
+                    integration.status = IntegrationStatus.ERROR
+                    integration.error_message = "Access token expired - refresh required"
+                    integration.updated_at = datetime.now(timezone.utc)
+                    session.add(integration)
+                return IntegrationStatus.ERROR
+                
+        # All checks passed - should be ACTIVE
+        if integration.status != IntegrationStatus.ACTIVE:
+            integration.status = IntegrationStatus.ACTIVE
+            integration.error_message = None
+            integration.updated_at = datetime.now(timezone.utc)
+            session.add(integration)
+        return IntegrationStatus.ACTIVE
 
 
 # Global integration service instance

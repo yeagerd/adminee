@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { gatewayClient, Integration } from '@/lib/gateway-client';
 import {
+    AlertCircle,
     Calendar,
     CheckCircle,
     Clock,
@@ -80,6 +81,12 @@ export default function DashboardPage() {
     const hasGoogleIntegration = activeIntegrations.some(i => i.provider === 'google');
     const hasMicrosoftIntegration = activeIntegrations.some(i => i.provider === 'microsoft');
 
+    // Check for integrations with token issues
+    const integrationsWithTokenIssues = integrations.filter(i =>
+        i.status === 'active' && (!i.has_access_token || !i.has_refresh_token)
+    );
+    const hasTokenIssues = integrationsWithTokenIssues.length > 0;
+
     return (
         <div className="min-h-screen bg-gray-50">
             <Navbar />
@@ -123,6 +130,39 @@ export default function DashboardPage() {
                                         Start Onboarding
                                     </Link>
                                 </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Integration Token Issues Warning */}
+                {hasTokenIssues && (
+                    <Card className="mb-6 border-orange-200 bg-orange-50">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <AlertCircle className="h-5 w-5 text-orange-600" />
+                                Integration Issues Detected
+                            </CardTitle>
+                            <CardDescription>
+                                Some of your integrations have token issues and may not work properly
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-2">
+                                {integrationsWithTokenIssues.map((integration) => (
+                                    <div key={integration.id} className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-medium capitalize">{integration.provider}</span>
+                                            <span className="text-sm text-orange-600">
+                                                {!integration.has_access_token && "Missing access token"}
+                                                {!integration.has_refresh_token && "Missing refresh token"}
+                                            </span>
+                                        </div>
+                                        <Button variant="outline" size="sm" asChild>
+                                            <Link href="/integrations">Fix Integration</Link>
+                                        </Button>
+                                    </div>
+                                ))}
                             </div>
                         </CardContent>
                     </Card>
