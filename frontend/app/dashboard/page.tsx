@@ -146,7 +146,14 @@ export default function DashboardPage() {
                         </CardHeader>
                         <CardContent>
                             {hasGoogleIntegration || hasMicrosoftIntegration ? (
-                                <ScheduleList />
+                                <ScheduleList
+                                    dateRange="today"
+                                    providers={[
+                                        ...(hasGoogleIntegration ? ['google'] : []),
+                                        ...(hasMicrosoftIntegration ? ['microsoft'] : [])
+                                    ]}
+                                    limit={10}
+                                />
                             ) : (
                                 <div className="text-center py-8">
                                     <Calendar className="h-12 w-12 mx-auto text-gray-400 mb-4" />
