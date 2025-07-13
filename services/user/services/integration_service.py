@@ -408,107 +408,105 @@ class IntegrationService:
             ServiceError: If refresh fails
         """
         try:
-            # Get integration
-            integration = await self._get_user_integration(user_id, provider)
-
-            # Get encrypted tokens
+            # Use a single session for the entire operation
             async_session = get_async_session()
             async with async_session() as session:
+                # Get integration within this session
+                integration = await self._get_user_integration_in_session(user_id, provider, session)
+
+                # Get encrypted tokens
                 token_result = await session.execute(
                     select(EncryptedToken).where(
                         EncryptedToken.integration_id == integration.id
                     )
                 )
                 token_record = token_result.scalar_one_or_none()
-            if not token_record:
-                raise ServiceError(message="No tokens found for integration")
+                if not token_record:
+                    raise ServiceError(message="No tokens found for integration")
 
-            # Decrypt tokens
-            access_token = None
-            refresh_token = None
+                # Decrypt tokens
+                access_token = None
+                refresh_token = None
 
-            # Get access token
-            access_token_result = await session.execute(
-                select(EncryptedToken).where(
-                    EncryptedToken.integration_id == integration.id,
-                    EncryptedToken.token_type == TokenType.ACCESS,
+                # Get access token
+                access_token_result = await session.execute(
+                    select(EncryptedToken).where(
+                        EncryptedToken.integration_id == integration.id,
+                        EncryptedToken.token_type == TokenType.ACCESS,
+                    )
                 )
-            )
-            access_token_record = access_token_result.scalar_one_or_none()
-            if access_token_record:
-                access_token = self.token_encryption.decrypt_token(
-                    encrypted_token=access_token_record.encrypted_value,
-                    user_id=user_id,
-                )
-
-            # Get refresh token
-            refresh_token_result = await session.execute(
-                select(EncryptedToken).where(
-                    EncryptedToken.integration_id == integration.id,
-                    EncryptedToken.token_type == TokenType.REFRESH,
-                )
-            )
-            refresh_token_record = refresh_token_result.scalar_one_or_none()
-            if refresh_token_record:
-                refresh_token = self.token_encryption.decrypt_token(
-                    encrypted_token=refresh_token_record.encrypted_value,
-                    user_id=user_id,
-                )
-
-            if not access_token:
-                raise ServiceError(message="No access token found for integration")
-
-            tokens = {
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-                "expires_at": (
-                    access_token_record.expires_at.isoformat()
-                    if access_token_record and access_token_record.expires_at
-                    else None
-                ),
-            }
-
-            # Check if refresh is needed
-            if not force and tokens.get("expires_at"):
-                expires_at = datetime.fromisoformat(tokens["expires_at"])
-                # Ensure expires_at is timezone-aware
-                if expires_at.tzinfo is None:
-                    expires_at = expires_at.replace(tzinfo=timezone.utc)
-                # Refresh if expires within 5 minutes
-                if expires_at > datetime.now(timezone.utc) + timedelta(minutes=5):
-                    return TokenRefreshResponse(
-                        success=True,
-                        integration_id=integration.id,
-                        provider=provider,
-                        token_expires_at=expires_at,
-                        refreshed_at=datetime.now(timezone.utc),
-                        error=None,
+                access_token_record = access_token_result.scalar_one_or_none()
+                if access_token_record:
+                    access_token = self.token_encryption.decrypt_token(
+                        encrypted_token=access_token_record.encrypted_value,
+                        user_id=user_id,
                     )
 
-            # Refresh tokens
-            if not refresh_token:
-                raise ValidationError(message="Missing refresh token for integration.")
-            new_tokens = await self.oauth_config.refresh_access_token(
-                provider=provider,
-                refresh_token=str(refresh_token),
-            )
-
-            # Store new encrypted tokens
-            if integration.id is None:
-                raise ServiceError(message="Integration was not properly saved")
-            await self._store_encrypted_tokens(integration.id, new_tokens)
-
-            # Update integration
-            async with async_session() as session:
-                await session.execute(
-                    select(Integration).where(Integration.id == integration.id)
+                # Get refresh token
+                refresh_token_result = await session.execute(
+                    select(EncryptedToken).where(
+                        EncryptedToken.integration_id == integration.id,
+                        EncryptedToken.token_type == TokenType.REFRESH,
+                    )
                 )
+                refresh_token_record = refresh_token_result.scalar_one_or_none()
+                if refresh_token_record:
+                    refresh_token = self.token_encryption.decrypt_token(
+                        encrypted_token=refresh_token_record.encrypted_value,
+                        user_id=user_id,
+                    )
+
+                if not access_token:
+                    raise ServiceError(message="No access token found for integration")
+
+                tokens = {
+                    "access_token": access_token,
+                    "refresh_token": refresh_token,
+                    "expires_at": (
+                        access_token_record.expires_at.isoformat()
+                        if access_token_record and access_token_record.expires_at
+                        else None
+                    ),
+                }
+
+                # Check if refresh is needed
+                if not force and tokens.get("expires_at"):
+                    expires_at = datetime.fromisoformat(tokens["expires_at"])
+                    # Ensure expires_at is timezone-aware
+                    if expires_at.tzinfo is None:
+                        expires_at = expires_at.replace(tzinfo=timezone.utc)
+                    # Refresh if expires within 5 minutes
+                    if expires_at > datetime.now(timezone.utc) + timedelta(minutes=5):
+                        return TokenRefreshResponse(
+                            success=True,
+                            integration_id=integration.id,
+                            provider=provider,
+                            token_expires_at=expires_at,
+                            refreshed_at=datetime.now(timezone.utc),
+                            error=None,
+                        )
+
+                # Refresh tokens
+                if not refresh_token:
+                    raise ValidationError(message="Missing refresh token for integration.")
+                new_tokens = await self.oauth_config.refresh_access_token(
+                    provider=provider,
+                    refresh_token=str(refresh_token),
+                )
+
+                # Store new encrypted tokens
+                if integration.id is None:
+                    raise ServiceError(message="Integration was not properly saved")
+                await self._store_encrypted_tokens(integration.id, new_tokens)
+
+                # Update integration in the same session
                 integration.status = IntegrationStatus.ACTIVE
                 integration.last_sync_at = datetime.now(timezone.utc)
                 integration.error_message = None
                 integration.updated_at = datetime.now(timezone.utc)
                 session.add(integration)
                 await session.commit()
+                await session.refresh(integration)
 
             # Log token refresh
             await audit_logger.log_user_action(
@@ -942,21 +940,30 @@ class IntegrationService:
         """Get integration for user and provider."""
         async_session = get_async_session()
         async with async_session() as session:
-            # First get the user
-            user_result = await session.execute(
-                select(User).where(User.external_auth_id == user_id)
-            )
-            user = user_result.scalar_one_or_none()
-            if not user:
-                raise NotFoundError(resource="User", identifier=str(user_id))
+            return await self._get_user_integration_in_session(user_id, provider, session)
 
-            # Then get the integration
-            integration_result = await session.execute(
-                select(Integration).where(
-                    Integration.user_id == user.id, Integration.provider == provider
-                )
+    async def _get_user_integration_in_session(
+        self,
+        user_id: str,
+        provider: IntegrationProvider,
+        session,
+    ) -> Integration:
+        """Get integration for user and provider within an existing session."""
+        # First get the user
+        user_result = await session.execute(
+            select(User).where(User.external_auth_id == user_id)
+        )
+        user = user_result.scalar_one_or_none()
+        if not user:
+            raise NotFoundError(resource="User", identifier=str(user_id))
+
+        # Then get the integration
+        integration_result = await session.execute(
+            select(Integration).where(
+                Integration.user_id == user.id, Integration.provider == provider
             )
-            integration = integration_result.scalar_one_or_none()
+        )
+        integration = integration_result.scalar_one_or_none()
 
         if not integration:
             raise NotFoundError(resource="Integration", identifier=provider.value)
@@ -1150,7 +1157,7 @@ class IntegrationService:
                 session.add(new_access_token)
                 await session.commit()
 
-            # Store refresh token if provided
+            # Store refresh token ONLY if a new one is provided
             if encrypted_refresh:
                 refresh_token_result = await session.execute(
                     select(EncryptedToken).where(
@@ -1174,6 +1181,8 @@ class IntegrationService:
                     )
                     session.add(new_refresh_token)
                     await session.commit()
+            # If no new refresh token, do NOT overwrite or delete the existing one
+            # (do nothing in this case)
 
     async def _validate_and_correct_integration_status(
         self, integration: Integration, session=None
@@ -1226,13 +1235,37 @@ class IntegrationService:
             return IntegrationStatus.ERROR
             
         elif not refresh_token_record:
-            # Has access token but no refresh token - should be ERROR
-            if integration.status != IntegrationStatus.ERROR:
-                integration.status = IntegrationStatus.ERROR
-                integration.error_message = "Missing refresh token - cannot refresh expired access token"
-                integration.updated_at = datetime.now(timezone.utc)
-                session.add(integration)
-            return IntegrationStatus.ERROR
+            # Has access token but no refresh token - this is acceptable for some providers
+            # that don't always return refresh tokens. Check if the access token is still valid.
+            if access_token_record.expires_at:
+                expires_at = access_token_record.expires_at
+                if expires_at.tzinfo is None:
+                    expires_at = expires_at.replace(tzinfo=timezone.utc)
+                    
+                if expires_at <= datetime.now(timezone.utc):
+                    # Token is expired and no refresh token - should be ERROR
+                    if integration.status != IntegrationStatus.ERROR:
+                        integration.status = IntegrationStatus.ERROR
+                        integration.error_message = "Access token expired and no refresh token available"
+                        integration.updated_at = datetime.now(timezone.utc)
+                        session.add(integration)
+                    return IntegrationStatus.ERROR
+                else:
+                    # Token is still valid - can be ACTIVE even without refresh token
+                    if integration.status != IntegrationStatus.ACTIVE:
+                        integration.status = IntegrationStatus.ACTIVE
+                        integration.error_message = None
+                        integration.updated_at = datetime.now(timezone.utc)
+                        session.add(integration)
+                    return IntegrationStatus.ACTIVE
+            else:
+                # No expiration info - assume it's valid and can be ACTIVE
+                if integration.status != IntegrationStatus.ACTIVE:
+                    integration.status = IntegrationStatus.ACTIVE
+                    integration.error_message = None
+                    integration.updated_at = datetime.now(timezone.utc)
+                    session.add(integration)
+                return IntegrationStatus.ACTIVE
             
         elif access_token_record.expires_at:
             # Check if access token is expired
