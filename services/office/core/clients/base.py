@@ -50,7 +50,7 @@ class BaseAPIClient(ABC):
         # Request tracking
         self._session_id = str(uuid.uuid4())[:8]
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "BaseAPIClient":
         """Async context manager entry"""
         self.http_client = httpx.AsyncClient(
             timeout=httpx.Timeout(30.0),  # 30 second timeout for external APIs
@@ -59,7 +59,7 @@ class BaseAPIClient(ABC):
         logger.info(f"Initialized {self.provider} API client for user {self.user_id}")
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Async context manager exit"""
         if self.http_client:
             await self.http_client.aclose()
@@ -354,7 +354,7 @@ class BaseAPIClient(ABC):
         status: ApiCallStatus,
         response_time_ms: Optional[int] = None,
         error_message: Optional[str] = None,
-    ):
+    ) -> None:
         """Log API call for monitoring and analytics"""
         try:
             # Create database record (fire and forget)
@@ -385,7 +385,7 @@ class BaseAPIClient(ABC):
         params: Optional[Dict[str, Any]] = None,
         json_data: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> httpx.Response:
         """
         Make an HTTP request with logging and error handling.
@@ -619,29 +619,29 @@ class BaseAPIClient(ABC):
 
     # Convenience methods for common HTTP verbs
     async def get(
-        self, endpoint: str, params: Optional[Dict[str, Any]] = None, **kwargs
+        self, endpoint: str, params: Optional[Dict[str, Any]] = None, **kwargs: Any
     ) -> httpx.Response:
         """Make a GET request"""
         return await self._make_request("GET", endpoint, params=params, **kwargs)
 
     async def post(
-        self, endpoint: str, json_data: Optional[Dict[str, Any]] = None, **kwargs
+        self, endpoint: str, json_data: Optional[Dict[str, Any]] = None, **kwargs: Any
     ) -> httpx.Response:
         """Make a POST request"""
         return await self._make_request("POST", endpoint, json_data=json_data, **kwargs)
 
     async def put(
-        self, endpoint: str, json_data: Optional[Dict[str, Any]] = None, **kwargs
+        self, endpoint: str, json_data: Optional[Dict[str, Any]] = None, **kwargs: Any
     ) -> httpx.Response:
         """Make a PUT request"""
         return await self._make_request("PUT", endpoint, json_data=json_data, **kwargs)
 
-    async def delete(self, endpoint: str, **kwargs) -> httpx.Response:
+    async def delete(self, endpoint: str, **kwargs: Any) -> httpx.Response:
         """Make a DELETE request"""
         return await self._make_request("DELETE", endpoint, **kwargs)
 
     async def patch(
-        self, endpoint: str, json_data: Optional[Dict[str, Any]] = None, **kwargs
+        self, endpoint: str, json_data: Optional[Dict[str, Any]] = None, **kwargs: Any
     ) -> httpx.Response:
         """Make a PATCH request"""
         return await self._make_request(

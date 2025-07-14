@@ -33,7 +33,7 @@ from fastapi import Request
 class RequestContextFilter(logging.Filter):
     """Add request context to log records."""
 
-    def filter(self, record):
+    def filter(self, record: logging.LogRecord) -> bool:
         # Add default values if not present
         if not hasattr(record, "request_id"):
             record.request_id = None
@@ -47,7 +47,7 @@ class RequestContextFilter(logging.Filter):
 class JSONFormatter(logging.Formatter):
     """JSON formatter for structured logging."""
 
-    def format(self, record):
+    def format(self, record: logging.LogRecord) -> str:
         log_entry = {
             "timestamp": self.formatTime(record),
             "level": record.levelname,
@@ -167,7 +167,7 @@ def setup_service_logging(
     # Set service name in all log records
     old_factory = logging.getLogRecordFactory()
 
-    def record_factory(*args, **kwargs):
+    def record_factory(*args: Any, **kwargs: Any) -> logging.LogRecord:
         record = old_factory(*args, **kwargs)
         record.service_name = service_name
         return record
@@ -198,7 +198,12 @@ def setup_service_logging(
     )
 
 
-def create_request_logging_middleware():
+from typing import Any, Callable
+
+from fastapi import Request, Response
+
+
+def create_request_logging_middleware() -> Callable:
     """
     Create HTTP request logging middleware for FastAPI.
 
@@ -206,7 +211,7 @@ def create_request_logging_middleware():
         Async middleware function for FastAPI
     """
 
-    async def log_requests(request: Request, call_next):
+    async def log_requests(request: Request, call_next: Callable) -> Response:
         """
         Middleware to log all incoming requests and responses with context.
         """
@@ -313,7 +318,7 @@ def get_logger(name: str) -> structlog.BoundLogger:
     return structlog.get_logger(name)
 
 
-def log_service_startup(service_name: str, **kwargs) -> None:
+def log_service_startup(service_name: str, **kwargs: Any) -> None:
     """Log service startup with configuration details."""
     logger = get_logger("startup")
     logger.info(f"Starting {service_name}", service=service_name, **kwargs)

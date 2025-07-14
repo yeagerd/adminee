@@ -7,7 +7,7 @@ the User Management Service for easier development and testing workflows.
 
 import logging
 import os
-from typing import Optional
+from typing import Any, Optional
 
 from services.office.core.token_manager import TokenData, TokenManager
 
@@ -67,11 +67,11 @@ class DemoTokenManager(TokenManager):
             scopes=scopes,
         )
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "DemoTokenManager":
         """Async context manager entry - no HTTP client needed for demo."""
         logger.debug("Demo TokenManager initialized")
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Async context manager exit - no cleanup needed for demo."""
         logger.debug("Demo TokenManager closed")

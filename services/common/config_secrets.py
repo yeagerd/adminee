@@ -141,7 +141,7 @@ def _get_secret_from_manager(secret_id: str) -> Optional[str]:
         return None
 
 
-def clear_cache():
+def clear_cache() -> None:
     """Clear the secret cache. Useful for testing."""
     global _secret_cache
     _secret_cache.clear()

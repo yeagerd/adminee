@@ -83,7 +83,10 @@ def get_tracer(name: str) -> trace.Tracer:
     return trace.get_tracer(name)
 
 
-def add_span_attributes(**attributes) -> None:
+from typing import Any
+
+
+def add_span_attributes(**attributes: Any) -> None:
     """
     Add attributes to the current span.
 

@@ -8,13 +8,14 @@ HTTP calls during testing while allowing TestClient to work properly.
 import os
 from unittest.mock import MagicMock, patch
 
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 
 class BaseIntegrationTest:
     """Base class for integration tests with HTTP call detection rakes."""
 
-    def setup_method(self):
+    def setup_method(self, method: object) -> None:
         """Set up test environment with HTTP call detection rakes."""
         # HTTP Call Detection Rakes - These will fail the test if real HTTP calls are made
         # We need to be selective to allow TestClient to work but catch real external calls
@@ -77,14 +78,14 @@ class BaseIntegrationTest:
         self.mock_redis_instance.delete.return_value = 1
         self.mock_redis_instance.exists.return_value = False
 
-    def teardown_method(self):
+    def teardown_method(self, method: object) -> None:
         """Clean up after each test method."""
         # Stop all patches
         for http_patch in self.http_patches:
             http_patch.stop()
         self.redis_patcher.stop()
 
-    def create_test_client(self, app):
+    def create_test_client(self, app: "FastAPI") -> TestClient:
         """Create a FastAPI test client for the given app."""
         return TestClient(app)
 
@@ -92,7 +93,7 @@ class BaseIntegrationTest:
 class BaseOfficeServiceIntegrationTest(BaseIntegrationTest):
     """Base class for Office Service integration tests."""
 
-    def setup_method(self):
+    def setup_method(self, method: object) -> None:
         """Set up Office Service specific test environment."""
         # Use selective HTTP patches that don't interfere with TestClient
         self.http_patches = [
@@ -161,7 +162,7 @@ class BaseOfficeServiceIntegrationTest(BaseIntegrationTest):
 
         self.client = self.create_test_client(app)
 
-    def teardown_method(self):
+    def teardown_method(self, method: object) -> None:
         """Clean up Office Service specific patches."""
         # Stop all patches
         for http_patch in self.http_patches:
@@ -174,7 +175,7 @@ class BaseOfficeServiceIntegrationTest(BaseIntegrationTest):
 class BaseSelectiveHTTPIntegrationTest(BaseIntegrationTest):
     """Base class for integration tests that need to allow TestClient but block external HTTP calls."""
 
-    def setup_method(self):
+    def setup_method(self, method: object) -> None:
         """Set up test environment with selective HTTP call detection."""
         # HTTP Call Detection Rakes - These will fail the test if real HTTP calls are made
         # We need to be selective to allow TestClient to work but catch real external calls
@@ -225,7 +226,7 @@ class BaseSelectiveHTTPIntegrationTest(BaseIntegrationTest):
         self.mock_redis_instance.delete.return_value = 1
         self.mock_redis_instance.exists.return_value = False
 
-    def teardown_method(self):
+    def teardown_method(self, method: object) -> None:
         """Clean up after each test method."""
         # Stop all patches
         for http_patch in self.http_patches:

@@ -819,7 +819,10 @@ def exception_to_response(exc: Exception) -> ErrorResponse:
 
 
 # Optional: FastAPI exception handler registration utility
-def register_briefly_exception_handlers(app):
+from fastapi import FastAPI
+
+
+def register_briefly_exception_handlers(app: FastAPI) -> None:
     """
     Register comprehensive exception handlers for FastAPI applications.
 
@@ -881,7 +884,9 @@ def register_briefly_exception_handlers(app):
     from fastapi.responses import JSONResponse
 
     @app.exception_handler(BrieflyAPIException)
-    async def briefly_api_exception_handler(request: Request, exc: BrieflyAPIException):
+    async def briefly_api_exception_handler(
+        request: Request, exc: BrieflyAPIException
+    ) -> JSONResponse:
         """
         Handle BrieflyAPIException with validated ErrorResponse.
 
@@ -894,7 +899,9 @@ def register_briefly_exception_handlers(app):
         )
 
     @app.exception_handler(HTTPException)
-    async def http_exception_handler(request: Request, exc: HTTPException):
+    async def http_exception_handler(
+        request: Request, exc: HTTPException
+    ) -> JSONResponse:
         """
         Handle HTTPException with validated ErrorResponse.
 
@@ -907,7 +914,9 @@ def register_briefly_exception_handlers(app):
         )
 
     @app.exception_handler(Exception)
-    async def generic_exception_handler(request: Request, exc: Exception):
+    async def generic_exception_handler(
+        request: Request, exc: Exception
+    ) -> JSONResponse:
         """
         Handle generic exceptions with validated ErrorResponse.
 

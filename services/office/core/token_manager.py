@@ -105,13 +105,13 @@ class TokenManager:
 
     async def _set_cache(
         self, cache_key: str, token_data: TokenData, ttl_seconds: int = 900
-    ):
+    ) -> None:
         """Store token in cache with TTL"""
         async with self._cache_lock:
             self._token_cache[cache_key] = CachedToken(token_data, ttl_seconds)
             logger.debug(f"Cached token: {cache_key}")
 
-    async def _cleanup_expired_tokens(self):
+    async def _cleanup_expired_tokens(self) -> None:
         """Remove all expired tokens from cache"""
         async with self._cache_lock:
             expired_keys = [
@@ -229,7 +229,9 @@ class TokenManager:
             )
             return None
 
-    async def invalidate_cache(self, user_id: str, provider: Optional[str] = None):
+    async def invalidate_cache(
+        self, user_id: str, provider: Optional[str] = None
+    ) -> None:
         """
         Invalidate cached tokens for a user.
 
@@ -254,7 +256,7 @@ class TokenManager:
                 f"Invalidated {len(keys_to_remove)} cached tokens for user {user_id}"
             )
 
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self) -> Dict[str, int]:
         """Get cache statistics for monitoring"""
         total_tokens = len(self._token_cache)
         expired_tokens = sum(
