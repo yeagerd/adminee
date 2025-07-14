@@ -547,7 +547,7 @@ class IntegrationService:
         user_id: str,
         provider: IntegrationProvider,
         revoke_tokens: bool = True,
-        delete_data: bool = False,
+        delete_data: bool = True,
     ) -> Dict[str, Any]:
         """
         Disconnect an integration and optionally revoke tokens.
@@ -566,14 +566,15 @@ class IntegrationService:
             ServiceError: If disconnect fails
         """
         try:
-            # Get integration
-            integration = await self._get_user_integration(user_id, provider)
+            # Use a single session for the entire operation
+            async_session = get_async_session()
+            async with async_session() as session:
+                self.logger.info(f"Disconnect called with delete_data={delete_data}")
+                # Get integration in the same session
+                integration = await self._get_user_integration_in_session(user_id, provider, session)
 
-            tokens_revoked = False
-            if revoke_tokens:
-                # Get and revoke tokens
-                async_session = get_async_session()
-                async with async_session() as session:
+                tokens_revoked = False
+                if revoke_tokens:
                     # Get access token
                     access_token_result = await session.execute(
                         select(EncryptedToken).where(
@@ -650,18 +651,27 @@ class IntegrationService:
                     # Check if any tokens were successfully revoked
                     tokens_revoked = access_token_revoked or refresh_token_revoked
 
-                    # If revocation was requested but completely failed, raise an error
+                    # If revocation was requested but completely failed, check if it's because the provider doesn't support it
                     if not tokens_revoked and revocation_errors:
-                        error_message = "; ".join(revocation_errors)
-                        raise ServiceError(
-                            message=f"Token revocation failed: {error_message}. "
-                            "You can retry without token revocation if needed."
-                        )
+                        # Check if the provider doesn't support revocation (like Microsoft)
+                        provider_config = self.oauth_config.get_provider_config(provider)
+                        if provider_config and not provider_config.revoke_url:
+                            # Provider doesn't support revocation - this is expected
+                            self.logger.info(
+                                f"Provider {provider.value} doesn't support token revocation - proceeding with disconnect"
+                            )
+                            tokens_revoked = False  # Keep as False since no tokens were actually revoked
+                        else:
+                            # Provider supports revocation but it failed - raise error
+                            error_message = "; ".join(revocation_errors)
+                            raise ServiceError(
+                                message=f"Token revocation failed: {error_message}. "
+                                "You can retry without token revocation if needed."
+                            )
 
-            # Delete or deactivate integration
-            async_session = get_async_session()
-            async with async_session() as session:
+                # Delete or deactivate integration
                 if delete_data:
+                    self.logger.info(f"Deleting integration {integration.id} for provider {provider.value}")
                     # Delete encrypted tokens first
                     token_result = await session.execute(
                         select(EncryptedToken).where(
@@ -669,12 +679,15 @@ class IntegrationService:
                         )
                     )
                     tokens_to_delete = token_result.scalars().all()
+                    self.logger.info(f"Found {len(tokens_to_delete)} tokens to delete")
                     for token in tokens_to_delete:
                         await session.delete(token)
                     # Delete integration
                     await session.delete(integration)
                     await session.commit()
+                    self.logger.info(f"Successfully deleted integration {integration.id}")
                 else:
+                    self.logger.info(f"Marking integration {integration.id} as inactive")
                     # Just mark as inactive
                     integration.status = IntegrationStatus.INACTIVE
                     integration.updated_at = datetime.now(timezone.utc)
