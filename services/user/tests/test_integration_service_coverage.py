@@ -116,14 +116,16 @@ class TestIntegrationServiceCoverage:
 
         mock_session = AsyncMock()
 
-        # Mock valid access token
-        mock_access_token = MagicMock()
-        mock_access_token.expires_at = None  # Valid token
+        # Mock valid access token with no expiration (valid token)
+        class Token:
+            expires_at = None
+
+        mock_access_token = Token()
         mock_access_result = MagicMock()
         mock_access_result.scalar_one_or_none.return_value = mock_access_token
 
         # Mock valid refresh token
-        mock_refresh_token = MagicMock()
+        mock_refresh_token = Token()
         mock_refresh_result = MagicMock()
         mock_refresh_result.scalar_one_or_none.return_value = mock_refresh_token
 
@@ -193,14 +195,16 @@ class TestIntegrationServiceCoverage:
 
         mock_session = AsyncMock()
 
-        # Mock valid access token
-        mock_access_token = MagicMock()
-        mock_access_token.expires_at = None  # Valid token
+        # Mock valid access token with no expiration (valid token)
+        class Token:
+            expires_at = None
+
+        mock_access_token = Token()
         mock_access_result = MagicMock()
         mock_access_result.scalar_one_or_none.return_value = mock_access_token
 
         # Mock valid refresh token
-        mock_refresh_token = MagicMock()
+        mock_refresh_token = Token()
         mock_refresh_result = MagicMock()
         mock_refresh_result.scalar_one_or_none.return_value = mock_refresh_token
 
