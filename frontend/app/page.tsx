@@ -1,3 +1,4 @@
+//This page is deprecated. Please use the new dashboard for the best experience.
 "use client"
 
 import ChatInterface from "@/components/chat-interface";
@@ -7,6 +8,7 @@ import TaskList from "@/components/task-list";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+    AlertCircle,
     CheckCircle2,
     Clock,
     LogIn,
@@ -86,6 +88,25 @@ export default function Home() {
         <main className="min-h-screen bg-gray-50">
             {/* Header */}
             <Navbar />
+
+            {/* Deprecation Notice */}
+            <div className="bg-amber-50 border-b border-amber-200">
+                <div className="container mx-auto px-4 py-3 w-full max-w-7xl">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-amber-800">
+                            <AlertCircle className="h-4 w-4" />
+                            <span className="text-sm font-medium">
+                                This page is deprecated. Please use the new dashboard for the best experience.
+                            </span>
+                        </div>
+                        <Button asChild variant="outline" size="sm" className="text-amber-700 border-amber-300 hover:bg-amber-100">
+                            <Link href="/dashboard">
+                                Go to New Dashboard
+                            </Link>
+                        </Button>
+                    </div>
+                </div>
+            </div>
 
             {/* Main Content */}
             <div className="container mx-auto px-4 py-6 w-full max-w-7xl">

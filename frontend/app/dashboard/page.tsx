@@ -1,6 +1,7 @@
 'use client';
 
 import { CalendarEventItem } from '@/components/calendar-event-item';
+import ChatInterface from '@/components/chat-interface';
 import AppLayout from '@/components/layout/app-layout';
 import Sidebar, { Tool } from '@/components/layout/sidebar';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -247,8 +248,34 @@ export default function DashboardPage() {
     return (
         <AppLayout
             sidebar={<Sidebar activeTool={activeTool} onToolChange={setActiveTool} />}
-            main={renderToolContent()}
-            draft={<div className="p-4">Simple Draft Pane</div>}
+            main={
+                <div className="h-full flex flex-col">
+                    {/* Tool Content - Top portion */}
+                    <div className="flex-1 overflow-auto">
+                        {renderToolContent()}
+                    </div>
+
+                    {/* Chat Interface - Bottom portion */}
+                    <div className="h-80 border-t bg-card">
+                        <div className="flex items-center justify-between p-4 border-b">
+                            <h2 className="text-lg font-semibold">AI Assistant</h2>
+                        </div>
+                        <div className="flex-1 overflow-hidden">
+                            <ChatInterface />
+                        </div>
+                    </div>
+                </div>
+            }
+            draft={
+                <div className="h-full flex flex-col">
+                    <div className="flex items-center justify-between p-4 border-b">
+                        <h2 className="text-lg font-semibold">Draft</h2>
+                    </div>
+                    <div className="flex-1 p-4 text-muted-foreground">
+                        <p>Draft content will appear here when you create emails, calendar events, or documents.</p>
+                    </div>
+                </div>
+            }
         />
     );
 } 
