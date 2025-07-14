@@ -3,6 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { INTEGRATION_STATUS } from '@/lib/constants';
 import { gatewayClient, Integration } from '@/lib/gateway-client';
 import { Calendar, CheckCircle, Loader2, Mail, Shield } from 'lucide-react';
 import { useSession } from 'next-auth/react';
@@ -76,7 +77,7 @@ const OnboardingPage = () => {
         );
     }
 
-    const activeIntegrations = integrations.filter(i => i.status === 'ACTIVE');
+    const activeIntegrations = integrations.filter(i => i.status === INTEGRATION_STATUS.ACTIVE);
     const hasGoogleIntegration = activeIntegrations.some(i => i.provider === 'google');
     const hasMicrosoftIntegration = activeIntegrations.some(i => i.provider === 'microsoft');
     const hasAnyIntegration = activeIntegrations.length > 0;

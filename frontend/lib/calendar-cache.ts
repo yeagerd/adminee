@@ -29,7 +29,7 @@ class CalendarCache {
         if (!userId || typeof userId !== 'string') {
             throw new Error('Invalid userId for cache key generation');
         }
-        if (!Array.isArray(providers) || providers.length === 0) {
+        if (!Array.isArray(providers)) {
             throw new Error('Invalid providers array for cache key generation');
         }
         if (!dateRange || typeof dateRange !== 'string') {
