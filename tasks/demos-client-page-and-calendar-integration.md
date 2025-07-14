@@ -66,23 +66,87 @@ This task list outlines the implementation of (a) a `/demos` client page that di
 
 ### Phase 3: Integration and Testing
 
-- [ ] 9. Dashboard Integration
-  - [ ] 9.1 Update main dashboard to use real calendar data when integrations are active
-  - [ ] 9.2 Add integration status checks before making calendar API calls
-  - [ ] 9.3 Implement graceful fallback to demo data when no integrations are connected
-  - [ ] 9.4 Add calendar data caching to improve performance
+- [x] 9. Dashboard Integration
+  - [x] 9.1 Update main dashboard to use real calendar data when integrations are active
+  - [x] 9.2 Add integration status checks before making calendar API calls
+  - [x] 9.3 Implement graceful fallback to demo data when no integrations are connected
+  - [x] 9.4 Add calendar data caching to improve performance
 
-- [ ] 10. Error Handling and User Experience
-  - [ ] 10.1 Add comprehensive error handling for calendar API failures
-  - [ ] 10.2 Implement user-friendly error messages for calendar connection issues
-  - [ ] 10.3 Add retry mechanisms for failed calendar data requests
-  - [ ] 10.4 Create loading states and progress indicators for calendar operations
+- [x] 10. Error Handling and User Experience
+  - [x] 10.1 Add comprehensive error handling for calendar API failures
+  - [x] 10.2 Implement user-friendly error messages for calendar connection issues
+  - [x] 10.3 Add retry mechanisms for failed calendar data requests
+  - [x] 10.4 Create loading states and progress indicators for calendar operations
 
-- [ ] 11. Testing and Validation
-  - [ ] 11.1 Create unit tests for demo data components
-  - [ ] 11.2 Add integration tests for calendar API calls via gateway
-  - [ ] 11.3 Test calendar data display and formatting (no transformation needed)
-  - [ ] 11.4 Validate error handling and edge cases
+- [x] 11. Testing and Validation
+  - [x] 11.1 Create unit tests for demo data components
+  - [x] 11.2 Add integration tests for calendar API calls via gateway
+  - [x] 11.3 Test calendar data display and formatting (no transformation needed)
+  - [x] 11.4 Validate error handling and edge casesz
+
+### Phase 3.5: Code Quality Improvements
+
+- [x] 11.5 Fix Frontend Code Quality Issues
+  - [x] 11.5.1 Fix ESLint warnings in schedule-list.tsx React Hook dependencies
+  - [x] 11.5.2 Refactor useMemo dependencies to use proper dependency arrays
+  - [x] 11.5.3 Extract complex expressions from dependency arrays to separate variables
+  - [x] 11.5.4 Add ESLint configuration to prevent future dependency issues
+
+- [ ] 11.6 Implement Frontend Testing Infrastructure
+  - [ ] 11.6.1 Set up Jest and React Testing Library for frontend tests
+  - [ ] 11.6.2 Create test configuration for Next.js components
+  - [ ] 11.6.3 Add unit tests for CalendarCache class functionality
+  - [ ] 11.6.4 Add unit tests for CalendarErrorHandler class
+  - [ ] 11.6.5 Add integration tests for ScheduleList component with mock API
+  - [ ] 11.6.6 Add tests for demo data conversion utilities
+  - [ ] 11.6.7 Add tests for authentication flow and sign-in page
+
+- [x] 11.7 Optimize Calendar Cache Performance
+  - [x] 11.7.1 Add cache size limits to prevent memory leaks
+  - [x] 11.7.2 Implement LRU (Least Recently Used) eviction policy
+  - [x] 11.7.3 Add cache performance monitoring and metrics
+  - [ ] 11.7.4 Implement cache warming for frequently accessed data
+  - [ ] 11.7.5 Add cache hit/miss ratio tracking
+  - [ ] 11.7.6 Implement cache compression for large event lists
+
+- [x] 11.8 Enhance Error Handling and Edge Cases
+  - [x] 11.8.1 Add timezone validation for token expiration timestamps
+  - [ ] 11.8.2 Implement retry logic with exponential backoff for network errors
+  - [ ] 11.8.3 Add circuit breaker pattern for API calls
+  - [ ] 11.8.4 Handle malformed timestamp data gracefully
+  - [x] 11.8.5 Add validation for cache key generation to prevent collisions
+  - [ ] 11.8.6 Implement proper error boundaries for React components
+
+- [ ] 11.9 Security and Authentication Improvements
+  - [ ] 11.9.1 Review and validate JWT token security changes
+  - [ ] 11.9.2 Add audience validation back if security requires it
+  - [ ] 11.9.3 Implement proper token refresh error handling
+  - [ ] 11.9.4 Add security headers and CSRF protection
+  - [ ] 11.9.5 Implement proper session management and cleanup
+  - [ ] 11.9.6 Add rate limiting for API calls
+
+- [ ] 11.10 Database and Session Management
+  - [ ] 11.10.1 Add proper session context managers for database operations
+  - [ ] 11.10.2 Implement connection pooling for database sessions
+  - [ ] 11.10.3 Add session timeout and cleanup mechanisms
+  - [ ] 11.10.4 Implement proper transaction rollback on errors
+  - [ ] 11.10.5 Add database connection health checks
+  - [ ] 11.10.6 Implement proper session isolation for concurrent requests
+
+- [ ] 11.11 Demo Data and Configuration Improvements
+  - [ ] 11.11.1 Make provider configurable in demo data conversion
+  - [ ] 11.11.2 Add demo data validation and schema checking
+  - [ ] 11.11.3 Implement demo data versioning for backward compatibility
+  - [ ] 11.11.4 Add demo data customization options
+  - [ ] 11.11.5 Create demo data migration utilities
+
+- [ ] 11.12 Monitoring and Observability
+  - [ ] 11.12.1 Add integration health metrics and monitoring
+  - [ ] 11.12.2 Implement cache performance analytics
+  - [ ] 11.12.3 Add error tracking and alerting for calendar API failures
+  - [ ] 11.12.4 Create dashboard for integration status monitoring
+  - [ ] 11.12.5 Add user experience metrics tracking
+  - [ ] 11.12.6 Implement logging for debugging and troubleshooting
 
 ### Phase 4: Advanced Features
 
@@ -103,6 +167,78 @@ This task list outlines the implementation of (a) a `/demos` client page that di
   - [ ] 14.2 Add intelligent caching strategies for calendar data
   - [ ] 14.3 Optimize calendar API calls to reduce bandwidth usage
   - [ ] 14.4 Implement lazy loading for calendar event details
+
+### Phase 4.5: JWT Security Improvements
+
+- [ ] 15. Implement JWT Audience Validation Across All Services
+  - [ ] 15.1 Backend User Service JWT Configuration **[HIGH PRIORITY]**
+    - [ ] 15.1.1 Add environment variable for JWT audience configuration
+    - [ ] 15.1.2 Update settings.py to include NEXTAUTH_AUDIENCE with default value
+    - [ ] 15.1.3 Modify nextauth.py to enforce audience validation when configured
+    - [ ] 15.1.4 Add audience validation tests in test_auth.py
+    - [ ] 15.1.5 Update JWT verification logic to handle multiple audience values
+    - [ ] 15.1.6 Add configuration validation for audience settings
+
+  - [ ] 15.2 Frontend NextAuth Configuration **[HIGH PRIORITY]**
+    - [ ] 15.2.1 Update frontend/lib/auth.ts to include audience in JWT generation
+    - [ ] 15.2.2 Add environment variable for frontend JWT audience
+    - [ ] 15.2.3 Configure NextAuth.js to include audience claim in tokens
+    - [ ] 15.2.4 Update JWT signing configuration in auth options
+    - [ ] 15.2.5 Add audience validation in frontend token verification
+    - [ ] 15.2.6 Test JWT generation with audience claims
+
+  - [ ] 15.3 Chat Service JWT Integration **[MEDIUM PRIORITY]**
+    - [ ] 15.3.1 Update chat service to validate JWT audience
+    - [ ] 15.3.2 Add JWT audience configuration to chat service settings
+    - [ ] 15.3.3 Modify chat service authentication middleware
+    - [ ] 15.3.4 Add audience validation tests for chat service
+    - [ ] 15.3.5 Update chat service to handle multiple audience values
+
+  - [ ] 15.4 Office Service JWT Integration **[MEDIUM PRIORITY]**
+    - [ ] 15.4.1 Update office service to validate JWT audience
+    - [ ] 15.4.2 Add JWT audience configuration to office service settings
+    - [ ] 15.4.3 Modify office service authentication middleware
+    - [ ] 15.4.4 Add audience validation tests for office service
+    - [ ] 15.4.5 Update office service to handle multiple audience values
+
+  - [ ] 15.5 Demo Environment JWT Configuration **[MEDIUM PRIORITY]**
+    - [ ] 15.5.1 Update services/demos/nextauth_demo_utils.py to use proper audience
+    - [ ] 15.5.2 Modify create_nextauth_jwt_for_demo function to include audience
+    - [ ] 15.5.3 Update demo JWT generation to match production configuration
+    - [ ] 15.5.4 Add audience validation in demo authentication flows
+    - [ ] 15.5.5 Update demo tests to include audience validation
+    - [ ] 15.5.6 Configure demo environment variables for JWT audience
+
+  - [ ] 15.6 Gateway JWT Validation **[LOW PRIORITY]**
+    - [ ] 15.6.1 Update gateway to validate JWT audience before forwarding
+    - [ ] 15.6.2 Add JWT audience configuration to gateway settings
+    - [ ] 15.6.3 Modify gateway authentication middleware
+    - [ ] 15.6.4 Add audience validation tests for gateway
+    - [ ] 15.6.5 Update gateway to handle multiple audience values
+
+  - [ ] 15.7 Environment Configuration Management **[MEDIUM PRIORITY]**
+    - [ ] 15.7.1 Create centralized JWT configuration documentation
+    - [ ] 15.7.2 Add environment variable templates for all services
+    - [ ] 15.7.3 Create configuration validation scripts
+    - [ ] 15.7.4 Add JWT audience configuration to deployment scripts
+    - [ ] 15.7.5 Update Docker configurations with JWT environment variables
+    - [ ] 15.7.6 Create configuration migration guide for existing deployments
+
+  - [ ] 15.8 Security Testing and Validation **[HIGH PRIORITY]**
+    - [ ] 15.8.1 Add comprehensive JWT audience validation tests
+    - [ ] 15.8.2 Test JWT token rejection with invalid audience
+    - [ ] 15.8.3 Test JWT token acceptance with valid audience
+    - [ ] 15.8.4 Add integration tests for cross-service JWT validation
+    - [ ] 15.8.5 Test JWT audience validation in demo environment
+    - [ ] 15.8.6 Add security audit tests for JWT configuration
+
+  - [ ] 15.9 Documentation and Migration **[LOW PRIORITY]**
+    - [ ] 15.9.1 Update API documentation with JWT audience requirements
+    - [ ] 15.9.2 Create JWT configuration migration guide
+    - [ ] 15.9.3 Add troubleshooting guide for JWT audience issues
+    - [ ] 15.9.4 Update deployment documentation with JWT configuration
+    - [ ] 15.9.5 Create security best practices documentation
+    - [ ] 15.9.6 Add monitoring and alerting for JWT validation failures
 
 ## Implementation Notes
 
