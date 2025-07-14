@@ -68,7 +68,7 @@ export default function IntegrationsPage() {
 
     const shouldRefetch = useCallback(() => {
         return Date.now() - lastFetchTime > CACHE_DURATION;
-    }, [lastFetchTime]);
+    }, [lastFetchTime, CACHE_DURATION]);
 
     const determinePreferredProvider = useCallback((integrations: Integration[]) => {
         // If user has active integrations, use the first one as preferred
@@ -116,7 +116,7 @@ export default function IntegrationsPage() {
             setLoading(false);
             setIsRefreshing(false);
         }
-    }, [integrations.length, shouldRefetch, isRefreshing]);
+    }, [integrations.length, shouldRefetch, determinePreferredProvider]);
 
     useEffect(() => {
         if (session) {
