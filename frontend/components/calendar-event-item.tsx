@@ -33,12 +33,19 @@ interface EventItemProps {
 
 const attendanceIconSize = "h-4 w-4"
 
+function parseUtcDate(dateString: string): Date {
+    if (dateString.match(/(Z|[+-][0-9]{2}:[0-9]{2})$/)) {
+        return new Date(dateString);
+    }
+    return new Date(dateString + 'Z');
+}
+
 export function CalendarEventItem({ event }: EventItemProps) {
     const [isExpanded, setIsExpanded] = useState(false)
 
-    // Parse dates from ISO strings
-    const startTime = new Date(event.start_time)
-    const endTime = new Date(event.end_time)
+    // Parse dates from ISO strings, always as UTC
+    const startTime = parseUtcDate(event.start_time)
+    const endTime = parseUtcDate(event.end_time)
 
     // Date/time logic
     const now = new Date()
@@ -146,9 +153,9 @@ export function CalendarEventItem({ event }: EventItemProps) {
                                     <Clock className="h-3 w-3" />
                                     <span className="truncate">
                                         {event.all_day ? (
-                                            `${startTime.toLocaleDateString()} (All Day)`
+                                            `${startTime.toLocaleDateString(undefined, { timeZoneName: 'short' })} (All Day)`
                                         ) : (
-                                            `${startTime.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} - ${endTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                                            `${startTime.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })} - ${endTime.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })}`
                                         )}
                                     </span>
                                 </div>

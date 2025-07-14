@@ -46,6 +46,13 @@ const INTEGRATION_CONFIGS: IntegrationConfig[] = [
     }
 ];
 
+function parseUtcDate(dateString: string): Date {
+    if (dateString.match(/(Z|[+-][0-9]{2}:[0-9]{2})$/)) {
+        return new Date(dateString);
+    }
+    return new Date(dateString + 'Z');
+}
+
 export default function IntegrationsPage() {
     const { data: session, status } = useSession();
     const [integrations, setIntegrations] = useState<Integration[]>([]);
@@ -309,7 +316,7 @@ export default function IntegrationsPage() {
                                                 {integration.last_sync_at && (
                                                     <div className="text-xs text-gray-600">
                                                         <span className="font-medium">Last sync:</span>{' '}
-                                                        {new Date(integration.last_sync_at).toLocaleString()}
+                                                        {parseUtcDate(integration.last_sync_at).toLocaleString(undefined, { timeZoneName: 'short' })}
                                                     </div>
                                                 )}
                                                 {integration.last_error && (
