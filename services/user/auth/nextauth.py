@@ -67,16 +67,17 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
                 audience=audience if audience else None,
             )
         elif not verify_signature:
-            # Decode without signature verification
+            # Decode without signature verification but still validate audience if configured
             decoded_token = jwt.decode(
                 token,
                 options={
                     "verify_signature": False,
                     "verify_exp": True,
                     "verify_iat": True,
-                    "verify_aud": False,
+                    "verify_aud": bool(audience),  # Validate audience if configured
                 },
                 algorithms=["HS256"],
+                audience=audience if audience else None,  # Pass audience if configured
             )
         else:
             # Signature verification is required but no secret is configured
