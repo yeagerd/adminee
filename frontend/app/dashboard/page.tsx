@@ -98,11 +98,12 @@ export default function DashboardPage() {
     }
 
     const today = new Date();
-    const formattedDate = today.toLocaleDateString("en-US", {
+    const formattedDate = today.toLocaleDateString(undefined, {
         weekday: "long",
         month: "long",
         day: "numeric",
         year: "numeric",
+        timeZoneName: "short",
     });
 
     const activeIntegrations = integrations.filter(i => i.status === INTEGRATION_STATUS.ACTIVE);

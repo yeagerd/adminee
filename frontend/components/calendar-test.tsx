@@ -69,7 +69,7 @@ export function CalendarTest() {
                                 <div key={event.id} className="p-2 bg-gray-50 rounded text-sm">
                                     <div className="font-medium">{event.title}</div>
                                     <div className="text-gray-600">
-                                        {new Date(event.start_time).toLocaleString()} - {event.provider}
+                                        {new Date(event.start_time).toLocaleString(undefined, { timeZoneName: 'short' })} - {event.provider}
                                     </div>
                                 </div>
                             ))}
