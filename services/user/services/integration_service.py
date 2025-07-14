@@ -1302,7 +1302,7 @@ class IntegrationService:
     ) -> IntegrationStatus:
         """
         Internal method that performs the actual validation and correction logic.
-        
+
         This method requires a session to be provided and handles all the validation logic
         without recursion.
         """
