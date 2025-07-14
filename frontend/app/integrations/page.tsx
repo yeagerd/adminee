@@ -4,11 +4,12 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { INTEGRATION_STATUS } from '@/lib/constants';
 import { gatewayClient, Integration, OAuthStartResponse } from '@/lib/gateway-client';
 import { AlertCircle, Calendar, CheckCircle, Mail, RefreshCw, Shield, User, XCircle } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 interface IntegrationConfig {
     provider: string;
@@ -51,30 +52,62 @@ export default function IntegrationsPage() {
     const [loading, setLoading] = useState(true);
     const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [lastFetchTime, setLastFetchTime] = useState<number>(0);
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
-    useEffect(() => {
-        if (session) {
-            loadIntegrations();
+    // Cache duration: 5 minutes
+    const CACHE_DURATION = 5 * 60 * 1000;
+
+    const shouldRefetch = useCallback(() => {
+        return Date.now() - lastFetchTime > CACHE_DURATION;
+    }, [lastFetchTime]);
+
+    const loadIntegrations = useCallback(async (forceRefresh = false) => {
+        // Don't refetch if we have recent data and not forcing refresh
+        if (!forceRefresh && integrations.length > 0 && !shouldRefetch()) {
+            return;
         }
-    }, [session]);
 
-    const loadIntegrations = async () => {
         try {
             setError(null);
+            if (!isRefreshing) {
+                setLoading(true);
+            }
             console.log('Loading integrations...');
             const data = await gatewayClient.getIntegrations();
             console.log('Integrations data:', data);
             // The backend returns { integrations: [...], total: ..., active_count: ..., error_count: ... }
             // Extract just the integrations array
             setIntegrations(data.integrations || []);
+            setLastFetchTime(Date.now());
             console.log('Integrations state updated:', data.integrations || []);
         } catch (error: unknown) {
             console.error('Failed to load integrations:', error);
             setError('Failed to load integrations. Please try again.');
         } finally {
             setLoading(false);
+            setIsRefreshing(false);
         }
-    };
+    }, [integrations.length, shouldRefetch, isRefreshing]);
+
+    useEffect(() => {
+        if (session) {
+            loadIntegrations();
+        }
+    }, [session, loadIntegrations]);
+
+    // Handle window focus to refresh data if needed
+    useEffect(() => {
+        const handleWindowFocus = () => {
+            if (session && shouldRefetch()) {
+                console.log('Window focused, refreshing integrations...');
+                loadIntegrations(true);
+            }
+        };
+
+        window.addEventListener('focus', handleWindowFocus);
+        return () => window.removeEventListener('focus', handleWindowFocus);
+    }, [session, shouldRefetch, loadIntegrations]);
 
     const handleConnect = async (config: IntegrationConfig) => {
         try {
@@ -110,7 +143,7 @@ export default function IntegrationsPage() {
             }
 
             console.log('Reloading integrations...');
-            await loadIntegrations(); // Reload to show updated status
+            await loadIntegrations(true); // Force refresh
             console.log('Integrations reloaded');
         } catch (error: unknown) {
             console.error('Failed to disconnect integration:', error);
@@ -121,17 +154,20 @@ export default function IntegrationsPage() {
     const handleRefresh = async (provider: string) => {
         try {
             setError(null);
+            setIsRefreshing(true);
             console.log(`Refreshing tokens for ${provider}...`);
             const refreshResult = await gatewayClient.refreshIntegrationTokens(provider);
             console.log('Refresh result:', refreshResult);
             console.log('Reloading integrations...');
             // Add a small delay to ensure the database transaction is committed
             await new Promise(resolve => setTimeout(resolve, 500));
-            await loadIntegrations(); // Reload to show updated status
+            await loadIntegrations(true); // Force refresh
             console.log('Integrations reloaded');
         } catch (error: unknown) {
             console.error('Failed to refresh tokens:', error);
             setError(`Failed to refresh ${provider} tokens. Please try again.`);
+        } finally {
+            setIsRefreshing(false);
         }
     };
 
@@ -141,12 +177,14 @@ export default function IntegrationsPage() {
 
     const getStatusIcon = (status?: string) => {
         switch (status) {
-            case 'ACTIVE':
+            case INTEGRATION_STATUS.ACTIVE:
                 return <CheckCircle className="h-4 w-4 text-green-600" />;
-            case 'ERROR':
+            case INTEGRATION_STATUS.ERROR:
                 return <XCircle className="h-4 w-4 text-red-600" />;
-            case 'PENDING':
+            case INTEGRATION_STATUS.PENDING:
                 return <RefreshCw className="h-4 w-4 text-yellow-600" />;
+            case INTEGRATION_STATUS.INACTIVE:
+                return <AlertCircle className="h-4 w-4 text-gray-400" />;
             default:
                 return <AlertCircle className="h-4 w-4 text-gray-400" />;
         }
@@ -154,12 +192,14 @@ export default function IntegrationsPage() {
 
     const getStatusColor = (status?: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
         switch (status) {
-            case 'ACTIVE':
+            case INTEGRATION_STATUS.ACTIVE:
                 return 'default';
-            case 'ERROR':
+            case INTEGRATION_STATUS.ERROR:
                 return 'destructive';
-            case 'PENDING':
+            case INTEGRATION_STATUS.PENDING:
                 return 'secondary';
+            case INTEGRATION_STATUS.INACTIVE:
+                return 'outline';
             default:
                 return 'outline';
         }
@@ -215,7 +255,7 @@ export default function IntegrationsPage() {
                     <div className="grid gap-6 md:grid-cols-2">
                         {INTEGRATION_CONFIGS.map((config) => {
                             const integration = getIntegrationStatus(config.provider);
-                            const isConnected = !!integration;
+                            const isConnected = integration?.status === INTEGRATION_STATUS.ACTIVE;
                             const isConnecting = connectingProvider === config.provider;
 
                             // Debug logging
@@ -239,7 +279,8 @@ export default function IntegrationsPage() {
                                             <div className="flex items-center gap-2">
                                                 {getStatusIcon(integration?.status)}
                                                 <Badge variant={getStatusColor(integration?.status)}>
-                                                    {integration?.status || 'Not Connected'}
+                                                    {integration?.status === INTEGRATION_STATUS.INACTIVE ? 'Disconnected' :
+                                                        integration?.status || 'Not Connected'}
                                                 </Badge>
                                             </div>
                                         </div>
