@@ -118,12 +118,12 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
-async def create_all_tables():
+async def create_all_tables() -> None:
     """Create all database tables."""
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
 
 
-async def close_db():
+async def close_db() -> None:
     """Close database connections."""
     await engine.dispose()

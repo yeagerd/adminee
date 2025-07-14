@@ -62,7 +62,7 @@ async def get_files(
         True, description="Whether to include folders in results"
     ),
     service_name: str = Depends(ServicePermissionRequired(["read_files"])),
-):
+) -> ApiResponse:
     """
     Get unified files from multiple providers.
 
@@ -131,7 +131,7 @@ async def get_files(
         providers_used: List[str] = []
         provider_errors = {}
 
-        async def fetch_from_provider(provider: str):
+        async def fetch_from_provider(provider: str) -> None:
             try:
                 logger.info(f"[{request_id}] Fetching files from {provider}")
 
@@ -331,7 +331,7 @@ async def search_files(
         None, description="Filter by file types/mime types"
     ),
     service_name: str = Depends(ServicePermissionRequired(["read_files"])),
-):
+) -> ApiResponse:
     """
     Search files across multiple providers.
 
@@ -393,7 +393,7 @@ async def search_files(
         providers_used = []
         provider_errors = {}
 
-        async def search_provider(provider: str):
+        async def search_provider(provider: str) -> None:
             try:
                 logger.info(f"[{request_id}] Searching files in {provider}")
 
@@ -545,7 +545,7 @@ async def get_file(
         False, description="Whether to include download URL"
     ),
     service_name: str = Depends(ServicePermissionRequired(["read_files"])),
-):
+) -> ApiResponse:
     """
     Get a specific file by ID.
 

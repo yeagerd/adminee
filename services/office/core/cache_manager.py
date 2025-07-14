@@ -222,7 +222,7 @@ class CacheManager:
             logger.error(f"Redis health check failed: {e}")
             return False
 
-    async def close(self):
+    async def close(self) -> None:
         """Close Redis connection."""
         if self._redis:
             await self._redis.close()

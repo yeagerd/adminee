@@ -62,7 +62,7 @@ async def get_email_messages(
     page_token: Optional[str] = Query(
         None, description="Pagination token for next page"
     ),
-):
+) -> EmailMessageList:
     """
     Get unified email messages from multiple providers.
 
@@ -225,7 +225,7 @@ async def get_email_message(
     include_body: bool = Query(
         True, description="Whether to include message body content"
     ),
-):
+) -> EmailMessageList:
     """
     Get a specific email message by ID.
 
@@ -316,7 +316,7 @@ async def get_email_message(
 async def send_email(
     email_data: SendEmailRequest,
     user_id: str = Query(..., description="ID of the user sending the email"),
-):
+) -> SendEmailResponse:
     """
     Send an email through a specific provider.
 

@@ -124,9 +124,9 @@ class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
 class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
     """Test unified email API endpoints."""
 
-    def setup_method(self):
+    def setup_method(self, method: object):
         """Set up test environment before each test method."""
-        super().setup_method()
+        super().setup_method(method)
         self.test_user_id = "test-user@example.com"
 
     def _get_integration_test_setup(self):
@@ -353,9 +353,9 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
 class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
     """Test calendar API endpoints."""
 
-    def setup_method(self):
+    def setup_method(self, method: object):
         """Set up test environment before each test method."""
-        super().setup_method()
+        super().setup_method(method)
         self.test_user_id = "test-user@example.com"
 
     def _get_integration_test_setup(self):
@@ -490,9 +490,9 @@ class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
 class TestFilesEndpoints(BaseOfficeServiceIntegrationTest):
     """Test files API endpoints."""
 
-    def setup_method(self):
+    def setup_method(self, method: object):
         """Set up test environment before each test method."""
-        super().setup_method()
+        super().setup_method(method)
         self.test_user_id = "test-user@example.com"
 
     def _get_integration_test_setup(self):
@@ -605,9 +605,9 @@ class TestFilesEndpoints(BaseOfficeServiceIntegrationTest):
 class TestErrorScenarios(BaseOfficeServiceIntegrationTest):
     """Test error handling scenarios."""
 
-    def setup_method(self):
+    def setup_method(self, method: object):
         """Set up test environment before each test method."""
-        super().setup_method()
+        super().setup_method(method)
         self.test_user_id = "test-user@example.com"
 
     def test_provider_api_error_handling(self):
@@ -648,9 +648,9 @@ class TestErrorScenarios(BaseOfficeServiceIntegrationTest):
 class TestCaching(BaseOfficeServiceIntegrationTest):
     """Test caching behavior."""
 
-    def setup_method(self):
+    def setup_method(self, method: object):
         """Set up test environment before each test method."""
-        super().setup_method()
+        super().setup_method(method)
         self.test_user_id = "test-user@example.com"
 
     def _get_integration_test_setup(self):

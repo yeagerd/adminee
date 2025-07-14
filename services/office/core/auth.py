@@ -298,7 +298,7 @@ async def optional_service_auth(request: Request) -> Optional[str]:
 class ServiceAPIKeyAuth:
     """Legacy service API key authentication handler for backward compatibility."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         logger.warning(
             "ServiceAPIKeyAuth is deprecated. Use the new functions directly."
         )
