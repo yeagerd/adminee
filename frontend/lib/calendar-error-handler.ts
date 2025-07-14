@@ -26,11 +26,11 @@ export class CalendarErrorHandler {
         }
 
         // Authentication errors
-        if (errorMessage.includes('401') || errorMessage.includes('unauthorized') || errorMessage.includes('token')) {
+        if (errorMessage.includes('401') || errorMessage.includes('unauthorized') || errorMessage.includes('token') || errorMessage.includes('Missing refresh token') || errorMessage.includes('REAUTHENTICATION_REQUIRED')) {
             return {
                 type: 'auth',
                 message: errorMessage,
-                userFriendlyMessage: 'Your calendar connection has expired. Please reconnect your account.',
+                userFriendlyMessage: 'Your calendar connection has expired. Please reconnect your account in the Integrations page.',
                 retryable: false,
                 provider,
                 statusCode
