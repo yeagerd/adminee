@@ -243,11 +243,14 @@ class APIClientFactory:
         try:
             # Import here to avoid circular imports
             import httpx
+
             from services.office.core.settings import get_settings
 
             settings = get_settings()
             if not settings.USER_SERVICE_URL:
-                logger.warning("USER_SERVICE_URL not configured, cannot get preferred provider")
+                logger.warning(
+                    "USER_SERVICE_URL not configured, cannot get preferred provider"
+                )
                 return None
 
             # Get user profile from user service
@@ -256,7 +259,7 @@ class APIClientFactory:
                     f"{settings.USER_SERVICE_URL}/users/{user_id}",
                     headers={"X-API-Key": settings.API_FRONTEND_USER_KEY},
                 )
-                
+
                 if response.status_code == 200:
                     user_data = response.json()
                     preferred_provider = user_data.get("preferred_provider")
@@ -264,13 +267,17 @@ class APIClientFactory:
                         try:
                             return Provider(preferred_provider.lower())
                         except ValueError:
-                            logger.warning(f"Invalid preferred provider: {preferred_provider}")
+                            logger.warning(
+                                f"Invalid preferred provider: {preferred_provider}"
+                            )
                             return None
                     else:
                         logger.info(f"No preferred provider set for user {user_id}")
                         return None
                 else:
-                    logger.warning(f"Failed to get user profile: {response.status_code}")
+                    logger.warning(
+                        f"Failed to get user profile: {response.status_code}"
+                    )
                     return None
 
         except Exception as e:

@@ -89,7 +89,9 @@ class UserCreate(UserBase):
         default="nextauth", max_length=50, description="Authentication provider name"
     )
     preferred_provider: Optional[str] = Field(
-        None, max_length=50, description="Preferred integration provider (google or microsoft)"
+        None,
+        max_length=50,
+        description="Preferred integration provider (google or microsoft)",
     )
 
     @field_validator("external_auth_id")

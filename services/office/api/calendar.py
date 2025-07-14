@@ -104,7 +104,9 @@ async def get_calendar_events(
     try:
         # If no providers specified, get user's preferred provider
         if not providers:
-            preferred_provider = await api_client_factory.get_user_preferred_provider(user_id)
+            preferred_provider = await api_client_factory.get_user_preferred_provider(
+                user_id
+            )
             if preferred_provider:
                 providers = [preferred_provider.value]
             else:
