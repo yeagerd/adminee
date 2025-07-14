@@ -103,6 +103,7 @@ export const authOptions: NextAuthOptions = {
                     const userData = {
                         external_auth_id,
                         auth_provider: provider,
+                        preferred_provider: provider === 'azure-ad' ? 'microsoft' : provider,
                         email,
                         first_name: user.name?.split(' ')[0] || '',
                         last_name: user.name?.split(' ').slice(1).join(' ') || '',
@@ -152,7 +153,8 @@ export const authOptions: NextAuthOptions = {
         async jwt({ token, account, user }) {
             // Store provider information and internal user ID in JWT
             if (account) {
-                token.provider = account.provider === 'azure-ad' ? 'microsoft' : account.provider;
+                const provider = account.provider === 'azure-ad' ? 'microsoft' : account.provider;
+                token.provider = provider;
                 token.providerUserId = account.providerAccountId;
             }
             if (user) {

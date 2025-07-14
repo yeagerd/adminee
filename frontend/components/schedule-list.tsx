@@ -25,7 +25,7 @@ interface ScheduleListProps {
 
 export default function ScheduleList({
     dateRange = 'week',
-    providers = ['google', 'microsoft'],
+    providers,
     limit = 50,
     fallbackToDemo = true,
     showDemoIndicator = false
@@ -39,7 +39,16 @@ export default function ScheduleList({
     const [cacheHit, setCacheHit] = useState(false)
 
     // Memoize the providers array to prevent unnecessary re-renders
-    const memoizedProviders = useMemo(() => providers, [providers])
+    const memoizedProviders = useMemo(() => {
+        // If no providers specified, use session provider or fallback to both
+        if (!providers || providers.length === 0) {
+            if (session?.provider) {
+                return [session.provider]
+            }
+            return ['google', 'microsoft'] // Fallback
+        }
+        return providers
+    }, [providers, session?.provider])
 
     // Memoize the fallbackToDemo value to prevent unnecessary re-renders
     const memoizedFallbackToDemo = useMemo(() => fallbackToDemo, [fallbackToDemo])
