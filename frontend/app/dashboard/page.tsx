@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { gatewayClient, Integration } from '@/lib/gateway-client';
 import {
+    AlertCircle,
     Calendar,
     CheckCircle,
     Clock,
@@ -80,6 +81,34 @@ export default function DashboardPage() {
     const hasGoogleIntegration = activeIntegrations.some(i => i.provider === 'google');
     const hasMicrosoftIntegration = activeIntegrations.some(i => i.provider === 'microsoft');
 
+    // Check for integrations with token issues
+    // Only show warnings for missing access tokens or expired tokens
+    // Missing refresh tokens are acceptable for some providers (like Microsoft)
+    const integrationsWithTokenIssues = integrations.filter(i => {
+        if (i.status !== 'active') return false;
+
+        // Missing access token is always an issue
+        if (!i.has_access_token) return true;
+
+        // Check if access token is expired
+        if (i.token_expires_at) {
+            const expiresAt = new Date(i.token_expires_at);
+            const now = new Date();
+            if (expiresAt <= now) return true;
+        }
+
+        // Missing refresh token is only an issue if the access token is expired or will expire soon
+        if (!i.has_refresh_token && i.token_expires_at) {
+            const expiresAt = new Date(i.token_expires_at);
+            const now = new Date();
+            const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour
+            if (expiresAt <= oneHourFromNow) return true;
+        }
+
+        return false;
+    });
+    const hasTokenIssues = integrationsWithTokenIssues.length > 0;
+
     return (
         <div className="min-h-screen bg-gray-50">
             <Navbar />
@@ -128,6 +157,49 @@ export default function DashboardPage() {
                     </Card>
                 )}
 
+                {/* Integration Token Issues Warning */}
+                {hasTokenIssues && (
+                    <Card className="mb-6 border-orange-200 bg-orange-50">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <AlertCircle className="h-5 w-5 text-orange-600" />
+                                Integration Issues Detected
+                            </CardTitle>
+                            <CardDescription>
+                                Some of your integrations have token issues and may not work properly
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-2">
+                                {integrationsWithTokenIssues.map((integration) => (
+                                    <div key={integration.id} className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-medium capitalize">{integration.provider}</span>
+                                            <span className="text-sm text-orange-600">
+                                                {!integration.has_access_token && "Missing access token"}
+                                                {integration.has_access_token && !integration.has_refresh_token && integration.token_expires_at && (() => {
+                                                    const expiresAt = new Date(integration.token_expires_at);
+                                                    const now = new Date();
+                                                    const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
+                                                    if (expiresAt <= now) {
+                                                        return "Access token expired";
+                                                    } else if (expiresAt <= oneHourFromNow) {
+                                                        return "Access token expires soon";
+                                                    }
+                                                    return "Missing refresh token";
+                                                })()}
+                                            </span>
+                                        </div>
+                                        <Button variant="outline" size="sm" asChild>
+                                            <Link href="/integrations">Fix Integration</Link>
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
                 {/* Main Dashboard Content */}
                 <div className="flex flex-col gap-6 w-full lg:flex-row">
                     {/* Schedule Section */}
@@ -145,29 +217,16 @@ export default function DashboardPage() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            {hasGoogleIntegration || hasMicrosoftIntegration ? (
-                                <ScheduleList
-                                    dateRange="today"
-                                    providers={[
-                                        ...(hasGoogleIntegration ? ['google'] : []),
-                                        ...(hasMicrosoftIntegration ? ['microsoft'] : [])
-                                    ]}
-                                    limit={10}
-                                />
-                            ) : (
-                                <div className="text-center py-8">
-                                    <Calendar className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                                    <h3 className="text-lg font-medium text-gray-900 mb-2">
-                                        Connect your calendar
-                                    </h3>
-                                    <p className="text-gray-600 mb-4">
-                                        Connect Google or Microsoft calendar to see your schedule
-                                    </p>
-                                    <Button asChild>
-                                        <Link href="/integrations">Connect Calendar</Link>
-                                    </Button>
-                                </div>
-                            )}
+                            <ScheduleList
+                                dateRange="today"
+                                providers={[
+                                    ...(hasGoogleIntegration ? ['google'] : []),
+                                    ...(hasMicrosoftIntegration ? ['microsoft'] : [])
+                                ]}
+                                limit={10}
+                                fallbackToDemo={true}
+                                showDemoIndicator={true}
+                            />
                         </CardContent>
                     </Card>
 
