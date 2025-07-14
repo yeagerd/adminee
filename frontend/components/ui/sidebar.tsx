@@ -133,11 +133,7 @@ const SidebarProvider = React.forwardRef<
             <SidebarContext.Provider value={contextValue}>
                 <TooltipProvider delayDuration={0}>
                     <div
-                        style={{
-                            "--sidebar-width": SIDEBAR_WIDTH,
-                            "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
-                            ...style,
-                        } as React.CSSProperties}
+                        style={{ ...style }}
                         className={cn(
                             "group/sidebar-wrapper flex",
                             className
@@ -179,7 +175,7 @@ const Sidebar = React.forwardRef<
             return (
                 <div
                     className={cn(
-                        "flex h-full w-[--sidebar-width] flex-col bg-sidebar text-sidebar-foreground",
+                        "flex h-full w-auto min-w-[3rem] max-w-[20rem] flex-col bg-sidebar text-sidebar-foreground",
                         className
                     )}
                     ref={ref}
@@ -222,7 +218,7 @@ const Sidebar = React.forwardRef<
                 <div
                     className={cn(
                         // REMOVED: z-10
-                        "duration-200 relative hidden h-full w-[--sidebar-width] transition-[left,right,width] ease-linear md:flex",
+                        "duration-200 relative hidden h-full w-auto min-w-[3rem] max-w-[20rem] transition-[left,right,width] ease-linear md:flex",
                         side === "left"
                             ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
                             : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
@@ -409,7 +405,7 @@ const SidebarGroup = React.forwardRef<
         <div
             ref={ref}
             data-sidebar="group"
-            className={cn("relative flex w-full min-w-0 flex-col p-2", className)}
+            className={cn("relative flex w-full min-w-0 flex-col pl-2 pr-2", className)}
             {...props}
         />
     )
