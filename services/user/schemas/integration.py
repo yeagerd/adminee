@@ -317,7 +317,7 @@ class IntegrationDisconnectRequest(BaseModel):
         default=True, description="Whether to revoke tokens with provider"
     )
     delete_data: bool = Field(
-        default=True, description="Whether to delete associated user data"
+        default=False, description="Whether to delete associated user data"
     )
 
 
