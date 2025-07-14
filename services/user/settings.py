@@ -111,7 +111,7 @@ class Settings(BaseSettings):
         default="nextauth", description="NextAuth JWT issuer claim"
     )
     nextauth_audience: Optional[str] = Field(
-        default=None, description="NextAuth JWT audience claim"
+        default="briefly-backend", description="NextAuth JWT audience claim"
     )
     jwt_verify_signature: bool = Field(
         default=True, description="Whether to verify JWT signatures"
