@@ -1,3 +1,4 @@
+import Navbar from "@/components/navbar";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { ReactNode } from "react";
@@ -10,23 +11,19 @@ interface AppLayoutProps {
 
 export function AppLayout({ sidebar, main, draft }: AppLayoutProps) {
     return (
-        <SidebarProvider>
-            <div className="flex h-screen w-full bg-background">
-                {/* Sidebar (left) */}
-                <div className="hidden md:flex h-full border-r bg-sidebar min-w-[64px] max-w-xs w-56">
-                    {sidebar || <div className="flex-1 flex items-center justify-center text-muted-foreground">Sidebar</div>}
-                </div>
-                {/* Main + Draft (resizable) */}
-                <ResizablePanelGroup className="flex-1 flex" direction="horizontal">
-                    {/* Main Pane */}
+        <div className="flex flex-col h-screen w-full bg-background">
+            <Navbar />
+            <div className="flex flex-1 min-h-0 w-full">
+                <SidebarProvider>
+                    {sidebar || <div className="w-56 min-w-[64px] max-w-xs h-full border-r bg-sidebar flex items-center justify-center text-muted-foreground">Sidebar</div>}
+                </SidebarProvider>
+                <ResizablePanelGroup className="flex-1 flex min-w-0" direction="horizontal">
                     <ResizablePanel minSize={30} defaultSize={60} className="h-full">
                         <div className="h-full overflow-auto">
                             {main || <div className="flex-1 flex items-center justify-center text-muted-foreground">Main Pane</div>}
                         </div>
                     </ResizablePanel>
-                    {/* Handle */}
                     <ResizableHandle withHandle />
-                    {/* Draft Pane (right) */}
                     <ResizablePanel minSize={20} defaultSize={30} collapsible className="h-full border-l bg-card">
                         <div className="h-full overflow-auto">
                             {draft || <div className="flex-1 flex items-center justify-center text-muted-foreground">Draft Pane</div>}
@@ -34,8 +31,8 @@ export function AppLayout({ sidebar, main, draft }: AppLayoutProps) {
                     </ResizablePanel>
                 </ResizablePanelGroup>
             </div>
-        </SidebarProvider>
+        </div>
     );
 }
 
-export default AppLayout; 
+export default AppLayout;
