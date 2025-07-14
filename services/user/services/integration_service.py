@@ -483,7 +483,9 @@ class IntegrationService:
                         if expires_at.tzinfo is None:
                             expires_at = expires_at.replace(tzinfo=timezone.utc)
                         # Refresh if expires within 5 minutes
-                        if expires_at > datetime.now(timezone.utc) + timedelta(minutes=5):
+                        if expires_at > datetime.now(timezone.utc) + timedelta(
+                            minutes=5
+                        ):
                             return TokenRefreshResponse(
                                 success=True,
                                 integration_id=integration.id,
@@ -495,7 +497,7 @@ class IntegrationService:
                     except (ValueError, TypeError) as e:
                         self.logger.warning(
                             f"Invalid expires_at format for user {user_id}, provider {provider.value}: {tokens['expires_at']}",
-                            error=str(e)
+                            error=str(e),
                         )
                         # Continue with refresh if timestamp is malformed
 
