@@ -63,38 +63,6 @@ This document outlines the incremental implementation plan for building out the 
 - `frontend/components/layout/draft-pane.tsx`
 - `frontend/app/dashboard/page.tsx` (update existing)
 
-### Task 1.2: Implement Top Bar Component
-**Priority**: High
-**Estimated Time**: 1 day
-**Dependencies**: Task 1.1
-
-**Description**: Create the top navigation bar with search and user controls
-- [ ] Implement global search input with proper styling
-- [ ] Add user avatar and dropdown menu
-- [ ] Include settings and profile navigation
-- [ ] Ensure proper backdrop blur and border styling
-- [ ] Add keyboard shortcuts (Cmd+K for search)
-
-**Files to Create/Modify**:
-- `frontend/components/layout/top-bar.tsx`
-- `frontend/hooks/use-keyboard-shortcuts.ts`
-
-### Task 1.3: Implement Assistant Bar Component
-**Priority**: High
-**Estimated Time**: 1-2 days
-**Dependencies**: Task 1.1
-
-**Description**: Create the floating AI assistant input bar
-- [ ] Design floating input bar with backdrop blur
-- [ ] Add AI command suggestions/quick actions
-- [ ] Implement voice input toggle (UI only initially)
-- [ ] Add proper form handling and submission
-- [ ] Include loading states and feedback
-
-**Files to Create/Modify**:
-- `frontend/components/assistant/assistant-bar.tsx`
-- `frontend/components/assistant/command-suggestions.tsx`
-
 ## Phase 2: Navigation and Tool Switching
 
 ### Task 2.1: Implement Sidebar Navigation
@@ -103,11 +71,11 @@ This document outlines the incremental implementation plan for building out the 
 **Dependencies**: Task 1.1
 
 **Description**: Create the left sidebar with tool navigation
-- [ ] Implement tool navigation with icons and labels
-- [ ] Add active state styling and transitions
-- [ ] Include "Soon" badges for future features
-- [ ] Add collapsible functionality for focus mode
-- [ ] Ensure proper accessibility and keyboard navigation
+- [x] Implement tool navigation with icons and labels
+- [x] Add active state styling and transitions
+- [x] Include "Soon" badges for future features
+- [x] Add collapsible functionality for focus mode
+- [x] Ensure proper accessibility and keyboard navigation
 
 **Files to Create/Modify**:
 - `frontend/components/navigation/sidebar-nav.tsx`
@@ -138,7 +106,7 @@ This document outlines the incremental implementation plan for building out the 
 **Estimated Time**: 3-4 days
 **Dependencies**: Task 1.1, Task 2.1
 
-**Description**: Create the calendar interface with AI integration
+**Description**: Create the calendar interface similar to Google/Microsoft's web calendar view, with AI integration
 - [ ] Implement day/week/month view toggles
 - [ ] Create event cards with organizer status indicators
 - [ ] Add external attendee and acceptance count displays
@@ -278,7 +246,7 @@ This document outlines the incremental implementation plan for building out the 
 ### Task 5.2: Implement AI Command Processing
 **Priority**: High
 **Estimated Time**: 2-3 days
-**Dependencies**: Task 1.3, Task 5.1
+**Dependencies**: Task 6.4, Task 5.1
 
 **Description**: Connect assistant bar to AI services
 - [ ] Implement command parsing and routing
@@ -319,7 +287,7 @@ This document outlines the incremental implementation plan for building out the 
 ### Task 6.2: Implement Global Search
 **Priority**: Medium
 **Estimated Time**: 2-3 days
-**Dependencies**: Task 1.2
+**Dependencies**: Task 6.3
 
 **Description**: Add comprehensive global search functionality
 - [ ] Implement search across all tools and data
@@ -335,7 +303,39 @@ This document outlines the incremental implementation plan for building out the 
 - `frontend/hooks/use-global-search.ts`
 - `frontend/lib/search-index.ts`
 
-### Task 6.3: Add Keyboard Shortcuts and Accessibility
+### Task 6.3: Implement Top Bar Component
+**Priority**: High
+**Estimated Time**: 1 day
+**Dependencies**: Task 1.1
+
+**Description**: Create the top navigation bar with search and user controls
+- [ ] Implement global search input with proper styling
+- [ ] Add user avatar and dropdown menu
+- [ ] Include settings and profile navigation
+- [ ] Ensure proper backdrop blur and border styling
+- [ ] Add keyboard shortcuts (Cmd+K for search)
+
+**Files to Create/Modify**:
+- `frontend/components/layout/top-bar.tsx`
+- `frontend/hooks/use-keyboard-shortcuts.ts`
+
+### Task 6.4: Implement Assistant Bar Component
+**Priority**: High
+**Estimated Time**: 1-2 days
+**Dependencies**: Task 1.1
+
+**Description**: Create the floating AI assistant input bar
+- [ ] Design floating input bar with backdrop blur
+- [ ] Add AI command suggestions/quick actions
+- [ ] Implement voice input toggle (UI only initially)
+- [ ] Add proper form handling and submission
+- [ ] Include loading states and feedback
+
+**Files to Create/Modify**:
+- `frontend/components/assistant/assistant-bar.tsx`
+- `frontend/components/assistant/command-suggestions.tsx`
+
+### Task 6.5: Add Keyboard Shortcuts and Accessibility
 **Priority**: Medium
 **Estimated Time**: 2-3 days
 **Dependencies**: All previous phases
