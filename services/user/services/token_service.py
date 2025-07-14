@@ -542,6 +542,24 @@ class TokenService:
                 provider=provider.value,
                 error=str(e),
             )
+
+            # Update integration status to ERROR if refresh failed
+            try:
+                async_session = get_async_session()
+                async with async_session() as session:
+                    integration.status = IntegrationStatus.ERROR
+                    integration.error_message = f"Token refresh failed: {str(e)}"
+                    integration.updated_at = datetime.now(timezone.utc)
+                    session.add(integration)
+                    await session.commit()
+            except Exception as update_error:
+                self.logger.error(
+                    "Failed to update integration status after token refresh failure",
+                    user_id=user_id,
+                    provider=provider.value,
+                    error=str(update_error),
+                )
+
             # Return a failed response similar to TokenRefreshResponse
             from services.user.schemas.integration import (
                 TokenRefreshResponse,
