@@ -21,11 +21,12 @@ export default function Home() {
 
     // Get current date
     const today = new Date();
-    const formattedDate = today.toLocaleDateString("en-US", {
+    const formattedDate = today.toLocaleDateString(undefined, {
         weekday: "long",
         month: "long",
         day: "numeric",
         year: "numeric",
+        timeZoneName: "short",
     });
 
     // Show loading state while checking authentication
