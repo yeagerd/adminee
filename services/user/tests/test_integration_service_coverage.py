@@ -14,13 +14,15 @@ from services.user.models.integration import (
     IntegrationStatus,
 )
 from services.user.services.integration_service import IntegrationService
+from services.user.tests.test_base import BaseUserManagementTest
 
 
-class TestIntegrationServiceCoverage:
+class TestIntegrationServiceCoverage(BaseUserManagementTest):
     """Test cases for IntegrationService coverage."""
 
     def setup_method(self):
         """Set up test fixtures."""
+        super().setup_method()
         self.service = IntegrationService()
 
     @pytest.mark.asyncio
@@ -48,7 +50,9 @@ class TestIntegrationServiceCoverage:
             status=IntegrationStatus.ACTIVE,
         )
 
-        with patch("services.user.database.get_async_session") as mock_session_factory:
+        with patch(
+            "services.user.services.integration_service.get_async_session"
+        ) as mock_session_factory:
             # Create a mock session context manager
             mock_session = AsyncMock()
             mock_session_factory.return_value = MagicMock(return_value=mock_session)
@@ -61,6 +65,10 @@ class TestIntegrationServiceCoverage:
             mock_result = MagicMock()
             mock_result.scalar_one_or_none.return_value = None  # No tokens
             mock_session.execute.return_value = mock_result
+
+            # Mock the add and commit methods
+            mock_session.add = MagicMock()
+            mock_session.commit = AsyncMock()
 
             result = await self.service._validate_and_correct_integration_status(
                 integration, session=None
@@ -305,9 +313,15 @@ class TestIntegrationServiceCoverage:
     @pytest.mark.asyncio
     async def test_get_token_metadata(self):
         """Test token metadata retrieval."""
-        with patch("services.user.database.get_async_session") as mock_session_factory:
+        with patch(
+            "services.user.services.integration_service.get_async_session"
+        ) as mock_session_factory:
             mock_session = AsyncMock()
             mock_session_factory.return_value = MagicMock(return_value=mock_session)
+
+            # Mock the session context manager
+            mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_session.__aexit__ = AsyncMock(return_value=None)
 
             # Mock the execute method
             mock_result = MagicMock()
