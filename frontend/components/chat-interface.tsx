@@ -202,9 +202,8 @@ export default function ChatInterface() {
     }
 
     return (
-        <div className="flex flex-col h-[300px]">
-            {/* Development streaming toggle process.env.NODE_ENV === 'development' && {(*/}
-
+        <div className="flex flex-col h-full">
+            {/* Development streaming toggle */}
             <div className="flex items-center space-x-2 p-2 bg-gray-50 border-b">
                 <Checkbox
                     id="streaming"
@@ -215,7 +214,6 @@ export default function ChatInterface() {
                     Enable streaming (dev only)
                 </label>
             </div>
-
 
             <ScrollArea className="flex-1 p-4">
                 <div className="space-y-4">

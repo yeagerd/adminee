@@ -22,7 +22,7 @@ export default function ProfilePage() {
 
     const shouldRefetch = useCallback(() => {
         return Date.now() - lastFetchTime > CACHE_DURATION;
-    }, [lastFetchTime]);
+    }, [lastFetchTime, CACHE_DURATION]);
 
     const loadIntegrations = useCallback(async (forceRefresh = false) => {
         // Don't refetch if we have recent data and not forcing refresh
