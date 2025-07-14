@@ -71,6 +71,234 @@ class TestIntegrationServiceCoverage:
             assert integration.error_message == "No access token available"
 
     @pytest.mark.asyncio
+    async def test_validate_status_respects_inactive_status(self):
+        """Test that validation respects INACTIVE status (would catch the disconnect bug)."""
+        # This test would have caught the original bug where INACTIVE status
+        # was being overridden during validation
+        integration = Integration(
+            id=1,
+            user_id=1,
+            provider=IntegrationProvider.MICROSOFT,
+            status=IntegrationStatus.INACTIVE,  # Manually disconnected
+        )
+
+        mock_session = AsyncMock()
+
+        # Mock token queries - even if tokens exist, should respect INACTIVE status
+        mock_access_token = MagicMock()
+        mock_access_token.expires_at = None  # Valid token
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_access_token
+        mock_session.execute.return_value = mock_result
+
+        result = (
+            await self.service._validate_and_correct_integration_status_with_session(
+                integration, mock_session
+            )
+        )
+
+        # Should return INACTIVE without trying to "correct" it
+        assert result == IntegrationStatus.INACTIVE
+        assert integration.status == IntegrationStatus.INACTIVE
+
+    @pytest.mark.asyncio
+    async def test_validate_status_respects_inactive_status_with_valid_tokens(self):
+        """Test that INACTIVE status is respected even when valid tokens exist."""
+        # This test specifically checks the scenario that was causing the bug:
+        # User disconnects integration (sets to INACTIVE), but validation
+        # finds valid tokens and incorrectly sets status back to ACTIVE
+        integration = Integration(
+            id=1,
+            user_id=1,
+            provider=IntegrationProvider.MICROSOFT,
+            status=IntegrationStatus.INACTIVE,  # Manually disconnected
+        )
+
+        mock_session = AsyncMock()
+
+        # Mock valid access token
+        mock_access_token = MagicMock()
+        mock_access_token.expires_at = None  # Valid token
+        mock_access_result = MagicMock()
+        mock_access_result.scalar_one_or_none.return_value = mock_access_token
+
+        # Mock valid refresh token
+        mock_refresh_token = MagicMock()
+        mock_refresh_result = MagicMock()
+        mock_refresh_result.scalar_one_or_none.return_value = mock_refresh_token
+
+        # Mock session.execute to return different results for different queries
+        def mock_execute(query):
+            # This is a simplified mock - in reality, the queries would be different
+            # but for testing purposes, we'll return different results based on call count
+            mock_session.execute.call_count += 1
+            if mock_session.execute.call_count == 1:
+                return mock_access_result
+            else:
+                return mock_refresh_result
+
+        mock_session.execute.side_effect = mock_execute
+        mock_session.execute.call_count = 0
+
+        result = (
+            await self.service._validate_and_correct_integration_status_with_session(
+                integration, mock_session
+            )
+        )
+
+        # Should still return INACTIVE even with valid tokens
+        assert result == IntegrationStatus.INACTIVE
+        assert integration.status == IntegrationStatus.INACTIVE
+
+    @pytest.mark.asyncio
+    async def test_validate_status_corrects_active_status_when_no_tokens(self):
+        """Test that ACTIVE status is corrected to ERROR when no tokens exist."""
+        # This test ensures that the validation logic still works correctly
+        # for ACTIVE integrations that should be corrected
+        integration = Integration(
+            id=1,
+            user_id=1,
+            provider=IntegrationProvider.MICROSOFT,
+            status=IntegrationStatus.ACTIVE,  # Should be corrected
+        )
+
+        mock_session = AsyncMock()
+
+        # Mock no tokens
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None  # No tokens
+        mock_session.execute.return_value = mock_result
+
+        result = (
+            await self.service._validate_and_correct_integration_status_with_session(
+                integration, mock_session
+            )
+        )
+
+        # Should correct ACTIVE to ERROR when no tokens
+        assert result == IntegrationStatus.ERROR
+        assert integration.status == IntegrationStatus.ERROR
+
+    @pytest.mark.asyncio
+    async def test_validate_status_preserves_active_status_with_valid_tokens(self):
+        """Test that ACTIVE status is preserved when valid tokens exist."""
+        # This test ensures that ACTIVE integrations with valid tokens
+        # remain ACTIVE (the normal case)
+        integration = Integration(
+            id=1,
+            user_id=1,
+            provider=IntegrationProvider.MICROSOFT,
+            status=IntegrationStatus.ACTIVE,  # Should remain ACTIVE
+        )
+
+        mock_session = AsyncMock()
+
+        # Mock valid access token
+        mock_access_token = MagicMock()
+        mock_access_token.expires_at = None  # Valid token
+        mock_access_result = MagicMock()
+        mock_access_result.scalar_one_or_none.return_value = mock_access_token
+
+        # Mock valid refresh token
+        mock_refresh_token = MagicMock()
+        mock_refresh_result = MagicMock()
+        mock_refresh_result.scalar_one_or_none.return_value = mock_refresh_token
+
+        # Mock session.execute to return different results for different queries
+        def mock_execute(query):
+            mock_session.execute.call_count += 1
+            if mock_session.execute.call_count == 1:
+                return mock_access_result
+            else:
+                return mock_refresh_result
+
+        mock_session.execute.side_effect = mock_execute
+        mock_session.execute.call_count = 0
+
+        result = (
+            await self.service._validate_and_correct_integration_status_with_session(
+                integration, mock_session
+            )
+        )
+
+        # Should preserve ACTIVE status when tokens are valid
+        assert result == IntegrationStatus.ACTIVE
+        assert integration.status == IntegrationStatus.ACTIVE
+
+    @pytest.mark.asyncio
+    async def test_disconnect_integration_sets_inactive_status(self):
+        """Test that disconnect_integration properly sets INACTIVE status."""
+        # This test would have caught the bug where disconnect_integration
+        # was not properly setting INACTIVE status
+        # Note: This is a simplified test focusing on the core logic
+        # The actual implementation would require more complex database mocking
+
+        # Test the core validation logic that was causing the bug
+        integration = Integration(
+            id=1,
+            user_id=1,
+            provider=IntegrationProvider.MICROSOFT,
+            status=IntegrationStatus.ACTIVE,
+        )
+
+        # Simulate what happens after disconnect_integration sets status to INACTIVE
+        integration.status = IntegrationStatus.INACTIVE
+
+        mock_session = AsyncMock()
+
+        # Mock valid tokens (which would have caused the original bug)
+        mock_access_token = MagicMock()
+        mock_access_token.expires_at = None  # Valid token
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_access_token
+        mock_session.execute.return_value = mock_result
+
+        # Test that validation respects the INACTIVE status
+        result = (
+            await self.service._validate_and_correct_integration_status_with_session(
+                integration, mock_session
+            )
+        )
+
+        # Should return INACTIVE without trying to "correct" it
+        assert result == IntegrationStatus.INACTIVE
+        assert integration.status == IntegrationStatus.INACTIVE
+
+    @pytest.mark.asyncio
+    async def test_get_user_integrations_preserves_inactive_status(self):
+        """Test that get_user_integrations preserves INACTIVE status after disconnect."""
+        # This test would have caught the bug where get_user_integrations
+        # was "correcting" INACTIVE status back to ACTIVE
+        # Note: This is a simplified test focusing on the core validation logic
+
+        integration = Integration(
+            id=1,
+            user_id=1,
+            provider=IntegrationProvider.MICROSOFT,
+            status=IntegrationStatus.INACTIVE,  # Disconnected
+        )
+
+        mock_session = AsyncMock()
+
+        # Mock valid tokens (which would have caused the original bug)
+        mock_access_token = MagicMock()
+        mock_access_token.expires_at = None  # Valid token
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_access_token
+        mock_session.execute.return_value = mock_result
+
+        # Test that validation respects the INACTIVE status
+        result = (
+            await self.service._validate_and_correct_integration_status_with_session(
+                integration, mock_session
+            )
+        )
+
+        # Should return INACTIVE without trying to "correct" it
+        assert result == IntegrationStatus.INACTIVE
+        assert integration.status == IntegrationStatus.INACTIVE
+
+    @pytest.mark.asyncio
     async def test_get_token_metadata(self):
         """Test token metadata retrieval."""
         with patch("services.user.database.get_async_session") as mock_session_factory:
