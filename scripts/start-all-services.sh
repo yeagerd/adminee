@@ -248,14 +248,17 @@ fi
 # Wait for all services to be ready
 echo -e "${BLUE}⏳ Waiting for all services to be ready...${NC}"
 
-wait_for_service "User Service" "http://localhost:8001/health"
-wait_for_service "Chat Service" "http://localhost:8002/health"
-wait_for_service "Office Service" "http://localhost:8003/health"
-wait_for_service "Gateway" "http://localhost:3001/health"
+wait_for_service "User Service" "http://localhost:8001/health" &
+wait_for_service "Chat Service" "http://localhost:8002/health" &
+wait_for_service "Office Service" "http://localhost:8003/health" &
+wait_for_service "Gateway" "http://localhost:3001/health" &
 
 if [ "$SKIP_FRONTEND" = false ]; then
-    wait_for_service "Frontend" "http://localhost:3000"
+    wait_for_service "Frontend" "http://localhost:3000" &
 fi
+
+# Wait for all background jobs to complete
+wait
 
 # Display service status
 echo -e "${GREEN}🎉 All services started successfully!${NC}"
