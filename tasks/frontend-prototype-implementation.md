@@ -1,7 +1,7 @@
 # Frontend Prototype Implementation Tasks
 
 ## Overview
-This document outlines the incremental implementation plan for building out the prototype design in the `frontend/` directory. The prototype demonstrates a modern 3-pane layout with AI-powered productivity features.
+This document outlines the incremental implementation plan for building out the prototype design in the `frontend/` directory. The prototype demonstrates a modern 3-pane layout with AI-powered productivity features.  There is a v0.dev prototype in /Users/yeagerd/github/prototype for reference, which you shall not modify.
 
 ## Phase 0: Integration Streamlining
 
@@ -441,3 +441,7 @@ This document outlines the incremental implementation plan for building out the 
 - **Phase 7**: 1-2 weeks (Performance optimization)
 
 **Total Estimated Time**: 9-15 weeks for full implementation 
+
+## Future ideas:
+
+1. TODOs:  perhaps in the future we'll enable it to be a floating thing or a popdown from the nav bar or split the draft pane, but not now
