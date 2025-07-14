@@ -1306,6 +1306,11 @@ class IntegrationService:
         This method requires a session to be provided and handles all the validation logic
         without recursion.
         """
+        # If integration is manually set to INACTIVE, respect that status
+        # This prevents automatic correction when user has disconnected
+        if integration.status == IntegrationStatus.INACTIVE:
+            return IntegrationStatus.INACTIVE
+
         # Check for access token
         access_token_result = await session.execute(
             select(EncryptedToken).where(
