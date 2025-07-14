@@ -316,7 +316,6 @@ export default function IntegrationsPage() {
                             .filter(config => !preferredProvider || config.provider === preferredProvider)
                             .map((config) => {
                                 const integration = getIntegrationStatus(config.provider);
-                                const isConnected = integration?.status === INTEGRATION_STATUS.ACTIVE;
                                 const hasIntegration = integration !== undefined;
                                 const isConnecting = connectingProvider === config.provider;
 

@@ -557,7 +557,7 @@ class IntegrationService:
         except Exception as e:
             if isinstance(e, NotFoundError):
                 raise
-            
+
             # Update the integration's error message to reflect the current failure
             try:
                 async_session = get_async_session()
@@ -573,7 +573,7 @@ class IntegrationService:
                 self.logger.warning(
                     f"Failed to update integration error message: {update_error}"
                 )
-            
+
             raise ServiceError(
                 message=f"Failed to refresh integration tokens: {str(e)}"
             )
