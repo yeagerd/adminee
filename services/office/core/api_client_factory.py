@@ -253,16 +253,22 @@ class APIClientFactory:
                 )
                 return None
 
+            # Assert that the API key is set
+            assert (
+                settings.api_office_user_key is not None
+            ), "api_office_user_key must be set in settings for service-to-service authentication"
+
             # If user_id is not an integer, resolve to internal ID
             resolved_user_id = user_id
             try:
                 int(user_id)
             except ValueError:
                 # Not an integer, resolve
+                headers = {"X-API-Key": settings.api_office_user_key}
                 async with httpx.AsyncClient(timeout=10.0) as client:
                     resp = await client.get(
                         f"{settings.USER_MANAGEMENT_SERVICE_URL}/users/id?external_auth_id={user_id}",
-                        headers={"X-API-Key": settings.api_office_user_key},
+                        headers=headers,
                     )
                     if resp.status_code == 200:
                         data = resp.json()
@@ -277,10 +283,11 @@ class APIClientFactory:
                         return None
 
             # Get user profile from user service using internal ID
+            headers = {"X-API-Key": settings.api_office_user_key}
             async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.get(
                     f"{settings.USER_MANAGEMENT_SERVICE_URL}/users/{resolved_user_id}",
-                    headers={"X-API-Key": settings.api_office_user_key},
+                    headers=headers,
                 )
 
                 if response.status_code == 200:
