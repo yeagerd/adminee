@@ -6,6 +6,7 @@ import ScheduleList from '@/components/schedule-list';
 import TaskList from '@/components/task-list';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { INTEGRATION_STATUS } from '@/lib/constants';
 import { gatewayClient, Integration } from '@/lib/gateway-client';
 import {
     AlertCircle,
@@ -77,7 +78,7 @@ export default function DashboardPage() {
         year: "numeric",
     });
 
-    const activeIntegrations = integrations.filter(i => i.status === 'active');
+    const activeIntegrations = integrations.filter(i => i.status === INTEGRATION_STATUS.ACTIVE);
     const hasGoogleIntegration = activeIntegrations.some(i => i.provider === 'google');
     const hasMicrosoftIntegration = activeIntegrations.some(i => i.provider === 'microsoft');
 
@@ -85,7 +86,7 @@ export default function DashboardPage() {
     // Only show warnings for missing access tokens or expired tokens
     // Missing refresh tokens are acceptable for some providers (like Microsoft)
     const integrationsWithTokenIssues = integrations.filter(i => {
-        if (i.status !== 'active') return false;
+        if (i.status !== INTEGRATION_STATUS.ACTIVE) return false;
 
         // Missing access token is always an issue
         if (!i.has_access_token) return true;

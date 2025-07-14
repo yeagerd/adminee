@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { INTEGRATION_STATUS } from '@/lib/constants';
 import { gatewayClient, Integration } from '@/lib/gateway-client';
 import { Calendar, ExternalLink, Mail, Shield, User } from 'lucide-react';
 import { useSession } from 'next-auth/react';
@@ -177,9 +178,9 @@ export default function ProfilePage() {
                                                 </div>
                                             </div>
                                             <Badge
-                                                variant={integration.status === 'ACTIVE' ? 'default' : 'secondary'}
+                                                variant={integration.status === INTEGRATION_STATUS.ACTIVE ? 'default' : 'secondary'}
                                             >
-                                                {integration.status}
+                                                {integration.status === INTEGRATION_STATUS.INACTIVE ? 'Disconnected' : integration.status}
                                             </Badge>
                                         </div>
                                     ))}

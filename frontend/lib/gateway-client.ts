@@ -1,5 +1,6 @@
 import { ApiResponse, CalendarEventsResponse, CreateCalendarEventRequest } from '@/types/office-service';
 import { getSession } from 'next-auth/react';
+import { IntegrationStatus } from './constants';
 
 interface GatewayClientOptions {
     method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -250,7 +251,7 @@ export interface Integration {
     id: number;
     user_id: string;
     provider: string;
-    status: string;
+    status: IntegrationStatus;
     scopes: string[];
     external_user_id?: string;
     external_email?: string;

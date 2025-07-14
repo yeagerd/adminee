@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { INTEGRATION_STATUS } from '@/lib/constants';
 import { gatewayClient, Integration, OAuthStartResponse } from '@/lib/gateway-client';
 import { AlertCircle, Calendar, CheckCircle, Mail, RefreshCw, Shield, User, XCircle } from 'lucide-react';
 import { useSession } from 'next-auth/react';
@@ -141,12 +142,14 @@ export default function IntegrationsPage() {
 
     const getStatusIcon = (status?: string) => {
         switch (status) {
-            case 'ACTIVE':
+            case INTEGRATION_STATUS.ACTIVE:
                 return <CheckCircle className="h-4 w-4 text-green-600" />;
-            case 'ERROR':
+            case INTEGRATION_STATUS.ERROR:
                 return <XCircle className="h-4 w-4 text-red-600" />;
-            case 'PENDING':
+            case INTEGRATION_STATUS.PENDING:
                 return <RefreshCw className="h-4 w-4 text-yellow-600" />;
+            case INTEGRATION_STATUS.INACTIVE:
+                return <AlertCircle className="h-4 w-4 text-gray-400" />;
             default:
                 return <AlertCircle className="h-4 w-4 text-gray-400" />;
         }
@@ -154,12 +157,14 @@ export default function IntegrationsPage() {
 
     const getStatusColor = (status?: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
         switch (status) {
-            case 'ACTIVE':
+            case INTEGRATION_STATUS.ACTIVE:
                 return 'default';
-            case 'ERROR':
+            case INTEGRATION_STATUS.ERROR:
                 return 'destructive';
-            case 'PENDING':
+            case INTEGRATION_STATUS.PENDING:
                 return 'secondary';
+            case INTEGRATION_STATUS.INACTIVE:
+                return 'outline';
             default:
                 return 'outline';
         }
@@ -215,7 +220,7 @@ export default function IntegrationsPage() {
                     <div className="grid gap-6 md:grid-cols-2">
                         {INTEGRATION_CONFIGS.map((config) => {
                             const integration = getIntegrationStatus(config.provider);
-                            const isConnected = !!integration;
+                            const isConnected = integration?.status === INTEGRATION_STATUS.ACTIVE;
                             const isConnecting = connectingProvider === config.provider;
 
                             // Debug logging
@@ -239,7 +244,8 @@ export default function IntegrationsPage() {
                                             <div className="flex items-center gap-2">
                                                 {getStatusIcon(integration?.status)}
                                                 <Badge variant={getStatusColor(integration?.status)}>
-                                                    {integration?.status || 'Not Connected'}
+                                                    {integration?.status === INTEGRATION_STATUS.INACTIVE ? 'Disconnected' :
+                                                        integration?.status || 'Not Connected'}
                                                 </Badge>
                                             </div>
                                         </div>
