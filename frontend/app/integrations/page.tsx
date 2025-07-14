@@ -196,7 +196,35 @@ export default function IntegrationsPage() {
             console.log('Integrations reloaded');
         } catch (error: unknown) {
             console.error('Failed to refresh tokens:', error);
-            setError(`Failed to refresh ${provider} tokens. Please try again.`);
+
+            // Check if this is a re-authentication required error
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            if (errorMessage.includes('REAUTHENTICATION_REQUIRED')) {
+                // Start a new OAuth flow for re-authentication
+                const config = INTEGRATION_CONFIGS.find(c => c.provider === provider);
+                if (config) {
+                    setError(`Your ${config.name} connection has expired and needs to be renewed. Redirecting to re-authenticate...`);
+                    // Small delay to show the message
+                    setTimeout(() => {
+                        handleConnect(config);
+                    }, 2000);
+                } else {
+                    setError(`Failed to refresh ${provider} tokens. Please try reconnecting.`);
+                }
+            } else if (errorMessage.includes('Missing refresh token')) {
+                // Handle the old error message format as well
+                const config = INTEGRATION_CONFIGS.find(c => c.provider === provider);
+                if (config) {
+                    setError(`Your ${config.name} connection has expired and needs to be renewed. Redirecting to re-authenticate...`);
+                    setTimeout(() => {
+                        handleConnect(config);
+                    }, 2000);
+                } else {
+                    setError(`Failed to refresh ${provider} tokens. Please try reconnecting.`);
+                }
+            } else {
+                setError(`Failed to refresh ${provider} tokens. Please try again.`);
+            }
         } finally {
             setIsRefreshing(false);
         }
@@ -289,6 +317,7 @@ export default function IntegrationsPage() {
                             .map((config) => {
                                 const integration = getIntegrationStatus(config.provider);
                                 const isConnected = integration?.status === INTEGRATION_STATUS.ACTIVE;
+                                const hasIntegration = integration !== undefined;
                                 const isConnecting = connectingProvider === config.provider;
 
                                 // Debug logging
@@ -355,7 +384,7 @@ export default function IntegrationsPage() {
 
                                             {/* Actions */}
                                             <div className="flex gap-2">
-                                                {!isConnected ? (
+                                                {!hasIntegration ? (
                                                     <Button
                                                         onClick={() => handleConnect(config)}
                                                         disabled={isConnecting || loading}
@@ -375,15 +404,27 @@ export default function IntegrationsPage() {
                                                     </Button>
                                                 ) : (
                                                     <>
-                                                        <Button
-                                                            variant="outline"
-                                                            onClick={() => handleRefresh(config.provider)}
-                                                            disabled={loading}
-                                                            size="sm"
-                                                        >
-                                                            <RefreshCw className="h-4 w-4 mr-2" />
-                                                            Refresh
-                                                        </Button>
+                                                        {integration?.status === INTEGRATION_STATUS.ERROR && !integration?.has_refresh_token ? (
+                                                            <Button
+                                                                variant="outline"
+                                                                onClick={() => handleConnect(config)}
+                                                                disabled={loading || isConnecting}
+                                                                size="sm"
+                                                            >
+                                                                <Shield className="h-4 w-4 mr-2" />
+                                                                Re-authenticate
+                                                            </Button>
+                                                        ) : (
+                                                            <Button
+                                                                variant="outline"
+                                                                onClick={() => handleRefresh(config.provider)}
+                                                                disabled={loading || isRefreshing}
+                                                                size="sm"
+                                                            >
+                                                                <RefreshCw className="h-4 w-2 mr-2" />
+                                                                Refresh
+                                                            </Button>
+                                                        )}
                                                         <Button
                                                             variant="destructive"
                                                             onClick={() => handleDisconnect(config.provider)}
