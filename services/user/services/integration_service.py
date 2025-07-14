@@ -1266,12 +1266,21 @@ class IntegrationService:
         """
         Validate integration status based on actual token availability and correct if needed.
 
+        This method performs atomic status corrections - if the integration status needs to be
+        updated, it commits the change immediately to ensure persistence. This prevents race
+        conditions and ensures consistent state even if the calling method fails after this
+        validation.
+
         Args:
             integration: The integration to validate
             session: Optional database session to use (if None, creates new session)
 
         Returns:
             The corrected status
+
+        Note:
+            If a session is provided, this method will commit status changes immediately.
+            If no session is provided, this method creates its own session and commits changes.
         """
         if integration.id is None:
             return IntegrationStatus.PENDING
@@ -1310,6 +1319,7 @@ class IntegrationService:
                 integration.error_message = "No access token available"
                 integration.updated_at = datetime.now(timezone.utc)
                 session.add(integration)
+                await session.commit()  # Atomic commit for status correction
             return IntegrationStatus.ERROR
 
         elif not refresh_token_record:
@@ -1329,6 +1339,7 @@ class IntegrationService:
                         )
                         integration.updated_at = datetime.now(timezone.utc)
                         session.add(integration)
+                        await session.commit()  # Atomic commit for status correction
                     return IntegrationStatus.ERROR
                 else:
                     # Token is still valid - can be ACTIVE even without refresh token
@@ -1337,6 +1348,7 @@ class IntegrationService:
                         integration.error_message = None
                         integration.updated_at = datetime.now(timezone.utc)
                         session.add(integration)
+                        await session.commit()  # Atomic commit for status correction
                     return IntegrationStatus.ACTIVE
             else:
                 # No expiration info - assume it's valid and can be ACTIVE
@@ -1345,6 +1357,7 @@ class IntegrationService:
                     integration.error_message = None
                     integration.updated_at = datetime.now(timezone.utc)
                     session.add(integration)
+                    await session.commit()  # Atomic commit for status correction
                 return IntegrationStatus.ACTIVE
 
         elif access_token_record.expires_at:
@@ -1362,6 +1375,7 @@ class IntegrationService:
                     )
                     integration.updated_at = datetime.now(timezone.utc)
                     session.add(integration)
+                    await session.commit()  # Atomic commit for status correction
                 return IntegrationStatus.ERROR
 
         # All checks passed - should be ACTIVE
@@ -1370,6 +1384,7 @@ class IntegrationService:
             integration.error_message = None
             integration.updated_at = datetime.now(timezone.utc)
             session.add(integration)
+            await session.commit()  # Atomic commit for status correction
         return IntegrationStatus.ACTIVE
 
 
