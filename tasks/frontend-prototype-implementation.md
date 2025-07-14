@@ -50,11 +50,11 @@ This document outlines the incremental implementation plan for building out the 
 **Dependencies**: None
 
 **Description**: Create the foundational 3-pane layout structure
-- [ ] Create new layout component with sidebar, main pane, and draft pane
-- [ ] Implement responsive sidebar with collapsible functionality
-- [ ] Set up main content area with proper overflow handling
-- [ ] Add right-side draft pane with resizable functionality
-- [ ] Ensure proper flex layout and responsive behavior
+- [x] Create new layout component with sidebar, main pane, and draft pane
+- [x] Implement responsive sidebar with collapsible functionality
+- [x] Set up main content area with proper overflow handling
+- [x] Add right-side draft pane with resizable functionality
+- [x] Ensure proper flex layout and responsive behavior
 
 **Files to Create/Modify**:
 - `frontend/components/layout/app-layout.tsx`
