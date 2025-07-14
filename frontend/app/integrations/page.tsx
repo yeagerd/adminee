@@ -61,10 +61,13 @@ export default function IntegrationsPage() {
     const loadIntegrations = async () => {
         try {
             setError(null);
+            console.log('Loading integrations...');
             const data = await gatewayClient.getIntegrations();
+            console.log('Integrations data:', data);
             // The backend returns { integrations: [...], total: ..., active_count: ..., error_count: ... }
             // Extract just the integrations array
             setIntegrations(data.integrations || []);
+            console.log('Integrations state updated:', data.integrations || []);
         } catch (error: unknown) {
             console.error('Failed to load integrations:', error);
             setError('Failed to load integrations. Please try again.');
@@ -95,19 +98,37 @@ export default function IntegrationsPage() {
     const handleDisconnect = async (provider: string) => {
         try {
             setError(null);
+            console.log(`Disconnecting ${provider} integration...`);
             await gatewayClient.disconnectIntegration(provider);
+            console.log('Integration disconnected, clearing frontend cache...');
+
+            // Clear frontend calendar cache for this user
+            if (session?.user?.id) {
+                const { calendarCache } = await import('../../lib/calendar-cache');
+                calendarCache.invalidate(session.user.id);
+                console.log('Frontend calendar cache cleared');
+            }
+
+            console.log('Reloading integrations...');
             await loadIntegrations(); // Reload to show updated status
+            console.log('Integrations reloaded');
         } catch (error: unknown) {
             console.error('Failed to disconnect integration:', error);
-            setError(`Failed to disconnect ${provider}. Please try again.`);
+            setError(`Failed to disconnect ${provider} integration. Please try again.`);
         }
     };
 
     const handleRefresh = async (provider: string) => {
         try {
             setError(null);
-            await gatewayClient.refreshIntegrationTokens(provider);
+            console.log(`Refreshing tokens for ${provider}...`);
+            const refreshResult = await gatewayClient.refreshIntegrationTokens(provider);
+            console.log('Refresh result:', refreshResult);
+            console.log('Reloading integrations...');
+            // Add a small delay to ensure the database transaction is committed
+            await new Promise(resolve => setTimeout(resolve, 500));
             await loadIntegrations(); // Reload to show updated status
+            console.log('Integrations reloaded');
         } catch (error: unknown) {
             console.error('Failed to refresh tokens:', error);
             setError(`Failed to refresh ${provider} tokens. Please try again.`);
@@ -196,6 +217,11 @@ export default function IntegrationsPage() {
                             const integration = getIntegrationStatus(config.provider);
                             const isConnected = !!integration;
                             const isConnecting = connectingProvider === config.provider;
+
+                            // Debug logging
+                            if (config.provider === 'microsoft') {
+                                console.log(`Microsoft integration state:`, integration);
+                            }
 
                             return (
                                 <Card key={config.provider} className="relative">
