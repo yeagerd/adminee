@@ -1285,14 +1285,27 @@ class IntegrationService:
         if integration.id is None:
             return IntegrationStatus.PENDING
 
-        # Use provided session or create new one
+        # Handle case where no session is provided
         if session is None:
             async_session = get_async_session()
             async with async_session() as session:
-                return await self._validate_and_correct_integration_status(
+                return await self._validate_and_correct_integration_status_with_session(
                     integration, session
                 )
 
+        return await self._validate_and_correct_integration_status_with_session(
+            integration, session
+        )
+
+    async def _validate_and_correct_integration_status_with_session(
+        self, integration: Integration, session: AsyncSession
+    ) -> IntegrationStatus:
+        """
+        Internal method that performs the actual validation and correction logic.
+        
+        This method requires a session to be provided and handles all the validation logic
+        without recursion.
+        """
         # Check for access token
         access_token_result = await session.execute(
             select(EncryptedToken).where(
