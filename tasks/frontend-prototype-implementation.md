@@ -11,16 +11,16 @@ This document outlines the incremental implementation plan for building out the 
 **Dependencies**: None
 
 **Description**: Streamline integrations to be Microsoft OR Google based on user's login provider
-- [ ] Analyze current integration patterns in user service and office service
-- [ ] Implement provider detection based on OAuth login (Microsoft vs Google)
-- [ ] Update integration configuration to only show relevant provider options
-- [ ] Modify office service to route API calls to correct provider
-- [ ] Update frontend integration UI to show only available provider
-- [ ] Add provider-specific feature flags and capabilities
-- [ ] Update authentication flow to capture and store provider preference
-- [ ] Add provider switching logic (if user wants to change providers)
-- [ ] Update API clients to use provider-specific endpoints
-- [ ] Add provider validation and error handling
+- [x] Analyze current integration patterns in user service and office service
+- [x] Implement provider detection based on OAuth login (Microsoft vs Google)
+- [x] Update integration configuration to only show relevant provider options
+- [x] Modify office service to route API calls to correct provider
+- [x] Update frontend integration UI to show only available provider
+- [x] Add provider-specific feature flags and capabilities
+- [x] Update authentication flow to capture and store provider preference
+- [x] Add provider switching logic (if user wants to change providers)
+- [x] Update API clients to use provider-specific endpoints
+- [x] Add provider validation and error handling
 
 **Files to Create/Modify**:
 - `services/user/auth/nextauth.py` (update provider handling)
