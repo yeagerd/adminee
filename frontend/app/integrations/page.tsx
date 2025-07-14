@@ -98,11 +98,23 @@ export default function IntegrationsPage() {
     const handleDisconnect = async (provider: string) => {
         try {
             setError(null);
+            console.log(`Disconnecting ${provider} integration...`);
             await gatewayClient.disconnectIntegration(provider);
+            console.log('Integration disconnected, clearing frontend cache...');
+
+            // Clear frontend calendar cache for this user
+            if (session?.user?.id) {
+                const { calendarCache } = await import('../../lib/calendar-cache');
+                calendarCache.invalidate(session.user.id);
+                console.log('Frontend calendar cache cleared');
+            }
+
+            console.log('Reloading integrations...');
             await loadIntegrations(); // Reload to show updated status
+            console.log('Integrations reloaded');
         } catch (error: unknown) {
             console.error('Failed to disconnect integration:', error);
-            setError(`Failed to disconnect ${provider}. Please try again.`);
+            setError(`Failed to disconnect ${provider} integration. Please try again.`);
         }
     };
 

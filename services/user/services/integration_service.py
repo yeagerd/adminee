@@ -102,8 +102,12 @@ class IntegrationService:
                 integration_responses = []
                 for integration in integrations:
                     # Validate and correct integration status based on actual token state
-                    corrected_status = await self._validate_and_correct_integration_status(integration, session)
-                    
+                    corrected_status = (
+                        await self._validate_and_correct_integration_status(
+                            integration, session
+                        )
+                    )
+
                     token_info = {}
                     if include_token_info:
                         token_info = await self._get_token_metadata(
@@ -412,7 +416,9 @@ class IntegrationService:
             async_session = get_async_session()
             async with async_session() as session:
                 # Get integration within this session
-                integration = await self._get_user_integration_in_session(user_id, provider, session)
+                integration = await self._get_user_integration_in_session(
+                    user_id, provider, session
+                )
 
                 # Get encrypted tokens
                 token_result = await session.execute(
@@ -488,7 +494,9 @@ class IntegrationService:
 
                 # Refresh tokens
                 if not refresh_token:
-                    raise ValidationError(message="Missing refresh token for integration.")
+                    raise ValidationError(
+                        message="Missing refresh token for integration."
+                    )
                 new_tokens = await self.oauth_config.refresh_access_token(
                     provider=provider,
                     refresh_token=str(refresh_token),
@@ -571,7 +579,9 @@ class IntegrationService:
             async with async_session() as session:
                 self.logger.info(f"Disconnect called with delete_data={delete_data}")
                 # Get integration in the same session
-                integration = await self._get_user_integration_in_session(user_id, provider, session)
+                integration = await self._get_user_integration_in_session(
+                    user_id, provider, session
+                )
 
                 tokens_revoked = False
                 if revoke_tokens:
@@ -654,7 +664,9 @@ class IntegrationService:
                     # If revocation was requested but completely failed, check if it's because the provider doesn't support it
                     if not tokens_revoked and revocation_errors:
                         # Check if the provider doesn't support revocation (like Microsoft)
-                        provider_config = self.oauth_config.get_provider_config(provider)
+                        provider_config = self.oauth_config.get_provider_config(
+                            provider
+                        )
                         if provider_config and not provider_config.revoke_url:
                             # Provider doesn't support revocation - this is expected
                             self.logger.info(
@@ -671,7 +683,9 @@ class IntegrationService:
 
                 # Delete or deactivate integration
                 if delete_data:
-                    self.logger.info(f"Deleting integration {integration.id} for provider {provider.value}")
+                    self.logger.info(
+                        f"Deleting integration {integration.id} for provider {provider.value}"
+                    )
                     # Delete encrypted tokens first
                     token_result = await session.execute(
                         select(EncryptedToken).where(
@@ -685,14 +699,51 @@ class IntegrationService:
                     # Delete integration
                     await session.delete(integration)
                     await session.commit()
-                    self.logger.info(f"Successfully deleted integration {integration.id}")
+                    self.logger.info(
+                        f"Successfully deleted integration {integration.id}"
+                    )
                 else:
-                    self.logger.info(f"Marking integration {integration.id} as inactive")
+                    self.logger.info(
+                        f"Marking integration {integration.id} as inactive"
+                    )
                     # Just mark as inactive
                     integration.status = IntegrationStatus.INACTIVE
                     integration.updated_at = datetime.now(timezone.utc)
                     session.add(integration)
                     await session.commit()
+
+            # Clear calendar cache for this user since integration was removed
+            if delete_data:
+                try:
+                    # Import here to avoid circular imports
+                    import os
+
+                    import redis.asyncio as redis
+
+                    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+                    redis_client = redis.from_url(
+                        redis_url,
+                        encoding="utf-8",
+                        decode_responses=True,
+                        socket_timeout=5.0,
+                        socket_connect_timeout=5.0,
+                        retry_on_timeout=True,
+                    )
+
+                    # Clear all calendar cache keys for this user
+                    pattern = f"office_service:{user_id}:*"
+                    keys = await redis_client.keys(pattern)
+                    if keys:
+                        deleted_count = await redis_client.delete(*keys)
+                        self.logger.info(
+                            f"Cleared {deleted_count} cache keys for user {user_id}"
+                        )
+
+                    await redis_client.close()
+                except Exception as e:
+                    self.logger.warning(
+                        f"Failed to clear calendar cache for user {user_id}: {e}"
+                    )
 
             # Log disconnection
             await audit_logger.log_user_action(
@@ -953,7 +1004,9 @@ class IntegrationService:
         """Get integration for user and provider."""
         async_session = get_async_session()
         async with async_session() as session:
-            return await self._get_user_integration_in_session(user_id, provider, session)
+            return await self._get_user_integration_in_session(
+                user_id, provider, session
+            )
 
     async def _get_user_integration_in_session(
         self,
@@ -1202,23 +1255,25 @@ class IntegrationService:
     ) -> IntegrationStatus:
         """
         Validate integration status based on actual token availability and correct if needed.
-        
+
         Args:
             integration: The integration to validate
             session: Optional database session to use (if None, creates new session)
-            
+
         Returns:
             The corrected status
         """
         if integration.id is None:
             return IntegrationStatus.PENDING
-            
+
         # Use provided session or create new one
         if session is None:
             async_session = get_async_session()
             async with async_session() as session:
-                return await self._validate_and_correct_integration_status(integration, session)
-        
+                return await self._validate_and_correct_integration_status(
+                    integration, session
+                )
+
         # Check for access token
         access_token_result = await session.execute(
             select(EncryptedToken).where(
@@ -1227,7 +1282,7 @@ class IntegrationService:
             )
         )
         access_token_record = access_token_result.scalar_one_or_none()
-        
+
         # Check for refresh token
         refresh_token_result = await session.execute(
             select(EncryptedToken).where(
@@ -1236,7 +1291,7 @@ class IntegrationService:
             )
         )
         refresh_token_record = refresh_token_result.scalar_one_or_none()
-        
+
         # Determine correct status
         if not access_token_record:
             # No access token - should be ERROR
@@ -1246,7 +1301,7 @@ class IntegrationService:
                 integration.updated_at = datetime.now(timezone.utc)
                 session.add(integration)
             return IntegrationStatus.ERROR
-            
+
         elif not refresh_token_record:
             # Has access token but no refresh token - this is acceptable for some providers
             # that don't always return refresh tokens. Check if the access token is still valid.
@@ -1254,12 +1309,14 @@ class IntegrationService:
                 expires_at = access_token_record.expires_at
                 if expires_at.tzinfo is None:
                     expires_at = expires_at.replace(tzinfo=timezone.utc)
-                    
+
                 if expires_at <= datetime.now(timezone.utc):
                     # Token is expired and no refresh token - should be ERROR
                     if integration.status != IntegrationStatus.ERROR:
                         integration.status = IntegrationStatus.ERROR
-                        integration.error_message = "Access token expired and no refresh token available"
+                        integration.error_message = (
+                            "Access token expired and no refresh token available"
+                        )
                         integration.updated_at = datetime.now(timezone.utc)
                         session.add(integration)
                     return IntegrationStatus.ERROR
@@ -1279,22 +1336,24 @@ class IntegrationService:
                     integration.updated_at = datetime.now(timezone.utc)
                     session.add(integration)
                 return IntegrationStatus.ACTIVE
-            
+
         elif access_token_record.expires_at:
             # Check if access token is expired
             expires_at = access_token_record.expires_at
             if expires_at.tzinfo is None:
                 expires_at = expires_at.replace(tzinfo=timezone.utc)
-                
+
             if expires_at <= datetime.now(timezone.utc):
                 # Token is expired but we have refresh token - should be ERROR until refreshed
                 if integration.status != IntegrationStatus.ERROR:
                     integration.status = IntegrationStatus.ERROR
-                    integration.error_message = "Access token expired - refresh required"
+                    integration.error_message = (
+                        "Access token expired - refresh required"
+                    )
                     integration.updated_at = datetime.now(timezone.utc)
                     session.add(integration)
                 return IntegrationStatus.ERROR
-                
+
         # All checks passed - should be ACTIVE
         if integration.status != IntegrationStatus.ACTIVE:
             integration.status = IntegrationStatus.ACTIVE

@@ -542,7 +542,7 @@ class TokenService:
                 provider=provider.value,
                 error=str(e),
             )
-            
+
             # Update integration status to ERROR if refresh failed
             try:
                 async_session = get_async_session()
@@ -559,7 +559,7 @@ class TokenService:
                     provider=provider.value,
                     error=str(update_error),
                 )
-            
+
             # Return a failed response similar to TokenRefreshResponse
             from services.user.schemas.integration import (
                 TokenRefreshResponse,
