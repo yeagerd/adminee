@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 import structlog
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from services.common.http_errors import NotFoundError, ServiceError, ValidationError
@@ -1021,7 +1022,7 @@ class IntegrationService:
         self,
         user_id: str,
         provider: IntegrationProvider,
-        session,
+        session: AsyncSession,
     ) -> Integration:
         """Get integration for user and provider within an existing session."""
         # First get the user
@@ -1260,7 +1261,7 @@ class IntegrationService:
             # (do nothing in this case)
 
     async def _validate_and_correct_integration_status(
-        self, integration: Integration, session=None
+        self, integration: Integration, session: Optional[AsyncSession] = None
     ) -> IntegrationStatus:
         """
         Validate integration status based on actual token availability and correct if needed.
