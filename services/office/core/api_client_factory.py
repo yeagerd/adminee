@@ -247,9 +247,9 @@ class APIClientFactory:
             from services.office.core.settings import get_settings
 
             settings = get_settings()
-            if not settings.USER_SERVICE_URL:
+            if not settings.USER_MANAGEMENT_SERVICE_URL:
                 logger.warning(
-                    "USER_SERVICE_URL not configured, cannot get preferred provider"
+                    "USER_MANAGEMENT_SERVICE_URL not configured, cannot get preferred provider"
                 )
                 return None
 
@@ -261,8 +261,8 @@ class APIClientFactory:
                 # Not an integer, resolve
                 async with httpx.AsyncClient(timeout=10.0) as client:
                     resp = await client.get(
-                        f"{settings.USER_SERVICE_URL}/users/id?external_auth_id={user_id}",
-                        headers={"X-API-Key": settings.API_FRONTEND_USER_KEY},
+                        f"{settings.USER_MANAGEMENT_SERVICE_URL}/users/id?external_auth_id={user_id}",
+                        headers={"X-API-Key": settings.api_office_user_key},
                     )
                     if resp.status_code == 200:
                         data = resp.json()
@@ -279,8 +279,8 @@ class APIClientFactory:
             # Get user profile from user service using internal ID
             async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.get(
-                    f"{settings.USER_SERVICE_URL}/users/{resolved_user_id}",
-                    headers={"X-API-Key": settings.API_FRONTEND_USER_KEY},
+                    f"{settings.USER_MANAGEMENT_SERVICE_URL}/users/{resolved_user_id}",
+                    headers={"X-API-Key": settings.api_office_user_key},
                 )
 
                 if response.status_code == 200:
