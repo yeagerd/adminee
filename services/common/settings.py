@@ -22,9 +22,9 @@ class FieldInfo:
         self,
         default: Any = None,
         description: str = "",
-        validation_alias: Optional[Union[str, list, AliasChoices]] = None,
+        validation_alias: Optional[Union[str, list, "AliasChoices"]] = None,
         required: bool = False,
-    ):
+    ) -> None:
         self.default = default
         self.description = description
         self.validation_alias = validation_alias
@@ -35,8 +35,8 @@ def Field(
     default: Any = None,
     *,
     description: str = "",
-    validation_alias: Optional[Union[str, list, AliasChoices]] = None,
-    **kwargs,
+    validation_alias: Optional[Union[str, list, "AliasChoices"]] = None,
+    **kwargs: Any,
 ) -> Any:
     """Create a field descriptor for settings."""
     # Handle the ellipsis (...) which indicates a required field
@@ -61,7 +61,7 @@ class SettingsConfigDict:
         env_file_encoding: str = "utf-8",
         case_sensitive: bool = True,
         extra: str = "forbid",
-    ):
+    ) -> None:
         self.env_file = env_file
         self.env_file_encoding = env_file_encoding
         self.case_sensitive = case_sensitive
@@ -73,7 +73,7 @@ class BaseSettings(ABC):
 
     model_config: SettingsConfigDict = SettingsConfigDict()
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         """Initialize settings by loading from environment and .env file."""
         # Load from .env file if specified
         env_vars = {}
@@ -219,8 +219,8 @@ class BaseSettings(ABC):
 class AliasChoices:
     """Helper class to provide multiple environment variable aliases."""
 
-    def __init__(self, *choices):
+    def __init__(self, *choices: str) -> None:
         self.choices = list(choices)
 
-    def __iter__(self):
-        return iter(self.choices)
+    def __iter__(self) -> "AliasChoices":
+        return self

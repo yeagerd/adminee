@@ -1,6 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from typing import AsyncGenerator, Dict
 
 from fastapi import FastAPI
 
@@ -29,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator:
     # Startup event logic
     settings = get_settings()
     log_service_startup(
@@ -67,14 +68,14 @@ app.include_router(files_router)
 
 
 @app.get("/")
-async def read_root():
+async def read_root() -> Dict[str, str]:
     """Hello World root endpoint"""
     logger.info("Root endpoint accessed")
     return {"message": "Hello World", "service": "Office Service"}
 
 
 @app.get("/ready")
-async def ready_check():
+async def ready_check() -> Dict[str, str]:
     """
     Simple readiness check.
     """

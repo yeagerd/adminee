@@ -73,7 +73,7 @@ async def get_calendar_events(
     q: Optional[str] = Query(None, description="Search query to filter events"),
     time_zone: Optional[str] = Query("UTC", description="Time zone for date filtering"),
     service_name: str = Depends(ServicePermissionRequired(["read_calendar"])),
-):
+) -> ApiResponse:
     """
     Get unified calendar events from multiple providers.
 
@@ -277,7 +277,7 @@ async def get_calendar_event(
     event_id: str = Path(..., description="Event ID (format: provider_originalId)"),
     user_id: str = Query(..., description="ID of the user who owns the event"),
     service_name: str = Depends(ServicePermissionRequired(["read_calendar"])),
-):
+) -> ApiResponse:
     """
     Get a specific calendar event by ID.
 
@@ -360,7 +360,7 @@ async def create_calendar_event(
     event_data: CreateCalendarEventRequest,
     user_id: str = Query(..., description="ID of the user creating the event"),
     service_name: str = Depends(ServicePermissionRequired(["write_calendar"])),
-):
+) -> ApiResponse:
     """
     Create a calendar event in a specific provider.
 
@@ -463,7 +463,7 @@ async def update_calendar_event(
     event_id: str = Path(..., description="Event ID (format: provider_originalId)"),
     user_id: str = Query(..., description="ID of the user updating the event"),
     service_name: str = Depends(ServicePermissionRequired(["write_calendar"])),
-):
+) -> ApiResponse:
     """
     Update a calendar event by ID.
 
@@ -892,7 +892,7 @@ async def delete_calendar_event(
     event_id: str = Path(..., description="Event ID (format: provider_originalId)"),
     user_id: str = Query(..., description="ID of the user who owns the event"),
     service_name: str = Depends(ServicePermissionRequired(["write_calendar"])),
-):
+) -> ApiResponse:
     """
     Delete a calendar event by ID.
 

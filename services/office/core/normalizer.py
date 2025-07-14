@@ -259,8 +259,12 @@ def normalize_google_calendar_event(
         organizer = _parse_email_address(organizer_data.get("email"))
 
         # Parse timestamps
-        created_at = _parse_iso_datetime(raw_data.get("created"))
-        updated_at = _parse_iso_datetime(raw_data.get("updated"))
+        created_at = _parse_iso_datetime(raw_data.get("created")) or datetime.now(
+            timezone.utc
+        )
+        updated_at = _parse_iso_datetime(raw_data.get("updated")) or datetime.now(
+            timezone.utc
+        )
 
         return CalendarEvent(
             id=f"google_{event_id}",
@@ -320,8 +324,12 @@ def normalize_google_drive_file(
             size = int(size)
 
         # Parse timestamps
-        created_time = _parse_iso_datetime(raw_data.get("createdTime"))
-        modified_time = _parse_iso_datetime(raw_data.get("modifiedTime"))
+        created_time = _parse_iso_datetime(raw_data.get("createdTime")) or datetime.now(
+            timezone.utc
+        )
+        modified_time = _parse_iso_datetime(
+            raw_data.get("modifiedTime")
+        ) or datetime.now(timezone.utc)
 
         # Extract links
         web_view_link = raw_data.get("webViewLink")
@@ -390,8 +398,12 @@ def normalize_microsoft_drive_file(
         size = raw_data.get("size")
 
         # Parse timestamps
-        created_time = _parse_iso_datetime(raw_data.get("createdDateTime"))
-        modified_time = _parse_iso_datetime(raw_data.get("lastModifiedDateTime"))
+        created_time = _parse_iso_datetime(
+            raw_data.get("createdDateTime")
+        ) or datetime.now(timezone.utc)
+        modified_time = _parse_iso_datetime(
+            raw_data.get("lastModifiedDateTime")
+        ) or datetime.now(timezone.utc)
 
         # Extract links
         web_view_link = raw_data.get("webUrl")
@@ -520,7 +532,7 @@ def _extract_gmail_body(payload: Dict[str, Any]) -> tuple[Optional[str], Optiona
     body_text = None
     body_html = None
 
-    def extract_part(part: Dict[str, Any]):
+    def extract_part(part: Dict[str, Any]) -> None:
         nonlocal body_text, body_html
 
         mime_type = part.get("mimeType", "")
@@ -647,12 +659,12 @@ def _parse_google_datetime(dt_data: Dict[str, Any]) -> tuple[datetime, bool]:
     return datetime.now(timezone.utc), False
 
 
-def _parse_iso_datetime(dt_str: Optional[str]) -> datetime:
+def _parse_iso_datetime(dt_str: Optional[str]) -> Optional[datetime]:
     """Parse ISO datetime string with fallback."""
     if not dt_str:
-        return datetime.now(timezone.utc)
+        return None
 
     try:
         return datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
     except Exception:
-        return datetime.now(timezone.utc)
+        return None
