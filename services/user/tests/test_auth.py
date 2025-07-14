@@ -535,3 +535,29 @@ class TestNextAuthSecurity:
 
                 with pytest.raises(AuthError, match="Invalid token"):
                     await verify_jwt_token("test-token")
+
+    @pytest.mark.asyncio
+    async def test_jwt_default_audience_validation(self):
+        """Test JWT validation with default audience configuration."""
+        with patch("services.user.auth.nextauth.get_settings") as mock_settings:
+            mock_settings.return_value.jwt_verify_signature = False
+            mock_settings.return_value.nextauth_jwt_key = None
+            mock_settings.return_value.nextauth_issuer = "nextauth"
+            mock_settings.return_value.nextauth_audience = (
+                "briefly-backend"  # Default value
+            )
+
+            with patch("services.user.auth.nextauth.jwt.decode") as mock_decode:
+                base_time = 1640995200  # 2022-01-01 00:00:00 UTC
+                mock_decode.return_value = {
+                    "sub": "user_123",
+                    "iss": "nextauth",
+                    "aud": "briefly-backend",  # Matching audience
+                    "exp": base_time + 3600,
+                    "iat": base_time,
+                    "email": "test@example.com",
+                }
+
+                result = await verify_jwt_token("test-token")
+                assert result["sub"] == "user_123"
+                assert result["aud"] == "briefly-backend"
