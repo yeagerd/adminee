@@ -6,6 +6,7 @@ This module provides shared OpenTelemetry setup that can be used across all serv
 
 import os
 import socket
+from typing import Any
 
 from opentelemetry import trace  # type: ignore[import-unresolved]
 
@@ -83,7 +84,6 @@ def get_tracer(name: str) -> trace.Tracer:
     return trace.get_tracer(name)
 
 
-from typing import Any
 
 
 def add_span_attributes(**attributes: Any) -> None:

@@ -123,7 +123,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, Optional
 
-from fastapi import HTTPException
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 
@@ -819,7 +819,6 @@ def exception_to_response(exc: Exception) -> ErrorResponse:
 
 
 # Optional: FastAPI exception handler registration utility
-from fastapi import FastAPI
 
 
 def register_briefly_exception_handlers(app: FastAPI) -> None:

@@ -324,9 +324,9 @@ def normalize_google_drive_file(
             size = int(size)
 
         # Parse timestamps
-        created_time = _parse_iso_datetime(
-            raw_data.get("createdTime")
-        ) or datetime.now(timezone.utc)
+        created_time = _parse_iso_datetime(raw_data.get("createdTime")) or datetime.now(
+            timezone.utc
+        )
         modified_time = _parse_iso_datetime(
             raw_data.get("modifiedTime")
         ) or datetime.now(timezone.utc)

@@ -1,6 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from typing import AsyncGenerator, Dict
 
 from fastapi import FastAPI
 
@@ -28,7 +29,6 @@ setup_service_logging(
 logger = logging.getLogger(__name__)
 
 
-from typing import AsyncGenerator
 
 
 @asynccontextmanager
@@ -69,7 +69,6 @@ app.include_router(calendar_router)
 app.include_router(files_router)
 
 
-from typing import Dict
 
 
 @app.get("/")

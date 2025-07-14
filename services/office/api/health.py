@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict
 
 import httpx
-from fastapi import APIRouter, Path
+from fastapi import APIRouter, Path, Response
 from fastapi.responses import JSONResponse
 from sqlmodel import select
 
@@ -28,7 +28,6 @@ router = APIRouter(prefix="/health", tags=["health"])
 token_manager = TokenManager()
 
 
-from fastapi import Response
 
 
 @router.get("/")

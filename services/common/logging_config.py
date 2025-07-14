@@ -25,9 +25,10 @@ import logging.config
 import sys
 import time
 import uuid
+from typing import Any, Callable
 
 import structlog
-from fastapi import Request
+from fastapi import Request, Response
 
 
 class RequestContextFilter(logging.Filter):
@@ -198,9 +199,7 @@ def setup_service_logging(
     )
 
 
-from typing import Any, Callable
 
-from fastapi import Request, Response
 
 
 def create_request_logging_middleware() -> Callable:
