@@ -285,7 +285,7 @@ export default function IntegrationsPage() {
                     {/* Integration Cards */}
                     <div className="grid gap-6 md:grid-cols-2">
                         {INTEGRATION_CONFIGS
-                            .filter(config => !preferredProvider || config.provider === preferredProvider)
+                            // .filter(config => !preferredProvider || config.provider === preferredProvider)
                             .map((config) => {
                                 const integration = getIntegrationStatus(config.provider);
                                 const isConnected = integration?.status === INTEGRATION_STATUS.ACTIVE;

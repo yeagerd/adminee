@@ -235,7 +235,7 @@ class APIClientFactory:
         Get the user's preferred provider from the user service.
 
         Args:
-            user_id: User ID to get preferred provider for
+            user_id: User ID to get preferred provider for (external_auth_id or internal ID)
 
         Returns:
             Preferred provider or None if not set
@@ -253,10 +253,33 @@ class APIClientFactory:
                 )
                 return None
 
-            # Get user profile from user service
+            # If user_id is not an integer, resolve to internal ID
+            resolved_user_id = user_id
+            try:
+                int(user_id)
+            except ValueError:
+                # Not an integer, resolve
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    resp = await client.get(
+                        f"{settings.USER_SERVICE_URL}/users/id?external_auth_id={user_id}",
+                        headers={"X-API-Key": settings.API_FRONTEND_USER_KEY},
+                    )
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        resolved_user_id = str(data.get("id"))
+                        logger.info(
+                            f"Resolved external_auth_id {user_id} to internal user ID {resolved_user_id}"
+                        )
+                    else:
+                        logger.warning(
+                            f"Failed to resolve internal user ID for external_auth_id {user_id}: {resp.status_code}"
+                        )
+                        return None
+
+            # Get user profile from user service using internal ID
             async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.get(
-                    f"{settings.USER_SERVICE_URL}/users/{user_id}",
+                    f"{settings.USER_SERVICE_URL}/users/{resolved_user_id}",
                     headers={"X-API-Key": settings.API_FRONTEND_USER_KEY},
                 )
 
@@ -272,7 +295,9 @@ class APIClientFactory:
                             )
                             return None
                     else:
-                        logger.info(f"No preferred provider set for user {user_id}")
+                        logger.info(
+                            f"No preferred provider set for user {resolved_user_id}"
+                        )
                         return None
                 else:
                     logger.warning(
