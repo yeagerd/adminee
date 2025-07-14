@@ -164,10 +164,18 @@ class UserService:
                 # Normalize email for storage
                 normalized_email = await detector.normalize_email_async(user_data.email)
 
+                # Set preferred provider based on auth provider
+                preferred_provider = None
+                if user_data.preferred_provider:
+                    preferred_provider = user_data.preferred_provider
+                elif user_data.auth_provider in ["google", "microsoft"]:
+                    preferred_provider = user_data.auth_provider
+
                 # Create new user
                 user = User(
                     external_auth_id=user_data.external_auth_id,
                     auth_provider=user_data.auth_provider,
+                    preferred_provider=preferred_provider,
                     email=user_data.email,
                     normalized_email=normalized_email,
                     first_name=user_data.first_name,
