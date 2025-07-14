@@ -1,75 +1,230 @@
 'use client';
 
+import { CalendarEventItem } from '@/components/calendar-event-item';
 import ChatInterface from '@/components/chat-interface';
-import Navbar from '@/components/navbar';
-import ScheduleList from '@/components/schedule-list';
-import TaskList from '@/components/task-list';
+import AppLayout from '@/components/layout/app-layout';
+import Sidebar, { Tool } from '@/components/layout/sidebar';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { INTEGRATION_STATUS } from '@/lib/constants';
 import { gatewayClient, Integration } from '@/lib/gateway-client';
-import {
-    AlertCircle,
-    Calendar,
-    CheckCircle,
-    Clock,
-    Mail,
-    MessageSquare,
-    Plus,
-    Shield,
-    User
-} from 'lucide-react';
+import { CalendarEvent } from '@/types/office-service';
+import { AlertCircle, ExternalLink } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 
 export default function DashboardPage() {
     const { data: session, status } = useSession();
+    const [activeTool, setActiveTool] = useState<Tool>('calendar');
+    const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+    const [calendarLoading, setCalendarLoading] = useState(false);
+    const [calendarError, setCalendarError] = useState<string | null>(null);
     const [integrations, setIntegrations] = useState<Integration[]>([]);
-    const [lastFetchTime, setLastFetchTime] = useState<number>(0);
+    const [integrationsLoading, setIntegrationsLoading] = useState(false);
 
-    // Cache duration: 5 minutes
-    const CACHE_DURATION = 5 * 60 * 1000;
+    const fetchIntegrations = useCallback(async () => {
+        if (!session?.user?.id) return;
 
-    const shouldRefetch = useCallback(() => {
-        return Date.now() - lastFetchTime > CACHE_DURATION;
-    }, [lastFetchTime]);
+        setIntegrationsLoading(true);
+        try {
+            const response = await gatewayClient.getIntegrations();
+            setIntegrations(response.integrations || []);
+        } catch (err) {
+            console.error('Failed to fetch integrations:', err);
+        } finally {
+            setIntegrationsLoading(false);
+        }
+    }, [session?.user?.id]);
 
-    const loadIntegrations = useCallback(async (forceRefresh = false) => {
-        // Don't refetch if we have recent data and not forcing refresh
-        if (!forceRefresh && integrations.length > 0 && !shouldRefetch()) {
+    const fetchCalendarEvents = useCallback(async () => {
+        if (!session?.user?.id) {
+            setCalendarError('No user session');
             return;
         }
 
+        setCalendarLoading(true);
+        setCalendarError(null);
+
         try {
-            const data = await gatewayClient.getIntegrations();
-            // The backend returns { integrations: [...], total: ..., active_count: ..., error_count: ... }
-            // Extract just the integrations array
-            setIntegrations(data.integrations || []);
-            setLastFetchTime(Date.now());
-        } catch (error) {
-            console.error('Failed to load integrations:', error);
-        }
-    }, [integrations.length, shouldRefetch]);
+            const response = await gatewayClient.getCalendarEvents(
+                session.user.id,
+                session.provider ? [session.provider] : ['google', 'microsoft'],
+                10,
+                new Date().toISOString().split('T')[0],
+                new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+            );
 
-    useEffect(() => {
-        if (session) {
-            loadIntegrations();
-        }
-    }, [session, loadIntegrations]);
-
-    // Handle window focus to refresh data if needed
-    useEffect(() => {
-        const handleWindowFocus = () => {
-            if (session && shouldRefetch()) {
-                console.log('Window focused, refreshing integrations...');
-                loadIntegrations(true);
+            if (response.success && response.data) {
+                setCalendarEvents(response.data.events || []);
+            } else {
+                setCalendarError('Failed to fetch calendar events');
             }
-        };
+        } catch (err) {
+            console.error('Calendar fetch error:', err);
+            setCalendarError(err instanceof Error ? err.message : 'Unknown error');
+        } finally {
+            setCalendarLoading(false);
+        }
+    }, [session?.user?.id, session?.provider]);
 
-        window.addEventListener('focus', handleWindowFocus);
-        return () => window.removeEventListener('focus', handleWindowFocus);
-    }, [session, shouldRefetch, loadIntegrations]);
+    // Fetch integrations and calendar events when calendar tool is selected
+    useEffect(() => {
+        if (activeTool === 'calendar' && session?.user?.id) {
+            fetchIntegrations();
+            fetchCalendarEvents();
+        }
+    }, [activeTool, session?.user?.id, fetchIntegrations, fetchCalendarEvents]);
+
+    // Check if user has active calendar integrations
+    const hasActiveCalendarIntegration = integrations.some(
+        integration =>
+            integration.status === INTEGRATION_STATUS.ACTIVE &&
+            (integration.provider === 'google' || integration.provider === 'microsoft')
+    );
+
+    const renderToolContent = () => {
+        switch (activeTool) {
+            case 'calendar':
+                return (
+                    <div className="p-8">
+                        <div className="flex items-center justify-between mb-6">
+                            <h1 className="text-3xl font-bold">Calendar</h1>
+                            <Button onClick={fetchCalendarEvents} disabled={calendarLoading}>
+                                {calendarLoading ? 'Loading...' : 'Refresh'}
+                            </Button>
+                        </div>
+
+                        {/* Integration Status Warning */}
+                        {!integrationsLoading && !hasActiveCalendarIntegration && (
+                            <Alert className="mb-6 border-amber-200 bg-amber-50">
+                                <AlertCircle className="h-4 w-4 text-amber-600" />
+                                <AlertDescription className="text-amber-800">
+                                    <div className="flex items-center justify-between">
+                                        <span>
+                                            No active calendar integration found. Connect your Google Calendar or Microsoft Outlook to view your events.
+                                        </span>
+                                        <Link
+                                            href="/integrations"
+                                            className="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 font-medium"
+                                        >
+                                            <span>Go to Integrations</span>
+                                            <ExternalLink className="h-3 w-3" />
+                                        </Link>
+                                    </div>
+                                </AlertDescription>
+                            </Alert>
+                        )}
+
+                        {calendarError && (
+                            <Card className="mb-6">
+                                <CardContent className="pt-6">
+                                    <div className="p-3 bg-red-100 border border-red-300 rounded text-red-700">
+                                        Error: {calendarError}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {calendarLoading && (
+                            <Card>
+                                <CardContent className="pt-6">
+                                    <div className="flex items-center justify-center py-8">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
+                                        <span className="ml-3">Loading calendar events...</span>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {!calendarLoading && calendarEvents.length === 0 && !calendarError && hasActiveCalendarIntegration && (
+                            <Card>
+                                <CardContent className="pt-6">
+                                    <div className="text-center py-8 text-muted-foreground">
+                                        <p>No calendar events found for the next 7 days.</p>
+                                        <Button
+                                            variant="outline"
+                                            className="mt-4"
+                                            onClick={fetchCalendarEvents}
+                                        >
+                                            Try Again
+                                        </Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {!calendarLoading && calendarEvents.length > 0 && (
+                            <div className="space-y-4">
+                                <div className="text-sm text-muted-foreground">
+                                    Found {calendarEvents.length} events for the next 7 days
+                                </div>
+                                {calendarEvents.map((event) => (
+                                    <CalendarEventItem key={event.id} event={event} />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                );
+            case 'email':
+                return (
+                    <div className="p-8">
+                        <h1 className="text-3xl font-bold mb-4">Email</h1>
+                        <p>Email view coming soon...</p>
+                    </div>
+                );
+            case 'documents':
+                return (
+                    <div className="p-8">
+                        <h1 className="text-3xl font-bold mb-4">Documents</h1>
+                        <p>Documents view coming soon...</p>
+                    </div>
+                );
+            case 'tasks':
+                return (
+                    <div className="p-8">
+                        <h1 className="text-3xl font-bold mb-4">Tasks</h1>
+                        <p>Tasks view coming soon...</p>
+                    </div>
+                );
+            case 'packages':
+                return (
+                    <div className="p-8">
+                        <h1 className="text-3xl font-bold mb-4">Package Tracker</h1>
+                        <p>Package tracker view coming soon...</p>
+                    </div>
+                );
+            case 'research':
+                return (
+                    <div className="p-8">
+                        <h1 className="text-3xl font-bold mb-4">Research</h1>
+                        <p>Research view coming soon...</p>
+                    </div>
+                );
+            case 'pulse':
+                return (
+                    <div className="p-8">
+                        <h1 className="text-3xl font-bold mb-4">Pulse</h1>
+                        <p>Pulse view coming soon...</p>
+                    </div>
+                );
+            case 'insights':
+                return (
+                    <div className="p-8">
+                        <h1 className="text-3xl font-bold mb-4">Insights</h1>
+                        <p>Insights view coming soon...</p>
+                    </div>
+                );
+            default:
+                return (
+                    <div className="p-8">
+                        <h1 className="text-3xl font-bold mb-4">Dashboard</h1>
+                        <p>Welcome back, {session?.user?.name || 'User'}!</p>
+                    </div>
+                );
+        }
+    };
 
     if (status === 'loading') {
         return (
@@ -82,246 +237,45 @@ export default function DashboardPage() {
     if (!session) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <Card className="w-full max-w-md">
-                    <CardHeader>
-                        <CardTitle>Authentication Required</CardTitle>
-                        <CardDescription>Please sign in to access your dashboard</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Button asChild className="w-full">
-                            <Link href="/login">Sign In</Link>
-                        </Button>
-                    </CardContent>
-                </Card>
+                <div className="text-center">
+                    <h1 className="text-2xl font-bold mb-4">Authentication Required</h1>
+                    <p>Please sign in to access your dashboard</p>
+                </div>
             </div>
         );
     }
 
-    const today = new Date();
-    const formattedDate = today.toLocaleDateString(undefined, {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-        timeZoneName: "short",
-    });
-
-    const activeIntegrations = integrations.filter(i => i.status === INTEGRATION_STATUS.ACTIVE);
-    const hasGoogleIntegration = activeIntegrations.some(i => i.provider === 'google');
-    const hasMicrosoftIntegration = activeIntegrations.some(i => i.provider === 'microsoft');
-
-    // Check for integrations with token issues
-    // Only show warnings for missing access tokens or expired tokens
-    // Missing refresh tokens are acceptable for some providers (like Microsoft)
-    const integrationsWithTokenIssues = integrations.filter(i => {
-        if (i.status !== INTEGRATION_STATUS.ACTIVE) return false;
-
-        // Missing access token is always an issue
-        if (!i.has_access_token) return true;
-
-        // Check if access token is expired
-        if (i.token_expires_at) {
-            const expiresAt = new Date(i.token_expires_at);
-            const now = new Date();
-            if (expiresAt <= now) return true;
-        }
-
-        // Missing refresh token is only an issue if the access token is expired or will expire soon
-        if (!i.has_refresh_token && i.token_expires_at) {
-            const expiresAt = new Date(i.token_expires_at);
-            const now = new Date();
-            const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour
-            if (expiresAt <= oneHourFromNow) return true;
-        }
-
-        return false;
-    });
-    const hasTokenIssues = integrationsWithTokenIssues.length > 0;
-
     return (
-        <div className="min-h-screen bg-gray-50">
-            <Navbar />
-            <div className="container mx-auto px-4 py-6 w-full max-w-7xl">
-                {/* Welcome Header */}
-                <div className="mb-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-3xl font-bold text-gray-900">
-                                Welcome back, {session.user?.name?.split(' ')[0] || 'User'}!
-                            </h1>
-                            <p className="text-gray-600 mt-1">{formattedDate}</p>
+        <AppLayout
+            sidebar={<Sidebar activeTool={activeTool} onToolChange={setActiveTool} />}
+            main={
+                <div className="h-full flex flex-col">
+                    {/* Tool Content - Top portion */}
+                    <div className="flex-1 overflow-auto">
+                        {renderToolContent()}
+                    </div>
+
+                    {/* Chat Interface - Bottom portion */}
+                    <div className="h-80 border-t bg-card">
+                        <div className="flex items-center justify-between p-4 border-b">
+                            <h2 className="text-lg font-semibold">AI Assistant</h2>
+                        </div>
+                        <div className="flex-1 overflow-hidden">
+                            <ChatInterface />
                         </div>
                     </div>
                 </div>
-
-
-
-                {/* Integration Setup */}
-                {activeIntegrations.length === 0 && (
-                    <Card className="mb-6 border-blue-200 bg-blue-50">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Shield className="h-5 w-5 text-blue-600" />
-                                Get Started with Integrations
-                            </CardTitle>
-                            <CardDescription>
-                                Connect your calendar and email to unlock the full power of Briefly
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex gap-3">
-                                <Button asChild>
-                                    <Link href="/integrations">
-                                        <Plus className="h-4 w-4 mr-2" />
-                                        Connect Services
-                                    </Link>
-                                </Button>
-                                <Button variant="outline" asChild>
-                                    <Link href="/onboarding">
-                                        Start Onboarding
-                                    </Link>
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-
-                {/* Integration Token Issues Warning */}
-                {hasTokenIssues && (
-                    <Card className="mb-6 border-orange-200 bg-orange-50">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <AlertCircle className="h-5 w-5 text-orange-600" />
-                                Integration Issues Detected
-                            </CardTitle>
-                            <CardDescription>
-                                Some of your integrations have token issues and may not work properly
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-2">
-                                {integrationsWithTokenIssues.map((integration) => (
-                                    <div key={integration.id} className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-medium capitalize">{integration.provider}</span>
-                                            <span className="text-sm text-orange-600">
-                                                {!integration.has_access_token && "Missing access token"}
-                                                {integration.has_access_token && !integration.has_refresh_token && integration.token_expires_at && (() => {
-                                                    const expiresAt = new Date(integration.token_expires_at);
-                                                    const now = new Date();
-                                                    const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
-                                                    if (expiresAt <= now) {
-                                                        return "Access token expired";
-                                                    } else if (expiresAt <= oneHourFromNow) {
-                                                        return "Access token expires soon";
-                                                    }
-                                                    return "Missing refresh token";
-                                                })()}
-                                            </span>
-                                        </div>
-                                        <Button variant="outline" size="sm" asChild>
-                                            <Link href="/integrations">Fix Integration</Link>
-                                        </Button>
-                                    </div>
-                                ))}
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-
-                {/* Main Dashboard Content */}
-                <div className="flex flex-col gap-6 w-full lg:flex-row">
-                    {/* Schedule Section */}
-                    <Card className="flex-1 min-w-0 w-full">
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-lg font-medium flex items-center gap-2 justify-between">
-                                <span className="flex items-center gap-2">
-                                    <Clock className="h-5 w-5 text-teal-600" />
-                                    Today's Schedule
-                                </span>
-                                <Button variant="outline" size="sm">
-                                    <Plus className="h-4 w-4 mr-1" />
-                                    New Event
-                                </Button>
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <ScheduleList
-                                dateRange="today"
-                                providers={[
-                                    ...(hasGoogleIntegration ? ['google'] : []),
-                                    ...(hasMicrosoftIntegration ? ['microsoft'] : [])
-                                ]}
-                                limit={10}
-                                fallbackToDemo={true}
-                                showDemoIndicator={true}
-                            />
-                        </CardContent>
-                    </Card>
-
-                    {/* Tasks Section */}
-                    <Card className="flex-1 min-w-0 w-full">
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-lg font-medium flex items-center gap-2">
-                                <CheckCircle className="h-5 w-5 text-teal-600" />
-                                Today's Tasks
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <TaskList />
-                        </CardContent>
-                    </Card>
+            }
+            draft={
+                <div className="h-full flex flex-col">
+                    <div className="flex items-center justify-between p-4 border-b">
+                        <h2 className="text-lg font-semibold">Draft</h2>
+                    </div>
+                    <div className="flex-1 p-4 text-muted-foreground">
+                        <p>Draft content will appear here when you create emails, calendar events, or documents.</p>
+                    </div>
                 </div>
-
-                {/* Chat Interface */}
-                <div className="mt-6">
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-lg font-medium flex items-center gap-2">
-                                <MessageSquare className="h-5 w-5 text-teal-600" />
-                                AI Assistant
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <ChatInterface />
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* Quick Actions */}
-                <div className="mt-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Quick Actions</CardTitle>
-                            <CardDescription>Common tasks and settings</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <Button variant="outline" asChild>
-                                    <Link href="/integrations">
-                                        <Shield className="h-4 w-4 mr-2" />
-                                        Manage Integrations
-                                    </Link>
-                                </Button>
-                                <Button variant="outline" asChild>
-                                    <Link href="/profile">
-                                        <User className="h-4 w-4 mr-2" />
-                                        View Profile
-                                    </Link>
-                                </Button>
-                                <Button variant="outline" disabled>
-                                    <Calendar className="h-4 w-4 mr-2" />
-                                    Meeting Prep
-                                </Button>
-                                <Button variant="outline" disabled>
-                                    <Mail className="h-4 w-4 mr-2" />
-                                    Email Drafts
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
-        </div>
+            }
+        />
     );
 } 

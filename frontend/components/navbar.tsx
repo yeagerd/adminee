@@ -1,12 +1,12 @@
 import UserMenu from "@/components/auth/user-menu";
 import { Button } from "@/components/ui/button";
-import { Play, Sailboat } from "lucide-react";
+import { ListChecks, Play, Sailboat } from "lucide-react";
 import Link from "next/link";
 
 export default function Navbar() {
     return (
         <header className="bg-white border-b w-full">
-            <div className="flex flex-row items-center justify-between w-full px-4 py-3 max-w-7xl mx-auto">
+            <div className="flex flex-row items-center justify-between w-full px-4 py-3">
                 <div className="flex items-center gap-2 min-w-0">
                     <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                         <Sailboat className="h-6 w-6 text-teal-600 flex-shrink-0" />
@@ -18,6 +18,12 @@ export default function Navbar() {
                         <Link href="/demos">
                             <Play className="h-4 w-4 mr-2" />
                             Demos
+                        </Link>
+                    </Button>
+                    <Button variant="outline" size="sm" asChild>
+                        <Link href="/tasks">
+                            <ListChecks className="h-4 w-4 mr-2" />
+                            Tasks
                         </Link>
                     </Button>
                     <UserMenu />
