@@ -1,3 +1,5 @@
+import { CalendarEvent } from '@/types/office-service';
+
 // Demo data for the demos page
 export interface DemoUser {
     id: string;
@@ -287,6 +289,40 @@ export const demoCalendarEvents: DemoCalendarEvent[] = [
         ],
     },
 ].sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+
+// Utility function to convert demo events to unified CalendarEvent format
+export function convertDemoEventsToUnified(demoEvents: DemoCalendarEvent[]): CalendarEvent[] {
+    return demoEvents.map((demoEvent) => ({
+        id: demoEvent.id,
+        calendar_id: "primary",
+        title: demoEvent.title,
+        description: undefined,
+        start_time: demoEvent.startTime.toISOString(),
+        end_time: demoEvent.endTime.toISOString(),
+        all_day: false,
+        location: demoEvent.location,
+        attendees: demoEvent.attendees.map((attendee) => ({
+            email: attendee.email,
+            name: attendee.name
+        })),
+        organizer: demoEvent.isUserOrganizer ? {
+            email: "demo@briefly.com",
+            name: "Demo User"
+        } : {
+            email: "organizer@company.com",
+            name: "Meeting Organizer"
+        },
+        status: "confirmed",
+        visibility: "default",
+        provider: "google" as const,
+        provider_event_id: `demo_${demoEvent.id}`,
+        account_email: "demo@briefly.com",
+        account_name: "Demo User",
+        calendar_name: "Primary Calendar",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+    }))
+}
 
 // Demo tasks data
 export const demoTasks: DemoTask[] = [

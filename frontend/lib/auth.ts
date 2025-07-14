@@ -174,8 +174,8 @@ export const authOptions: NextAuthOptions = {
                     const customToken = jwt.sign(
                         {
                             sub: String(token.internalUserId), // Ensure it's a string
-                            iss: 'nextauth-frontend',
-                            aud: 'briefly-backend',
+                            iss: 'nextauth',
+                            aud: 'briefly-backend', // Add audience claim
                             email: session.user?.email,
                             iat: Math.floor(Date.now() / 1000),
                             exp: Math.floor(Date.now() / 1000) + (60 * 60), // 1 hour
