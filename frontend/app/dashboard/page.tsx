@@ -13,7 +13,7 @@ import { CalendarEvent } from '@/types/office-service';
 import { AlertCircle, ExternalLink } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export default function DashboardPage() {
     const { data: session, status } = useSession();
@@ -24,7 +24,7 @@ export default function DashboardPage() {
     const [integrations, setIntegrations] = useState<Integration[]>([]);
     const [integrationsLoading, setIntegrationsLoading] = useState(false);
 
-    const fetchIntegrations = async () => {
+    const fetchIntegrations = useCallback(async () => {
         if (!session?.user?.id) return;
 
         setIntegrationsLoading(true);
@@ -36,9 +36,9 @@ export default function DashboardPage() {
         } finally {
             setIntegrationsLoading(false);
         }
-    };
+    }, [session?.user?.id]);
 
-    const fetchCalendarEvents = async () => {
+    const fetchCalendarEvents = useCallback(async () => {
         if (!session?.user?.id) {
             setCalendarError('No user session');
             return;
@@ -67,7 +67,7 @@ export default function DashboardPage() {
         } finally {
             setCalendarLoading(false);
         }
-    };
+    }, [session?.user?.id, session?.provider]);
 
     // Fetch integrations and calendar events when calendar tool is selected
     useEffect(() => {
@@ -75,7 +75,7 @@ export default function DashboardPage() {
             fetchIntegrations();
             fetchCalendarEvents();
         }
-    }, [activeTool, session?.user?.id]);
+    }, [activeTool, session?.user?.id, fetchIntegrations, fetchCalendarEvents]);
 
     // Check if user has active calendar integrations
     const hasActiveCalendarIntegration = integrations.some(

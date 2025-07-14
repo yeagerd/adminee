@@ -116,7 +116,7 @@ export default function IntegrationsPage() {
             setLoading(false);
             setIsRefreshing(false);
         }
-    }, [integrations.length, shouldRefetch, determinePreferredProvider]);
+    }, [integrations.length, shouldRefetch, determinePreferredProvider, isRefreshing]);
 
     useEffect(() => {
         if (session) {
