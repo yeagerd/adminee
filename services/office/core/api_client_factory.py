@@ -229,3 +229,111 @@ class APIClientFactory:
             List of supported Provider enums
         """
         return [Provider.GOOGLE, Provider.MICROSOFT]
+
+    async def get_user_preferred_provider(self, user_id: str) -> Optional[Provider]:
+        """
+        Get the user's preferred provider from the user service.
+
+        Args:
+            user_id: User ID to get preferred provider for (external_auth_id or internal ID)
+
+        Returns:
+            Preferred provider or None if not set
+        """
+        try:
+            # Import here to avoid circular imports
+            import httpx
+
+            from services.office.core.settings import get_settings
+
+            settings = get_settings()
+            if not settings.USER_MANAGEMENT_SERVICE_URL:
+                logger.warning(
+                    "USER_MANAGEMENT_SERVICE_URL not configured, cannot get preferred provider"
+                )
+                return None
+
+            # Assert that the API key is set
+            assert (
+                settings.api_office_user_key is not None
+            ), "api_office_user_key must be set in settings for service-to-service authentication"
+
+            # If user_id is not an integer, resolve to internal ID
+            resolved_user_id = user_id
+            try:
+                int(user_id)
+            except ValueError:
+                # Not an integer, resolve
+                headers = {"X-API-Key": settings.api_office_user_key}
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    resp = await client.get(
+                        f"{settings.USER_MANAGEMENT_SERVICE_URL}/users/id?external_auth_id={user_id}",
+                        headers=headers,
+                    )
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        resolved_user_id = str(data.get("id"))
+                        logger.info(
+                            f"Resolved external_auth_id {user_id} to internal user ID {resolved_user_id}"
+                        )
+                    else:
+                        logger.warning(
+                            f"Failed to resolve internal user ID for external_auth_id {user_id}: {resp.status_code}"
+                        )
+                        return None
+
+            # Get user profile from user service using internal ID
+            headers = {"X-API-Key": settings.api_office_user_key}
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.get(
+                    f"{settings.USER_MANAGEMENT_SERVICE_URL}/users/{resolved_user_id}",
+                    headers=headers,
+                )
+
+                if response.status_code == 200:
+                    user_data = response.json()
+                    preferred_provider = user_data.get("preferred_provider")
+                    if preferred_provider:
+                        try:
+                            return Provider(preferred_provider.lower())
+                        except ValueError:
+                            logger.warning(
+                                f"Invalid preferred provider: {preferred_provider}"
+                            )
+                            return None
+                    else:
+                        logger.info(
+                            f"No preferred provider set for user {resolved_user_id}"
+                        )
+                        return None
+                else:
+                    logger.warning(
+                        f"Failed to get user profile: {response.status_code}"
+                    )
+                    return None
+
+        except Exception as e:
+            logger.error(f"Error getting user preferred provider: {e}")
+            return None
+
+    async def create_client_for_user(
+        self,
+        user_id: str,
+        scopes: Optional[List[str]] = None,
+    ) -> Optional[Union[GoogleAPIClient, MicrosoftAPIClient]]:
+        """
+        Create a client for a user using their preferred provider.
+
+        Args:
+            user_id: User ID to create client for
+            scopes: Optional list of OAuth scopes
+
+        Returns:
+            Initialized API client or None if creation failed
+        """
+        preferred_provider = await self.get_user_preferred_provider(user_id)
+        if not preferred_provider:
+            logger.warning(f"No preferred provider found for user {user_id}")
+            return None
+
+        return await self.create_client(user_id, preferred_provider, scopes)

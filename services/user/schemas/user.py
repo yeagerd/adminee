@@ -88,6 +88,11 @@ class UserCreate(UserBase):
     auth_provider: str = Field(
         default="nextauth", max_length=50, description="Authentication provider name"
     )
+    preferred_provider: Optional[str] = Field(
+        None,
+        max_length=50,
+        description="Preferred integration provider (google or microsoft)",
+    )
 
     @field_validator("external_auth_id")
     @classmethod
@@ -128,6 +133,26 @@ class UserCreate(UserBase):
         if v not in valid_providers:
             raise ValueError(
                 f"Invalid auth provider. Must be one of: {', '.join(valid_providers)}"
+            )
+
+        return v
+
+    @field_validator("preferred_provider")
+    @classmethod
+    def validate_preferred_provider(cls, v):
+        """Validate preferred provider format."""
+        if v is None:
+            return v
+
+        v = v.strip().lower()
+
+        # Check for SQL injection patterns
+        check_sql_injection_patterns(v, "preferred_provider")
+
+        valid_providers = ["google", "microsoft"]
+        if v not in valid_providers:
+            raise ValueError(
+                f"Invalid preferred provider. Must be one of: {', '.join(valid_providers)}"
             )
 
         return v
@@ -191,6 +216,9 @@ class UserResponse(UserBase):
         ..., description="External authentication provider user ID"
     )
     auth_provider: str = Field(..., description="Authentication provider name")
+    preferred_provider: Optional[str] = Field(
+        None, description="Preferred integration provider (google or microsoft)"
+    )
     onboarding_completed: bool = Field(
         ..., description="Whether user has completed onboarding"
     )

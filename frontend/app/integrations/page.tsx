@@ -61,6 +61,7 @@ export default function IntegrationsPage() {
     const [error, setError] = useState<string | null>(null);
     const [lastFetchTime, setLastFetchTime] = useState<number>(0);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [preferredProvider, setPreferredProvider] = useState<string | null>(null);
 
     // Cache duration: 5 minutes
     const CACHE_DURATION = 5 * 60 * 1000;
@@ -68,6 +69,21 @@ export default function IntegrationsPage() {
     const shouldRefetch = useCallback(() => {
         return Date.now() - lastFetchTime > CACHE_DURATION;
     }, [lastFetchTime]);
+
+    const determinePreferredProvider = useCallback((integrations: Integration[]) => {
+        // If user has active integrations, use the first one as preferred
+        const activeIntegration = integrations.find(integration => integration.status === INTEGRATION_STATUS.ACTIVE);
+        if (activeIntegration) {
+            return activeIntegration.provider;
+        }
+
+        // If no active integrations, check if user has any integrations at all
+        if (integrations.length > 0) {
+            return integrations[0].provider;
+        }
+
+        return null;
+    }, []);
 
     const loadIntegrations = useCallback(async (forceRefresh = false) => {
         // Don't refetch if we have recent data and not forcing refresh
@@ -85,9 +101,14 @@ export default function IntegrationsPage() {
             console.log('Integrations data:', data);
             // The backend returns { integrations: [...], total: ..., active_count: ..., error_count: ... }
             // Extract just the integrations array
-            setIntegrations(data.integrations || []);
+            const integrationsData = data.integrations || [];
+            setIntegrations(integrationsData);
             setLastFetchTime(Date.now());
-            console.log('Integrations state updated:', data.integrations || []);
+            console.log('Integrations state updated:', integrationsData);
+
+            // Determine preferred provider from integrations
+            const preferred = determinePreferredProvider(integrationsData);
+            setPreferredProvider(preferred);
         } catch (error: unknown) {
             console.error('Failed to load integrations:', error);
             setError('Failed to load integrations. Please try again.');
@@ -125,6 +146,9 @@ export default function IntegrationsPage() {
                 config.provider,
                 config.scopes
             ) as OAuthStartResponse;
+
+            // Update preferred provider when connecting
+            setPreferredProvider(config.provider);
 
             // Redirect to OAuth provider
             window.location.href = response.authorization_url;
@@ -260,120 +284,122 @@ export default function IntegrationsPage() {
 
                     {/* Integration Cards */}
                     <div className="grid gap-6 md:grid-cols-2">
-                        {INTEGRATION_CONFIGS.map((config) => {
-                            const integration = getIntegrationStatus(config.provider);
-                            const isConnected = integration?.status === INTEGRATION_STATUS.ACTIVE;
-                            const isConnecting = connectingProvider === config.provider;
+                        {INTEGRATION_CONFIGS
+                            .filter(config => !preferredProvider || config.provider === preferredProvider)
+                            .map((config) => {
+                                const integration = getIntegrationStatus(config.provider);
+                                const isConnected = integration?.status === INTEGRATION_STATUS.ACTIVE;
+                                const isConnecting = connectingProvider === config.provider;
 
-                            // Debug logging
-                            if (config.provider === 'microsoft') {
-                                console.log(`Microsoft integration state:`, integration);
-                            }
+                                // Debug logging
+                                if (config.provider === 'microsoft') {
+                                    console.log(`Microsoft integration state:`, integration);
+                                }
 
-                            return (
-                                <Card key={config.provider} className="relative">
-                                    <CardHeader>
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`p-2 rounded-lg ${config.color} text-white`}>
-                                                    {config.icon}
-                                                </div>
-                                                <div>
-                                                    <CardTitle className="text-lg">{config.name}</CardTitle>
-                                                    <CardDescription>{config.description}</CardDescription>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                {getStatusIcon(integration?.status)}
-                                                <Badge variant={getStatusColor(integration?.status)}>
-                                                    {integration?.status === INTEGRATION_STATUS.INACTIVE ? 'Disconnected' :
-                                                        integration?.status || 'Not Connected'}
-                                                </Badge>
-                                            </div>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        {/* Scopes */}
-                                        <div>
-                                            <h4 className="text-sm font-medium text-gray-700 mb-2">Permissions:</h4>
-                                            <div className="space-y-1">
-                                                {config.scopes.map((scope, index) => (
-                                                    <div key={index} className="text-xs text-gray-600">
-                                                        • {scope.includes('calendar') ? 'Calendar access' :
-                                                            scope.includes('mail') || scope.includes('gmail') ? 'Email access' :
-                                                                scope.includes('User.Read') ? 'Profile access' : scope}
+                                return (
+                                    <Card key={config.provider} className="relative">
+                                        <CardHeader>
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`p-2 rounded-lg ${config.color} text-white`}>
+                                                        {config.icon}
                                                     </div>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        {/* Status Details */}
-                                        {integration && (
-                                            <div className="space-y-2">
-                                                <div className="text-xs text-gray-600">
-                                                    <span className="font-medium">Scopes:</span> {integration.scopes.join(', ')}
+                                                    <div>
+                                                        <CardTitle className="text-lg">{config.name}</CardTitle>
+                                                        <CardDescription>{config.description}</CardDescription>
+                                                    </div>
                                                 </div>
-                                                {integration.last_sync_at && (
+                                                <div className="flex items-center gap-2">
+                                                    {getStatusIcon(integration?.status)}
+                                                    <Badge variant={getStatusColor(integration?.status)}>
+                                                        {integration?.status === INTEGRATION_STATUS.INACTIVE ? 'Disconnected' :
+                                                            integration?.status || 'Not Connected'}
+                                                    </Badge>
+                                                </div>
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent className="space-y-4">
+                                            {/* Scopes */}
+                                            <div>
+                                                <h4 className="text-sm font-medium text-gray-700 mb-2">Permissions:</h4>
+                                                <div className="space-y-1">
+                                                    {config.scopes.map((scope, index) => (
+                                                        <div key={index} className="text-xs text-gray-600">
+                                                            • {scope.includes('calendar') ? 'Calendar access' :
+                                                                scope.includes('mail') || scope.includes('gmail') ? 'Email access' :
+                                                                    scope.includes('User.Read') ? 'Profile access' : scope}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Status Details */}
+                                            {integration && (
+                                                <div className="space-y-2">
                                                     <div className="text-xs text-gray-600">
-                                                        <span className="font-medium">Last sync:</span>{' '}
-                                                        {parseUtcDate(integration.last_sync_at).toLocaleString(undefined, { timeZoneName: 'short' })}
+                                                        <span className="font-medium">Scopes:</span> {integration.scopes.join(', ')}
                                                     </div>
-                                                )}
-                                                {integration.last_error && (
-                                                    <div className="text-xs text-red-600">
-                                                        <span className="font-medium">Error:</span> {integration.last_error}
-                                                    </div>
+                                                    {integration.last_sync_at && (
+                                                        <div className="text-xs text-gray-600">
+                                                            <span className="font-medium">Last sync:</span>{' '}
+                                                            {parseUtcDate(integration.last_sync_at).toLocaleString(undefined, { timeZoneName: 'short' })}
+                                                        </div>
+                                                    )}
+                                                    {integration.last_error && (
+                                                        <div className="text-xs text-red-600">
+                                                            <span className="font-medium">Error:</span> {integration.last_error}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Actions */}
+                                            <div className="flex gap-2">
+                                                {!isConnected ? (
+                                                    <Button
+                                                        onClick={() => handleConnect(config)}
+                                                        disabled={isConnecting || loading}
+                                                        className="flex-1"
+                                                    >
+                                                        {isConnecting ? (
+                                                            <>
+                                                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                                                Connecting...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Shield className="h-4 w-4 mr-2" />
+                                                                Connect
+                                                            </>
+                                                        )}
+                                                    </Button>
+                                                ) : (
+                                                    <>
+                                                        <Button
+                                                            variant="outline"
+                                                            onClick={() => handleRefresh(config.provider)}
+                                                            disabled={loading}
+                                                            size="sm"
+                                                        >
+                                                            <RefreshCw className="h-4 w-4 mr-2" />
+                                                            Refresh
+                                                        </Button>
+                                                        <Button
+                                                            variant="destructive"
+                                                            onClick={() => handleDisconnect(config.provider)}
+                                                            disabled={loading}
+                                                            size="sm"
+                                                        >
+                                                            <XCircle className="h-4 w-4 mr-2" />
+                                                            Disconnect
+                                                        </Button>
+                                                    </>
                                                 )}
                                             </div>
-                                        )}
-
-                                        {/* Actions */}
-                                        <div className="flex gap-2">
-                                            {!isConnected ? (
-                                                <Button
-                                                    onClick={() => handleConnect(config)}
-                                                    disabled={isConnecting || loading}
-                                                    className="flex-1"
-                                                >
-                                                    {isConnecting ? (
-                                                        <>
-                                                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                                                            Connecting...
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Shield className="h-4 w-4 mr-2" />
-                                                            Connect
-                                                        </>
-                                                    )}
-                                                </Button>
-                                            ) : (
-                                                <>
-                                                    <Button
-                                                        variant="outline"
-                                                        onClick={() => handleRefresh(config.provider)}
-                                                        disabled={loading}
-                                                        size="sm"
-                                                    >
-                                                        <RefreshCw className="h-4 w-4 mr-2" />
-                                                        Refresh
-                                                    </Button>
-                                                    <Button
-                                                        variant="destructive"
-                                                        onClick={() => handleDisconnect(config.provider)}
-                                                        disabled={loading}
-                                                        size="sm"
-                                                    >
-                                                        <XCircle className="h-4 w-4 mr-2" />
-                                                        Disconnect
-                                                    </Button>
-                                                </>
-                                            )}
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            );
-                        })}
+                                        </CardContent>
+                                    </Card>
+                                );
+                            })}
                     </div>
 
                     {/* Help Section */}

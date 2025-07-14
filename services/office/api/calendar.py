@@ -102,9 +102,16 @@ async def get_calendar_events(
     )
 
     try:
-        # Default to all providers if not specified
+        # If no providers specified, get user's preferred provider
         if not providers:
-            providers = ["google", "microsoft"]
+            preferred_provider = await api_client_factory.get_user_preferred_provider(
+                user_id
+            )
+            if preferred_provider:
+                providers = [preferred_provider.value]
+            else:
+                # Fallback to all providers if no preferred provider is set
+                providers = ["google", "microsoft"]
 
         # Validate providers
         valid_providers = []
