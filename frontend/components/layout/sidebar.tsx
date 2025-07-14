@@ -9,27 +9,34 @@ import {
     SidebarTrigger,
     Sidebar as UISidebar,
 } from "@/components/ui/sidebar";
+import { useToolStateUtils } from "@/hooks/use-tool-state";
+import { getToolBadge, isToolAvailable } from "@/lib/tool-routing";
+import { NavigationItem, Tool } from "@/types/navigation";
 import { BarChart3, BookOpen, Calendar, ClipboardList, FileText, Mail, Package, TrendingUp } from "lucide-react";
 
-export type Tool = "calendar" | "email" | "documents" | "tasks" | "packages" | "research" | "pulse" | "insights";
-
-const navigationItems = [
-    { id: "calendar" as Tool, title: "Calendar", icon: Calendar },
-    { id: "email" as Tool, title: "Email", icon: Mail },
-    { id: "documents" as Tool, title: "Documents", icon: FileText },
-    { id: "tasks" as Tool, title: "Tasks", icon: ClipboardList },
-    { id: "packages" as Tool, title: "Package Tracker", icon: Package },
-    { id: "research" as Tool, title: "Research", icon: BookOpen },
-    { id: "pulse" as Tool, title: "Pulse", icon: TrendingUp },
-    { id: "insights" as Tool, title: "Insights", icon: BarChart3, badge: "Soon" },
+const navigationItems: NavigationItem[] = [
+    { id: "calendar", title: "Calendar", icon: Calendar, path: "/dashboard?tool=calendar", enabled: true },
+    { id: "email", title: "Email", icon: Mail, path: "/dashboard?tool=email", enabled: true },
+    { id: "documents", title: "Documents", icon: FileText, path: "/dashboard?tool=documents", enabled: true },
+    { id: "tasks", title: "Tasks", icon: ClipboardList, path: "/dashboard?tool=tasks", enabled: true },
+    { id: "packages", title: "Package Tracker", icon: Package, path: "/dashboard?tool=packages", enabled: true },
+    { id: "research", title: "Research", icon: BookOpen, path: "/dashboard?tool=research", enabled: true },
+    { id: "pulse", title: "Pulse", icon: TrendingUp, path: "/dashboard?tool=pulse", enabled: true },
+    { id: "insights", title: "Insights", icon: BarChart3, path: "/dashboard?tool=insights", enabled: false },
 ];
 
 interface SidebarProps {
-    activeTool: Tool;
-    onToolChange: (tool: Tool) => void;
+    activeTool?: Tool;
+    onToolChange?: (tool: Tool) => void;
 }
 
 export function Sidebar({ activeTool, onToolChange }: SidebarProps) {
+    const { activeTool: contextActiveTool, setActiveTool, isToolEnabled, isActiveTool } = useToolStateUtils();
+
+    // Use context state if no props provided
+    const currentActiveTool = activeTool || contextActiveTool;
+    const handleToolChange = onToolChange || setActiveTool;
+
     return (
         <UISidebar collapsible="icon" className="border-r">
             <SidebarHeader className="border-b p-2">
@@ -42,24 +49,30 @@ export function Sidebar({ activeTool, onToolChange }: SidebarProps) {
                 <SidebarGroup>
                     <SidebarGroupContent>
                         <SidebarMenu>
-                            {navigationItems.map((item) => (
-                                <SidebarMenuItem key={item.id}>
-                                    <SidebarMenuButton
-                                        isActive={activeTool === item.id}
-                                        onClick={() => onToolChange(item.id)}
-                                        disabled={item.badge === "Soon"}
-                                        tooltip={item.title}
-                                    >
-                                        <item.icon className="h-4 w-4" />
-                                        <span>{item.title}</span>
-                                        {item.badge && (
-                                            <span className="ml-auto text-xs bg-muted px-1.5 py-0.5 rounded group-data-[collapsible=icon]:hidden">
-                                                {item.badge}
-                                            </span>
-                                        )}
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                            ))}
+                            {navigationItems.map((item) => {
+                                const isEnabled = isToolEnabled(item.id);
+                                const badge = getToolBadge(item.id);
+                                const isAvailable = isToolAvailable(item.id);
+
+                                return (
+                                    <SidebarMenuItem key={item.id}>
+                                        <SidebarMenuButton
+                                            isActive={isActiveTool(item.id)}
+                                            onClick={() => handleToolChange(item.id)}
+                                            disabled={!isEnabled || !isAvailable}
+                                            tooltip={item.title}
+                                        >
+                                            <item.icon className="h-4 w-4" />
+                                            <span>{item.title}</span>
+                                            {badge && (
+                                                <span className="ml-auto text-xs bg-muted px-1.5 py-0.5 rounded group-data-[collapsible=icon]:hidden">
+                                                    {badge}
+                                                </span>
+                                            )}
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                );
+                            })}
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>
