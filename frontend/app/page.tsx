@@ -1,25 +1,23 @@
-//This page is deprecated. Please use the new dashboard for the best experience.
 "use client"
 
-import ChatInterface from "@/components/chat-interface";
-import Navbar from "@/components/navbar";
-import ScheduleList from "@/components/schedule-list";
-import TaskList from "@/components/task-list";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-    AlertCircle,
-    CheckCircle2,
-    Clock,
-    LogIn,
-    MessageSquare,
-    Plus,
-} from "lucide-react";
+import { LogIn, Play } from "lucide-react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function Home() {
     const { data: session, status } = useSession();
+    const router = useRouter();
+
+    // Redirect authenticated users to dashboard
+    useEffect(() => {
+        if (status === "authenticated" && session) {
+            router.replace("/dashboard");
+        }
+    }, [session, status, router]);
 
     // Get current date
     const today = new Date();
@@ -35,7 +33,6 @@ export default function Home() {
     if (status === "loading") {
         return (
             <main className="min-h-screen bg-gray-50">
-                <Navbar />
                 <div className="container mx-auto px-4 py-6 w-full max-w-7xl">
                     <div className="flex items-center justify-center min-h-[400px]">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
@@ -49,7 +46,6 @@ export default function Home() {
     if (!session) {
         return (
             <main className="min-h-screen bg-gray-50">
-                <Navbar />
                 <div className="container mx-auto px-4 py-6 w-full max-w-7xl">
                     {/* Date Display */}
                     <div className="mb-6">
@@ -70,12 +66,20 @@ export default function Home() {
                             <p className="text-gray-600">
                                 Sign in to access your calendar, manage tasks, and chat with your AI assistant.
                             </p>
-                            <Button asChild className="w-full max-w-xs">
-                                <Link href="/login">
-                                    <LogIn className="h-4 w-4 mr-2" />
-                                    Sign In
-                                </Link>
-                            </Button>
+                            <div className="flex flex-col gap-3 items-center">
+                                <Button asChild className="w-full max-w-xs">
+                                    <Link href="/login">
+                                        <LogIn className="h-4 w-4 mr-2" />
+                                        Sign In
+                                    </Link>
+                                </Button>
+                                <Button asChild variant="outline" className="w-full max-w-xs">
+                                    <Link href="/demos">
+                                        <Play className="h-4 w-4 mr-2" />
+                                        Try Demo
+                                    </Link>
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
                 </div>
@@ -83,85 +87,12 @@ export default function Home() {
         );
     }
 
-    // Show full dashboard for authenticated users
+    // This should not be reached due to the redirect, but just in case
     return (
         <main className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <Navbar />
-
-            {/* Deprecation Notice */}
-            <div className="bg-amber-50 border-b border-amber-200">
-                <div className="container mx-auto px-4 py-3 w-full max-w-7xl">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-amber-800">
-                            <AlertCircle className="h-4 w-4" />
-                            <span className="text-sm font-medium">
-                                This page is deprecated. Please use the new dashboard for the best experience.
-                            </span>
-                        </div>
-                        <Button asChild variant="outline" size="sm" className="text-amber-700 border-amber-300 hover:bg-amber-100">
-                            <Link href="/dashboard">
-                                Go to New Dashboard
-                            </Link>
-                        </Button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Main Content */}
             <div className="container mx-auto px-4 py-6 w-full max-w-7xl">
-                {/* Date Display */}
-                <div className="mb-6">
-                    <h2 className="text-2xl font-bold text-gray-800">{formattedDate}</h2>
-                </div>
-
-                <div className="flex flex-col gap-6 w-full lg:flex-row">
-                    {/* Schedule Section */}
-                    <Card className="flex-1 min-w-0 w-full">
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-lg font-medium flex items-center gap-2 justify-between">
-                                <span className="flex items-center gap-2">
-                                    <Clock className="h-5 w-5 text-teal-600" />
-                                    Today's Schedule
-                                </span>
-                                <Button variant="outline" size="sm">
-                                    <Plus className="h-4 w-4 mr-1" />
-                                    New Event
-                                </Button>
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <ScheduleList />
-                        </CardContent>
-                    </Card>
-
-                    {/* Tasks Section */}
-                    <Card className="flex-1 min-w-0 w-full">
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-lg font-medium flex items-center gap-2">
-                                <CheckCircle2 className="h-5 w-5 text-teal-600" />
-                                Today's Tasks
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <TaskList />
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* Chat Interface */}
-                <div className="mt-6">
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-lg font-medium flex items-center gap-2">
-                                <MessageSquare className="h-5 w-5 text-teal-600" />
-                                AI Assistant
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <ChatInterface />
-                        </CardContent>
-                    </Card>
+                <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
                 </div>
             </div>
         </main>
