@@ -504,8 +504,9 @@ class IntegrationService:
 
                 # Refresh tokens
                 if not refresh_token:
-                    raise ValidationError(
-                        message="Missing refresh token for integration."
+                    # If no refresh token, we need to re-authenticate
+                    raise ServiceError(
+                        message="REAUTHENTICATION_REQUIRED: No refresh token available. Please re-authenticate with Microsoft."
                     )
                 new_tokens = await self.oauth_config.refresh_access_token(
                     provider=provider,
@@ -556,6 +557,23 @@ class IntegrationService:
         except Exception as e:
             if isinstance(e, NotFoundError):
                 raise
+
+            # Update the integration's error message to reflect the current failure
+            try:
+                async_session = get_async_session()
+                async with async_session() as session:
+                    integration = await self._get_user_integration_in_session(
+                        user_id, provider, session
+                    )
+                    integration.error_message = str(e)
+                    integration.updated_at = datetime.now(timezone.utc)
+                    session.add(integration)
+                    await session.commit()
+            except Exception as update_error:
+                self.logger.warning(
+                    f"Failed to update integration error message: {update_error}"
+                )
+
             raise ServiceError(
                 message=f"Failed to refresh integration tokens: {str(e)}"
             )
