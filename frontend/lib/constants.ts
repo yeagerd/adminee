@@ -1,9 +1,9 @@
-// Integration status constants
+// Integration status constants - must match backend enum values
 export const INTEGRATION_STATUS = {
-    ACTIVE: 'ACTIVE',
-    INACTIVE: 'INACTIVE',
-    ERROR: 'ERROR',
-    PENDING: 'PENDING',
+    ACTIVE: 'active',
+    INACTIVE: 'inactive',
+    ERROR: 'error',
+    PENDING: 'pending',
 } as const;
 
 export type IntegrationStatus = typeof INTEGRATION_STATUS[keyof typeof INTEGRATION_STATUS];

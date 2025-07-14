@@ -21,28 +21,55 @@ import {
 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export default function DashboardPage() {
     const { data: session, status } = useSession();
     const [integrations, setIntegrations] = useState<Integration[]>([]);
+    const [lastFetchTime, setLastFetchTime] = useState<number>(0);
 
-    useEffect(() => {
-        if (session) {
-            loadIntegrations();
+    // Cache duration: 5 minutes
+    const CACHE_DURATION = 5 * 60 * 1000;
+
+    const shouldRefetch = useCallback(() => {
+        return Date.now() - lastFetchTime > CACHE_DURATION;
+    }, [lastFetchTime]);
+
+    const loadIntegrations = useCallback(async (forceRefresh = false) => {
+        // Don't refetch if we have recent data and not forcing refresh
+        if (!forceRefresh && integrations.length > 0 && !shouldRefetch()) {
+            return;
         }
-    }, [session]);
 
-    const loadIntegrations = async () => {
         try {
             const data = await gatewayClient.getIntegrations();
             // The backend returns { integrations: [...], total: ..., active_count: ..., error_count: ... }
             // Extract just the integrations array
             setIntegrations(data.integrations || []);
+            setLastFetchTime(Date.now());
         } catch (error) {
             console.error('Failed to load integrations:', error);
         }
-    };
+    }, [integrations.length, shouldRefetch]);
+
+    useEffect(() => {
+        if (session) {
+            loadIntegrations();
+        }
+    }, [session, loadIntegrations]);
+
+    // Handle window focus to refresh data if needed
+    useEffect(() => {
+        const handleWindowFocus = () => {
+            if (session && shouldRefetch()) {
+                console.log('Window focused, refreshing integrations...');
+                loadIntegrations(true);
+            }
+        };
+
+        window.addEventListener('focus', handleWindowFocus);
+        return () => window.removeEventListener('focus', handleWindowFocus);
+    }, [session, shouldRefetch, loadIntegrations]);
 
     if (status === 'loading') {
         return (
