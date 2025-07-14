@@ -29,8 +29,6 @@ setup_service_logging(
 logger = logging.getLogger(__name__)
 
 
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator:
     # Startup event logic
@@ -67,8 +65,6 @@ app.include_router(health_router)
 app.include_router(email_router)
 app.include_router(calendar_router)
 app.include_router(files_router)
-
-
 
 
 @app.get("/")

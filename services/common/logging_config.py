@@ -199,9 +199,6 @@ def setup_service_logging(
     )
 
 
-
-
-
 def create_request_logging_middleware() -> Callable:
     """
     Create HTTP request logging middleware for FastAPI.

@@ -28,8 +28,6 @@ router = APIRouter(prefix="/health", tags=["health"])
 token_manager = TokenManager()
 
 
-
-
 @router.get("/")
 async def health_check() -> Response:
     """
