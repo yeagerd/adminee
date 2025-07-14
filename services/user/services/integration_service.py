@@ -477,20 +477,27 @@ class IntegrationService:
 
                 # Check if refresh is needed
                 if not force and tokens.get("expires_at"):
-                    expires_at = datetime.fromisoformat(tokens["expires_at"])
-                    # Ensure expires_at is timezone-aware
-                    if expires_at.tzinfo is None:
-                        expires_at = expires_at.replace(tzinfo=timezone.utc)
-                    # Refresh if expires within 5 minutes
-                    if expires_at > datetime.now(timezone.utc) + timedelta(minutes=5):
-                        return TokenRefreshResponse(
-                            success=True,
-                            integration_id=integration.id,
-                            provider=provider,
-                            token_expires_at=expires_at,
-                            refreshed_at=datetime.now(timezone.utc),
-                            error=None,
+                    try:
+                        expires_at = datetime.fromisoformat(tokens["expires_at"])
+                        # Ensure expires_at is timezone-aware
+                        if expires_at.tzinfo is None:
+                            expires_at = expires_at.replace(tzinfo=timezone.utc)
+                        # Refresh if expires within 5 minutes
+                        if expires_at > datetime.now(timezone.utc) + timedelta(minutes=5):
+                            return TokenRefreshResponse(
+                                success=True,
+                                integration_id=integration.id,
+                                provider=provider,
+                                token_expires_at=expires_at,
+                                refreshed_at=datetime.now(timezone.utc),
+                                error=None,
+                            )
+                    except (ValueError, TypeError) as e:
+                        self.logger.warning(
+                            f"Invalid expires_at format for user {user_id}, provider {provider.value}: {tokens['expires_at']}",
+                            error=str(e)
                         )
+                        # Continue with refresh if timestamp is malformed
 
                 # Refresh tokens
                 if not refresh_token:

@@ -39,7 +39,7 @@ export default function ScheduleList({
     const [cacheHit, setCacheHit] = useState(false)
 
     // Memoize the providers array to prevent unnecessary re-renders
-    const memoizedProviders = useMemo(() => providers, [providers.join(',')])
+    const memoizedProviders = useMemo(() => providers, [providers])
 
     // Memoize the fallbackToDemo value to prevent unnecessary re-renders
     const memoizedFallbackToDemo = useMemo(() => fallbackToDemo, [fallbackToDemo])
