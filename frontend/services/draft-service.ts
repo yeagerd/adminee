@@ -1,3 +1,4 @@
+import { gatewayClient } from '@/lib/gateway-client';
 import { officeIntegration } from '@/lib/office-integration';
 import { Draft, DraftStatus, DraftType } from '@/types/draft';
 
@@ -22,66 +23,34 @@ export interface DraftActionResult {
 }
 
 export class DraftService {
-    private apiBaseUrl: string;
-
-    constructor(apiBaseUrl: string = '/api') {
-        this.apiBaseUrl = apiBaseUrl;
-    }
-
     async createDraft(request: CreateDraftRequest): Promise<Draft> {
-        const response = await fetch(`${this.apiBaseUrl}/user-drafts`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(request),
+        const data = await gatewayClient.createDraft({
+            type: request.type,
+            content: request.content,
+            metadata: request.metadata,
+            threadId: request.threadId,
         });
 
-        if (!response.ok) {
-            throw new Error(`Failed to create draft: ${response.statusText}`);
-        }
-
-        const data = await response.json();
         return this.mapDraftFromApi(data);
     }
 
     async updateDraft(draftId: string, request: UpdateDraftRequest): Promise<Draft> {
-        const response = await fetch(`${this.apiBaseUrl}/user-drafts/${draftId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(request),
+        const data = await gatewayClient.updateDraft(draftId, {
+            content: request.content,
+            metadata: request.metadata,
+            status: request.status,
         });
 
-        if (!response.ok) {
-            throw new Error(`Failed to update draft: ${response.statusText}`);
-        }
-
-        const data = await response.json();
         return this.mapDraftFromApi(data);
     }
 
     async deleteDraft(draftId: string): Promise<boolean> {
-        const response = await fetch(`${this.apiBaseUrl}/user-drafts/${draftId}`, {
-            method: 'DELETE',
-        });
-
-        if (!response.ok) {
-            throw new Error(`Failed to delete draft: ${response.statusText}`);
-        }
-
+        await gatewayClient.deleteDraft(draftId);
         return true;
     }
 
     async getDraft(draftId: string): Promise<Draft> {
-        const response = await fetch(`${this.apiBaseUrl}/user-drafts/${draftId}`);
-
-        if (!response.ok) {
-            throw new Error(`Failed to get draft: ${response.statusText}`);
-        }
-
-        const data = await response.json();
+        const data = await gatewayClient.getDraft(draftId);
         return this.mapDraftFromApi(data);
     }
 
@@ -90,18 +59,12 @@ export class DraftService {
         totalCount: number;
         hasMore: boolean;
     }> {
-        const params = new URLSearchParams();
-        if (filters?.type) params.append('draft_type', filters.type);
-        if (filters?.status) params.append('status', filters.status);
-        if (filters?.search) params.append('search', filters.search);
+        const data = await gatewayClient.listDrafts({
+            type: filters?.type,
+            status: filters?.status,
+            search: filters?.search,
+        });
 
-        const response = await fetch(`${this.apiBaseUrl}/user-drafts?${params.toString()}`);
-
-        if (!response.ok) {
-            throw new Error(`Failed to list drafts: ${response.statusText}`);
-        }
-
-        const data = await response.json();
         return {
             drafts: data.drafts.map((draft: any) => this.mapDraftFromApi(draft)),
             totalCount: data.total_count,

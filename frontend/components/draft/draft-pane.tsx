@@ -19,7 +19,6 @@ export function DraftPane({ className, userId }: DraftPaneProps) {
         state: { currentDraft, isLoading, error },
         updateDraft,
         updateDraftMetadata,
-        clearDraft,
         createNewDraft,
     } = useDraftState();
 

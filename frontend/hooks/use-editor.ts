@@ -24,7 +24,7 @@ export function useEditor({
     autoSaveDelay = 2000,
     onAutoSave
 }: UseEditorProps) {
-    const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
+    const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const lastSavedContentRef = useRef(content);
 
     const editor = useTipTapEditor({

@@ -107,7 +107,7 @@ export class OfficeIntegrationService {
         }
     }
 
-    async executeDraftAction(draft: Draft): Promise<{ success: boolean; result?: any; error?: string }> {
+    async executeDraftAction(draft: Draft): Promise<{ success: boolean; result?: Record<string, unknown>; error?: string }> {
         switch (draft.type) {
             case 'email':
                 return this.sendEmail({
