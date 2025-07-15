@@ -38,6 +38,7 @@ from fastapi.responses import StreamingResponse
 from services.chat import history_manager
 from services.chat.agents.workflow_agent import WorkflowAgent
 from services.chat.auth import require_chat_auth
+from services.chat.history_manager import count_user_drafts
 from services.chat.models import (
     ChatRequest,
     ChatResponse,
@@ -45,6 +46,9 @@ from services.chat.models import (
     FeedbackResponse,
     MessageResponse,
     ThreadResponse,
+    UserDraftListResponse,
+    UserDraftRequest,
+    UserDraftResponse,
 )
 from services.chat.service_client import ServiceClient
 from services.chat.settings import get_settings
@@ -373,4 +377,254 @@ def feedback_endpoint(
     Receive user feedback for a message.
     """
     FEEDBACKS.append(request)
-    return FeedbackResponse(status="success")
+    return FeedbackResponse(status="success", detail="Feedback recorded")
+
+
+# User Draft Endpoints
+@router.post("/user-drafts", response_model=UserDraftResponse)
+async def create_user_draft_endpoint(
+    request: Request,
+    draft_request: UserDraftRequest,
+    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
+) -> UserDraftResponse:
+    """Create a new user draft."""
+    user_id = await get_user_id_from_gateway(request)
+
+    # Convert metadata to JSON string
+    metadata_json = "{}"
+    if draft_request.metadata:
+        metadata_json = json.dumps(draft_request.metadata)
+
+    # Convert thread_id to int if provided
+    thread_id_int = None
+    if draft_request.thread_id:
+        try:
+            thread_id_int = int(draft_request.thread_id)
+        except (ValueError, TypeError):
+            raise ValidationError(
+                message="Invalid thread_id format. Must be an integer.",
+                field="thread_id",
+                value=draft_request.thread_id,
+            )
+
+    # Create the draft
+    draft = await history_manager.create_user_draft(
+        user_id=user_id,
+        draft_type=draft_request.type,
+        content=draft_request.content,
+        metadata=metadata_json,
+        thread_id=thread_id_int,
+    )
+
+    # Convert to API response model
+    return UserDraftResponse(
+        id=str(draft.id),
+        user_id=draft.user_id,
+        type=draft.type,
+        content=draft.content,
+        metadata=json.loads(draft.draft_metadata),
+        status=draft.status,
+        thread_id=str(draft.thread_id) if draft.thread_id else None,
+        created_at=str(draft.created_at),
+        updated_at=str(draft.updated_at),
+    )
+
+
+@router.get("/user-drafts", response_model=UserDraftListResponse)
+async def list_user_drafts_endpoint(
+    request: Request,
+    draft_type: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
+) -> UserDraftListResponse:
+    """List user drafts with optional filtering."""
+    user_id = await get_user_id_from_gateway(request)
+
+    # Get drafts
+    drafts = await history_manager.list_user_drafts(
+        user_id=user_id,
+        draft_type=draft_type,
+        status=status,
+        limit=limit + 1,  # Get one extra to check if there are more
+        offset=offset,
+    )
+
+    # Get total count for pagination
+    total_count = await count_user_drafts(
+        user_id=user_id,
+        draft_type=draft_type,
+        status=status,
+    )
+
+    # Check if there are more drafts
+    has_more = len(drafts) > limit
+    if has_more:
+        drafts = drafts[:-1]  # Remove the extra draft
+
+    # Convert to API response models
+    draft_responses = []
+    for draft in drafts:
+        draft_responses.append(
+            UserDraftResponse(
+                id=str(draft.id),
+                user_id=draft.user_id,
+                type=draft.type,
+                content=draft.content,
+                metadata=json.loads(draft.draft_metadata),
+                status=draft.status,
+                thread_id=str(draft.thread_id) if draft.thread_id else None,
+                created_at=str(draft.created_at),
+                updated_at=str(draft.updated_at),
+            )
+        )
+
+    return UserDraftListResponse(
+        drafts=draft_responses, total_count=total_count, has_more=has_more
+    )
+
+
+@router.get("/user-drafts/{draft_id}", response_model=UserDraftResponse)
+async def get_user_draft_endpoint(
+    request: Request,
+    draft_id: str,
+    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
+) -> UserDraftResponse:
+    """Get a specific user draft."""
+    user_id = await get_user_id_from_gateway(request)
+
+    try:
+        draft_id_int = int(draft_id)
+    except (ValueError, TypeError):
+        raise ValidationError(
+            message="Invalid draft_id format. Must be an integer.",
+            field="draft_id",
+            value=draft_id,
+        )
+
+    draft = await history_manager.get_user_draft(draft_id_int)
+    if not draft:
+        raise NotFoundError("UserDraft", draft_id)
+
+    # Check if the draft belongs to the user
+    if draft.user_id != user_id:
+        raise ValidationError(
+            message="Access denied. Draft does not belong to user.",
+            field="draft_id",
+            value=draft_id,
+        )
+
+    # Convert to API response model
+    return UserDraftResponse(
+        id=str(draft.id),
+        user_id=draft.user_id,
+        type=draft.type,
+        content=draft.content,
+        metadata=json.loads(draft.draft_metadata),
+        status=draft.status,
+        thread_id=str(draft.thread_id) if draft.thread_id else None,
+        created_at=str(draft.created_at),
+        updated_at=str(draft.updated_at),
+    )
+
+
+@router.put("/user-drafts/{draft_id}", response_model=UserDraftResponse)
+async def update_user_draft_endpoint(
+    request: Request,
+    draft_id: str,
+    draft_request: UserDraftRequest,
+    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
+) -> UserDraftResponse:
+    """Update a user draft."""
+    user_id = await get_user_id_from_gateway(request)
+
+    try:
+        draft_id_int = int(draft_id)
+    except (ValueError, TypeError):
+        raise ValidationError(
+            message="Invalid draft_id format. Must be an integer.",
+            field="draft_id",
+            value=draft_id,
+        )
+
+    # Get the existing draft
+    existing_draft = await history_manager.get_user_draft(draft_id_int)
+    if not existing_draft:
+        raise NotFoundError("UserDraft", draft_id)
+
+    # Check if the draft belongs to the user
+    if existing_draft.user_id != user_id:
+        raise ValidationError(
+            message="Access denied. Draft does not belong to user.",
+            field="draft_id",
+            value=draft_id,
+        )
+
+    # Convert metadata to JSON string
+    metadata_json = "{}"
+    if draft_request.metadata:
+        metadata_json = json.dumps(draft_request.metadata)
+
+    # Update the draft
+    updated_draft = await history_manager.update_user_draft(
+        draft_id_int,
+        content=draft_request.content,
+        metadata=metadata_json,
+        status="draft",  # Keep as draft when updating
+    )
+
+    if not updated_draft:
+        raise NotFoundError("UserDraft", draft_id)
+
+    # Convert to API response model
+    return UserDraftResponse(
+        id=str(updated_draft.id),
+        user_id=updated_draft.user_id,
+        type=updated_draft.type,
+        content=updated_draft.content,
+        metadata=json.loads(updated_draft.draft_metadata),
+        status=updated_draft.status,
+        thread_id=str(updated_draft.thread_id) if updated_draft.thread_id else None,
+        created_at=str(updated_draft.created_at),
+        updated_at=str(updated_draft.updated_at),
+    )
+
+
+@router.delete("/user-drafts/{draft_id}")
+async def delete_user_draft_endpoint(
+    request: Request,
+    draft_id: str,
+    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
+):
+    """Delete a user draft."""
+    user_id = await get_user_id_from_gateway(request)
+
+    try:
+        draft_id_int = int(draft_id)
+    except (ValueError, TypeError):
+        raise ValidationError(
+            message="Invalid draft_id format. Must be an integer.",
+            field="draft_id",
+            value=draft_id,
+        )
+
+    # Get the existing draft to check ownership
+    existing_draft = await history_manager.get_user_draft(draft_id_int)
+    if not existing_draft:
+        raise NotFoundError("UserDraft", draft_id)
+
+    # Check if the draft belongs to the user
+    if existing_draft.user_id != user_id:
+        raise ValidationError(
+            message="Access denied. Draft does not belong to user.",
+            field="draft_id",
+            value=draft_id,
+        )
+
+    # Delete the draft
+    success = await history_manager.delete_user_draft(draft_id_int)
+    if not success:
+        raise NotFoundError("UserDraft", draft_id)
+
+    return {"status": "success", "message": "Draft deleted successfully"}
