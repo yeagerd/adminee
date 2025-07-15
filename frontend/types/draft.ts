@@ -7,8 +7,8 @@ export interface DraftMetadata {
     recipients?: string[];
     cc?: string[];
     bcc?: string[];
-    startTime?: string;
-    endTime?: string;
+    startTime?: string | (() => string);
+    endTime?: string | (() => string);
     location?: string;
     attendees?: string[];
     title?: string;

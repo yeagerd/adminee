@@ -19,7 +19,6 @@ export function DraftPane({ className, userId }: DraftPaneProps) {
         state: { currentDraft, isLoading, error },
         updateDraft,
         updateDraftMetadata,
-        clearDraft,
         createNewDraft,
     } = useDraftState();
 
@@ -38,25 +37,14 @@ export function DraftPane({ className, userId }: DraftPaneProps) {
         }
     };
 
-    const handleSave = () => {
-        // TODO: Implement save functionality
-        console.log('Saving draft:', currentDraft);
-    };
-
-    const handleDiscard = () => {
-        if (confirm('Are you sure you want to discard this draft?')) {
-            clearDraft();
+    const handleActionComplete = (action: string, success: boolean) => {
+        if (success) {
+            console.log(`${action} completed successfully`);
+            // TODO: Handle successful actions (e.g., close draft, show success message)
+        } else {
+            console.error(`${action} failed`);
+            // TODO: Handle failed actions (e.g., show error message)
         }
-    };
-
-    const handleSend = () => {
-        // TODO: Implement send functionality
-        console.log('Sending draft:', currentDraft);
-    };
-
-    const handleCreate = () => {
-        // TODO: Implement create functionality
-        console.log('Creating from draft:', currentDraft);
     };
 
     const handleContentChange = (content: string) => {
@@ -160,11 +148,7 @@ export function DraftPane({ className, userId }: DraftPaneProps) {
             {/* Actions */}
             <DraftActions
                 draft={currentDraft}
-                onSave={handleSave}
-                onDiscard={handleDiscard}
-                onSend={handleSend}
-                onCreate={handleCreate}
-                isLoading={isLoading}
+                onActionComplete={handleActionComplete}
             />
         </div>
     );

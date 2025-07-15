@@ -14,7 +14,7 @@ export type DraftFiltersState = {
 
 export default function DraftsList() {
     const [filters, setFilters] = useState<DraftFiltersState>({ type: undefined, status: undefined, search: '' });
-    const { drafts, isLoading, error } = useDrafts(filters);
+    const { drafts, loading, error } = useDrafts(filters);
 
     const sortedDrafts = sortDraftsByUpdated(filterDraftsBySearch(drafts, filters.search || ''));
 
@@ -25,9 +25,9 @@ export default function DraftsList() {
                 <NewDraftButton onClick={() => {/* TODO: open new draft modal */ }} />
             </div>
             <DraftFilters {...filters} onChange={setFilters} />
-            {isLoading && <div>Loading drafts...</div>}
+            {loading && <div>Loading drafts...</div>}
             {error && <div className="text-red-500">Error loading drafts.</div>}
-            {!isLoading && sortedDrafts.length === 0 && <div>No drafts found.</div>}
+            {!loading && sortedDrafts.length === 0 && <div>No drafts found.</div>}
             <div className="space-y-2">
                 {sortedDrafts.map(draft => (
                     <DraftCard key={draft.id} draft={draft} onClick={() => {/* TODO: open draft */ }} />
