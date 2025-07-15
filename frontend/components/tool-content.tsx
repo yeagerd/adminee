@@ -1,6 +1,7 @@
 'use client';
 
 import { CalendarEventItem } from '@/components/calendar-event-item';
+import DraftsList from '@/components/drafts/drafts-list';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -212,6 +213,13 @@ export function ToolContent() {
                     <div className="p-8">
                         <h1 className="text-3xl font-bold mb-4">Insights</h1>
                         <p>Insights view coming soon...</p>
+                    </div>
+                );
+            case 'drafts':
+                return (
+                    <div className="p-8">
+                        <h1 className="text-3xl font-bold mb-4">Drafts</h1>
+                        <DraftsList />
                     </div>
                 );
             default:
