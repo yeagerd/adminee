@@ -46,10 +46,10 @@ export function DraftFilters({
         );
     }
     return (
-        <div className="flex gap-2 mb-2 w-full items-center">
+        <div className="flex items-center">
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <button className="relative border rounded px-3 py-2 text-sm bg-background hover:bg-accent focus:outline-none">
+                    <button className="relative border rounded px-3 py-2 text-sm bg-background hover:bg-accent focus:outline-none flex items-center">
                         Filters
                         {/* Show a small green dot if any filter is active */}
                         {(selectedTypes.length > 0 || selectedStatuses.length > 0) && (
