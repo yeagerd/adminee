@@ -231,6 +231,7 @@ const serviceRoutes = {
     '/api/calendar': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
     '/api/email': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
     '/api/files': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
+    '/api/user-drafts': process.env.CHAT_SERVICE_URL || 'http://127.0.0.1:8002',
 };
 
 // Create proxy middleware factory
@@ -334,6 +335,8 @@ app.use('/api/email', validateAuth, standardLimiter, createServiceProxy(serviceR
 app.use('/api/email/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/email'], { '^/api/email': '/email' }));
 app.use('/api/files', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/files'], { '^/api/files': '/files' }));
 app.use('/api/files/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/files'], { '^/api/files': '/files' }));
+app.use('/api/user-drafts', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/user-drafts'], { '^/api/user-drafts': '/user-drafts' }));
+app.use('/api/user-drafts/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/user-drafts'], { '^/api/user-drafts': '/user-drafts' }));
 
 // Fallback for other API routes (default to user service)
 app.use('/api', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/users'], { '^/api': '' }));
@@ -364,6 +367,7 @@ const server = app.listen(PORT, () => {
     console.log(`  /api/calendar → ${serviceRoutes['/api/calendar']}`);
     console.log(`  /api/email    → ${serviceRoutes['/api/email']}`);
     console.log(`  /api/files    → ${serviceRoutes['/api/files']}`);
+    console.log(`  /api/user-drafts → ${serviceRoutes['/api/user-drafts']}`);
 });
 
 // Handle WebSocket upgrades

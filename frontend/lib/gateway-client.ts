@@ -231,6 +231,53 @@ class GatewayClient {
         return this.request(`/api/files?provider=${provider}&${params.toString()}`);
     }
 
+    // Draft Management
+    async createDraft(draftData: {
+        type: string;
+        content: string;
+        metadata?: Record<string, unknown>;
+        threadId?: string;
+    }): Promise<DraftApiResponse> {
+        return this.request<DraftApiResponse>('/api/user-drafts', {
+            method: 'POST',
+            body: draftData,
+        });
+    }
+
+    async updateDraft(draftId: string, draftData: {
+        content?: string;
+        metadata?: Record<string, unknown>;
+        status?: string;
+    }): Promise<DraftApiResponse> {
+        return this.request<DraftApiResponse>(`/api/user-drafts/${draftId}`, {
+            method: 'PUT',
+            body: draftData,
+        });
+    }
+
+    async deleteDraft(draftId: string): Promise<void> {
+        return this.request<void>(`/api/user-drafts/${draftId}`, {
+            method: 'DELETE',
+        });
+    }
+
+    async getDraft(draftId: string): Promise<DraftApiResponse> {
+        return this.request<DraftApiResponse>(`/api/user-drafts/${draftId}`);
+    }
+
+    async listDrafts(filters?: {
+        type?: string;
+        status?: string;
+        search?: string;
+    }): Promise<DraftListResponse> {
+        const params = new URLSearchParams();
+        if (filters?.type) params.append('draft_type', filters.type);
+        if (filters?.status) params.append('status', filters.status);
+        if (filters?.search) params.append('search', filters.search);
+
+        return this.request<DraftListResponse>(`/api/user-drafts?${params.toString()}`);
+    }
+
     // Health Check
     async healthCheck() {
         return this.request('/health');
@@ -299,6 +346,25 @@ export interface OAuthCallbackResponse {
     scopes: string[];
     external_user_info?: Record<string, unknown>;
     error?: string;
+}
+
+export interface DraftApiResponse {
+    id: string;
+    type: string;
+    status: string;
+    content: string;
+    metadata: Record<string, unknown>;
+    is_ai_generated?: boolean;
+    created_at: string;
+    updated_at: string;
+    user_id: string;
+    thread_id?: string;
+}
+
+export interface DraftListResponse {
+    drafts: DraftApiResponse[];
+    total_count: number;
+    has_more: boolean;
 }
 
 export default gatewayClient; 
