@@ -6,6 +6,7 @@ import Sidebar from '@/components/layout/sidebar';
 import { ToolContent } from '@/components/tool-content';
 import { ToolProvider } from '@/contexts/tool-context';
 import { useSession } from 'next-auth/react';
+import { Suspense } from 'react';
 
 function DashboardContent() {
     const { data: session, status } = useSession();
@@ -66,8 +67,10 @@ function DashboardContent() {
 
 export default function DashboardPage() {
     return (
-        <ToolProvider>
-            <DashboardContent />
-        </ToolProvider>
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+            <ToolProvider>
+                <DashboardContent />
+            </ToolProvider>
+        </Suspense>
     );
 } 
