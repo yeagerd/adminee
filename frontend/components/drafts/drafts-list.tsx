@@ -41,6 +41,8 @@ export default function DraftsList() {
                         onChange={f => setFilters(prev => ({
                             ...prev,
                             ...f,
+                            // Ensure search is always a string, never undefined
+                            search: f.search ?? prev.search,
                             type: f.type ? (Array.isArray(f.type) ? f.type : [f.type]) : [],
                             status: f.status ? (Array.isArray(f.status) ? f.status : [f.status]) : [],
                         }))}

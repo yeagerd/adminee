@@ -23,7 +23,7 @@ export function DraftFilters({
     type?: DraftType | DraftType[];
     status?: DraftStatus | DraftStatus[];
     search?: string;
-    onChange: (filters: { type?: DraftType | DraftType[]; status?: DraftStatus | DraftStatus[]; search?: string }) => void;
+    onChange: (filters: { type?: DraftType | DraftType[]; status?: DraftStatus | DraftStatus[]; search: string }) => void;
     hideTypeAndStatus?: boolean;
 }) {
     // Only use local search state if search input is rendered (hideTypeAndStatus)
@@ -76,7 +76,7 @@ export function DraftFilters({
                                     ? [...selectedTypes, t]
                                     : selectedTypes.filter((type) => type !== t);
                                 setSelectedTypes(newTypes);
-                                onChange({ type: newTypes, status: selectedStatuses, search });
+                                onChange({ type: newTypes, status: selectedStatuses, search: search || '' });
                             }}
                         >
                             {t.charAt(0).toUpperCase() + t.slice(1)}
@@ -93,7 +93,7 @@ export function DraftFilters({
                                     ? [...selectedStatuses, s]
                                     : selectedStatuses.filter((status) => status !== s);
                                 setSelectedStatuses(newStatuses);
-                                onChange({ type: selectedTypes, status: newStatuses, search });
+                                onChange({ type: selectedTypes, status: newStatuses, search: search || '' });
                             }}
                         >
                             {s.charAt(0).toUpperCase() + s.slice(1)}
