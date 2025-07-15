@@ -48,8 +48,8 @@ const calendarTemplates: DraftTemplate[] = [
         content: 'Weekly team meeting to discuss:\n\n- Project updates\n- Blockers and challenges\n- Next week priorities\n- Open discussion',
         metadata: {
             title: 'Team Meeting',
-            startTime: new Date().toISOString(),
-            endTime: new Date(Date.now() + 3600000).toISOString(),
+            startTime: (() => new Date().toISOString()) as string | (() => string),
+            endTime: (() => new Date(Date.now() + 3600000).toISOString()) as string | (() => string),
             attendees: [],
             priority: 'medium',
         },
@@ -62,8 +62,8 @@ const calendarTemplates: DraftTemplate[] = [
         content: '1:1 meeting agenda:\n\n- Progress review\n- Goals and objectives\n- Feedback and development\n- Action items',
         metadata: {
             title: '1:1 Review',
-            startTime: new Date().toISOString(),
-            endTime: new Date(Date.now() + 1800000).toISOString(),
+            startTime: (() => new Date().toISOString()) as string | (() => string),
+            endTime: (() => new Date(Date.now() + 1800000).toISOString()) as string | (() => string),
             attendees: [],
             priority: 'high',
         },
@@ -129,6 +129,20 @@ export function DraftTemplates({ type, onSelectTemplate }: DraftTemplatesProps) 
 
     const templates = getTemplates();
 
+    const handleSelectTemplate = (template: DraftTemplate) => {
+        // If calendar, resolve dynamic startTime/endTime
+        if (template.type === 'calendar') {
+            const metadata = { ...template.metadata };
+            const startTime = metadata.startTime;
+            const endTime = metadata.endTime;
+            metadata.startTime = typeof startTime === 'function' ? startTime() : startTime;
+            metadata.endTime = typeof endTime === 'function' ? endTime() : endTime;
+            onSelectTemplate({ ...template, metadata });
+        } else {
+            onSelectTemplate(template);
+        }
+    };
+
     if (templates.length === 0) {
         return (
             <div className="text-center text-muted-foreground py-8">
@@ -155,7 +169,7 @@ export function DraftTemplates({ type, onSelectTemplate }: DraftTemplatesProps) 
                             <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => onSelectTemplate(template)}
+                                onClick={() => handleSelectTemplate(template)}
                                 className="w-full"
                             >
                                 Use Template

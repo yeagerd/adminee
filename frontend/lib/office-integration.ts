@@ -1,4 +1,5 @@
 import { Draft } from '@/types/draft';
+import { GatewayClient } from './gateway-client';
 
 export interface OfficeIntegrationConfig {
     provider: 'google' | 'microsoft';
@@ -30,29 +31,25 @@ export interface DocumentSaveRequest {
 
 export class OfficeIntegrationService {
     private config: OfficeIntegrationConfig;
+    private gatewayClient: GatewayClient;
 
     constructor(config: OfficeIntegrationConfig) {
         this.config = config;
+        this.gatewayClient = new GatewayClient();
     }
 
     async sendEmail(request: EmailSendRequest): Promise<{ success: boolean; messageId?: string; error?: string }> {
         try {
-            const response = await fetch(`${this.config.apiBaseUrl}/email/send`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    ...request,
-                    provider: this.config.provider,
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error(`Failed to send email: ${response.statusText}`);
-            }
-
-            const result = await response.json();
+            const result = await this.gatewayClient.request<{ messageId: string }>(
+                '/api/email/send',
+                {
+                    method: 'POST',
+                    body: {
+                        ...request,
+                        provider: this.config.provider,
+                    },
+                }
+            );
             return { success: true, messageId: result.messageId };
         } catch (error) {
             return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
@@ -61,22 +58,16 @@ export class OfficeIntegrationService {
 
     async createCalendarEvent(request: CalendarEventRequest): Promise<{ success: boolean; eventId?: string; error?: string }> {
         try {
-            const response = await fetch(`${this.config.apiBaseUrl}/calendar/events`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    ...request,
-                    provider: this.config.provider,
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error(`Failed to create calendar event: ${response.statusText}`);
-            }
-
-            const result = await response.json();
+            const result = await this.gatewayClient.request<{ eventId: string }>(
+                '/api/calendar/events',
+                {
+                    method: 'POST',
+                    body: {
+                        ...request,
+                        provider: this.config.provider,
+                    },
+                }
+            );
             return { success: true, eventId: result.eventId };
         } catch (error) {
             return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
@@ -85,22 +76,16 @@ export class OfficeIntegrationService {
 
     async saveDocument(request: DocumentSaveRequest): Promise<{ success: boolean; documentId?: string; error?: string }> {
         try {
-            const response = await fetch(`${this.config.apiBaseUrl}/documents`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    ...request,
-                    provider: this.config.provider,
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error(`Failed to save document: ${response.statusText}`);
-            }
-
-            const result = await response.json();
+            const result = await this.gatewayClient.request<{ documentId: string }>(
+                '/api/documents',
+                {
+                    method: 'POST',
+                    body: {
+                        ...request,
+                        provider: this.config.provider,
+                    },
+                }
+            );
             return { success: true, documentId: result.documentId };
         } catch (error) {
             return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
@@ -144,5 +129,5 @@ export class OfficeIntegrationService {
 // Default office integration instance
 export const officeIntegration = new OfficeIntegrationService({
     provider: 'google', // Will be set based on user preferences
-    apiBaseUrl: process.env.NEXT_PUBLIC_OFFICE_SERVICE_URL || 'http://localhost:8001',
+    apiBaseUrl: process.env.NEXT_PUBLIC_OFFICE_SERVICE_URL || 'http://localhost:8003',
 }); 

@@ -31,7 +31,7 @@ export class GatewayClient {
         return headers;
     }
 
-    private async request<T>(endpoint: string, options: GatewayClientOptions = {}): Promise<T> {
+    public async request<T>(endpoint: string, options: GatewayClientOptions = {}): Promise<T> {
         const { method = 'GET', body, headers: customHeaders } = options;
 
         const authHeaders = await this.getAuthHeaders();
