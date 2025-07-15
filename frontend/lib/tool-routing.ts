@@ -115,12 +115,12 @@ export function getToolIconName(tool: Tool): string {
         calendar: 'Calendar',
         email: 'Mail',
         documents: 'FileText',
-        tasks: 'ClipboardList',
+        tasks: 'ListChecks',
         packages: 'Package',
         research: 'BookOpen',
         pulse: 'TrendingUp',
         insights: 'BarChart3',
-        drafts: 'DocumentDuplicate',
+        drafts: 'Copy',
     };
     return iconMap[tool];
 }
