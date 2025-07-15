@@ -1,155 +1,248 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
+import { useAIDrafts } from '@/hooks/use-ai-drafts';
+import { useDraftActions } from '@/hooks/use-draft-actions';
 import { useDraftState } from '@/hooks/use-draft-state';
-import { cn } from '@/lib/utils';
-import { DraftType } from '@/types/draft';
-import { AIIndicator } from './ai-indicator';
+import { AIDraftSuggestion } from '@/services/ai-draft-service';
+import { Sparkles, Wand2 } from 'lucide-react';
+import { useState } from 'react';
+import { AIDraftIndicator } from './ai-draft-indicator';
+import { AISuggestions } from './ai-suggestions';
 import { DraftActions } from './draft-actions';
 import { DraftEditor } from './draft-editor';
 import { DraftMetadata } from './draft-metadata';
 import { DraftTypeSwitcher } from './draft-type-switcher';
 
-interface DraftPaneProps {
-    className?: string;
-    userId?: string;
-}
-
-export function DraftPane({ className, userId }: DraftPaneProps) {
+export function DraftPane() {
     const {
-        state: { currentDraft, isLoading, error },
-        updateDraft,
+        state: { currentDraft },
+        updateDraft: updateDraftState,
         updateDraftMetadata,
         createNewDraft,
     } = useDraftState();
 
-    const handleTypeChange = (type: DraftType) => {
-        if (currentDraft && currentDraft.type !== type) {
-            // If there's unsaved content, ask for confirmation
-            if (currentDraft.content.trim() || Object.keys(currentDraft.metadata).length > 0) {
-                if (confirm('You have unsaved changes. Are you sure you want to switch draft types?')) {
-                    createNewDraft(type, userId || 'anonymous');
-                }
-            } else {
-                createNewDraft(type, userId || 'anonymous');
-            }
-        } else if (!currentDraft) {
-            createNewDraft(type, userId || 'anonymous');
+    const {
+        isExecuting,
+    } = useDraftActions();
+
+    const {
+        isGenerating,
+        isImproving,
+        currentSuggestions,
+        generateDraft,
+        improveDraft,
+        generateSuggestions,
+        approveAIDraft,
+        rejectAIDraft,
+        applySuggestion,
+        clearSuggestions,
+    } = useAIDrafts({
+        onDraftGenerated: (newDraft) => {
+            updateDraftState(newDraft);
+        },
+        onDraftImproved: (improvedDraft) => {
+            updateDraftState(improvedDraft);
+        },
+        onError: (error) => {
+            console.error('AI Draft Error:', error);
+        },
+    });
+
+    const [showAIPrompt, setShowAIPrompt] = useState(false);
+    const [aiPrompt, setAiPrompt] = useState('');
+
+    const handleGenerateAIDraft = async () => {
+        if (!currentDraft || !aiPrompt.trim()) return;
+
+        const result = await generateDraft({
+            type: currentDraft.type,
+            prompt: aiPrompt,
+            context: currentDraft.content,
+            metadata: currentDraft.metadata as Record<string, unknown>,
+            threadId: currentDraft.threadId,
+        });
+
+        if (result) {
+            setShowAIPrompt(false);
+            setAiPrompt('');
         }
     };
 
-    const handleActionComplete = (action: string, success: boolean) => {
-        if (success) {
-            console.log(`${action} completed successfully`);
-            // TODO: Handle successful actions (e.g., close draft, show success message)
-        } else {
-            console.error(`${action} failed`);
-            // TODO: Handle failed actions (e.g., show error message)
+    const handleImproveDraft = async () => {
+        if (!currentDraft || !aiPrompt.trim()) return;
+
+        const result = await improveDraft(currentDraft.id, aiPrompt);
+        if (result) {
+            setShowAIPrompt(false);
+            setAiPrompt('');
         }
     };
 
-    const handleContentChange = (content: string) => {
-        if (currentDraft) {
-            updateDraft({ content });
-        }
+    const handleGenerateSuggestions = async () => {
+        if (!currentDraft) return;
+        await generateSuggestions(currentDraft);
     };
 
-    const handleMetadataChange = (metadata: Partial<import('@/types/draft').DraftMetadata>) => {
-        if (currentDraft) {
-            updateDraftMetadata(metadata);
-        }
+    const handleApplySuggestion = async (suggestion: AIDraftSuggestion) => {
+        if (!currentDraft) return;
+        await applySuggestion(suggestion, currentDraft);
     };
 
-    const handleAutoSave = (content: string) => {
-        if (currentDraft) {
-            updateDraft({ content });
-            // TODO: Implement actual auto-save to backend
-            console.log('Auto-saving draft:', content);
-        }
+    const handleApproveAIDraft = async () => {
+        if (!currentDraft) return;
+        await approveAIDraft(currentDraft.id);
+    };
+
+    const handleRejectAIDraft = async () => {
+        if (!currentDraft) return;
+        await rejectAIDraft(currentDraft.id, 'User rejected');
     };
 
     if (!currentDraft) {
         return (
-            <div className={cn(
-                'h-full flex flex-col items-center justify-center p-6 text-center',
-                className
-            )}>
-                <div className="max-w-sm space-y-4">
-                    <div className="text-muted-foreground">
-                        <h3 className="text-lg font-medium mb-2">No Draft Selected</h3>
-                        <p className="text-sm">
-                            Create a new draft or select an existing one to get started.
-                        </p>
-                    </div>
-
-                    <div className="space-y-2">
-                        <p className="text-xs text-muted-foreground">Choose a draft type:</p>
-                        <DraftTypeSwitcher
-                            currentType="email"
-                            onTypeChange={handleTypeChange}
-                            className="justify-center"
-                        />
-                    </div>
+            <div className="flex flex-col h-full p-4">
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold">Draft</h2>
+                    <Button onClick={() => createNewDraft('email', 'user')} size="sm">
+                        New Draft
+                    </Button>
+                </div>
+                <div className="flex-1 flex items-center justify-center text-gray-500">
+                    No draft selected
                 </div>
             </div>
         );
     }
 
     return (
-        <div className={cn(
-            'h-full flex flex-col bg-background',
-            className
-        )}>
+        <div className="flex flex-col h-full">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b">
-                <div className="flex items-center gap-3">
-                    <DraftTypeSwitcher
-                        currentType={currentDraft.type}
-                        onTypeChange={handleTypeChange}
+                <div className="flex items-center gap-2">
+                    <h2 className="text-lg font-semibold">Draft</h2>
+                    <AIDraftIndicator
+                        isAIGenerated={currentDraft.isAIGenerated}
+                        status={currentDraft.metadata.ai_status}
+                        showActions={currentDraft.isAIGenerated && currentDraft.metadata.ai_status === 'pending'}
+                        onApprove={handleApproveAIDraft}
+                        onReject={handleRejectAIDraft}
                     />
-                    {currentDraft.isAIGenerated && (
-                        <AIIndicator isAIGenerated={true} size="sm" />
-                    )}
                 </div>
-
-                <div className="text-xs text-muted-foreground">
-                    {currentDraft.updatedAt && (
-                        <span>
-                            Last updated: {new Date(currentDraft.updatedAt).toLocaleTimeString()}
-                        </span>
-                    )}
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowAIPrompt(!showAIPrompt)}
+                        disabled={isGenerating || isImproving}
+                    >
+                        <Sparkles className="h-4 w-4 mr-1" />
+                        {showAIPrompt ? 'Cancel' : 'AI Help'}
+                    </Button>
+                    <Button onClick={() => createNewDraft('email', 'user')} size="sm">
+                        New Draft
+                    </Button>
                 </div>
             </div>
 
-            {/* Error Display */}
-            {error && (
-                <div className="p-4 bg-destructive/10 border-b border-destructive/20">
-                    <p className="text-sm text-destructive">{error}</p>
+            {/* AI Prompt Input */}
+            {showAIPrompt && (
+                <div className="p-4 border-b bg-gray-50">
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                            <Wand2 className="h-4 w-4 text-purple-500" />
+                            <span className="text-sm font-medium">AI Assistant</span>
+                        </div>
+                        <textarea
+                            value={aiPrompt}
+                            onChange={(e) => setAiPrompt(e.target.value)}
+                            placeholder="Describe what you want to create or how to improve the current draft..."
+                            className="w-full p-2 border rounded-md text-sm resize-none"
+                            rows={3}
+                        />
+                        <div className="flex items-center gap-2">
+                            <Button
+                                onClick={handleGenerateAIDraft}
+                                disabled={!aiPrompt.trim() || isGenerating}
+                                size="sm"
+                            >
+                                {isGenerating ? 'Generating...' : 'Generate Draft'}
+                            </Button>
+                            <Button
+                                onClick={handleImproveDraft}
+                                disabled={!aiPrompt.trim() || isImproving}
+                                variant="outline"
+                                size="sm"
+                            >
+                                {isImproving ? 'Improving...' : 'Improve Draft'}
+                            </Button>
+                            <Button
+                                onClick={handleGenerateSuggestions}
+                                disabled={!currentDraft.content}
+                                variant="ghost"
+                                size="sm"
+                            >
+                                Get Suggestions
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             )}
 
-            {/* Metadata */}
-            <DraftMetadata
-                draft={currentDraft}
-                onUpdate={handleMetadataChange}
-                type={currentDraft.type}
-            />
+            {/* AI Suggestions */}
+            {currentSuggestions.length > 0 && (
+                <div className="p-4 border-b bg-blue-50">
+                    <AISuggestions
+                        suggestions={currentSuggestions}
+                        onApplySuggestion={handleApplySuggestion}
+                        onDismissSuggestion={() => {
+                            clearSuggestions();
+                        }}
+                        onGenerateMore={handleGenerateSuggestions}
+                    />
+                </div>
+            )}
 
-            {/* Content Editor */}
-            <div className="flex-1 overflow-hidden">
-                <DraftEditor
-                    type={currentDraft.type}
-                    content={currentDraft.content}
-                    onUpdate={handleContentChange}
-                    onAutoSave={handleAutoSave}
-                    disabled={isLoading}
-                />
+            {/* Draft Content */}
+            <div className="flex-1 flex flex-col min-h-0">
+                <div className="p-4 border-b">
+                    <DraftTypeSwitcher
+                        currentType={currentDraft.type}
+                        onTypeChange={(type) => updateDraftState({ ...currentDraft, type })}
+                    />
+                </div>
+
+                <div className="p-4 border-b">
+                    <DraftMetadata
+                        draft={currentDraft}
+                        onUpdate={updateDraftMetadata}
+                        type={currentDraft.type}
+                    />
+                </div>
+
+                <div className="flex-1 min-h-0">
+                    <DraftEditor
+                        type={currentDraft.type}
+                        content={currentDraft.content}
+                        onUpdate={(content) => updateDraftState({ ...currentDraft, content })}
+                        onAutoSave={(content) => updateDraftState({ ...currentDraft, content })}
+                        disabled={isExecuting}
+                    />
+                </div>
+
+                <div className="p-4 border-t">
+                    <DraftActions
+                        draft={currentDraft}
+                        onActionComplete={(action, success) => {
+                            if (success) {
+                                console.log(`${action} completed successfully`);
+                            } else {
+                                console.error(`${action} failed`);
+                            }
+                        }}
+                    />
+                </div>
             </div>
-
-            {/* Actions */}
-            <DraftActions
-                draft={currentDraft}
-                onActionComplete={handleActionComplete}
-            />
         </div>
     );
 } 

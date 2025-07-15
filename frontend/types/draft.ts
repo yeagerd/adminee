@@ -14,6 +14,14 @@ export interface DraftMetadata {
     title?: string;
     tags?: string[];
     priority?: 'low' | 'medium' | 'high';
+    applied_suggestions?: string[];
+    ai_status?: 'pending' | 'approved' | 'rejected';
+    ai_improved?: boolean;
+    ai_confidence?: number;
+    ai_prompt?: string;
+    ai_context?: string;
+    ai_improvement_prompt?: string;
+    ai_rejection_reason?: string;
 }
 
 export interface Draft {
