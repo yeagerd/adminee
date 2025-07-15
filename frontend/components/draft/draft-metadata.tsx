@@ -77,7 +77,7 @@ export function DraftMetadata({ draft, onUpdate, type }: DraftMetadataProps) {
                     <Input
                         id="startTime"
                         type="datetime-local"
-                        value={draft.metadata.startTime || ''}
+                        value={typeof draft.metadata.startTime === 'function' ? draft.metadata.startTime() : draft.metadata.startTime || ''}
                         onChange={(e) => handleMetadataChange('startTime', e.target.value)}
                         className="w-full"
                     />
@@ -88,7 +88,7 @@ export function DraftMetadata({ draft, onUpdate, type }: DraftMetadataProps) {
                     <Input
                         id="endTime"
                         type="datetime-local"
-                        value={draft.metadata.endTime || ''}
+                        value={typeof draft.metadata.endTime === 'function' ? draft.metadata.endTime() : draft.metadata.endTime || ''}
                         onChange={(e) => handleMetadataChange('endTime', e.target.value)}
                         className="w-full"
                     />
