@@ -1,5 +1,21 @@
 // Add Node.js types for require and process
 // @ts-nocheck
+const winston = require('winston');
+
+// Create a logger instance
+const logger = winston.createLogger({
+    level: 'info',
+    format: winston.format.combine(
+        winston.format.timestamp({
+            format: 'YYYY-MM-DD HH:mm:ss,SSS'
+        }),
+        winston.format.printf(info => `${info.timestamp} - ${info.level.toUpperCase()} - ${info.message}`)
+    ),
+    transports: [
+        new winston.transports.Console()
+    ]
+});
+
 // Load environment variables from .env file
 const path = require('path');
 const fs = require('fs');
@@ -7,14 +23,14 @@ const fs = require('fs');
 // Check if .env file exists in current directory
 const envPath = path.join(__dirname, '.env');
 if (!fs.existsSync(envPath)) {
-    console.error('❌ .env file not found in gateway directory');
-    console.error(`   Expected location: ${envPath}`);
-    console.error('   Please create a .env file with:');
-    console.error('   NEXTAUTH_SECRET=your-secret-here');
-    console.error('   USER_SERVICE_URL=http://localhost:8001');
-    console.error('   CHAT_SERVICE_URL=http://localhost:8002');
-    console.error('   OFFICE_SERVICE_URL=http://localhost:8003');
-    console.error('   FRONTEND_URL=http://localhost:3000');
+    logger.error('❌ .env file not found in gateway directory');
+    logger.error(`   Expected location: ${envPath}`);
+    logger.error('   Please create a .env file with:');
+    logger.error('   NEXTAUTH_SECRET=your-secret-here');
+    logger.error('   USER_SERVICE_URL=http://localhost:8001');
+    logger.error('   CHAT_SERVICE_URL=http://localhost:8002');
+    logger.error('   OFFICE_SERVICE_URL=http://localhost:8003');
+    logger.error('   FRONTEND_URL=http://localhost:3000');
     process.exit(1);
 }
 
@@ -22,31 +38,31 @@ require('dotenv').config({ path: envPath });
 
 // Validate required environment variables
 if (!process.env.NEXTAUTH_SECRET) {
-    console.error('❌ NEXTAUTH_SECRET is required but not set in .env file');
-    console.error('   Please add NEXTAUTH_SECRET=your-secret-here to your .env file');
+    logger.error('❌ NEXTAUTH_SECRET is required but not set in .env file');
+    logger.error('   Please add NEXTAUTH_SECRET=your-secret-here to your .env file');
     process.exit(1);
 }
 
 // Validate API keys for backend services
 if (!process.env.API_FRONTEND_USER_KEY) {
-    console.error('❌ API_FRONTEND_USER_KEY is required but not set in .env file');
-    console.error('   Please add API_FRONTEND_USER_KEY=your-frontend-user-api-key to your .env file');
+    logger.error('❌ API_FRONTEND_USER_KEY is required but not set in .env file');
+    logger.error('   Please add API_FRONTEND_USER_KEY=your-frontend-user-api-key to your .env file');
     process.exit(1);
 }
 
 if (!process.env.API_FRONTEND_CHAT_KEY) {
-    console.error('❌ API_FRONTEND_CHAT_KEY is required but not set in .env file');
-    console.error('   Please add API_FRONTEND_CHAT_KEY=your-frontend-chat-api-key to your .env file');
+    logger.error('❌ API_FRONTEND_CHAT_KEY is required but not set in .env file');
+    logger.error('   Please add API_FRONTEND_CHAT_KEY=your-frontend-chat-api-key to your .env file');
     process.exit(1);
 }
 
 if (!process.env.API_FRONTEND_OFFICE_KEY) {
-    console.error('❌ API_FRONTEND_OFFICE_KEY is required but not set in .env file');
-    console.error('   Please add API_FRONTEND_OFFICE_KEY=your-frontend-office-api-key to your .env file');
+    logger.error('❌ API_FRONTEND_OFFICE_KEY is required but not set in .env file');
+    logger.error('   Please add API_FRONTEND_OFFICE_KEY=your-frontend-office-api-key to your .env file');
     process.exit(1);
 }
 
-console.log('✅ Environment loaded successfully');
+logger.info('✅ Environment loaded successfully');
 
 const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
@@ -111,13 +127,13 @@ const maliciousTrafficFilter = (req, res, next) => {
     ];
 
     if (suspiciousUserAgents.some(pattern => pattern.test(userAgent))) {
-        console.warn(`Blocked suspicious user agent: ${userAgent}`);
+        logger.warn(`Blocked suspicious user agent: ${userAgent}`);
         return res.status(403).json({ error: 'Access denied' });
     }
 
     // Block requests with suspicious content types
     if (contentType.includes('application/x-www-form-urlencoded') && contentLength > 1000000) {
-        console.warn(`Blocked large form data: ${contentLength} bytes`);
+        logger.warn(`Blocked large form data: ${contentLength} bytes`);
         return res.status(413).json({ error: 'Payload too large' });
     }
 
@@ -128,7 +144,7 @@ const maliciousTrafficFilter = (req, res, next) => {
     );
 
     if (hasSuspiciousHeaders) {
-        console.warn(`Blocked request with suspicious headers from ${req.ip}`);
+        logger.warn(`Blocked request with suspicious headers from ${req.ip}`);
         return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -139,7 +155,7 @@ const maliciousTrafficFilter = (req, res, next) => {
     );
 
     if (hasSuspiciousParams) {
-        console.warn(`Blocked request with suspicious parameters from ${req.ip}`);
+        logger.warn(`Blocked request with suspicious parameters from ${req.ip}`);
         return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -202,11 +218,11 @@ const validateAuth = async (req, res, next) => {
         req.user = payload;
 
         // Log authenticated requests (optional)
-        console.log(`Authenticated request: ${req.method} ${req.path} - User: ${payload.sub || payload.email}`);
+        logger.info(`Authenticated request: ${req.method} ${req.path} - User: ${payload.sub || payload.email}`);
 
         next();
     } catch (err) {
-        console.error('Auth validation error:', err.message);
+        logger.error('Auth validation error:', err.message);
         return res.status(401).json({ error: 'Invalid or expired token' });
     }
 };
@@ -277,18 +293,18 @@ const createServiceProxy = (targetUrl, pathRewrite = undefined) => {
                 const bodyData = JSON.stringify(req.body);
                 proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
                 proxyReq.write(bodyData);
-                console.log(`Rewriting body for proxy: ${bodyData}`);
+                logger.info(`Rewriting body for proxy: ${bodyData}`);
             }
 
             // Log proxied requests
-            console.log(`Proxying: ${req.method} ${req.path} -> ${targetUrl}${proxyReq.path}`);
+            logger.info(`Proxying: ${req.method} ${req.path} -> ${targetUrl}${proxyReq.path}`);
         },
 
         // Handle proxy responses
         onProxyRes: (proxyRes, req, res) => {
             // Handle Server-Sent Events - disable buffering
             if (proxyRes.headers['content-type']?.includes('text/event-stream')) {
-                console.log('Handling SSE stream');
+                logger.info('Handling SSE stream');
                 res.writeHead(proxyRes.statusCode, {
                     ...proxyRes.headers,
                     'Cache-Control': 'no-cache',
@@ -306,13 +322,13 @@ const createServiceProxy = (targetUrl, pathRewrite = undefined) => {
 
         // Handle WebSocket upgrades
         onProxyReqWs: (proxyReq, req, socket, options, head) => {
-            console.log('WebSocket upgrade request');
+            logger.info('WebSocket upgrade request');
             // You could add WebSocket-specific auth here if needed
         },
 
         // Error handling
         onError: (err, req, res) => {
-            console.error(`Proxy error to ${targetUrl}:`, err.message);
+            logger.error(`Proxy error to ${targetUrl}:`, err.message);
             if (!res.headersSent) {
                 res.status(500).json({
                     error: 'Service unavailable',
@@ -348,7 +364,7 @@ app.use('*', (req, res) => {
 
 // Global error handler
 app.use((err, req, res, next) => {
-    console.error('Global error:', err);
+    logger.error('Global error:', err);
     res.status(500).json({
         error: 'Internal server error',
         message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
@@ -357,22 +373,22 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3001;
 const server = app.listen(PORT, () => {
-    console.log(`Auth proxy running on port ${PORT}`);
-    console.log(`Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log('');
-    console.log('Service Routing:');
-    console.log(`  /api/users    → ${serviceRoutes['/api/users']}`);
-    console.log(`  /api/chat     → ${serviceRoutes['/api/chat']}`);
-    console.log(`  /api/calendar → ${serviceRoutes['/api/calendar']}`);
-    console.log(`  /api/email    → ${serviceRoutes['/api/email']}`);
-    console.log(`  /api/files    → ${serviceRoutes['/api/files']}`);
-    console.log(`  /api/user-drafts → ${serviceRoutes['/api/user-drafts']}`);
+    logger.info(`Auth proxy running on port ${PORT}`);
+    logger.info(`Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+    logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    logger.info('');
+    logger.info('Service Routing:');
+    logger.info(`  /api/users    → ${serviceRoutes['/api/users']}`);
+    logger.info(`  /api/chat     → ${serviceRoutes['/api/chat']}`);
+    logger.info(`  /api/calendar → ${serviceRoutes['/api/calendar']}`);
+    logger.info(`  /api/email    → ${serviceRoutes['/api/email']}`);
+    logger.info(`  /api/files    → ${serviceRoutes['/api/files']}`);
+    logger.info(`  /api/user-drafts → ${serviceRoutes['/api/user-drafts']}`);
 });
 
 // Handle WebSocket upgrades
 server.on('upgrade', (request, socket, head) => {
-    console.log('WebSocket upgrade event');
+    logger.info('WebSocket upgrade event');
 
     // Route WebSocket connections based on path
     const url = new URL(request.url, `http://${request.headers.host}`);
@@ -393,17 +409,17 @@ server.on('upgrade', (request, socket, head) => {
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-    console.log('Received SIGTERM, shutting down gracefully');
+    logger.info('Received SIGTERM, shutting down gracefully');
     server.close(() => {
-        console.log('Server closed');
+        logger.info('Server closed');
         process.exit(0);
     });
 });
 
 process.on('SIGINT', () => {
-    console.log('Received SIGINT, shutting down gracefully');
+    logger.info('Received SIGINT, shutting down gracefully');
     server.close(() => {
-        console.log('Server closed');
+        logger.info('Server closed');
         process.exit(0);
     });
 });

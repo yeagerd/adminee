@@ -175,20 +175,6 @@ def create_app() -> FastAPI:
     # Add centralized request logging middleware
     app.middleware("http")(create_request_logging_middleware())
 
-    # Add custom middleware to log request bodies for debugging
-    @app.middleware("http")
-    async def log_request_body(request: Request, call_next):
-        if request.method == "POST" and request.url.path == "/users/":
-            # Log the request body for user creation debugging
-            try:
-                body = await request.body()
-                logger.info(f"User creation request body: {body.decode('utf-8')}")
-            except Exception as e:
-                logger.error(f"Failed to log request body: {e}")
-
-        response = await call_next(request)
-        return response
-
     # Register exception handlers
     register_briefly_exception_handlers(app)
 

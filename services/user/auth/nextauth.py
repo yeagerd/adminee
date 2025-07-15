@@ -14,7 +14,7 @@ from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from services.common.http_errors import AuthError
-from services.user.logging_config import get_logger
+from services.common.logging_config import get_logger
 from services.user.settings import get_settings
 
 logger = logging.getLogger(__name__)
