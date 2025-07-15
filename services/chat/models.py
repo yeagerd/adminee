@@ -78,6 +78,38 @@ class DraftCalendarChange(BaseModel):
 DraftData = Union[DraftEmail, DraftCalendarEvent, DraftCalendarChange]
 
 
+# User Draft API Models
+class UserDraftRequest(BaseModel):
+    """Request model for creating/updating user drafts."""
+
+    type: str  # 'email', 'calendar', 'document'
+    content: str
+    metadata: Optional[dict] = None
+    thread_id: Optional[str] = None
+
+
+class UserDraftResponse(BaseModel):
+    """Response model for user drafts."""
+
+    id: str  # Converted from int ID
+    user_id: str
+    type: str
+    content: str
+    metadata: dict
+    status: str
+    thread_id: Optional[str] = None
+    created_at: str  # Converted from datetime
+    updated_at: str  # Converted from datetime
+
+
+class UserDraftListResponse(BaseModel):
+    """Response model for user draft lists."""
+
+    drafts: List[UserDraftResponse]
+    total_count: int
+    has_more: bool
+
+
 class ChatRequest(BaseModel):
     """
     Request model for chat endpoint.

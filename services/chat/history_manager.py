@@ -140,6 +140,7 @@ class Thread(ChatSQLModel, table=True):
     # SQLAlchemy relationships - not exposed in API models
     messages: list["Message"] = Relationship(back_populates="thread")
     drafts: list["Draft"] = Relationship(back_populates="thread")
+    user_drafts: list["UserDraft"] = Relationship(back_populates="thread")
 
 
 class Message(ChatSQLModel, table=True):
@@ -242,6 +243,54 @@ class Draft(ChatSQLModel, table=True):
 
     # SQLAlchemy relationship - not exposed in API models
     thread: Optional[Thread] = Relationship(back_populates="drafts")
+
+
+class UserDraft(ChatSQLModel, table=True):
+    """
+    Database model for user-created draft content.
+
+    Represents draft content created by users (not AI-generated).
+    Supports multiple drafts per user with different types.
+    """
+
+    __tablename__ = "user_drafts"  # type: ignore[assignment]
+    __table_args__ = {"extend_existing": True}
+
+    # Primary key - integer for database efficiency
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+    # User identifier - indexed for query performance
+    user_id: str = Field(index=True, max_length=128)
+
+    # Draft type (e.g., 'email', 'calendar', 'document')
+    type: str = Field(index=True, max_length=64)
+
+    # Draft content - using TEXT column for large content
+    content: str = Field(sa_column=Column(Text))
+
+    # Draft metadata as JSON string
+    draft_metadata: str = Field(sa_column=Column(Text), default="{}")
+
+    # Draft status
+    status: str = Field(default="draft", max_length=32)
+
+    # Optional thread ID for AI-generated drafts that become user drafts
+    thread_id: Optional[int] = Field(foreign_key="threads.id", default=None)
+
+    # Timestamps with timezone support and automatic updates
+    created_at: datetime.datetime = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc),
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
+    )
+    updated_at: datetime.datetime = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc),
+        sa_column=Column(
+            DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+        ),
+    )
+
+    # SQLAlchemy relationship - not exposed in API models
+    thread: Optional[Thread] = Relationship(back_populates="user_drafts")
 
 
 # Ensure tables are created on import
@@ -386,6 +435,109 @@ async def list_drafts(thread_id: int) -> List[Draft]:
         result = await session.execute(
             select(Draft).where(Draft.thread_id == thread_id)
         )
+        return list(result.scalars().all())
+
+
+# User Draft Management Functions
+async def create_user_draft(
+    user_id: str,
+    draft_type: str,
+    content: str,
+    metadata: str = "{}",
+    thread_id: Optional[int] = None,
+) -> UserDraft:
+    async with get_async_session_factory()() as session:
+        draft = UserDraft(
+            user_id=user_id,
+            type=draft_type,
+            content=content,
+            draft_metadata=metadata,
+            thread_id=thread_id,
+        )
+        session.add(draft)
+        await session.commit()
+        await session.refresh(draft)
+
+        # Ensure the ID was properly assigned by the database
+        if draft.id is None:
+            raise RuntimeError(
+                f"Failed to create user draft for user {user_id}: "
+                "Database did not assign an ID after commit"
+            )
+
+        return draft
+
+
+async def update_user_draft(
+    draft_id: int,
+    content: Optional[str] = None,
+    metadata: Optional[str] = None,
+    status: Optional[str] = None,
+) -> Optional[UserDraft]:
+    async with get_async_session_factory()() as session:
+        result = await session.execute(
+            select(UserDraft).where(UserDraft.id == draft_id)
+        )
+        draft = result.scalar_one_or_none()
+
+        if not draft:
+            return None
+
+        if content is not None:
+            draft.content = content
+        if metadata is not None:
+            draft.draft_metadata = metadata
+        if status is not None:
+            draft.status = status
+
+        draft.updated_at = datetime.datetime.now(datetime.timezone.utc)
+        await session.commit()
+        await session.refresh(draft)
+
+        return draft
+
+
+async def delete_user_draft(draft_id: int) -> bool:
+    async with get_async_session_factory()() as session:
+        result = await session.execute(
+            select(UserDraft).where(UserDraft.id == draft_id)
+        )
+        draft = result.scalar_one_or_none()
+
+        if not draft:
+            return False
+
+        await session.delete(draft)
+        await session.commit()
+        return True
+
+
+async def get_user_draft(draft_id: int) -> Optional[UserDraft]:
+    async with get_async_session_factory()() as session:
+        result = await session.execute(
+            select(UserDraft).where(UserDraft.id == draft_id)
+        )
+        return result.scalar_one_or_none()
+
+
+async def list_user_drafts(
+    user_id: str,
+    draft_type: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> List[UserDraft]:
+    async with get_async_session_factory()() as session:
+        query = select(UserDraft).where(UserDraft.user_id == user_id)
+
+        if draft_type:
+            query = query.where(UserDraft.type == draft_type)
+        if status:
+            query = query.where(UserDraft.status == status)
+
+        query = query.order_by(UserDraft.updated_at.desc()).offset(offset).limit(limit)
+
+        result = await session.execute(query)
         return list(result.scalars().all())
 
 
