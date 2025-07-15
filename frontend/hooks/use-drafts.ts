@@ -1,50 +1,164 @@
+import gatewayClient from '@/lib/gateway-client';
 import { Draft, DraftStatus, DraftType } from '@/types/draft';
-import { useCallback } from 'react';
-import useSWR from 'swr';
+import { useCallback, useEffect, useState } from 'react';
 
-const fetcher = (url: string) => fetch(url).then(res => res.json());
-
-function mapDraftFromApi(apiDraft: any): Draft {
-    return {
-        id: apiDraft.id,
-        type: apiDraft.type,
-        status: apiDraft.status,
-        content: apiDraft.content,
-        metadata: apiDraft.metadata,
-        isAIGenerated: apiDraft.is_ai_generated ?? false,
-        createdAt: apiDraft.created_at,
-        updatedAt: apiDraft.updated_at,
-        userId: apiDraft.user_id,
-        threadId: apiDraft.thread_id,
-    };
+interface UseDraftsOptions {
+    type?: DraftType | DraftType[];
+    status?: DraftStatus | DraftStatus[];
+    search?: string;
+    limit?: number;
 }
 
-export function useDrafts({ type, status, search }: { type?: DraftType | DraftType[]; status?: DraftStatus | DraftStatus[]; search?: string }) {
-    const params = new URLSearchParams();
-    if (Array.isArray(type)) {
-        type.forEach(t => params.append('draft_type', t));
-    } else if (type) {
-        params.append('draft_type', type);
-    }
-    if (Array.isArray(status)) {
-        status.forEach(s => params.append('status', s));
-    } else if (status) {
-        params.append('status', status);
-    }
-    if (search) params.append('search', search);
-    const url = `/api/user-drafts?${params.toString()}`;
+interface UseDraftsReturn {
+    drafts: Draft[];
+    loading: boolean;
+    error: string | null;
+    totalCount: number;
+    hasMore: boolean;
+    refetch: () => Promise<void>;
+    createDraft: (draft: { type: DraftType; content: string; metadata?: any }) => Promise<Draft>;
+    updateDraft: (id: string, updates: Partial<Draft>) => Promise<Draft>;
+    deleteDraft: (id: string) => Promise<boolean>;
+}
 
-    const { data, error, isLoading, mutate } = useSWR(url, fetcher);
+export function useDrafts(options: UseDraftsOptions = {}): UseDraftsReturn {
+    const [drafts, setDrafts] = useState<Draft[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [totalCount, setTotalCount] = useState(0);
+    const [hasMore, setHasMore] = useState(false);
 
-    const drafts: Draft[] = data?.drafts ? data.drafts.map(mapDraftFromApi) : [];
-    const refetch = useCallback(() => mutate(), [mutate]);
+    const fetchDrafts = useCallback(async () => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            const params = new URLSearchParams();
+            if (options.type) {
+                if (Array.isArray(options.type)) {
+                    options.type.forEach(t => params.append('draft_type', t));
+                } else {
+                    params.append('draft_type', options.type);
+                }
+            }
+            if (options.status) {
+                if (Array.isArray(options.status)) {
+                    options.status.forEach(s => params.append('status', s));
+                } else {
+                    params.append('status', options.status);
+                }
+            }
+            if (options.search) params.append('search', options.search);
+            if (options.limit) params.append('limit', options.limit.toString());
+
+            const data = await gatewayClient.listDrafts({
+                type: options.type,
+                status: options.status,
+                search: options.search,
+            });
+
+            const mappedDrafts = data.drafts.map((draft: any) => ({
+                id: draft.id,
+                type: draft.type as DraftType,
+                status: draft.status as DraftStatus,
+                content: draft.content,
+                metadata: (typeof draft.metadata === 'object' && draft.metadata !== null) ? draft.metadata : {},
+                isAIGenerated: draft.is_ai_generated ?? false,
+                createdAt: draft.created_at,
+                updatedAt: draft.updated_at,
+                userId: draft.user_id,
+                threadId: draft.thread_id,
+            }));
+
+            setDrafts(mappedDrafts);
+            setTotalCount(data.total_count);
+            setHasMore(data.has_more);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to fetch drafts');
+        } finally {
+            setLoading(false);
+        }
+    }, [options.type, options.status, options.search, options.limit]);
+
+    const createDraft = useCallback(async (draft: { type: DraftType; content: string; metadata?: any }): Promise<Draft> => {
+        try {
+            const data = await gatewayClient.createDraft({
+                type: draft.type,
+                content: draft.content,
+                metadata: draft.metadata,
+            });
+
+            const newDraft: Draft = {
+                id: data.id,
+                type: data.type as DraftType,
+                status: data.status as DraftStatus,
+                content: data.content,
+                metadata: (typeof data.metadata === 'object' && data.metadata !== null) ? data.metadata : {},
+                isAIGenerated: data.is_ai_generated ?? false,
+                createdAt: data.created_at,
+                updatedAt: data.updated_at,
+                userId: data.user_id,
+                threadId: data.thread_id,
+            };
+
+            setDrafts(prev => [newDraft, ...prev]);
+            return newDraft;
+        } catch (err) {
+            throw new Error(err instanceof Error ? err.message : 'Failed to create draft');
+        }
+    }, []);
+
+    const updateDraft = useCallback(async (id: string, updates: Partial<Draft>): Promise<Draft> => {
+        try {
+            const data = await gatewayClient.updateDraft(id, {
+                content: updates.content,
+                metadata: updates.metadata as Record<string, unknown> | undefined, // Fix type error
+                status: updates.status,
+            });
+
+            const updatedDraft: Draft = {
+                id: data.id,
+                type: data.type as DraftType,
+                status: data.status as DraftStatus,
+                content: data.content,
+                metadata: (typeof data.metadata === 'object' && data.metadata !== null) ? data.metadata : {},
+                isAIGenerated: data.is_ai_generated ?? false,
+                createdAt: data.created_at,
+                updatedAt: data.updated_at,
+                userId: data.user_id,
+                threadId: data.thread_id,
+            };
+
+            setDrafts(prev => prev.map(draft => draft.id === id ? updatedDraft : draft));
+            return updatedDraft;
+        } catch (err) {
+            throw new Error(err instanceof Error ? err.message : 'Failed to update draft');
+        }
+    }, []);
+
+    const deleteDraft = useCallback(async (id: string): Promise<boolean> => {
+        try {
+            await gatewayClient.deleteDraft(id);
+            setDrafts(prev => prev.filter(draft => draft.id !== id));
+            return true;
+        } catch (err) {
+            throw new Error(err instanceof Error ? err.message : 'Failed to delete draft');
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchDrafts();
+    }, [fetchDrafts]);
 
     return {
         drafts,
-        isLoading,
+        loading,
         error,
-        refetch,
-        totalCount: data?.total_count || 0,
-        hasMore: data?.has_more || false,
+        totalCount,
+        hasMore,
+        refetch: fetchDrafts,
+        createDraft,
+        updateDraft,
+        deleteDraft,
     };
 } 

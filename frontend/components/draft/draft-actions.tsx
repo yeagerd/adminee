@@ -1,158 +1,114 @@
 'use client';
 
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import { Draft, DraftType } from '@/types/draft';
-import { Plus, Save, Send, Trash2 } from 'lucide-react';
+import { useDraftActions } from '@/hooks/use-draft-actions';
+import { Draft } from '@/types/draft';
+import { Loader2, Save, Send, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 
 interface DraftActionsProps {
     draft: Draft;
-    onSave: () => void;
-    onDiscard: () => void;
-    onSend?: () => void;
-    onCreate?: () => void;
-    isLoading?: boolean;
-    className?: string;
+    onActionComplete?: (action: string, success: boolean) => void;
 }
 
-export function DraftActions({
-    draft,
-    onSave,
-    onDiscard,
-    onSend,
-    onCreate,
-    isLoading = false,
-    className
-}: DraftActionsProps) {
-    const getActionButton = () => {
-        switch (draft.type) {
-            case 'email':
+export function DraftActions({ draft, onActionComplete }: DraftActionsProps) {
+    const { isExecuting, error, executeAction, clearError } = useDraftActions();
+    const [showDiscardDialog, setShowDiscardDialog] = useState(false);
+
+    const handleAction = async (action: 'send' | 'save' | 'discard') => {
+        if (action === 'discard') {
+            setShowDiscardDialog(true);
+            return;
+        }
+
+        const result = await executeAction(action, draft);
+        onActionComplete?.(action, result.success);
+    };
+
+    const handleDiscardConfirm = async () => {
+        const result = await executeAction('discard', draft);
+        setShowDiscardDialog(false);
+        onActionComplete?.('discard', result.success);
+    };
+
+    const getActionButton = (action: 'send' | 'save' | 'discard') => {
+        const isDisabled = isExecuting;
+        const isLoading = isExecuting;
+
+        const buttonProps = {
+            disabled: isDisabled,
+            onClick: () => handleAction(action),
+        };
+
+        const iconProps = {
+            className: 'h-4 w-4',
+        };
+
+        switch (action) {
+            case 'send':
                 return (
-                    <Button
-                        onClick={onSend}
-                        disabled={isLoading || !draft.metadata.subject || !draft.metadata.recipients?.length}
-                        className="flex items-center gap-2"
-                    >
-                        <Send className="w-4 h-4" />
+                    <Button {...buttonProps} variant="default" className="flex items-center gap-2">
+                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send {...iconProps} />}
                         Send
                     </Button>
                 );
-            case 'calendar':
+            case 'save':
                 return (
-                    <Button
-                        onClick={onCreate}
-                        disabled={isLoading || !draft.metadata.title || !draft.metadata.startTime}
-                        className="flex items-center gap-2"
-                    >
-                        <Plus className="w-4 h-4" />
-                        Create Event
+                    <Button {...buttonProps} variant="outline" className="flex items-center gap-2">
+                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save {...iconProps} />}
+                        Save
                     </Button>
                 );
-            case 'document':
+            case 'discard':
                 return (
-                    <Button
-                        onClick={onSave}
-                        disabled={isLoading || !draft.metadata.title}
-                        className="flex items-center gap-2"
-                    >
-                        <Save className="w-4 h-4" />
-                        Save Document
+                    <Button {...buttonProps} variant="destructive" className="flex items-center gap-2">
+                        <Trash2 {...iconProps} />
+                        Discard
                     </Button>
                 );
-            default:
-                return null;
         }
     };
 
-
-
     return (
-        <div className={cn(
-            'flex items-center justify-between p-4 border-t bg-muted/30',
-            className
-        )}>
-            <div className="flex items-center gap-2">
-                <Button
-                    variant="outline"
-                    onClick={onSave}
-                    disabled={isLoading}
-                    className="flex items-center gap-2"
-                >
-                    <Save className="w-4 h-4" />
-                    Save Draft
-                </Button>
+        <div className="flex items-center gap-2">
+            {error && (
+                <div className="text-sm text-red-500 mb-2">
+                    {error}
+                    <Button variant="ghost" size="sm" onClick={clearError} className="ml-2">
+                        Dismiss
+                    </Button>
+                </div>
+            )}
 
-                <Button
-                    variant="ghost"
-                    onClick={onDiscard}
-                    disabled={isLoading}
-                    className="flex items-center gap-2 text-destructive hover:text-destructive"
-                >
-                    <Trash2 className="w-4 h-4" />
-                    Discard
-                </Button>
-            </div>
+            <div className="flex gap-2">
+                {draft.type === 'email' && getActionButton('send')}
+                {draft.type === 'document' && getActionButton('save')}
+                {draft.type === 'calendar' && getActionButton('save')}
 
-            <div className="flex items-center gap-2">
-                {getActionButton()}
+                <AlertDialog open={showDiscardDialog} onOpenChange={setShowDiscardDialog}>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive" className="flex items-center gap-2">
+                            <Trash2 className="h-4 w-4" />
+                            Discard
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Discard Draft?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete your draft.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDiscardConfirm} className="bg-red-600 hover:bg-red-700">
+                                Discard
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
         </div>
-    );
-}
-
-export function DraftActionButton({
-    type,
-    onClick,
-    disabled = false,
-    isLoading = false,
-    className
-}: {
-    type: DraftType;
-    onClick: () => void;
-    disabled?: boolean;
-    isLoading?: boolean;
-    className?: string;
-}) {
-    const getButtonProps = () => {
-        switch (type) {
-            case 'email':
-                return {
-                    icon: Send,
-                    label: 'Send',
-                    variant: 'default' as const,
-                };
-            case 'calendar':
-                return {
-                    icon: Plus,
-                    label: 'Create',
-                    variant: 'default' as const,
-                };
-            case 'document':
-                return {
-                    icon: Save,
-                    label: 'Save',
-                    variant: 'default' as const,
-                };
-            default:
-                return {
-                    icon: Save,
-                    label: 'Save',
-                    variant: 'default' as const,
-                };
-        }
-    };
-
-    const { icon: Icon, label, variant } = getButtonProps();
-
-    return (
-        <Button
-            variant={variant}
-            onClick={onClick}
-            disabled={disabled || isLoading}
-            className={cn('flex items-center gap-2', className)}
-        >
-            <Icon className="w-4 h-4" />
-            {isLoading ? 'Loading...' : label}
-        </Button>
     );
 } 

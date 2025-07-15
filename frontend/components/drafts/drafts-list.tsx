@@ -8,14 +8,20 @@ import { DraftFilters } from './draft-filters';
 import { NewDraftButton } from './new-draft-button';
 
 export type DraftFiltersState = {
-    type?: DraftType | DraftType[];
-    status?: DraftStatus | DraftStatus[];
-    search?: string;
+    type: DraftType[];
+    status: DraftStatus[];
+    search: string;
 };
 
 export default function DraftsList() {
     const [filters, setFilters] = useState<DraftFiltersState>({ type: [], status: [], search: '' });
-    const { drafts, isLoading, error } = useDrafts(filters);
+    // Convert arrays to undefined, single value, or array for useDrafts
+    const useDraftsFilters = {
+        type: filters.type.length === 0 ? undefined : filters.type.length === 1 ? filters.type[0] : filters.type,
+        status: filters.status.length === 0 ? undefined : filters.status.length === 1 ? filters.status[0] : filters.status,
+        search: filters.search,
+    };
+    const { drafts, loading, error } = useDrafts(useDraftsFilters);
 
     const sortedDrafts = sortDraftsByUpdated(filterDraftsBySearch(drafts, filters.search || ''));
 
@@ -39,11 +45,10 @@ export default function DraftsList() {
                     <NewDraftButton onClick={() => {/* TODO: open new draft modal */ }} />
                 </div>
             </div>
-            {/* Show type/status filters below if needed */}
-            {/* <DraftFilters {...filters} onChange={setFilters} /> */}
-            {isLoading && <div>Loading drafts...</div>}
+            <DraftFilters {...filters} onChange={setFilters} />
+            {loading && <div>Loading drafts...</div>}
             {error && <div className="text-red-500">Error loading drafts.</div>}
-            {!isLoading && !error && sortedDrafts.length === 0 && <div>No drafts found.</div>}
+            {!loading && sortedDrafts.length === 0 && <div>No drafts found.</div>}
             <div className="space-y-2">
                 {sortedDrafts.map(draft => (
                     <DraftCard key={draft.id} draft={draft} onClick={() => {/* TODO: open draft */ }} />

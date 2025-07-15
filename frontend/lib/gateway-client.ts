@@ -8,7 +8,7 @@ interface GatewayClientOptions {
     headers?: Record<string, string>;
 }
 
-class GatewayClient {
+export class GatewayClient {
     private gatewayUrl: string;
 
     constructor() {
@@ -31,7 +31,7 @@ class GatewayClient {
         return headers;
     }
 
-    private async request<T>(endpoint: string, options: GatewayClientOptions = {}): Promise<T> {
+    public async request<T>(endpoint: string, options: GatewayClientOptions = {}): Promise<T> {
         const { method = 'GET', body, headers: customHeaders } = options;
 
         const authHeaders = await this.getAuthHeaders();
@@ -232,7 +232,7 @@ class GatewayClient {
     }
 
     // Draft Management
-    async listDrafts(filters?: { type?: string | string[]; status?: string | string[]; search?: string; }): Promise<unknown> {
+    async listDrafts(filters?: { type?: string | string[]; status?: string | string[]; search?: string; }): Promise<DraftListResponse> {
         const params = new URLSearchParams();
         if (filters?.type) {
             if (Array.isArray(filters.type)) {
@@ -249,27 +249,31 @@ class GatewayClient {
             }
         }
         if (filters?.search) params.append('search', filters.search);
-        return this.request(`/api/user-drafts?${params.toString()}`);
+        return this.request<DraftListResponse>(`/api/user-drafts?${params.toString()}`);
     }
 
-    async createDraft(draftData: { type: string; content: string; metadata?: Record<string, unknown>; threadId?: string; }): Promise<unknown> {
-        return this.request('/api/user-drafts', {
+    async createDraft(draftData: { type: string; content: string; metadata?: Record<string, unknown>; threadId?: string; }): Promise<DraftApiResponse> {
+        return this.request<DraftApiResponse>('/api/user-drafts', {
             method: 'POST',
             body: draftData,
         });
     }
 
-    async updateDraft(draftId: string, draftData: { content?: string; metadata?: Record<string, unknown>; status?: string; }): Promise<unknown> {
-        return this.request(`/api/user-drafts/${draftId}`, {
+    async updateDraft(draftId: string, draftData: { content?: string; metadata?: Record<string, unknown>; status?: string; }): Promise<DraftApiResponse> {
+        return this.request<DraftApiResponse>(`/api/user-drafts/${draftId}`, {
             method: 'PUT',
             body: draftData,
         });
     }
 
     async deleteDraft(draftId: string): Promise<void> {
-        return this.request(`/api/user-drafts/${draftId}`, {
+        return this.request<void>(`/api/user-drafts/${draftId}`, {
             method: 'DELETE',
         });
+    }
+
+    async getDraft(draftId: string): Promise<DraftApiResponse> {
+        return this.request<DraftApiResponse>(`/api/user-drafts/${draftId}`);
     }
 
     // Health Check
@@ -340,6 +344,25 @@ export interface OAuthCallbackResponse {
     scopes: string[];
     external_user_info?: Record<string, unknown>;
     error?: string;
+}
+
+export interface DraftApiResponse {
+    id: string;
+    type: string;
+    status: string;
+    content: string;
+    metadata: Record<string, unknown>;
+    is_ai_generated?: boolean;
+    created_at: string;
+    updated_at: string;
+    user_id: string;
+    thread_id?: string;
+}
+
+export interface DraftListResponse {
+    drafts: DraftApiResponse[];
+    total_count: number;
+    has_more: boolean;
 }
 
 export default gatewayClient; 
