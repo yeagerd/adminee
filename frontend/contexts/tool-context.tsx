@@ -129,7 +129,14 @@ export function ToolProvider({ children }: { children: ReactNode }) {
         }
     }, [state]);
 
-    // Sync state from URL
+    // ---
+    // IMPORTANT: Avoiding the double-navigate bug and ensuring visit tracking
+    // This effect syncs the tool state from the URL. The URL is the single source of truth for tool navigation.
+    // DO NOT add state.activeTool or state.toolSettings to the dependency array, as that will cause this effect
+    // to run on state changes, creating a feedback loop and double navigation (especially on deep links).
+    // Only depend on searchParams so this runs only when the URL changes.
+    // We also update the visit timestamp here, since navigation is now URL-driven.
+    // ---
     useEffect(() => {
         if (!isInitialized.current) return;
         const toolFromUrl = searchParams.get('tool') as Tool;
@@ -140,6 +147,7 @@ export function ToolProvider({ children }: { children: ReactNode }) {
             state.toolSettings[toolFromUrl]?.enabled
         ) {
             dispatch({ type: 'SET_ACTIVE_TOOL', payload: toolFromUrl });
+            dispatch({ type: 'SET_VISIT_TIMESTAMP', payload: { tool: toolFromUrl, timestamp: Date.now() } });
         }
     }, [searchParams]);
 
