@@ -92,6 +92,25 @@ function toolReducer(state: ToolState, action: ToolAction): ToolState {
     }
 }
 
+// Utility to merge preferences from saved state into default tool settings
+function mergeToolSettingsWithPreferences(defaults: Record<Tool, ToolSettings>, saved: any): Record<Tool, ToolSettings> {
+    const merged: Record<Tool, ToolSettings> = { ...defaults };
+    if (saved && typeof saved === 'object') {
+        for (const tool of Object.keys(defaults) as Tool[]) {
+            if (saved[tool] && saved[tool].preferences) {
+                merged[tool] = {
+                    ...defaults[tool],
+                    preferences: {
+                        ...defaults[tool].preferences,
+                        ...saved[tool].preferences,
+                    },
+                };
+            }
+        }
+    }
+    return merged;
+}
+
 // Create context
 const ToolContext = createContext<ToolContextType | undefined>(undefined);
 
@@ -104,13 +123,21 @@ export function ToolProvider({ children }: { children: ReactNode }) {
     const isUpdatingUrl = useRef(false);
     const isInitialized = useRef(false);
 
-    // Load state from localStorage on mount
+    // Load user-driven state from localStorage on mount (do NOT persist enabled/disabled)
     useEffect(() => {
         try {
             const savedState = localStorage.getItem('briefly-tool-state');
             if (savedState) {
                 const parsedState = JSON.parse(savedState);
-                dispatch({ type: 'LOAD_STATE', payload: parsedState });
+                // Merge preferences only, always use enabled from code
+                const mergedToolSettings = mergeToolSettingsWithPreferences(defaultToolSettings, parsedState.toolSettings);
+                const mergedState: ToolState = {
+                    activeTool: parsedState.activeTool || initialState.activeTool,
+                    toolSettings: mergedToolSettings,
+                    lastVisited: parsedState.lastVisited || initialState.lastVisited,
+                    visitTimestamps: parsedState.visitTimestamps || initialState.visitTimestamps,
+                };
+                dispatch({ type: 'LOAD_STATE', payload: mergedState });
             }
         } catch (error) {
             console.warn('Failed to load tool state from localStorage:', error);
@@ -118,16 +145,28 @@ export function ToolProvider({ children }: { children: ReactNode }) {
         isInitialized.current = true;
     }, []);
 
-    // Save state to localStorage whenever it changes
+    // Save only user-driven state to localStorage (do NOT persist enabled/disabled)
     useEffect(() => {
         if (!isInitialized.current) return;
-
         try {
-            localStorage.setItem('briefly-tool-state', JSON.stringify(state));
+            // Only persist preferences, not enabled/disabled
+            const toolSettingsToSave: Record<Tool, { preferences: Record<string, unknown> }> = {} as any;
+            for (const tool of Object.keys(defaultToolSettings) as Tool[]) {
+                toolSettingsToSave[tool] = {
+                    preferences: state.toolSettings[tool]?.preferences || {},
+                };
+            }
+            const stateToSave = {
+                activeTool: state.activeTool,
+                toolSettings: toolSettingsToSave,
+                lastVisited: state.lastVisited,
+                visitTimestamps: state.visitTimestamps,
+            };
+            localStorage.setItem('briefly-tool-state', JSON.stringify(stateToSave));
         } catch (error) {
             console.warn('Failed to save tool state to localStorage:', error);
         }
-    }, [state]);
+    }, [state.activeTool, state.toolSettings, state.lastVisited, state.visitTimestamps]);
 
     // ---
     // IMPORTANT: Avoiding the double-navigate bug and ensuring visit tracking
