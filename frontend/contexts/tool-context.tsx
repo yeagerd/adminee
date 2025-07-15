@@ -6,14 +6,15 @@ import { createContext, ReactNode, useContext, useEffect, useReducer, useRef } f
 
 // Initial tool settings
 const defaultToolSettings: Record<Tool, ToolSettings> = {
-    calendar: { id: 'calendar', enabled: true, preferences: { view: 'week', showWeekends: true } },
+    calendar: { id: 'calendar', enabled: true, preferences: { view: 'month', showWeekends: true } },
     email: { id: 'email', enabled: true, preferences: { view: 'inbox', sortBy: 'date' } },
-    documents: { id: 'documents', enabled: true, preferences: { view: 'list', sortBy: 'modified' } },
-    tasks: { id: 'tasks', enabled: true, preferences: { view: 'list', showCompleted: false } },
-    packages: { id: 'packages', enabled: true, preferences: { view: 'table', showDelivered: false } },
-    research: { id: 'research', enabled: true, preferences: { view: 'split', autoSave: true } },
-    pulse: { id: 'pulse', enabled: true, preferences: { categories: ['ai', 'pharma', 'fintech'], autoRefresh: true } },
-    insights: { id: 'insights', enabled: false, preferences: { view: 'dashboard', refreshInterval: 300 } },
+    documents: { id: 'documents', enabled: true, preferences: { view: 'list' } },
+    tasks: { id: 'tasks', enabled: true, preferences: { view: 'list' } },
+    packages: { id: 'packages', enabled: true, preferences: {} },
+    research: { id: 'research', enabled: true, preferences: {} },
+    pulse: { id: 'pulse', enabled: true, preferences: {} },
+    insights: { id: 'insights', enabled: false, preferences: {} },
+    drafts: { id: 'drafts', enabled: true, preferences: {} },
 };
 
 // Initial state
@@ -29,16 +30,18 @@ const initialState: ToolState = {
         research: '/dashboard?tool=research',
         pulse: '/dashboard?tool=pulse',
         insights: '/dashboard?tool=insights',
+        drafts: '/dashboard?tool=drafts',
     },
     visitTimestamps: {
-        calendar: Date.now(),
-        email: Date.now(),
-        documents: Date.now(),
-        tasks: Date.now(),
-        packages: Date.now(),
-        research: Date.now(),
-        pulse: Date.now(),
-        insights: Date.now(),
+        calendar: 0,
+        email: 0,
+        documents: 0,
+        tasks: 0,
+        packages: 0,
+        research: 0,
+        pulse: 0,
+        insights: 0,
+        drafts: 0,
     },
 };
 

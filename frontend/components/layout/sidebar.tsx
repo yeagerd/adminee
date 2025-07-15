@@ -12,7 +12,7 @@ import {
 import { useToolStateUtils } from "@/hooks/use-tool-state";
 import { getToolBadge, isToolAvailable } from "@/lib/tool-routing";
 import { NavigationItem, Tool } from "@/types/navigation";
-import { BarChart3, BookOpen, Calendar, ClipboardList, FileText, Mail, Package, TrendingUp } from "lucide-react";
+import { BarChart3, BookOpen, Calendar, ClipboardList, FileText, Mail, Package, Pencil, TrendingUp } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 const navigationItems: NavigationItem[] = [
@@ -20,6 +20,7 @@ const navigationItems: NavigationItem[] = [
     { id: "email", title: "Email", icon: Mail, path: "/dashboard?tool=email", enabled: true },
     { id: "documents", title: "Documents", icon: FileText, path: "/dashboard?tool=documents", enabled: true },
     { id: "tasks", title: "Tasks", icon: ClipboardList, path: "/dashboard?tool=tasks", enabled: true },
+    { id: "drafts", title: "Drafts", icon: Pencil, path: "/dashboard?tool=drafts", enabled: true },
     { id: "packages", title: "Package Tracker", icon: Package, path: "/dashboard?tool=packages", enabled: true },
     { id: "research", title: "Research", icon: BookOpen, path: "/dashboard?tool=research", enabled: true },
     { id: "pulse", title: "Pulse", icon: TrendingUp, path: "/dashboard?tool=pulse", enabled: true },
