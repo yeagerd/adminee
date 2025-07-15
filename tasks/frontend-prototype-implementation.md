@@ -251,44 +251,181 @@ This document outlines the incremental implementation plan for building out the 
 
 ## Phase 5: Draft Pane and AI Integration
 
-### Task 5.1: Implement Draft Pane
+### Task 5.1: Implement Core Draft Pane Structure
 **Priority**: High
-**Estimated Time**: 3-4 days
+**Estimated Time**: 1-2 days
 **Dependencies**: Task 1.1
 
-**Description**: Create the right-side draft editing interface
-- [ ] Implement draft type switching (email, calendar, document)
-- [ ] Add rich text editing with markdown support
-- [ ] Include draft metadata (subject, recipients, etc.)
-- [ ] Add save, send, and export actions
-- [ ] Implement draft history and versioning
+**Description**: Create the foundational draft pane structure with type switching and basic UI
+- [ ] Create draft pane container with proper layout
+- [ ] Implement draft type switcher (email, calendar, document)
+- [ ] Add draft metadata forms (context-dependent fields)
+- [ ] Create basic draft actions (Send/Create, Discard)
 - [ ] Add AI-generated content indicators
+- [ ] Implement draft state management
 
 **Files to Create/Modify**:
 - `frontend/components/draft/draft-pane.tsx`
-- `frontend/components/draft/draft-editor.tsx`
+- `frontend/components/draft/draft-type-switcher.tsx`
 - `frontend/components/draft/draft-metadata.tsx`
 - `frontend/components/draft/draft-actions.tsx`
-- `frontend/components/draft/draft-history.tsx`
+- `frontend/components/draft/ai-indicator.tsx`
+- `frontend/hooks/use-draft-state.ts`
+- `frontend/types/draft.ts`
 
-### Task 5.2: Implement AI Command Processing
+### Task 5.2: Implement Rich Text Editor Integration
 **Priority**: High
 **Estimated Time**: 2-3 days
-**Dependencies**: Task 6.4, Task 5.1
+**Dependencies**: Task 5.1
 
-**Description**: Connect assistant bar to AI services
-- [ ] Implement command parsing and routing
-- [ ] Add RAG query processing
-- [ ] Include drafting command handling
-- [ ] Add research command processing
+**Description**: Integrate TipTap rich text editor with markdown support and document-specific features
+- [ ] Install and configure TipTap editor
+- [ ] Create document-specific editor with markdown support
+- [ ] Implement email editor with recipient fields
+- [ ] Add calendar editor with date/time pickers
+- [ ] Create editor toolbar with formatting options
+- [ ] Add auto-save functionality
+- [ ] Implement content validation and error handling
+
+**Files to Create/Modify**:
+- `frontend/components/draft/draft-editor.tsx`
+- `frontend/components/draft/editors/document-editor.tsx`
+- `frontend/components/draft/editors/email-editor.tsx`
+- `frontend/components/draft/editors/calendar-editor.tsx`
+- `frontend/components/draft/editor-toolbar.tsx`
+- `frontend/hooks/use-editor.ts`
+- `frontend/lib/editor-config.ts`
+- `package.json` (add TipTap dependencies)
+
+### Task 5.3: Implement Backend Draft Storage
+**Priority**: High
+**Estimated Time**: 2-3 days
+**Dependencies**: None
+
+**Description**: Extend chat service to support persistent user draft storage
+- [ ] Add user draft models to chat service database
+- [ ] Create draft CRUD endpoints (create, read, update, delete)
+- [ ] Implement draft list retrieval by user_id
+- [ ] Add draft type validation and constraints
+- [ ] Extend existing draft functions to support user drafts
+- [ ] Add draft metadata storage (subject, recipients, dates, etc.)
+- [ ] Implement draft versioning and history
+
+**Files to Create/Modify**:
+- `services/chat/models.py` (add UserDraft model)
+- `services/chat/api.py` (add draft endpoints)
+- `services/chat/agents/llm_tools.py` (extend draft functions)
+- `services/chat/history_manager.py` (add user draft functions)
+- `services/chat/schemas.py` (add draft schemas)
+
+### Task 5.4: Implement Draft List and Navigation
+**Priority**: Medium
+**Estimated Time**: 1-2 days
+**Dependencies**: Task 5.3
+
+**Description**: Add draft list view accessible from sidebar with filtering and management
+- [ ] Add "Drafts" to navigation types and sidebar
+- [ ] Create draft list view with cards and previews
+- [ ] Implement draft filtering by type, status, and date
+- [ ] Add new draft creation flow with type selection
+- [ ] Create draft search functionality
+- [ ] Add draft bulk operations (delete, archive)
+- [ ] Implement draft sorting and organization
+
+**Files to Create/Modify**:
+- `frontend/types/navigation.ts` (add drafts tool)
+- `frontend/components/layout/sidebar.tsx` (add drafts nav item)
+- `frontend/components/drafts/drafts-list.tsx`
+- `frontend/components/drafts/draft-card.tsx`
+- `frontend/components/drafts/draft-filters.tsx`
+- `frontend/components/drafts/new-draft-button.tsx`
+- `frontend/hooks/use-drafts.ts`
+- `frontend/lib/draft-utils.ts`
+
+### Task 5.5: Implement Draft Actions and Integration
+**Priority**: High
+**Estimated Time**: 2-3 days
+**Dependencies**: Task 5.2, Task 5.3
+
+**Description**: Connect draft actions to office service and implement send/create functionality
+- [ ] Implement email sending via office service
+- [ ] Add calendar event creation via office service
+- [ ] Create document saving to Google Drive/OneDrive
+- [ ] Add draft discard functionality with confirmation
+- [ ] Implement draft auto-save and recovery
+- [ ] Add draft sharing and collaboration features
+- [ ] Create draft templates and quick actions
+
+**Files to Create/Modify**:
+- `frontend/components/draft/draft-actions.tsx`
+- `frontend/services/draft-service.ts`
+- `frontend/lib/office-integration.ts`
+- `frontend/hooks/use-draft-actions.ts`
+- `frontend/components/draft/draft-templates.tsx`
+- `frontend/components/draft/draft-recovery.tsx`
+
+### Task 5.6: Implement AI Draft Integration
+**Priority**: High
+**Estimated Time**: 1-2 days
+**Dependencies**: Task 5.1, Task 5.3
+
+**Description**: Connect AI-generated drafts from chat service to draft pane
+- [ ] Integrate with chat service draft endpoints
+- [ ] Display AI-generated drafts in draft pane
+- [ ] Add AI content indicators and styling
+- [ ] Implement AI draft editing and modification
+- [ ] Add AI draft approval and rejection flow
+- [ ] Create AI draft suggestions and improvements
+- [ ] Implement draft handoff between AI and user
+
+**Files to Create/Modify**:
+- `frontend/components/draft/ai-draft-indicator.tsx`
+- `frontend/hooks/use-ai-drafts.ts`
+- `frontend/services/ai-draft-service.ts`
+- `frontend/components/draft/ai-suggestions.tsx`
+- `frontend/lib/ai-draft-integration.ts`
+
+### Task 5.7: Add Draft Analytics and Optimization
+**Priority**: Low
+**Estimated Time**: 1-2 days
+**Dependencies**: Task 5.5
+
+**Description**: Add draft analytics, performance optimization, and advanced features
+- [ ] Implement draft usage analytics and metrics
+- [ ] Add draft performance monitoring
+- [ ] Create draft keyboard shortcuts and accessibility
+- [ ] Implement draft offline support and sync
+- [ ] Add draft export and backup functionality
+- [ ] Create draft collaboration features
+- [ ] Implement draft AI assistance and suggestions
+
+**Files to Create/Modify**:
+- `frontend/components/draft/draft-analytics.tsx`
+- `frontend/hooks/use-draft-analytics.ts`
+- `frontend/lib/draft-performance.ts`
+- `frontend/components/draft/draft-shortcuts.tsx`
+- `frontend/services/draft-sync.ts`
+
+### Task 5.8: Implement AI Command Processing
+**Priority**: High
+**Estimated Time**: 2-3 days
+**Dependencies**: Task 5.6
+
+**Description**: Connect assistant bar to AI services for draft creation and management
+- [ ] Implement command parsing and routing for drafts
+- [ ] Add draft creation commands ("draft email to...", "create calendar event...")
+- [ ] Include draft editing and modification commands
+- [ ] Add research and document drafting commands
 - [ ] Implement command history and suggestions
-- [ ] Add error handling and fallbacks
+- [ ] Add error handling and fallbacks for draft commands
+- [ ] Create voice input support for draft commands
 
 **Files to Create/Modify**:
 - `frontend/lib/ai-commands.ts`
 - `frontend/hooks/use-ai-commands.ts`
 - `frontend/services/ai-service.ts`
 - `frontend/components/assistant/command-processor.tsx`
+- `frontend/components/assistant/draft-commands.tsx`
 
 ## Phase 6: Integration and Polish
 
