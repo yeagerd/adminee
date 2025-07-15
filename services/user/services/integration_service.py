@@ -421,16 +421,6 @@ class IntegrationService:
                     user_id, provider, session
                 )
 
-                # Get encrypted tokens
-                token_result = await session.execute(
-                    select(EncryptedToken).where(
-                        EncryptedToken.integration_id == integration.id
-                    )
-                )
-                token_record = token_result.scalar_one_or_none()
-                if not token_record:
-                    raise ServiceError(message="No tokens found for integration")
-
                 # Decrypt tokens
                 access_token = None
                 refresh_token = None
@@ -1197,13 +1187,17 @@ class IntegrationService:
             result = await session.execute(
                 select(Integration).where(Integration.id == integration_id)
             )
-            integration = result.scalar_one()
+            integration = result.scalar_one_or_none()
+            if not integration:
+                raise ServiceError(message=f"Integration with ID {integration_id} not found")
 
             # Get user to get external auth ID
             user_result = await session.execute(
                 select(User).where(User.id == integration.user_id)
             )
-            user = user_result.scalar_one()
+            user = user_result.scalar_one_or_none()
+            if not user:
+                raise ServiceError(message=f"User with ID {integration.user_id} not found")
             user_id = user.external_auth_id
 
             # Encrypt tokens
