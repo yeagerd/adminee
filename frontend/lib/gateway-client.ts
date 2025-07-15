@@ -231,6 +231,35 @@ class GatewayClient {
         return this.request(`/api/files?provider=${provider}&${params.toString()}`);
     }
 
+    // Draft Management
+    async listDrafts(filters?: { type?: string; status?: string; search?: string; }): Promise<any> {
+        const params = new URLSearchParams();
+        if (filters?.type) params.append('draft_type', filters.type);
+        if (filters?.status) params.append('status', filters.status);
+        if (filters?.search) params.append('search', filters.search);
+        return this.request(`/api/user-drafts?${params.toString()}`);
+    }
+
+    async createDraft(draftData: { type: string; content: string; metadata?: Record<string, unknown>; threadId?: string; }): Promise<any> {
+        return this.request('/api/user-drafts', {
+            method: 'POST',
+            body: draftData,
+        });
+    }
+
+    async updateDraft(draftId: string, draftData: { content?: string; metadata?: Record<string, unknown>; status?: string; }): Promise<any> {
+        return this.request(`/api/user-drafts/${draftId}`, {
+            method: 'PUT',
+            body: draftData,
+        });
+    }
+
+    async deleteDraft(draftId: string): Promise<void> {
+        return this.request(`/api/user-drafts/${draftId}`, {
+            method: 'DELETE',
+        });
+    }
+
     // Health Check
     async healthCheck() {
         return this.request('/health');

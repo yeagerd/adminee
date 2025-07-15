@@ -19,10 +19,18 @@ function mapDraftFromApi(apiDraft: any): Draft {
     };
 }
 
-export function useDrafts({ type, status, search }: { type?: DraftType; status?: DraftStatus; search?: string }) {
+export function useDrafts({ type, status, search }: { type?: DraftType | DraftType[]; status?: DraftStatus | DraftStatus[]; search?: string }) {
     const params = new URLSearchParams();
-    if (type) params.append('draft_type', type);
-    if (status) params.append('status', status);
+    if (Array.isArray(type)) {
+        type.forEach(t => params.append('draft_type', t));
+    } else if (type) {
+        params.append('draft_type', type);
+    }
+    if (Array.isArray(status)) {
+        status.forEach(s => params.append('status', s));
+    } else if (status) {
+        params.append('status', status);
+    }
     if (search) params.append('search', search);
     const url = `/api/user-drafts?${params.toString()}`;
 
