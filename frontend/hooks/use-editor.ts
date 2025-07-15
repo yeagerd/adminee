@@ -24,7 +24,7 @@ export function useEditor({
     autoSaveDelay = 2000,
     onAutoSave
 }: UseEditorProps) {
-    const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
+    const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const lastSavedContentRef = useRef(content);
 
     const editor = useTipTapEditor({
@@ -93,6 +93,7 @@ export function useEditor({
                 class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none',
             },
         },
+        immediatelyRender: false,
     });
 
     // Cleanup auto-save timeout on unmount
