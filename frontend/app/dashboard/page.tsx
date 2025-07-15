@@ -2,6 +2,7 @@
 
 import ChatInterface from '@/components/chat-interface';
 import AppLayout from '@/components/layout/app-layout';
+import DraftPane from '@/components/layout/draft-pane';
 import Sidebar from '@/components/layout/sidebar';
 import { ToolContent } from '@/components/tool-content';
 import { ToolProvider } from '@/contexts/tool-context';
@@ -51,16 +52,7 @@ function DashboardContent() {
                     </div>
                 </div>
             }
-            draft={
-                <div className="h-full flex flex-col">
-                    <div className="flex items-center justify-between p-4 border-b">
-                        <h2 className="text-lg font-semibold">Draft</h2>
-                    </div>
-                    <div className="flex-1 p-4 text-muted-foreground">
-                        <p>Draft content will appear here when you create emails, calendar events, or documents.</p>
-                    </div>
-                </div>
-            }
+            draft={<DraftPane />}
         />
     );
 }
