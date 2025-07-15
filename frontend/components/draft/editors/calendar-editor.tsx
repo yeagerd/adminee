@@ -3,6 +3,7 @@
 import { useEditor } from '@/hooks/use-editor';
 import { cn } from '@/lib/utils';
 import { EditorContent } from '@tiptap/react';
+import { useEffect, useState } from 'react';
 import { EditorToolbar } from '../editor-toolbar';
 
 interface CalendarEditorProps {
@@ -28,9 +29,22 @@ export function CalendarEditor({
         autoSaveDelay: 2000,
     });
 
+    const [hasInteracted, setHasInteracted] = useState(false);
+    const [initialMount, setInitialMount] = useState(true);
+
+    useEffect(() => {
+        if (initialMount) {
+            setInitialMount(false);
+        } else if (!hasInteracted && content.trim().length > 0) {
+            setHasInteracted(true);
+        }
+    }, [content, hasInteracted, initialMount]);
+
     const errors = validateContent(content);
     const wordCount = getWordCount(content);
     const characterCount = getCharacterCount(content);
+
+    const showErrors = hasInteracted && errors.length > 0;
 
     return (
         <div className={cn('flex flex-col h-full', className)}>
@@ -56,7 +70,7 @@ export function CalendarEditor({
                 <div className="flex items-center gap-4">
                     <span>{wordCount} words</span>
                     <span>{characterCount} characters</span>
-                    {errors.length > 0 && (
+                    {showErrors && (
                         <span className="text-destructive">
                             {errors.length} error{errors.length > 1 ? 's' : ''}
                         </span>
@@ -71,7 +85,7 @@ export function CalendarEditor({
             </div>
 
             {/* Error Display */}
-            {errors.length > 0 && (
+            {showErrors && (
                 <div className="p-2 bg-destructive/10 border-t border-destructive/20">
                     <ul className="text-xs text-destructive space-y-1">
                         {errors.map((error, index) => (
