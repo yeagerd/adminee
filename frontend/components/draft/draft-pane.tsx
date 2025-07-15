@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { DraftType } from '@/types/draft';
 import { AIIndicator } from './ai-indicator';
 import { DraftActions } from './draft-actions';
+import { DraftEditor } from './draft-editor';
 import { DraftMetadata } from './draft-metadata';
 import { DraftTypeSwitcher } from './draft-type-switcher';
 
@@ -67,6 +68,14 @@ export function DraftPane({ className, userId }: DraftPaneProps) {
     const handleMetadataChange = (metadata: Partial<import('@/types/draft').DraftMetadata>) => {
         if (currentDraft) {
             updateDraftMetadata(metadata);
+        }
+    };
+
+    const handleAutoSave = (content: string) => {
+        if (currentDraft) {
+            updateDraft({ content });
+            // TODO: Implement actual auto-save to backend
+            console.log('Auto-saving draft:', content);
         }
     };
 
@@ -138,16 +147,14 @@ export function DraftPane({ className, userId }: DraftPaneProps) {
             />
 
             {/* Content Editor */}
-            <div className="flex-1 overflow-auto">
-                <div className="p-4">
-                    <textarea
-                        value={currentDraft.content}
-                        onChange={(e) => handleContentChange(e.target.value)}
-                        placeholder={`Start writing your ${currentDraft.type}...`}
-                        className="w-full h-full min-h-[300px] p-4 border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
-                        disabled={isLoading}
-                    />
-                </div>
+            <div className="flex-1 overflow-hidden">
+                <DraftEditor
+                    type={currentDraft.type}
+                    content={currentDraft.content}
+                    onUpdate={handleContentChange}
+                    onAutoSave={handleAutoSave}
+                    disabled={isLoading}
+                />
             </div>
 
             {/* Actions */}
