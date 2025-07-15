@@ -106,8 +106,8 @@ export class OfficeIntegrationService {
             case 'calendar':
                 return this.createCalendarEvent({
                     title: draft.metadata.title || 'New Event',
-                    startTime: draft.metadata.startTime || new Date().toISOString(),
-                    endTime: draft.metadata.endTime || new Date(Date.now() + 3600000).toISOString(),
+                    startTime: typeof draft.metadata.startTime === 'function' ? draft.metadata.startTime() : draft.metadata.startTime || new Date().toISOString(),
+                    endTime: typeof draft.metadata.endTime === 'function' ? draft.metadata.endTime() : draft.metadata.endTime || new Date(Date.now() + 3600000).toISOString(),
                     location: draft.metadata.location,
                     description: draft.content,
                     attendees: draft.metadata.attendees,
