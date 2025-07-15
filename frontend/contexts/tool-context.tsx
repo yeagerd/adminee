@@ -129,36 +129,27 @@ export function ToolProvider({ children }: { children: ReactNode }) {
         }
     }, [state]);
 
-    // Sync URL with active tool (only when URL changes, not when state changes)
+    // ---
+    // IMPORTANT: Avoiding the double-navigate bug and ensuring visit tracking
+    // This effect syncs the tool state from the URL. The URL is the single source of truth for tool navigation.
+    // DO NOT add state.activeTool or state.toolSettings to the dependency array, as that will cause this effect
+    // to run on state changes, creating a feedback loop and double navigation (especially on deep links).
+    // Only depend on searchParams so this runs only when the URL changes.
+    // We also update the visit timestamp here, since navigation is now URL-driven.
+    // ---
     useEffect(() => {
-        if (!isInitialized.current || isUpdatingUrl.current) return;
-
+        if (!isInitialized.current) return;
         const toolFromUrl = searchParams.get('tool') as Tool;
-        if (toolFromUrl &&
+        if (
+            toolFromUrl &&
             toolFromUrl !== state.activeTool &&
             defaultToolSettings[toolFromUrl] &&
-            state.toolSettings[toolFromUrl]?.enabled) { // Only allow enabled tools
+            state.toolSettings[toolFromUrl]?.enabled
+        ) {
             dispatch({ type: 'SET_ACTIVE_TOOL', payload: toolFromUrl });
+            dispatch({ type: 'SET_VISIT_TIMESTAMP', payload: { tool: toolFromUrl, timestamp: Date.now() } });
         }
-    }, [searchParams, state.activeTool, state.toolSettings]); // Add back dependencies with proper guards
-
-    // Update URL when active tool changes (only when state changes, not when URL changes)
-    useEffect(() => {
-        if (!isInitialized.current || isUpdatingUrl.current || typeof window === 'undefined') return;
-
-        const currentTool = searchParams.get('tool') as Tool;
-        if (state.activeTool !== currentTool) {
-            isUpdatingUrl.current = true;
-            const newUrl = new URL(window.location.href);
-            newUrl.searchParams.set('tool', state.activeTool);
-            router.replace(newUrl.pathname + newUrl.search, { scroll: false });
-
-            // Reset the flag after a short delay
-            setTimeout(() => {
-                isUpdatingUrl.current = false;
-            }, 100);
-        }
-    }, [state.activeTool, router, searchParams]); // Add back searchParams dependency
+    }, [searchParams]);
 
     // Update last visited when pathname changes
     useEffect(() => {
