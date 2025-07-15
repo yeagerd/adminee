@@ -232,7 +232,7 @@ class GatewayClient {
     }
 
     // Draft Management
-    async listDrafts(filters?: { type?: string; status?: string; search?: string; }): Promise<any> {
+    async listDrafts(filters?: { type?: string; status?: string; search?: string; }): Promise<unknown> {
         const params = new URLSearchParams();
         if (filters?.type) params.append('draft_type', filters.type);
         if (filters?.status) params.append('status', filters.status);
@@ -240,14 +240,14 @@ class GatewayClient {
         return this.request(`/api/user-drafts?${params.toString()}`);
     }
 
-    async createDraft(draftData: { type: string; content: string; metadata?: Record<string, unknown>; threadId?: string; }): Promise<any> {
+    async createDraft(draftData: { type: string; content: string; metadata?: Record<string, unknown>; threadId?: string; }): Promise<unknown> {
         return this.request('/api/user-drafts', {
             method: 'POST',
             body: draftData,
         });
     }
 
-    async updateDraft(draftId: string, draftData: { content?: string; metadata?: Record<string, unknown>; status?: string; }): Promise<any> {
+    async updateDraft(draftId: string, draftData: { content?: string; metadata?: Record<string, unknown>; status?: string; }): Promise<unknown> {
         return this.request(`/api/user-drafts/${draftId}`, {
             method: 'PUT',
             body: draftData,
