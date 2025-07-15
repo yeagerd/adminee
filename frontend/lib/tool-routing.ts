@@ -10,6 +10,7 @@ export const TOOL_ROUTES: Record<Tool, string> = {
     research: '/dashboard?tool=research',
     pulse: '/dashboard?tool=pulse',
     insights: '/dashboard?tool=insights',
+    drafts: '/dashboard?tool=drafts',
 };
 
 // Tool display names
@@ -22,18 +23,20 @@ export const TOOL_NAMES: Record<Tool, string> = {
     research: 'Research',
     pulse: 'Pulse',
     insights: 'Insights',
+    drafts: 'Drafts',
 };
 
 // Tool descriptions
 export const TOOL_DESCRIPTIONS: Record<Tool, string> = {
-    calendar: 'Manage your calendar events and meetings',
-    email: 'View and compose emails with AI assistance',
-    documents: 'Access and organize your documents',
-    tasks: 'Track and manage your tasks and to-dos',
-    packages: 'Monitor package deliveries and tracking',
-    research: 'AI-powered research and document creation',
-    pulse: 'Stay updated with industry news and trends',
-    insights: 'Analytics and insights dashboard',
+    calendar: 'View and manage your calendar events',
+    email: 'Read and send emails',
+    documents: 'Browse and edit documents',
+    tasks: 'Track your tasks and todos',
+    packages: 'Track your packages',
+    research: 'AI-powered research assistant',
+    pulse: 'Industry news and trends',
+    insights: 'Analytics and insights',
+    drafts: 'View and manage your drafts',
 };
 
 // Get tool from URL
@@ -90,6 +93,7 @@ export function getToolFromPathname(pathname: string): Tool | null {
         'research': 'research',
         'pulse': 'pulse',
         'insights': 'insights',
+        'drafts': 'drafts',
     };
 
     return pathToTool[path] || null;
@@ -116,6 +120,7 @@ export function getToolIconName(tool: Tool): string {
         research: 'BookOpen',
         pulse: 'TrendingUp',
         insights: 'BarChart3',
+        drafts: 'DocumentDuplicate',
     };
     return iconMap[tool];
 }
@@ -131,6 +136,7 @@ export function getToolColor(tool: Tool): string {
         research: 'indigo',
         pulse: 'pink',
         insights: 'teal',
+        drafts: 'gray',
     };
     return colorMap[tool];
 }
@@ -145,7 +151,8 @@ export function getToolBadge(tool: Tool): string | null {
         packages: null,
         research: null,
         pulse: null,
-        insights: 'Soon',
+        insights: null,
+        drafts: null,
     };
     return badgeMap[tool];
 }
