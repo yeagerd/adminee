@@ -1,4 +1,13 @@
-export type Tool = "calendar" | "email" | "documents" | "tasks" | "packages" | "research" | "pulse" | "insights";
+export type Tool =
+    | 'calendar'
+    | 'email'
+    | 'documents'
+    | 'tasks'
+    | 'packages'
+    | 'research'
+    | 'pulse'
+    | 'insights'
+    | 'drafts';
 
 export interface ToolSettings {
     id: Tool;
@@ -30,4 +39,19 @@ export interface NavigationItem {
     badge?: string;
     path: string;
     enabled: boolean;
-} 
+}
+
+export type NavigationTool =
+    | 'calendar'
+    | 'email'
+    | 'documents'
+    | 'tasks'
+    | 'drafts';
+
+export const NAVIGATION_TOOLS: Array<NavigationTool> = [
+    'calendar',
+    'email',
+    'documents',
+    'tasks',
+    'drafts',
+]; 
