@@ -38,6 +38,7 @@ from fastapi.responses import StreamingResponse
 from services.chat import history_manager
 from services.chat.agents.workflow_agent import WorkflowAgent
 from services.chat.auth import require_chat_auth
+from services.chat.history_manager import count_user_drafts
 from services.chat.models import (
     ChatRequest,
     ChatResponse,
@@ -450,6 +451,13 @@ async def list_user_drafts_endpoint(
         offset=offset,
     )
 
+    # Get total count for pagination
+    total_count = await count_user_drafts(
+        user_id=user_id,
+        draft_type=draft_type,
+        status=status,
+    )
+
     # Check if there are more drafts
     has_more = len(drafts) > limit
     if has_more:
@@ -473,7 +481,7 @@ async def list_user_drafts_endpoint(
         )
 
     return UserDraftListResponse(
-        drafts=draft_responses, total_count=len(draft_responses), has_more=has_more
+        drafts=draft_responses, total_count=total_count, has_more=has_more
     )
 
 

@@ -541,6 +541,25 @@ async def list_user_drafts(
         return list(result.scalars().all())
 
 
+async def count_user_drafts(
+    user_id: str,
+    draft_type: Optional[str] = None,
+    status: Optional[str] = None,
+) -> int:
+    async with get_async_session_factory()() as session:
+        query = (
+            select(func.count())
+            .select_from(UserDraft)
+            .where(UserDraft.user_id == user_id)
+        )
+        if draft_type:
+            query = query.where(UserDraft.type == draft_type)
+        if status:
+            query = query.where(UserDraft.status == status)
+        result = await session.execute(query)
+        return result.scalar_one()
+
+
 async def get_thread(thread_id: int) -> Optional[Thread]:
     async with get_async_session_factory()() as session:
         result = await session.execute(select(Thread).where(Thread.id == thread_id))
