@@ -18,14 +18,14 @@ export function useToolStateUtils() {
     // Get all enabled tools
     const getEnabledTools = useCallback((): Tool[] => {
         return Object.entries(state.toolSettings)
-            .filter(([_, settings]) => settings.enabled)
+            .filter(([, settings]) => settings.enabled)
             .map(([tool]) => tool as Tool);
     }, [state.toolSettings]);
 
     // Get all disabled tools
     const getDisabledTools = useCallback((): Tool[] => {
         return Object.entries(state.toolSettings)
-            .filter(([_, settings]) => !settings.enabled)
+            .filter(([, settings]) => !settings.enabled)
             .map(([tool]) => tool as Tool);
     }, [state.toolSettings]);
 
@@ -36,7 +36,7 @@ export function useToolStateUtils() {
     }, [getToolSettings, updateToolSettings]);
 
     // Update specific preference for a tool
-    const updateToolPreference = useCallback((tool: Tool, key: string, value: any) => {
+    const updateToolPreference = useCallback((tool: Tool, key: string, value: unknown) => {
         const currentSettings = getToolSettings(tool);
         updateToolSettings(tool, {
             preferences: {
@@ -47,7 +47,7 @@ export function useToolStateUtils() {
     }, [getToolSettings, updateToolSettings]);
 
     // Get specific preference for a tool
-    const getToolPreference = useCallback((tool: Tool, key: string, defaultValue?: any) => {
+    const getToolPreference = useCallback((tool: Tool, key: string, defaultValue?: unknown) => {
         const settings = getToolSettings(tool);
         return settings.preferences[key] ?? defaultValue;
     }, [getToolSettings]);
@@ -66,14 +66,16 @@ export function useToolStateUtils() {
     const getRecentlyVisitedTools = useCallback((): Tool[] => {
         const visitedTools = Object.entries(state.lastVisited)
             .filter(([tool, path]) => path && isToolEnabled(tool as Tool))
-            .sort(([, pathA], [, pathB]) => {
-                // Simple sorting - in a real app you might want to store timestamps
-                return pathA.localeCompare(pathB);
+            .sort(([toolA], [toolB]) => {
+                // Sort by actual visit timestamps (most recent first)
+                const timestampA = state.visitTimestamps[toolA as Tool] || 0;
+                const timestampB = state.visitTimestamps[toolB as Tool] || 0;
+                return timestampB - timestampA; // Descending order (most recent first)
             })
             .map(([tool]) => tool as Tool);
 
         return visitedTools;
-    }, [state.lastVisited, isToolEnabled]);
+    }, [state.lastVisited, state.visitTimestamps, isToolEnabled]);
 
     // Check if a tool is the currently active one
     const isActiveTool = useCallback((tool: Tool): boolean => {

@@ -3,13 +3,14 @@ export type Tool = "calendar" | "email" | "documents" | "tasks" | "packages" | "
 export interface ToolSettings {
     id: Tool;
     enabled: boolean;
-    preferences: Record<string, any>;
+    preferences: Record<string, unknown>;
 }
 
 export interface ToolState {
     activeTool: Tool;
     toolSettings: Record<Tool, ToolSettings>;
     lastVisited: Record<Tool, string>; // URL paths
+    visitTimestamps: Record<Tool, number>; // Timestamps for recency sorting
 }
 
 export interface ToolContextType {

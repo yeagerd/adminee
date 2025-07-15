@@ -30,6 +30,16 @@ const initialState: ToolState = {
         pulse: '/dashboard?tool=pulse',
         insights: '/dashboard?tool=insights',
     },
+    visitTimestamps: {
+        calendar: Date.now(),
+        email: Date.now(),
+        documents: Date.now(),
+        tasks: Date.now(),
+        packages: Date.now(),
+        research: Date.now(),
+        pulse: Date.now(),
+        insights: Date.now(),
+    },
 };
 
 // Action types
@@ -37,6 +47,7 @@ type ToolAction =
     | { type: 'SET_ACTIVE_TOOL'; payload: Tool }
     | { type: 'UPDATE_TOOL_SETTINGS'; payload: { tool: Tool; settings: Partial<ToolSettings> } }
     | { type: 'SET_LAST_VISITED'; payload: { tool: Tool; path: string } }
+    | { type: 'SET_VISIT_TIMESTAMP'; payload: { tool: Tool; timestamp: number } }
     | { type: 'LOAD_STATE'; payload: ToolState };
 
 // Reducer
@@ -64,6 +75,14 @@ function toolReducer(state: ToolState, action: ToolAction): ToolState {
                 lastVisited: {
                     ...state.lastVisited,
                     [action.payload.tool]: action.payload.path,
+                },
+            };
+        case 'SET_VISIT_TIMESTAMP':
+            return {
+                ...state,
+                visitTimestamps: {
+                    ...state.visitTimestamps,
+                    [action.payload.tool]: action.payload.timestamp,
                 },
             };
         case 'LOAD_STATE':
@@ -115,14 +134,17 @@ export function ToolProvider({ children }: { children: ReactNode }) {
         if (!isInitialized.current || isUpdatingUrl.current) return;
 
         const toolFromUrl = searchParams.get('tool') as Tool;
-        if (toolFromUrl && toolFromUrl !== state.activeTool && defaultToolSettings[toolFromUrl]) {
+        if (toolFromUrl &&
+            toolFromUrl !== state.activeTool &&
+            defaultToolSettings[toolFromUrl] &&
+            state.toolSettings[toolFromUrl]?.enabled) { // Only allow enabled tools
             dispatch({ type: 'SET_ACTIVE_TOOL', payload: toolFromUrl });
         }
-    }, [searchParams]); // Remove state.activeTool from dependencies
+    }, [searchParams, state.activeTool, state.toolSettings]); // Add back dependencies with proper guards
 
     // Update URL when active tool changes (only when state changes, not when URL changes)
     useEffect(() => {
-        if (!isInitialized.current || isUpdatingUrl.current) return;
+        if (!isInitialized.current || isUpdatingUrl.current || typeof window === 'undefined') return;
 
         const currentTool = searchParams.get('tool') as Tool;
         if (state.activeTool !== currentTool) {
@@ -136,7 +158,7 @@ export function ToolProvider({ children }: { children: ReactNode }) {
                 isUpdatingUrl.current = false;
             }, 100);
         }
-    }, [state.activeTool]); // Remove searchParams from dependencies
+    }, [state.activeTool, router, searchParams]); // Add back searchParams dependency
 
     // Update last visited when pathname changes
     useEffect(() => {
@@ -152,6 +174,8 @@ export function ToolProvider({ children }: { children: ReactNode }) {
     const setActiveTool = (tool: Tool) => {
         if (state.toolSettings[tool]?.enabled) {
             dispatch({ type: 'SET_ACTIVE_TOOL', payload: tool });
+            // Update visit timestamp
+            dispatch({ type: 'SET_VISIT_TIMESTAMP', payload: { tool, timestamp: Date.now() } });
         }
     };
 
