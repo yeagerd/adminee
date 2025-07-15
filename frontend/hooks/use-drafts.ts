@@ -1,4 +1,4 @@
-import { gatewayClient } from '@/lib/gateway-client';
+import gatewayClient from '@/lib/gateway-client';
 import { Draft, DraftStatus, DraftType } from '@/types/draft';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -100,7 +100,7 @@ export function useDrafts(options: UseDraftsOptions = {}): UseDraftsReturn {
         try {
             const data = await gatewayClient.updateDraft(id, {
                 content: updates.content,
-                metadata: updates.metadata,
+                metadata: updates.metadata as Record<string, unknown> | undefined, // Fix type error
                 status: updates.status,
             });
 

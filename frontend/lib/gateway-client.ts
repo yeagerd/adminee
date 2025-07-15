@@ -8,7 +8,7 @@ interface GatewayClientOptions {
     headers?: Record<string, string>;
 }
 
-class GatewayClient {
+export class GatewayClient {
     private gatewayUrl: string;
 
     constructor() {
