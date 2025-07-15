@@ -160,6 +160,34 @@ This document outlines the incremental implementation plan for building out the 
 - `frontend/components/documents/document-filters.tsx`
 - `frontend/components/documents/document-preview.tsx`
 
+### Task 3.4: Implement Tasks View
+**Priority**: High
+**Estimated Time**: 3-4 days
+**Dependencies**: Task 1.1, Task 2.1
+
+**Description**: Create the tasks/todos interface with AI integration
+- [ ] Implement task list with drag-and-drop reordering
+- [ ] Add task cards with priority, due date, and status indicators
+- [ ] Include AI-suggested task categorization and prioritization
+- [ ] Add task creation with natural language input
+- [ ] Implement task filtering by status, priority, and due date
+- [ ] Add task completion tracking and progress indicators
+- [ ] Include calendar integration for task scheduling
+- [ ] Add bulk task operations (complete, delete, move)
+- [ ] Implement task templates and recurring tasks
+- [ ] Add task search and quick actions
+
+**Files to Create/Modify**:
+- `frontend/components/views/tasks-view.tsx`
+- `frontend/components/tasks/task-card.tsx`
+- `frontend/components/tasks/task-list.tsx`
+- `frontend/components/tasks/task-filters.tsx`
+- `frontend/components/tasks/task-creator.tsx`
+- `frontend/components/tasks/task-progress.tsx`
+- `frontend/components/tasks/ai-suggestions.tsx`
+- `frontend/hooks/use-tasks.ts`
+- `frontend/lib/task-utils.ts`
+
 ## Phase 4: Advanced Tool Views
 
 ### Task 4.1: Implement Package Tracker View
@@ -434,13 +462,13 @@ This document outlines the incremental implementation plan for building out the 
 
 - **Phase 0**: 1 week (Integration streamlining)
 - **Phase 1-2**: 1-2 weeks (Core layout and navigation)
-- **Phase 3**: 2-3 weeks (Core tool views)
+- **Phase 3**: 3-4 weeks (Core tool views)
 - **Phase 4**: 2-3 weeks (Advanced tool views)
 - **Phase 5**: 1-2 weeks (Draft pane and AI integration)
 - **Phase 6**: 1-2 weeks (Integration and polish)
 - **Phase 7**: 1-2 weeks (Performance optimization)
 
-**Total Estimated Time**: 9-15 weeks for full implementation 
+**Total Estimated Time**: 10-16 weeks for full implementation 
 
 ## Future ideas:
 
