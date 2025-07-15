@@ -232,23 +232,34 @@ export class GatewayClient {
     }
 
     // Draft Management
-    async createDraft(draftData: {
-        type: string;
-        content: string;
-        metadata?: Record<string, unknown>;
-        threadId?: string;
-    }): Promise<DraftApiResponse> {
+    async listDrafts(filters?: { type?: string | string[]; status?: string | string[]; search?: string; }): Promise<DraftListResponse> {
+        const params = new URLSearchParams();
+        if (filters?.type) {
+            if (Array.isArray(filters.type)) {
+                filters.type.forEach(t => params.append('draft_type', t));
+            } else {
+                params.append('draft_type', filters.type);
+            }
+        }
+        if (filters?.status) {
+            if (Array.isArray(filters.status)) {
+                filters.status.forEach(s => params.append('status', s));
+            } else {
+                params.append('status', filters.status);
+            }
+        }
+        if (filters?.search) params.append('search', filters.search);
+        return this.request<DraftListResponse>(`/api/user-drafts?${params.toString()}`);
+    }
+
+    async createDraft(draftData: { type: string; content: string; metadata?: Record<string, unknown>; threadId?: string; }): Promise<DraftApiResponse> {
         return this.request<DraftApiResponse>('/api/user-drafts', {
             method: 'POST',
             body: draftData,
         });
     }
 
-    async updateDraft(draftId: string, draftData: {
-        content?: string;
-        metadata?: Record<string, unknown>;
-        status?: string;
-    }): Promise<DraftApiResponse> {
+    async updateDraft(draftId: string, draftData: { content?: string; metadata?: Record<string, unknown>; status?: string; }): Promise<DraftApiResponse> {
         return this.request<DraftApiResponse>(`/api/user-drafts/${draftId}`, {
             method: 'PUT',
             body: draftData,
@@ -263,19 +274,6 @@ export class GatewayClient {
 
     async getDraft(draftId: string): Promise<DraftApiResponse> {
         return this.request<DraftApiResponse>(`/api/user-drafts/${draftId}`);
-    }
-
-    async listDrafts(filters?: {
-        type?: string;
-        status?: string;
-        search?: string;
-    }): Promise<DraftListResponse> {
-        const params = new URLSearchParams();
-        if (filters?.type) params.append('draft_type', filters.type);
-        if (filters?.status) params.append('status', filters.status);
-        if (filters?.search) params.append('search', filters.search);
-
-        return this.request<DraftListResponse>(`/api/user-drafts?${params.toString()}`);
     }
 
     // Health Check
