@@ -13,7 +13,7 @@ import { useToolStateUtils } from "@/hooks/use-tool-state";
 import { getToolBadge, isToolAvailable } from "@/lib/tool-routing";
 import { NavigationItem, Tool } from "@/types/navigation";
 import { BarChart3, BookOpen, Calendar, ClipboardList, FileText, Mail, Package, TrendingUp } from "lucide-react";
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 const navigationItems: NavigationItem[] = [
     { id: "calendar", title: "Calendar", icon: Calendar, path: "/dashboard?tool=calendar", enabled: true },
@@ -26,15 +26,10 @@ const navigationItems: NavigationItem[] = [
     { id: "insights", title: "Insights", icon: BarChart3, path: "/dashboard?tool=insights", enabled: false },
 ];
 
-interface SidebarProps {
-    activeTool?: Tool;
-    onToolChange?: (tool: Tool) => void;
-}
-
-export function Sidebar({ onToolChange }: SidebarProps) {
+export function Sidebar() {
     const { isToolEnabled, isActiveTool } = useToolStateUtils();
     const router = useRouter();
-    const searchParams = useSearchParams();
+    // const searchParams = useSearchParams(); // Remove unused variable
 
     // When a tool is selected, update the URL (source of truth)
     const handleToolChange = (tool: Tool) => {
