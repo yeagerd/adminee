@@ -30,11 +30,10 @@ interface SidebarProps {
     onToolChange?: (tool: Tool) => void;
 }
 
-export function Sidebar({ activeTool, onToolChange }: SidebarProps) {
-    const { activeTool: contextActiveTool, setActiveTool, isToolEnabled, isActiveTool } = useToolStateUtils();
+export function Sidebar({ onToolChange }: SidebarProps) {
+    const { setActiveTool, isToolEnabled, isActiveTool } = useToolStateUtils();
 
     // Use context state if no props provided
-    const currentActiveTool = activeTool || contextActiveTool;
     const handleToolChange = onToolChange || setActiveTool;
 
     return (

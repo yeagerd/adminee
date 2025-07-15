@@ -2,7 +2,7 @@
 
 import { Tool, ToolContextType, ToolSettings, ToolState } from '@/types/navigation';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { createContext, ReactNode, useContext, useEffect, useReducer } from 'react';
+import { createContext, ReactNode, useContext, useEffect, useReducer, useRef } from 'react';
 
 // Initial tool settings
 const defaultToolSettings: Record<Tool, ToolSettings> = {
@@ -82,6 +82,8 @@ export function ToolProvider({ children }: { children: ReactNode }) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
+    const isUpdatingUrl = useRef(false);
+    const isInitialized = useRef(false);
 
     // Load state from localStorage on mount
     useEffect(() => {
@@ -94,10 +96,13 @@ export function ToolProvider({ children }: { children: ReactNode }) {
         } catch (error) {
             console.warn('Failed to load tool state from localStorage:', error);
         }
+        isInitialized.current = true;
     }, []);
 
     // Save state to localStorage whenever it changes
     useEffect(() => {
+        if (!isInitialized.current) return;
+
         try {
             localStorage.setItem('briefly-tool-state', JSON.stringify(state));
         } catch (error) {
@@ -105,33 +110,43 @@ export function ToolProvider({ children }: { children: ReactNode }) {
         }
     }, [state]);
 
-    // Sync URL with active tool
+    // Sync URL with active tool (only when URL changes, not when state changes)
     useEffect(() => {
+        if (!isInitialized.current || isUpdatingUrl.current) return;
+
         const toolFromUrl = searchParams.get('tool') as Tool;
         if (toolFromUrl && toolFromUrl !== state.activeTool && defaultToolSettings[toolFromUrl]) {
             dispatch({ type: 'SET_ACTIVE_TOOL', payload: toolFromUrl });
         }
-    }, [searchParams, state.activeTool]);
+    }, [searchParams]); // Remove state.activeTool from dependencies
 
-    // Update URL when active tool changes
+    // Update URL when active tool changes (only when state changes, not when URL changes)
     useEffect(() => {
+        if (!isInitialized.current || isUpdatingUrl.current) return;
+
         const currentTool = searchParams.get('tool') as Tool;
         if (state.activeTool !== currentTool) {
+            isUpdatingUrl.current = true;
             const newUrl = new URL(window.location.href);
             newUrl.searchParams.set('tool', state.activeTool);
             router.replace(newUrl.pathname + newUrl.search, { scroll: false });
+
+            // Reset the flag after a short delay
+            setTimeout(() => {
+                isUpdatingUrl.current = false;
+            }, 100);
         }
-    }, [state.activeTool, router, searchParams]);
+    }, [state.activeTool]); // Remove searchParams from dependencies
 
     // Update last visited when pathname changes
     useEffect(() => {
-        if (pathname && pathname !== '/') {
-            const currentPath = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '');
-            dispatch({
-                type: 'SET_LAST_VISITED',
-                payload: { tool: state.activeTool, path: currentPath },
-            });
-        }
+        if (!isInitialized.current || !pathname || pathname === '/') return;
+
+        const currentPath = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '');
+        dispatch({
+            type: 'SET_LAST_VISITED',
+            payload: { tool: state.activeTool, path: currentPath },
+        });
     }, [pathname, searchParams, state.activeTool]);
 
     const setActiveTool = (tool: Tool) => {

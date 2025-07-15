@@ -14,7 +14,6 @@ export function ToolStateDemo() {
         setActiveTool,
         toggleTool,
         updateToolPreference,
-        getToolPreference,
         getEnabledTools,
         getDisabledTools,
         isActiveTool,
@@ -63,8 +62,8 @@ export function ToolStateDemo() {
                                 <div
                                     key={tool}
                                     className={`p-3 border rounded-lg cursor-pointer transition-colors ${isActiveTool(tool)
-                                            ? 'border-primary bg-primary/5'
-                                            : 'border-border hover:border-primary/50'
+                                        ? 'border-primary bg-primary/5'
+                                        : 'border-border hover:border-primary/50'
                                         }`}
                                     onClick={() => setActiveTool(tool)}
                                 >
