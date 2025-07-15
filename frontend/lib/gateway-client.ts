@@ -232,10 +232,22 @@ class GatewayClient {
     }
 
     // Draft Management
-    async listDrafts(filters?: { type?: string; status?: string; search?: string; }): Promise<unknown> {
+    async listDrafts(filters?: { type?: string | string[]; status?: string | string[]; search?: string; }): Promise<unknown> {
         const params = new URLSearchParams();
-        if (filters?.type) params.append('draft_type', filters.type);
-        if (filters?.status) params.append('status', filters.status);
+        if (filters?.type) {
+            if (Array.isArray(filters.type)) {
+                filters.type.forEach(t => params.append('draft_type', t));
+            } else {
+                params.append('draft_type', filters.type);
+            }
+        }
+        if (filters?.status) {
+            if (Array.isArray(filters.status)) {
+                filters.status.forEach(s => params.append('status', s));
+            } else {
+                params.append('status', filters.status);
+            }
+        }
         if (filters?.search) params.append('search', filters.search);
         return this.request(`/api/user-drafts?${params.toString()}`);
     }

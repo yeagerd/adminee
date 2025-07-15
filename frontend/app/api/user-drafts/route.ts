@@ -3,9 +3,12 @@ import { NextRequest } from 'next/server';
 
 export async function GET(req: NextRequest) {
     const url = new URL(req.url);
-    const type = url.searchParams.get('draft_type') || undefined;
-    const status = url.searchParams.get('status') || undefined;
+    const typeParams = url.searchParams.getAll('draft_type');
+    const statusParams = url.searchParams.getAll('status');
     const search = url.searchParams.get('search') || undefined;
+    // Use array if multiple, string if one, undefined if none
+    const type = typeParams.length > 1 ? typeParams : typeParams.length === 1 ? typeParams[0] : undefined;
+    const status = statusParams.length > 1 ? statusParams : statusParams.length === 1 ? statusParams[0] : undefined;
     try {
         const data = await gatewayClient.listDrafts({ type, status, search });
         return new Response(JSON.stringify(data), { status: 200, headers: { 'Content-Type': 'application/json' } });

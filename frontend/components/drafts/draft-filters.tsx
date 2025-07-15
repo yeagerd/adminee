@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { DraftStatus, DraftType } from '@/types/draft';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const DRAFT_TYPES: DraftType[] = ['email', 'calendar', 'document'];
 const DRAFT_STATUSES: DraftStatus[] = ['draft', 'sent', 'archived'];
@@ -26,9 +26,17 @@ export function DraftFilters({
     onChange: (filters: { type?: DraftType | DraftType[]; status?: DraftStatus | DraftStatus[]; search?: string }) => void;
     hideTypeAndStatus?: boolean;
 }) {
+    // Only use local search state if search input is rendered (hideTypeAndStatus)
     const [localSearch, setLocalSearch] = useState(search || '');
     const [selectedTypes, setSelectedTypes] = useState<DraftType[]>(Array.isArray(type) ? type : type ? [type] : []);
     const [selectedStatuses, setSelectedStatuses] = useState<DraftStatus[]>(Array.isArray(status) ? status : status ? [status] : []);
+
+    // Sync localSearch with prop if hideTypeAndStatus is true
+    useEffect(() => {
+        if (hideTypeAndStatus) {
+            setLocalSearch(search || '');
+        }
+    }, [search, hideTypeAndStatus]);
 
     if (hideTypeAndStatus) {
         return (
@@ -68,7 +76,7 @@ export function DraftFilters({
                                     ? [...selectedTypes, t]
                                     : selectedTypes.filter((type) => type !== t);
                                 setSelectedTypes(newTypes);
-                                onChange({ type: newTypes, status: selectedStatuses, search: localSearch });
+                                onChange({ type: newTypes, status: selectedStatuses, search });
                             }}
                         >
                             {t.charAt(0).toUpperCase() + t.slice(1)}
@@ -85,7 +93,7 @@ export function DraftFilters({
                                     ? [...selectedStatuses, s]
                                     : selectedStatuses.filter((status) => status !== s);
                                 setSelectedStatuses(newStatuses);
-                                onChange({ type: selectedTypes, status: newStatuses, search: localSearch });
+                                onChange({ type: selectedTypes, status: newStatuses, search });
                             }}
                         >
                             {s.charAt(0).toUpperCase() + s.slice(1)}
