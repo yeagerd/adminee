@@ -3,8 +3,8 @@ import { Draft, DraftStatus, DraftType } from '@/types/draft';
 import { useCallback, useEffect, useState } from 'react';
 
 interface UseDraftsOptions {
-    type?: DraftType;
-    status?: DraftStatus;
+    type?: DraftType | DraftType[];
+    status?: DraftStatus | DraftStatus[];
     search?: string;
     limit?: number;
 }
@@ -34,8 +34,20 @@ export function useDrafts(options: UseDraftsOptions = {}): UseDraftsReturn {
             setError(null);
 
             const params = new URLSearchParams();
-            if (options.type) params.append('draft_type', options.type);
-            if (options.status) params.append('status', options.status);
+            if (options.type) {
+                if (Array.isArray(options.type)) {
+                    options.type.forEach(t => params.append('draft_type', t));
+                } else {
+                    params.append('draft_type', options.type);
+                }
+            }
+            if (options.status) {
+                if (Array.isArray(options.status)) {
+                    options.status.forEach(s => params.append('status', s));
+                } else {
+                    params.append('status', options.status);
+                }
+            }
             if (options.search) params.append('search', options.search);
             if (options.limit) params.append('limit', options.limit.toString());
 
