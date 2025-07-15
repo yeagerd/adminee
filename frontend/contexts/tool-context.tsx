@@ -129,36 +129,19 @@ export function ToolProvider({ children }: { children: ReactNode }) {
         }
     }, [state]);
 
-    // Sync URL with active tool (only when URL changes, not when state changes)
+    // Sync state from URL
     useEffect(() => {
-        if (!isInitialized.current || isUpdatingUrl.current) return;
-
+        if (!isInitialized.current) return;
         const toolFromUrl = searchParams.get('tool') as Tool;
-        if (toolFromUrl &&
+        if (
+            toolFromUrl &&
             toolFromUrl !== state.activeTool &&
             defaultToolSettings[toolFromUrl] &&
-            state.toolSettings[toolFromUrl]?.enabled) { // Only allow enabled tools
+            state.toolSettings[toolFromUrl]?.enabled
+        ) {
             dispatch({ type: 'SET_ACTIVE_TOOL', payload: toolFromUrl });
         }
-    }, [searchParams, state.activeTool, state.toolSettings]); // Add back dependencies with proper guards
-
-    // Update URL when active tool changes (only when state changes, not when URL changes)
-    useEffect(() => {
-        if (!isInitialized.current || isUpdatingUrl.current || typeof window === 'undefined') return;
-
-        const currentTool = searchParams.get('tool') as Tool;
-        if (state.activeTool !== currentTool) {
-            isUpdatingUrl.current = true;
-            const newUrl = new URL(window.location.href);
-            newUrl.searchParams.set('tool', state.activeTool);
-            router.replace(newUrl.pathname + newUrl.search, { scroll: false });
-
-            // Reset the flag after a short delay
-            setTimeout(() => {
-                isUpdatingUrl.current = false;
-            }, 100);
-        }
-    }, [state.activeTool, router, searchParams]); // Add back searchParams dependency
+    }, [searchParams]);
 
     // Update last visited when pathname changes
     useEffect(() => {

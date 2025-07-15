@@ -13,6 +13,7 @@ import { useToolStateUtils } from "@/hooks/use-tool-state";
 import { getToolBadge, isToolAvailable } from "@/lib/tool-routing";
 import { NavigationItem, Tool } from "@/types/navigation";
 import { BarChart3, BookOpen, Calendar, ClipboardList, FileText, Mail, Package, TrendingUp } from "lucide-react";
+import { useRouter, useSearchParams } from 'next/navigation';
 
 const navigationItems: NavigationItem[] = [
     { id: "calendar", title: "Calendar", icon: Calendar, path: "/dashboard?tool=calendar", enabled: true },
@@ -31,10 +32,17 @@ interface SidebarProps {
 }
 
 export function Sidebar({ onToolChange }: SidebarProps) {
-    const { setActiveTool, isToolEnabled, isActiveTool } = useToolStateUtils();
+    const { isToolEnabled, isActiveTool } = useToolStateUtils();
+    const router = useRouter();
+    const searchParams = useSearchParams();
 
-    // Use context state if no props provided
-    const handleToolChange = onToolChange || setActiveTool;
+    // When a tool is selected, update the URL (source of truth)
+    const handleToolChange = (tool: Tool) => {
+        if (!isToolEnabled(tool)) return;
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('tool', tool);
+        router.replace(newUrl.pathname + newUrl.search, { scroll: false });
+    };
 
     return (
         <UISidebar collapsible="icon" className="border-r">
