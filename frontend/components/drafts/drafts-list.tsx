@@ -38,14 +38,18 @@ export default function DraftsList() {
                     <DraftFilters
                         type={filters.type}
                         status={filters.status}
-                        onChange={f => setFilters(prev => ({ ...prev, ...f }))}
+                        onChange={f => setFilters(prev => ({
+                            ...prev,
+                            ...f,
+                            type: f.type ? (Array.isArray(f.type) ? f.type : [f.type]) : [],
+                            status: f.status ? (Array.isArray(f.status) ? f.status : [f.status]) : [],
+                        }))}
                     />
                 </div>
                 <div className="shrink-0">
                     <NewDraftButton onClick={() => {/* TODO: open new draft modal */ }} />
                 </div>
             </div>
-            <DraftFilters {...filters} onChange={setFilters} />
             {loading && <div>Loading drafts...</div>}
             {error && <div className="text-red-500">Error loading drafts.</div>}
             {!loading && sortedDrafts.length === 0 && <div>No drafts found.</div>}
