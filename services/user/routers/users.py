@@ -47,8 +47,9 @@ from services.user.schemas.user import (
 )
 from services.user.services.audit_service import audit_logger
 from services.user.services.user_service import get_user_service
+from services.common.logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/users", tags=["users"])
 

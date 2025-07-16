@@ -15,9 +15,10 @@ import httpx
 from pydantic import BaseModel
 
 from services.office.core.settings import get_settings
+from services.common.logging_config import get_logger
 
 # Configure logging
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class TokenData(BaseModel):

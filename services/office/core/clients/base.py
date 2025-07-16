@@ -16,9 +16,10 @@ import httpx
 
 from services.common.http_errors import ErrorCode, ProviderError
 from services.office.models import ApiCall, ApiCallStatus, Provider
+from services.common.logging_config import get_logger
 
 # Configure logging
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class BaseAPIClient(ABC):

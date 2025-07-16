@@ -15,9 +15,10 @@ from services.office.core.demo_token_manager import DemoTokenManager
 from services.office.core.settings import get_settings
 from services.office.core.token_manager import TokenManager
 from services.office.models import Provider
+from services.common.logging_config import get_logger
 
 # Configure logging
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class APIClientFactory:

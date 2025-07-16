@@ -16,8 +16,9 @@ from services.user.utils.validation import (
     check_sql_injection_patterns,
     validate_json_safe_string,
 )
+from services.common.logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class InputSanitizationMiddleware(BaseHTTPMiddleware):

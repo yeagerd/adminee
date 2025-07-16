@@ -12,8 +12,9 @@ from sqlalchemy import and_, select
 
 from services.user.database import get_async_session
 from services.user.models.user import User
+from services.common.logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class EmailCollisionDetector:

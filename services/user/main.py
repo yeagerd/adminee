@@ -21,6 +21,7 @@ from services.common.logging_config import (
     log_service_shutdown,
     log_service_startup,
     setup_service_logging,
+    get_logger,
 )
 from services.user.database import (
     close_db,
@@ -60,7 +61,7 @@ setup_service_logging(
     log_format=settings.log_format,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @asynccontextmanager
@@ -296,7 +297,7 @@ async def oauth_callback_redirect(
 
     except Exception as e:
         # Use a safe logger that works even if main logger isn't initialized
-        safe_logger = logging.getLogger(__name__)
+        safe_logger = get_logger(__name__)
         safe_logger.error(f"OAuth callback error: {e}")
         return JSONResponse(
             status_code=500,

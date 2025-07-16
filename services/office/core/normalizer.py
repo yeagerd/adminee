@@ -18,8 +18,9 @@ from services.office.schemas import (
     EmailAddress,
     EmailMessage,
 )
+from services.common.logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def normalize_google_email(

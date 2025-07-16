@@ -11,6 +11,7 @@ from services.common.logging_config import (
     log_service_shutdown,
     log_service_startup,
     setup_service_logging,
+    get_logger,
 )
 from services.office.api.calendar import router as calendar_router
 from services.office.api.email import router as email_router
@@ -26,7 +27,7 @@ setup_service_logging(
     log_format=settings.LOG_FORMAT,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @asynccontextmanager

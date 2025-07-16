@@ -15,8 +15,9 @@ from typing import Dict, Optional
 
 import httpx
 import jwt
+from services.common.logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class NextAuthClient:

@@ -21,9 +21,10 @@ from services.user.schemas.preferences import (
     UserPreferencesUpdate,
 )
 from services.user.services.preferences_service import PreferencesService
+from services.common.logging_config import get_logger
 
 # Set up logging
-logger = structlog.get_logger(__name__)
+logger = get_logger(__name__)
 
 
 router = APIRouter(

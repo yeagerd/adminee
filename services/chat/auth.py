@@ -11,8 +11,9 @@ from fastapi import Request
 
 from services.chat.settings import get_settings
 from services.common.http_errors import AuthError
+from services.common.logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ChatServiceAuth:

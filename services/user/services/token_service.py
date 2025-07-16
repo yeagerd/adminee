@@ -13,6 +13,7 @@ import structlog
 from sqlmodel import select
 
 from services.common.http_errors import NotFoundError, ServiceError
+from services.common.logging_config import get_logger
 from services.user.database import get_async_session
 from services.user.models.integration import (
     Integration,
@@ -33,7 +34,7 @@ from services.user.services.integration_service import (
 )
 
 # Set up logging
-logger = structlog.get_logger(__name__)
+logger = get_logger(__name__)
 
 
 class TokenService:

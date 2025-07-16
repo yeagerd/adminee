@@ -19,9 +19,10 @@ from services.common.config_secrets import (
 )
 from services.common.http_errors import ServiceError
 from services.user.settings import Settings
+from services.common.logging_config import get_logger
 
 # Set up logging
-logger = structlog.get_logger(__name__)
+logger = get_logger(__name__)
 
 # Constants
 KEY_LENGTH = 32  # 256 bits for AES-256

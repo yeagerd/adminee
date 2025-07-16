@@ -15,9 +15,10 @@ from services.common.logging_config import (
     log_service_shutdown,
     log_service_startup,
     setup_service_logging,
+    get_logger,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @asynccontextmanager
