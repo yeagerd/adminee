@@ -53,6 +53,41 @@ function parseUtcDate(dateString: string): Date {
     return new Date(dateString + 'Z');
 }
 
+function isTokenExpiringSoon(expiresAt: string, warningMinutes: number = 30): boolean {
+    const expirationDate = parseUtcDate(expiresAt);
+    const now = new Date();
+    const warningTime = new Date(now.getTime() + warningMinutes * 60 * 1000);
+    return expirationDate <= warningTime;
+}
+
+function isTokenExpired(expiresAt: string): boolean {
+    const expirationDate = parseUtcDate(expiresAt);
+    const now = new Date();
+    return expirationDate <= now;
+}
+
+function getTimeUntilExpiration(expiresAt: string): string {
+    const expirationDate = parseUtcDate(expiresAt);
+    const now = new Date();
+    const diffMs = expirationDate.getTime() - now.getTime();
+
+    if (diffMs <= 0) {
+        return 'Expired';
+    }
+
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffDays > 0) {
+        return `${diffDays} day${diffDays !== 1 ? 's' : ''}`;
+    } else if (diffHours > 0) {
+        return `${diffHours} hour${diffHours !== 1 ? 's' : ''}`;
+    } else {
+        return `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''}`;
+    }
+}
+
 export default function IntegrationsPage() {
     const { data: session, status } = useSession();
     const [integrations, setIntegrations] = useState<Integration[]>([]);
@@ -366,6 +401,39 @@ export default function IntegrationsPage() {
                                                 <div className="space-y-2">
                                                     <div className="text-xs text-gray-600">
                                                         <span className="font-medium">Scopes:</span> {integration.scopes.join(', ')}
+                                                    </div>
+                                                    {integration.token_expires_at && (
+                                                        <div className="text-xs text-gray-600">
+                                                            <span className="font-medium">Access token expires:</span>{' '}
+                                                            <span className={
+                                                                isTokenExpired(integration.token_expires_at)
+                                                                    ? 'text-red-600 font-medium'
+                                                                    : isTokenExpiringSoon(integration.token_expires_at)
+                                                                        ? 'text-orange-600 font-medium'
+                                                                        : 'text-green-600 font-medium'
+                                                            }>
+                                                                {parseUtcDate(integration.token_expires_at).toLocaleString(undefined, { timeZoneName: 'short' })}
+                                                                {' '}({getTimeUntilExpiration(integration.token_expires_at)})
+                                                                {isTokenExpired(integration.token_expires_at) && ' (EXPIRED)'}
+                                                                {isTokenExpiringSoon(integration.token_expires_at) && !isTokenExpired(integration.token_expires_at) && ' (EXPIRING SOON)'}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    {integration.token_created_at && (
+                                                        <div className="text-xs text-gray-600">
+                                                            <span className="font-medium">Token created:</span>{' '}
+                                                            {parseUtcDate(integration.token_created_at).toLocaleString(undefined, { timeZoneName: 'short' })}
+                                                        </div>
+                                                    )}
+                                                    <div className="text-xs text-gray-600">
+                                                        <span className="font-medium">Tokens:</span>{' '}
+                                                        <span className={integration.has_access_token ? 'text-green-600' : 'text-red-600'}>
+                                                            Access {integration.has_access_token ? '✓' : '✗'}
+                                                        </span>
+                                                        {' • '}
+                                                        <span className={integration.has_refresh_token ? 'text-green-600' : 'text-red-600'}>
+                                                            Refresh {integration.has_refresh_token ? '✓' : '✗'}
+                                                        </span>
                                                     </div>
                                                     {integration.last_sync_at && (
                                                         <div className="text-xs text-gray-600">
