@@ -45,74 +45,6 @@ class RequestContextFilter(logging.Filter):
         return True
 
 
-class JSONFormatter(logging.Formatter):
-    """JSON formatter for structured logging."""
-
-    def format(self, record: logging.LogRecord) -> str:
-        log_entry = {
-            "timestamp": self.formatTime(record),
-            "level": record.levelname,
-            "logger": record.name,
-            "message": record.getMessage(),
-            "service": getattr(record, "service_name", "unknown"),
-        }
-
-        # Add request context if available
-        if hasattr(record, "request_id") and record.request_id:  # type: ignore[attr-defined]
-            log_entry["request_id"] = record.request_id  # type: ignore[attr-defined]
-        if hasattr(record, "user_id") and record.user_id:  # type: ignore[attr-defined]
-            log_entry["user_id"] = record.user_id  # type: ignore[attr-defined]
-        if hasattr(record, "method"):  # type: ignore[attr-defined]
-            log_entry["method"] = record.method  # type: ignore[attr-defined]
-        if hasattr(record, "path"):  # type: ignore[attr-defined]
-            log_entry["path"] = record.path  # type: ignore[attr-defined]
-        if hasattr(record, "status_code"):  # type: ignore[attr-defined]
-            log_entry["status_code"] = record.status_code  # type: ignore[attr-defined]
-        if hasattr(record, "process_time"):  # type: ignore[attr-defined]
-            log_entry["process_time"] = record.process_time  # type: ignore[attr-defined]
-
-        # Add exception info if present
-        if record.exc_info:
-            log_entry["exception"] = self.formatException(record.exc_info)
-
-        # Add any extra fields from the log record
-        for key, value in record.__dict__.items():
-            if key not in [
-                "name",
-                "msg",
-                "args",
-                "levelname",
-                "levelno",
-                "pathname",
-                "filename",
-                "module",
-                "lineno",
-                "funcName",
-                "created",
-                "msecs",
-                "relativeCreated",
-                "thread",
-                "threadName",
-                "processName",
-                "process",
-                "getMessage",
-                "exc_info",
-                "exc_text",
-                "stack_info",
-                "request_id",
-                "user_id",
-                "service_name",
-                "method",
-                "path",
-                "status_code",
-                "process_time",
-            ]:
-                if not key.startswith("_"):
-                    log_entry[key] = value
-
-        return json.dumps(log_entry)
-
-
 def setup_service_logging(
     service_name: str,
     log_level: str = "INFO",
@@ -152,13 +84,8 @@ def setup_service_logging(
         cache_logger_on_first_use=True,
     )
 
-    # Set up standard logging
-    if log_format == "json":
-        formatter: logging.Formatter = JSONFormatter()
-    else:
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
+    # Always use a pass-through formatter for structlog output
+    formatter = logging.Formatter("%(message)s")
 
     # Configure root logger
     handler = logging.StreamHandler(sys.stdout)
