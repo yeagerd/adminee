@@ -34,15 +34,19 @@ export function useTokenAutoRefresh() {
 
         if (expiredIntegrations.length > 0) {
             console.log('Found expired integrations, auto-refreshing tokens:', expiredIntegrations.map(i => i.provider));
-
+            let refreshed = false;
             for (const integration of expiredIntegrations) {
                 try {
                     console.log(`Auto-refreshing tokens for ${integration.provider}...`);
                     await gatewayClient.refreshIntegrationTokens(integration.provider);
                     console.log(`Successfully auto-refreshed tokens for ${integration.provider}`);
+                    refreshed = true;
                 } catch (error) {
                     console.error(`Failed to auto-refresh tokens for ${integration.provider}:`, error);
                 }
+            }
+            if (refreshed) {
+                window.dispatchEvent(new CustomEvent('integrations-updated'));
             }
         }
     }, []);

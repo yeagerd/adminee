@@ -268,6 +268,17 @@ export function IntegrationsContent() {
         if (session) {
             loadIntegrations();
         }
+
+        const handleIntegrationsUpdated = () => {
+            console.log('Received integrations-updated event, reloading integrations...');
+            loadIntegrations(true);
+        };
+
+        window.addEventListener('integrations-updated', handleIntegrationsUpdated);
+
+        return () => {
+            window.removeEventListener('integrations-updated', handleIntegrationsUpdated);
+        };
     }, [session, loadIntegrations]);
 
     // Check if we're returning from an OAuth flow
