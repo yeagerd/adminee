@@ -17,9 +17,11 @@ function isTokenExpired(expiresAt: string): boolean {
     return expirationDate <= now;
 }
 
+import { useRef } from 'react';
+
 export function useTokenAutoRefresh() {
     const { data: session } = useSession();
-    const [lastRefresh, setLastRefresh] = useState(0);
+    const lastRefreshRef = useRef(0);
     const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
     const autoRefreshExpiredTokens = useCallback(async (integrationsData: Integration[]) => {
@@ -46,7 +48,7 @@ export function useTokenAutoRefresh() {
     }, []);
 
     const loadAndRefreshIntegrations = useCallback(async () => {
-        if (Date.now() - lastRefresh < REFRESH_INTERVAL) {
+        if (Date.now() - lastRefreshRef.current < REFRESH_INTERVAL) {
             return;
         }
 
@@ -54,11 +56,11 @@ export function useTokenAutoRefresh() {
             const data = await gatewayClient.getIntegrations();
             const integrationsData = data.integrations || [];
             await autoRefreshExpiredTokens(integrationsData);
-            setLastRefresh(Date.now());
+            lastRefreshRef.current = Date.now();
         } catch (error) {
             console.error('Failed to load integrations for token refresh:', error);
         }
-    }, [autoRefreshExpiredTokens, lastRefresh]);
+    }, [autoRefreshExpiredTokens]);
 
     useEffect(() => {
         if (session) {
