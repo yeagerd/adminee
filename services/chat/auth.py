@@ -4,7 +4,6 @@ Authentication module for Chat Service.
 Provides API key based authentication for incoming requests from the frontend.
 """
 
-import logging
 from typing import Dict, List, Optional
 
 from fastapi import Request

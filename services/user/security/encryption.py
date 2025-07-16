@@ -9,7 +9,6 @@ import base64
 import os
 from typing import Optional, Tuple
 
-import structlog
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -18,8 +17,8 @@ from services.common.config_secrets import (
     get_token_encryption_salt,  # type: ignore[misc]
 )
 from services.common.http_errors import ServiceError
-from services.user.settings import Settings
 from services.common.logging_config import get_logger
+from services.user.settings import Settings
 
 # Set up logging
 logger = get_logger(__name__)

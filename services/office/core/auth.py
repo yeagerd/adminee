@@ -5,15 +5,14 @@ Provides granular permission-based API key authentication for service-to-service
 and frontend-to-service communication with the principle of least privilege.
 """
 
-import logging
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
 from fastapi import Request
 
 from services.common.http_errors import AuthError, ServiceError
-from services.office.core.settings import get_settings
 from services.common.logging_config import get_logger
+from services.office.core.settings import get_settings
 
 logger = get_logger(__name__)
 

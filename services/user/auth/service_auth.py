@@ -10,15 +10,14 @@ Validates service API keys and manages service-level access control.
 - service_name: The service identifier (e.g., "user-management-access")
 """
 
-import logging
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
 from fastapi import Request
 
 from services.common.http_errors import AuthError, ServiceError
-from services.user.settings import get_settings
 from services.common.logging_config import get_logger
+from services.user.settings import get_settings
 
 logger = get_logger(__name__)
 

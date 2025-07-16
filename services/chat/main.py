@@ -1,4 +1,3 @@
-import logging
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
@@ -12,10 +11,10 @@ from services.chat.settings import get_settings
 from services.common.http_errors import register_briefly_exception_handlers
 from services.common.logging_config import (
     create_request_logging_middleware,
+    get_logger,
     log_service_shutdown,
     log_service_startup,
     setup_service_logging,
-    get_logger,
 )
 
 logger = get_logger(__name__)

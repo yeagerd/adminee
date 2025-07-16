@@ -5,7 +5,6 @@ This is the main entry point for the User Management Service.
 Provides user profile management, preferences, and OAuth integrations.
 """
 
-import logging
 import os
 from contextlib import asynccontextmanager
 from typing import Optional
@@ -18,10 +17,10 @@ from sqlalchemy import text
 from services.common.http_errors import register_briefly_exception_handlers
 from services.common.logging_config import (
     create_request_logging_middleware,
+    get_logger,
     log_service_shutdown,
     log_service_startup,
     setup_service_logging,
-    get_logger,
 )
 from services.user.database import (
     close_db,

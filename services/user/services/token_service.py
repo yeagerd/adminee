@@ -9,7 +9,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
 import httpx
-import structlog
 from sqlmodel import select
 
 from services.common.http_errors import NotFoundError, ServiceError

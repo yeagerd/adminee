@@ -38,6 +38,7 @@ import jwt
 from fastapi import FastAPI, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
+
 from services.common.logging_config import get_logger
 
 try:

@@ -5,14 +5,13 @@ Provides email normalization and collision detection using fast local rules
 to handle provider-specific email formatting rules (Gmail dots, plus addressing, etc.).
 """
 
-import logging
 from typing import Any, Dict, Optional
 
 from sqlalchemy import and_, select
 
+from services.common.logging_config import get_logger
 from services.user.database import get_async_session
 from services.user.models.user import User
-from services.common.logging_config import get_logger
 
 logger = get_logger(__name__)
 

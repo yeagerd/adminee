@@ -7,7 +7,6 @@ This allows testing the proposed NextAuth approach alongside the existing Clerk 
 """
 
 import asyncio
-import logging
 import os
 import sys
 import time
@@ -15,6 +14,7 @@ from typing import Dict, Optional
 
 import httpx
 import jwt
+
 from services.common.logging_config import get_logger
 
 logger = get_logger(__name__)

@@ -29,7 +29,6 @@ This pattern ensures:
 """
 
 import json
-import logging
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Request

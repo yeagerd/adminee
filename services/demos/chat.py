@@ -29,8 +29,8 @@ import httpx
 import requests
 
 from services.chat.agents.workflow_agent import WorkflowAgent
-from services.common.settings import BaseSettings, SettingsConfigDict
 from services.common.logging_config import get_logger
+from services.common.settings import BaseSettings, SettingsConfigDict
 
 # Try to import OAuth utilities
 try:

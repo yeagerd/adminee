@@ -6,17 +6,16 @@ to prevent XSS, injection attacks, and other security vulnerabilities.
 """
 
 import json
-import logging
 from typing import Any, Dict, Union
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from services.common.logging_config import get_logger
 from services.user.utils.validation import (
     check_sql_injection_patterns,
     validate_json_safe_string,
 )
-from services.common.logging_config import get_logger
 
 logger = get_logger(__name__)
 

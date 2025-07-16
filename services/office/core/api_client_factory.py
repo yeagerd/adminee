@@ -6,16 +6,15 @@ with automatic token management and initialization. It abstracts the complexity
 of token retrieval and client instantiation across multiple OAuth providers.
 """
 
-import logging
 from typing import Dict, List, Optional, Union
 
+from services.common.logging_config import get_logger
 from services.office.core.clients.google import GoogleAPIClient
 from services.office.core.clients.microsoft import MicrosoftAPIClient
 from services.office.core.demo_token_manager import DemoTokenManager
 from services.office.core.settings import get_settings
 from services.office.core.token_manager import TokenManager
 from services.office.models import Provider
-from services.common.logging_config import get_logger
 
 # Configure logging
 logger = get_logger(__name__)

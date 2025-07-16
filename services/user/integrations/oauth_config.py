@@ -14,13 +14,12 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
-import structlog
 from pydantic import BaseModel, Field, field_validator
 
 from services.common.http_errors import ValidationError
+from services.common.logging_config import get_logger
 from services.user.models.integration import IntegrationProvider
 from services.user.settings import Settings, get_settings
-from services.common.logging_config import get_logger
 
 # Set up logging
 logger = get_logger(__name__)
