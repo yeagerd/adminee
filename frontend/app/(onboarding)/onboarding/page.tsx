@@ -237,7 +237,7 @@ const OnboardingPage = () => {
                             {hasAnyIntegration && (
                                 <Button
                                     variant="outline"
-                                    onClick={() => router.push('/integrations')}
+                                    onClick={() => router.push('/settings?page=integrations')}
                                 >
                                     Add More Services
                                 </Button>
