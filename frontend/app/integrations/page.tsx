@@ -168,12 +168,9 @@ export default function IntegrationsPage() {
             const scopes = response.scopes;
             setProviderScopes(prev => ({ ...prev, [provider]: scopes }));
 
-            // Set default selected scopes (required + default optional)
-            const requiredScopes = scopes.filter(scope => scope.required).map(scope => scope.name);
-            const defaultOptionalScopes = response.default_scopes.filter(scope =>
-                !requiredScopes.includes(scope)
-            );
-            setSelectedScopes([...requiredScopes, ...defaultOptionalScopes]);
+            // For new/disconnected integrations, select ALL available scopes by default
+            const allScopeNames = scopes.map(scope => scope.name);
+            setSelectedScopes(allScopeNames);
 
             return scopes;
         } catch (error) {
@@ -189,11 +186,13 @@ export default function IntegrationsPage() {
 
         // Load provider scopes and set initial selection
         loadProviderScopes(provider).then(() => {
-            // If this is an existing integration, pre-select current scopes
+            // If this is an existing active integration, pre-select current scopes
             const existingIntegration = getIntegrationStatus(provider);
-            if (existingIntegration && existingIntegration.scopes) {
+            if (existingIntegration && existingIntegration.status === INTEGRATION_STATUS.ACTIVE && existingIntegration.scopes) {
                 setSelectedScopes(existingIntegration.scopes);
             }
+            // For new/disconnected integrations, all scopes will be selected by default
+            // (this is handled in the loadProviderScopes function)
         });
     };
 
@@ -466,15 +465,15 @@ export default function IntegrationsPage() {
                                             <div>
                                                 <h4 className="text-sm font-medium text-gray-700 mb-2">Permissions:</h4>
                                                 <div className="space-y-1">
-                                                    {integration ? (
-                                                        // Show actual granted scopes for existing integration
+                                                    {hasIntegration ? (
+                                                        // Show actual granted scopes for active integration
                                                         integration.scopes.map((scope, index) => (
                                                             <div key={index} className="text-xs text-gray-600">
                                                                 • {getScopeDescription(scope)}
                                                             </div>
                                                         ))
                                                     ) : (
-                                                        // Show default scopes for new integration
+                                                        // Show default scopes for new/disconnected integration
                                                         config.scopes.map((scope, index) => (
                                                             <div key={index} className="text-xs text-gray-600">
                                                                 • {getScopeDescription(scope)}
@@ -539,29 +538,12 @@ export default function IntegrationsPage() {
                                                 {!hasIntegration ? (
                                                     <>
                                                         <Button
-                                                            onClick={() => handleConnect(config)}
-                                                            disabled={isConnecting || loading}
-                                                            className="flex-1"
-                                                        >
-                                                            {isConnecting ? (
-                                                                <>
-                                                                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                                                                    Connecting...
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <Shield className="h-4 w-4 mr-2" />
-                                                                    Connect
-                                                                </>
-                                                            )}
-                                                        </Button>
-                                                        <Button
-                                                            variant="outline"
                                                             onClick={() => handleScopeSelection(config.provider)}
                                                             disabled={loading}
-                                                            size="sm"
+                                                            className="flex-1"
                                                         >
-                                                            <Settings className="h-4 w-4" />
+                                                            <Shield className="h-4 w-4 mr-2" />
+                                                            Connect
                                                         </Button>
                                                     </>
                                                 ) : (
@@ -647,15 +629,15 @@ export default function IntegrationsPage() {
                     <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>
-                                {currentProvider && getIntegrationStatus(currentProvider)
+                                {currentProvider && getIntegrationStatus(currentProvider)?.status === INTEGRATION_STATUS.ACTIVE
                                     ? `Modify Permissions for ${currentProvider.toUpperCase()}`
-                                    : `Select Permissions for ${currentProvider?.toUpperCase()}`
+                                    : `Connect ${currentProvider?.toUpperCase()} Account`
                                 }
                             </DialogTitle>
                             <DialogDescription>
-                                {currentProvider && getIntegrationStatus(currentProvider)
+                                {currentProvider && getIntegrationStatus(currentProvider)?.status === INTEGRATION_STATUS.ACTIVE
                                     ? "Modify the permissions granted to Briefly. Required permissions are automatically included."
-                                    : "Choose which permissions you'd like to grant to Briefly. Required permissions are automatically included."
+                                    : "Select which permissions you'd like to grant to Briefly. All permissions are selected by default for the best experience."
                                 }
                             </DialogDescription>
                         </DialogHeader>
@@ -685,9 +667,9 @@ export default function IntegrationsPage() {
                                     }
                                 }}
                             >
-                                {currentProvider && getIntegrationStatus(currentProvider)
+                                {currentProvider && getIntegrationStatus(currentProvider)?.status === INTEGRATION_STATUS.ACTIVE
                                     ? "Update Permissions"
-                                    : "Connect with Selected Permissions"
+                                    : "Connect Account"
                                 }
                             </Button>
                         </div>
