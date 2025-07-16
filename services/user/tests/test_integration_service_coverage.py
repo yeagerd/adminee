@@ -173,6 +173,7 @@ class TestIntegrationServiceCoverage(BaseUserManagementTest):
         )
 
         mock_session = AsyncMock()
+        mock_session.add = MagicMock()
 
         # Mock no tokens
         mock_result = MagicMock()
