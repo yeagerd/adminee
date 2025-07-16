@@ -14,7 +14,6 @@ export interface OAuthScope {
 }
 
 interface ScopeSelectorProps {
-    provider: string;
     scopes: OAuthScope[];
     selectedScopes: string[];
     onScopeChange: (scopes: string[]) => void;
@@ -36,7 +35,7 @@ function getScopeIcon(scopeName: string) {
     return <Shield className="h-4 w-4" />;
 }
 
-export function ScopeSelector({ provider, scopes, selectedScopes, onScopeChange }: ScopeSelectorProps) {
+export function ScopeSelector({ scopes, selectedScopes, onScopeChange }: ScopeSelectorProps) {
     const requiredScopes = scopes.filter(scope => scope.required);
     const optionalScopes = scopes.filter(scope => !scope.required);
 
