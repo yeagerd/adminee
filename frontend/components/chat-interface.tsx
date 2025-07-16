@@ -4,9 +4,9 @@ import type React from "react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { useStreamingSetting } from "@/hooks/use-streaming-setting"
 import gatewayClient from "@/lib/gateway-client"
 import { Bot, Loader2, Send, User } from "lucide-react"
 import { useSession } from "next-auth/react"
@@ -91,7 +91,7 @@ export default function ChatInterface() {
     const [messages, setMessages] = useState<Message[]>(initialMessages)
     const [input, setInput] = useState("")
     const [isLoading, setIsLoading] = useState(false)
-    const [enableStreaming, setEnableStreaming] = useState(false)
+    const { enableStreaming } = useStreamingSetting()
     const messagesEndRef = useRef<HTMLDivElement>(null)
 
     const scrollToBottom = () => {
@@ -203,18 +203,6 @@ export default function ChatInterface() {
 
     return (
         <div className="flex flex-col h-full">
-            {/* Development streaming toggle */}
-            <div className="flex items-center space-x-2 p-2 bg-gray-50 border-b">
-                <Checkbox
-                    id="streaming"
-                    checked={enableStreaming}
-                    onCheckedChange={(checked) => setEnableStreaming(checked as boolean)}
-                />
-                <label htmlFor="streaming" className="text-sm text-gray-600">
-                    Enable streaming (dev only)
-                </label>
-            </div>
-
             <ScrollArea className="flex-1 p-4">
                 <div className="space-y-4">
                     {messages.map((message) => (
