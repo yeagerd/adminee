@@ -186,10 +186,21 @@ export default function IntegrationsPage() {
 
         // Load provider scopes and set initial selection
         loadProviderScopes(provider).then(() => {
-            // If this is an existing active integration, pre-select current scopes
             const existingIntegration = getIntegrationStatus(provider);
             if (existingIntegration && existingIntegration.status === INTEGRATION_STATUS.ACTIVE && existingIntegration.scopes) {
-                setSelectedScopes(existingIntegration.scopes);
+                // For existing active integrations, merge current scopes with any missing default scopes
+                const currentScopes = new Set(existingIntegration.scopes);
+                const availableScopes = providerScopes[provider] || [];
+                const defaultScopeNames = availableScopes.map(scope => scope.name);
+
+                // Add any missing default scopes to the current selection
+                const mergedScopes = [...currentScopes];
+                for (const scopeName of defaultScopeNames) {
+                    if (!currentScopes.has(scopeName)) {
+                        mergedScopes.push(scopeName);
+                    }
+                }
+                setSelectedScopes(mergedScopes);
             }
             // For new/disconnected integrations, all scopes will be selected by default
             // (this is handled in the loadProviderScopes function)
