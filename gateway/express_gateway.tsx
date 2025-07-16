@@ -1,3 +1,24 @@
+// ENVIRONMENT VARIABLE ASSERTION (must be first)
+(function assertRequiredEnv() {
+    const required = [
+        'NEXTAUTH_SECRET',
+        'USER_SERVICE_URL',
+        'CHAT_SERVICE_URL',
+        'OFFICE_SERVICE_URL',
+        'FRONTEND_URL',
+        'API_FRONTEND_USER_KEY',
+        'API_FRONTEND_CHAT_KEY',
+        'API_FRONTEND_OFFICE_KEY',
+    ];
+    const missing = required.filter((key) => !process.env[key]);
+    if (missing.length > 0) {
+        console.error('❌ Missing required environment variables in gateway/.env:');
+        missing.forEach((key) => console.error(`   - ${key}`));
+        console.error('\nPlease check your gateway/.env file and set the missing variables.');
+        process.exit(1);
+    }
+})();
+
 // Add Node.js types for require and process
 // @ts-nocheck
 // Load environment variables from .env file
@@ -235,7 +256,7 @@ const serviceRoutes = {
 };
 
 // Create proxy middleware factory
-const createServiceProxy = (targetUrl, pathRewrite = undefined) => {
+const createServiceProxy = (targetUrl: string, pathRewrite?: Record<string, string>) => {
     return createProxyMiddleware({
         target: targetUrl,
         changeOrigin: true,
