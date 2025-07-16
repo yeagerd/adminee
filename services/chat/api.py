@@ -29,7 +29,6 @@ This pattern ensures:
 """
 
 import json
-import logging
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Request
@@ -53,8 +52,9 @@ from services.chat.models import (
 from services.chat.service_client import ServiceClient
 from services.chat.settings import get_settings
 from services.common.http_errors import NotFoundError, ValidationError
+from services.common.logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter()
 

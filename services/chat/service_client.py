@@ -5,14 +5,14 @@ Provides HTTP client functionality to call User Management Service and Office Se
 with proper authentication using API keys.
 """
 
-import logging
 from typing import Any, Dict, List, Optional
 
 import httpx
 
 from services.chat.settings import get_settings
+from services.common.logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ServiceClient:

@@ -11,13 +11,14 @@ import logging
 
 from sqlalchemy import select
 
+from services.common.logging_config import get_logger
 from services.user.database import get_async_session
 from services.user.models.user import User
 from services.user.utils.email_collision import EmailCollisionDetector
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 async def backfill_normalized_emails(batch_size: int = 100) -> None:

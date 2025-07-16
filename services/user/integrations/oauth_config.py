@@ -14,15 +14,15 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
-import structlog
 from pydantic import BaseModel, Field, field_validator
 
 from services.common.http_errors import ValidationError
+from services.common.logging_config import get_logger
 from services.user.models.integration import IntegrationProvider
 from services.user.settings import Settings, get_settings
 
 # Set up logging
-logger = structlog.get_logger(__name__)
+logger = get_logger(__name__)
 
 
 class OAuthGrantType(str, Enum):
@@ -201,7 +201,7 @@ class OAuthConfig:
     def __init__(self, settings: Settings):
         """Initialize OAuth configuration."""
         self.settings = settings
-        self.logger = structlog.get_logger(__name__)
+        self.logger = get_logger(__name__)
         self._providers = self._initialize_providers()
         self._active_states: Dict[str, OAuthState] = {}
 

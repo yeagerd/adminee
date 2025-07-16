@@ -8,11 +8,11 @@ default value management, and preference validation.
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
-import structlog
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import select
 
 from services.common.http_errors import NotFoundError, ServiceError, ValidationError
+from services.common.logging_config import get_logger
 from services.user.database import get_async_session
 from services.user.models.preferences import UserPreferences
 from services.user.models.user import User
@@ -27,7 +27,7 @@ from services.user.schemas.preferences import (
 )
 
 # Set up logging
-logger = structlog.get_logger(__name__)
+logger = get_logger(__name__)
 
 
 class PreferencesService:

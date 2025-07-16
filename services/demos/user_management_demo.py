@@ -30,7 +30,8 @@ from typing import Dict, List, Optional
 
 import dotenv
 import httpx
-import structlog
+
+from services.common.logging_config import get_logger
 
 # Import demo JWT utilities
 try:
@@ -50,7 +51,7 @@ except ImportError:
     DATABASE_SETUP_AVAILABLE = False
 
 # Set up logging
-logger = structlog.get_logger(__name__)
+logger = get_logger(__name__)
 
 
 class UserManagementDemo:

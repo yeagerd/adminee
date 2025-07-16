@@ -23,11 +23,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from chat.agents.workflow_agent import WorkflowAgent
 
+from services.common.logging_config import get_logger
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 async def demo_multi_agent_coordination():

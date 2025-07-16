@@ -5,7 +5,6 @@ Implements CRUD operations for user profiles with authentication,
 authorization, and comprehensive error handling.
 """
 
-import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
@@ -19,6 +18,7 @@ from services.common.http_errors import (
     ServiceError,
     ValidationError,
 )
+from services.common.logging_config import get_logger
 from services.user.auth import get_current_user
 from services.user.auth.service_auth import get_current_service
 from services.user.models.integration import IntegrationProvider, IntegrationStatus
@@ -48,7 +48,7 @@ from services.user.schemas.user import (
 from services.user.services.audit_service import audit_logger
 from services.user.services.user_service import get_user_service
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/users", tags=["users"])
 

@@ -8,16 +8,16 @@ and operational monitoring with database persistence and analytics.
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
-import structlog
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import select
 
+from services.common.logging_config import get_logger
 from services.user.database import get_async_session
 from services.user.models.audit import AuditLog
 from services.user.models.user import User
 
 # Set up logging
-logger = structlog.get_logger(__name__)
+logger = get_logger(__name__)
 
 
 # Audit action constants
@@ -97,7 +97,7 @@ class AuditLogger:
 
     def __init__(self):
         """Initialize the audit logger."""
-        self.logger = structlog.get_logger(__name__)
+        self.logger = get_logger(__name__)
 
     async def log_audit_event(
         self,

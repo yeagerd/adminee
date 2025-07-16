@@ -5,7 +5,6 @@ This is the main entry point for the User Management Service.
 Provides user profile management, preferences, and OAuth integrations.
 """
 
-import logging
 import os
 from contextlib import asynccontextmanager
 from typing import Optional
@@ -18,6 +17,7 @@ from sqlalchemy import text
 from services.common.http_errors import register_briefly_exception_handlers
 from services.common.logging_config import (
     create_request_logging_middleware,
+    get_logger,
     log_service_shutdown,
     log_service_startup,
     setup_service_logging,
@@ -60,7 +60,7 @@ setup_service_logging(
     log_format=settings.log_format,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @asynccontextmanager
@@ -174,20 +174,6 @@ def create_app() -> FastAPI:
 
     # Add centralized request logging middleware
     app.middleware("http")(create_request_logging_middleware())
-
-    # Add custom middleware to log request bodies for debugging
-    @app.middleware("http")
-    async def log_request_body(request: Request, call_next):
-        if request.method == "POST" and request.url.path == "/users/":
-            # Log the request body for user creation debugging
-            try:
-                body = await request.body()
-                logger.info(f"User creation request body: {body.decode('utf-8')}")
-            except Exception as e:
-                logger.error(f"Failed to log request body: {e}")
-
-        response = await call_next(request)
-        return response
 
     # Register exception handlers
     register_briefly_exception_handlers(app)
@@ -310,7 +296,7 @@ async def oauth_callback_redirect(
 
     except Exception as e:
         # Use a safe logger that works even if main logger isn't initialized
-        safe_logger = logging.getLogger(__name__)
+        safe_logger = get_logger(__name__)
         safe_logger.error(f"OAuth callback error: {e}")
         return JSONResponse(
             status_code=500,

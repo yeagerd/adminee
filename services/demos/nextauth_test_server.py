@@ -39,6 +39,8 @@ from fastapi import FastAPI, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
+from services.common.logging_config import get_logger
+
 try:
     from dotenv import load_dotenv
 
@@ -51,7 +53,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Configuration
 NEXTAUTH_SECRET = os.getenv("NEXTAUTH_SECRET", "demo-nextauth-secret")
