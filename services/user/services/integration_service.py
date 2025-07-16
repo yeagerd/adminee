@@ -8,11 +8,11 @@ token handling, lifecycle management, and health monitoring.
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
-import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from services.common.http_errors import NotFoundError, ServiceError, ValidationError
+from services.common.logging_config import get_logger
 from services.user.database import get_async_session
 from services.user.integrations.oauth_config import OAuthState, get_oauth_config
 from services.user.models.integration import (
@@ -35,7 +35,7 @@ from services.user.security.encryption import TokenEncryption
 from services.user.services.audit_service import audit_logger
 
 # Set up logging
-logger = structlog.get_logger(__name__)
+logger = get_logger(__name__)
 
 
 class IntegrationService:

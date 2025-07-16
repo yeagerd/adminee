@@ -5,12 +5,12 @@ Provides functions to normalize API responses from different providers
 (Google, Microsoft) into consistent internal data structures.
 """
 
-import logging
 import re
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from typing import Any, Dict, List, Optional
 
+from services.common.logging_config import get_logger
 from services.office.models import Provider
 from services.office.schemas import (
     CalendarEvent,
@@ -19,7 +19,7 @@ from services.office.schemas import (
     EmailMessage,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def normalize_google_email(

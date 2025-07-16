@@ -1,4 +1,3 @@
-import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import AsyncGenerator, Dict
@@ -8,6 +7,7 @@ from fastapi import FastAPI
 from services.common.http_errors import register_briefly_exception_handlers
 from services.common.logging_config import (
     create_request_logging_middleware,
+    get_logger,
     log_service_shutdown,
     log_service_startup,
     setup_service_logging,
@@ -26,7 +26,7 @@ setup_service_logging(
     log_format=settings.LOG_FORMAT,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @asynccontextmanager

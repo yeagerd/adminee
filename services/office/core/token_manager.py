@@ -7,17 +7,17 @@ API calls and improve performance while maintaining security best practices.
 """
 
 import asyncio
-import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 import httpx
 from pydantic import BaseModel
 
+from services.common.logging_config import get_logger
 from services.office.core.settings import get_settings
 
 # Configure logging
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class TokenData(BaseModel):

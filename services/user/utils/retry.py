@@ -7,14 +7,14 @@ and other operations that may fail due to transient issues.
 """
 
 import asyncio
-import logging
 import random
 from functools import wraps
 from typing import Any, Callable, List, Optional, Type
 
 from services.common.http_errors import NotFoundError, ServiceError
+from services.common.logging_config import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class RetryError(Exception):

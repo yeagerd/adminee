@@ -5,7 +5,6 @@ Provides common functionality for HTTP requests, error handling,
 and authentication across different provider APIs.
 """
 
-import logging
 import time
 import uuid
 from abc import ABC, abstractmethod
@@ -15,10 +14,11 @@ from typing import Any, Dict, Optional
 import httpx
 
 from services.common.http_errors import ErrorCode, ProviderError
+from services.common.logging_config import get_logger
 from services.office.models import ApiCall, ApiCallStatus, Provider
 
 # Configure logging
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class BaseAPIClient(ABC):

@@ -7,13 +7,13 @@ Supports partial updates and preference validation.
 
 from typing import Annotated
 
-import structlog
 from fastapi import APIRouter, Depends
 
 from services.common.http_errors import (
     NotFoundError,
     ServiceError,
 )
+from services.common.logging_config import get_logger
 from services.user.auth.nextauth import get_current_user, verify_user_ownership
 from services.user.schemas.preferences import (
     PreferencesResetRequest,
@@ -23,7 +23,7 @@ from services.user.schemas.preferences import (
 from services.user.services.preferences_service import PreferencesService
 
 # Set up logging
-logger = structlog.get_logger(__name__)
+logger = get_logger(__name__)
 
 
 router = APIRouter(

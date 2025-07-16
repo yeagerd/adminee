@@ -29,6 +29,7 @@ import httpx
 import requests
 
 from services.chat.agents.workflow_agent import WorkflowAgent
+from services.common.logging_config import get_logger
 from services.common.settings import BaseSettings, SettingsConfigDict
 
 # Try to import OAuth utilities
@@ -146,11 +147,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
-logger = logging.getLogger(__name__)
-
-# Set specific loggers for visibility
-logging.getLogger("services.chat.agents.workflow_agent").setLevel(logging.INFO)
-logging.getLogger("services.chat.agents.coordinator_agent").setLevel(logging.INFO)
+logger = get_logger(__name__)
 
 # Suppress noisy loggers
 for logger_name in [
