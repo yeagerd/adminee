@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { INTEGRATION_STATUS } from '@/lib/constants';
 import { gatewayClient, Integration, OAuthStartResponse } from '@/lib/gateway-client';
-import { AlertCircle, Calendar, CheckCircle, Mail, RefreshCw, Settings, XCircle } from 'lucide-react';
+import { AlertCircle, Calendar, CheckCircle, Mail, RefreshCw, Settings, Shield, XCircle } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
@@ -248,25 +248,42 @@ export function IntegrationsContent() {
             const integrationsData = data.integrations || [];
             setIntegrations(integrationsData);
             setLastFetchTime(Date.now());
+            console.log('Integrations state updated:', integrationsData);
 
-            // Determine preferred provider
+            // Determine preferred provider from integrations
             const preferred = determinePreferredProvider(integrationsData);
             setPreferredProvider(preferred);
-
-        } catch (error) {
+        } catch (error: unknown) {
             console.error('Failed to load integrations:', error);
             setError('Failed to load integrations. Please try again.');
         } finally {
             setLoading(false);
             setIsRefreshing(false);
         }
-    }, [integrations.length, shouldRefetch, isRefreshing, determinePreferredProvider]);
+    }, [integrations.length, shouldRefetch, determinePreferredProvider, isRefreshing]);
 
     useEffect(() => {
         if (session) {
             loadIntegrations();
         }
     }, [session, loadIntegrations]);
+
+    // Check if we're returning from an OAuth flow
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const oauthReturn = urlParams.get('oauth_return');
+
+        if (oauthReturn === 'true') {
+            // Clear the URL parameter
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.delete('oauth_return');
+            window.history.replaceState({}, '', newUrl.toString());
+
+            // Force refresh the integrations data
+            console.log('Detected OAuth return, forcing refresh...');
+            loadIntegrations(true);
+        }
+    }, [loadIntegrations]);
 
     // Handle window focus to refresh data if needed
     useEffect(() => {
@@ -286,27 +303,29 @@ export function IntegrationsContent() {
             setConnectingProvider(config.provider);
             setError(null);
 
-            // Load scopes for this provider
-            const scopes = await loadProviderScopes(config.provider);
-            if (scopes.length === 0) {
-                setError(`No scopes available for ${config.name}. Please try again.`);
-                return;
+            // Use selected scopes if available, otherwise load and use all available scopes
+            let scopesToUse = selectedScopes;
+            if (scopesToUse.length === 0) {
+                // Load provider scopes and use all of them
+                const scopes = await loadProviderScopes(config.provider);
+                scopesToUse = scopes.map(scope => scope.name);
             }
 
-            // Start OAuth flow
-            const response: OAuthStartResponse = await gatewayClient.startOAuthFlow(config.provider, selectedScopes);
-            console.log('OAuth start response:', response);
+            console.log(`Starting OAuth flow for ${config.provider} with scopes:`, scopesToUse);
 
-            if (response.auth_url) {
-                // Redirect to OAuth provider
-                window.location.href = response.auth_url;
-            } else {
-                setError('Failed to start OAuth flow. Please try again.');
-            }
-        } catch (error) {
-            console.error('Failed to connect integration:', error);
-            setError('Failed to connect integration. Please try again.');
-        } finally {
+            const response = await gatewayClient.startOAuthFlow(
+                config.provider,
+                scopesToUse
+            ) as OAuthStartResponse;
+
+            // Update preferred provider when connecting
+            setPreferredProvider(config.provider);
+
+            // Redirect to OAuth provider
+            window.location.href = response.authorization_url;
+        } catch (error: unknown) {
+            console.error('Failed to start OAuth flow:', error);
+            setError(`Failed to connect ${config.name}. Please try again.`);
             setConnectingProvider(null);
         }
     };
@@ -314,29 +333,69 @@ export function IntegrationsContent() {
     const handleDisconnect = async (provider: string) => {
         try {
             setError(null);
+            console.log(`Disconnecting ${provider} integration...`);
             await gatewayClient.disconnectIntegration(provider);
-            console.log(`Disconnected ${provider} integration`);
+            console.log('Integration disconnected, clearing frontend cache...');
 
-            // Refresh integrations list
-            await loadIntegrations(true);
-        } catch (error) {
+            // Clear frontend calendar cache for this user
+            if (session?.user?.id) {
+                const { calendarCache } = await import('../../lib/calendar-cache');
+                calendarCache.invalidate(session.user.id);
+                console.log('Frontend calendar cache cleared');
+            }
+
+            console.log('Reloading integrations...');
+            await loadIntegrations(true); // Force refresh
+            console.log('Integrations reloaded');
+        } catch (error: unknown) {
             console.error('Failed to disconnect integration:', error);
-            setError('Failed to disconnect integration. Please try again.');
+            setError(`Failed to disconnect ${provider} integration. Please try again.`);
         }
     };
 
     const handleRefresh = async (provider: string) => {
         try {
-            setIsRefreshing(true);
             setError(null);
-            await gatewayClient.refreshIntegration(provider);
-            console.log(`Refreshed ${provider} integration`);
+            setIsRefreshing(true);
+            console.log(`Refreshing tokens for ${provider}...`);
+            const refreshResult = await gatewayClient.refreshIntegrationTokens(provider);
+            console.log('Refresh result:', refreshResult);
+            console.log('Reloading integrations...');
+            // Add a small delay to ensure the database transaction is committed
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await loadIntegrations(true); // Force refresh
+            console.log('Integrations reloaded');
+        } catch (error: unknown) {
+            console.error('Failed to refresh tokens:', error);
 
-            // Refresh integrations list
-            await loadIntegrations(true);
-        } catch (error) {
-            console.error('Failed to refresh integration:', error);
-            setError('Failed to refresh integration. Please try again.');
+            // Check if this is a re-authentication required error
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            if (errorMessage.includes('REAUTHENTICATION_REQUIRED')) {
+                // Start a new OAuth flow for re-authentication
+                const config = INTEGRATION_CONFIGS.find(c => c.provider === provider);
+                if (config) {
+                    setError(`Your ${config.name} connection has expired and needs to be renewed. Redirecting to re-authenticate...`);
+                    // Small delay to show the message
+                    setTimeout(() => {
+                        handleConnect(config);
+                    }, 2000);
+                } else {
+                    setError(`Failed to refresh ${provider} tokens. Please try reconnecting.`);
+                }
+            } else if (errorMessage.includes('Missing refresh token')) {
+                // Handle the old error message format as well
+                const config = INTEGRATION_CONFIGS.find(c => c.provider === provider);
+                if (config) {
+                    setError(`Your ${config.name} connection has expired and needs to be renewed. Redirecting to re-authenticate...`);
+                    setTimeout(() => {
+                        handleConnect(config);
+                    }, 2000);
+                } else {
+                    setError(`Failed to refresh ${provider} tokens. Please try reconnecting.`);
+                }
+            } else {
+                setError(`Failed to refresh ${provider} tokens. Please try again.`);
+            }
         } finally {
             setIsRefreshing(false);
         }
@@ -349,13 +408,15 @@ export function IntegrationsContent() {
     const getStatusIcon = (status?: string) => {
         switch (status) {
             case INTEGRATION_STATUS.ACTIVE:
-                return <CheckCircle className="h-4 w-4 text-green-500" />;
-            case INTEGRATION_STATUS.INACTIVE:
-                return <XCircle className="h-4 w-4 text-gray-400" />;
+                return <CheckCircle className="h-4 w-4 text-green-600" />;
             case INTEGRATION_STATUS.ERROR:
-                return <AlertCircle className="h-4 w-4 text-red-500" />;
+                return <XCircle className="h-4 w-4 text-red-600" />;
+            case INTEGRATION_STATUS.PENDING:
+                return <RefreshCw className="h-4 w-4 text-yellow-600" />;
+            case INTEGRATION_STATUS.INACTIVE:
+                return <AlertCircle className="h-4 w-4 text-gray-400" />;
             default:
-                return <XCircle className="h-4 w-4 text-gray-400" />;
+                return <AlertCircle className="h-4 w-4 text-gray-400" />;
         }
     };
 
@@ -363,10 +424,12 @@ export function IntegrationsContent() {
         switch (status) {
             case INTEGRATION_STATUS.ACTIVE:
                 return 'default';
-            case INTEGRATION_STATUS.INACTIVE:
-                return 'secondary';
             case INTEGRATION_STATUS.ERROR:
                 return 'destructive';
+            case INTEGRATION_STATUS.PENDING:
+                return 'secondary';
+            case INTEGRATION_STATUS.INACTIVE:
+                return 'outline';
             default:
                 return 'outline';
         }
@@ -403,7 +466,9 @@ export function IntegrationsContent() {
             {/* Header */}
             <div>
                 <h1 className="text-3xl font-bold text-gray-900">Integrations</h1>
-                <p className="text-gray-600 mt-2">Connect your calendar and email accounts to get started with Briefly</p>
+                <p className="text-gray-600 mt-2">
+                    Connect your calendar and email accounts to enhance your Briefly experience
+                </p>
             </div>
 
             {/* Error Alert */}
@@ -415,147 +480,222 @@ export function IntegrationsContent() {
             )}
 
             {/* Integration Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {INTEGRATION_CONFIGS.map((config) => {
-                    const integration = getIntegrationStatus(config.provider);
-                    const isConnecting = connectingProvider === config.provider;
-                    const isRefreshingIntegration = isRefreshing && integration?.provider === config.provider;
+            <div className="grid gap-6">
+                {INTEGRATION_CONFIGS
+                    .filter(config => !preferredProvider || config.provider === preferredProvider)
+                    .map((config) => {
+                        const integration = getIntegrationStatus(config.provider);
+                        const hasIntegration = integration !== undefined && integration.status === INTEGRATION_STATUS.ACTIVE;
+                        const isConnecting = connectingProvider === config.provider;
 
-                    return (
-                        <Card key={config.provider} className="relative">
-                            <CardHeader>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center space-x-3">
-                                        <div className={`p-2 rounded-lg ${config.color}`}>
-                                            {config.icon}
+                        // Debug logging
+                        if (config.provider === 'microsoft') {
+                            console.log(`Microsoft integration state:`, integration);
+                        }
+
+                        return (
+                            <Card key={config.provider} className="relative">
+                                <CardHeader>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`p-2 rounded-lg ${config.color} text-white`}>
+                                                {config.icon}
+                                            </div>
+                                            <div>
+                                                <CardTitle className="text-lg">{config.name}</CardTitle>
+                                                <CardDescription>{config.description}</CardDescription>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <CardTitle className="text-lg">{config.name}</CardTitle>
-                                            <CardDescription>{config.description}</CardDescription>
-                                        </div>
-                                    </div>
-                                    {integration && getStatusIcon(integration.status)}
-                                </div>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                {integration ? (
-                                    <div className="space-y-3">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-sm font-medium">Status</span>
-                                            <Badge variant={getStatusColor(integration.status)}>
-                                                {integration.status === INTEGRATION_STATUS.INACTIVE ? 'Disconnected' : integration.status}
+                                        <div className="flex items-center gap-2">
+                                            {getStatusIcon(integration?.status)}
+                                            <Badge variant={getStatusColor(integration?.status)}>
+                                                {integration?.status === INTEGRATION_STATUS.INACTIVE ? 'Disconnected' :
+                                                    integration?.status || 'Not Connected'}
                                             </Badge>
                                         </div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    {/* Scopes */}
+                                    <div>
+                                        <h4 className="text-sm font-medium text-gray-700 mb-2">Permissions:</h4>
+                                        <div className="space-y-1">
+                                            {hasIntegration ? (
+                                                // Show actual granted scopes for active integration
+                                                integration.scopes.map((scope, index) => (
+                                                    <div key={index} className="text-xs text-gray-600">
+                                                        • {getScopeDescription(scope)}
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                // Show default scopes for new/disconnected integration
+                                                config.scopes.map((scope, index) => (
+                                                    <div key={index} className="text-xs text-gray-600">
+                                                        • {getScopeDescription(scope)}
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
 
-                                        {integration.expires_at && (
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-sm font-medium">Token expires</span>
-                                                <span className={`text-sm ${isTokenExpiringSoon(integration.expires_at) ? 'text-orange-600' : 'text-gray-600'}`}>
-                                                    {getTimeUntilExpiration(integration.expires_at)}
+                                    {/* Status Details */}
+                                    {integration && (
+                                        <div className="space-y-2">
+                                            {integration.token_expires_at && (
+                                                <div className="text-xs text-gray-600">
+                                                    <span className="font-medium">Access token expires:</span>{' '}
+                                                    <span className={
+                                                        isTokenExpired(integration.token_expires_at)
+                                                            ? 'text-red-600 font-medium'
+                                                            : isTokenExpiringSoon(integration.token_expires_at)
+                                                                ? 'text-orange-600 font-medium'
+                                                                : 'text-green-600 font-medium'
+                                                    }>
+                                                        {parseUtcDate(integration.token_expires_at).toLocaleString(undefined, { timeZoneName: 'short' })}
+                                                        {' '}({getTimeUntilExpiration(integration.token_expires_at)})
+                                                        {isTokenExpired(integration.token_expires_at) && ' (EXPIRED)'}
+                                                        {isTokenExpiringSoon(integration.token_expires_at) && !isTokenExpired(integration.token_expires_at) && ' (EXPIRING SOON)'}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {integration.token_created_at && (
+                                                <div className="text-xs text-gray-600">
+                                                    <span className="font-medium">Token created:</span>{' '}
+                                                    {parseUtcDate(integration.token_created_at).toLocaleString(undefined, { timeZoneName: 'short' })}
+                                                </div>
+                                            )}
+                                            <div className="text-xs text-gray-600">
+                                                <span className="font-medium">Tokens:</span>{' '}
+                                                <span className={integration.has_access_token ? 'text-green-600' : 'text-red-600'}>
+                                                    Access {integration.has_access_token ? '✓' : '✗'}
+                                                </span>
+                                                {' • '}
+                                                <span className={integration.has_refresh_token ? 'text-green-600' : 'text-red-600'}>
+                                                    Refresh {integration.has_refresh_token ? '✓' : '✗'}
                                                 </span>
                                             </div>
-                                        )}
-
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-sm font-medium">Permissions</span>
-                                            <span className="text-sm text-gray-600">
-                                                {integration.scopes?.length || 0} permission{(integration.scopes?.length || 0) !== 1 ? 's' : ''}
-                                            </span>
+                                            {integration.last_sync_at && (
+                                                <div className="text-xs text-gray-600">
+                                                    <span className="font-medium">Last sync:</span>{' '}
+                                                    {parseUtcDate(integration.last_sync_at).toLocaleString(undefined, { timeZoneName: 'short' })}
+                                                </div>
+                                            )}
+                                            {integration.last_error && (
+                                                <div className="text-xs text-red-600">
+                                                    <span className="font-medium">Error:</span> {integration.last_error}
+                                                </div>
+                                            )}
                                         </div>
+                                    )}
 
-                                        <div className="flex space-x-2">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => handleScopeSelection(config.provider)}
-                                                className="flex-1"
-                                            >
-                                                <Settings className="h-4 w-4 mr-2" />
-                                                Manage Permissions
-                                            </Button>
-
-                                            {integration.status === INTEGRATION_STATUS.ACTIVE && (
+                                    {/* Actions */}
+                                    <div className="flex gap-2">
+                                        {!hasIntegration ? (
+                                            <>
                                                 <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => handleRefresh(config.provider)}
-                                                    disabled={isRefreshingIntegration}
+                                                    onClick={() => handleScopeSelection(config.provider)}
+                                                    disabled={loading}
                                                     className="flex-1"
                                                 >
-                                                    <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshingIntegration ? 'animate-spin' : ''}`} />
-                                                    Refresh
+                                                    <Shield className="h-4 w-4 mr-2" />
+                                                    Connect
                                                 </Button>
-                                            )}
-
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => handleDisconnect(config.provider)}
-                                                className="flex-1"
-                                            >
-                                                Disconnect
-                                            </Button>
-                                        </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                {integration?.status === INTEGRATION_STATUS.ERROR && !integration?.has_refresh_token ? (
+                                                    <Button
+                                                        variant="outline"
+                                                        onClick={() => handleConnect(config)}
+                                                        disabled={loading || isConnecting}
+                                                        size="sm"
+                                                    >
+                                                        <Shield className="h-4 w-4 mr-2" />
+                                                        Re-authenticate
+                                                    </Button>
+                                                ) : (
+                                                    <Button
+                                                        variant="outline"
+                                                        onClick={() => handleRefresh(config.provider)}
+                                                        disabled={loading || isRefreshing}
+                                                        size="sm"
+                                                    >
+                                                        <RefreshCw className="h-4 w-2 mr-2" />
+                                                        Refresh
+                                                    </Button>
+                                                )}
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() => handleScopeSelection(config.provider)}
+                                                    disabled={loading}
+                                                    size="sm"
+                                                >
+                                                    <Settings className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="destructive"
+                                                    onClick={() => handleDisconnect(config.provider)}
+                                                    disabled={loading}
+                                                    size="sm"
+                                                >
+                                                    <XCircle className="h-4 w-4 mr-2" />
+                                                    Disconnect
+                                                </Button>
+                                            </>
+                                        )}
                                     </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        <p className="text-sm text-gray-600">
-                                            Connect your {config.name} account to access your calendar and email.
-                                        </p>
-                                        <Button
-                                            onClick={() => handleConnect(config)}
-                                            disabled={isConnecting}
-                                            className="w-full"
-                                        >
-                                            {isConnecting ? (
-                                                <>
-                                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                                    Connecting...
-                                                </>
-                                            ) : (
-                                                `Connect ${config.name}`
-                                            )}
-                                        </Button>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    );
-                })}
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
             </div>
 
             {/* Scope Selection Dialog */}
             <Dialog open={scopeDialogOpen} onOpenChange={setScopeDialogOpen}>
                 <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>Manage Permissions</DialogTitle>
+                        <DialogTitle>
+                            {currentProvider && getIntegrationStatus(currentProvider)?.status === INTEGRATION_STATUS.ACTIVE
+                                ? `Modify Permissions for ${currentProvider.toUpperCase()}`
+                                : `Connect ${currentProvider?.toUpperCase()} Account`
+                            }
+                        </DialogTitle>
                         <DialogDescription>
-                            Select which permissions you want to grant to {currentProvider?.charAt(0).toUpperCase()}{currentProvider?.slice(1)}.
+                            {currentProvider && getIntegrationStatus(currentProvider)?.status === INTEGRATION_STATUS.ACTIVE
+                                ? "Modify the permissions granted to Briefly. Required permissions are automatically included."
+                                : "Select which permissions you'd like to grant to Briefly. All permissions are selected by default for the best experience."
+                            }
                         </DialogDescription>
                     </DialogHeader>
-
                     {currentProvider && providerScopes[currentProvider] && (
                         <ScopeSelector
                             scopes={providerScopes[currentProvider]}
                             selectedScopes={selectedScopes}
-                            onSelectionChange={setSelectedScopes}
-                            getScopeDescription={getScopeDescription}
+                            onScopeChange={setSelectedScopes}
                         />
                     )}
-
-                    <div className="flex justify-end space-x-2">
-                        <Button variant="outline" onClick={() => setScopeDialogOpen(false)}>
+                    <div className="flex justify-end gap-2 pt-4">
+                        <Button
+                            variant="outline"
+                            onClick={() => setScopeDialogOpen(false)}
+                        >
                             Cancel
                         </Button>
                         <Button
                             onClick={() => {
-                                if (currentProvider) {
-                                    handleConnect(INTEGRATION_CONFIGS.find(c => c.provider === currentProvider)!);
-                                }
                                 setScopeDialogOpen(false);
+                                if (currentProvider) {
+                                    const config = INTEGRATION_CONFIGS.find(c => c.provider === currentProvider);
+                                    if (config) {
+                                        handleConnect(config);
+                                    }
+                                }
                             }}
                         >
-                            Update Permissions
+                            {currentProvider && getIntegrationStatus(currentProvider)?.status === INTEGRATION_STATUS.ACTIVE
+                                ? "Update Permissions"
+                                : "Connect Account"
+                            }
                         </Button>
                     </div>
                 </DialogContent>

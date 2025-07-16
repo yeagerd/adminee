@@ -39,7 +39,6 @@ function SettingsPageContent() {
                     </div>
                 </div>
             }
-            draft={null}
         />
     );
 }
