@@ -1,6 +1,16 @@
-// Add Node.js types for require and process
 // @ts-nocheck
-const winston = require('winston');
+import cookieParser from 'cookie-parser';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import express from 'express';
+import rateLimit from 'express-rate-limit';
+import fs from 'fs';
+import helmet from 'helmet';
+import { createProxyMiddleware } from 'http-proxy-middleware';
+import jwt from 'jsonwebtoken';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import winston from 'winston';
 
 // Create a logger instance
 const logger = winston.createLogger({
@@ -9,19 +19,17 @@ const logger = winston.createLogger({
         winston.format.timestamp({
             format: 'YYYY-MM-DD HH:mm:ss,SSS'
         }),
-        winston.format.printf(info => `${info.timestamp} - ${info.level.toUpperCase()} - ${info.message}`)
+        winston.format.printf((info: any) => `${info.timestamp} - ${info.level.toUpperCase()} - ${info.message}`)
     ),
     transports: [
         new winston.transports.Console()
     ]
 });
 
-// Load environment variables from .env file
-const path = require('path');
-const fs = require('fs');
-
-// Check if .env file exists in current directory
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const envPath = path.join(__dirname, '.env');
+console.log('[DEBUG] Loading .env file from:', envPath);
 if (!fs.existsSync(envPath)) {
     logger.error('❌ .env file not found in gateway directory');
     logger.error(`   Expected location: ${envPath}`);
@@ -33,8 +41,28 @@ if (!fs.existsSync(envPath)) {
     logger.error('   FRONTEND_URL=http://localhost:3000');
     process.exit(1);
 }
+dotenv.config({ path: envPath });
 
-require('dotenv').config({ path: envPath });
+// ENVIRONMENT VARIABLE ASSERTION (must be first)
+(function assertRequiredEnv() {
+    const required = [
+        'NEXTAUTH_SECRET',
+        'USER_SERVICE_URL',
+        'CHAT_SERVICE_URL',
+        'OFFICE_SERVICE_URL',
+        'FRONTEND_URL',
+        'API_FRONTEND_USER_KEY',
+        'API_FRONTEND_CHAT_KEY',
+        'API_FRONTEND_OFFICE_KEY',
+    ];
+    const missing = required.filter((key) => !process.env[key]);
+    if (missing.length > 0) {
+        console.error('❌ Missing required environment variables in gateway/.env:');
+        missing.forEach((key) => console.error(`   - ${key}`));
+        console.error('\nPlease check your gateway/.env file and set the missing variables.');
+        process.exit(1);
+    }
+})();
 
 // Validate required environment variables
 if (!process.env.NEXTAUTH_SECRET) {
@@ -64,14 +92,6 @@ if (!process.env.API_FRONTEND_OFFICE_KEY) {
 
 logger.info('✅ Environment loaded successfully');
 
-const express = require('express');
-const { createProxyMiddleware } = require('http-proxy-middleware');
-const jwt = require('jsonwebtoken');
-const cookieParser = require('cookie-parser');
-const cors = require('cors');
-const rateLimit = require('express-rate-limit');
-const helmet = require('helmet');
-
 const app = express();
 
 // Security middleware
@@ -95,7 +115,7 @@ const strictLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     skipSuccessfulRequests: false,
-    keyGenerator: (req) => {
+    keyGenerator: (req: any) => {
         // Use user ID if available, otherwise IP
         return req.user?.sub || req.ip;
     }
@@ -108,13 +128,13 @@ const standardLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     skipSuccessfulRequests: false,
-    keyGenerator: (req) => {
+    keyGenerator: (req: any) => {
         return req.user?.sub || req.ip;
     }
 });
 
 // Malicious traffic filtering middleware
-const maliciousTrafficFilter = (req, res, next) => {
+const maliciousTrafficFilter = (req: any, res: any, next: any) => {
     const userAgent = req.headers['user-agent'] || '';
     const contentType = req.headers['content-type'] || '';
     const contentLength = parseInt(req.headers['content-length'] || '0');
@@ -176,7 +196,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
 // Enhanced JWT validation middleware
-const validateAuth = async (req, res, next) => {
+const validateAuth = async (req: any, res: any, next: any) => {
     try {
         let token;
 
@@ -198,7 +218,7 @@ const validateAuth = async (req, res, next) => {
         }
 
         // Verify JWT token
-        const payload = jwt.verify(token, process.env.NEXTAUTH_SECRET);
+        const payload = jwt.verify(token, process.env.NEXTAUTH_SECRET as string);
 
         // Additional token validation
         const now = Math.floor(Date.now() / 1000);
@@ -221,7 +241,7 @@ const validateAuth = async (req, res, next) => {
         logger.info(`Authenticated request: ${req.method} ${req.path} - User: ${payload.sub || payload.email}`);
 
         next();
-    } catch (err) {
+    } catch (err: any) {
         logger.error('Auth validation error:', err.message);
         return res.status(401).json({ error: 'Invalid or expired token' });
     }
@@ -251,7 +271,7 @@ const serviceRoutes = {
 };
 
 // Create proxy middleware factory
-const createServiceProxy = (targetUrl, pathRewrite = undefined) => {
+const createServiceProxy = (targetUrl: string, pathRewrite?: Record<string, string>) => {
     return createProxyMiddleware({
         target: targetUrl,
         changeOrigin: true,
@@ -261,17 +281,17 @@ const createServiceProxy = (targetUrl, pathRewrite = undefined) => {
         pathRewrite,
 
         // Handle proxy requests
-        onProxyReq: (proxyReq, req, res) => {
+        onProxyReq: (proxyReq: any, req: any, res: any) => {
             // Add service API key for backend authentication
             if (targetUrl.includes('8001')) {
                 // User service
-                proxyReq.setHeader('X-API-Key', process.env.API_FRONTEND_USER_KEY);
+                proxyReq.setHeader('X-API-Key', process.env.API_FRONTEND_USER_KEY || '');
             } else if (targetUrl.includes('8002')) {
                 // Chat service
-                proxyReq.setHeader('X-API-Key', process.env.API_FRONTEND_CHAT_KEY);
+                proxyReq.setHeader('X-API-Key', process.env.API_FRONTEND_CHAT_KEY || '');
             } else if (targetUrl.includes('8003')) {
                 // Office service
-                proxyReq.setHeader('X-API-Key', process.env.API_FRONTEND_OFFICE_KEY);
+                proxyReq.setHeader('X-API-Key', process.env.API_FRONTEND_OFFICE_KEY || '');
             }
 
             // Forward user identity to backend
@@ -301,11 +321,11 @@ const createServiceProxy = (targetUrl, pathRewrite = undefined) => {
         },
 
         // Handle proxy responses
-        onProxyRes: (proxyRes, req, res) => {
+        onProxyRes: (proxyRes: any, req: any, res: any) => {
             // Handle Server-Sent Events - disable buffering
             if (proxyRes.headers['content-type']?.includes('text/event-stream')) {
                 logger.info('Handling SSE stream');
-                res.writeHead(proxyRes.statusCode, {
+                res.writeHead(proxyRes.statusCode || 200, {
                     ...proxyRes.headers,
                     'Cache-Control': 'no-cache',
                     'Connection': 'keep-alive',
@@ -321,13 +341,13 @@ const createServiceProxy = (targetUrl, pathRewrite = undefined) => {
         },
 
         // Handle WebSocket upgrades
-        onProxyReqWs: (proxyReq, req, socket, options, head) => {
+        onProxyReqWs: (proxyReq: any, req: any, socket: any, options: any, head: any) => {
             logger.info('WebSocket upgrade request');
             // You could add WebSocket-specific auth here if needed
         },
 
         // Error handling
-        onError: (err, req, res) => {
+        onError: (err: any, req: any, res: any) => {
             logger.error(`Proxy error to ${targetUrl}:`, err.message);
             if (!res.headersSent) {
                 res.status(500).json({
@@ -363,7 +383,7 @@ app.use('*', (req, res) => {
 });
 
 // Global error handler
-app.use((err, req, res, next) => {
+app.use((err: any, req: any, res: any, next: any) => {
     logger.error('Global error:', err);
     res.status(500).json({
         error: 'Internal server error',
@@ -387,11 +407,11 @@ const server = app.listen(PORT, () => {
 });
 
 // Handle WebSocket upgrades
-server.on('upgrade', (request, socket, head) => {
+server.on('upgrade', (request: any, socket: any, head: any) => {
     logger.info('WebSocket upgrade event');
 
     // Route WebSocket connections based on path
-    const url = new URL(request.url, `http://${request.headers.host}`);
+    const url = new URL(request.url || '', `http://${request.headers.host}`);
     const path = url.pathname;
 
     let targetService = serviceRoutes['/api/users']; // Default to user service
@@ -404,7 +424,12 @@ server.on('upgrade', (request, socket, head) => {
 
     // Create proxy for WebSocket
     const wsProxy = createServiceProxy(targetService);
-    wsProxy.upgrade(request, socket, head);
+    if (wsProxy && typeof wsProxy.upgrade === 'function') {
+        wsProxy.upgrade(request, socket, head);
+    } else {
+        logger.error('WebSocket proxy upgrade function not available');
+        socket.destroy();
+    }
 });
 
 // Graceful shutdown
@@ -424,4 +449,4 @@ process.on('SIGINT', () => {
     });
 });
 
-module.exports = app;
+export default app;

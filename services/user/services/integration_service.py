@@ -14,7 +14,7 @@ from sqlmodel import select
 
 from services.common.http_errors import NotFoundError, ServiceError, ValidationError
 from services.user.database import get_async_session
-from services.user.integrations.oauth_config import get_oauth_config
+from services.user.integrations.oauth_config import OAuthState, get_oauth_config
 from services.user.models.integration import (
     Integration,
     IntegrationProvider,
@@ -338,6 +338,7 @@ class IntegrationService:
                 provider=provider,
                 tokens=tokens,
                 user_info=user_info,
+                oauth_state=oauth_state,
             )
 
             # Store encrypted tokens
@@ -374,14 +375,17 @@ class IntegrationService:
                 },
             )
 
+            # Use the scopes from the OAuth state (what we actually requested)
+            # rather than what the provider returns, as some providers don't include
+            # all requested scopes in their token response
+            granted_scopes = oauth_state.scopes
+
             return OAuthCallbackResponse(
                 success=True,
                 integration_id=integration.id,
                 provider=provider,
                 status=IntegrationStatus.ACTIVE,
-                scopes=(
-                    list(tokens.get("scope", "").split()) if tokens.get("scope") else []
-                ),
+                scopes=granted_scopes,
                 external_user_info=user_info,
                 error=None,
             )
@@ -420,16 +424,6 @@ class IntegrationService:
                 integration = await self._get_user_integration_in_session(
                     user_id, provider, session
                 )
-
-                # Get encrypted tokens
-                token_result = await session.execute(
-                    select(EncryptedToken).where(
-                        EncryptedToken.integration_id == integration.id
-                    )
-                )
-                token_record = token_result.scalar_one_or_none()
-                if not token_record:
-                    raise ServiceError(message="No tokens found for integration")
 
                 # Decrypt tokens
                 access_token = None
@@ -513,6 +507,18 @@ class IntegrationService:
                     refresh_token=str(refresh_token),
                 )
 
+                # Log the refresh response for debugging
+                self.logger.info(
+                    "Token refresh response received",
+                    provider=provider.value,
+                    user_id=user_id,
+                    response_keys=list(new_tokens.keys()),
+                    has_expires_in=bool(new_tokens.get("expires_in")),
+                    has_expires_at=bool(new_tokens.get("expires_at")),
+                    expires_in=new_tokens.get("expires_in"),
+                    expires_at=new_tokens.get("expires_at"),
+                )
+
                 # Store new encrypted tokens
                 if integration.id is None:
                     raise ServiceError(message="Integration was not properly saved")
@@ -541,9 +547,30 @@ class IntegrationService:
 
             new_expires_at: Optional[datetime] = None
             if new_tokens.get("expires_in"):
+                # Google-style: expires_in is seconds from now
                 new_expires_at = datetime.now(timezone.utc) + timedelta(
                     seconds=new_tokens["expires_in"]
                 )
+            elif new_tokens.get("expires_at"):
+                # Microsoft-style: expires_at is absolute timestamp
+                try:
+                    new_expires_at = datetime.fromisoformat(new_tokens["expires_at"])
+                    # Ensure expires_at is timezone-aware
+                    if new_expires_at.tzinfo is None:
+                        new_expires_at = new_expires_at.replace(tzinfo=timezone.utc)
+                except (ValueError, TypeError) as e:
+                    self.logger.warning(
+                        f"Invalid expires_at format in refresh response: {new_tokens.get('expires_at')}",
+                        error=str(e),
+                    )
+                    # Fall back to current time + 1 hour as default
+                    new_expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+            else:
+                # No expiration info provided, use default
+                self.logger.warning(
+                    f"No expiration information in refresh response for {provider.value}"
+                )
+                new_expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
 
             return TokenRefreshResponse(
                 success=True,
@@ -1121,6 +1148,7 @@ class IntegrationService:
         provider: IntegrationProvider,
         tokens: Dict[str, Any],
         user_info: Dict[str, Any],
+        oauth_state: OAuthState,
     ) -> Integration:
         """Create or update integration record."""
         async_session = get_async_session()
@@ -1133,10 +1161,9 @@ class IntegrationService:
             )
             integration = result.scalar_one_or_none()
 
-            scopes_dict = {}
-            if tokens.get("scope"):
-                # Convert scope string to dictionary
-                scopes_dict = {scope: True for scope in tokens["scope"].split()}
+            # Use the scopes from the OAuth state (what we actually requested)
+            # rather than what the provider returns in the token response
+            scopes_dict = {scope: True for scope in oauth_state.scopes}
 
             integration_data = {
                 "provider_user_id": user_info.get("id"),
@@ -1197,13 +1224,21 @@ class IntegrationService:
             result = await session.execute(
                 select(Integration).where(Integration.id == integration_id)
             )
-            integration = result.scalar_one()
+            integration = result.scalar_one_or_none()
+            if not integration:
+                raise ServiceError(
+                    message=f"Integration with ID {integration_id} not found"
+                )
 
             # Get user to get external auth ID
             user_result = await session.execute(
                 select(User).where(User.id == integration.user_id)
             )
-            user = user_result.scalar_one()
+            user = user_result.scalar_one_or_none()
+            if not user:
+                raise ServiceError(
+                    message=f"User with ID {integration.user_id} not found"
+                )
             user_id = user.external_auth_id
 
             # Encrypt tokens

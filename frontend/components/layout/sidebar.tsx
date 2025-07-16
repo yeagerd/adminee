@@ -45,7 +45,7 @@ export function Sidebar() {
             <SidebarHeader className="border-b p-2">
                 <div className="flex items-center space-x-2">
                     <SidebarTrigger />
-                    <span className="font-semibold group-data-[collapsible=icon]:hidden">Briefly</span>
+                    <span className="font-semibold group-data-[collapsible=icon]:hidden">Tools</span>
                 </div>
             </SidebarHeader>
             <SidebarContent>

@@ -301,37 +301,27 @@ class OAuthConfig:
             # Microsoft Graph API scopes
             OAuthScope(
                 name="https://graph.microsoft.com/User.Read",
-                description="Read user profile information",
+                description="Access detailed user profile (job title, department, manager, contact info)",
                 required=False,
             ),
             OAuthScope(
-                name="https://graph.microsoft.com/Mail.Read",
-                description="Read-only access to Outlook mail",
-                sensitive=True,
-            ),
-            OAuthScope(
                 name="https://graph.microsoft.com/Mail.ReadWrite",
-                description="Read and write access to Outlook mail",
-                sensitive=True,
-            ),
-            OAuthScope(
-                name="https://graph.microsoft.com/Calendars.Read",
-                description="Read-only access to Outlook calendar",
+                description="Read and send email messages",
                 sensitive=True,
             ),
             OAuthScope(
                 name="https://graph.microsoft.com/Calendars.ReadWrite",
-                description="Read and write access to Outlook calendar",
-                sensitive=True,
-            ),
-            OAuthScope(
-                name="https://graph.microsoft.com/Files.Read",
-                description="Read-only access to OneDrive files",
+                description="Read and create calendar events",
                 sensitive=True,
             ),
             OAuthScope(
                 name="https://graph.microsoft.com/Files.ReadWrite",
-                description="Read and write access to OneDrive files",
+                description="Read and save files to OneDrive",
+                sensitive=True,
+            ),
+            OAuthScope(
+                name="https://graph.microsoft.com/Contacts.ReadWrite",
+                description="Read and manage contacts",
                 sensitive=True,
             ),
         ]
@@ -356,6 +346,9 @@ class OAuthConfig:
                 "offline_access",
                 "https://graph.microsoft.com/User.Read",
                 "https://graph.microsoft.com/Calendars.ReadWrite",
+                "https://graph.microsoft.com/Mail.ReadWrite",
+                "https://graph.microsoft.com/Files.ReadWrite",
+                "https://graph.microsoft.com/Contacts.ReadWrite",
             ],
             supports_pkce=True,
             pkce_method=PKCEChallengeMethod.S256,

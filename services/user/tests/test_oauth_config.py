@@ -468,6 +468,9 @@ class TestOAuthConfig:
             "offline_access",
             "https://graph.microsoft.com/User.Read",
             "https://graph.microsoft.com/Calendars.ReadWrite",
+            "https://graph.microsoft.com/Mail.ReadWrite",
+            "https://graph.microsoft.com/Files.ReadWrite",
+            "https://graph.microsoft.com/Contacts.ReadWrite",
         }
         assert config.supports_pkce is True
         assert config.pkce_method == PKCEChallengeMethod.S256
@@ -596,7 +599,7 @@ class TestOAuthConfig:
             user_id="user-msft-123",
             redirect_uri="https://example.com/msft-callback",
             scopes=[
-                "https://graph.microsoft.com/Mail.Read"
+                "https://graph.microsoft.com/Mail.ReadWrite"
             ],  # Use full Microsoft Graph API scope format
         )
 
@@ -613,7 +616,7 @@ class TestOAuthConfig:
             "openid",
             "email",
             "profile",
-            "https://graph.microsoft.com/Mail.Read",
+            "https://graph.microsoft.com/Mail.ReadWrite",
         }
 
         # Check that the state object has the correct scopes
@@ -626,7 +629,7 @@ class TestOAuthConfig:
         assert "email" in auth_url
         assert "profile" in auth_url
         assert "graph.microsoft.com" in auth_url
-        assert "Mail.Read" in auth_url
+        assert "Mail.ReadWrite" in auth_url
 
         assert f"state={oauth_state.state}" in auth_url
         assert "code_challenge=" in auth_url
@@ -1023,6 +1026,9 @@ class TestOAuthConfig:
             "offline_access",
             "https://graph.microsoft.com/User.Read",
             "https://graph.microsoft.com/Calendars.ReadWrite",
+            "https://graph.microsoft.com/Mail.ReadWrite",
+            "https://graph.microsoft.com/Files.ReadWrite",
+            "https://graph.microsoft.com/Contacts.ReadWrite",
         }
         assert set(oauth_state.scopes) == expected_scopes
         for scope in expected_scopes:

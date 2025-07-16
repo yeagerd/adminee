@@ -181,6 +181,19 @@ export class GatewayClient {
         });
     }
 
+    async getProviderScopes(provider: string) {
+        return this.request<{
+            provider: string;
+            scopes: Array<{
+                name: string;
+                description: string;
+                required: boolean;
+                sensitive: boolean;
+            }>;
+            default_scopes: string[];
+        }>(`/api/users/me/integrations/${provider}/scopes`);
+    }
+
     // Office Service
     async getCalendarEvents(
         user_id: string,
