@@ -503,6 +503,18 @@ class IntegrationService:
                     refresh_token=str(refresh_token),
                 )
 
+                # Log the refresh response for debugging
+                self.logger.info(
+                    "Token refresh response received",
+                    provider=provider.value,
+                    user_id=user_id,
+                    response_keys=list(new_tokens.keys()),
+                    has_expires_in=bool(new_tokens.get("expires_in")),
+                    has_expires_at=bool(new_tokens.get("expires_at")),
+                    expires_in=new_tokens.get("expires_in"),
+                    expires_at=new_tokens.get("expires_at"),
+                )
+
                 # Store new encrypted tokens
                 if integration.id is None:
                     raise ServiceError(message="Integration was not properly saved")
@@ -531,9 +543,30 @@ class IntegrationService:
 
             new_expires_at: Optional[datetime] = None
             if new_tokens.get("expires_in"):
+                # Google-style: expires_in is seconds from now
                 new_expires_at = datetime.now(timezone.utc) + timedelta(
                     seconds=new_tokens["expires_in"]
                 )
+            elif new_tokens.get("expires_at"):
+                # Microsoft-style: expires_at is absolute timestamp
+                try:
+                    new_expires_at = datetime.fromisoformat(new_tokens["expires_at"])
+                    # Ensure expires_at is timezone-aware
+                    if new_expires_at.tzinfo is None:
+                        new_expires_at = new_expires_at.replace(tzinfo=timezone.utc)
+                except (ValueError, TypeError) as e:
+                    self.logger.warning(
+                        f"Invalid expires_at format in refresh response: {new_tokens.get('expires_at')}",
+                        error=str(e),
+                    )
+                    # Fall back to current time + 1 hour as default
+                    new_expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+            else:
+                # No expiration info provided, use default
+                self.logger.warning(
+                    f"No expiration information in refresh response for {provider.value}"
+                )
+                new_expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
 
             return TokenRefreshResponse(
                 success=True,
