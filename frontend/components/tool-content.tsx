@@ -105,7 +105,7 @@ export function ToolContent() {
                                             No active calendar integration found. Connect your Google Calendar or Microsoft Outlook to view your events.
                                         </span>
                                         <Link
-                                            href="/integrations"
+                                            href="/settings?page=integrations"
                                             className="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 font-medium"
                                         >
                                             <span>Go to Integrations</span>
