@@ -429,4 +429,4 @@ process.on('SIGINT', () => {
     });
 });
 
-module.exports = app;
+export default app;
