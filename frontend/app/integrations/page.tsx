@@ -1,12 +1,14 @@
 'use client';
 
+import { OAuthScope, ScopeSelector } from '@/components/integrations/scope-selector';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { INTEGRATION_STATUS } from '@/lib/constants';
 import { gatewayClient, Integration, OAuthStartResponse } from '@/lib/gateway-client';
-import { AlertCircle, Calendar, CheckCircle, Mail, RefreshCw, Shield, User, XCircle } from 'lucide-react';
+import { AlertCircle, Calendar, CheckCircle, Mail, RefreshCw, Settings, Shield, User, XCircle } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
@@ -26,10 +28,7 @@ const INTEGRATION_CONFIGS: IntegrationConfig[] = [
         name: 'Google',
         description: 'Connect your Gmail and Google Calendar',
         icon: <Calendar className="h-5 w-5" />,
-        scopes: [
-            'https://www.googleapis.com/auth/gmail.readonly',
-            'https://www.googleapis.com/auth/calendar'
-        ],
+        scopes: [], // Will be loaded from backend
         color: 'bg-blue-500'
     },
     {
@@ -37,11 +36,7 @@ const INTEGRATION_CONFIGS: IntegrationConfig[] = [
         name: 'Microsoft',
         description: 'Connect your Outlook and Microsoft Calendar',
         icon: <Mail className="h-5 w-5" />,
-        scopes: [
-            'https://graph.microsoft.com/User.Read',
-            'https://graph.microsoft.com/Calendars.ReadWrite',
-            'https://graph.microsoft.com/Mail.Read'
-        ],
+        scopes: [], // Will be loaded from backend
         color: 'bg-orange-500'
     }
 ];
@@ -88,6 +83,49 @@ function getTimeUntilExpiration(expiresAt: string): string {
     }
 }
 
+function getScopeDescription(scope: string): string {
+    // Microsoft Graph API scopes - use exact matches to avoid conflicts
+    if (scope === 'https://graph.microsoft.com/Mail.Read') return 'Read email messages';
+    if (scope === 'https://graph.microsoft.com/Mail.ReadWrite') return 'Read and write email messages';
+    if (scope === 'https://graph.microsoft.com/Calendars.Read') return 'Read calendar events';
+    if (scope === 'https://graph.microsoft.com/Calendars.ReadWrite') return 'Read and write calendar events';
+    if (scope === 'https://graph.microsoft.com/Files.Read') return 'Read files and folders';
+    if (scope === 'https://graph.microsoft.com/Files.ReadWrite') return 'Read and write files and folders';
+    if (scope === 'https://graph.microsoft.com/User.Read') return 'Read user profile';
+    if (scope === 'https://graph.microsoft.com/User.ReadWrite') return 'Read and write user profile';
+    if (scope === 'https://graph.microsoft.com/Contacts.Read') return 'Read contacts';
+    if (scope === 'https://graph.microsoft.com/Contacts.ReadWrite') return 'Read and write contacts';
+    if (scope === 'https://graph.microsoft.com/Tasks.Read') return 'Read tasks';
+    if (scope === 'https://graph.microsoft.com/Tasks.ReadWrite') return 'Read and write tasks';
+    if (scope === 'https://graph.microsoft.com/Notes.Read') return 'Read OneNote notebooks';
+    if (scope === 'https://graph.microsoft.com/Notes.ReadWrite') return 'Read and write OneNote notebooks';
+
+    // Google API scopes
+    if (scope.includes('gmail')) {
+        if (scope.includes('readonly')) return 'Read Gmail messages';
+        if (scope.includes('modify')) return 'Read and write Gmail messages';
+        if (scope.includes('send')) return 'Send Gmail messages';
+        if (scope.includes('compose')) return 'Compose Gmail messages';
+    }
+    if (scope.includes('calendar')) {
+        if (scope.includes('readonly')) return 'Read Google Calendar events';
+        if (scope.includes('events')) return 'Read and write Google Calendar events';
+    }
+    if (scope.includes('drive')) {
+        if (scope.includes('readonly')) return 'Read Google Drive files';
+        if (scope.includes('file')) return 'Read and write Google Drive files';
+    }
+
+    // Standard OAuth scopes
+    if (scope === 'openid') return 'OpenID Connect authentication';
+    if (scope === 'email') return 'Access email address';
+    if (scope === 'profile') return 'Access basic profile information';
+    if (scope === 'offline_access') return 'Access when you\'re not present';
+
+    // Fallback
+    return scope;
+}
+
 export default function IntegrationsPage() {
     const { data: session, status } = useSession();
     const [integrations, setIntegrations] = useState<Integration[]>([]);
@@ -97,6 +135,12 @@ export default function IntegrationsPage() {
     const [lastFetchTime, setLastFetchTime] = useState<number>(0);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [preferredProvider, setPreferredProvider] = useState<string | null>(null);
+
+    // Scope selection state
+    const [selectedScopes, setSelectedScopes] = useState<string[]>([]);
+    const [providerScopes, setProviderScopes] = useState<Record<string, OAuthScope[]>>({});
+    const [scopeDialogOpen, setScopeDialogOpen] = useState(false);
+    const [currentProvider, setCurrentProvider] = useState<string | null>(null);
 
     // Cache duration: 5 minutes
     const CACHE_DURATION = 5 * 60 * 1000;
@@ -119,6 +163,45 @@ export default function IntegrationsPage() {
 
         return null;
     }, []);
+
+    const loadProviderScopes = useCallback(async (provider: string) => {
+        try {
+            if (providerScopes[provider]) {
+                return providerScopes[provider];
+            }
+
+            const response = await gatewayClient.getProviderScopes(provider);
+            const scopes = response.scopes;
+            setProviderScopes(prev => ({ ...prev, [provider]: scopes }));
+
+            // Set default selected scopes (required + default optional)
+            const requiredScopes = scopes.filter(scope => scope.required).map(scope => scope.name);
+            const defaultOptionalScopes = response.default_scopes.filter(scope =>
+                !requiredScopes.includes(scope)
+            );
+            setSelectedScopes([...requiredScopes, ...defaultOptionalScopes]);
+
+            return scopes;
+        } catch (error) {
+            console.error(`Failed to load scopes for ${provider}:`, error);
+            setError(`Failed to load scopes for ${provider}. Please try again.`);
+            return [];
+        }
+    }, [providerScopes]);
+
+    const handleScopeSelection = (provider: string) => {
+        setCurrentProvider(provider);
+        setScopeDialogOpen(true);
+
+        // Load provider scopes and set initial selection
+        loadProviderScopes(provider).then(() => {
+            // If this is an existing integration, pre-select current scopes
+            const existingIntegration = getIntegrationStatus(provider);
+            if (existingIntegration && existingIntegration.scopes) {
+                setSelectedScopes(existingIntegration.scopes);
+            }
+        });
+    };
 
     const loadIntegrations = useCallback(async (forceRefresh = false) => {
         // Don't refetch if we have recent data and not forcing refresh
@@ -177,9 +260,12 @@ export default function IntegrationsPage() {
             setConnectingProvider(config.provider);
             setError(null);
 
+            // Use selected scopes if available, otherwise use default scopes
+            const scopesToUse = selectedScopes.length > 0 ? selectedScopes : config.scopes;
+
             const response = await gatewayClient.startOAuthFlow(
                 config.provider,
-                config.scopes
+                scopesToUse
             ) as OAuthStartResponse;
 
             // Update preferred provider when connecting
@@ -386,22 +472,27 @@ export default function IntegrationsPage() {
                                             <div>
                                                 <h4 className="text-sm font-medium text-gray-700 mb-2">Permissions:</h4>
                                                 <div className="space-y-1">
-                                                    {config.scopes.map((scope, index) => (
-                                                        <div key={index} className="text-xs text-gray-600">
-                                                            • {scope.includes('calendar') ? 'Calendar access' :
-                                                                scope.includes('mail') || scope.includes('gmail') ? 'Email access' :
-                                                                    scope.includes('User.Read') ? 'Profile access' : scope}
-                                                        </div>
-                                                    ))}
+                                                    {integration ? (
+                                                        // Show actual granted scopes for existing integration
+                                                        integration.scopes.map((scope, index) => (
+                                                            <div key={index} className="text-xs text-gray-600">
+                                                                • {getScopeDescription(scope)}
+                                                            </div>
+                                                        ))
+                                                    ) : (
+                                                        // Show default scopes for new integration
+                                                        config.scopes.map((scope, index) => (
+                                                            <div key={index} className="text-xs text-gray-600">
+                                                                • {getScopeDescription(scope)}
+                                                            </div>
+                                                        ))
+                                                    )}
                                                 </div>
                                             </div>
 
                                             {/* Status Details */}
                                             {integration && (
                                                 <div className="space-y-2">
-                                                    <div className="text-xs text-gray-600">
-                                                        <span className="font-medium">Scopes:</span> {integration.scopes.join(', ')}
-                                                    </div>
                                                     {integration.token_expires_at && (
                                                         <div className="text-xs text-gray-600">
                                                             <span className="font-medium">Access token expires:</span>{' '}
@@ -452,23 +543,33 @@ export default function IntegrationsPage() {
                                             {/* Actions */}
                                             <div className="flex gap-2">
                                                 {!hasIntegration ? (
-                                                    <Button
-                                                        onClick={() => handleConnect(config)}
-                                                        disabled={isConnecting || loading}
-                                                        className="flex-1"
-                                                    >
-                                                        {isConnecting ? (
-                                                            <>
-                                                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                                                                Connecting...
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <Shield className="h-4 w-4 mr-2" />
-                                                                Connect
-                                                            </>
-                                                        )}
-                                                    </Button>
+                                                    <>
+                                                        <Button
+                                                            onClick={() => handleConnect(config)}
+                                                            disabled={isConnecting || loading}
+                                                            className="flex-1"
+                                                        >
+                                                            {isConnecting ? (
+                                                                <>
+                                                                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                                                    Connecting...
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <Shield className="h-4 w-4 mr-2" />
+                                                                    Connect
+                                                                </>
+                                                            )}
+                                                        </Button>
+                                                        <Button
+                                                            variant="outline"
+                                                            onClick={() => handleScopeSelection(config.provider)}
+                                                            disabled={loading}
+                                                            size="sm"
+                                                        >
+                                                            <Settings className="h-4 w-4" />
+                                                        </Button>
+                                                    </>
                                                 ) : (
                                                     <>
                                                         {integration?.status === INTEGRATION_STATUS.ERROR && !integration?.has_refresh_token ? (
@@ -492,6 +593,14 @@ export default function IntegrationsPage() {
                                                                 Refresh
                                                             </Button>
                                                         )}
+                                                        <Button
+                                                            variant="outline"
+                                                            onClick={() => handleScopeSelection(config.provider)}
+                                                            disabled={loading}
+                                                            size="sm"
+                                                        >
+                                                            <Settings className="h-4 w-4" />
+                                                        </Button>
                                                         <Button
                                                             variant="destructive"
                                                             onClick={() => handleDisconnect(config.provider)}
@@ -538,6 +647,58 @@ export default function IntegrationsPage() {
                         </CardContent>
                     </Card>
                 </div>
+
+                {/* Scope Selection Dialog */}
+                <Dialog open={scopeDialogOpen} onOpenChange={setScopeDialogOpen}>
+                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle>
+                                {currentProvider && getIntegrationStatus(currentProvider)
+                                    ? `Modify Permissions for ${currentProvider.toUpperCase()}`
+                                    : `Select Permissions for ${currentProvider?.toUpperCase()}`
+                                }
+                            </DialogTitle>
+                            <DialogDescription>
+                                {currentProvider && getIntegrationStatus(currentProvider)
+                                    ? "Modify the permissions granted to Briefly. Required permissions are automatically included."
+                                    : "Choose which permissions you'd like to grant to Briefly. Required permissions are automatically included."
+                                }
+                            </DialogDescription>
+                        </DialogHeader>
+                        {currentProvider && providerScopes[currentProvider] && (
+                            <ScopeSelector
+                                provider={currentProvider}
+                                scopes={providerScopes[currentProvider]}
+                                selectedScopes={selectedScopes}
+                                onScopeChange={setSelectedScopes}
+                            />
+                        )}
+                        <div className="flex justify-end gap-2 pt-4">
+                            <Button
+                                variant="outline"
+                                onClick={() => setScopeDialogOpen(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={() => {
+                                    setScopeDialogOpen(false);
+                                    if (currentProvider) {
+                                        const config = INTEGRATION_CONFIGS.find(c => c.provider === currentProvider);
+                                        if (config) {
+                                            handleConnect(config);
+                                        }
+                                    }
+                                }}
+                            >
+                                {currentProvider && getIntegrationStatus(currentProvider)
+                                    ? "Update Permissions"
+                                    : "Connect with Selected Permissions"
+                                }
+                            </Button>
+                        </div>
+                    </DialogContent>
+                </Dialog>
             </div>
         </div>
     );
