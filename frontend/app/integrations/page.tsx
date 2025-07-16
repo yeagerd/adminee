@@ -702,7 +702,6 @@ export default function IntegrationsPage() {
                         </DialogHeader>
                         {currentProvider && providerScopes[currentProvider] && (
                             <ScopeSelector
-                                provider={currentProvider}
                                 scopes={providerScopes[currentProvider]}
                                 selectedScopes={selectedScopes}
                                 onScopeChange={setSelectedScopes}

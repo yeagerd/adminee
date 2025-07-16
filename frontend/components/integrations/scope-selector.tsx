@@ -20,18 +20,26 @@ interface ScopeSelectorProps {
 }
 
 function getScopeIcon(scopeName: string) {
-    if (scopeName.includes('mail') || scopeName.includes('gmail')) {
+    // Email-related scopes (works for both Google and Microsoft)
+    if (scopeName.includes('mail') || scopeName.includes('gmail') || scopeName.includes('Mail.Read')) {
         return <Mail className="h-4 w-4" />;
     }
-    if (scopeName.includes('calendar')) {
+
+    // Calendar-related scopes
+    if (scopeName.includes('calendar') || scopeName.includes('Calendars.Read')) {
         return <Calendar className="h-4 w-4" />;
     }
-    if (scopeName.includes('drive') || scopeName.includes('files')) {
+
+    // File/drive-related scopes
+    if (scopeName.includes('drive') || scopeName.includes('files') || scopeName.includes('Files.Read')) {
         return <FileText className="h-4 w-4" />;
     }
+
+    // Profile/user-related scopes
     if (scopeName.includes('profile') || scopeName.includes('User.Read')) {
         return <User className="h-4 w-4" />;
     }
+
     return <Shield className="h-4 w-4" />;
 }
 
