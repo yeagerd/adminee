@@ -1,0 +1,27 @@
+# Environment files - do not modify
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# Frontend environment files
+frontend/.env
+frontend/.env.local
+frontend/.env.development
+frontend/.env.production
+frontend/.env.test
+
+# Service-specific environment files
+services/*/.env
+services/*/.env.local
+services/*/.env.development
+services/*/.env.production
+services/*/.env.test
+
+# Gateway environment files
+gateway/.env
+gateway/.env.local
+gateway/.env.development
+gateway/.env.production
+gateway/.env.test 
