@@ -84,13 +84,13 @@ function getTimeUntilExpiration(expiresAt: string): string {
 }
 
 function getScopeDescription(scope: string): string {
-    // Microsoft Graph API scopes - simplified to ReadWrite only
+    // Microsoft Graph API scopes - ReadWrite only
     if (scope === 'https://graph.microsoft.com/Mail.ReadWrite') return 'Read and send email messages';
     if (scope === 'https://graph.microsoft.com/Calendars.ReadWrite') return 'Read and create calendar events';
     if (scope === 'https://graph.microsoft.com/Files.ReadWrite') return 'Read and save files to OneDrive';
     if (scope === 'https://graph.microsoft.com/User.Read') return 'Access detailed user profile (job title, department, manager, contact info)';
     if (scope === 'https://graph.microsoft.com/User.ReadWrite') return 'Read and write user profile';
-    if (scope === 'https://graph.microsoft.com/Contacts.ReadWrite') return 'Read and write contacts';
+    if (scope === 'https://graph.microsoft.com/Contacts.ReadWrite') return 'Read and manage contacts';
     if (scope === 'https://graph.microsoft.com/Tasks.ReadWrite') return 'Read and write tasks';
     if (scope === 'https://graph.microsoft.com/Notes.ReadWrite') return 'Read and write OneNote notebooks';
 
@@ -189,14 +189,31 @@ export default function IntegrationsPage() {
             const existingIntegration = getIntegrationStatus(provider);
             if (existingIntegration && existingIntegration.status === INTEGRATION_STATUS.ACTIVE && existingIntegration.scopes) {
                 // For existing active integrations, merge current scopes with any missing default scopes
+                // Also convert any Read-only scopes to ReadWrite scopes
                 const currentScopes = new Set(existingIntegration.scopes);
                 const availableScopes = providerScopes[provider] || [];
                 const defaultScopeNames = availableScopes.map(scope => scope.name);
 
+                // Convert Read-only scopes to ReadWrite scopes
+                const convertedScopes = new Set<string>();
+                for (const scope of currentScopes) {
+                    if (scope === 'https://graph.microsoft.com/Mail.Read') {
+                        convertedScopes.add('https://graph.microsoft.com/Mail.ReadWrite');
+                    } else if (scope === 'https://graph.microsoft.com/Calendars.Read') {
+                        convertedScopes.add('https://graph.microsoft.com/Calendars.ReadWrite');
+                    } else if (scope === 'https://graph.microsoft.com/Files.Read') {
+                        convertedScopes.add('https://graph.microsoft.com/Files.ReadWrite');
+                    } else if (scope === 'https://graph.microsoft.com/Contacts.Read') {
+                        convertedScopes.add('https://graph.microsoft.com/Contacts.ReadWrite');
+                    } else {
+                        convertedScopes.add(scope);
+                    }
+                }
+
                 // Add any missing default scopes to the current selection
-                const mergedScopes = [...currentScopes];
+                const mergedScopes = [...convertedScopes];
                 for (const scopeName of defaultScopeNames) {
-                    if (!currentScopes.has(scopeName)) {
+                    if (!convertedScopes.has(scopeName)) {
                         mergedScopes.push(scopeName);
                     }
                 }
