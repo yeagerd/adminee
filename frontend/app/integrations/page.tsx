@@ -84,20 +84,14 @@ function getTimeUntilExpiration(expiresAt: string): string {
 }
 
 function getScopeDescription(scope: string): string {
-    // Microsoft Graph API scopes - use exact matches to avoid conflicts
-    if (scope === 'https://graph.microsoft.com/Mail.Read') return 'Read email messages';
-    if (scope === 'https://graph.microsoft.com/Mail.ReadWrite') return 'Read and write email messages';
-    if (scope === 'https://graph.microsoft.com/Calendars.Read') return 'Read calendar events';
-    if (scope === 'https://graph.microsoft.com/Calendars.ReadWrite') return 'Read and write calendar events';
-    if (scope === 'https://graph.microsoft.com/Files.Read') return 'Read files and folders';
-    if (scope === 'https://graph.microsoft.com/Files.ReadWrite') return 'Read and write files and folders';
-    if (scope === 'https://graph.microsoft.com/User.Read') return 'Read user profile';
+    // Microsoft Graph API scopes - simplified to ReadWrite only
+    if (scope === 'https://graph.microsoft.com/Mail.ReadWrite') return 'Read and send email messages';
+    if (scope === 'https://graph.microsoft.com/Calendars.ReadWrite') return 'Read and create calendar events';
+    if (scope === 'https://graph.microsoft.com/Files.ReadWrite') return 'Read and save files to OneDrive';
+    if (scope === 'https://graph.microsoft.com/User.Read') return 'Access detailed user profile (job title, department, manager, contact info)';
     if (scope === 'https://graph.microsoft.com/User.ReadWrite') return 'Read and write user profile';
-    if (scope === 'https://graph.microsoft.com/Contacts.Read') return 'Read contacts';
     if (scope === 'https://graph.microsoft.com/Contacts.ReadWrite') return 'Read and write contacts';
-    if (scope === 'https://graph.microsoft.com/Tasks.Read') return 'Read tasks';
     if (scope === 'https://graph.microsoft.com/Tasks.ReadWrite') return 'Read and write tasks';
-    if (scope === 'https://graph.microsoft.com/Notes.Read') return 'Read OneNote notebooks';
     if (scope === 'https://graph.microsoft.com/Notes.ReadWrite') return 'Read and write OneNote notebooks';
 
     // Google API scopes
@@ -119,7 +113,7 @@ function getScopeDescription(scope: string): string {
     // Standard OAuth scopes
     if (scope === 'openid') return 'OpenID Connect authentication';
     if (scope === 'email') return 'Access email address';
-    if (scope === 'profile') return 'Access basic profile information';
+    if (scope === 'profile') return 'Access basic profile information (name, picture)';
     if (scope === 'offline_access') return 'Access when you\'re not present';
 
     // Fallback
