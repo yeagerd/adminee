@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { INTEGRATION_STATUS } from '@/lib/constants';
 import { gatewayClient, Integration, OAuthStartResponse } from '@/lib/gateway-client';
-import { AlertCircle, Calendar, CheckCircle, Mail, RefreshCw, Settings, Shield, User, XCircle } from 'lucide-react';
+import { AlertCircle, Calendar, CheckCircle, Mail, RefreshCw, Settings, Shield, XCircle } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
@@ -120,7 +120,7 @@ function getScopeDescription(scope: string): string {
     return scope;
 }
 
-export default function IntegrationsPage() {
+export function IntegrationsContent() {
     const { data: session, status } = useSession();
     const [integrations, setIntegrations] = useState<Integration[]>([]);
     const [loading, setLoading] = useState(true);
@@ -142,8 +142,6 @@ export default function IntegrationsPage() {
     const shouldRefetch = useCallback(() => {
         return Date.now() - lastFetchTime > CACHE_DURATION;
     }, [lastFetchTime, CACHE_DURATION]);
-
-
 
     const determinePreferredProvider = useCallback((integrations: Integration[]) => {
         // If user has active integrations, use the first one as preferred
@@ -439,7 +437,7 @@ export default function IntegrationsPage() {
 
     if (status === 'loading') {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="flex items-center justify-center h-full">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
             </div>
         );
@@ -447,7 +445,7 @@ export default function IntegrationsPage() {
 
     if (!session) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="flex items-center justify-center h-full">
                 <Card className="w-full max-w-md">
                     <CardHeader>
                         <CardTitle>Authentication Required</CardTitle>
@@ -464,276 +462,244 @@ export default function IntegrationsPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <div className="container mx-auto px-4 py-8 max-w-4xl">
-                <div className="space-y-6">
-                    {/* Header */}
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-900">Integrations</h1>
-                        <p className="text-gray-600 mt-2">
-                            Connect your calendar and email accounts to enhance your Briefly experience
-                        </p>
-                    </div>
+        <div className="p-6 space-y-6">
+            {/* Header */}
+            <div>
+                <h1 className="text-3xl font-bold text-gray-900">Integrations</h1>
+                <p className="text-gray-600 mt-2">
+                    Connect your calendar and email accounts to enhance your Briefly experience
+                </p>
+            </div>
 
-                    {/* Error Alert */}
-                    {error && (
-                        <Alert variant="destructive">
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertDescription>{error}</AlertDescription>
-                        </Alert>
-                    )}
+            {/* Error Alert */}
+            {error && (
+                <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                </Alert>
+            )}
 
-                    {/* Integration Cards */}
-                    <div className="grid gap-6 md:grid-cols-2">
-                        {INTEGRATION_CONFIGS
-                            .filter(config => !preferredProvider || config.provider === preferredProvider)
-                            .map((config) => {
-                                const integration = getIntegrationStatus(config.provider);
-                                const hasIntegration = integration !== undefined && integration.status === INTEGRATION_STATUS.ACTIVE;
-                                const isConnecting = connectingProvider === config.provider;
+            {/* Integration Cards */}
+            <div className="grid gap-6">
+                {INTEGRATION_CONFIGS
+                    .filter(config => !preferredProvider || config.provider === preferredProvider)
+                    .map((config) => {
+                        const integration = getIntegrationStatus(config.provider);
+                        const hasIntegration = integration !== undefined && integration.status === INTEGRATION_STATUS.ACTIVE;
+                        const isConnecting = connectingProvider === config.provider;
 
-                                // Debug logging
-                                if (config.provider === 'microsoft') {
-                                    console.log(`Microsoft integration state:`, integration);
-                                }
+                        // Debug logging
+                        if (config.provider === 'microsoft') {
+                            console.log(`Microsoft integration state:`, integration);
+                        }
 
-                                return (
-                                    <Card key={config.provider} className="relative">
-                                        <CardHeader>
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`p-2 rounded-lg ${config.color} text-white`}>
-                                                        {config.icon}
-                                                    </div>
-                                                    <div>
-                                                        <CardTitle className="text-lg">{config.name}</CardTitle>
-                                                        <CardDescription>{config.description}</CardDescription>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    {getStatusIcon(integration?.status)}
-                                                    <Badge variant={getStatusColor(integration?.status)}>
-                                                        {integration?.status === INTEGRATION_STATUS.INACTIVE ? 'Disconnected' :
-                                                            integration?.status || 'Not Connected'}
-                                                    </Badge>
-                                                </div>
+                        return (
+                            <Card key={config.provider} className="relative">
+                                <CardHeader>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`p-2 rounded-lg ${config.color} text-white`}>
+                                                {config.icon}
                                             </div>
-                                        </CardHeader>
-                                        <CardContent className="space-y-4">
-                                            {/* Scopes */}
                                             <div>
-                                                <h4 className="text-sm font-medium text-gray-700 mb-2">Permissions:</h4>
-                                                <div className="space-y-1">
-                                                    {hasIntegration ? (
-                                                        // Show actual granted scopes for active integration
-                                                        integration.scopes.map((scope, index) => (
-                                                            <div key={index} className="text-xs text-gray-600">
-                                                                • {getScopeDescription(scope)}
-                                                            </div>
-                                                        ))
-                                                    ) : (
-                                                        // Show default scopes for new/disconnected integration
-                                                        config.scopes.map((scope, index) => (
-                                                            <div key={index} className="text-xs text-gray-600">
-                                                                • {getScopeDescription(scope)}
-                                                            </div>
-                                                        ))
-                                                    )}
-                                                </div>
+                                                <CardTitle className="text-lg">{config.name}</CardTitle>
+                                                <CardDescription>{config.description}</CardDescription>
                                             </div>
-
-                                            {/* Status Details */}
-                                            {integration && (
-                                                <div className="space-y-2">
-                                                    {integration.token_expires_at && (
-                                                        <div className="text-xs text-gray-600">
-                                                            <span className="font-medium">Access token expires:</span>{' '}
-                                                            <span className={
-                                                                isTokenExpired(integration.token_expires_at)
-                                                                    ? 'text-red-600 font-medium'
-                                                                    : isTokenExpiringSoon(integration.token_expires_at)
-                                                                        ? 'text-orange-600 font-medium'
-                                                                        : 'text-green-600 font-medium'
-                                                            }>
-                                                                {parseUtcDate(integration.token_expires_at).toLocaleString(undefined, { timeZoneName: 'short' })}
-                                                                {' '}({getTimeUntilExpiration(integration.token_expires_at)})
-                                                                {isTokenExpired(integration.token_expires_at) && ' (EXPIRED)'}
-                                                                {isTokenExpiringSoon(integration.token_expires_at) && !isTokenExpired(integration.token_expires_at) && ' (EXPIRING SOON)'}
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                    {integration.token_created_at && (
-                                                        <div className="text-xs text-gray-600">
-                                                            <span className="font-medium">Token created:</span>{' '}
-                                                            {parseUtcDate(integration.token_created_at).toLocaleString(undefined, { timeZoneName: 'short' })}
-                                                        </div>
-                                                    )}
-                                                    <div className="text-xs text-gray-600">
-                                                        <span className="font-medium">Tokens:</span>{' '}
-                                                        <span className={integration.has_access_token ? 'text-green-600' : 'text-red-600'}>
-                                                            Access {integration.has_access_token ? '✓' : '✗'}
-                                                        </span>
-                                                        {' • '}
-                                                        <span className={integration.has_refresh_token ? 'text-green-600' : 'text-red-600'}>
-                                                            Refresh {integration.has_refresh_token ? '✓' : '✗'}
-                                                        </span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {getStatusIcon(integration?.status)}
+                                            <Badge variant={getStatusColor(integration?.status)}>
+                                                {integration?.status === INTEGRATION_STATUS.INACTIVE ? 'Disconnected' :
+                                                    integration?.status || 'Not Connected'}
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    {/* Scopes */}
+                                    <div>
+                                        <h4 className="text-sm font-medium text-gray-700 mb-2">Permissions:</h4>
+                                        <div className="space-y-1">
+                                            {hasIntegration ? (
+                                                // Show actual granted scopes for active integration
+                                                integration.scopes.map((scope, index) => (
+                                                    <div key={index} className="text-xs text-gray-600">
+                                                        • {getScopeDescription(scope)}
                                                     </div>
-                                                    {integration.last_sync_at && (
-                                                        <div className="text-xs text-gray-600">
-                                                            <span className="font-medium">Last sync:</span>{' '}
-                                                            {parseUtcDate(integration.last_sync_at).toLocaleString(undefined, { timeZoneName: 'short' })}
-                                                        </div>
-                                                    )}
-                                                    {integration.last_error && (
-                                                        <div className="text-xs text-red-600">
-                                                            <span className="font-medium">Error:</span> {integration.last_error}
-                                                        </div>
-                                                    )}
+                                                ))
+                                            ) : (
+                                                // Show default scopes for new/disconnected integration
+                                                config.scopes.map((scope, index) => (
+                                                    <div key={index} className="text-xs text-gray-600">
+                                                        • {getScopeDescription(scope)}
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Status Details */}
+                                    {integration && (
+                                        <div className="space-y-2">
+                                            {integration.token_expires_at && (
+                                                <div className="text-xs text-gray-600">
+                                                    <span className="font-medium">Access token expires:</span>{' '}
+                                                    <span className={
+                                                        isTokenExpired(integration.token_expires_at)
+                                                            ? 'text-red-600 font-medium'
+                                                            : isTokenExpiringSoon(integration.token_expires_at)
+                                                                ? 'text-orange-600 font-medium'
+                                                                : 'text-green-600 font-medium'
+                                                    }>
+                                                        {parseUtcDate(integration.token_expires_at).toLocaleString(undefined, { timeZoneName: 'short' })}
+                                                        {' '}({getTimeUntilExpiration(integration.token_expires_at)})
+                                                        {isTokenExpired(integration.token_expires_at) && ' (EXPIRED)'}
+                                                        {isTokenExpiringSoon(integration.token_expires_at) && !isTokenExpired(integration.token_expires_at) && ' (EXPIRING SOON)'}
+                                                    </span>
                                                 </div>
                                             )}
-
-                                            {/* Actions */}
-                                            <div className="flex gap-2">
-                                                {!hasIntegration ? (
-                                                    <>
-                                                        <Button
-                                                            onClick={() => handleScopeSelection(config.provider)}
-                                                            disabled={loading}
-                                                            className="flex-1"
-                                                        >
-                                                            <Shield className="h-4 w-4 mr-2" />
-                                                            Connect
-                                                        </Button>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        {integration?.status === INTEGRATION_STATUS.ERROR && !integration?.has_refresh_token ? (
-                                                            <Button
-                                                                variant="outline"
-                                                                onClick={() => handleConnect(config)}
-                                                                disabled={loading || isConnecting}
-                                                                size="sm"
-                                                            >
-                                                                <Shield className="h-4 w-4 mr-2" />
-                                                                Re-authenticate
-                                                            </Button>
-                                                        ) : (
-                                                            <Button
-                                                                variant="outline"
-                                                                onClick={() => handleRefresh(config.provider)}
-                                                                disabled={loading || isRefreshing}
-                                                                size="sm"
-                                                            >
-                                                                <RefreshCw className="h-4 w-2 mr-2" />
-                                                                Refresh
-                                                            </Button>
-                                                        )}
-                                                        <Button
-                                                            variant="outline"
-                                                            onClick={() => handleScopeSelection(config.provider)}
-                                                            disabled={loading}
-                                                            size="sm"
-                                                        >
-                                                            <Settings className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="destructive"
-                                                            onClick={() => handleDisconnect(config.provider)}
-                                                            disabled={loading}
-                                                            size="sm"
-                                                        >
-                                                            <XCircle className="h-4 w-4 mr-2" />
-                                                            Disconnect
-                                                        </Button>
-                                                    </>
-                                                )}
+                                            {integration.token_created_at && (
+                                                <div className="text-xs text-gray-600">
+                                                    <span className="font-medium">Token created:</span>{' '}
+                                                    {parseUtcDate(integration.token_created_at).toLocaleString(undefined, { timeZoneName: 'short' })}
+                                                </div>
+                                            )}
+                                            <div className="text-xs text-gray-600">
+                                                <span className="font-medium">Tokens:</span>{' '}
+                                                <span className={integration.has_access_token ? 'text-green-600' : 'text-red-600'}>
+                                                    Access {integration.has_access_token ? '✓' : '✗'}
+                                                </span>
+                                                {' • '}
+                                                <span className={integration.has_refresh_token ? 'text-green-600' : 'text-red-600'}>
+                                                    Refresh {integration.has_refresh_token ? '✓' : '✗'}
+                                                </span>
                                             </div>
-                                        </CardContent>
-                                    </Card>
-                                );
-                            })}
-                    </div>
+                                            {integration.last_sync_at && (
+                                                <div className="text-xs text-gray-600">
+                                                    <span className="font-medium">Last sync:</span>{' '}
+                                                    {parseUtcDate(integration.last_sync_at).toLocaleString(undefined, { timeZoneName: 'short' })}
+                                                </div>
+                                            )}
+                                            {integration.last_error && (
+                                                <div className="text-xs text-red-600">
+                                                    <span className="font-medium">Error:</span> {integration.last_error}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
 
-                    {/* Help Section */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <User className="h-5 w-5" />
-                                Need Help?
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="text-sm text-gray-600">
-                                <p>
-                                    <strong>Google:</strong> Allows Briefly to access your Gmail for email analysis and Google Calendar for meeting preparation.
-                                </p>
-                                <p className="mt-2">
-                                    <strong>Microsoft:</strong> Connects to your Outlook email and Microsoft Calendar to provide comprehensive meeting insights.
-                                </p>
-                            </div>
-                            <div className="flex gap-2">
-                                <Button variant="outline" asChild size="sm">
-                                    <Link href="/profile">View Profile</Link>
-                                </Button>
-                                <Button variant="outline" asChild size="sm">
-                                    <Link href="/dashboard">Go to Dashboard</Link>
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* Scope Selection Dialog */}
-                <Dialog open={scopeDialogOpen} onOpenChange={setScopeDialogOpen}>
-                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                        <DialogHeader>
-                            <DialogTitle>
-                                {currentProvider && getIntegrationStatus(currentProvider)?.status === INTEGRATION_STATUS.ACTIVE
-                                    ? `Modify Permissions for ${currentProvider.toUpperCase()}`
-                                    : `Connect ${currentProvider?.toUpperCase()} Account`
-                                }
-                            </DialogTitle>
-                            <DialogDescription>
-                                {currentProvider && getIntegrationStatus(currentProvider)?.status === INTEGRATION_STATUS.ACTIVE
-                                    ? "Modify the permissions granted to Briefly. Required permissions are automatically included."
-                                    : "Select which permissions you'd like to grant to Briefly. All permissions are selected by default for the best experience."
-                                }
-                            </DialogDescription>
-                        </DialogHeader>
-                        {currentProvider && providerScopes[currentProvider] && (
-                            <ScopeSelector
-                                scopes={providerScopes[currentProvider]}
-                                selectedScopes={selectedScopes}
-                                onScopeChange={setSelectedScopes}
-                            />
-                        )}
-                        <div className="flex justify-end gap-2 pt-4">
-                            <Button
-                                variant="outline"
-                                onClick={() => setScopeDialogOpen(false)}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                onClick={() => {
-                                    setScopeDialogOpen(false);
-                                    if (currentProvider) {
-                                        const config = INTEGRATION_CONFIGS.find(c => c.provider === currentProvider);
-                                        if (config) {
-                                            handleConnect(config);
-                                        }
-                                    }
-                                }}
-                            >
-                                {currentProvider && getIntegrationStatus(currentProvider)?.status === INTEGRATION_STATUS.ACTIVE
-                                    ? "Update Permissions"
-                                    : "Connect Account"
-                                }
-                            </Button>
-                        </div>
-                    </DialogContent>
-                </Dialog>
+                                    {/* Actions */}
+                                    <div className="flex gap-2">
+                                        {!hasIntegration ? (
+                                            <>
+                                                <Button
+                                                    onClick={() => handleScopeSelection(config.provider)}
+                                                    disabled={loading}
+                                                    className="flex-1"
+                                                >
+                                                    <Shield className="h-4 w-4 mr-2" />
+                                                    Connect
+                                                </Button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                {integration?.status === INTEGRATION_STATUS.ERROR && !integration?.has_refresh_token ? (
+                                                    <Button
+                                                        variant="outline"
+                                                        onClick={() => handleConnect(config)}
+                                                        disabled={loading || isConnecting}
+                                                        size="sm"
+                                                    >
+                                                        <Shield className="h-4 w-4 mr-2" />
+                                                        Re-authenticate
+                                                    </Button>
+                                                ) : (
+                                                    <Button
+                                                        variant="outline"
+                                                        onClick={() => handleRefresh(config.provider)}
+                                                        disabled={loading || isRefreshing}
+                                                        size="sm"
+                                                    >
+                                                        <RefreshCw className="h-4 w-2 mr-2" />
+                                                        Refresh
+                                                    </Button>
+                                                )}
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() => handleScopeSelection(config.provider)}
+                                                    disabled={loading}
+                                                    size="sm"
+                                                >
+                                                    <Settings className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="destructive"
+                                                    onClick={() => handleDisconnect(config.provider)}
+                                                    disabled={loading}
+                                                    size="sm"
+                                                >
+                                                    <XCircle className="h-4 w-4 mr-2" />
+                                                    Disconnect
+                                                </Button>
+                                            </>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
             </div>
+
+            {/* Scope Selection Dialog */}
+            <Dialog open={scopeDialogOpen} onOpenChange={setScopeDialogOpen}>
+                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>
+                            {currentProvider && getIntegrationStatus(currentProvider)?.status === INTEGRATION_STATUS.ACTIVE
+                                ? `Modify Permissions for ${currentProvider.toUpperCase()}`
+                                : `Connect ${currentProvider?.toUpperCase()} Account`
+                            }
+                        </DialogTitle>
+                        <DialogDescription>
+                            {currentProvider && getIntegrationStatus(currentProvider)?.status === INTEGRATION_STATUS.ACTIVE
+                                ? "Modify the permissions granted to Briefly. Required permissions are automatically included."
+                                : "Select which permissions you'd like to grant to Briefly. All permissions are selected by default for the best experience."
+                            }
+                        </DialogDescription>
+                    </DialogHeader>
+                    {currentProvider && providerScopes[currentProvider] && (
+                        <ScopeSelector
+                            scopes={providerScopes[currentProvider]}
+                            selectedScopes={selectedScopes}
+                            onScopeChange={setSelectedScopes}
+                        />
+                    )}
+                    <div className="flex justify-end gap-2 pt-4">
+                        <Button
+                            variant="outline"
+                            onClick={() => setScopeDialogOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={() => {
+                                setScopeDialogOpen(false);
+                                if (currentProvider) {
+                                    const config = INTEGRATION_CONFIGS.find(c => c.provider === currentProvider);
+                                    if (config) {
+                                        handleConnect(config);
+                                    }
+                                }
+                            }}
+                        >
+                            {currentProvider && getIntegrationStatus(currentProvider)?.status === INTEGRATION_STATUS.ACTIVE
+                                ? "Update Permissions"
+                                : "Connect Account"
+                            }
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 } 
