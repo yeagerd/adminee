@@ -1,3 +1,25 @@
+import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const envPath = path.join(__dirname, '.env');
+console.log('[DEBUG] Loading .env file from:', envPath);
+if (!fs.existsSync(envPath)) {
+    console.error('❌ .env file not found in gateway directory');
+    console.error(`   Expected location: ${envPath}`);
+    console.error('   Please create a .env file with:');
+    console.error('   NEXTAUTH_SECRET=your-secret-here');
+    console.error('   USER_SERVICE_URL=http://localhost:8001');
+    console.error('   CHAT_SERVICE_URL=http://localhost:8002');
+    console.error('   OFFICE_SERVICE_URL=http://localhost:8003');
+    console.error('   FRONTEND_URL=http://localhost:3000');
+    process.exit(1);
+}
+dotenv.config({ path: envPath });
+
 // ENVIRONMENT VARIABLE ASSERTION (must be first)
 (function assertRequiredEnv() {
     const required = [
@@ -18,28 +40,6 @@
         process.exit(1);
     }
 })();
-
-// Add Node.js types for require and process
-// @ts-nocheck
-// Load environment variables from .env file
-const path = require('path');
-const fs = require('fs');
-
-// Check if .env file exists in current directory
-const envPath = path.join(__dirname, '.env');
-if (!fs.existsSync(envPath)) {
-    console.error('❌ .env file not found in gateway directory');
-    console.error(`   Expected location: ${envPath}`);
-    console.error('   Please create a .env file with:');
-    console.error('   NEXTAUTH_SECRET=your-secret-here');
-    console.error('   USER_SERVICE_URL=http://localhost:8001');
-    console.error('   CHAT_SERVICE_URL=http://localhost:8002');
-    console.error('   OFFICE_SERVICE_URL=http://localhost:8003');
-    console.error('   FRONTEND_URL=http://localhost:3000');
-    process.exit(1);
-}
-
-require('dotenv').config({ path: envPath });
 
 // Validate required environment variables
 if (!process.env.NEXTAUTH_SECRET) {
@@ -69,13 +69,13 @@ if (!process.env.API_FRONTEND_OFFICE_KEY) {
 
 console.log('✅ Environment loaded successfully');
 
-const express = require('express');
-const { createProxyMiddleware } = require('http-proxy-middleware');
-const jwt = require('jsonwebtoken');
-const cookieParser = require('cookie-parser');
-const cors = require('cors');
-const rateLimit = require('express-rate-limit');
-const helmet = require('helmet');
+import cookieParser from 'cookie-parser';
+import cors from 'cors';
+import express from 'express';
+import rateLimit from 'express-rate-limit';
+import helmet from 'helmet';
+import { createProxyMiddleware } from 'http-proxy-middleware';
+import jwt from 'jsonwebtoken';
 
 const app = express();
 
@@ -429,4 +429,4 @@ process.on('SIGINT', () => {
     });
 });
 
-module.exports = app;
+export default app;
