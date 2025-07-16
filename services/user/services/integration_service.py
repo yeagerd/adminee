@@ -1189,7 +1189,9 @@ class IntegrationService:
             )
             integration = result.scalar_one_or_none()
             if not integration:
-                raise ServiceError(message=f"Integration with ID {integration_id} not found")
+                raise ServiceError(
+                    message=f"Integration with ID {integration_id} not found"
+                )
 
             # Get user to get external auth ID
             user_result = await session.execute(
@@ -1197,7 +1199,9 @@ class IntegrationService:
             )
             user = user_result.scalar_one_or_none()
             if not user:
-                raise ServiceError(message=f"User with ID {integration.user_id} not found")
+                raise ServiceError(
+                    message=f"User with ID {integration.user_id} not found"
+                )
             user_id = user.external_auth_id
 
             # Encrypt tokens
