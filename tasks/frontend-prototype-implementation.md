@@ -106,7 +106,7 @@ This document outlines the incremental implementation plan for building out the 
 **Estimated Time**: 3-4 days
 **Dependencies**: Task 1.1, Task 2.1
 
-**Description**: Create the calendar interface similar to Google/Microsoft's web calendar view, with AI integration
+**Description**: Create the calendar interface visually similar to Google/Microsoft's web calendar view, with AI integration
 - [ ] Implement day/week/month view toggles
 - [ ] Create event cards with organizer status indicators
 - [ ] Add external attendee and acceptance count displays
@@ -257,12 +257,12 @@ This document outlines the incremental implementation plan for building out the 
 **Dependencies**: Task 1.1
 
 **Description**: Create the foundational draft pane structure with type switching and basic UI
-- [ ] Create draft pane container with proper layout
-- [ ] Implement draft type switcher (email, calendar, document)
-- [ ] Add draft metadata forms (context-dependent fields)
-- [ ] Create basic draft actions (Send/Create, Discard)
-- [ ] Add AI-generated content indicators
-- [ ] Implement draft state management
+- [x] Create draft pane container with proper layout
+- [x] Implement draft type switcher (email, calendar, document)
+- [x] Add draft metadata forms (context-dependent fields)
+- [x] Create basic draft actions (Send/Create, Discard)
+- [x] Add AI-generated content indicators
+- [x] Implement draft state management
 
 **Files to Create/Modify**:
 - `frontend/components/draft/draft-pane.tsx`
@@ -279,13 +279,13 @@ This document outlines the incremental implementation plan for building out the 
 **Dependencies**: Task 5.1
 
 **Description**: Integrate TipTap rich text editor with markdown support and document-specific features
-- [ ] Install and configure TipTap editor
-- [ ] Create document-specific editor with markdown support
-- [ ] Implement email editor with recipient fields
-- [ ] Add calendar editor with date/time pickers
-- [ ] Create editor toolbar with formatting options
-- [ ] Add auto-save functionality
-- [ ] Implement content validation and error handling
+- [x] Install and configure TipTap editor
+- [x] Create document-specific editor with markdown support
+- [x] Implement email editor with recipient fields
+- [x] Add calendar editor with date/time pickers
+- [x] Create editor toolbar with formatting options
+- [x] Add auto-save functionality
+- [x] Implement content validation and error handling
 
 **Files to Create/Modify**:
 - `frontend/components/draft/draft-editor.tsx`
@@ -303,13 +303,13 @@ This document outlines the incremental implementation plan for building out the 
 **Dependencies**: None
 
 **Description**: Extend chat service to support persistent user draft storage
-- [ ] Add user draft models to chat service database
-- [ ] Create draft CRUD endpoints (create, read, update, delete)
-- [ ] Implement draft list retrieval by user_id
-- [ ] Add draft type validation and constraints
-- [ ] Extend existing draft functions to support user drafts
-- [ ] Add draft metadata storage (subject, recipients, dates, etc.)
-- [ ] Implement draft versioning and history
+- [x] Add user draft models to chat service database
+- [x] Create draft CRUD endpoints (create, read, update, delete)
+- [x] Implement draft list retrieval by user_id
+- [x] Add draft type validation and constraints
+- [x] Extend existing draft functions to support user drafts
+- [x] Add draft metadata storage (subject, recipients, dates, etc.)
+- [x] Implement draft versioning and history
 
 **Files to Create/Modify**:
 - `services/chat/models.py` (add UserDraft model)
@@ -324,13 +324,13 @@ This document outlines the incremental implementation plan for building out the 
 **Dependencies**: Task 5.3
 
 **Description**: Add draft list view accessible from sidebar with filtering and management
-- [ ] Add "Drafts" to navigation types and sidebar
-- [ ] Create draft list view with cards and previews
-- [ ] Implement draft filtering by type, status, and date
-- [ ] Add new draft creation flow with type selection
-- [ ] Create draft search functionality
-- [ ] Add draft bulk operations (delete, archive)
-- [ ] Implement draft sorting and organization
+- [x] Add "Drafts" to navigation types and sidebar
+- [x] Create draft list view with cards and previews
+- [x] Implement draft filtering by type, status, and date
+- [x] Add new draft creation flow with type selection
+- [x] Create draft search functionality
+- [x] Add draft bulk operations (delete, archive)
+- [x] Implement draft sorting and organization
 
 **Files to Create/Modify**:
 - `frontend/types/navigation.ts` (add drafts tool)
@@ -348,13 +348,13 @@ This document outlines the incremental implementation plan for building out the 
 **Dependencies**: Task 5.2, Task 5.3
 
 **Description**: Connect draft actions to office service and implement send/create functionality
-- [ ] Implement email sending via office service
-- [ ] Add calendar event creation via office service
-- [ ] Create document saving to Google Drive/OneDrive
-- [ ] Add draft discard functionality with confirmation
-- [ ] Implement draft auto-save and recovery
-- [ ] Add draft sharing and collaboration features
-- [ ] Create draft templates and quick actions
+- [x] Implement email sending via office service
+- [x] Add calendar event creation via office service
+- [x] Create document saving to Google Drive/OneDrive
+- [x] Add draft discard functionality with confirmation
+- [x] Implement draft auto-save and recovery
+- [x] Add draft sharing and collaboration features
+- [x] Create draft templates and quick actions
 
 **Files to Create/Modify**:
 - `frontend/components/draft/draft-actions.tsx`
