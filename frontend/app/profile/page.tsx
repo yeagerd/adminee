@@ -4,9 +4,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useStreamingSetting } from '@/hooks/use-streaming-setting';
 import { INTEGRATION_STATUS } from '@/lib/constants';
 import { gatewayClient, Integration } from '@/lib/gateway-client';
-import { Calendar, ExternalLink, Mail, Shield, User } from 'lucide-react';
+import { Calendar, ExternalLink, Mail, Settings, Shield, User } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
@@ -16,6 +18,7 @@ export default function ProfilePage() {
     const [integrations, setIntegrations] = useState<Integration[]>([]);
     const [loading, setLoading] = useState(true);
     const [lastFetchTime, setLastFetchTime] = useState<number>(0);
+    const { enableStreaming, updateStreamingSetting } = useStreamingSetting();
 
     // Cache duration: 5 minutes
     const CACHE_DURATION = 5 * 60 * 1000;
@@ -252,6 +255,36 @@ export default function ProfilePage() {
                                         Manage Integrations
                                     </Link>
                                 </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Settings */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Settings className="h-5 w-5" />
+                                Settings
+                            </CardTitle>
+                            <CardDescription>
+                                Configure your application preferences and development options
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="space-y-4">
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id="streaming"
+                                        checked={enableStreaming}
+                                        onCheckedChange={(checked) => updateStreamingSetting(checked as boolean)}
+                                    />
+                                    <label htmlFor="streaming" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                        Enable streaming (dev only)
+                                    </label>
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                    Enable real-time streaming responses in the chat interface. This is a development feature for testing streaming functionality.
+                                </p>
                             </div>
                         </CardContent>
                     </Card>
