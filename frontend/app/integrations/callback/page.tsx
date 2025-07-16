@@ -53,7 +53,7 @@ function IntegrationCallbackContent() {
                     setStatus('success');
                     // Redirect back to integrations page after a short delay
                     setTimeout(() => {
-                        router.push('/integrations');
+                        router.push('/integrations?oauth_return=true');
                     }, 2000);
                 } else {
                     setError(result?.error || 'Failed to complete OAuth flow');
@@ -102,7 +102,7 @@ function IntegrationCallbackContent() {
                     </CardHeader>
                     <CardContent>
                         <Button
-                            onClick={() => router.push('/integrations')}
+                            onClick={() => router.push('/integrations?oauth_return=true')}
                             className="w-full"
                         >
                             Back to Integrations
@@ -133,14 +133,14 @@ function IntegrationCallbackContent() {
                     )}
                     <div className="flex gap-2">
                         <Button
-                            onClick={() => router.push('/integrations')}
+                            onClick={() => router.push('/integrations?oauth_return=true')}
                             variant="outline"
                             className="flex-1"
                         >
                             Back to Integrations
                         </Button>
                         <Button
-                            onClick={() => router.push('/integrations')}
+                            onClick={() => router.push('/integrations?oauth_return=true')}
                             className="flex-1"
                         >
                             Try Again

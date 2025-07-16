@@ -7,7 +7,7 @@ authorization, and comprehensive error handling.
 
 import logging
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, Path, Query
 
@@ -335,6 +335,60 @@ async def check_current_user_integration_health(
     except Exception as e:
         logger.error(f"Unexpected error checking integration health: {e}")
         raise ServiceError(message="Failed to check integration health")
+
+
+@router.get(
+    "/me/integrations/{provider}/scopes",
+    summary="Get available OAuth scopes for provider",
+    description="Get the list of available OAuth scopes for a specific provider.",
+    responses={
+        200: {"description": "Scopes retrieved successfully"},
+        401: {"description": "Authentication required"},
+        404: {"description": "Provider not found"},
+    },
+)
+async def get_provider_scopes(
+    provider: IntegrationProvider = Path(..., description="OAuth provider"),
+    current_user_external_auth_id: str = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """
+    Get available OAuth scopes for a provider.
+
+    Returns the list of available scopes with their descriptions,
+    required status, and sensitivity level.
+    """
+    try:
+        from services.user.integrations.oauth_config import get_oauth_config
+
+        oauth_config = get_oauth_config()
+        provider_config = oauth_config.get_provider_config(provider)
+
+        if not provider_config:
+            raise NotFoundError("Provider", identifier=f"provider: {provider.value}")
+
+        scopes = []
+        for scope in provider_config.scopes:
+            scopes.append(
+                {
+                    "name": scope.name,
+                    "description": scope.description,
+                    "required": scope.required,
+                    "sensitive": scope.sensitive,
+                }
+            )
+
+        return {
+            "provider": provider.value,
+            "scopes": scopes,
+            "default_scopes": provider_config.default_scopes,
+        }
+
+    except NotFoundError as e:
+        logger.warning(f"Provider not found: {e.message}")
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error retrieving scopes: {e}")
+        raise ServiceError(message="Failed to retrieve scopes")
 
 
 @router.get(
