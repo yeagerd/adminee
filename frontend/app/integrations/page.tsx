@@ -143,6 +143,8 @@ export default function IntegrationsPage() {
         return Date.now() - lastFetchTime > CACHE_DURATION;
     }, [lastFetchTime, CACHE_DURATION]);
 
+
+
     const determinePreferredProvider = useCallback((integrations: Integration[]) => {
         // If user has active integrations, use the first one as preferred
         const activeIntegration = integrations.find(integration => integration.status === INTEGRATION_STATUS.ACTIVE);
@@ -262,6 +264,23 @@ export default function IntegrationsPage() {
             loadIntegrations();
         }
     }, [session, loadIntegrations]);
+
+    // Check if we're returning from an OAuth flow
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const oauthReturn = urlParams.get('oauth_return');
+
+        if (oauthReturn === 'true') {
+            // Clear the URL parameter
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.delete('oauth_return');
+            window.history.replaceState({}, '', newUrl.toString());
+
+            // Force refresh the integrations data
+            console.log('Detected OAuth return, forcing refresh...');
+            loadIntegrations(true);
+        }
+    }, [loadIntegrations]);
 
     // Handle window focus to refresh data if needed
     useEffect(() => {
