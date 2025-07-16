@@ -254,8 +254,7 @@ export function IntegrationsContent() {
             const preferred = determinePreferredProvider(integrationsData);
             setPreferredProvider(preferred);
 
-            // Auto-refresh expired tokens
-            await autoRefreshExpiredTokens(integrationsData);
+            // Auto-refresh expired tokens is now handled globally
         } catch (error: unknown) {
             console.error('Failed to load integrations:', error);
             setError('Failed to load integrations. Please try again.');
@@ -264,38 +263,6 @@ export function IntegrationsContent() {
             setIsRefreshing(false);
         }
     }, [integrations.length, shouldRefetch, determinePreferredProvider, isRefreshing]);
-
-    const autoRefreshExpiredTokens = useCallback(async (integrationsData: Integration[]) => {
-        const expiredIntegrations = integrationsData.filter(integration => {
-            // Check if integration has expired tokens and refresh token available
-            return integration.status === 'error' &&
-                integration.has_refresh_token &&
-                integration.token_expires_at &&
-                isTokenExpired(integration.token_expires_at);
-        });
-
-        if (expiredIntegrations.length > 0) {
-            console.log('Found expired integrations, auto-refreshing tokens:', expiredIntegrations.map(i => i.provider));
-
-            for (const integration of expiredIntegrations) {
-                try {
-                    console.log(`Auto-refreshing tokens for ${integration.provider}...`);
-                    await gatewayClient.refreshIntegrationTokens(integration.provider);
-                    console.log(`Successfully auto-refreshed tokens for ${integration.provider}`);
-                } catch (error) {
-                    console.error(`Failed to auto-refresh tokens for ${integration.provider}:`, error);
-                    // Don't show error to user for auto-refresh failures
-                }
-            }
-
-            // Reload integrations after refresh attempts
-            console.log('Reloading integrations after auto-refresh...');
-            const updatedData = await gatewayClient.getIntegrations();
-            const updatedIntegrations = updatedData.integrations || [];
-            setIntegrations(updatedIntegrations);
-            setLastFetchTime(Date.now());
-        }
-    }, []);
 
     useEffect(() => {
         if (session) {
