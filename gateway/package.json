@@ -3,24 +3,31 @@
     "version": "1.0.0",
     "description": "Express API Gateway for Briefly with NextAuth integration",
     "main": "express_gateway.tsx",
+    "type": "module",
     "scripts": {
-        "start": "node express_gateway.tsx",
-        "dev": "nodemon express_gateway.tsx",
+        "start": "tsx express_gateway.tsx",
+        "dev": "nodemon --exec tsx express_gateway.tsx",
         "test": "node test_gateway.js"
     },
     "dependencies": {
-        "express": "^4.18.2",
-        "http-proxy-middleware": "^2.0.6",
-        "jsonwebtoken": "^9.0.2",
         "cookie-parser": "^1.4.6",
         "cors": "^2.8.5",
+        "dotenv": "^16.3.1",
+        "express": "^4.18.2",
         "express-rate-limit": "^7.1.5",
         "helmet": "^7.1.0",
-        "dotenv": "^16.3.1"
+        "http-proxy-middleware": "^2.0.6",
+        "jsonwebtoken": "^9.0.2"
     },
     "devDependencies": {
+        "@types/cookie-parser": "^1.4.9",
+        "@types/cors": "^2.8.19",
+        "@types/express": "^5.0.3",
+        "@types/jsonwebtoken": "^9.0.10",
+        "@types/node": "^20.10.0",
         "nodemon": "^3.0.2",
-        "@types/node": "^20.10.0"
+        "tsx": "^4.6.0",
+        "typescript": "^5.3.0"
     },
     "keywords": [
         "api-gateway",
