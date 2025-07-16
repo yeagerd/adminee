@@ -1,6 +1,6 @@
 import UserMenu from "@/components/auth/user-menu";
 import { Button } from "@/components/ui/button";
-import { ListChecks, Sailboat } from "lucide-react";
+import { Sailboat, Settings } from "lucide-react";
 import Link from "next/link";
 
 export default function Navbar() {
@@ -15,9 +15,8 @@ export default function Navbar() {
                 </div>
                 <div className="flex items-center gap-4 min-w-0">
                     <Button variant="outline" size="sm" asChild>
-                        <Link href="/tasks">
-                            <ListChecks className="h-4 w-4 mr-2" />
-                            Tasks
+                        <Link href="/settings">
+                            <Settings className="h-4 w-4" />
                         </Link>
                     </Button>
                     <UserMenu />
