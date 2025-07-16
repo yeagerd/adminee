@@ -149,9 +149,6 @@ logging.basicConfig(
 )
 logger = get_logger(__name__)
 
-# Set specific loggers for visibility
-logger.setLevel(logging.INFO)
-
 # Suppress noisy loggers
 for logger_name in [
     "aiosqlite",
