@@ -163,15 +163,20 @@ export default function IntegrationsPage() {
     const loadProviderScopes = useCallback(async (provider: string) => {
         try {
             if (providerScopes[provider]) {
+                console.log(`Using cached scopes for ${provider}:`, providerScopes[provider].map(s => s.name));
                 return providerScopes[provider];
             }
 
+            console.log(`Loading scopes for ${provider}...`);
             const response = await gatewayClient.getProviderScopes(provider);
             const scopes = response.scopes;
+            console.log(`Loaded scopes for ${provider}:`, scopes.map(s => s.name));
+
             setProviderScopes(prev => ({ ...prev, [provider]: scopes }));
 
             // For new/disconnected integrations, select ALL available scopes by default
             const allScopeNames = scopes.map(scope => scope.name);
+            console.log(`Setting selected scopes to all scopes:`, allScopeNames);
             setSelectedScopes(allScopeNames);
 
             return scopes;
@@ -300,8 +305,15 @@ export default function IntegrationsPage() {
             setConnectingProvider(config.provider);
             setError(null);
 
-            // Use selected scopes if available, otherwise use default scopes
-            const scopesToUse = selectedScopes.length > 0 ? selectedScopes : config.scopes;
+            // Use selected scopes if available, otherwise load and use all available scopes
+            let scopesToUse = selectedScopes;
+            if (scopesToUse.length === 0) {
+                // Load provider scopes and use all of them
+                const scopes = await loadProviderScopes(config.provider);
+                scopesToUse = scopes.map(scope => scope.name);
+            }
+
+            console.log(`Starting OAuth flow for ${config.provider} with scopes:`, scopesToUse);
 
             const response = await gatewayClient.startOAuthFlow(
                 config.provider,
