@@ -190,13 +190,13 @@ export default function DemosPage() {
                         <CardContent>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 <Button variant="outline" asChild>
-                                    <Link href="/integrations">
+                                    <Link href="/settings?page=integrations">
                                         <Shield className="h-4 w-4 mr-2" />
                                         Manage Integrations
                                     </Link>
                                 </Button>
                                 <Button variant="outline" asChild>
-                                    <Link href="/profile">
+                                    <Link href="/settings?page=profile">
                                         <User className="h-4 w-4 mr-2" />
                                         View Profile
                                     </Link>
