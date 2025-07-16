@@ -1,12 +1,14 @@
 'use client';
 
+import { OAuthScope, ScopeSelector } from '@/components/integrations/scope-selector';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { INTEGRATION_STATUS } from '@/lib/constants';
 import { gatewayClient, Integration, OAuthStartResponse } from '@/lib/gateway-client';
-import { AlertCircle, Calendar, CheckCircle, Mail, RefreshCw, Shield, User, XCircle } from 'lucide-react';
+import { AlertCircle, Calendar, CheckCircle, Mail, RefreshCw, Settings, Shield, User, XCircle } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
@@ -26,10 +28,7 @@ const INTEGRATION_CONFIGS: IntegrationConfig[] = [
         name: 'Google',
         description: 'Connect your Gmail and Google Calendar',
         icon: <Calendar className="h-5 w-5" />,
-        scopes: [
-            'https://www.googleapis.com/auth/gmail.readonly',
-            'https://www.googleapis.com/auth/calendar'
-        ],
+        scopes: [], // Will be loaded from backend
         color: 'bg-blue-500'
     },
     {
@@ -37,11 +36,7 @@ const INTEGRATION_CONFIGS: IntegrationConfig[] = [
         name: 'Microsoft',
         description: 'Connect your Outlook and Microsoft Calendar',
         icon: <Mail className="h-5 w-5" />,
-        scopes: [
-            'https://graph.microsoft.com/User.Read',
-            'https://graph.microsoft.com/Calendars.ReadWrite',
-            'https://graph.microsoft.com/Mail.Read'
-        ],
+        scopes: [], // Will be loaded from backend
         color: 'bg-orange-500'
     }
 ];
@@ -88,6 +83,43 @@ function getTimeUntilExpiration(expiresAt: string): string {
     }
 }
 
+function getScopeDescription(scope: string): string {
+    // Microsoft Graph API scopes - ReadWrite only
+    if (scope === 'https://graph.microsoft.com/Mail.ReadWrite') return 'Read and send email messages';
+    if (scope === 'https://graph.microsoft.com/Calendars.ReadWrite') return 'Read and create calendar events';
+    if (scope === 'https://graph.microsoft.com/Files.ReadWrite') return 'Read and save files to OneDrive';
+    if (scope === 'https://graph.microsoft.com/User.Read') return 'Access detailed user profile (job title, department, manager, contact info)';
+    if (scope === 'https://graph.microsoft.com/User.ReadWrite') return 'Read and write user profile';
+    if (scope === 'https://graph.microsoft.com/Contacts.ReadWrite') return 'Read and manage contacts';
+    if (scope === 'https://graph.microsoft.com/Tasks.ReadWrite') return 'Read and write tasks';
+    if (scope === 'https://graph.microsoft.com/Notes.ReadWrite') return 'Read and write OneNote notebooks';
+
+    // Google API scopes
+    if (scope.includes('gmail')) {
+        if (scope.includes('readonly')) return 'Read Gmail messages';
+        if (scope.includes('modify')) return 'Read and write Gmail messages';
+        if (scope.includes('send')) return 'Send Gmail messages';
+        if (scope.includes('compose')) return 'Compose Gmail messages';
+    }
+    if (scope.includes('calendar')) {
+        if (scope.includes('readonly')) return 'Read Google Calendar events';
+        if (scope.includes('events')) return 'Read and write Google Calendar events';
+    }
+    if (scope.includes('drive')) {
+        if (scope.includes('readonly')) return 'Read Google Drive files';
+        if (scope.includes('file')) return 'Read and write Google Drive files';
+    }
+
+    // Standard OAuth scopes
+    if (scope === 'openid') return 'OpenID Connect authentication';
+    if (scope === 'email') return 'Access email address';
+    if (scope === 'profile') return 'Access basic profile information (name, picture)';
+    if (scope === 'offline_access') return 'Access when you\'re not present';
+
+    // Fallback
+    return scope;
+}
+
 export default function IntegrationsPage() {
     const { data: session, status } = useSession();
     const [integrations, setIntegrations] = useState<Integration[]>([]);
@@ -98,12 +130,20 @@ export default function IntegrationsPage() {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [preferredProvider, setPreferredProvider] = useState<string | null>(null);
 
+    // Scope selection state
+    const [selectedScopes, setSelectedScopes] = useState<string[]>([]);
+    const [providerScopes, setProviderScopes] = useState<Record<string, OAuthScope[]>>({});
+    const [scopeDialogOpen, setScopeDialogOpen] = useState(false);
+    const [currentProvider, setCurrentProvider] = useState<string | null>(null);
+
     // Cache duration: 5 minutes
     const CACHE_DURATION = 5 * 60 * 1000;
 
     const shouldRefetch = useCallback(() => {
         return Date.now() - lastFetchTime > CACHE_DURATION;
     }, [lastFetchTime, CACHE_DURATION]);
+
+
 
     const determinePreferredProvider = useCallback((integrations: Integration[]) => {
         // If user has active integrations, use the first one as preferred
@@ -119,6 +159,77 @@ export default function IntegrationsPage() {
 
         return null;
     }, []);
+
+    const loadProviderScopes = useCallback(async (provider: string) => {
+        try {
+            if (providerScopes[provider]) {
+                console.log(`Using cached scopes for ${provider}:`, providerScopes[provider].map(s => s.name));
+                return providerScopes[provider];
+            }
+
+            console.log(`Loading scopes for ${provider}...`);
+            const response = await gatewayClient.getProviderScopes(provider);
+            const scopes = response.scopes;
+            console.log(`Loaded scopes for ${provider}:`, scopes.map(s => s.name));
+
+            setProviderScopes(prev => ({ ...prev, [provider]: scopes }));
+
+            // For new/disconnected integrations, select ALL available scopes by default
+            const allScopeNames = scopes.map(scope => scope.name);
+            console.log(`Setting selected scopes to all scopes:`, allScopeNames);
+            setSelectedScopes(allScopeNames);
+
+            return scopes;
+        } catch (error) {
+            console.error(`Failed to load scopes for ${provider}:`, error);
+            setError(`Failed to load scopes for ${provider}. Please try again.`);
+            return [];
+        }
+    }, [providerScopes]);
+
+    const handleScopeSelection = (provider: string) => {
+        setCurrentProvider(provider);
+        setScopeDialogOpen(true);
+
+        // Load provider scopes and set initial selection
+        loadProviderScopes(provider).then(() => {
+            const existingIntegration = getIntegrationStatus(provider);
+            if (existingIntegration && existingIntegration.status === INTEGRATION_STATUS.ACTIVE && existingIntegration.scopes) {
+                // For existing active integrations, merge current scopes with any missing default scopes
+                // Also convert any Read-only scopes to ReadWrite scopes
+                const currentScopes = new Set(existingIntegration.scopes);
+                const availableScopes = providerScopes[provider] || [];
+                const defaultScopeNames = availableScopes.map(scope => scope.name);
+
+                // Convert Read-only scopes to ReadWrite scopes
+                const convertedScopes = new Set<string>();
+                for (const scope of currentScopes) {
+                    if (scope === 'https://graph.microsoft.com/Mail.Read') {
+                        convertedScopes.add('https://graph.microsoft.com/Mail.ReadWrite');
+                    } else if (scope === 'https://graph.microsoft.com/Calendars.Read') {
+                        convertedScopes.add('https://graph.microsoft.com/Calendars.ReadWrite');
+                    } else if (scope === 'https://graph.microsoft.com/Files.Read') {
+                        convertedScopes.add('https://graph.microsoft.com/Files.ReadWrite');
+                    } else if (scope === 'https://graph.microsoft.com/Contacts.Read') {
+                        convertedScopes.add('https://graph.microsoft.com/Contacts.ReadWrite');
+                    } else {
+                        convertedScopes.add(scope);
+                    }
+                }
+
+                // Add any missing default scopes to the current selection
+                const mergedScopes = [...convertedScopes];
+                for (const scopeName of defaultScopeNames) {
+                    if (!convertedScopes.has(scopeName)) {
+                        mergedScopes.push(scopeName);
+                    }
+                }
+                setSelectedScopes(mergedScopes);
+            }
+            // For new/disconnected integrations, all scopes will be selected by default
+            // (this is handled in the loadProviderScopes function)
+        });
+    };
 
     const loadIntegrations = useCallback(async (forceRefresh = false) => {
         // Don't refetch if we have recent data and not forcing refresh
@@ -159,6 +270,23 @@ export default function IntegrationsPage() {
         }
     }, [session, loadIntegrations]);
 
+    // Check if we're returning from an OAuth flow
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const oauthReturn = urlParams.get('oauth_return');
+
+        if (oauthReturn === 'true') {
+            // Clear the URL parameter
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.delete('oauth_return');
+            window.history.replaceState({}, '', newUrl.toString());
+
+            // Force refresh the integrations data
+            console.log('Detected OAuth return, forcing refresh...');
+            loadIntegrations(true);
+        }
+    }, [loadIntegrations]);
+
     // Handle window focus to refresh data if needed
     useEffect(() => {
         const handleWindowFocus = () => {
@@ -177,9 +305,19 @@ export default function IntegrationsPage() {
             setConnectingProvider(config.provider);
             setError(null);
 
+            // Use selected scopes if available, otherwise load and use all available scopes
+            let scopesToUse = selectedScopes;
+            if (scopesToUse.length === 0) {
+                // Load provider scopes and use all of them
+                const scopes = await loadProviderScopes(config.provider);
+                scopesToUse = scopes.map(scope => scope.name);
+            }
+
+            console.log(`Starting OAuth flow for ${config.provider} with scopes:`, scopesToUse);
+
             const response = await gatewayClient.startOAuthFlow(
                 config.provider,
-                config.scopes
+                scopesToUse
             ) as OAuthStartResponse;
 
             // Update preferred provider when connecting
@@ -351,7 +489,7 @@ export default function IntegrationsPage() {
                             .filter(config => !preferredProvider || config.provider === preferredProvider)
                             .map((config) => {
                                 const integration = getIntegrationStatus(config.provider);
-                                const hasIntegration = integration !== undefined;
+                                const hasIntegration = integration !== undefined && integration.status === INTEGRATION_STATUS.ACTIVE;
                                 const isConnecting = connectingProvider === config.provider;
 
                                 // Debug logging
@@ -386,22 +524,27 @@ export default function IntegrationsPage() {
                                             <div>
                                                 <h4 className="text-sm font-medium text-gray-700 mb-2">Permissions:</h4>
                                                 <div className="space-y-1">
-                                                    {config.scopes.map((scope, index) => (
-                                                        <div key={index} className="text-xs text-gray-600">
-                                                            • {scope.includes('calendar') ? 'Calendar access' :
-                                                                scope.includes('mail') || scope.includes('gmail') ? 'Email access' :
-                                                                    scope.includes('User.Read') ? 'Profile access' : scope}
-                                                        </div>
-                                                    ))}
+                                                    {hasIntegration ? (
+                                                        // Show actual granted scopes for active integration
+                                                        integration.scopes.map((scope, index) => (
+                                                            <div key={index} className="text-xs text-gray-600">
+                                                                • {getScopeDescription(scope)}
+                                                            </div>
+                                                        ))
+                                                    ) : (
+                                                        // Show default scopes for new/disconnected integration
+                                                        config.scopes.map((scope, index) => (
+                                                            <div key={index} className="text-xs text-gray-600">
+                                                                • {getScopeDescription(scope)}
+                                                            </div>
+                                                        ))
+                                                    )}
                                                 </div>
                                             </div>
 
                                             {/* Status Details */}
                                             {integration && (
                                                 <div className="space-y-2">
-                                                    <div className="text-xs text-gray-600">
-                                                        <span className="font-medium">Scopes:</span> {integration.scopes.join(', ')}
-                                                    </div>
                                                     {integration.token_expires_at && (
                                                         <div className="text-xs text-gray-600">
                                                             <span className="font-medium">Access token expires:</span>{' '}
@@ -452,23 +595,16 @@ export default function IntegrationsPage() {
                                             {/* Actions */}
                                             <div className="flex gap-2">
                                                 {!hasIntegration ? (
-                                                    <Button
-                                                        onClick={() => handleConnect(config)}
-                                                        disabled={isConnecting || loading}
-                                                        className="flex-1"
-                                                    >
-                                                        {isConnecting ? (
-                                                            <>
-                                                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                                                                Connecting...
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <Shield className="h-4 w-4 mr-2" />
-                                                                Connect
-                                                            </>
-                                                        )}
-                                                    </Button>
+                                                    <>
+                                                        <Button
+                                                            onClick={() => handleScopeSelection(config.provider)}
+                                                            disabled={loading}
+                                                            className="flex-1"
+                                                        >
+                                                            <Shield className="h-4 w-4 mr-2" />
+                                                            Connect
+                                                        </Button>
+                                                    </>
                                                 ) : (
                                                     <>
                                                         {integration?.status === INTEGRATION_STATUS.ERROR && !integration?.has_refresh_token ? (
@@ -492,6 +628,14 @@ export default function IntegrationsPage() {
                                                                 Refresh
                                                             </Button>
                                                         )}
+                                                        <Button
+                                                            variant="outline"
+                                                            onClick={() => handleScopeSelection(config.provider)}
+                                                            disabled={loading}
+                                                            size="sm"
+                                                        >
+                                                            <Settings className="h-4 w-4" />
+                                                        </Button>
                                                         <Button
                                                             variant="destructive"
                                                             onClick={() => handleDisconnect(config.provider)}
@@ -538,6 +682,57 @@ export default function IntegrationsPage() {
                         </CardContent>
                     </Card>
                 </div>
+
+                {/* Scope Selection Dialog */}
+                <Dialog open={scopeDialogOpen} onOpenChange={setScopeDialogOpen}>
+                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle>
+                                {currentProvider && getIntegrationStatus(currentProvider)?.status === INTEGRATION_STATUS.ACTIVE
+                                    ? `Modify Permissions for ${currentProvider.toUpperCase()}`
+                                    : `Connect ${currentProvider?.toUpperCase()} Account`
+                                }
+                            </DialogTitle>
+                            <DialogDescription>
+                                {currentProvider && getIntegrationStatus(currentProvider)?.status === INTEGRATION_STATUS.ACTIVE
+                                    ? "Modify the permissions granted to Briefly. Required permissions are automatically included."
+                                    : "Select which permissions you'd like to grant to Briefly. All permissions are selected by default for the best experience."
+                                }
+                            </DialogDescription>
+                        </DialogHeader>
+                        {currentProvider && providerScopes[currentProvider] && (
+                            <ScopeSelector
+                                scopes={providerScopes[currentProvider]}
+                                selectedScopes={selectedScopes}
+                                onScopeChange={setSelectedScopes}
+                            />
+                        )}
+                        <div className="flex justify-end gap-2 pt-4">
+                            <Button
+                                variant="outline"
+                                onClick={() => setScopeDialogOpen(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={() => {
+                                    setScopeDialogOpen(false);
+                                    if (currentProvider) {
+                                        const config = INTEGRATION_CONFIGS.find(c => c.provider === currentProvider);
+                                        if (config) {
+                                            handleConnect(config);
+                                        }
+                                    }
+                                }}
+                            >
+                                {currentProvider && getIntegrationStatus(currentProvider)?.status === INTEGRATION_STATUS.ACTIVE
+                                    ? "Update Permissions"
+                                    : "Connect Account"
+                                }
+                            </Button>
+                        </div>
+                    </DialogContent>
+                </Dialog>
             </div>
         </div>
     );

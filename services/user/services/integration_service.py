@@ -14,7 +14,7 @@ from sqlmodel import select
 
 from services.common.http_errors import NotFoundError, ServiceError, ValidationError
 from services.user.database import get_async_session
-from services.user.integrations.oauth_config import get_oauth_config
+from services.user.integrations.oauth_config import OAuthState, get_oauth_config
 from services.user.models.integration import (
     Integration,
     IntegrationProvider,
@@ -338,6 +338,7 @@ class IntegrationService:
                 provider=provider,
                 tokens=tokens,
                 user_info=user_info,
+                oauth_state=oauth_state,
             )
 
             # Store encrypted tokens
@@ -374,14 +375,17 @@ class IntegrationService:
                 },
             )
 
+            # Use the scopes from the OAuth state (what we actually requested)
+            # rather than what the provider returns, as some providers don't include
+            # all requested scopes in their token response
+            granted_scopes = oauth_state.scopes
+
             return OAuthCallbackResponse(
                 success=True,
                 integration_id=integration.id,
                 provider=provider,
                 status=IntegrationStatus.ACTIVE,
-                scopes=(
-                    list(tokens.get("scope", "").split()) if tokens.get("scope") else []
-                ),
+                scopes=granted_scopes,
                 external_user_info=user_info,
                 error=None,
             )
@@ -1144,6 +1148,7 @@ class IntegrationService:
         provider: IntegrationProvider,
         tokens: Dict[str, Any],
         user_info: Dict[str, Any],
+        oauth_state: OAuthState,
     ) -> Integration:
         """Create or update integration record."""
         async_session = get_async_session()
@@ -1156,10 +1161,9 @@ class IntegrationService:
             )
             integration = result.scalar_one_or_none()
 
-            scopes_dict = {}
-            if tokens.get("scope"):
-                # Convert scope string to dictionary
-                scopes_dict = {scope: True for scope in tokens["scope"].split()}
+            # Use the scopes from the OAuth state (what we actually requested)
+            # rather than what the provider returns in the token response
+            scopes_dict = {scope: True for scope in oauth_state.scopes}
 
             integration_data = {
                 "provider_user_id": user_info.get("id"),
