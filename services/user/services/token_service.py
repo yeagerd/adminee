@@ -230,7 +230,18 @@ class TokenService:
                                     EncryptedToken.token_type == TokenType.ACCESS,
                                 )
                             )
-                            access_token_record = token_result.scalar_one()
+                            access_token_record = token_result.scalar_one_or_none()
+                            if not access_token_record:
+                                return InternalTokenResponse(
+                                    success=False,
+                                    provider=provider,
+                                    user_id=user_id,
+                                    integration_id=integration.id,
+                                    error="No access token found after refresh",
+                                    access_token=None,
+                                    refresh_token=None,
+                                    expires_at=None,
+                                )
                     else:
                         return InternalTokenResponse(
                             success=False,
