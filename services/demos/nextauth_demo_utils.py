@@ -406,7 +406,7 @@ def compare_auth_approaches(
     print("  • NextAuth: Self-contained authentication system")
 
 
-async def demonstrate_nextauth_integration() -> None:
+async def demonstrate_nextauth_integration() -> Optional[str]:
     """
     Demonstrate how NextAuth would integrate with Briefly services.
     """
