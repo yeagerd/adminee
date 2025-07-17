@@ -111,7 +111,7 @@ class BaseUserManagementIntegrationTest(BaseUserManagementTest):
         # Clear app overrides
         if hasattr(self, "app"):
             self.app.dependency_overrides.clear()
-        if hasattr(self, "_patcher"):
+        if hasattr(self, "_patcher") and hasattr(self._patcher, "stop"):
             self._patcher.stop()
 
         # Call parent teardown
@@ -133,11 +133,12 @@ class BaseUserManagementIntegrationTest(BaseUserManagementTest):
         # ):
         #     return None
 
-        mock_verify_ownership_instance = AsyncMock(return_value=None)
+        async def mock_verify_user_ownership(current_user_id: str, resource_user_id: str):
+            pass
 
         self.app.dependency_overrides[get_current_user] = mock_get_current_user
         patcher = patch(
             "services.user.auth.nextauth.verify_user_ownership",  # Changed here
-            new=mock_verify_ownership_instance,
+            new=mock_verify_user_ownership,
         )
         self._patcher = patcher.start()
