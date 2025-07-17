@@ -88,6 +88,10 @@ strict_equality = false
 namespace_packages = true
 explicit_package_bases = true
 ignore_missing_imports = true
+exclude = [
+    ".*/tests/.*",
+    ".*/test_.*",
+]
 
 # Disable call-arg errors only for SQLModel-related issues
 [[tool.mypy.overrides]]

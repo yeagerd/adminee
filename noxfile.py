@@ -48,7 +48,7 @@ def typecheck(session: nox.Session) -> None:
     session.install("-e", "services/user")
     session.install("-e", "services/chat")
     session.install("-e", "services/office")
-    session.run("mypy", "services/common")
+    session.run("mypy", "services")
     session.run("npx", "pyright", "services/", external=True)
 
 
