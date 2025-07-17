@@ -54,6 +54,15 @@ def get_async_database_url(url: str) -> str:
         return url
 
 
+# Create a separate registry for chat service models to avoid conflicts with other services
+chat_registry = registry()
+
+
+# Create a custom SQLModel base that uses our isolated registry
+class ChatSQLModel(SQLModel, registry=chat_registry):
+    pass
+
+
 # Global variables for lazy initialization
 _engine = None
 _async_session = None
@@ -82,7 +91,7 @@ def get_async_session_factory() -> Any:
     return _async_session
 
 
-class Thread(SQLModel, table=True):
+class Thread(ChatSQLModel, table=True):
     """
     Database model for chat threads.
 
@@ -134,7 +143,7 @@ class Thread(SQLModel, table=True):
     user_drafts: list["UserDraft"] = Relationship(back_populates="thread")
 
 
-class Message(SQLModel, table=True):
+class Message(ChatSQLModel, table=True):
     """
     Database model for chat messages.
 
@@ -188,7 +197,7 @@ class Message(SQLModel, table=True):
     thread: Optional[Thread] = Relationship(back_populates="messages")
 
 
-class Draft(SQLModel, table=True):
+class Draft(ChatSQLModel, table=True):
     """
     Database model for draft content (emails, calendar events, etc.).
 
@@ -236,7 +245,7 @@ class Draft(SQLModel, table=True):
     thread: Optional[Thread] = Relationship(back_populates="drafts")
 
 
-class UserDraft(SQLModel, table=True):
+class UserDraft(ChatSQLModel, table=True):
     """
     Database model for user-created draft content.
 
@@ -287,7 +296,7 @@ class UserDraft(SQLModel, table=True):
 # Ensure tables are created on import
 async def init_db() -> None:
     async with get_engine().begin() as conn:
-        await conn.run_sync(registry().metadata.create_all)
+        await conn.run_sync(chat_registry.metadata.create_all)
 
 
 # Initialize database synchronously for backward compatibility
