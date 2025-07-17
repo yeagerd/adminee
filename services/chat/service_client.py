@@ -5,7 +5,8 @@ Provides HTTP client functionality to call User Management Service and Office Se
 with proper authentication using API keys.
 """
 
-from typing import Any, Dict, List, Optional
+import types
+from typing import Any, Dict, List, Optional, Type
 
 import httpx
 
@@ -26,10 +27,11 @@ class ServiceClient:
         self.http_client = httpx.AsyncClient(timeout=self.timeout)
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+    async def __aexit__(self, exc_type: Optional[Type[BaseException]], exc_val: Optional[BaseException], exc_tb: Optional[types.TracebackType]) -> None:  # type: ignore[override]
         """Async context manager exit."""
         if self.http_client:
             await self.http_client.aclose()
+        return None
 
     def _get_headers_for_service(self, service_name: str) -> Dict[str, str]:
         """Get authentication headers for a specific service."""

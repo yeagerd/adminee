@@ -735,10 +735,10 @@ def make_tools() -> Dict[str, FunctionTool]:
 
 
 class ToolRegistry:
-    def __init__(self):
+    def __init__(self) -> None:
         self._tools = make_tools()
 
-    def get_tool(self, tool_name: str):
+    def get_tool(self, tool_name: str) -> Any:
         return self._tools.get(tool_name)
 
     def list_tools(self) -> list[str]:
@@ -753,7 +753,7 @@ class ToolRegistry:
                 schemas[name] = {}
         return schemas
 
-    def execute_tool(self, tool_name: str, **kwargs):
+    def execute_tool(self, tool_name: str, **kwargs: Any) -> ToolOutput:
         tool = self.get_tool(tool_name)
         if not tool:
             return ToolOutput(

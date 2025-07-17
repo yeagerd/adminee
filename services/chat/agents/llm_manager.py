@@ -22,11 +22,11 @@ logger = logging.getLogger(__name__)
 class LoggingLiteLLM(LlamaLiteLLM):
     """A wrapper around LlamaLiteLLM that logs all prompts and responses."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._prompt_logger = logging.getLogger(f"{__name__}.prompts")
 
-    def _log_messages(self, messages, method_name: str):
+    def _log_messages(self, messages: Any, method_name: str) -> None:
         """Log the messages being sent to the LLM."""
         self._prompt_logger.info(f"=== {method_name.upper()} LLM CALL ===")
         self._prompt_logger.info(f"Model: {getattr(self, 'model', 'unknown')}")
@@ -57,7 +57,7 @@ class LoggingLiteLLM(LlamaLiteLLM):
 
         self._prompt_logger.info("=== END LLM CALL ===")
 
-    def _log_response(self, response, method_name: str):
+    def _log_response(self, response: Any, method_name: str) -> None:
         """Log the response from the LLM."""
         self._prompt_logger.info(f"=== {method_name.upper()} LLM RESPONSE ===")
         if hasattr(response, "content"):
@@ -68,21 +68,21 @@ class LoggingLiteLLM(LlamaLiteLLM):
             self._prompt_logger.info(f"Raw response: {response}")
         self._prompt_logger.info("=== END LLM RESPONSE ===")
 
-    def chat(self, messages, **kwargs):
+    def chat(self, messages: Any, **kwargs: Any) -> Any:
         """Override chat to add logging."""
         self._log_messages(messages, "chat")
         response = super().chat(messages, **kwargs)
         self._log_response(response, "chat")
         return response
 
-    async def achat(self, messages, **kwargs):
+    async def achat(self, messages: Any, **kwargs: Any) -> Any:
         """Override async chat to add logging."""
         self._log_messages(messages, "achat")
         response = await super().achat(messages, **kwargs)
         self._log_response(response, "achat")
         return response
 
-    def complete(self, prompt, **kwargs):
+    def complete(self, prompt: Any, **kwargs: Any) -> Any:
         """Override complete to add logging."""
         self._prompt_logger.info("=== COMPLETE LLM CALL ===")
         self._prompt_logger.info(f"Model: {getattr(self, 'model', 'unknown')}")
@@ -97,7 +97,7 @@ class LoggingLiteLLM(LlamaLiteLLM):
 
         return response
 
-    async def acomplete(self, prompt, **kwargs):
+    async def acomplete(self, prompt: Any, **kwargs: Any) -> Any:
         """Override async complete to add logging."""
         self._prompt_logger.info("=== ACOMPLETE LLM CALL ===")
         self._prompt_logger.info(f"Model: {getattr(self, 'model', 'unknown')}")
@@ -116,31 +116,31 @@ class LoggingLiteLLM(LlamaLiteLLM):
 class LoggingFunctionCallingLLM(FunctionCallingLLM):
     """A FunctionCallingLLM with prompt/response logging."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         # Create the underlying LLM instance
         self._llm = LlamaLiteLLM(*args, **kwargs)
         self._prompt_logger = logging.getLogger(f"{__name__}.prompts")
 
-    def chat(self, messages, **kwargs):
+    def chat(self, messages: Any, **kwargs: Any) -> Any:
         self._prompt_logger.info(f"=== CHAT LLM CALL ===\nMessages: {messages}")
         response = self._llm.chat(messages, **kwargs)
         self._prompt_logger.info(f"=== CHAT LLM RESPONSE ===\nResponse: {response}")
         return response
 
-    async def achat(self, messages, **kwargs):
+    async def achat(self, messages: Any, **kwargs: Any) -> Any:
         self._prompt_logger.info(f"=== ACHAT LLM CALL ===\nMessages: {messages}")
         response = await self._llm.achat(messages, **kwargs)
         self._prompt_logger.info(f"=== ACHAT LLM RESPONSE ===\nResponse: {response}")
         return response
 
-    def complete(self, prompt, **kwargs):
+    def complete(self, prompt: Any, **kwargs: Any) -> Any:
         self._prompt_logger.info(f"=== COMPLETE LLM CALL ===\nPrompt: {prompt}")
         response = self._llm.complete(prompt, **kwargs)
         self._prompt_logger.info(f"=== COMPLETE LLM RESPONSE ===\nResponse: {response}")
         return response
 
-    async def acomplete(self, prompt, **kwargs):
+    async def acomplete(self, prompt: Any, **kwargs: Any) -> Any:
         self._prompt_logger.info(f"=== ACOMPLETE LLM CALL ===\nPrompt: {prompt}")
         response = await self._llm.acomplete(prompt, **kwargs)
         self._prompt_logger.info(
@@ -153,24 +153,24 @@ class LoggingFunctionCallingLLM(FunctionCallingLLM):
     def metadata(self) -> Any:
         return self._llm.metadata
 
-    def _prepare_chat_with_tools(self, *args, **kwargs):
+    def _prepare_chat_with_tools(self, *args: Any, **kwargs: Any) -> Any:
         return self._llm._prepare_chat_with_tools(*args, **kwargs)
 
-    def stream_chat(self, *args, **kwargs):
+    def stream_chat(self, *args: Any, **kwargs: Any) -> Any:
         return self._llm.stream_chat(*args, **kwargs)
 
-    async def astream_chat(self, *args, **kwargs):
+    async def astream_chat(self, *args: Any, **kwargs: Any) -> Any:
         return await self._llm.astream_chat(*args, **kwargs)
 
-    def stream_complete(self, *args, **kwargs):
+    def stream_complete(self, *args: Any, **kwargs: Any) -> Any:
         return self._llm.stream_complete(*args, **kwargs)
 
-    async def astream_complete(self, *args, **kwargs):
+    async def astream_complete(self, *args: Any, **kwargs: Any) -> Any:
         return await self._llm.astream_complete(*args, **kwargs)
 
     def get_tool_calls_from_response(
-        self, response, error_on_no_tool_call=True, **kwargs
-    ):
+        self, response: Any, error_on_no_tool_call: bool = True, **kwargs: Any
+    ) -> Any:
         """Get tool calls from response."""
         return self._llm.get_tool_calls_from_response(
             response, error_on_no_tool_call, **kwargs
@@ -182,7 +182,7 @@ class FakeLLM(FunctionCallingLLM):
 
     model_config = {"arbitrary_types_allowed": True}
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._llm = LlamaLiteLLM(model="fake-model", **kwargs)
         self._metadata = {
@@ -193,16 +193,16 @@ class FakeLLM(FunctionCallingLLM):
         logger.warning("Using FakeLLM - no actual LLM calls are being made")
 
     @property
-    def llm(self):
+    def llm(self) -> Any:
         return self._llm
 
     @property
-    def metadata(self):
+    def metadata(self) -> Any:
         """Return LLM metadata."""
 
         # Create a simple object with the required attributes
         class SimpleMetadata:
-            def __init__(self):
+            def __init__(self) -> None:
                 self.model_name = "fake-llm"
                 self.is_chat_model = True
                 self.is_function_calling_model = True
@@ -247,12 +247,14 @@ class FakeLLM(FunctionCallingLLM):
 
     def _stream_chat(
         self, messages: Sequence[Union[ChatMessage, Dict[str, Any]]], **kwargs: Any
-    ):
+    ) -> Generator[ChatMessage, None, None]:
         """Fake stream chat method."""
         response = self._chat(messages, **kwargs)
         yield response
 
-    def _stream_complete(self, prompt: str, **kwargs: Any):
+    def _stream_complete(
+        self, prompt: str, **kwargs: Any
+    ) -> Generator[str, None, None]:
         """Fake stream complete method."""
         yield self._complete(prompt, **kwargs)
 
@@ -327,12 +329,16 @@ class FakeLLM(FunctionCallingLLM):
         """Async fake complete method that just echoes back the prompt."""
         return self.complete(prompt, formatted=formatted, **kwargs)
 
-    def stream_chat(self, messages: Sequence[ChatMessage], **kwargs: Any):
+    def stream_chat(
+        self, messages: Sequence[ChatMessage], **kwargs: Any
+    ) -> Generator[ChatResponse, None, None]:
         """Fake stream chat method."""
         response = self.chat(messages, **kwargs)
         yield response
 
-    async def astream_chat(self, messages: Sequence[ChatMessage], **kwargs: Any):
+    async def astream_chat(
+        self, messages: Sequence[ChatMessage], **kwargs: Any
+    ) -> AsyncGenerator[ChatResponse, None]:
         """Async fake stream chat method."""
         response = await self.achat(messages, **kwargs)
         yield response
@@ -348,7 +354,7 @@ class FakeLLM(FunctionCallingLLM):
     ) -> AsyncGenerator[CompletionResponse, None]:
         """Async fake stream complete method."""
 
-        async def gen():
+        async def gen() -> AsyncGenerator[CompletionResponse, None]:
             yield self.complete(prompt, formatted=formatted, **kwargs)
 
         return gen()
@@ -363,7 +369,7 @@ class FakeLLM(FunctionCallingLLM):
         tool_required: bool = False,
         **kwargs: Any,
     ) -> AsyncGenerator[ChatResponse, None]:
-        async def gen():
+        async def gen() -> AsyncGenerator[ChatResponse, None]:
             messages = chat_history or []
             response = self.chat(messages, **kwargs)
             yield response
@@ -378,12 +384,12 @@ class _LLMManager:
 
     _instance = None
 
-    def __new__(cls):
+    def __new__(cls) -> "_LLMManager":
         if cls._instance is None:
             cls._instance = object.__new__(cls)
         return cls._instance
 
-    def get_llm(self, model: str, provider: str, **kwargs) -> Any:
+    def get_llm(self, model: str, provider: str, **kwargs: Any) -> Any:
         """
         Get an LLM instance with the specified model and provider.
         Returns a LiteLLM instance or FakeLLM if no API key is found.
