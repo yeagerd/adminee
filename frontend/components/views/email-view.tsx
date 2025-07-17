@@ -37,9 +37,8 @@ const EmailView: React.FC = () => {
                 if (!provider) throw new Error('No provider found in session');
                 // TODO: support pagination, filtering, etc.
                 const emailsResp: any = await gatewayClient.getEmails(provider, 50, 0);
-                // Assume emailsResp is an array of emails, group by thread/conversation
-                // For now, treat as flat list, group logic can be added later
-                if (isMounted) setThreads(emailsResp.threads || emailsResp || []);
+                // Use the correct property from the API response
+                if (isMounted) setThreads(emailsResp.data?.messages || []);
                 setError(null);
             } catch (e: any) {
                 if (isMounted) setError(e.message || 'Failed to load emails');
