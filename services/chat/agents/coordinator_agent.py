@@ -184,7 +184,7 @@ class CoordinatorAgent(FunctionAgent):
         thread_id: int,
         llm_model: str = "gpt-4.1-nano",
         llm_provider: str = "openai",
-        **llm_kwargs,
+        **llm_kwargs: Any,
     ):
         # Get LLM instance
         llm = get_llm_manager().get_llm(
@@ -192,7 +192,7 @@ class CoordinatorAgent(FunctionAgent):
         )
 
         # Create coordinator-specific tools
-        tools: Sequence[Callable[..., Any]] = self._create_coordinator_tools()  # type: ignore[no-untyped-def]
+        tools: Sequence[Callable[..., Any]] = self._create_coordinator_tools()
 
         # Create context-aware system prompt based on existing drafts
         context_aware_prompt = self._create_context_aware_prompt(str(thread_id))
