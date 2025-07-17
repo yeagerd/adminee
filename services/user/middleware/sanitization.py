@@ -179,7 +179,7 @@ class InputSanitizationMiddleware(BaseHTTPMiddleware):
             ]
 
             # Replace the body in request scope
-            async def receive():
+            async def receive() -> Any:
                 return {"type": "http.request", "body": new_body}
 
             request._receive = receive

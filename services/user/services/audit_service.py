@@ -95,7 +95,7 @@ class AuditLogger:
     - Query and filtering capabilities
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the audit logger."""
         self.logger = get_logger(__name__)
 
