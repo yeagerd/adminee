@@ -5,8 +5,9 @@ Provides secure endpoints for other services to retrieve user tokens
 and integration status with service authentication.
 """
 
-from fastapi import APIRouter, Depends
 from typing import Any, Dict
+
+from fastapi import APIRouter, Depends
 
 from services.common.http_errors import NotFoundError, ServiceError
 from services.user.auth.service_auth import get_current_service

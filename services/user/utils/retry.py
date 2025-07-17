@@ -305,7 +305,9 @@ def retry_on_transient_failure(
 
 
 # Convenience decorators for common scenarios
-def retry_database_operations(max_attempts: int = 3, base_delay: float = 0.5) -> Callable[..., Any]:
+def retry_database_operations(
+    max_attempts: int = 3, base_delay: float = 0.5
+) -> Callable[..., Any]:
     """Decorator for retrying database operations."""
     return retry_on_transient_failure(
         max_attempts=max_attempts,
@@ -315,7 +317,9 @@ def retry_database_operations(max_attempts: int = 3, base_delay: float = 0.5) ->
     )
 
 
-def retry_external_api_calls(max_attempts: int = 3, base_delay: float = 1.0) -> Callable[..., Any]:
+def retry_external_api_calls(
+    max_attempts: int = 3, base_delay: float = 1.0
+) -> Callable[..., Any]:
     """Decorator for retrying external API calls."""
     return retry_on_transient_failure(
         max_attempts=max_attempts,
@@ -325,7 +329,9 @@ def retry_external_api_calls(max_attempts: int = 3, base_delay: float = 1.0) -> 
     )
 
 
-def retry_oauth_operations(max_attempts: int = 2, base_delay: float = 1.0) -> Callable[..., Any]:
+def retry_oauth_operations(
+    max_attempts: int = 2, base_delay: float = 1.0
+) -> Callable[..., Any]:
     """Decorator for retrying OAuth operations with shorter delays."""
     return retry_on_transient_failure(
         max_attempts=max_attempts,

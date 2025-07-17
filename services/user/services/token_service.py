@@ -6,7 +6,7 @@ internal service-to-service communication with automatic refresh and validation.
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 import httpx
 from sqlmodel import select
