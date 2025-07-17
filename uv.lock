@@ -369,7 +369,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'test'" },
     { name = "pytest-asyncio", marker = "extra == 'test'" },
     { name = "sqlalchemy", specifier = ">=2.0.0" },
-    { name = "sqlmodel", specifier = ">=0.0.21" },
+    { name = "sqlmodel", specifier = ">=0.0.24" },
     { name = "structlog", specifier = ">=23.1.0,<24.0.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.22.0,<1.0.0" },
 ]
@@ -443,7 +443,7 @@ requires-dist = [
     { name = "redis" },
     { name = "requests" },
     { name = "sqlalchemy", specifier = ">=2.0.0" },
-    { name = "sqlmodel", specifier = ">=0.0.21" },
+    { name = "sqlmodel", specifier = ">=0.0.24" },
     { name = "structlog" },
     { name = "uvicorn", extras = ["standard"] },
 ]
@@ -517,7 +517,7 @@ requires-dist = [
     { name = "redis" },
     { name = "requests", specifier = ">=2.31.0,<3.0.0" },
     { name = "sqlalchemy", specifier = ">=2.0.0" },
-    { name = "sqlmodel", specifier = ">=0.0.21" },
+    { name = "sqlmodel", specifier = ">=0.0.24" },
     { name = "structlog", specifier = ">=23.1.0,<24.0.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.22.0,<1.0.0" },
 ]

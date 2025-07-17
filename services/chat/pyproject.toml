@@ -18,7 +18,7 @@ dependencies = [
     "litellm==1.73.6",
 
     # Database
-    "sqlmodel>=0.0.21",
+    "sqlmodel>=0.0.24",
     "sqlalchemy>=2.0.0",
     "aiosqlite",
     "asyncpg",
