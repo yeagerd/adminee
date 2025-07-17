@@ -6,7 +6,12 @@ Sets up database connection using SQLModel and SQLAlchemy.
 
 from typing import AsyncGenerator
 
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlmodel import SQLModel
 
 from services.user.models.audit import AuditLog  # noqa: F401
@@ -30,7 +35,7 @@ def get_async_database_url(url: str) -> str:
         return url
 
 
-def get_engine():
+def get_engine() -> AsyncEngine:
     settings = get_settings()
     return create_async_engine(
         get_async_database_url(settings.db_url_user_management),
@@ -38,7 +43,7 @@ def get_engine():
     )
 
 
-def get_async_session():
+def get_async_session() -> async_sessionmaker[AsyncSession]:
     engine = get_engine()
     return async_sessionmaker(
         engine,
@@ -55,7 +60,7 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
-async def create_all_tables():
+async def create_all_tables() -> None:
     """Create all database tables. Use Alembic migrations in production."""
     engine = get_engine()
     async with engine.begin() as conn:
@@ -66,7 +71,7 @@ async def create_all_tables():
 metadata = SQLModel.metadata
 
 
-async def close_db():
+async def close_db() -> None:
     """Close database connections."""
     engine = get_engine()
     await engine.dispose()

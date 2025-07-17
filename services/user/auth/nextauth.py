@@ -7,7 +7,7 @@ Handles token verification, decoding, and user information extraction.
 
 import logging
 import time
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 import jwt
 from fastapi import Depends, HTTPException, Request
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 security = HTTPBearer(auto_error=False)
 
 
-async def verify_jwt_token(token: str) -> Dict[str, str]:
+async def verify_jwt_token(token: str) -> Dict[str, Any]:
     """
     Verify JWT token using manual verification.
 
@@ -31,7 +31,7 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
         token: JWT token to verify
 
     Returns:
-        Decoded token claims
+        Decoded token claims (mixed types - timestamps remain numeric)
 
     Raises:
         AuthError: If token is invalid
@@ -116,7 +116,7 @@ async def verify_jwt_token(token: str) -> Dict[str, str]:
         raise AuthError("Token verification failed")
 
 
-def extract_user_id_from_token(token_claims: Dict[str, str]) -> str:
+def extract_user_id_from_token(token_claims: Dict[str, Any]) -> str:
     """
     Extract user ID ('sub' claim) from validated JWT token claims.
 
@@ -133,10 +133,10 @@ def extract_user_id_from_token(token_claims: Dict[str, str]) -> str:
     if not user_id:
         raise AuthError("User ID not found in token")
 
-    return user_id
+    return str(user_id)
 
 
-def extract_user_email_from_token(token_claims: Dict[str, str]) -> Optional[str]:
+def extract_user_email_from_token(token_claims: Dict[str, Any]) -> Optional[str]:
     """
     Extract user email from validated JWT token claims.
     NextAuth stores email in 'email' claim.
@@ -153,11 +153,11 @@ def extract_user_email_from_token(token_claims: Dict[str, str]) -> Optional[str]
     if not email and "user" in token_claims and isinstance(token_claims["user"], dict):
         email = token_claims["user"].get("email")
 
-    return email
+    return str(email) if email else None
 
 
 def validate_token_permissions(
-    token_claims: Dict[str, str], required_permissions: Optional[list] = None
+    token_claims: Dict[str, Any], required_permissions: Optional[list] = None
 ) -> bool:
     """
     Validate that the token has required permissions.
@@ -180,6 +180,8 @@ def validate_token_permissions(
     # Adjust based on how NextAuth is configured to issue tokens.
     token_permissions_str = token_claims.get("scope", "")
     token_permissions_list = token_claims.get("permissions", [])
+    if not isinstance(token_permissions_list, list):
+        token_permissions_list = []
 
     if isinstance(token_permissions_str, str):
         token_permissions = set(token_permissions_str.split())
@@ -203,7 +205,7 @@ def validate_token_permissions(
     return True
 
 
-def is_token_expired(token_claims: Dict[str, str]) -> bool:
+def is_token_expired(token_claims: Dict[str, Any]) -> bool:
     """
     Check if token is expired based on 'exp' claim.
     Note: PyJWT's decode function already verifies 'exp' if options={"verify_exp": True} (default).
@@ -219,7 +221,15 @@ def is_token_expired(token_claims: Dict[str, str]) -> bool:
     exp_timestamp = token_claims.get("exp")
     if exp_timestamp is None:  # No expiration claim, treat as problematic or expired
         return True
-    return time.time() >= int(exp_timestamp)
+
+    # Handle both string and numeric timestamps
+    if isinstance(exp_timestamp, str):
+        try:
+            exp_timestamp = int(exp_timestamp)
+        except (ValueError, TypeError):
+            return True
+
+    return time.time() >= exp_timestamp
 
 
 async def get_current_user_from_gateway_headers(request: Request) -> Optional[str]:
@@ -323,7 +333,7 @@ async def get_current_user(
 async def get_current_user_with_claims(
     request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-) -> Dict[str, str]:
+) -> Dict[str, Any]:
     """
     FastAPI dependency to extract current user's full token claims.
 
@@ -347,7 +357,7 @@ async def get_current_user_with_claims(
     if user_id:
         # Return minimal claims object for gateway authentication
         claims = {
-            "sub": user_id,
+            "sub": str(user_id),
             "iss": "gateway",
             "iat": int(time.time()),
             "exp": int(time.time()) + 3600,  # 1 hour from now

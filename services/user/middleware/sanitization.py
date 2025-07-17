@@ -324,7 +324,7 @@ def sanitize_user_input(data: Dict[str, Any], skip_fields: set | None = None) ->
             "sub",
         }  # 'sub' is standard OIDC claim for subject identifier
 
-    def sanitize_dict_recursive(data_item):
+    def sanitize_dict_recursive(data_item: Any) -> Any:
         """Recursively sanitize dictionary data."""
         if isinstance(data_item, dict):
             sanitized = {}
