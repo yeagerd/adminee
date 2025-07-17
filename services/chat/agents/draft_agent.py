@@ -204,7 +204,7 @@ class DraftAgent(FunctionAgent):
             to: Optional[str] = None,
             subject: Optional[str] = None,
             body: Optional[str] = None,
-        ) -> str:
+        ) -> str:  # type: ignore[no-untyped-def]
             """Create or update a draft email using the agent's thread_id."""
             logger.info(
                 f"📧 DraftAgent: Creating email draft - To: {to}, Subject: {subject}, Thread: {thread_id}"
@@ -427,7 +427,7 @@ def create_draft_agent(
     thread_id: int,
     llm_model: str = "gpt-4.1-nano",
     llm_provider: str = "openai",
-    **llm_kwargs,
+    **llm_kwargs: Any,
 ) -> DraftAgent:
     """
     Factory function to create a DraftAgent instance.

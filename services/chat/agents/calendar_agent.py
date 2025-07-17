@@ -133,7 +133,7 @@ class CalendarAgent(FunctionAgent):
             end_date: str | None = None,
             time_zone: str | None = None,
             providers: str | None = None,
-        ):
+        ) -> Any:
             if not user_id:
                 return {"error": "User ID not available in calendar agent"}
 
