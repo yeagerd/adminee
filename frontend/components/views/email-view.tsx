@@ -41,8 +41,8 @@ const EmailView: React.FC = () => {
                 const emailsResp = await gatewayClient.getEmails(userId, provider, 50, 0) as { data?: { messages?: EmailMessage[] } };
                 if (isMounted) setThreads(emailsResp.data?.messages || []);
                 setError(null);
-            } catch (e: any) {
-                if (isMounted) setError(e.message || 'Failed to load emails');
+            } catch (e: unknown) {
+                if (isMounted) setError((e && typeof e === 'object' && 'message' in e) ? (e as { message?: string }).message || 'Failed to load emails' : 'Failed to load emails');
             } finally {
                 if (isMounted) setLoading(false);
             }

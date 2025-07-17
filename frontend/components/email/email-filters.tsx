@@ -13,7 +13,7 @@ const EmailFilters: React.FC<EmailFiltersProps> = ({ filters, setFilters }) => {
                 type="text"
                 placeholder="Search emails…"
                 className="border rounded px-2 py-1 text-sm"
-                value={filters.query || ''}
+                value={typeof filters.query === 'string' ? filters.query : ''}
                 onChange={e => setFilters({ ...filters, query: e.target.value })}
             />
             {/* Add more filter controls here as needed */}

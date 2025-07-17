@@ -25,7 +25,10 @@ export function getUserName(session: unknown): string | null {
     return sessionObj?.user?.name || null;
 }
 
-// Helper function to check if user is authenticated
+function hasUser(obj: unknown): obj is { user?: { id?: string } } {
+    return typeof obj === 'object' && obj !== null && 'user' in obj;
+}
+
 export function isAuthenticated(session: unknown): boolean {
-    return !!session && !!(session as any)?.user;
+    return !!session && hasUser(session) && !!session.user;
 } 
