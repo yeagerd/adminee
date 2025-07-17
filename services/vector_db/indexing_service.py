@@ -4,6 +4,13 @@
 # - Generating embeddings for documents (using Sentence-Transformers from RAG pipeline)
 # - Upserting vectors into the Pinecone index
 
+from typing import TYPE_CHECKING, Protocol
+
+if TYPE_CHECKING:
+    from services.vector_db.pinecone_client import PineconeClient
+    class MockIndex(Protocol):
+        def upsert(self, vectors: list) -> None: ...
+
 
 class IndexingService:
     def __init__(self, pinecone_client: 'PineconeClient', index_name: str) -> None:
