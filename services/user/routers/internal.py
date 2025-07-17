@@ -8,6 +8,7 @@ and integration status with service authentication.
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import JSONResponse
 
 from services.common.http_errors import (
     BrieflyAPIException,
@@ -258,11 +259,11 @@ async def get_user_by_email_internal(
         raise ServiceError(message="Failed to lookup user")
 
 
-@router.post("/users/", response_model=UserResponse, status_code=201)
+@router.post("/users/")
 async def create_or_upsert_user_internal(
     user_data: UserCreate,
     current_service: str = Depends(get_current_service),
-) -> UserResponse:
+) -> Any:
     """
     Create a new user or return existing user by external_auth_id and auth_provider (internal service endpoint).
 
@@ -274,6 +275,13 @@ async def create_or_upsert_user_internal(
     - Requires service-to-service API key authentication
     - Only authorized services (frontend, chat, office) can create users
     - Never accepts user JWTs
+
+    **Response Status Codes:**
+    - 200 (OK): Existing user found and returned
+    - 201 (Created): New user created successfully
+    - 409 (Conflict): Email collision detected
+    - 422 (Validation Error): Invalid request data
+    - 500 (Internal Server Error): Unexpected error
     """
     # Add detailed logging for debugging
     logger.info(f"User creation request from service: {current_service}")
@@ -296,7 +304,11 @@ async def create_or_upsert_user_internal(
         logger.info(
             f"Found existing user for {user_data.auth_provider} ID: {user_data.external_auth_id}"
         )
-        return user_response
+        # Return 200 OK for existing user
+        return JSONResponse(
+            status_code=200,
+            content=user_response.model_dump()
+        )
 
     except NotFoundError:
         # User doesn't exist, create new one
@@ -310,7 +322,11 @@ async def create_or_upsert_user_internal(
             logger.info(
                 f"Created new user with {user_data.auth_provider} ID: {user_data.external_auth_id}"
             )
-            return user_response
+            # Return 201 Created for new user
+            return JSONResponse(
+                status_code=201,
+                content=user_response.model_dump()
+            )
 
         except ValidationError as e:
             logger.error(f"Validation error during user creation: {e.message}")
