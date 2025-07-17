@@ -8,7 +8,6 @@ and integration status with service authentication.
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, Query
-from fastapi.responses import JSONResponse
 
 from services.common.http_errors import (
     BrieflyAPIException,
@@ -30,10 +29,16 @@ from services.user.schemas.user import (
     UserCreate,
     UserResponse,
 )
+from pydantic import BaseModel
 from services.user.services.token_service import get_token_service
 from services.user.services.user_service import get_user_service
 
 logger = get_logger(__name__)
+
+class UserCreateResponse(BaseModel):
+    """Response model for user creation/upsert with creation status."""
+    user: UserResponse
+    created: bool
 
 router = APIRouter(
     prefix="/internal",
@@ -259,11 +264,11 @@ async def get_user_by_email_internal(
         raise ServiceError(message="Failed to lookup user")
 
 
-@router.post("/users/")
+@router.post("/users/", response_model=UserCreateResponse)
 async def create_or_upsert_user_internal(
     user_data: UserCreate,
     current_service: str = Depends(get_current_service),
-) -> Any:
+) -> UserCreateResponse:
     """
     Create a new user or return existing user by external_auth_id and auth_provider (internal service endpoint).
 
@@ -304,11 +309,8 @@ async def create_or_upsert_user_internal(
         logger.info(
             f"Found existing user for {user_data.auth_provider} ID: {user_data.external_auth_id}"
         )
-        # Return 200 OK for existing user
-        return JSONResponse(
-            status_code=200,
-            content=user_response.model_dump()
-        )
+        # Return existing user with created=False
+        return UserCreateResponse(user=user_response, created=False)
 
     except NotFoundError:
         # User doesn't exist, create new one
@@ -322,11 +324,8 @@ async def create_or_upsert_user_internal(
             logger.info(
                 f"Created new user with {user_data.auth_provider} ID: {user_data.external_auth_id}"
             )
-            # Return 201 Created for new user
-            return JSONResponse(
-                status_code=201,
-                content=user_response.model_dump()
-            )
+            # Return new user with created=True
+            return UserCreateResponse(user=user_response, created=True)
 
         except ValidationError as e:
             logger.error(f"Validation error during user creation: {e.message}")
