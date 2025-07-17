@@ -66,7 +66,7 @@ class OAuthState(BaseModel):
 
     @field_validator("expires_at", mode="before")
     @classmethod
-    def set_expires_at(cls, v, info) -> Any:
+    def set_expires_at(cls, v: Any, info: Any) -> Any:
         """Set expiration time if not provided."""
         if v is None and info.data.get("created_at"):
             return info.data["created_at"] + timedelta(minutes=10)

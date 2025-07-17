@@ -7,7 +7,7 @@ Provides user profile management, preferences, and OAuth integrations.
 
 import os
 from contextlib import asynccontextmanager
-from typing import Optional
+from typing import Any, AsyncGenerator, Optional
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -64,7 +64,7 @@ logger = get_logger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     Application lifespan manager.
 
@@ -204,10 +204,10 @@ def get_app() -> FastAPI:
 class AppProxy:
     """Proxy object that creates the FastAPI app on first access."""
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         return getattr(get_app(), name)
 
-    async def __call__(self, scope, receive, send):
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> Any:
         """ASGI callable interface."""
         app_instance = get_app()
         return await app_instance(scope, receive, send)
@@ -225,7 +225,7 @@ async def oauth_callback_redirect(
     state: Optional[str] = None,
     error: Optional[str] = None,
     error_description: Optional[str] = None,
-):
+) -> Any:
     """
     Global OAuth callback endpoint that handles provider redirects.
 
@@ -377,7 +377,7 @@ async def oauth_callback_redirect(
         },
     },
 )
-async def health_check():
+async def health_check() -> Any:
     import time
     from datetime import datetime, timezone
 
@@ -537,7 +537,7 @@ async def health_check():
         },
     },
 )
-async def readiness_check():
+async def readiness_check() -> Any:
     import time
     from datetime import datetime, timezone
 

@@ -44,7 +44,7 @@ class TokenService:
     including automatic refresh, scope validation, and lifecycle management.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the token service."""
         self.token_encryption = TokenEncryption()
         self.logger = logger

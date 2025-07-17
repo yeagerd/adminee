@@ -271,7 +271,7 @@ def retry_on_transient_failure(
         if asyncio.iscoroutinefunction(func):
 
             @wraps(func)
-            async def async_wrapper(*args, **kwargs):
+            async def async_wrapper(*args, **kwargs) -> Any:
                 return await retry_async(
                     lambda: func(*args, **kwargs),
                     max_attempts=max_attempts,
@@ -287,7 +287,7 @@ def retry_on_transient_failure(
         else:
 
             @wraps(func)
-            def sync_wrapper(*args, **kwargs):
+            def sync_wrapper(*args, **kwargs) -> Any:
                 return retry_sync(
                     lambda: func(*args, **kwargs),
                     max_attempts=max_attempts,
