@@ -286,6 +286,8 @@ dev = [
 [package.dev-dependencies]
 dev = [
     { name = "pytest-timeout" },
+    { name = "types-pytz" },
+    { name = "types-requests" },
 ]
 
 [package.metadata]
@@ -307,7 +309,11 @@ requires-dist = [
 provides-extras = ["dev"]
 
 [package.metadata.requires-dev]
-dev = [{ name = "pytest-timeout", specifier = ">=2.4.0" }]
+dev = [
+    { name = "pytest-timeout", specifier = ">=2.4.0" },
+    { name = "types-pytz", specifier = ">=2025.2.0.20250516" },
+    { name = "types-requests", specifier = ">=2.32.4.20250611" },
+]
 
 [[package]]
 name = "briefly-chat"

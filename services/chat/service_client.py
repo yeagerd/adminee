@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 class ServiceClient:
     """HTTP client for service-to-service communication."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.timeout = httpx.Timeout(30.0)
 
     async def __aenter__(self) -> "ServiceClient":
@@ -152,7 +152,3 @@ class ServiceClient:
         except Exception as e:
             logger.error(f"Error getting files for {user_id}: {e}")
             return None
-
-
-# Global service client instance
-service_client = ServiceClient()

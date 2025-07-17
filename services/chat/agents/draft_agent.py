@@ -201,9 +201,9 @@ class DraftAgent(FunctionAgent):
         # Email drafting tools
         def create_email_draft(
             ctx: Context,
-            to: Optional[str] = None,
-            subject: Optional[str] = None,
-            body: Optional[str] = None,
+            to: str | None = None,
+            subject: str | None = None,
+            body: str | None = None,
         ) -> str:  # type: ignore[no-untyped-def]
             """Create or update a draft email using the agent's thread_id."""
             logger.info(
@@ -262,13 +262,13 @@ class DraftAgent(FunctionAgent):
         # Calendar event drafting tools
         def create_calendar_event_draft(
             ctx: Context,
-            title: Optional[str] = None,
-            start_time: Optional[str] = None,
-            end_time: Optional[str] = None,
-            attendees: Optional[str] = None,
-            location: Optional[str] = None,
-            description: Optional[str] = None,
-        ) -> str:
+            title: str | None = None,
+            start_time: str | None = None,
+            end_time: str | None = None,
+            attendees: str | None = None,
+            location: str | None = None,
+            description: str | None = None,
+        ) -> str:  # type: ignore[no-untyped-def]
             """Create or update a draft calendar event using the agent's thread_id."""
             logger.info(
                 f"📅 DraftAgent: Creating calendar event draft - Title: {title}, Start: {start_time}, Thread: {thread_id}"

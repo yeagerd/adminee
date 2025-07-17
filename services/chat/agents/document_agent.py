@@ -111,8 +111,21 @@ class DocumentAgent(FunctionAgent):
         tools = []
 
         # Document retrieval tool with user_id pre-filled
-        def get_documents_wrapper(**kwargs: Any) -> Any:
-            return get_documents(user_id=user_id, **kwargs)
+        def get_documents_wrapper(
+            document_type: str | None = None,
+            start_date: str | None = None,
+            end_date: str | None = None,
+            search_query: str | None = None,
+            max_results: int | None = None,
+        ) -> Any:  # type: ignore[no-untyped-def]
+            return get_documents(
+                user_id=user_id,
+                document_type=document_type,
+                start_date=start_date,
+                end_date=end_date,
+                search_query=search_query,
+                max_results=max_results,
+            )
 
         get_documents_tool = FunctionTool.from_defaults(
             fn=get_documents_wrapper,
@@ -126,8 +139,19 @@ class DocumentAgent(FunctionAgent):
         tools.append(get_documents_tool)
 
         # Note retrieval tool with user_id pre-filled
-        def get_notes_wrapper(**kwargs: Any) -> Any:
-            return get_notes(user_id=user_id, **kwargs)
+        def get_notes_wrapper(
+            notebook: str | None = None,
+            tags: str | None = None,
+            search_query: str | None = None,
+            max_results: int | None = None,
+        ) -> Any:  # type: ignore[no-untyped-def]
+            return get_notes(
+                user_id=user_id,
+                notebook=notebook,
+                tags=tags,
+                search_query=search_query,
+                max_results=max_results,
+            )
 
         get_notes_tool = FunctionTool.from_defaults(
             fn=get_notes_wrapper,
