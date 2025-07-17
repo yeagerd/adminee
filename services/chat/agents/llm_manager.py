@@ -166,8 +166,14 @@ class LoggingFunctionCallingLLM(FunctionCallingLLM):
     async def astream_chat(
         self, messages: Sequence[ChatMessage], **kwargs: Any
     ) -> AsyncGenerator[ChatResponse, None]:
-        async for event in self._llm.astream_chat(messages, **kwargs):
-            yield event
+        result = await self._llm.astream_chat(messages, **kwargs)
+        if hasattr(result, "__aiter__"):
+            # It's an async generator
+            async for event in result:
+                yield event
+        else:
+            # It's a single response
+            yield result
 
     def stream_complete(self, *args: Any, **kwargs: Any) -> Any:
         return self._llm.stream_complete(*args, **kwargs)
