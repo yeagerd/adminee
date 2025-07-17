@@ -641,7 +641,7 @@ class UserManagementDemo:
             print("Invalid choice. Please enter a number.")
             return None
 
-    async def run_interactive_demo(self):
+    async def run_interactive_demo(self) -> bool:
         """Run an interactive demo with user choices."""
         self.print_header("User Management Service Interactive Demo")
 
@@ -737,7 +737,7 @@ class UserManagementDemo:
         print("\n✅ Demo completed!")
         return True
 
-    async def demo_oauth_flow(self, provider: str):
+    async def demo_oauth_flow(self, provider: str) -> None:
         """Demo OAuth flow for a provider."""
         print(f"\n🚀 Starting {provider.title()} OAuth Demo")
         print("This will provide you with an OAuth URL to copy and paste.")
@@ -761,7 +761,7 @@ class UserManagementDemo:
         # Check integration status
         await self.get_integration_status(provider)
 
-    async def run_comprehensive_demo(self):
+    async def run_comprehensive_demo(self) -> bool:
         """Run a comprehensive demo showing all features."""
         self.print_header("User Management Service Comprehensive Demo")
 
@@ -776,7 +776,7 @@ class UserManagementDemo:
 
         return await self.run_interactive_demo()
 
-    async def run_simple_demo(self):
+    async def run_simple_demo(self) -> bool:
         """Run a simple non-interactive demo."""
         self.print_header("User Management Service Simple Demo")
 
@@ -887,7 +887,7 @@ class UserManagementDemo:
         return overall_success
 
 
-async def main():
+async def main() -> None:
     """Main demo function."""
     parser = argparse.ArgumentParser(
         description="User Management Service Demo",
