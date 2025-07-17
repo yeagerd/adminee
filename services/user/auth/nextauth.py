@@ -7,7 +7,7 @@ Handles token verification, decoding, and user information extraction.
 
 import logging
 import time
-from typing import Dict, Optional, Any
+from typing import Any, Dict, Optional
 
 import jwt
 from fastapi import Depends, HTTPException, Request
@@ -221,14 +221,14 @@ def is_token_expired(token_claims: Dict[str, Any]) -> bool:
     exp_timestamp = token_claims.get("exp")
     if exp_timestamp is None:  # No expiration claim, treat as problematic or expired
         return True
-    
+
     # Handle both string and numeric timestamps
     if isinstance(exp_timestamp, str):
         try:
             exp_timestamp = int(exp_timestamp)
         except (ValueError, TypeError):
             return True
-    
+
     return time.time() >= exp_timestamp
 
 
