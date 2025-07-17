@@ -27,7 +27,9 @@ class PineconeClient:
     def get_index(self, index_name: str) -> pinecone.Index:
         return self.pinecone.Index(index_name)
 
-    def create_index(self, index_name: str, dimension: int, metric: str = "cosine") -> str:
+    def create_index(
+        self, index_name: str, dimension: int, metric: str = "cosine"
+    ) -> str:
         if index_name not in self.pinecone.list_indexes().names:
             self.pinecone.create_index(
                 name=index_name,
