@@ -97,10 +97,10 @@ The goal is to ensure secure, scalable, and maintainable authentication for both
 - [ ] **MEDIUM PRIORITY**: Add API key validation for `/internal` routes (future enhancement)
 
 #### 4.2. User Service - Internal Endpoints (Foundation)
-- [ ] **HIGH PRIORITY**: Add new `/internal/users/id` endpoint (API key only) alongside existing `/users/id`
-- [ ] **HIGH PRIORITY**: Add new `/internal/users/` (POST) endpoint (API key only) alongside existing `/users/` (POST)
-- [ ] **HIGH PRIORITY**: Ensure all `/internal` endpoints require API key auth (`Depends(get_current_service)`)
-- [ ] **HIGH PRIORITY**: Ensure `/internal` endpoints never accept user JWTs
+- [x] **HIGH PRIORITY**: Add new `/internal/users/id` endpoint (API key only) alongside existing `/users/id`
+- [x] **HIGH PRIORITY**: Add new `/internal/users/` (POST) endpoint (API key only) alongside existing `/users/` (POST)
+- [x] **HIGH PRIORITY**: Ensure all `/internal` endpoints require API key auth (`Depends(get_current_service)`)
+- [x] **HIGH PRIORITY**: Ensure `/internal` endpoints never accept user JWTs
 - [ ] **HIGH PRIORITY**: Add/verify tests for API key extraction and access control
 
 ### Phase 2: Backend Service Updates (Depends on Phase 1)

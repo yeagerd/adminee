@@ -5,11 +5,18 @@ Provides secure endpoints for other services to retrieve user tokens
 and integration status with service authentication.
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
-from services.common.http_errors import NotFoundError, ServiceError
+from services.common.http_errors import (
+    BrieflyAPIException,
+    ErrorCode,
+    NotFoundError,
+    ServiceError,
+    ValidationError,
+)
+from services.common.logging_config import get_logger
 from services.user.auth.service_auth import get_current_service
 from services.user.schemas.integration import (
     InternalTokenRefreshRequest,
@@ -17,7 +24,15 @@ from services.user.schemas.integration import (
     InternalTokenResponse,
     InternalUserStatusResponse,
 )
+from services.user.schemas.user import (
+    EmailResolutionRequest,
+    UserCreate,
+    UserResponse,
+)
 from services.user.services.token_service import get_token_service
+from services.user.services.user_service import get_user_service
+
+logger = get_logger(__name__)
 
 router = APIRouter(
     prefix="/internal",
@@ -177,6 +192,146 @@ async def get_user_status(
         raise NotFoundError("User", user_id)
     except ServiceError as e:
         raise ServiceError(message=str(e))
+
+
+@router.get("/users/id", response_model=UserResponse)
+async def get_user_by_email_internal(
+    email: str = Query(..., description="Email address to lookup"),
+    provider: Optional[str] = Query(
+        None, description="OAuth provider (google, microsoft, etc.)"
+    ),
+    current_service: str = Depends(get_current_service),
+) -> UserResponse:
+    """
+    Get user by exact email lookup (internal service endpoint).
+
+    This endpoint provides a clean RESTful way to find users by email address
+    without exposing internal email normalization implementation details.
+    Perfect for NextAuth integration where you need to check user existence
+    before deciding whether to create a new user.
+
+    **Authentication:**
+    - Requires service-to-service API key authentication
+    - Only authorized services (frontend, chat, office) can lookup users
+    - Never accepts user JWTs
+
+    Args:
+        email: Email address to lookup
+        provider: OAuth provider for context (optional)
+
+    Returns:
+        UserResponse if user found
+
+    Raises:
+        404: If no user found for the email
+        422: If email format is invalid
+    """
+    try:
+        # Create email resolution request (reusing existing internal logic)
+        email_request = EmailResolutionRequest(email=email, provider=provider)
+
+        # Use existing resolution service (abstracts normalization)
+        resolution_result = await get_user_service().resolve_email_to_user_id(
+            email_request
+        )
+
+        # Get full user data to return
+        user = await get_user_service().get_user_by_external_auth_id_auto_detect(
+            resolution_result.external_auth_id
+        )
+
+        user_response = UserResponse.from_orm(user)
+
+        logger.info(
+            f"Successfully found user for email {email} with provider {provider}: {user.external_auth_id}"
+        )
+        return user_response
+
+    except NotFoundError as e:
+        logger.info(f"User lookup failed - no user found for email {email}")
+        raise e
+    except ValidationError as e:
+        logger.warning(f"User lookup failed - validation error: {e.message}")
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error during user lookup: {e}")
+        raise ServiceError(message="Failed to lookup user")
+
+
+@router.post("/users/", response_model=UserResponse, status_code=201)
+async def create_or_upsert_user_internal(
+    user_data: UserCreate,
+    current_service: str = Depends(get_current_service),
+) -> UserResponse:
+    """
+    Create a new user or return existing user by external_auth_id and auth_provider (internal service endpoint).
+
+    This is a protected endpoint designed for OAuth/NextAuth flows where
+    we want to create users if they don't exist, or return existing
+    users if they do. Requires service authentication (API key).
+
+    **Authentication:**
+    - Requires service-to-service API key authentication
+    - Only authorized services (frontend, chat, office) can create users
+    - Never accepts user JWTs
+    """
+    # Add detailed logging for debugging
+    logger.info(f"User creation request from service: {current_service}")
+    logger.info(
+        f"User data received: external_auth_id={user_data.external_auth_id}, "
+        f"auth_provider={user_data.auth_provider}, email={user_data.email}, "
+        f"first_name={user_data.first_name}, last_name={user_data.last_name}, "
+        f"profile_image_url={user_data.profile_image_url}"
+    )
+
+    try:
+        # Try to find existing user first
+        existing_user = (
+            await get_user_service().get_user_by_external_auth_id_auto_detect(
+                user_data.external_auth_id
+            )
+        )
+        user_response = UserResponse.from_orm(existing_user)
+
+        logger.info(
+            f"Found existing user for {user_data.auth_provider} ID: {user_data.external_auth_id}"
+        )
+        return user_response
+
+    except NotFoundError:
+        # User doesn't exist, create new one
+        logger.info(
+            f"User not found, attempting to create new user with {user_data.auth_provider} ID: {user_data.external_auth_id}"
+        )
+        try:
+            new_user = await get_user_service().create_user(user_data)
+            user_response = UserResponse.from_orm(new_user)
+
+            logger.info(
+                f"Created new user with {user_data.auth_provider} ID: {user_data.external_auth_id}"
+            )
+            return user_response
+
+        except ValidationError as e:
+            logger.error(f"Validation error during user creation: {e.message}")
+            logger.error(f"Validation error details: {e.details}")
+            if "collision" in str(e.message).lower():
+                logger.warning(f"Email collision during user creation: {e.message}")
+                raise BrieflyAPIException(
+                    status_code=409,
+                    error_code=ErrorCode.ALREADY_EXISTS,
+                    message="Email collision detected",
+                    details=e.details,
+                )
+            else:
+                logger.warning(f"Validation error during user creation: {e.message}")
+                raise e
+
+    except Exception as e:
+        logger.error(f"Unexpected error in create_or_upsert_user: {e}")
+        logger.error(f"Error type: {type(e)}")
+        logger.error(f"Error details: {str(e)}")
+        raise ServiceError(message="Failed to create or retrieve user")
 
 
 @router.get("/users/{user_id}/preferences")
