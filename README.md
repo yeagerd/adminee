@@ -63,6 +63,9 @@ uv pip install -e services/chat
 
 # Install with development dependencies
 uv pip install -e ".[dev]"
+
+# Find outdated packages
+uv pip list --outdated | cat
 ```
 
 **Run services:**
