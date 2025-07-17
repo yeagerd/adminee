@@ -29,7 +29,7 @@ This pattern ensures:
 """
 
 import json
-from typing import List, Optional
+from typing import AsyncGenerator, List, Optional
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
@@ -227,7 +227,7 @@ async def chat_stream_endpoint(
             ) from e
     thread = cast(history_manager.Thread, thread)
 
-    async def generate_streaming_response():
+    async def generate_streaming_response() -> "AsyncGenerator[str, None]":
         """Generate streaming response using Server-Sent Events format."""
         try:
             # Initialize the multi-agent workflow with user timezone
@@ -596,7 +596,7 @@ async def delete_user_draft_endpoint(
     request: Request,
     draft_id: str,
     client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
-):
+) -> dict[str, str]:
     """Delete a user draft."""
     user_id = await get_user_id_from_gateway(request)
 

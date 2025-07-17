@@ -59,7 +59,8 @@ chat_registry = registry()
 
 
 # Create a custom SQLModel base that uses our isolated registry
-class ChatSQLModel(SQLModel, registry=chat_registry):
+class ChatSQLModel(SQLModel):
+    __registry__ = chat_registry
     pass
 
 
@@ -91,7 +92,7 @@ def get_async_session_factory() -> Any:
     return _async_session
 
 
-class Thread(ChatSQLModel, table=True):
+class Thread(ChatSQLModel):
     """
     Database model for chat threads.
 
@@ -143,7 +144,7 @@ class Thread(ChatSQLModel, table=True):
     user_drafts: list["UserDraft"] = Relationship(back_populates="thread")
 
 
-class Message(ChatSQLModel, table=True):
+class Message(ChatSQLModel):
     """
     Database model for chat messages.
 
@@ -197,7 +198,7 @@ class Message(ChatSQLModel, table=True):
     thread: Optional[Thread] = Relationship(back_populates="messages")
 
 
-class Draft(ChatSQLModel, table=True):
+class Draft(ChatSQLModel):
     """
     Database model for draft content (emails, calendar events, etc.).
 
@@ -245,7 +246,7 @@ class Draft(ChatSQLModel, table=True):
     thread: Optional[Thread] = Relationship(back_populates="drafts")
 
 
-class UserDraft(ChatSQLModel, table=True):
+class UserDraft(ChatSQLModel):
     """
     Database model for user-created draft content.
 
