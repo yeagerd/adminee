@@ -13,6 +13,7 @@ import { AlertCircle, ExternalLink } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import EmailView from './views/email-view';
 
 export function ToolContent() {
     const { activeTool } = useToolStateUtils();
@@ -167,12 +168,7 @@ export function ToolContent() {
                     </div>
                 );
             case 'email':
-                return (
-                    <div className="p-8">
-                        <h1 className="text-3xl font-bold mb-4">Email</h1>
-                        <p>Email view coming soon...</p>
-                    </div>
-                );
+                return <EmailView />;
             case 'documents':
                 return (
                     <div className="p-8">
