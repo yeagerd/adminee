@@ -119,7 +119,6 @@ class BaseUserManagementIntegrationTest(BaseUserManagementTest):
 
     def _override_auth(self):
         """Override authentication for testing."""
-        from unittest.mock import AsyncMock
 
         from services.user.auth.nextauth import get_current_user  # Changed here
 
@@ -133,7 +132,9 @@ class BaseUserManagementIntegrationTest(BaseUserManagementTest):
         # ):
         #     return None
 
-        async def mock_verify_user_ownership(current_user_id: str, resource_user_id: str):
+        async def mock_verify_user_ownership(
+            current_user_id: str, resource_user_id: str
+        ):
             pass
 
         self.app.dependency_overrides[get_current_user] = mock_get_current_user
