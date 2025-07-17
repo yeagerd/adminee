@@ -9,7 +9,7 @@ from typing import Any, AsyncGenerator, Dict, Generator, Sequence, Union
 
 # noqa: F401 - get_llm_provider is present at runtime, linter is wrong
 from litellm.utils import get_llm_provider  # type: ignore
-from llama_index.core.base.llms.types import ChatResponse, CompletionResponse
+from llama_index.core.base.llms.types import ChatResponse, CompletionResponse, ChatResponseAsyncGen
 from llama_index.core.llms import ChatMessage, MessageRole
 from llama_index.core.llms.function_calling import FunctionCallingLLM
 from llama_index.core.tools import BaseTool
@@ -165,15 +165,14 @@ class LoggingFunctionCallingLLM(FunctionCallingLLM):
 
     async def astream_chat(
         self, messages: Sequence[ChatMessage], **kwargs: Any
-    ) -> AsyncGenerator[ChatResponse, None]:
+    ) -> ChatResponseAsyncGen:
         result = await self._llm.astream_chat(messages, **kwargs)
         if hasattr(result, "__aiter__"):
-            # It's an async generator
             async for event in result:
                 yield event
         else:
             # It's a single response
-            yield result
+            yield result  # type: ignore[reportReturnType]
 
     def stream_complete(self, *args: Any, **kwargs: Any) -> Any:
         return self._llm.stream_complete(*args, **kwargs)
