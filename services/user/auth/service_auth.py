@@ -11,7 +11,7 @@ Validates service API keys and manages service-level access control.
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 from fastapi import Request
 
@@ -199,7 +199,7 @@ async def get_current_service(request: Request) -> str:
         raise ServiceError(message="Authentication failed")
 
 
-def require_service_auth(allowed_clients: Optional[List[str]] = None):
+def require_service_auth(allowed_clients: Optional[List[str]] = None) -> Any:
     """
     Decorator factory for service authentication with specific client restrictions.
 
