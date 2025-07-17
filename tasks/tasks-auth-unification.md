@@ -89,9 +89,10 @@ The goal is to ensure secure, scalable, and maintainable authentication for both
 ### Phase 1: Foundation and Infrastructure (Must be done first)
 
 #### 4.1. Gateway Updates (Foundation)
-- [ ] **HIGH PRIORITY**: Update gateway to properly extract user from JWT and forward via `X-User-Id` header
+- [x] **HIGH PRIORITY**: Update gateway to properly extract user from JWT and forward via `X-User-Id` header
 - [x] **HIGH PRIORITY**: Ensure gateway does not call `/internal` endpoints
-- [ ] **HIGH PRIORITY**: Add proper error handling for missing/invalid JWTs
+- [x] **HIGH PRIORITY**: Add proper error handling for missing/invalid JWTs
+- [x] **HIGH PRIORITY**: Add tests for JWT validation and user context forwarding
 - [ ] **HIGH PRIORITY**: Add tests for JWT validation and user context forwarding
 - [ ] **MEDIUM PRIORITY**: Add API key validation for `/internal` routes (future enhancement)
 
