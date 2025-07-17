@@ -229,8 +229,9 @@ export class GatewayClient {
         });
     }
 
-    async getEmails(provider: string, limit?: number, offset?: number) {
+    async getEmails(user_id: string, provider: string, limit?: number, offset?: number) {
         const params = new URLSearchParams();
+        params.append('user_id', user_id);
         if (limit) params.append('limit', limit.toString());
         if (offset) params.append('offset', offset.toString());
 

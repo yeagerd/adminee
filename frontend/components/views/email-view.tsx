@@ -34,9 +34,10 @@ const EmailView: React.FC = () => {
             try {
                 const session = await getSession();
                 const provider = getProvider(session);
-                if (!provider) throw new Error('No provider found in session');
+                const userId = session?.user?.id;
+                if (!provider || !userId) throw new Error('No provider or user id found in session');
                 // TODO: support pagination, filtering, etc.
-                const emailsResp: any = await gatewayClient.getEmails(provider, 50, 0);
+                const emailsResp: any = await gatewayClient.getEmails(userId, provider, 50, 0);
                 // Use the correct property from the API response
                 if (isMounted) setThreads(emailsResp.data?.messages || []);
                 setError(null);
