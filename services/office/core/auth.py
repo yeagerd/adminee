@@ -1,162 +1,63 @@
 """
-API key authentication and authorization for Office Service.
+Authentication utilities for the Office Service.
 
-Provides granular permission-based API key authentication for service-to-service
-and frontend-to-service communication with the principle of least privilege.
+Provides authentication and authorization functionality for both
+service-to-service communication and user requests through the gateway.
 """
 
-from dataclasses import dataclass
-from typing import Dict, List, Optional
+import time
+from typing import Optional
 
-from fastapi import Request
+from fastapi import Depends, HTTPException, Request
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from services.common.http_errors import AuthError, ServiceError
+from services.common.http_errors import AuthError, ServiceError, ValidationError
 from services.common.logging_config import get_logger
 from services.office.core.settings import get_settings
 
 logger = get_logger(__name__)
 
-
-@dataclass(frozen=True)
-class APIKeyConfig:
-    """Configuration for an API key."""
-
-    client: str
-    service: str
-    permissions: List[str]
-    settings_key: str  # The key name in settings to look up the actual API key value
-
-
-# API Key configurations mapped by settings key names
-API_KEY_CONFIGS: Dict[str, APIKeyConfig] = {
-    # Frontend (Next.js API) keys - full permissions for user-facing operations
-    "api_frontend_office_key": APIKeyConfig(
-        client="frontend",
-        service="office-service-access",
-        permissions=[
-            "read_emails",
-            "send_emails",
-            "read_calendar",
-            "write_calendar",
-            "read_files",
-            "write_files",
-        ],
-        settings_key="api_frontend_office_key",
-    ),
-    # Service-to-service keys - limited permissions
-    "api_chat_office_key": APIKeyConfig(
-        client="chat-service",
-        service="office-service-access",
-        permissions=[
-            "read_emails",
-            "read_calendar",
-            "read_files",
-        ],  # No write permissions
-        settings_key="api_chat_office_key",
-    ),
-}
-
-
-def _get_api_key_mapping() -> Dict[str, APIKeyConfig]:
-    """
-    Build a mapping from actual API key values to their configurations.
-
-    Returns:
-        Dictionary mapping actual API key values to APIKeyConfig objects
-    """
-    settings = get_settings()
-    api_key_mapping = {}
-
-    for config_name, config in API_KEY_CONFIGS.items():
-        # Get the actual API key value from settings
-        actual_key_value = getattr(settings, config.settings_key, None)
-        if actual_key_value:
-            api_key_mapping[actual_key_value] = config
-        else:
-            logger.warning(f"API key not found in settings: {config.settings_key}")
-
-    return api_key_mapping
+# Security scheme for JWT tokens
+security = HTTPBearer(auto_error=False)
 
 
 def verify_api_key(api_key: str) -> Optional[str]:
     """
-    Verify an API key and return the service name it's authorized for.
+    Verify API key and return service name.
 
     Args:
-        api_key: The API key to verify
+        api_key: API key to verify
 
     Returns:
-        Service name if valid, None if invalid
+        Service name if valid, None otherwise
     """
-    if not api_key:
-        return None
-
-    api_key_mapping = _get_api_key_mapping()
-    key_config = api_key_mapping.get(api_key)
-    if not key_config:
-        return None
-
-    return key_config.service
-
-
-def get_client_from_api_key(api_key: str) -> Optional[str]:
-    """Get the client name from an API key."""
-    api_key_mapping = _get_api_key_mapping()
-    key_config = api_key_mapping.get(api_key)
-    return key_config.client if key_config else None
+    settings = get_settings()
+    
+    # Check against known API keys
+    if api_key == settings.api_frontend_office_key:
+        return "frontend"
+    elif api_key == settings.api_chat_office_key:
+        return "chat"
+    elif api_key == settings.api_user_office_key:
+        return "user"
+    
+    return None
 
 
-def get_permissions_from_api_key(api_key: str) -> List[str]:
-    """Get the permissions for an API key."""
-    api_key_mapping = _get_api_key_mapping()
-    key_config = api_key_mapping.get(api_key)
-    return key_config.permissions if key_config else []
-
-
-def has_permission(api_key: str, required_permission: str) -> bool:
-    """Check if an API key has a specific permission."""
-    permissions = get_permissions_from_api_key(api_key)
-    return required_permission in permissions
-
-
-async def validate_service_permissions(
-    service_name: str,
-    required_permissions: Optional[List[str]] = None,
-    api_key: Optional[str] = None,
-) -> bool:
+def get_client_from_api_key(api_key: str) -> str:
     """
-    Validate that a service has the required permissions.
+    Get client name from API key.
 
     Args:
-        service_name: The authenticated service name
-        required_permissions: List of required permissions
-        api_key: The API key used (for granular permission checking)
+        api_key: API key
 
     Returns:
-        True if service has all required permissions, False otherwise
+        Client name
     """
-    if not required_permissions:
-        return True
-
-    # If we have the API key, use granular permission checking
-    if api_key:
-        key_permissions = get_permissions_from_api_key(api_key)
-        return all(perm in key_permissions for perm in required_permissions)
-
-    # Fallback to service-level permissions
-    service_permissions = {
-        "office-service-access": [
-            "read_emails",
-            "send_emails",
-            "read_calendar",
-            "write_calendar",
-            "read_files",
-            "write_files",
-        ],
-    }
-
-    allowed_permissions = service_permissions.get(service_name, [])
-    return all(perm in allowed_permissions for perm in required_permissions)
+    service_name = verify_api_key(api_key)
+    if service_name:
+        return service_name
+    return "unknown"
 
 
 async def get_api_key_from_request(request: Request) -> Optional[str]:
@@ -228,89 +129,193 @@ async def verify_service_authentication(request: Request) -> str:
     return service_name
 
 
-class ServicePermissionRequired:
+async def get_current_service(request: Request) -> str:
     """
-    Dependency to check if the authenticated service has specific permissions.
-
-    Usage:
-        @app.post("/emails/send", dependencies=[Depends(ServicePermissionRequired(["send_emails"]))])
-        async def send_email():
-            # This endpoint requires send_emails permission
-            pass
-    """
-
-    def __init__(self, required_permissions: List[str]):
-        self.required_permissions = required_permissions
-
-    async def __call__(self, request: Request) -> str:
-        # First ensure service is authenticated
-        service_name = await verify_service_authentication(request)
-
-        # Check if the API key has the required permissions
-        api_key = getattr(request.state, "api_key", None)
-        if not api_key:
-            raise ServiceError(
-                message="API key not found in request state", status_code=500
-            )
-
-        # Validate permissions
-        if not await validate_service_permissions(
-            service_name, self.required_permissions, api_key
-        ):
-            client_name = getattr(request.state, "client_name", "unknown")
-            logger.warning(
-                f"Permission denied: {client_name} lacks permissions {self.required_permissions}",
-                extra={
-                    "service": service_name,
-                    "client": client_name,
-                    "required_permissions": self.required_permissions,
-                    "api_key_prefix": api_key[:8] if api_key else None,
-                },
-            )
-            raise AuthError(
-                message=f"Insufficient permissions. Required: {self.required_permissions}",
-                status_code=403,
-            )
-
-        return service_name
-
-
-async def optional_service_auth(request: Request) -> Optional[str]:
-    """
-    Optional service authentication that doesn't raise errors.
-
-    This can be used for endpoints that support both service-to-service
-    and direct user access.
+    FastAPI dependency to get current authenticated client service.
 
     Args:
         request: FastAPI request object
 
     Returns:
-        Service name if authenticated, None otherwise
+        Client service name (e.g., "frontend", "chat", "user")
+
+    Raises:
+        HTTPException: If service authentication fails
     """
     try:
-        return await verify_service_authentication(request)
-    except AuthError:
-        return None
+        service_name = await verify_service_authentication(request)
+        return service_name
+
+    except AuthError as e:
+        logger.warning(f"Service authentication failed: {e.message}")
+        raise e
+
+    except ServiceError as e:
+        logger.warning(f"Service authorization failed: {e.message}")
+        raise e
+
+    except Exception as e:
+        logger.error(f"Unexpected service authentication error: {e}")
+        raise ServiceError(message="Authentication failed")
 
 
-# Legacy compatibility - keeping existing class structure
-class ServiceAPIKeyAuth:
-    """Legacy service API key authentication handler for backward compatibility."""
+async def get_current_user_from_gateway_headers(request: Request) -> Optional[str]:
+    """
+    Extract user ID from gateway headers (X-User-Id).
 
-    def __init__(self) -> None:
-        logger.warning(
-            "ServiceAPIKeyAuth is deprecated. Use the new functions directly."
+    This function handles authentication when the request comes through the gateway,
+    which forwards user identity via custom headers instead of JWT tokens.
+
+    Args:
+        request: FastAPI request object
+
+    Returns:
+        User ID from gateway headers or None if not present
+    """
+    # Check for gateway headers
+    user_id = request.headers.get("X-User-Id")
+    if user_id:
+        logger.debug(
+            "User authenticated via gateway headers", extra={"user_id": user_id}
         )
+        return user_id
 
-    def verify_api_key(self, api_key: str) -> Optional[str]:
-        """Legacy method - use verify_api_key function instead."""
-        return verify_api_key(api_key)
-
-    def is_valid_service(self, service_name: str) -> bool:
-        """Legacy method - use validate_service_permissions function instead."""
-        return service_name == "office-service-access"
+    return None
 
 
-# Global service auth instance for backward compatibility
-service_auth = ServiceAPIKeyAuth()
+async def get_current_user_flexible(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+) -> str:
+    """
+    Flexible authentication that supports both gateway headers and JWT tokens.
+
+    This function first checks for gateway headers (X-User-Id), and if not present,
+    falls back to JWT token validation. This allows the service to work both
+    directly (with JWT tokens) and through the gateway (with custom headers).
+
+    Args:
+        request: FastAPI request object
+        credentials: HTTP Bearer token credentials (optional)
+
+    Returns:
+        User ID from either gateway headers or JWT token
+
+    Raises:
+        HTTPException: If authentication fails
+    """
+    # First try gateway headers
+    user_id = await get_current_user_from_gateway_headers(request)
+    if user_id:
+        return user_id
+
+    # Fall back to JWT token if no gateway headers
+    if not credentials:
+        logger.warning("No authentication credentials provided")
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    try:
+        # For now, we'll use a simple JWT validation
+        # In a full implementation, you'd want to verify the JWT signature
+        import jwt
+        from services.office.core.settings import get_settings
+        
+        settings = get_settings()
+        token_claims = jwt.decode(
+            credentials.credentials, 
+            settings.nextauth_secret, 
+            algorithms=["HS256"]
+        )
+        
+        user_id = token_claims.get("sub")
+        if not user_id:
+            raise AuthError(message="Invalid token: missing subject")
+            
+        logger.debug(
+            "User authenticated via JWT token", extra={"user_id": user_id}
+        )
+        return user_id
+        
+    except jwt.ExpiredSignatureError:
+        logger.warning("JWT token expired")
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError as e:
+        logger.warning(f"JWT authentication failed: {e}")
+        raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception as e:
+        logger.error(f"Unexpected JWT authentication error: {e}")
+        raise HTTPException(status_code=401, detail="Authentication failed")
+
+
+async def get_current_user(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+) -> str:
+    """
+    FastAPI dependency to extract and validate current user ID.
+
+    This function supports both gateway headers and JWT tokens for authentication.
+    It first checks for gateway headers (X-User-Id), and if not present,
+    falls back to JWT token validation.
+
+    Args:
+        request: FastAPI request object
+        credentials: HTTP Bearer token credentials (optional)
+
+    Returns:
+        User ID extracted from either gateway headers or JWT token
+
+    Raises:
+        HTTPException: If authentication fails
+    """
+    return await get_current_user_flexible(request, credentials)
+
+
+def require_office_auth(allowed_clients: Optional[list] = None):
+    """
+    Factory function to create authentication dependency for office service endpoints.
+
+    Args:
+        allowed_clients: List of allowed client service names (e.g., ["frontend", "chat"])
+
+    Returns:
+        FastAPI dependency function
+    """
+    async def require_auth(request: Request) -> str:
+        """
+        Require service authentication for office service endpoints.
+
+        Args:
+            request: FastAPI request object
+
+        Returns:
+            Client service name if authentication succeeds
+
+        Raises:
+            HTTPException: If authentication fails or client not allowed
+        """
+        try:
+            client_name = await get_current_service(request)
+
+            # Check if client is allowed
+            if allowed_clients and client_name not in allowed_clients:
+                logger.warning(
+                    f"Client {client_name} not allowed for this endpoint. "
+                    f"Allowed clients: {allowed_clients}"
+                )
+                raise AuthError(
+                    message=f"Client {client_name} not authorized for this endpoint",
+                    status_code=403,
+                )
+
+            return client_name
+
+        except AuthError as e:
+            logger.warning(f"Office service authentication failed: {e.message}")
+            raise HTTPException(status_code=e.status_code, detail=e.message)
+
+        except Exception as e:
+            logger.error(f"Unexpected office service authentication error: {e}")
+            raise HTTPException(status_code=500, detail="Authentication failed")
+
+    return require_auth

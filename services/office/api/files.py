@@ -11,14 +11,14 @@ import uuid
 from datetime import datetime, timezone
 from typing import List, Optional, cast
 
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Depends, Path, Query, Request
 
 from services.common.http_errors import (
     ServiceError,
     ValidationError,
 )
 from services.office.core.api_client_factory import APIClientFactory
-from services.office.core.auth import ServicePermissionRequired
+from services.office.core.auth import get_current_user, require_office_auth
 from services.office.core.cache_manager import cache_manager, generate_cache_key
 from services.office.core.normalizer import (
     normalize_google_drive_file,
@@ -40,7 +40,7 @@ api_client_factory = APIClientFactory()
 
 @router.get("/", response_model=ApiResponse)
 async def get_files(
-    user_id: str = Query(..., description="ID of the user to fetch files for"),
+    request: Request,
     providers: Optional[List[str]] = Query(
         None,
         description="Providers to fetch from (google, microsoft). If not specified, fetches from all available providers",
@@ -61,7 +61,7 @@ async def get_files(
     include_folders: bool = Query(
         True, description="Whether to include folders in results"
     ),
-    service_name: str = Depends(ServicePermissionRequired(["read_files"])),
+    client_name: str = Depends(require_office_auth(allowed_clients=["frontend", "chat"])),
 ) -> ApiResponse:
     """
     Get unified files from multiple providers.
@@ -83,6 +83,9 @@ async def get_files(
     Returns:
         ApiResponse with aggregated files
     """
+    # Get user ID from authentication
+    user_id = await get_current_user(request)
+    
     request_id = str(uuid.uuid4())
     start_time = datetime.now(timezone.utc)
 
@@ -319,7 +322,7 @@ async def get_files(
 
 @router.get("/search", response_model=ApiResponse)
 async def search_files(
-    user_id: str = Query(..., description="ID of the user to search files for"),
+    request: Request,
     q: str = Query(..., description="Search query"),
     providers: Optional[List[str]] = Query(
         None, description="Providers to search in (google, microsoft)"
@@ -330,7 +333,7 @@ async def search_files(
     file_types: Optional[List[str]] = Query(
         None, description="Filter by file types/mime types"
     ),
-    service_name: str = Depends(ServicePermissionRequired(["read_files"])),
+    client_name: str = Depends(require_office_auth(allowed_clients=["frontend", "chat"])),
 ) -> ApiResponse:
     """
     Search files across multiple providers.
@@ -339,7 +342,6 @@ async def search_files(
     returning aggregated and normalized results.
 
     Args:
-        user_id: ID of the user to search files for
         q: Search query string
         providers: List of providers to search (defaults to all)
         limit: Maximum results per provider
@@ -348,6 +350,9 @@ async def search_files(
     Returns:
         ApiResponse with search results
     """
+    # Get user ID from authentication
+    user_id = await get_current_user(request)
+    
     request_id = str(uuid.uuid4())
     start_time = datetime.now(timezone.utc)
 
@@ -539,12 +544,12 @@ async def search_files(
 
 @router.get("/{file_id}", response_model=ApiResponse)
 async def get_file(
+    request: Request,
     file_id: str = Path(..., description="File ID (format: provider_originalId)"),
-    user_id: str = Query(..., description="ID of the user who owns the file"),
     include_download_url: bool = Query(
         False, description="Whether to include download URL"
     ),
-    service_name: str = Depends(ServicePermissionRequired(["read_files"])),
+    client_name: str = Depends(require_office_auth(allowed_clients=["frontend", "chat"])),
 ) -> ApiResponse:
     """
     Get a specific file by ID.
@@ -554,12 +559,14 @@ async def get_file(
 
     Args:
         file_id: File ID with provider prefix
-        user_id: ID of the user who owns the file
         include_download_url: Whether to include download URL
 
     Returns:
         ApiResponse with the specific file
     """
+    # Get user ID from authentication
+    user_id = await get_current_user(request)
+    
     request_id = str(uuid.uuid4())
     start_time = datetime.now(timezone.utc)
 
