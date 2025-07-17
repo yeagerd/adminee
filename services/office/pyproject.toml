@@ -9,7 +9,7 @@ dependencies = [
     "uvicorn[standard]",
     "pydantic>=2.0.0,<2.9.0",
     "python-dotenv",
-    "structlog",
+    "structlog>=25.4.0,<26.0.0",
     "httpx",
     "requests",
     "email-validator",

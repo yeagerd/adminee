@@ -370,7 +370,7 @@ requires-dist = [
     { name = "pytest-asyncio", marker = "extra == 'test'" },
     { name = "sqlalchemy", specifier = ">=2.0.0" },
     { name = "sqlmodel", specifier = ">=0.0.24" },
-    { name = "structlog", specifier = ">=23.1.0,<24.0.0" },
+    { name = "structlog", specifier = ">=25.4.0,<26.0.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.22.0,<1.0.0" },
 ]
 provides-extras = ["test"]
@@ -444,7 +444,7 @@ requires-dist = [
     { name = "requests" },
     { name = "sqlalchemy", specifier = ">=2.0.0" },
     { name = "sqlmodel", specifier = ">=0.0.24" },
-    { name = "structlog" },
+    { name = "structlog", specifier = ">=25.4.0,<26.0.0" },
     { name = "uvicorn", extras = ["standard"] },
 ]
 provides-extras = ["test"]
@@ -518,7 +518,7 @@ requires-dist = [
     { name = "requests", specifier = ">=2.31.0,<3.0.0" },
     { name = "sqlalchemy", specifier = ">=2.0.0" },
     { name = "sqlmodel", specifier = ">=0.0.24" },
-    { name = "structlog", specifier = ">=23.1.0,<24.0.0" },
+    { name = "structlog", specifier = ">=25.4.0,<26.0.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.22.0,<1.0.0" },
 ]
 provides-extras = ["test"]
@@ -3002,11 +3002,11 @@ wheels = [
 
 [[package]]
 name = "structlog"
-version = "23.3.0"
+version = "25.4.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/44/30/1f73c8813fa47208cf17dc1239c148298ffafb11301b18071b8c6ba19f37/structlog-23.3.0.tar.gz", hash = "sha256:24b42b914ac6bc4a4e6f716e82ac70d7fb1e8c3b1035a765591953bfc37101a5", size = 1340937 }
+sdist = { url = "https://files.pythonhosted.org/packages/79/b9/6e672db4fec07349e7a8a8172c1a6ae235c58679ca29c3f86a61b5e59ff3/structlog-25.4.0.tar.gz", hash = "sha256:186cd1b0a8ae762e29417095664adf1d6a31702160a46dacb7796ea82f7409e4", size = 1369138 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/78/5d/8afc87f72e8ba11001c0122e62fc1e19f580f8607f9d1078012cf1492325/structlog-23.3.0-py3-none-any.whl", hash = "sha256:d6922a88ceabef5b13b9eda9c4043624924f60edbb00397f4d193bd754cde60a", size = 66004 },
+    { url = "https://files.pythonhosted.org/packages/a0/4a/97ee6973e3a73c74c8120d59829c3861ea52210667ec3e7a16045c62b64d/structlog-25.4.0-py3-none-any.whl", hash = "sha256:fe809ff5c27e557d14e613f45ca441aabda051d119ee5a0102aaba6ce40eed2c", size = 68720 },
 ]
 
 [[package]]
