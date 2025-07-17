@@ -11,7 +11,7 @@ Validates service API keys and manages service-level access control.
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 from fastapi import Request
 
