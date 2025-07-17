@@ -16,7 +16,7 @@ nox.options.default_venv_backend = "uv"
 
 
 @nox.session(python="3.12")
-def fix(session):
+def fix(session: nox.Session) -> None:
     """Format and fix code issues."""
     session.install("black", "isort", "ruff")
     session.run("black", "services/")
@@ -25,7 +25,7 @@ def fix(session):
 
 
 @nox.session(python="3.12")
-def format(session):
+def format(session: nox.Session) -> None:
     """Check code formatting."""
     session.install("black", "isort")
     session.run("black", "--check", "--diff", "services/")
@@ -33,14 +33,14 @@ def format(session):
 
 
 @nox.session(python="3.12")
-def lint(session):
+def lint(session: nox.Session) -> None:
     """Run linting."""
     session.install("ruff")
     session.run("ruff", "check", "services/")
 
 
 @nox.session(python="3.12")
-def typecheck(session):
+def typecheck(session: nox.Session) -> None:
     """Run type checking."""
     session.install("mypy")
     # Install all services for comprehensive type checking
@@ -53,7 +53,7 @@ def typecheck(session):
 
 
 @nox.session(python="3.12")
-def typecheck_strict(session):
+def typecheck_strict(session: nox.Session) -> None:
     """Run strict type checking."""
     session.install("mypy")
     session.install("-e", "services/common")
@@ -61,7 +61,7 @@ def typecheck_strict(session):
 
 
 @nox.session(python="3.12")
-def test(session):
+def test(session: nox.Session) -> None:
     """Run tests for all services."""
     # Install common dependencies
     session.install(
@@ -79,7 +79,7 @@ def test(session):
 
 
 @nox.session(python="3.12")
-def test_fast(session):
+def test_fast(session: nox.Session) -> None:
     """Run fast tests only."""
     session.install(
         "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio", "respx"
@@ -101,7 +101,7 @@ def test_fast(session):
 
 
 @nox.session(python="3.12")
-def test_cov(session):
+def test_cov(session: nox.Session) -> None:
     """Run tests with coverage."""
     session.install(
         "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio", "respx"
@@ -141,7 +141,7 @@ def test_cov(session):
 
 
 @nox.session(python="3.12")
-def test_serial(session):
+def test_serial(session: nox.Session) -> None:
     """Run tests serially (not in parallel)."""
     session.install(
         "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio", "respx"

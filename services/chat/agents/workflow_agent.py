@@ -24,7 +24,7 @@ This supersedes single-agent approaches with a focused multi-agent architecture.
 """
 
 import logging
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, AsyncGenerator, Callable, Dict, List, Optional, Union
 
 from llama_index.core.agent.workflow import AgentWorkflow, FunctionAgent
 from llama_index.core.tools import FunctionTool
@@ -551,7 +551,7 @@ class WorkflowAgent:
 
             return error_response
 
-    async def get_draft_data(self) -> List[Dict[str, Any]]:
+    async def get_draft_data(self) -> list[dict[str, Any]]:
         """
         Get structured draft data created during the conversation.
 
@@ -560,7 +560,7 @@ class WorkflowAgent:
         """
         return await self._extract_draft_data()
 
-    async def stream_chat(self, user_input: str):
+    async def stream_chat(self, user_input: str) -> AsyncGenerator[Any, None]:
         """
         Stream chat responses from the agent workflow.
 
@@ -627,7 +627,7 @@ class WorkflowAgent:
             # Yield error event
             yield {"error": str(e), "message": error_response}
 
-    async def get_memory_info(self) -> Dict[str, Any]:
+    async def get_memory_info(self) -> dict[str, Any]:
         """Get memory information from the workflow context and specialized agents."""
         try:
             info = {

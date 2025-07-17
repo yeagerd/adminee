@@ -225,7 +225,7 @@ class CoordinatorAgent(FunctionAgent):
         """Get the thread_id for this agent."""
         return getattr(self, "_thread_id")
 
-    def _create_coordinator_tools(self) -> List[FunctionTool]:  # type: ignore[no-untyped-def]
+    def _create_coordinator_tools(self) -> List[FunctionTool]:
         """Create coordinator-specific tools."""
         tools = []
 

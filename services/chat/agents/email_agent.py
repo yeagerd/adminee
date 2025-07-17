@@ -63,7 +63,7 @@ class EmailAgent(FunctionAgent):
         user_id: str,
         llm_model: str = "gpt-4.1-nano",
         llm_provider: str = "openai",
-        **llm_kwargs,
+        **llm_kwargs: Any,
     ):
         # Get LLM instance
         llm = get_llm_manager().get_llm(
@@ -105,7 +105,7 @@ class EmailAgent(FunctionAgent):
 
         logger.debug("EmailAgent initialized with email tools")
 
-    def _create_email_tools(self, user_id: str) -> List[Callable[..., Any]]:
+    def _create_email_tools(self, user_id: str) -> List[FunctionTool]:
         """Create email-specific tools with user_id pre-filled."""
         tools = []
 
@@ -142,7 +142,7 @@ def create_email_agent(
     user_id: str,
     llm_model: str = "gpt-4.1-nano",
     llm_provider: str = "openai",
-    **llm_kwargs,
+    **llm_kwargs: Any,
 ) -> EmailAgent:
     """
     Factory function to create an EmailAgent instance.
