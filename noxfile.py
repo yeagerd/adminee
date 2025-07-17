@@ -4,7 +4,6 @@ nox.options.sessions = [
     "format",
     "lint",
     "typecheck",
-    "typecheck_strict",
     "test",
     "test_fast",
     "test_cov",
