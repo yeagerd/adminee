@@ -30,7 +30,7 @@ class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
     # Shared state for capturing OAuth data
     captured_data: dict[str, str] = {}
 
-    def do_GET(self):
+    def do_GET(self) -> None:
         """Handle GET requests (OAuth callbacks)."""
         # Parse the URL and query parameters
         parsed_url = urllib.parse.urlparse(self.path)
@@ -63,7 +63,7 @@ class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
         else:
             self.send_invalid_response()
 
-    def send_success_response(self, code: str, state: Optional[str]):
+    def send_success_response(self, code: str, state: Optional[str]) -> None:
         """Send success response for OAuth callback."""
         self.send_response(200)
         self.send_header("Content-type", "text/html; charset=utf-8")
@@ -114,7 +114,7 @@ class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
         """
         self.wfile.write(html.encode())
 
-    def send_error_response(self, error: str, error_description: Optional[str]):
+    def send_error_response(self, error: str, error_description: Optional[str]) -> None:
         """Send error response for OAuth callback."""
         self.send_response(400)
         self.send_header("Content-type", "text/html; charset=utf-8")
@@ -158,7 +158,7 @@ class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
         """
         self.wfile.write(html.encode())
 
-    def send_invalid_response(self):
+    def send_invalid_response(self) -> None:
         """Send response for invalid OAuth callback."""
         self.send_response(400)
         self.send_header("Content-type", "text/html; charset=utf-8")
@@ -193,7 +193,7 @@ class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
         """
         self.wfile.write(html.encode())
 
-    def log_message(self, format, *args):
+    def log_message(self, format, *args) -> None:
         """Override log message to be more demo-friendly."""
         print(f"🌐 OAuth Callback: {format % args}")
 
@@ -207,7 +207,7 @@ class OAuthCallbackServer:
         self.thread = None
         self.handler = OAuthCallbackHandler
 
-    def start(self):
+    def start(self) -> bool:
         """Start the OAuth callback server."""
         # Try multiple ports if the default is in use
         ports_to_try = [
@@ -253,7 +253,7 @@ class OAuthCallbackServer:
 
         return False
 
-    def stop(self):
+    def stop(self) -> None:
         """Stop the OAuth callback server."""
         if self.server:
             self.server.shutdown()
@@ -264,7 +264,7 @@ class OAuthCallbackServer:
         """Get captured OAuth data."""
         return self.handler.captured_data.copy()
 
-    def clear_captured_data(self):
+    def clear_captured_data(self) -> None:
         """Clear captured OAuth data."""
         self.handler.captured_data.clear()
 
@@ -283,7 +283,7 @@ class OAuthCallbackServer:
         return None
 
 
-def main():
+def main() -> None:
     """Main function for standalone usage."""
     print("🔗 OAuth Callback Handler for User Management Demo")
     print("=" * 50)

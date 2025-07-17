@@ -56,20 +56,20 @@ from fastapi.responses import HTMLResponse
 
 
 class FastAPICallbackServer:
-    def __init__(self, port: int = 8080):
+    def __init__(self, port: int = 8080) -> None:
         self.port = port
         self.app = FastAPI()
-        self.code = None
-        self.state = None
-        self.error = None
-        self.error_description = None
+        self.code: Optional[str] = None
+        self.state: Optional[str] = None
+        self.error: Optional[str] = None
+        self.error_description: Optional[str] = None
         self._event = threading.Event()
-        self._thread = None
+        self._thread: Optional[threading.Thread] = None
         self._setup_routes()
 
-    def _setup_routes(self):
+    def _setup_routes(self) -> None:
         @self.app.get("/oauth/callback", response_class=HTMLResponse)
-        async def oauth_callback(request: Request):
+        async def oauth_callback(request: Request) -> HTMLResponse:
             params = dict(request.query_params)
             self.code = params.get("code")
             self.state = params.get("state")
@@ -95,8 +95,8 @@ class FastAPICallbackServer:
                     status_code=400,
                 )
 
-    def start(self):
-        def run():
+    def start(self) -> None:
+        def run() -> None:
             uvicorn.run(self.app, host="0.0.0.0", port=self.port, log_level="warning")
 
         self._thread = threading.Thread(target=run, daemon=True)
@@ -106,7 +106,9 @@ class FastAPICallbackServer:
             f"🔗 Ready to handle OAuth callbacks at http://localhost:{self.port}/oauth/callback"
         )
 
-    def wait_for_callback(self, timeout: int = 300):
+    def wait_for_callback(
+        self, timeout: int = 300
+    ) -> Optional[Dict[str, Optional[str]]]:
         print(f"⏳ Waiting for OAuth callback (timeout: {timeout}s)...")
         received = self._event.wait(timeout)
         if not received:
@@ -119,7 +121,7 @@ class FastAPICallbackServer:
             "error_description": self.error_description,
         }
 
-    def stop(self):
+    def stop(self) -> None:
         # No explicit stop for uvicorn in thread, but thread is daemonized
         pass
 
@@ -166,8 +168,15 @@ for logger_name in [
     logging.getLogger(logger_name).setLevel(logging.WARNING)
 
 
-def actor(message):
-    """Returns a string indicating the actor of the message."""
+def actor(message: Any) -> str:
+    """Returns a string indicating the actor of the message.
+
+    Args:
+        message: The message object which may have llm_generated and user_id attributes
+
+    Returns:
+        str: 'briefly' if the message is LLM-generated, otherwise the user_id or 'user'
+    """
     return (
         "briefly"
         if getattr(message, "llm_generated", False)
@@ -178,10 +187,10 @@ def actor(message):
 class ServiceClient:
     """Base client for service interactions."""
 
-    def __init__(self, base_url: str, timeout: float = 30.0):
+    def __init__(self, base_url: str, timeout: float = 30.0) -> None:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
-        self.available = True
+        self.available: bool = True
 
     async def health_check(self) -> bool:
         """Check if service is available."""
@@ -200,7 +209,7 @@ class ServiceClient:
 class UserServiceClient(ServiceClient):
     """Client for user service operations."""
 
-    def __init__(self, base_url: str = "http://localhost:8001"):
+    def __init__(self, base_url: str = "http://localhost:8001") -> None:
         super().__init__(base_url)
         self.auth_token: Optional[str] = None
         self.user_id: Optional[str] = None
@@ -299,6 +308,14 @@ class UserServiceClient(ServiceClient):
         return False
 
     async def get_integrations_status(self) -> Dict[str, Any]:
+        """Get status of all integrations.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing the status of all integrations.
+
+        Raises:
+            Exception: If authentication fails, user is not found, or service is unavailable.
+        """
         """Get status of all integrations."""
         if not self.auth_token or not self.user_id:
             raise Exception("No authentication token or user ID provided")
@@ -351,6 +368,17 @@ class UserServiceClient(ServiceClient):
                 raise Exception(f"Unexpected error getting integrations: {str(e)}")
 
     async def check_user_exists_internal(self, user_id: str) -> bool:
+        """Check if a user exists in the system.
+
+        Args:
+            user_id: The ID of the user to check.
+
+        Returns:
+            bool: True if the user exists, False otherwise.
+
+        Raises:
+            RuntimeError: If there's an error communicating with the user service.
+        """
         """Return True if user exists, False if not. Raise if service is down."""
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
@@ -376,6 +404,15 @@ class UserServiceClient(ServiceClient):
             raise RuntimeError(f"Unexpected error: {e}")
 
     async def get_user_preferences(self) -> Optional[Dict[str, Any]]:
+        """Retrieve the preferences for the current user.
+
+        Returns:
+            Optional[Dict[str, Any]]: A dictionary containing user preferences if found,
+            None if the user has no preferences set, or if the user ID is not set.
+
+        Note:
+            This method uses the frontend API key for authentication.
+        """
         """Get user preferences using frontend API key."""
         if not self.user_id:
             return None
@@ -554,8 +591,12 @@ class FullDemo:
         # Track the preferred OAuth provider (must be set explicitly)
         self.preferred_provider: Optional[str] = None
 
-    async def check_services(self):
-        """Check availability of all services including NextAuth server."""
+    async def check_services(self) -> None:
+        """Check availability of all services including NextAuth server.
+
+        This method updates the `services_available` and `auth_methods` dictionaries
+        with the current availability status of each service.
+        """
         print("🔍 Checking service availability...")
 
         # Check main services
@@ -915,8 +956,12 @@ class FullDemo:
                 logger.error(f"Failed to create agent: {e}")
         return None
 
-    async def load_user_timezone(self):
-        """Load user timezone from preferences."""
+    async def load_user_timezone(self) -> None:
+        """Load user timezone from preferences.
+
+        This method updates the `user_timezone` attribute based on the user's preferences.
+        If the user is not authenticated or if there's an error, it will use UTC as the default timezone.
+        """
         if not self.authenticated:
             return
 
@@ -929,8 +974,12 @@ class FullDemo:
         except Exception as e:
             logger.warning(f"Failed to load user timezone: {e}")
 
-    def show_welcome(self):
-        """Show welcome message with NextAuth information."""
+    def show_welcome(self) -> None:
+        """Show welcome message with NextAuth information.
+
+        Displays a formatted welcome message showing the current demo mode,
+        user ID, and timezone settings.
+        """
         print("=" * 80)
         print("🚀 Welcome to the Enhanced Briefly Demo with NextAuth Testing!")
         print("=" * 80)
@@ -975,8 +1024,12 @@ class FullDemo:
 
         print()
 
-    def show_help(self):
-        """Show enhanced help with NextAuth commands."""
+    def show_help(self) -> None:
+        """Show enhanced help with NextAuth commands.
+
+        Displays a formatted help message showing available commands for the demo,
+        including NextAuth testing commands and chat commands.
+        """
         print("\n" + "=" * 60)
         print("📋 Enhanced Briefly Demo - Help")
         print("=" * 60)
@@ -1019,8 +1072,15 @@ class FullDemo:
             logger.error(f"Local agent error: {e}")
             return f"❌ Error: {e}"
 
-    def _render_drafts_as_text(self, drafts):
-        """Render drafts as text for display."""
+    def _render_drafts_as_text(self, drafts: List[Dict[str, Any]]) -> str:
+        """Render drafts as text for display.
+
+        Args:
+            drafts: A list of draft dictionaries containing draft information.
+
+        Returns:
+            A formatted string representation of the drafts.
+        """
         if not drafts:
             return "No drafts available"
 

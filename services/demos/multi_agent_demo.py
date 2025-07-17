@@ -32,7 +32,7 @@ logging.basicConfig(
 logger = get_logger(__name__)
 
 
-async def demo_multi_agent_coordination():
+async def demo_multi_agent_coordination() -> WorkflowAgent:
     """Demonstrate multi-agent coordination for complex requests."""
     print("=== Multi-Agent Coordination Demo ===")
 
@@ -66,7 +66,7 @@ async def demo_multi_agent_coordination():
     return agent
 
 
-async def demo_calendar_agent():
+async def demo_calendar_agent() -> None:
     """Demonstrate CalendarAgent specialization."""
     print("\n=== CalendarAgent Specialization Demo ===")
 
@@ -83,7 +83,7 @@ async def demo_calendar_agent():
     print(f"CalendarAgent (via Coordinator): {response}")
 
 
-async def demo_email_agent():
+async def demo_email_agent() -> None:
     """Demonstrate EmailAgent specialization."""
     print("\n=== EmailAgent Specialization Demo ===")
 
@@ -100,7 +100,7 @@ async def demo_email_agent():
     print(f"EmailAgent (via Coordinator): {response}")
 
 
-async def demo_document_agent():
+async def demo_document_agent() -> None:
     """Demonstrate DocumentAgent specialization."""
     print("\n=== DocumentAgent Specialization Demo ===")
 
@@ -117,7 +117,7 @@ async def demo_document_agent():
     print(f"DocumentAgent (via Coordinator): {response}")
 
 
-async def demo_draft_agent():
+async def demo_draft_agent() -> None:
     """Demonstrate DraftAgent specialization."""
     print("\n=== DraftAgent Specialization Demo ===")
 
@@ -137,7 +137,7 @@ async def demo_draft_agent():
     print(f"DraftAgent (via Coordinator): {response}")
 
 
-async def demo_agent_handoffs():
+async def demo_agent_handoffs() -> None:
     """Demonstrate how agents hand off to each other."""
     print("\n=== Agent Handoff Demo ===")
 
@@ -158,7 +158,7 @@ async def demo_agent_handoffs():
     print(f"Multi-Agent Handoff Result: {response}")
 
 
-async def demo_state_sharing():
+async def demo_state_sharing() -> None:
     """Demonstrate how agents share state and information."""
     print("\n=== State Sharing Demo ===")
 
@@ -182,7 +182,7 @@ async def demo_state_sharing():
     print(f"State-Aware Response: {response}")
 
 
-async def demo_single_vs_multi_agent():
+async def demo_single_vs_multi_agent() -> None:
     """Compare single-agent vs multi-agent responses."""
     print("\n=== Single vs Multi-Agent Comparison ===")
 
@@ -213,7 +213,7 @@ async def demo_single_vs_multi_agent():
     print(f"\nMulti-Agent Response: {multi_response}")
 
 
-async def demo_context_persistence():
+async def demo_context_persistence() -> None:
     """Demonstrate context persistence in multi-agent mode."""
     print("\n=== Multi-Agent Context Persistence Demo ===")
 
@@ -252,7 +252,7 @@ async def demo_context_persistence():
     print(f"Agent (with loaded context): {response}")
 
 
-async def main():
+async def main() -> None:
     """Run all multi-agent demos."""
     print("Multi-Agent Workflow Demo Script")
     print("=" * 60)
