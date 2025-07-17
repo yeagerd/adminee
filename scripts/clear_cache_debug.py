@@ -8,7 +8,7 @@ import redis.asyncio as redis
 import os
 from datetime import datetime
 
-async def clear_demo_user_cache():
+async def clear_demo_user_cache() -> None:
     """Clear all cached data for demo_user to force fresh API calls."""
     
     # Connect to Redis using the same URL pattern as the office service
@@ -56,7 +56,7 @@ async def clear_demo_user_cache():
     except Exception as e:
         print(f"❌ Error: {e}")
 
-async def inspect_cache_contents():
+async def inspect_cache_contents() -> None:
     """Inspect what's actually in the cache for debugging."""
     
     redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
