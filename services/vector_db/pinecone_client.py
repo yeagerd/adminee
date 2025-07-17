@@ -12,7 +12,7 @@ except ImportError:
 
 
 class PineconeClient:
-    def __init__(self):
+    def __init__(self) -> None:
         self.api_key = os.environ.get("PINECONE_API_KEY")
         self.environment = os.environ.get("PINECONE_ENVIRONMENT")
         if not self.api_key or not self.environment:
@@ -24,10 +24,10 @@ class PineconeClient:
             api_key=self.api_key, environment=self.environment
         )
 
-    def get_index(self, index_name: str):
+    def get_index(self, index_name: str) -> pinecone.Index:
         return self.pinecone.Index(index_name)
 
-    def create_index(self, index_name: str, dimension: int, metric: str = "cosine"):
+    def create_index(self, index_name: str, dimension: int, metric: str = "cosine") -> str:
         if index_name not in self.pinecone.list_indexes().names:
             self.pinecone.create_index(
                 name=index_name,
@@ -41,7 +41,7 @@ class PineconeClient:
             return f"Index {index_name} created successfully."
         return f"Index {index_name} already exists."
 
-    def delete_index(self, index_name: str):
+    def delete_index(self, index_name: str) -> str:
         if index_name in self.pinecone.list_indexes().names:
             self.pinecone.delete_index(index_name)
             return f"Index {index_name} deleted successfully."
