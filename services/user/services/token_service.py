@@ -6,7 +6,7 @@ internal service-to-service communication with automatic refresh and validation.
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 import httpx
 from sqlmodel import select
@@ -538,7 +538,7 @@ class TokenService:
 
     async def _refresh_token_if_possible(
         self, integration: Integration, user_id: str, provider: IntegrationProvider
-    ):
+    ) -> Any:
         """Refresh token if refresh token is available."""
         try:
             return await get_integration_service().refresh_integration_tokens(

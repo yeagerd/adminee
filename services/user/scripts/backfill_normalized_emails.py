@@ -111,7 +111,7 @@ async def verify_backfill() -> None:
             logger.info("All users have normalized_email populated!")
 
 
-async def main():
+async def main() -> None:
     """Main function to run the backfill."""
     logger.info("Starting normalized_email backfill...")
 

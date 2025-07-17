@@ -40,7 +40,7 @@ class ServiceAPIKeyAuth:
     2. Mapping them directly to client service names
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Map actual API key values directly to client service names
         self.api_key_value_to_client: Dict[str, str] = {}
 

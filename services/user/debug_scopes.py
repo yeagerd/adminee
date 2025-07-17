@@ -16,7 +16,7 @@ from services.user.models.integration import (  # noqa: E402
 from services.user.settings import Settings  # noqa: E402
 
 
-def debug_microsoft_scopes():
+def debug_microsoft_scopes() -> bool:
     """Debug Microsoft OAuth scope configuration."""
     print("🔍 Debugging Microsoft OAuth scope configuration...")
 

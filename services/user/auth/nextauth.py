@@ -180,6 +180,8 @@ def validate_token_permissions(
     # Adjust based on how NextAuth is configured to issue tokens.
     token_permissions_str = token_claims.get("scope", "")
     token_permissions_list = token_claims.get("permissions", [])
+    if not isinstance(token_permissions_list, list):
+        token_permissions_list = []
 
     if isinstance(token_permissions_str, str):
         token_permissions = set(token_permissions_str.split())
@@ -347,10 +349,10 @@ async def get_current_user_with_claims(
     if user_id:
         # Return minimal claims object for gateway authentication
         claims = {
-            "sub": user_id,
+            "sub": str(user_id),
             "iss": "gateway",
-            "iat": int(time.time()),
-            "exp": int(time.time()) + 3600,  # 1 hour from now
+            "iat": str(int(time.time())),
+            "exp": str(int(time.time()) + 3600),  # 1 hour from now
         }
         logger_instance.debug(
             "User authenticated with gateway headers",
@@ -365,11 +367,13 @@ async def get_current_user_with_claims(
 
     try:
         token_claims = await verify_jwt_token(credentials.credentials)
+        # Ensure all values are str for mypy compliance
+        token_claims_str = {k: str(v) for k, v in token_claims.items()}
         logger_instance.debug(
             "User authenticated with JWT claims",
             extra={"user_id": token_claims.get("sub")},
         )
-        return token_claims
+        return token_claims_str
     except AuthError as e:
         logger_instance.warning(f"JWT authentication failed: {e.message}")
         raise AuthError(message=e.message)

@@ -207,7 +207,7 @@ class OAuthCallbackRequest(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def validate_code_or_error(self):
+    def validate_code_or_error(self) -> Any:
         """Ensure either code or error is provided."""
         if not self.code and not self.error:
             raise ValueError("Either 'code' or 'error' must be provided")

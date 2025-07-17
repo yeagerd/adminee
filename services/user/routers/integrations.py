@@ -76,7 +76,7 @@ async def list_user_integrations(
     ),
     include_token_info: bool = Query(True, description="Include token metadata"),
     current_user: str = Depends(get_current_user),
-):
+) -> IntegrationListResponse:
     """
     List all integrations for a user.
 
@@ -118,7 +118,7 @@ async def start_oauth_flow(
     user_id: str,
     request: OAuthStartRequest,
     current_user: str = Depends(get_current_user),
-):
+) -> OAuthStartResponse:
     """
     Start OAuth authorization flow for a provider.
 
@@ -168,7 +168,7 @@ async def complete_oauth_flow(
     request: OAuthCallbackRequest,
     provider: IntegrationProvider = Query(..., description="OAuth provider"),
     current_user: str = Depends(get_current_user),
-):
+) -> OAuthCallbackResponse:
     """
     Complete OAuth authorization flow and create integration.
 
@@ -248,7 +248,7 @@ async def complete_oauth_flow(
 async def get_integration_statistics(
     user_id: str,
     current_user: str = Depends(get_current_user),
-):
+) -> IntegrationStatsResponse:
     """
     Get comprehensive integration statistics for user.
 
@@ -330,7 +330,7 @@ async def disconnect_integration(
     provider: IntegrationProvider,
     request: IntegrationDisconnectRequest | None = None,
     current_user: str = Depends(get_current_user),
-):
+) -> IntegrationDisconnectResponse:
     """
     Disconnect an OAuth integration.
 
@@ -376,7 +376,7 @@ async def refresh_integration_tokens(
     provider: IntegrationProvider,
     request: TokenRefreshRequest | None = None,
     current_user: str = Depends(get_current_user),
-):
+) -> TokenRefreshResponse:
     """
     Refresh access tokens for an integration.
 
@@ -425,7 +425,7 @@ async def check_integration_health(
     user_id: str,
     provider: IntegrationProvider,
     current_user: str = Depends(get_current_user),
-):
+) -> IntegrationHealthResponse:
     """
     Check the health status of an integration.
 
@@ -464,7 +464,7 @@ async def check_integration_health(
 @provider_router.get("/providers", response_model=ProviderListResponse)
 async def list_oauth_providers(
     current_user: str = Depends(get_current_user),
-):
+) -> ProviderListResponse:
     """
     List all available OAuth providers.
 
@@ -526,7 +526,7 @@ async def list_oauth_providers(
 async def validate_oauth_scopes(
     request: ScopeValidationRequest,
     current_user: str = Depends(get_current_user),
-):
+) -> ScopeValidationResponse:
     """
     Validate OAuth scopes for a provider.
 

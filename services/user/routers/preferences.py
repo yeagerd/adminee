@@ -49,7 +49,7 @@ router = APIRouter(
 async def get_preferences(
     user_id: str,
     current_user: Annotated[str, Depends(get_current_user)],
-):
+) -> UserPreferencesResponse:
     """
     Get user preferences endpoint.
 
@@ -106,7 +106,7 @@ async def update_preferences(
     user_id: str,
     preferences_update: UserPreferencesUpdate,
     current_user: Annotated[str, Depends(get_current_user)],
-):
+) -> UserPreferencesResponse:
     """
     Update user preferences endpoint.
 
@@ -161,7 +161,7 @@ async def reset_preferences(
     user_id: str,
     reset_request: PreferencesResetRequest,
     current_user: Annotated[str, Depends(get_current_user)],
-):
+) -> UserPreferencesResponse:
     """
     Reset user preferences to defaults endpoint.
 
