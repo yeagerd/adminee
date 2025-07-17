@@ -1,9 +1,9 @@
 import { useDraftState } from '@/hooks/use-draft-state';
+import type { EmailMessage } from '@/types/office-service';
 import { getSession } from 'next-auth/react';
 import React, { useEffect, useState } from 'react';
 import gatewayClient from '../../lib/gateway-client';
 import { getProvider } from '../../lib/session-utils';
-import EmailFilters from '../email/email-filters';
 import EmailThread from '../email/email-thread';
 
 const OpenDraftPaneButton: React.FC = () => {
@@ -22,10 +22,10 @@ const OpenDraftPaneButton: React.FC = () => {
 };
 
 const EmailView: React.FC = () => {
-    const [threads, setThreads] = useState<any[]>([]);
+    const [threads, setThreads] = useState<EmailMessage[]>([]); // If API returns messages, not threads
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [filters, setFilters] = useState({});
+    const [filters, setFilters] = useState<Record<string, unknown>>({});
 
     useEffect(() => {
         let isMounted = true;
@@ -37,8 +37,7 @@ const EmailView: React.FC = () => {
                 const userId = session?.user?.id;
                 if (!provider || !userId) throw new Error('No provider or user id found in session');
                 // TODO: support pagination, filtering, etc.
-                const emailsResp: any = await gatewayClient.getEmails(userId, provider, 50, 0);
-                // Use the correct property from the API response
+                const emailsResp = await gatewayClient.getEmails(userId, provider, 50, 0) as { data?: { messages?: EmailMessage[] } };
                 if (isMounted) setThreads(emailsResp.data?.messages || []);
                 setError(null);
             } catch (e: any) {
@@ -57,7 +56,7 @@ const EmailView: React.FC = () => {
                     <h1 className="text-xl font-semibold">Inbox</h1>
                     <OpenDraftPaneButton />
                 </div>
-                <EmailFilters filters={filters} setFilters={setFilters} />
+                <EmailFilters filters={filters as EmailFilters} setFilters={setFilters} />
             </div>
             <div className="flex-1 overflow-y-auto">
                 {loading ? (
@@ -67,8 +66,8 @@ const EmailView: React.FC = () => {
                 ) : threads.length === 0 ? (
                     <div className="p-8 text-center text-muted-foreground">No emails found.</div>
                 ) : (
-                    threads.map((thread: any) => (
-                        <EmailThread key={thread.id || thread[0]?.id} thread={thread} />
+                    threads.map((thread: EmailMessage) => (
+                        <EmailThread key={thread.id} thread={{ id: thread.id, emails: [thread] }} />
                     ))
                 )}
             </div>

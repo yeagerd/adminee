@@ -1,10 +1,11 @@
+import { EmailMessage } from '@/types/office-service';
 import React from 'react';
 import EmailCard from './email-card';
 
 interface EmailThreadProps {
     thread: {
         id: string;
-        emails: any[];
+        emails: EmailMessage[];
     };
 }
 

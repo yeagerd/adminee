@@ -1,8 +1,9 @@
+import type { EmailFilters } from '@/types/office-service';
 import React from 'react';
 
 interface EmailFiltersProps {
-    filters: any;
-    setFilters: (filters: any) => void;
+    filters: EmailFilters;
+    setFilters: (filters: EmailFilters) => void;
 }
 
 const EmailFilters: React.FC<EmailFiltersProps> = ({ filters, setFilters }) => {
