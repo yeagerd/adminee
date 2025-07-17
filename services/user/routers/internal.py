@@ -8,6 +8,7 @@ and integration status with service authentication.
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel
 
 from services.common.http_errors import (
     BrieflyAPIException,
@@ -29,16 +30,18 @@ from services.user.schemas.user import (
     UserCreate,
     UserResponse,
 )
-from pydantic import BaseModel
 from services.user.services.token_service import get_token_service
 from services.user.services.user_service import get_user_service
 
 logger = get_logger(__name__)
 
+
 class UserCreateResponse(BaseModel):
     """Response model for user creation/upsert with creation status."""
+
     user: UserResponse
     created: bool
+
 
 router = APIRouter(
     prefix="/internal",

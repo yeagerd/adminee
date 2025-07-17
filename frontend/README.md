@@ -186,7 +186,7 @@ Email: Frontend → Gateway → Office Service (Email data)
 
 ### NextAuth Endpoints
 - `GET/POST /api/auth/[...nextauth]` - NextAuth.js handler
-- `POST /api/auth/webhook` - User service communication
+
 
 ### Express Gateway Integration
 The frontend communicates with backend services through the gateway:
