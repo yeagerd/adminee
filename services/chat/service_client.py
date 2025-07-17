@@ -5,8 +5,8 @@ Provides HTTP client functionality to call User Management Service and Office Se
 with proper authentication using API keys.
 """
 
-from typing import Any, Dict, List, Optional, Type
 import types
+from typing import Any, Dict, List, Optional, Type
 
 import httpx
 
