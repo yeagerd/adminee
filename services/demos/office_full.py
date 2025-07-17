@@ -192,7 +192,7 @@ class FullOfficeDemo:
         self.client = OfficeServiceClient(service_url)
         self.errors: List[str] = []
 
-    async def run_demo(self):
+    async def run_demo(self) -> None:
         """Run the complete Office Service demo."""
         print("🚀 Office Service Full Integration Demo")
         print("=" * 60)
@@ -237,7 +237,7 @@ class FullOfficeDemo:
         # 6. Summary
         await self._show_summary()
 
-    async def _check_service_health(self):
+    async def _check_service_health(self) -> None:
         """Check if the Office Service is running and healthy."""
         print("\n" + "=" * 50)
         print(" 🏥 HEALTH CHECK")
@@ -300,7 +300,7 @@ class FullOfficeDemo:
             print(f"❌ {error_msg}")
             raise
 
-    async def _check_provider_health(self):
+    async def _check_provider_health(self) -> None:
         """Check provider integration health."""
         print("\n" + "=" * 50)
         print(" 🔌 PROVIDER INTEGRATION HEALTH")
@@ -340,7 +340,7 @@ class FullOfficeDemo:
             self.errors.append(error_msg)
             print(f"❌ {error_msg}")
 
-    async def _demo_email_operations(self):
+    async def _demo_email_operations(self) -> None:
         """Demonstrate email operations."""
         print("\n" + "=" * 50)
         print(" 📧 EMAIL OPERATIONS")
@@ -415,7 +415,7 @@ class FullOfficeDemo:
                     "💡 This could be due to missing tokens, API changes, or network issues"
                 )
 
-    async def _demo_calendar_operations(self):
+    async def _demo_calendar_operations(self) -> None:
         """Demonstrate calendar operations."""
         print("\n" + "=" * 50)
         print(" 📅 CALENDAR OPERATIONS")
@@ -490,7 +490,7 @@ class FullOfficeDemo:
                     "💡 This could be due to missing tokens, API changes, or network issues"
                 )
 
-    async def _demo_file_operations(self):
+    async def _demo_file_operations(self) -> None:
         """Demonstrate file operations."""
         print("\n" + "=" * 50)
         print(" 📁 FILE OPERATIONS")
@@ -599,7 +599,7 @@ class FullOfficeDemo:
                     "💡 This could be due to missing tokens, API changes, or network issues"
                 )
 
-    async def _show_summary(self):
+    async def _show_summary(self) -> None:
         """Show final demo summary."""
         print("\n" + "=" * 50)
         print(" 🎯 DEMO SUMMARY")
@@ -670,7 +670,7 @@ class FullOfficeDemo:
             sys.exit(0)
 
 
-def parse_arguments():
+def parse_arguments() -> argparse.Namespace:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
         description="Full Office Service integration demo with HTTP API calls",
@@ -704,7 +704,7 @@ Environment Variables for Office Service:
     return parser.parse_args()
 
 
-async def main():
+async def main() -> None:
     """Main demo function."""
     args = parse_arguments()
 

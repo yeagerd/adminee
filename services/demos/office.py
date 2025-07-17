@@ -212,14 +212,14 @@ class OfficeDemoService:
             return "✅ All APIs working!"
 
 
-def print_section_header(title: str):
+def print_section_header(title: str) -> None:
     """Print a formatted section header."""
     print(f"\n{'='*50}")
     print(f" {title}")
     print(f"{'='*50}")
 
 
-def print_email_summary(emails: Dict[str, List[EmailMessage]]):
+def print_email_summary(emails: Dict[str, List[EmailMessage]]) -> None:
     """Print a summary of fetched emails."""
     print_section_header("📧 EMAIL SUMMARY")
 
@@ -242,7 +242,7 @@ def print_email_summary(emails: Dict[str, List[EmailMessage]]):
                 print()
 
 
-def print_calendar_summary(events: Dict[str, List[Dict[str, Any]]]):
+def print_calendar_summary(events: Dict[str, List[Dict[str, Any]]]) -> None:
     """Print a summary of fetched calendar events."""
     print_section_header("📅 CALENDAR SUMMARY")
 
@@ -262,7 +262,7 @@ def print_calendar_summary(events: Dict[str, List[Dict[str, Any]]]):
                 print()
 
 
-def print_files_summary(files: Dict[str, List[Dict[str, Any]]]):
+def print_files_summary(files: Dict[str, List[Dict[str, Any]]]) -> None:
     """Print a summary of fetched files."""
     print_section_header("📁 FILES SUMMARY")
 
@@ -291,7 +291,7 @@ def print_files_summary(files: Dict[str, List[Dict[str, Any]]]):
                 print()
 
 
-async def run_demo(email: str):
+async def run_demo(email: str) -> None:
     """Run the Office Service demo with the provided email."""
     print("🚀 Office Service Live Demo")
     print("=" * 50)
@@ -399,7 +399,7 @@ async def run_demo(email: str):
         sys.exit(1)
 
 
-def parse_arguments():
+def parse_arguments() -> argparse.Namespace:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
         description="Live demo for Office Service with real API credentials",

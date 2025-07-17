@@ -145,7 +145,7 @@ def verify_nextauth_jwt(token: str) -> Dict:
 
 
 @app.get("/")
-async def root():
+async def root() -> dict:
     """Root endpoint with service information."""
     return {
         "service": "NextAuth Test Server",
@@ -164,7 +164,7 @@ async def root():
 
 
 @app.post("/auth/oauth/start")
-async def start_oauth_flow(request: OAuthStartRequest):
+async def start_oauth_flow(request: OAuthStartRequest) -> dict:
     """Start OAuth flow for Google or Microsoft."""
     provider = request.provider.lower()
 
@@ -249,7 +249,7 @@ async def oauth_callback(
     provider: str,
     code: str = Query(...),
     state: str = Query(...),
-):
+) -> HTMLResponse:
     """Handle OAuth callback from Google or Microsoft."""
     provider = provider.lower()
 
@@ -426,7 +426,7 @@ async def get_user_info(provider: str, access_token: str) -> Dict:
 
 
 @app.get("/auth/session")
-async def get_session(request: Request):
+async def get_session(request: Request) -> dict:
     """Get current session information."""
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
@@ -467,7 +467,7 @@ async def get_session(request: Request):
 
 
 @app.get("/users")
-async def list_users():
+async def list_users() -> dict:
     """List all users (demo purposes)."""
     return {
         "users": list(users_db.values()),
@@ -476,7 +476,7 @@ async def list_users():
 
 
 @app.get("/users/{user_id}")
-async def get_user(user_id: str):
+async def get_user(user_id: str) -> dict:
     """Get specific user information."""
     if user_id not in users_db:
         raise HTTPException(
@@ -487,7 +487,7 @@ async def get_user(user_id: str):
 
 
 @app.post("/auth/verify")
-async def verify_token(request: Request):
+async def verify_token(request: Request) -> dict:
     """Verify NextAuth JWT token (for backend services)."""
     try:
         body = await request.json()

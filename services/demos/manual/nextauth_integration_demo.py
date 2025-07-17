@@ -13,7 +13,7 @@ import jwt
 
 
 # NextAuth user token
-def create_nextauth_token():
+def create_nextauth_token() -> str:
     """Create a NextAuth JWT token for testing."""
     now = int(time.time())
     payload = {
@@ -29,7 +29,7 @@ def create_nextauth_token():
     return jwt.encode(payload, "demo_secret", algorithm="HS256")
 
 
-async def test_user_service():
+async def test_user_service() -> bool:
     """Test user service endpoints with NextAuth user."""
     token = create_nextauth_token()
     headers = {"Authorization": f"Bearer {token}"}
@@ -67,7 +67,7 @@ async def test_user_service():
         return True
 
 
-async def test_internal_service():
+async def test_internal_service() -> bool:
     """Test internal service endpoints with NextAuth user."""
     headers = {"X-API-Key": "test-CHAT_USER_KEY"}
 
@@ -89,7 +89,7 @@ async def test_internal_service():
         return True
 
 
-async def test_chat_service():
+async def test_chat_service() -> bool:
     """Test chat service with NextAuth user."""
     token = create_nextauth_token()
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
@@ -121,7 +121,7 @@ async def test_chat_service():
         return True
 
 
-async def main():
+async def main() -> bool:
     """Run all integration tests."""
     print("🚀 NextAuth Integration Test Suite")
     print("=" * 50)

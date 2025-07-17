@@ -310,7 +310,9 @@ def create_nextauth_jwt_for_demo(user_id: str, email: str, provider: str) -> str
     return jwt.encode(payload, secret, algorithm="HS256")
 
 
-def compare_auth_approaches(clerk_token: Optional[str], nextauth_token: Optional[str]):
+def compare_auth_approaches(
+    clerk_token: Optional[str], nextauth_token: Optional[str]
+) -> None:
     """
     Compare Clerk and NextAuth tokens side by side.
 
@@ -404,7 +406,7 @@ def compare_auth_approaches(clerk_token: Optional[str], nextauth_token: Optional
     print("  • NextAuth: Self-contained authentication system")
 
 
-async def demonstrate_nextauth_integration():
+async def demonstrate_nextauth_integration() -> Optional[str]:
     """
     Demonstrate how NextAuth would integrate with Briefly services.
     """
