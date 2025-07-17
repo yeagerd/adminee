@@ -374,7 +374,7 @@ async def get_thread_history(
         result = await session.execute(
             select(Message)
             .where(Message.thread_id == thread_id)
-            .order_by(Message.__table__.c.created_at.desc())  # type: ignore[attr-defined]
+            .order_by(Message.created_at.desc())  # type: ignore[attr-defined]
             .offset(offset)
             .limit(limit)
         )
@@ -535,7 +535,8 @@ async def list_user_drafts(
         if status:
             query = query.where(UserDraft.status == status)
 
-        query = query.order_by(UserDraft.updated_at.desc()).offset(offset).limit(limit)
+        query = query.order_by(UserDraft.updated_at.desc())  # type: ignore[attr-defined]
+        query = query.offset(offset).limit(limit)
 
         result = await session.execute(query)
         return list(result.scalars().all())

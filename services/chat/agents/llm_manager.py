@@ -167,7 +167,7 @@ class LoggingFunctionCallingLLM(FunctionCallingLLM):
     def stream_chat(self, *args: Any, **kwargs: Any) -> Any:
         return self._llm.stream_chat(*args, **kwargs)
 
-    async def astream_chat(
+    async def astream_chat(  # type: ignore[override]
         self, messages: Sequence[ChatMessage], **kwargs: Any
     ) -> ChatResponseAsyncGen:
         result = await self._llm.astream_chat(messages, **kwargs)
@@ -345,7 +345,7 @@ class FakeLLM(FunctionCallingLLM):
         response = self.chat(messages, **kwargs)
         yield response
 
-    async def astream_chat(
+    async def astream_chat(  # type: ignore[override]
         self, messages: Sequence[ChatMessage], **kwargs: Any
     ) -> AsyncGenerator[ChatResponse, None]:
         """Async fake stream chat method."""

@@ -228,7 +228,7 @@ async def chat_stream_endpoint(
             ) from e
     thread = cast(history_manager.Thread, thread)
 
-    async def generate_streaming_response() -> "AsyncGenerator[str, None]":
+    async def generate_streaming_response() -> AsyncGenerator[str, None]:
         """Generate streaming response using Server-Sent Events format."""
         try:
             # Initialize the multi-agent workflow with user timezone

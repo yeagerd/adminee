@@ -110,7 +110,7 @@ class EmailAgent(FunctionAgent):
         tools = []
 
         # Create a wrapper function that includes the user_id
-        def get_emails_wrapper(*args: Any, **kwargs: Any) -> Any:  # type: ignore[no-untyped-def]
+        def get_emails_wrapper(*args: Any, **kwargs: Any) -> Any:
             return get_emails(user_id=user_id, **kwargs)
 
         get_emails_tool = FunctionTool.from_defaults(

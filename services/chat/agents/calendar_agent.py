@@ -65,7 +65,7 @@ class CalendarAgent(FunctionAgent):
         user_timezone: str = "UTC",
         llm_model: str = "gpt-4.1-nano",
         llm_provider: str = "openai",
-        **llm_kwargs,
+        **llm_kwargs: Any,
     ):
 
         # Get LLM instance

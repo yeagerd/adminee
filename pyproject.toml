@@ -88,6 +88,10 @@ strict_equality = false
 namespace_packages = true
 explicit_package_bases = true
 ignore_missing_imports = true
+exclude = [
+    ".*/tests/.*",
+    ".*/test_.*",
+]
 
 # Disable call-arg errors only for SQLModel-related issues
 [[tool.mypy.overrides]]
@@ -140,6 +144,8 @@ markers = [
 
 [dependency-groups]
 dev = [
+    "mypy>=1.16.1",
+    "nox>=2025.5.1",
     "pytest-timeout>=2.4.0",
     "types-pytz>=2025.2.0.20250516",
     "types-requests>=2.32.4.20250611",

@@ -116,8 +116,8 @@ class EmailCollisionDetector:
         async with async_session() as session:
             stmt = select(User).where(
                 and_(
-                    User.normalized_email == normalized_email,  # type: ignore[comparison-overlap]
-                    User.deleted_at.is_(None),  # type: ignore[arg-type]
+                    User.normalized_email == normalized_email,  # type: ignore[arg-type]
+                    User.deleted_at.is_(None),  # type: ignore[union-attr]
                 )
             )
             result = await session.execute(stmt)

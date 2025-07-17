@@ -493,22 +493,20 @@ async def list_oauth_providers(
                 scope_dict = {scope.name: scope for scope in provider_config.scopes}
                 for scope_name, scope_obj in scope_dict.items():
                     supported_scopes.append(
-                        {
-                            "name": scope_name,
-                            "description": getattr(scope_obj, "description", ""),
-                            "required": getattr(scope_obj, "required", False),
-                            "sensitive": getattr(scope_obj, "sensitive", False),
-                            "granted": False,  # Not applicable for provider listing
-                        }
+                        IntegrationScopeResponse(
+                            name=scope_name,
+                            description=getattr(scope_obj, "description", ""),
+                            required=getattr(scope_obj, "required", False),
+                            sensitive=getattr(scope_obj, "sensitive", False),
+                            granted=False,  # Not applicable for provider listing
+                        )
                     )
 
                 provider_info = IntegrationProviderInfo(
                     name=provider_config.name,
                     provider=provider,
                     available=True,
-                    supported_scopes=[
-                        IntegrationScopeResponse(**scope) for scope in supported_scopes
-                    ],
+                    supported_scopes=supported_scopes,
                     default_scopes=provider_config.default_scopes,
                 )
                 providers.append(provider_info)
