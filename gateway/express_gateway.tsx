@@ -182,6 +182,15 @@ const maliciousTrafficFilter = (req: any, res: any, next: any) => {
     next();
 };
 
+// Block /internal endpoints at the gateway level
+app.use((req, res, next) => {
+    if (req.path.startsWith('/api/internal') || req.path.startsWith('/internal')) {
+        logger.warn(`Blocked attempt to access internal endpoint: ${req.method} ${req.path}`);
+        return res.status(403).json({ error: 'Access to internal endpoints is forbidden via gateway' });
+    }
+    next();
+});
+
 // CORS configuration
 app.use(cors({
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
