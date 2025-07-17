@@ -64,11 +64,18 @@ class TokenManager:
 
     async def __aenter__(self) -> "TokenManager":
         """Async context manager entry"""
+        from services.common.logging_config import request_id_var
+
         # Use API key for user management service if available
         headers: dict[str, str] = {}
         api_key = get_settings().api_office_user_key
         if api_key:
             headers["X-API-Key"] = api_key
+
+        # Propagate request ID for distributed tracing
+        request_id = request_id_var.get()
+        if request_id and request_id != "uninitialized":
+            headers["X-Request-Id"] = request_id
 
         self.http_client = httpx.AsyncClient(
             timeout=httpx.Timeout(10.0),  # 10 second timeout
