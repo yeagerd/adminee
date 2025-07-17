@@ -511,10 +511,10 @@ def validate_pagination_params(page: int, page_size: int) -> tuple[int, int]:
 # Pydantic validators
 
 
-def text_validator(max_length: Optional[int] = None):
+def text_validator(max_length: Optional[int] = None) -> Any:
     """Create a Pydantic validator for text fields."""
 
-    def validator(cls, v):
+    def validator(cls, v) -> Any:
         if v is None:
             return v
         return sanitize_text_input(v, max_length)
@@ -522,10 +522,10 @@ def text_validator(max_length: Optional[int] = None):
     return validator
 
 
-def email_validator():
+def email_validator() -> Any:
     """Create a Pydantic validator for email fields."""
 
-    def validator(cls, v):
+    def validator(cls, v) -> Any:
         if v is None:
             return v
         return validate_email_address(v)
@@ -533,10 +533,10 @@ def email_validator():
     return validator
 
 
-async def email_validator_with_collision_check():
+async def email_validator_with_collision_check() -> Any:
     """Create a Pydantic validator for email fields with collision checking."""
 
-    async def validator(cls, v):
+    async def validator(cls, v) -> Any:
         if v is None:
             return v
         return await validate_email_with_collision_check(v)
@@ -544,10 +544,10 @@ async def email_validator_with_collision_check():
     return validator
 
 
-def url_validator(allowed_schemes: Optional[List[str]] = None):
+def url_validator(allowed_schemes: Optional[List[str]] = None) -> Any:
     """Create a Pydantic validator for URL fields."""
 
-    def validator(cls, v):
+    def validator(cls, v) -> Any:
         if v is None:
             return v
         return validate_url(v, allowed_schemes)
@@ -555,10 +555,10 @@ def url_validator(allowed_schemes: Optional[List[str]] = None):
     return validator
 
 
-def timezone_validator():
+def timezone_validator() -> Any:
     """Create a Pydantic validator for timezone fields."""
 
-    def validator(cls, v):
+    def validator(cls, v) -> Any:
         if v is None:
             return v
         return validate_timezone(v)
@@ -566,10 +566,10 @@ def timezone_validator():
     return validator
 
 
-def time_validator():
+def time_validator() -> Any:
     """Create a Pydantic validator for time fields."""
 
-    def validator(cls, v):
+    def validator(cls, v) -> Any:
         if v is None:
             return v
         return validate_time_format(v)

@@ -46,7 +46,7 @@ class IntegrationService:
     refresh operations, and integration health monitoring.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the integration service."""
         self.oauth_config = get_oauth_config()
         self.token_encryption = TokenEncryption()

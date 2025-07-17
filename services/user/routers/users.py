@@ -735,7 +735,7 @@ async def update_user_onboarding(
 async def create_or_upsert_user(
     user_data: UserCreate,
     current_service: str = Depends(get_current_service),
-):
+) -> UserResponse:
     """
     Create a new user or return existing user by external_auth_id and auth_provider.
 

@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 class EmailCollisionDetector:
     """Detect and handle email collisions during user registration."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the email collision detector."""
         pass
 

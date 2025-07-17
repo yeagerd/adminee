@@ -5,6 +5,8 @@ Provides secure endpoints for other services to retrieve user tokens
 and integration status with service authentication.
 """
 
+from typing import Any, Dict
+
 from fastapi import APIRouter, Depends
 
 from services.common.http_errors import NotFoundError, ServiceError
@@ -28,7 +30,7 @@ router = APIRouter(
 async def get_user_tokens(
     request: InternalTokenRequest,
     current_service: str = Depends(get_current_service),
-):
+) -> InternalTokenResponse:
     """
     Get user tokens for other services.
 
@@ -86,7 +88,7 @@ async def get_user_tokens(
 async def refresh_user_tokens(
     request: InternalTokenRefreshRequest,
     current_service: str = Depends(get_current_service),
-):
+) -> InternalTokenResponse:
     """
     Refresh user tokens for other services.
 
@@ -141,7 +143,7 @@ async def refresh_user_tokens(
 async def get_user_status(
     user_id: str,
     current_service: str = Depends(get_current_service),
-):
+) -> InternalUserStatusResponse:
     """
     Get user integration status for other services.
 
@@ -181,7 +183,7 @@ async def get_user_status(
 async def get_user_preferences_internal(
     user_id: str,
     current_service: str = Depends(get_current_service),
-):
+) -> Any:
     """
     Get user preferences for other services.
 
@@ -218,7 +220,7 @@ async def get_user_preferences_internal(
 async def get_user_integrations_internal(
     user_id: str,
     current_service: str = Depends(get_current_service),
-):
+) -> Dict[str, Any]:
     """
     Get user integrations for other services.
 
