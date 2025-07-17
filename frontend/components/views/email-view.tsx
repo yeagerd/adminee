@@ -1,8 +1,8 @@
 import { useDraftState } from '@/hooks/use-draft-state';
 import { getSession } from 'next-auth/react';
 import React, { useEffect, useState } from 'react';
-import { getProvider } from '../../lib/auth';
 import gatewayClient from '../../lib/gateway-client';
+import { getProvider } from '../../lib/session-utils';
 import EmailFilters from '../email/email-filters';
 import EmailThread from '../email/email-thread';
 
