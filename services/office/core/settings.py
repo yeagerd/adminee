@@ -82,6 +82,12 @@ class Settings(BaseSettings):
         default="http://localhost:8001", description="User management service URL"
     )
 
+    # NextAuth configuration for JWT validation
+    nextauth_secret: str = Field(
+        default="your-nextauth-secret-here",
+        description="NextAuth secret for JWT token validation",
+    )
+
 
 # Global settings instance
 _settings: Settings | None = None

@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, cast
 
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Depends, Path, Query, Request
 
 from services.common.http_errors import (
     AuthError,
@@ -20,7 +20,7 @@ from services.common.http_errors import (
     ValidationError,
 )
 from services.office.core.api_client_factory import APIClientFactory
-from services.office.core.auth import ServicePermissionRequired
+from services.office.core.auth import get_current_user, require_office_auth
 from services.office.core.cache_manager import cache_manager, generate_cache_key
 from services.office.core.clients.google import GoogleAPIClient
 from services.office.core.clients.microsoft import MicrosoftAPIClient
@@ -53,7 +53,7 @@ def _get_calendar_scopes(provider: str) -> List[str]:
 
 @router.get("/events", response_model=ApiResponse)
 async def get_calendar_events(
-    user_id: str = Query(..., description="ID of the user to fetch events for"),
+    request: Request,
     providers: Optional[List[str]] = Query(
         None,
         description="Providers to fetch from (google, microsoft). If not specified, fetches from all available providers",
@@ -72,7 +72,7 @@ async def get_calendar_events(
     ),
     q: Optional[str] = Query(None, description="Search query to filter events"),
     time_zone: Optional[str] = Query("UTC", description="Time zone for date filtering"),
-    service_name: str = Depends(ServicePermissionRequired(["read_calendar"])),
+    client_name: str = Depends(require_office_auth(allowed_clients=["frontend", "chat"])),
 ) -> ApiResponse:
     """
     Get unified calendar events from multiple providers.
@@ -82,7 +82,6 @@ async def get_calendar_events(
     Responses are cached for improved performance.
 
     Args:
-        user_id: ID of the user to fetch events for
         providers: List of providers to query (defaults to all available)
         limit: Maximum events per provider
         start_date: Start date for filtering (defaults to today)
@@ -94,6 +93,9 @@ async def get_calendar_events(
     Returns:
         ApiResponse with aggregated calendar events
     """
+    # Get user ID from authentication
+    user_id = await get_current_user(request)
+    
     request_id = str(uuid.uuid4())
     start_time = datetime.now(timezone.utc)
 
@@ -281,9 +283,9 @@ async def get_calendar_events(
 
 @router.get("/events/{event_id}", response_model=ApiResponse)
 async def get_calendar_event(
+    request: Request,
     event_id: str = Path(..., description="Event ID (format: provider_originalId)"),
-    user_id: str = Query(..., description="ID of the user who owns the event"),
-    service_name: str = Depends(ServicePermissionRequired(["read_calendar"])),
+    client_name: str = Depends(require_office_auth(allowed_clients=["frontend", "chat"])),
 ) -> ApiResponse:
     """
     Get a specific calendar event by ID.
@@ -293,11 +295,13 @@ async def get_calendar_event(
 
     Args:
         event_id: Event ID with provider prefix
-        user_id: ID of the user who owns the event
 
     Returns:
         ApiResponse with the specific calendar event
     """
+    # Get user ID from authentication
+    user_id = await get_current_user(request)
+    
     request_id = str(uuid.uuid4())
     start_time = datetime.now(timezone.utc)
 
@@ -366,7 +370,7 @@ async def get_calendar_event(
 async def create_calendar_event(
     event_data: CreateCalendarEventRequest,
     user_id: str = Query(..., description="ID of the user creating the event"),
-    service_name: str = Depends(ServicePermissionRequired(["write_calendar"])),
+    client_name: str = Depends(require_office_auth(allowed_clients=["frontend", "chat"])),
 ) -> ApiResponse:
     """
     Create a calendar event in a specific provider.
@@ -469,7 +473,7 @@ async def update_calendar_event(
     event_data: CreateCalendarEventRequest,
     event_id: str = Path(..., description="Event ID (format: provider_originalId)"),
     user_id: str = Query(..., description="ID of the user updating the event"),
-    service_name: str = Depends(ServicePermissionRequired(["write_calendar"])),
+    client_name: str = Depends(require_office_auth(allowed_clients=["frontend", "chat"])),
 ) -> ApiResponse:
     """
     Update a calendar event by ID.
@@ -898,7 +902,7 @@ async def update_microsoft_event(
 async def delete_calendar_event(
     event_id: str = Path(..., description="Event ID (format: provider_originalId)"),
     user_id: str = Query(..., description="ID of the user who owns the event"),
-    service_name: str = Depends(ServicePermissionRequired(["write_calendar"])),
+    client_name: str = Depends(require_office_auth(allowed_clients=["frontend", "chat"])),
 ) -> ApiResponse:
     """
     Delete a calendar event by ID.

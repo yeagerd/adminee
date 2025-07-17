@@ -11,10 +11,11 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, cast
 
-from fastapi import APIRouter, Path, Query
+from fastapi import APIRouter, Depends, Path, Query, Request
 
 from services.common.http_errors import NotFoundError, ServiceError, ValidationError
 from services.office.core.api_client_factory import APIClientFactory
+from services.office.core.auth import get_current_user, require_office_auth
 from services.office.core.cache_manager import cache_manager, generate_cache_key
 from services.office.core.clients.google import GoogleAPIClient
 from services.office.core.clients.microsoft import MicrosoftAPIClient
@@ -41,7 +42,7 @@ api_client_factory = APIClientFactory()
 
 @router.get("/messages", response_model=EmailMessageList)
 async def get_email_messages(
-    user_id: str = Query(..., description="ID of the user to fetch emails for"),
+    request: Request,
     providers: Optional[List[str]] = Query(
         None,
         description="Providers to fetch from (google, microsoft). If not specified, fetches from all available providers",
@@ -62,6 +63,7 @@ async def get_email_messages(
     page_token: Optional[str] = Query(
         None, description="Pagination token for next page"
     ),
+    client_name: str = Depends(require_office_auth(allowed_clients=["frontend", "chat"])),
 ) -> EmailMessageList:
     """
     Get unified email messages from multiple providers.
@@ -71,7 +73,6 @@ async def get_email_messages(
     Responses are cached for improved performance.
 
     Args:
-        user_id: ID of the user to fetch emails for
         providers: List of providers to query (defaults to all available)
         limit: Maximum messages per provider
         include_body: Whether to include full message bodies
@@ -82,6 +83,9 @@ async def get_email_messages(
     Returns:
         EmailMessageList with aggregated email messages
     """
+    # Get user ID from authentication
+    user_id = await get_current_user(request)
+    
     request_id = str(uuid.uuid4())
     start_time = datetime.now(timezone.utc)
 
@@ -220,11 +224,12 @@ async def get_email_messages(
 
 @router.get("/messages/{message_id}", response_model=EmailMessageList)
 async def get_email_message(
+    request: Request,
     message_id: str = Path(..., description="Message ID (format: provider_originalId)"),
-    user_id: str = Query(..., description="ID of the user who owns the message"),
     include_body: bool = Query(
         True, description="Whether to include message body content"
     ),
+    client_name: str = Depends(require_office_auth(allowed_clients=["frontend", "chat"])),
 ) -> EmailMessageList:
     """
     Get a specific email message by ID.
@@ -234,12 +239,14 @@ async def get_email_message(
 
     Args:
         message_id: Message ID with provider prefix
-        user_id: ID of the user who owns the message
         include_body: Whether to include full message body
 
     Returns:
         EmailMessageList with the specific email message
     """
+    # Get user ID from authentication
+    user_id = await get_current_user(request)
+    
     request_id = str(uuid.uuid4())
     start_time = datetime.now(timezone.utc)
 
@@ -314,8 +321,9 @@ async def get_email_message(
 
 @router.post("/send", response_model=SendEmailResponse)
 async def send_email(
+    request: Request,
     email_data: SendEmailRequest,
-    user_id: str = Query(..., description="ID of the user sending the email"),
+    client_name: str = Depends(require_office_auth(allowed_clients=["frontend", "chat"])),
 ) -> SendEmailResponse:
     """
     Send an email through a specific provider.
@@ -326,11 +334,13 @@ async def send_email(
 
     Args:
         email_data: Email content and configuration
-        user_id: ID of the user sending the email
 
     Returns:
         SendEmailResponse with sent message details
     """
+    # Get user ID from authentication
+    user_id = await get_current_user(request)
+    
     request_id = str(uuid.uuid4())
     start_time = datetime.now(timezone.utc)
 
