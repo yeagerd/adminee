@@ -26,7 +26,7 @@ import os
 import sys
 import time
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import dotenv
 import httpx
@@ -108,25 +108,25 @@ class UserManagementDemo:
             "internal_api": False,
         }
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "UserManagementDemo":
         """Async context manager entry."""
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Async context manager exit."""
         await self.client.aclose()
 
-    def print_header(self, title: str):
+    def print_header(self, title: str) -> None:
         """Print a formatted header."""
         print("\n" + "=" * 60)
         print(f" {title}")
         print("=" * 60)
 
-    def print_section(self, title: str):
+    def print_section(self, title: str) -> None:
         """Print a formatted section header."""
         print(f"\n--- {title} ---")
 
-    def print_response(self, response: httpx.Response, description: str = ""):
+    def print_response(self, response: httpx.Response, description: str = "") -> None:
         """Print formatted response information."""
         status_color = "🟢" if response.status_code < 400 else "🔴"
         print(f"{status_color} {response.status_code} {response.reason_phrase}")
@@ -710,27 +710,31 @@ class UserManagementDemo:
             if choice == "0":
                 break
             elif choice == "1":
-                provider = await self.select_provider("connect to")
-                if provider:
-                    await self.demo_oauth_flow(provider)
+                provider1: Optional[str] = await self.select_provider("connect to")
+                if provider1:
+                    await self.demo_oauth_flow(provider1)
             elif choice == "2":
-                provider = await self.select_provider("view status for")
-                if provider:
-                    await self.get_integration_status(provider)
+                provider2: Optional[str] = await self.select_provider("view status for")
+                if provider2:
+                    await self.get_integration_status(provider2)
             elif choice == "3":
-                provider = await self.select_provider("refresh tokens for")
-                if provider:
-                    await self.refresh_integration_token(provider, force=False)
+                provider3: Optional[str] = await self.select_provider(
+                    "refresh tokens for"
+                )
+                if provider3:
+                    await self.refresh_integration_token(provider3, force=False)
             elif choice == "4":
-                provider = await self.select_provider("force refresh tokens for")
-                if provider:
-                    await self.refresh_integration_token(provider, force=True)
+                provider4: Optional[str] = await self.select_provider(
+                    "force refresh tokens for"
+                )
+                if provider4:
+                    await self.refresh_integration_token(provider4, force=True)
             elif choice == "5":
                 await self.test_internal_api()
             elif choice == "6":
-                provider = await self.select_provider("disconnect")
-                if provider:
-                    await self.disconnect_integration(provider)
+                provider5: Optional[str] = await self.select_provider("disconnect")
+                if provider5:
+                    await self.disconnect_integration(provider5)
             else:
                 print("Invalid choice. Please try again.")
 
