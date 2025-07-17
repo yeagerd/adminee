@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional
 import httpx
 
 from services.chat.settings import get_settings
-from services.common.logging_config import get_logger
+from services.common.logging_config import get_logger, request_id_var
 
 logger = get_logger(__name__)
 
@@ -34,6 +34,11 @@ class ServiceClient:
     def _get_headers_for_service(self, service_name: str) -> Dict[str, str]:
         """Get authentication headers for a specific service."""
         headers = {"Content-Type": "application/json"}
+
+        # Propagate request ID for distributed tracing
+        request_id = request_id_var.get()
+        if request_id and request_id != "uninitialized":
+            headers["X-Request-Id"] = request_id
 
         if service_name == "user-management" and get_settings().api_chat_user_key:
             headers["X-API-Key"] = get_settings().api_chat_user_key  # type: ignore[assignment]
