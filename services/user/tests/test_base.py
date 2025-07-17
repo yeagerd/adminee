@@ -138,8 +138,8 @@ class BaseUserManagementIntegrationTest(BaseUserManagementTest):
             pass
 
         self.app.dependency_overrides[get_current_user] = mock_get_current_user
-        patcher = patch(
+        self._patcher = patch(
             "services.user.auth.nextauth.verify_user_ownership",  # Changed here
             new=mock_verify_user_ownership,
         )
-        self._patcher = patcher.start()
+        self._patcher.start()
