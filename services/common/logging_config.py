@@ -47,9 +47,6 @@ class RequestContextFilter(logging.Filter):
         return True
 
 
-import structlog
-
-
 def add_request_context(
     logger: structlog.types.WrappedLogger,
     method_name: str,
