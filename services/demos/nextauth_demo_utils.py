@@ -310,7 +310,9 @@ def create_nextauth_jwt_for_demo(user_id: str, email: str, provider: str) -> str
     return jwt.encode(payload, secret, algorithm="HS256")
 
 
-def compare_auth_approaches(clerk_token: Optional[str], nextauth_token: Optional[str]) -> None:
+def compare_auth_approaches(
+    clerk_token: Optional[str], nextauth_token: Optional[str]
+) -> None:
     """
     Compare Clerk and NextAuth tokens side by side.
 
