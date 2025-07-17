@@ -13,7 +13,7 @@ dependencies = [
     "httpx>=0.24.0,<1.0.0",
     "requests>=2.31.0,<3.0.0",
     # Database
-    "sqlmodel>=0.0.21",
+    "sqlmodel>=0.0.24",
     "sqlalchemy>=2.0.0",
     "aiosqlite",
     "asyncpg",
