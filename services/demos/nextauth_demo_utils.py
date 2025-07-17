@@ -120,7 +120,7 @@ class NextAuthClient:
             logger.error(f"Token verification error: {e}")
             return None
 
-    def set_token(self, token: str):
+    def set_token(self, token: str) -> None:
         """Set the JWT token for this client."""
         self.jwt_token = token
 

@@ -376,8 +376,9 @@ class FullOfficeDemo:
                         from_addr = msg.get("from_address", {})
                         sender = "Unknown"
                         if isinstance(from_addr, dict):
-                            sender = from_addr.get(
-                                "email", from_addr.get("name", "Unknown")
+                            sender = (
+                                from_addr.get("email", from_addr.get("name", "Unknown"))
+                                or "Unknown"
                             )
                         print(f"     {i}. From: {sender} | Subject: {subject}")
                 else:

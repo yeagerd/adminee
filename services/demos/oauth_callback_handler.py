@@ -203,8 +203,8 @@ class OAuthCallbackServer:
 
     def __init__(self, port: int = 8080) -> None:
         self.port = port
-        self.server = None
-        self.thread = None
+        self.server: Optional[socketserver.TCPServer] = None
+        self.thread: Optional[threading.Thread] = None
         self.handler = OAuthCallbackHandler
 
     def start(self) -> bool:
