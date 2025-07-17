@@ -1,3 +1,12 @@
+/**
+ * CAUTION: This module contains server-side authentication code and cannot be imported
+ * by client-side code. It should only be used in server components, API routes, or
+ * other server-side contexts.
+ * 
+ * Importing this module in client components will cause build errors and runtime failures
+ * due to the server-only dependencies like jsonwebtoken.
+ */
+
 import jwt from 'jsonwebtoken';
 import { NextAuthOptions } from 'next-auth';
 import AzureADProvider from 'next-auth/providers/azure-ad';
@@ -238,14 +247,6 @@ export const authOptions: NextAuthOptions = {
     debug: process.env.NODE_ENV === 'development',
 };
 
-// Helper function to get user ID from session for API calls
-export function getUserId(session: unknown): string | null {
-    const sessionObj = session as { user?: { id?: string } };
-    return sessionObj?.user?.id || null;
-}
-
-// Helper function to get provider from session
-export function getProvider(session: unknown): string | null {
-    const sessionObj = session as { provider?: string };
-    return sessionObj?.provider || null;
-} 
+// Note: Client-side session utility functions (getProvider, getUserId, etc.) 
+// have been moved to lib/session-utils.ts to avoid server-side environment 
+// variable validation on the client side. 
