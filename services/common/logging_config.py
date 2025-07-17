@@ -47,7 +47,14 @@ class RequestContextFilter(logging.Filter):
         return True
 
 
-def add_request_context(logger, method_name, event_dict):
+import structlog
+
+
+def add_request_context(
+    logger: structlog.types.WrappedLogger,
+    method_name: str,
+    event_dict: structlog.types.EventDict,
+) -> structlog.types.EventDict:
     """Add request and user ID to all log entries."""
     request_id = request_id_var.get()
     user_id = user_id_var.get()
@@ -156,9 +163,17 @@ def create_request_logging_middleware() -> Callable:
         request_id = request.headers.get("X-Request-Id", str(uuid.uuid4()))
         request_id_var.set(request_id)
 
-        # Get user ID from header
-        user_id = request.headers.get("X-User-Id", "anonymous")
-        user_id_var.set(user_id)
+        # Get user ID from header, with fallbacks to path and query params
+        user_id = request.headers.get("X-User-Id")
+        if not user_id:
+            try:
+                user_id = request.path_params.get("user_id")
+            except (AttributeError, KeyError):
+                user_id = None
+        if not user_id:
+            user_id = request.query_params.get("user_id")
+
+        user_id_var.set(user_id or "anonymous")
 
         start_time = time.time()
         logger = get_logger("http.requests")

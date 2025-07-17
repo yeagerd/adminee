@@ -201,9 +201,9 @@ def test_request_id_propagation(app):
     user_service_url = "http://localhost:8001"
 
     # Mock the get_user_preferences call
-    preferences_route = respx.get(f"{user_service_url}/internal/users/{user_id}/preferences").mock(
-        return_value=Response(200, json={"timezone": "UTC"})
-    )
+    preferences_route = respx.get(
+        f"{user_service_url}/internal/users/{user_id}/preferences"
+    ).mock(return_value=Response(200, json={"timezone": "UTC"}))
 
     # Act
     headers = {
