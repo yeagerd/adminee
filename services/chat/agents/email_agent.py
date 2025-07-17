@@ -105,12 +105,12 @@ class EmailAgent(FunctionAgent):
 
         logger.debug("EmailAgent initialized with email tools")
 
-    def _create_email_tools(self, user_id: str) -> List[FunctionTool]:
+    def _create_email_tools(self, user_id: str) -> List[Callable[..., Any]]:
         """Create email-specific tools with user_id pre-filled."""
         tools = []
 
         # Create a wrapper function that includes the user_id
-        def get_emails_wrapper(**kwargs):
+        def get_emails_wrapper(*args: Any, **kwargs: Any) -> Any:  # type: ignore[no-untyped-def]
             return get_emails(user_id=user_id, **kwargs)
 
         get_emails_tool = FunctionTool.from_defaults(

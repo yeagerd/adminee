@@ -192,7 +192,7 @@ class CoordinatorAgent(FunctionAgent):
         )
 
         # Create coordinator-specific tools
-        tools: Sequence[Callable[..., Any]] = self._create_coordinator_tools()
+        tools: Sequence[Callable[..., Any]] = self._create_coordinator_tools()  # type: ignore[no-untyped-def]
 
         # Create context-aware system prompt based on existing drafts
         context_aware_prompt = self._create_context_aware_prompt(str(thread_id))
@@ -225,7 +225,7 @@ class CoordinatorAgent(FunctionAgent):
         """Get the thread_id for this agent."""
         return getattr(self, "_thread_id")
 
-    def _create_coordinator_tools(self) -> List[FunctionTool]:
+    def _create_coordinator_tools(self) -> List[FunctionTool]:  # type: ignore[no-untyped-def]
         """Create coordinator-specific tools."""
         tools = []
 
@@ -258,7 +258,7 @@ def create_coordinator_agent(
     thread_id: int,
     llm_model: str = "gpt-4.1-nano",
     llm_provider: str = "openai",
-    **llm_kwargs,
+    **llm_kwargs: Any,
 ) -> CoordinatorAgent:
     """
     Factory function to create a CoordinatorAgent instance.

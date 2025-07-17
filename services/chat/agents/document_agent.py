@@ -111,7 +111,7 @@ class DocumentAgent(FunctionAgent):
         tools = []
 
         # Document retrieval tool with user_id pre-filled
-        def get_documents_wrapper(**kwargs):
+        def get_documents_wrapper(**kwargs: Any) -> Any:
             return get_documents(user_id=user_id, **kwargs)
 
         get_documents_tool = FunctionTool.from_defaults(
@@ -126,7 +126,7 @@ class DocumentAgent(FunctionAgent):
         tools.append(get_documents_tool)
 
         # Note retrieval tool with user_id pre-filled
-        def get_notes_wrapper(**kwargs):
+        def get_notes_wrapper(**kwargs: Any) -> Any:
             return get_notes(user_id=user_id, **kwargs)
 
         get_notes_tool = FunctionTool.from_defaults(
@@ -158,7 +158,7 @@ def create_document_agent(
     user_id: str,
     llm_model: str = "gpt-4.1-nano",
     llm_provider: str = "openai",
-    **llm_kwargs,
+    **llm_kwargs: Any,
 ) -> DocumentAgent:
     """
     Factory function to create a DocumentAgent instance.
