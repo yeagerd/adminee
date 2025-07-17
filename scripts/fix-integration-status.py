@@ -17,7 +17,7 @@ sys.path.insert(0, 'services')
 from user.services.integration_service import get_integration_service
 
 
-async def fix_integration_status(user_id: Optional[str] = None, provider: Optional[str] = None):
+async def fix_integration_status(user_id: Optional[str] = None, provider: Optional[str] = None) -> None:
     """
     Fix integration status based on actual token availability.
     
@@ -59,7 +59,7 @@ async def fix_integration_status(user_id: Optional[str] = None, provider: Option
         print(f"Error: {e}")
 
 
-async def main():
+async def main() -> None:
     """Main function to run the script."""
     import argparse
     

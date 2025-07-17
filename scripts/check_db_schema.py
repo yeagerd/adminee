@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from services.user.database import get_async_session
 from sqlalchemy import text
 
-async def check_and_fix_schema():
+async def check_and_fix_schema() -> None:
     """Check if required columns exist and add them if missing."""
     async_session = get_async_session()
     async with async_session() as session:

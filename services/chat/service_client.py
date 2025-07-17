@@ -21,12 +21,12 @@ class ServiceClient:
     def __init__(self):
         self.timeout = httpx.Timeout(30.0)
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "ServiceClient":
         """Async context manager entry."""
         self.http_client = httpx.AsyncClient(timeout=self.timeout)
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         """Async context manager exit."""
         if self.http_client:
             await self.http_client.aclose()

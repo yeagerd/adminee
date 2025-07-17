@@ -4,7 +4,7 @@ Authentication module for Chat Service.
 Provides API key based authentication for incoming requests from the frontend.
 """
 
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 from fastapi import Request
 
@@ -139,7 +139,7 @@ async def verify_chat_authentication(request: Request) -> str:
     return client_name
 
 
-def require_chat_auth(allowed_clients: Optional[List[str]] = None):
+def require_chat_auth(allowed_clients: Optional[List[str]] = None) -> Callable:
     """
     Decorator factory for chat authentication with specific client restrictions.
 

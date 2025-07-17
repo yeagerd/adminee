@@ -31,7 +31,9 @@ class InputSanitizationMiddleware(BaseHTTPMiddleware):
     - Form data
     """
 
-    def __init__(self, app, enabled: bool = True, strict_mode: bool = False):
+    def __init__(
+        self, app: Any, enabled: bool = True, strict_mode: bool = False
+    ) -> None:
         """
         Initialize sanitization middleware.
 
@@ -65,7 +67,7 @@ class InputSanitizationMiddleware(BaseHTTPMiddleware):
             "multipart/form-data",
         }
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: Any) -> Any:
         """Process request and sanitize input data."""
         if not self.enabled:
             return await call_next(request)
@@ -98,7 +100,7 @@ class InputSanitizationMiddleware(BaseHTTPMiddleware):
             and content_type in self.processable_content_types
         )
 
-    async def _sanitize_query_params(self, request: Request):
+    async def _sanitize_query_params(self, request: Request) -> None:
         """Sanitize query parameters."""
         if not request.query_params:
             return
@@ -130,7 +132,7 @@ class InputSanitizationMiddleware(BaseHTTPMiddleware):
         query_string = "&".join(f"{k}={v}" for k, v in sanitized_params.items())
         request.scope["query_string"] = query_string.encode()
 
-    async def _sanitize_request_body(self, request: Request):
+    async def _sanitize_request_body(self, request: Request) -> None:
         """Sanitize JSON request body."""
         try:
             # Read the body
@@ -157,7 +159,7 @@ class InputSanitizationMiddleware(BaseHTTPMiddleware):
             if self.strict_mode:
                 raise
 
-    async def _sanitize_json_body(self, request: Request, body: bytes):
+    async def _sanitize_json_body(self, request: Request, body: bytes) -> None:
         """Sanitize JSON request body."""
         try:
             data = json.loads(body)
@@ -263,11 +265,11 @@ class InputSanitizationMiddleware(BaseHTTPMiddleware):
 
         return text.strip()
 
-    def add_skip_field(self, field_name: str):
+    def add_skip_field(self, field_name: str) -> None:
         """Add a field to skip during sanitization."""
         self.skip_fields.add(field_name.lower())
 
-    def remove_skip_field(self, field_name: str):
+    def remove_skip_field(self, field_name: str) -> None:
         """Remove a field from the skip list."""
         self.skip_fields.discard(field_name.lower())
 
@@ -279,7 +281,7 @@ class XSSProtectionMiddleware(BaseHTTPMiddleware):
     Adds security headers and sanitizes output if needed.
     """
 
-    def __init__(self, app):
+    def __init__(self, app: Any) -> None:
         super().__init__(app)
 
         # XSS protection headers
@@ -291,7 +293,7 @@ class XSSProtectionMiddleware(BaseHTTPMiddleware):
             "Referrer-Policy": "strict-origin-when-cross-origin",
         }
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: Any) -> Any:
         """Add security headers to response."""
         response = await call_next(request)
 
