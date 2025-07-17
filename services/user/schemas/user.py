@@ -42,7 +42,7 @@ class UserBase(BaseModel):
 
     @field_validator("first_name", "last_name", mode="before")
     @classmethod
-    def validate_names(cls, v: Any) -> Any:
+    def validate_names(cls: type["UserBase"], v: Any) -> Any:
         """Validate and sanitize name fields."""
         if v is None:
             return v
@@ -57,7 +57,7 @@ class UserBase(BaseModel):
 
     @field_validator("profile_image_url")
     @classmethod
-    def validate_profile_image_url(cls, v: Any) -> Any:
+    def validate_profile_image_url(cls: type["UserBase"], v: Any) -> Any:
         """Validate profile image URL format."""
         if v is None:
             return v
@@ -67,7 +67,7 @@ class UserBase(BaseModel):
 
     @field_validator("email")
     @classmethod
-    def validate_email_enhanced(cls, v: Any) -> Any:
+    def validate_email_enhanced(cls: type["UserBase"], v: Any) -> Any:
         """Enhanced email validation with security checks."""
         if v is None:
             return v
@@ -96,7 +96,7 @@ class UserCreate(UserBase):
 
     @field_validator("external_auth_id")
     @classmethod
-    def validate_external_auth_id(cls, v: Any) -> Any:
+    def validate_external_auth_id(cls: type["UserCreate"], v: Any) -> Any:
         """Validate external auth ID format."""
         if not v or not v.strip():
             raise ValueError("External auth ID cannot be empty")
@@ -110,7 +110,7 @@ class UserCreate(UserBase):
 
     @field_validator("auth_provider")
     @classmethod
-    def validate_auth_provider(cls, v: Any) -> Any:
+    def validate_auth_provider(cls: type["UserCreate"], v: Any) -> Any:
         """Validate auth provider format."""
         if not v or not v.strip():
             raise ValueError("Auth provider cannot be empty")
@@ -139,7 +139,7 @@ class UserCreate(UserBase):
 
     @field_validator("preferred_provider")
     @classmethod
-    def validate_preferred_provider(cls, v: Any) -> Any:
+    def validate_preferred_provider(cls: type["UserCreate"], v: Any) -> Any:
         """Validate preferred provider format."""
         if v is None:
             return v
@@ -174,7 +174,7 @@ class UserUpdate(BaseModel):
 
     @field_validator("first_name", "last_name", mode="before")
     @classmethod
-    def validate_names(cls, v: Any) -> Any:
+    def validate_names(cls: type["UserUpdate"], v: Any) -> Any:
         """Validate and sanitize name fields."""
         if v is None:
             return v
@@ -189,7 +189,7 @@ class UserUpdate(BaseModel):
 
     @field_validator("profile_image_url")
     @classmethod
-    def validate_profile_image_url(cls, v: Any) -> Any:
+    def validate_profile_image_url(cls: type["UserUpdate"], v: Any) -> Any:
         """Validate profile image URL format."""
         if v is None:
             return v
@@ -199,7 +199,7 @@ class UserUpdate(BaseModel):
 
     @field_validator("email")
     @classmethod
-    def validate_email_enhanced(cls, v: Any) -> Any:
+    def validate_email_enhanced(cls: type["UserUpdate"], v: Any) -> Any:
         """Enhanced email validation with security checks."""
         if v is None:
             return v
@@ -229,7 +229,7 @@ class UserResponse(UserBase):
     updated_at: datetime = Field(..., description="When the user was last updated")
 
     @field_serializer("created_at", "updated_at")
-    def serialize_dt(self, dt: datetime, _info: Any) -> Any:
+    def serialize_dt(self: "UserResponse", dt: datetime, _info: Any) -> Any:
         return dt.isoformat() if dt else None
 
     model_config = ConfigDict(from_attributes=True)  # Enable ORM mode for Ormar models
@@ -258,7 +258,7 @@ class UserDeleteResponse(BaseModel):
     deleted_at: datetime = Field(..., description="When the user was deleted")
 
     @field_serializer("deleted_at")
-    def serialize_dt(self, dt: datetime, _info: Any) -> Any:
+    def serialize_dt(self: "UserDeleteResponse", dt: datetime, _info: Any) -> Any:
         return dt.isoformat() if dt else None
 
     model_config = ConfigDict()
@@ -274,7 +274,7 @@ class UserOnboardingUpdate(BaseModel):
 
     @field_validator("onboarding_step")
     @classmethod
-    def validate_onboarding_step(cls, v: Any) -> Any:
+    def validate_onboarding_step(cls: type["UserOnboardingUpdate"], v: Any) -> Any:
         """Validate onboarding step format."""
         if v is None:
             return v
@@ -300,7 +300,7 @@ class UserOnboardingUpdate(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def validate_onboarding_consistency(self) -> Any:
+    def validate_onboarding_consistency(self: "UserOnboardingUpdate") -> Any:
         """Validate onboarding step consistency."""
         if self.onboarding_completed and self.onboarding_step is not None:
             raise ValueError(
@@ -328,7 +328,7 @@ class UserSearchRequest(BaseModel):
 
     @field_validator("query")
     @classmethod
-    def validate_query(cls, v: Any) -> Any:
+    def validate_query(cls: type["UserSearchRequest"], v: Any) -> Any:
         """Validate search query format."""
         if v is None:
             return v
@@ -343,7 +343,7 @@ class UserSearchRequest(BaseModel):
 
     @field_validator("email")
     @classmethod
-    def validate_email_search(cls, v: Any) -> Any:
+    def validate_email_search(cls: type["UserSearchRequest"], v: Any) -> Any:
         """Enhanced email validation for search filters."""
         if v is None:
             return v
@@ -365,7 +365,7 @@ class EmailResolutionRequest(BaseModel):
 
     @field_validator("email")
     @classmethod
-    def validate_email_resolution(cls, v: Any) -> Any:
+    def validate_email_resolution(cls: type["EmailResolutionRequest"], v: Any) -> Any:
         """Enhanced email validation for resolution requests."""
         if v is None:
             raise ValueError("Email cannot be empty")
@@ -375,7 +375,7 @@ class EmailResolutionRequest(BaseModel):
 
     @field_validator("provider")
     @classmethod
-    def validate_provider(cls, v: Any) -> Any:
+    def validate_provider(cls: type["EmailResolutionRequest"], v: Any) -> Any:
         """Validate provider format."""
         if v is None:
             return v

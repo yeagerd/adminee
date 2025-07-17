@@ -193,7 +193,7 @@ class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
         """
         self.wfile.write(html.encode())
 
-    def log_message(self, format, *args) -> None:
+    def log_message(self, format: str, *args: object) -> None:
         """Override log message to be more demo-friendly."""
         print(f"🌐 OAuth Callback: {format % args}")
 
@@ -201,7 +201,7 @@ class OAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
 class OAuthCallbackServer:
     """OAuth callback server for demo purposes."""
 
-    def __init__(self, port: int = 8080):
+    def __init__(self, port: int = 8080) -> None:
         self.port = port
         self.server = None
         self.thread = None
@@ -260,7 +260,7 @@ class OAuthCallbackServer:
             self.server.server_close()
             print("🛑 OAuth Callback Server stopped")
 
-    def get_captured_data(self) -> dict:
+    def get_captured_data(self) -> dict[str, str]:
         """Get captured OAuth data."""
         return self.handler.captured_data.copy()
 
@@ -268,7 +268,7 @@ class OAuthCallbackServer:
         """Clear captured OAuth data."""
         self.handler.captured_data.clear()
 
-    def wait_for_callback(self, timeout: int = 300) -> Optional[dict]:
+    def wait_for_callback(self, timeout: int = 300) -> Optional[dict[str, str]]:
         """Wait for OAuth callback with timeout."""
         print(f"⏳ Waiting for OAuth callback (timeout: {timeout}s)...")
         start_time = time.time()

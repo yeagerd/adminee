@@ -26,6 +26,7 @@ from services.user.schemas.integration import (
     IntegrationHealthResponse,
     IntegrationListResponse,
     IntegrationProviderInfo,
+    IntegrationResponse,
     IntegrationScopeResponse,
     IntegrationStatsResponse,
     OAuthCallbackRequest,
@@ -285,7 +286,7 @@ async def get_specific_integration(
     user_id: str,
     provider: IntegrationProvider,
     current_user: str = Depends(get_current_user),
-):
+) -> IntegrationResponse:
     """
     Get details for a specific integration.
 
@@ -611,6 +612,6 @@ async def validate_oauth_scopes(
 
 
 # Include both routers
-def get_integration_routers():
+def get_integration_routers() -> list:
     """Get both integration routers for main app registration."""
     return [router, provider_router]

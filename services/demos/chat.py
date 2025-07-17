@@ -1247,7 +1247,7 @@ class FullDemo:
 
         return False, ""
 
-    async def chat_loop(self):
+    async def chat_loop(self) -> None:
         """Main chat loop with NextAuth command support."""
         print("🚀 Starting chat loop... (type 'help' for commands, 'exit' to quit)")
 

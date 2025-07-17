@@ -18,7 +18,7 @@ Key Design Decisions:
 """
 
 import datetime
-from typing import List, Optional
+from typing import AsyncGenerator, List, Optional
 
 from sqlalchemy import Text, UniqueConstraint, func
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -294,13 +294,13 @@ class UserDraft(ChatSQLModel, table=True):
 
 
 # Ensure tables are created on import
-async def init_db():
+async def init_db() -> None:
     async with get_engine().begin() as conn:
         await conn.run_sync(chat_registry.metadata.create_all)
 
 
 # Initialize database synchronously for backward compatibility
-def init_db_sync():
+def init_db_sync() -> None:
     import asyncio
 
     try:
@@ -321,7 +321,7 @@ def init_db_sync():
 
 
 # Utility functions for thread, message, and draft management
-async def get_session():
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
     """Get async database session."""
     async with get_async_session_factory()() as session:
         yield session

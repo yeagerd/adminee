@@ -179,8 +179,10 @@ def validate_token_permissions(
     # Or it could be a list in a 'permissions' claim.
     # Adjust based on how NextAuth is configured to issue tokens.
     token_permissions_str = token_claims.get("scope", "")
-    token_permissions_list = token_claims.get("permissions", [])
-    if not isinstance(token_permissions_list, list):
+    token_permissions_list_raw = token_claims.get("permissions", [])
+    if isinstance(token_permissions_list_raw, list):
+        token_permissions_list: list[str] = [str(p) for p in token_permissions_list_raw]
+    else:
         token_permissions_list = []
 
     if isinstance(token_permissions_str, str):
