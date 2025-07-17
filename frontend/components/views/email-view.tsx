@@ -56,7 +56,7 @@ const EmailView: React.FC = () => {
                     <h1 className="text-xl font-semibold">Inbox</h1>
                     <OpenDraftPaneButton />
                 </div>
-                <EmailFilters filters={filters as EmailFilters} setFilters={setFilters} />
+                {/* EmailFilters component was removed, so this block is now empty */}
             </div>
             <div className="flex-1 overflow-y-auto">
                 {loading ? (

@@ -103,4 +103,13 @@ export interface EmailThread {
 export interface EmailFilters {
     query?: string;
     [key: string]: any;
+}
+
+export interface GetEmailsResponse {
+    messages: EmailMessage[];
+    total_count: number;
+    providers_used: string[];
+    provider_errors?: Record<string, string>;
+    has_more: boolean;
+    request_metadata?: Record<string, unknown>;
 } 

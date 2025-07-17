@@ -1,4 +1,4 @@
-import { ApiResponse, CalendarEventsResponse, CreateCalendarEventRequest } from '@/types/office-service';
+import { ApiResponse, CalendarEventsResponse, CreateCalendarEventRequest, GetEmailsResponse } from '@/types/office-service';
 import { getSession } from 'next-auth/react';
 import { IntegrationStatus } from './constants';
 
@@ -229,13 +229,18 @@ export class GatewayClient {
         });
     }
 
-    async getEmails(user_id: string, provider: string, limit?: number, offset?: number) {
+    async getEmails(
+        user_id: string,
+        provider: string,
+        limit?: number,
+        offset?: number
+    ): Promise<ApiResponse<GetEmailsResponse>> {
         const params = new URLSearchParams();
         params.append('user_id', user_id);
         if (limit) params.append('limit', limit.toString());
         if (offset) params.append('offset', offset.toString());
 
-        return this.request(`/api/email/messages?provider=${provider}&${params.toString()}`);
+        return this.request<ApiResponse<GetEmailsResponse>>(`/api/email/messages?provider=${provider}&${params.toString()}`);
     }
 
     async getFiles(provider: string, path?: string) {
