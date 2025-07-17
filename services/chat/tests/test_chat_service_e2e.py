@@ -10,7 +10,9 @@ import sys
 from unittest.mock import patch
 
 import pytest
+import respx
 from fastapi.testclient import TestClient
+from httpx import Response
 
 # Test API key for authentication
 TEST_API_KEY = "test-frontend-chat-key"
@@ -26,6 +28,8 @@ def test_env():
         "LLM_MODEL": "fake-model",
         "LLM_PROVIDER": "fake",
         "API_FRONTEND_CHAT_KEY": TEST_API_KEY,
+        "USER_MANAGEMENT_SERVICE_URL": "http://localhost:8001",
+        "OFFICE_SERVICE_URL": "http://localhost:8003",
     }
     with patch.dict("os.environ", env_vars):
         yield env_vars
@@ -180,3 +184,40 @@ def test_multiple_blank_thread_creates_distinct_threads(app):
     thread_ids = {t["thread_id"] for t in threads}
     assert thread_id1 in thread_ids
     assert thread_id2 in thread_ids
+
+
+@respx.mock
+def test_request_id_propagation(app):
+    """
+    Test that X-Request-Id is properly propagated to downstream services.
+    """
+    # Arrange
+    client = TestClient(app)
+    test_request_id = "test-req-id-123"
+    user_id = "test-user-for-req-id"
+
+    # Mock the downstream user service
+    # The URL must match what's configured in the test_env fixture
+    user_service_url = "http://localhost:8001"
+
+    # Mock the get_user_preferences call
+    preferences_route = respx.get(
+        f"{user_service_url}/internal/users/{user_id}/preferences"
+    ).mock(return_value=Response(200, json={"timezone": "UTC"}))
+
+    # Act
+    headers = {
+        "X-API-Key": TEST_API_KEY,
+        "X-Request-Id": test_request_id,
+        "X-User-Id": user_id,
+    }
+    # The /chat endpoint triggers a call to get_user_preferences
+    response = client.post("/chat", headers=headers, json={"message": "Hello"})
+
+    # Assert
+    assert response.status_code == 200
+    assert preferences_route.called, "The downstream service was not called."
+
+    # Check the headers of the request made to the downstream service
+    last_request = preferences_route.calls.last.request
+    assert last_request.headers.get("x-request-id") == test_request_id
