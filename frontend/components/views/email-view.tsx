@@ -4,6 +4,7 @@ import { getSession } from 'next-auth/react';
 import React, { useEffect, useState } from 'react';
 import gatewayClient from '../../lib/gateway-client';
 import { getProvider } from '../../lib/session-utils';
+import EmailFilters from '../email/email-filters';
 import EmailThread from '../email/email-thread';
 
 const OpenDraftPaneButton: React.FC = () => {
@@ -56,7 +57,7 @@ const EmailView: React.FC = () => {
                     <h1 className="text-xl font-semibold">Inbox</h1>
                     <OpenDraftPaneButton />
                 </div>
-                {/* EmailFilters component was removed, so this block is now empty */}
+                <EmailFilters filters={filters} setFilters={setFilters} />
             </div>
             <div className="flex-1 overflow-y-auto">
                 {loading ? (
