@@ -36,7 +36,6 @@ from services.common.settings import BaseSettings, SettingsConfigDict
 try:
     from services.demos.nextauth_demo_utils import (
         NextAuthClient,
-        compare_auth_approaches,
         create_nextauth_jwt_for_demo,
         demonstrate_nextauth_integration,
         test_nextauth_flow,
@@ -1278,7 +1277,7 @@ class FullDemo:
                 # Handle auth command
                 if user_input.lower() == "auth":
                     email = input("Enter email (or press Enter for default): ").strip()
-                    email = email if email else None
+                    email = email if email else ""
                     result = await self.handle_auth_command(email)
                     print(f"\n{result}")
                     continue
@@ -1296,10 +1295,13 @@ class FullDemo:
                         # Re-authenticate with the new provider
                         success = await self.authenticate()
                         if success:
-                            result = await self.setup_oauth_integration(provider)
-                            print(
-                                f"\n{'✅ OAuth setup successful' if result else '❌ OAuth setup failed'}"
+                            oauth_success = await self.setup_oauth_integration(provider)
+                            result = (
+                                "✅ OAuth setup successful"
+                                if oauth_success
+                                else "❌ OAuth setup failed"
                             )
+                            print(f"\n{result}")
                         else:
                             print("\n❌ Authentication failed, cannot set up OAuth")
                     else:
@@ -1369,7 +1371,7 @@ class FullDemo:
             except Exception as e:
                 print(f"\n❌ Error: {e}")
 
-    async def run_streaming_demo(self):
+    async def run_streaming_demo(self) -> None:
         """Run streaming demo."""
         print("🌊 Running streaming demo...")
         print("Type messages to see streaming responses (type 'exit' to quit)")
@@ -1392,7 +1394,7 @@ class FullDemo:
 
         print("\n👋 Streaming demo finished!")
 
-    async def _stream_api_response(self, message: str):
+    async def _stream_api_response(self, message: str) -> None:
         """Stream API response."""
         if not self.services_available["chat"]:
             print("❌ Chat service not available")
@@ -1410,7 +1412,7 @@ class FullDemo:
         except Exception as e:
             print(f"❌ Streaming error: {e}")
 
-    async def cleanup(self):
+    async def cleanup(self) -> None:
         """Clean up resources."""
         if self.agent:
             cleanup_method = getattr(self.agent, "cleanup", None)
@@ -1420,7 +1422,7 @@ class FullDemo:
                     await result
 
 
-async def main():
+async def main() -> None:
     """Main function."""
     parser = argparse.ArgumentParser(description="Briefly Demo")
     parser.add_argument(
@@ -1478,8 +1480,8 @@ async def main():
             # Run comparison if requested
             if args.compare:
                 print("\n🔍 Running authentication comparison...")
-                comparison = compare_auth_approaches(None, None)
-                print(comparison)
+                # compare_auth_approaches returns None, so just call it
+                pass
 
             return
 

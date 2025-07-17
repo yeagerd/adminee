@@ -28,7 +28,7 @@ logging.basicConfig(
 logger = get_logger(__name__)
 
 
-async def demo_basic_workflow():
+async def demo_basic_workflow() -> None:
     """Demonstrate basic WorkflowAgent usage."""
     print("=== Basic WorkflowAgent Demo ===")
 
@@ -61,7 +61,7 @@ async def demo_basic_workflow():
     print(f"\nMemory info: {memory_info}")
 
 
-async def demo_with_tools():
+async def demo_with_tools() -> None:
     """Demonstrate WorkflowAgent with tools."""
     print("\n=== WorkflowAgent with Tools Demo ===")
 
@@ -101,7 +101,7 @@ async def demo_with_tools():
     print(f"Agent: {response}")
 
 
-async def demo_office_tools():
+async def demo_office_tools() -> None:
     """Demonstrate WorkflowAgent with office tools."""
     print("\n=== WorkflowAgent with Office Tools Demo ===")
 
@@ -127,7 +127,7 @@ async def demo_office_tools():
     print(f"Agent: {response}")
 
 
-async def demo_streaming():
+async def demo_streaming() -> None:
     """Demonstrate WorkflowAgent streaming capabilities."""
     print("\n=== WorkflowAgent Streaming Demo ===")
 
@@ -154,7 +154,7 @@ async def demo_streaming():
     print("\n")
 
 
-async def demo_context_management():
+async def demo_context_management() -> None:
     """Demonstrate WorkflowAgent context persistence."""
     print("\n=== WorkflowAgent Context Management Demo ===")
 
@@ -191,7 +191,7 @@ async def demo_context_management():
     print(f"Agent (with loaded context): {response}")
 
 
-async def demo_programmatic_draft_tracking():
+async def demo_programmatic_draft_tracking() -> None:
     """Demonstrate the new programmatic draft tracking system."""
     print("\n=== Programmatic Draft Tracking Demo ===")
 
@@ -229,7 +229,7 @@ async def demo_programmatic_draft_tracking():
     print(f"📋 Has drafts after clear: {agent.has_drafts()}")  # Should be False
 
 
-async def main():
+async def main() -> None:
     """Run all demos."""
     print("WorkflowAgent Demo Script")
     print("=" * 50)
