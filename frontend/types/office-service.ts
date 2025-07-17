@@ -66,4 +66,50 @@ export interface CreateCalendarEventRequest {
     provider?: string;
     visibility?: string;
     status?: string;
+}
+
+// Unified Email Message interface matching office service schema
+export interface EmailMessage {
+    id: string;
+    thread_id?: string;
+    subject?: string;
+    snippet?: string;
+    body_text?: string;
+    body_html?: string;
+    from_address?: EmailAddress;
+    to_addresses: EmailAddress[];
+    cc_addresses: EmailAddress[];
+    bcc_addresses: EmailAddress[];
+    date: string; // ISO datetime string
+    labels: string[];
+    is_read: boolean;
+    has_attachments: boolean;
+    provider: 'google' | 'microsoft';
+    provider_message_id: string;
+    account_email: string;
+    account_name?: string;
+}
+
+export interface EmailThread {
+    id: string;
+    subject?: string;
+    emails: EmailMessage[];
+    participant_count: number;
+    last_message_date: string; // ISO datetime string
+    is_read: boolean;
+    providers: ('google' | 'microsoft')[];
+}
+
+export interface EmailFilters {
+    query?: string;
+    [key: string]: any;
+}
+
+export interface GetEmailsResponse {
+    messages: EmailMessage[];
+    total_count: number;
+    providers_used: string[];
+    provider_errors?: Record<string, string>;
+    has_more: boolean;
+    request_metadata?: Record<string, unknown>;
 } 
