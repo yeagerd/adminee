@@ -244,6 +244,7 @@ class APIClientFactory:
             # Import here to avoid circular imports
             import httpx
 
+            from services.common.logging_config import request_id_var
             from services.office.core.settings import get_settings
 
             settings = get_settings()
@@ -258,13 +259,18 @@ class APIClientFactory:
                 settings.api_office_user_key is not None
             ), "api_office_user_key must be set in settings for service-to-service authentication"
 
+            # Prepare headers for service-to-service calls
+            headers = {"X-API-Key": settings.api_office_user_key}
+            request_id = request_id_var.get()
+            if request_id and request_id != "uninitialized":
+                headers["X-Request-Id"] = request_id
+
             # If user_id is not an integer, resolve to internal ID
             resolved_user_id = user_id
             try:
                 int(user_id)
             except ValueError:
                 # Not an integer, resolve
-                headers = {"X-API-Key": settings.api_office_user_key}
                 async with httpx.AsyncClient(timeout=10.0) as client:
                     resp = await client.get(
                         f"{settings.USER_MANAGEMENT_SERVICE_URL}/users/id?external_auth_id={user_id}",
@@ -283,7 +289,6 @@ class APIClientFactory:
                         return None
 
             # Get user profile from user service using internal ID
-            headers = {"X-API-Key": settings.api_office_user_key}
             async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.get(
                     f"{settings.USER_MANAGEMENT_SERVICE_URL}/users/{resolved_user_id}",

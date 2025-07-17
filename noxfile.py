@@ -65,7 +65,7 @@ def test(session):
     """Run tests for all services."""
     # Install common dependencies
     session.install(
-        "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio", "pytest-xdist"
+        "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio", "pytest-xdist", "respx"
     )
 
     # Install services
@@ -82,7 +82,7 @@ def test(session):
 def test_fast(session):
     """Run fast tests only."""
     session.install(
-        "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio"
+        "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio", "respx"
     )
     session.install("-e", "services/common")
     session.install("-e", "services/user")
@@ -104,7 +104,7 @@ def test_fast(session):
 def test_cov(session):
     """Run tests with coverage."""
     session.install(
-        "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio"
+        "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio", "respx"
     )
     session.install("-e", "services/common")
     session.install("-e", "services/user")
@@ -144,7 +144,7 @@ def test_cov(session):
 def test_serial(session):
     """Run tests serially (not in parallel)."""
     session.install(
-        "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio"
+        "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio", "respx"
     )
     session.install("-e", "services/common")
     session.install("-e", "services/user")

@@ -24,24 +24,38 @@ import logging.config
 import sys
 import time
 import uuid
+from contextvars import ContextVar
 from typing import Any, Callable
 
 import structlog
 from fastapi import Request, Response
 
+# Context variables for request-specific data
+request_id_var: ContextVar[str] = ContextVar("request_id", default="uninitialized")
+user_id_var: ContextVar[str] = ContextVar("user_id", default="anonymous")
+
 
 class RequestContextFilter(logging.Filter):
-    """Add request context to log records."""
+    """Add request context from contextvars to log records."""
 
     def filter(self, record: logging.LogRecord) -> bool:
-        # Add default values if not present
-        if not hasattr(record, "request_id"):
-            record.request_id = None
-        if not hasattr(record, "user_id"):
-            record.user_id = None
+        """Filter that adds context from contextvars."""
+        record.request_id = request_id_var.get()
+        record.user_id = user_id_var.get()
         if not hasattr(record, "service_name"):
             record.service_name = getattr(record, "service", "unknown")
         return True
+
+
+def add_request_context(logger, method_name, event_dict):
+    """Add request and user ID to all log entries."""
+    request_id = request_id_var.get()
+    user_id = user_id_var.get()
+    if request_id and request_id != "uninitialized":
+        event_dict["request_id"] = request_id
+    if user_id and user_id != "anonymous":
+        event_dict["user_id"] = user_id
+    return event_dict
 
 
 def setup_service_logging(
@@ -67,6 +81,7 @@ def setup_service_logging(
             structlog.stdlib.add_logger_name,
             structlog.stdlib.add_log_level,
             structlog.stdlib.PositionalArgumentsFormatter(),
+            add_request_context,  # Add our custom context processor
             structlog.processors.TimeStamper(fmt="iso"),
             structlog.processors.StackInfoRenderer(),
             structlog.processors.format_exc_info,
@@ -137,37 +152,21 @@ def create_request_logging_middleware() -> Callable:
         """
         Middleware to log all incoming requests and responses with context.
         """
-        request_id = str(uuid.uuid4())[:8]
+        # Get request ID from header or generate a new one
+        request_id = request.headers.get("X-Request-Id", str(uuid.uuid4()))
+        request_id_var.set(request_id)
+
+        # Get user ID from header
+        user_id = request.headers.get("X-User-Id", "anonymous")
+        user_id_var.set(user_id)
+
         start_time = time.time()
-        user_context = ""
-
-        logger = logging.getLogger("http.requests")
-
-        # Extract user context from headers only (don't consume request body)
-        # The request body will be consumed by FastAPI for endpoint processing
-        if request.method in ["POST", "PUT", "PATCH"]:
-            # Try to get user context from headers instead of body
-            user_id_header = request.headers.get("X-User-Id")
-            if user_id_header:
-                user_context = f" | User: {user_id_header}"
-
-            # Log that we're not reading the body to avoid conflicts
-            logger.debug(f"[{request_id}] Skipping body read to avoid consumption")
-
-        # Extract user_id from query params if not found in body
-        if not user_context and "user_id" in request.query_params:
-            user_context = f" | User: {request.query_params['user_id']}"
-
-        # Extract from path parameters (e.g., /users/{user_id}/preferences)
-        if not user_context and hasattr(request, "path_params"):
-            if "user_id" in request.path_params:
-                user_context = f" | User: {request.path_params['user_id']}"
+        logger = get_logger("http.requests")
 
         # Log incoming request
         logger.info(
-            f"[{request_id}] → {request.method} {request.url.path}{user_context}",
+            f"→ {request.method} {request.url.path}",
             extra={
-                "request_id": request_id,
                 "method": request.method,
                 "path": request.url.path,
                 "query_params": (
@@ -180,9 +179,6 @@ def create_request_logging_middleware() -> Callable:
                 ),
                 "user_agent": request.headers.get("user-agent"),
                 "content_type": request.headers.get("content-type"),
-                "user_id": (
-                    user_context.replace(" | User: ", "") if user_context else None
-                ),
             },
         )
 
@@ -198,25 +194,20 @@ def create_request_logging_middleware() -> Callable:
 
         logger.log(
             log_level,
-            f"[{request_id}] {status_emoji} {request.method} {request.url.path} → {response.status_code} ({process_time:.3f}s){user_context}",
+            f"{status_emoji} {request.method} {request.url.path} → {response.status_code} ({process_time:.3f}s)",
             extra={
-                "request_id": request_id,
                 "status_code": response.status_code,
                 "process_time": process_time,
                 "method": request.method,
                 "path": request.url.path,
-                "user_id": (
-                    user_context.replace(" | User: ", "") if user_context else None
-                ),
             },
         )
 
         # Special logging for 404 errors to help with debugging
         if response.status_code == 404:
             logger.error(
-                f"[{request_id}] 🔍 404 DEBUG - Endpoint not found: {request.method} {request.url.path}",
+                f"🔍 404 DEBUG - Endpoint not found: {request.method} {request.url.path}",
                 extra={
-                    "request_id": request_id,
                     "requested_endpoint": f"{request.method} {request.url.path}",
                     "suggestion": "Check if the endpoint path and HTTP method are correct",
                 },
