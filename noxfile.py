@@ -42,7 +42,7 @@ def lint(session: nox.Session) -> None:
 @nox.session(python="3.12")
 def typecheck(session: nox.Session) -> None:
     """Run type checking."""
-    session.install("mypy")
+    session.install("mypy", "types-requests", "types-pytz")
     # Install all services for comprehensive type checking
     session.install("-e", "services/common")
     session.install("-e", "services/user")
@@ -55,7 +55,7 @@ def typecheck(session: nox.Session) -> None:
 @nox.session(python="3.12")
 def typecheck_strict(session: nox.Session) -> None:
     """Run strict type checking."""
-    session.install("mypy")
+    session.install("mypy", "types-requests", "types-pytz")
     session.install("-e", "services/common")
     session.run("mypy", "services/common", "--strict")
 

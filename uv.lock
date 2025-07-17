@@ -285,6 +285,8 @@ dev = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "mypy" },
+    { name = "nox" },
     { name = "pytest-timeout" },
     { name = "types-pytz" },
     { name = "types-requests" },
@@ -310,6 +312,8 @@ provides-extras = ["dev"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "mypy", specifier = ">=1.16.1" },
+    { name = "nox", specifier = ">=2025.5.1" },
     { name = "pytest-timeout", specifier = ">=2.4.0" },
     { name = "types-pytz", specifier = ">=2025.2.0.20250516" },
     { name = "types-requests", specifier = ">=2.32.4.20250611" },
