@@ -1020,13 +1020,13 @@ class IntegrationService:
 
             # Sort recent errors by timestamp (most recent first)
             recent_errors = sorted(
-                recent_errors, key=lambda x: x["timestamp"], reverse=True
+                recent_errors, key=lambda x: x["timestamp"] or "", reverse=True
             )[
                 :10
             ]  # Keep only 10 most recent
 
             # Calculate sync stats
-            sync_stats = {}
+            sync_stats: Dict[str, Any] = {}
             if integrations:
                 last_sync_times = [
                     i.last_sync_at for i in integrations if i.last_sync_at

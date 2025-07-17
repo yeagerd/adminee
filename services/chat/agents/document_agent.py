@@ -65,7 +65,7 @@ class DocumentAgent(FunctionAgent):
         user_id: str,
         llm_model: str = "gpt-4.1-nano",
         llm_provider: str = "openai",
-        **llm_kwargs,
+        **llm_kwargs: Any,
     ):
         # Get LLM instance
         llm = get_llm_manager().get_llm(
@@ -117,7 +117,7 @@ class DocumentAgent(FunctionAgent):
             end_date: str | None = None,
             search_query: str | None = None,
             max_results: int | None = None,
-        ) -> Any:  # type: ignore[no-untyped-def]
+        ) -> Any:
             return get_documents(
                 user_id=user_id,
                 document_type=document_type,
@@ -144,7 +144,7 @@ class DocumentAgent(FunctionAgent):
             tags: str | None = None,
             search_query: str | None = None,
             max_results: int | None = None,
-        ) -> Any:  # type: ignore[no-untyped-def]
+        ) -> Any:
             return get_notes(
                 user_id=user_id,
                 notebook=notebook,

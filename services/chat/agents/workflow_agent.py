@@ -687,16 +687,16 @@ class WorkflowAgent:
 
     # Properties for compatibility with existing code
     @property
-    def llm(self):
+    def llm(self) -> Any:
         """Access to the LLM instance."""
         return self._llm
 
     @property
-    def agent(self):
+    def agent(self) -> Any:
         """Access to the coordinator agent."""
         return self.specialized_agents.get("CoordinatorAgent")
 
     @property
-    def memory(self):
+    def memory(self) -> Any:
         """Access to workflow context for compatibility."""
         return self.context

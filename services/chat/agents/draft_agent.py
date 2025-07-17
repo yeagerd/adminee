@@ -158,7 +158,7 @@ class DraftAgent(FunctionAgent):
         thread_id: int,
         llm_model: str = "gpt-4.1-nano",
         llm_provider: str = "openai",
-        **llm_kwargs,
+        **llm_kwargs: Any,
     ):
         # Get LLM instance
         llm = get_llm_manager().get_llm(
@@ -204,7 +204,7 @@ class DraftAgent(FunctionAgent):
             to: str | None = None,
             subject: str | None = None,
             body: str | None = None,
-        ) -> str:  # type: ignore[no-untyped-def]
+        ) -> str:
             """Create or update a draft email using the agent's thread_id."""
             logger.info(
                 f"📧 DraftAgent: Creating email draft - To: {to}, Subject: {subject}, Thread: {thread_id}"
@@ -268,7 +268,7 @@ class DraftAgent(FunctionAgent):
             attendees: str | None = None,
             location: str | None = None,
             description: str | None = None,
-        ) -> str:  # type: ignore[no-untyped-def]
+        ) -> str:
             """Create or update a draft calendar event using the agent's thread_id."""
             logger.info(
                 f"📅 DraftAgent: Creating calendar event draft - Title: {title}, Start: {start_time}, Thread: {thread_id}"
