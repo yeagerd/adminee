@@ -22,7 +22,7 @@ export function ToolContent() {
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
     const [calendarLoading, setCalendarLoading] = useState(false);
     const [calendarError, setCalendarError] = useState<string | null>(null);
-    const { integrations, loading: integrationsLoading, error: integrationsError, refreshIntegrations } = useIntegrations();
+    const { integrations, loading: integrationsLoading } = useIntegrations();
 
     const fetchCalendarEvents = useCallback(async () => {
         if (!session?.user?.id) {

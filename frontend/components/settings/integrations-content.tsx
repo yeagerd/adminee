@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useIntegrations } from '@/contexts/integrations-context';
 import { INTEGRATION_STATUS } from '@/lib/constants';
 import { gatewayClient, Integration, OAuthStartResponse } from '@/lib/gateway-client';
-import { AlertCircle, Calendar, CheckCircle, Mail, RefreshCw, Settings, XCircle } from 'lucide-react';
+import { AlertCircle, Calendar, Mail, Settings } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
@@ -46,78 +46,6 @@ function parseUtcDate(dateString: string): Date {
         return new Date(dateString);
     }
     return new Date(dateString + 'Z');
-}
-
-function isTokenExpiringSoon(expiresAt: string, warningMinutes: number = 30): boolean {
-    const expirationDate = parseUtcDate(expiresAt);
-    const now = new Date();
-    const warningTime = new Date(now.getTime() + warningMinutes * 60 * 1000);
-    return expirationDate <= warningTime;
-}
-
-function isTokenExpired(expiresAt: string): boolean {
-    const expirationDate = parseUtcDate(expiresAt);
-    const now = new Date();
-    return expirationDate <= now;
-}
-
-function getTimeUntilExpiration(expiresAt: string): string {
-    const expirationDate = parseUtcDate(expiresAt);
-    const now = new Date();
-    const diffMs = expirationDate.getTime() - now.getTime();
-
-    if (diffMs <= 0) {
-        return 'Expired';
-    }
-
-    const diffMinutes = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMinutes / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffDays > 0) {
-        return `${diffDays} day${diffDays !== 1 ? 's' : ''}`;
-    } else if (diffHours > 0) {
-        return `${diffHours} hour${diffHours !== 1 ? 's' : ''}`;
-    } else {
-        return `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''}`;
-    }
-}
-
-function getScopeDescription(scope: string): string {
-    // Microsoft Graph API scopes - ReadWrite only
-    if (scope === 'https://graph.microsoft.com/Mail.ReadWrite') return 'Read and send email messages';
-    if (scope === 'https://graph.microsoft.com/Calendars.ReadWrite') return 'Read and create calendar events';
-    if (scope === 'https://graph.microsoft.com/Files.ReadWrite') return 'Read and save files to OneDrive';
-    if (scope === 'https://graph.microsoft.com/User.Read') return 'Access detailed user profile (job title, department, manager, contact info)';
-    if (scope === 'https://graph.microsoft.com/User.ReadWrite') return 'Read and write user profile';
-    if (scope === 'https://graph.microsoft.com/Contacts.ReadWrite') return 'Read and manage contacts';
-    if (scope === 'https://graph.microsoft.com/Tasks.ReadWrite') return 'Read and write tasks';
-    if (scope === 'https://graph.microsoft.com/Notes.ReadWrite') return 'Read and write OneNote notebooks';
-
-    // Google API scopes
-    if (scope.includes('gmail')) {
-        if (scope.includes('readonly')) return 'Read Gmail messages';
-        if (scope.includes('modify')) return 'Read and write Gmail messages';
-        if (scope.includes('send')) return 'Send Gmail messages';
-        if (scope.includes('compose')) return 'Compose Gmail messages';
-    }
-    if (scope.includes('calendar')) {
-        if (scope.includes('readonly')) return 'Read Google Calendar events';
-        if (scope.includes('events')) return 'Read and write Google Calendar events';
-    }
-    if (scope.includes('drive')) {
-        if (scope.includes('readonly')) return 'Read Google Drive files';
-        if (scope.includes('file')) return 'Read and write Google Drive files';
-    }
-
-    // Standard OAuth scopes
-    if (scope === 'openid') return 'OpenID Connect authentication';
-    if (scope === 'email') return 'Access email address';
-    if (scope === 'profile') return 'Access basic profile information (name, picture)';
-    if (scope === 'offline_access') return 'Access when you\'re not present';
-
-    // Fallback
-    return scope;
 }
 
 export function IntegrationsContent() {
@@ -221,44 +149,6 @@ export function IntegrationsContent() {
         });
     };
 
-    const loadIntegrations = useCallback(async (forceRefresh = false) => {
-        // Prevent rapid successive calls
-        if (loading && !forceRefresh) {
-            console.log('Integrations already loading, skipping...');
-            return;
-        }
-
-        try {
-            // error is now handled by the global context
-            if (!loading) {
-                refreshIntegrations();
-            }
-            console.log('Loading integrations...', { forceRefresh, loading });
-            const data = await gatewayClient.getIntegrations();
-            console.log('Integrations data:', data);
-            // The backend returns { integrations: [...], total: ..., active_count: ..., error_count: ... }
-            // Extract just the integrations array
-            const integrationsData = data.integrations || [];
-            // integrations is now handled by the global context
-            // setIntegrations(integrationsData);
-            // setLastFetchTime(Date.now());
-            console.log('Integrations state updated:', integrationsData);
-
-            // Determine preferred provider from integrations
-            const preferred = determinePreferredProvider(integrationsData);
-            setPreferredProvider(preferred);
-
-            // Auto-refresh expired tokens is now handled globally
-        } catch (error: unknown) {
-            console.error('Failed to load integrations:', error);
-            // error is now handled by the global context
-        } finally {
-            // loading is now handled by the global context
-            // setLoading(false);
-            // setIsRefreshing(false);
-        }
-    }, [determinePreferredProvider, loading, refreshIntegrations]); // Only depend on determinePreferredProvider which should be stable
-
     // Only refresh integrations on OAuth return (not on every render)
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
@@ -331,78 +221,8 @@ export function IntegrationsContent() {
         }
     };
 
-    const handleRefresh = async (provider: string) => {
-        try {
-            // error is now handled by the global context
-            await refreshIntegrations(); // No arguments
-            console.log('Integrations reloaded');
-        } catch (error: unknown) {
-            console.error('Failed to refresh tokens:', error);
-
-            // Check if this is a re-authentication required error
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            if (errorMessage.includes('REAUTHENTICATION_REQUIRED')) {
-                // Start a new OAuth flow for re-authentication
-                const config = INTEGRATION_CONFIGS.find(c => c.provider === provider);
-                if (config) {
-                    // error is now handled by the global context
-                    setTimeout(() => {
-                        handleConnect(config);
-                    }, 2000);
-                } else {
-                    // error is now handled by the global context
-                }
-            } else if (errorMessage.includes('Missing refresh token')) {
-                // Handle the old error message format as well
-                const config = INTEGRATION_CONFIGS.find(c => c.provider === provider);
-                if (config) {
-                    // error is now handled by the global context
-                    setTimeout(() => {
-                        handleConnect(config);
-                    }, 2000);
-                } else {
-                    // error is now handled by the global context
-                }
-            } else {
-                // error is now handled by the global context
-            }
-        } finally {
-            // loading is now handled by the global context
-        }
-    };
-
     const getIntegrationStatus = (provider: string): Integration | undefined => {
         return integrations.find(integration => integration.provider === provider);
-    };
-
-    const getStatusIcon = (status?: string) => {
-        switch (status) {
-            case INTEGRATION_STATUS.ACTIVE:
-                return <CheckCircle className="h-4 w-4 text-green-600" />;
-            case INTEGRATION_STATUS.ERROR:
-                return <XCircle className="h-4 w-4 text-red-600" />;
-            case INTEGRATION_STATUS.PENDING:
-                return <RefreshCw className="h-4 w-4 text-yellow-600" />;
-            case INTEGRATION_STATUS.INACTIVE:
-                return <AlertCircle className="h-4 w-4 text-gray-400" />;
-            default:
-                return <AlertCircle className="h-4 w-4 text-gray-400" />;
-        }
-    };
-
-    const getStatusColor = (status?: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
-        switch (status) {
-            case INTEGRATION_STATUS.ACTIVE:
-                return 'default';
-            case INTEGRATION_STATUS.ERROR:
-                return 'destructive';
-            case INTEGRATION_STATUS.PENDING:
-                return 'secondary';
-            case INTEGRATION_STATUS.INACTIVE:
-                return 'outline';
-            default:
-                return 'outline';
-        }
     };
 
     // Get the user's login provider from the session

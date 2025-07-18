@@ -27,7 +27,7 @@ const EmailView: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [filters, setFilters] = useState<Record<string, unknown>>({});
-    const { integrations, loading: integrationsLoading } = useIntegrations();
+    const { integrations } = useIntegrations();
 
     useEffect(() => {
         let isMounted = true;
