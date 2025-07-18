@@ -41,42 +41,14 @@ const INTEGRATION_CONFIGS: IntegrationConfig[] = [
     }
 ];
 
-function parseUtcDate(dateString: string): Date {
-    if (dateString.match(/(Z|[+-][0-9]{2}:[0-9]{2})$/)) {
-        return new Date(dateString);
-    }
-    return new Date(dateString + 'Z');
-}
-
 export function IntegrationsContent() {
-    const { data: session, status } = useSession();
+    const { data: session } = useSession();
     const { integrations, loading, error, refreshIntegrations } = useIntegrations();
     const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
-    const [preferredProvider, setPreferredProvider] = useState<string | null>(null);
-
-    // Scope selection state
     const [selectedScopes, setSelectedScopes] = useState<string[]>([]);
     const [providerScopes, setProviderScopes] = useState<Record<string, OAuthScope[]>>({});
     const [scopeDialogOpen, setScopeDialogOpen] = useState(false);
     const [currentProvider, setCurrentProvider] = useState<string | null>(null);
-
-    // Cache duration: 5 minutes
-    const CACHE_DURATION = 5 * 60 * 1000;
-
-    const determinePreferredProvider = useCallback((integrations: Integration[]) => {
-        // If user has active integrations, use the first one as preferred
-        const activeIntegration = integrations.find(integration => integration.status === INTEGRATION_STATUS.ACTIVE);
-        if (activeIntegration) {
-            return activeIntegration.provider;
-        }
-
-        // If no active integrations, check if user has any integrations at all
-        if (integrations.length > 0) {
-            return integrations[0].provider;
-        }
-
-        return null;
-    }, []);
 
     const loadProviderScopes = useCallback(async (provider: string) => {
         try {
@@ -187,7 +159,7 @@ export function IntegrationsContent() {
             ) as OAuthStartResponse;
 
             // Update preferred provider when connecting
-            setPreferredProvider(config.provider);
+            // setPreferredProvider(config.provider); // This line was removed
 
             // Redirect to OAuth provider
             window.location.href = response.authorization_url;
