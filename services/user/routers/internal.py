@@ -301,26 +301,38 @@ async def create_or_upsert_user_internal(
     )
 
     try:
-        # Try to find existing user first
-        existing_user = (
-            await get_user_service().get_user_by_external_auth_id_auto_detect(
-                user_data.external_auth_id
-            )
+        # Try to find existing user first using the same method as GET /internal/users/id
+        # This ensures consistency between GET and POST endpoints
+        email_request = EmailResolutionRequest(
+            email=user_data.email, provider=user_data.auth_provider
         )
-        user_response = UserResponse.from_orm(existing_user)
 
-        logger.info(
-            f"Found existing user for {user_data.auth_provider} ID: {user_data.external_auth_id}"
-        )
-        # Return existing user with created=False
-        return UserCreateResponse(user=user_response, created=False)
-
-    except NotFoundError:
-        # User doesn't exist, create new one
-        logger.info(
-            f"User not found, attempting to create new user with {user_data.auth_provider} ID: {user_data.external_auth_id}"
-        )
         try:
+            # Use the same resolution logic as GET endpoint
+            resolution_result = await get_user_service().resolve_email_to_user_id(
+                email_request
+            )
+
+            # Get full user data to return
+            existing_user = (
+                await get_user_service().get_user_by_external_auth_id_auto_detect(
+                    resolution_result.external_auth_id
+                )
+            )
+            user_response = UserResponse.from_orm(existing_user)
+
+            logger.info(
+                f"Found existing user for email {user_data.email} with provider {user_data.auth_provider}: {existing_user.external_auth_id}"
+            )
+            # Return existing user with created=False
+            return UserCreateResponse(user=user_response, created=False)
+
+        except NotFoundError:
+            # User doesn't exist, create new one
+            logger.info(
+                f"User not found for email {user_data.email}, attempting to create new user with {user_data.auth_provider} ID: {user_data.external_auth_id}"
+            )
+
             new_user = await get_user_service().create_user(user_data)
             user_response = UserResponse.from_orm(new_user)
 
@@ -330,21 +342,20 @@ async def create_or_upsert_user_internal(
             # Return new user with created=True
             return UserCreateResponse(user=user_response, created=True)
 
-        except ValidationError as e:
-            logger.error(f"Validation error during user creation: {e.message}")
-            logger.error(f"Validation error details: {e.details}")
-            if "collision" in str(e.message).lower():
-                logger.warning(f"Email collision during user creation: {e.message}")
-                raise BrieflyAPIException(
-                    status_code=409,
-                    error_code=ErrorCode.ALREADY_EXISTS,
-                    message="Email collision detected",
-                    details=e.details,
-                )
-            else:
-                logger.warning(f"Validation error during user creation: {e.message}")
-                raise e
-
+    except ValidationError as e:
+        logger.error(f"Validation error during user creation: {e.message}")
+        logger.error(f"Validation error details: {e.details}")
+        if "collision" in str(e.message).lower():
+            logger.warning(f"Email collision during user creation: {e.message}")
+            raise BrieflyAPIException(
+                status_code=409,
+                error_code=ErrorCode.ALREADY_EXISTS,
+                message="Email collision detected",
+                details=e.details,
+            )
+        else:
+            logger.warning(f"Validation error during user creation: {e.message}")
+            raise e
     except Exception as e:
         logger.error(f"Unexpected error in create_or_upsert_user: {e}")
         logger.error(f"Error type: {type(e)}")
