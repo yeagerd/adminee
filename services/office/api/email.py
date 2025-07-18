@@ -104,17 +104,21 @@ async def get_email_messages(
     )
 
     try:
+        # TODO: Only query providers that the user has actually connected
+        # This should check the user's integrations and only query active providers
+        # For now, we'll use the provided providers or default to all
+
         # Default to all providers if not specified
         if not providers:
             providers = ["google", "microsoft"]
 
         # Validate providers
         valid_providers = []
-        for provider in providers:
-            if provider.lower() in ["google", "microsoft"]:
-                valid_providers.append(provider.lower())
+        for provider_name in providers:
+            if provider_name.lower() in ["google", "microsoft"]:
+                valid_providers.append(provider_name.lower())
             else:
-                logger.warning(f"[{request_id}] Invalid provider: {provider}")
+                logger.warning(f"[{request_id}] Invalid provider: {provider_name}")
 
         if not valid_providers:
             raise ValidationError(message="No valid providers specified")
@@ -140,11 +144,11 @@ async def get_email_messages(
 
         # Fetch from providers in parallel
         tasks = []
-        for provider in valid_providers:
+        for provider_name in valid_providers:
             task = fetch_provider_emails(
                 request_id,
                 user_id,
-                provider,
+                provider_name,
                 limit,
                 include_body,
                 labels,
@@ -162,11 +166,13 @@ async def get_email_messages(
         providers_used = []
 
         for i, result in enumerate(provider_results):
-            provider = valid_providers[i]
+            provider_name = valid_providers[i]
 
             if isinstance(result, Exception):
-                logger.error(f"[{request_id}] Provider {provider} failed: {result}")
-                provider_errors[provider] = str(result)
+                logger.error(
+                    f"[{request_id}] Provider {provider_name} failed: {result}"
+                )
+                provider_errors[provider_name] = str(result)
             elif result is not None and not isinstance(result, BaseException):
                 try:
                     # Type narrowing: result should be tuple[List[EmailMessage], str]
@@ -174,13 +180,13 @@ async def get_email_messages(
                     aggregated_messages.extend(messages)
                     providers_used.append(provider_name)
                     logger.info(
-                        f"[{request_id}] Provider {provider} returned {len(messages)} messages"
+                        f"[{request_id}] Provider {provider_name} returned {len(messages)} messages"
                     )
                 except (TypeError, ValueError) as e:
                     logger.error(
-                        f"[{request_id}] Invalid result format from {provider}: {e}"
+                        f"[{request_id}] Invalid result format from {provider_name}: {e}"
                     )
-                    provider_errors[provider] = f"Invalid result format: {e}"
+                    provider_errors[provider_name] = f"Invalid result format: {e}"
 
         # Sort messages by date (newest first)
         aggregated_messages.sort(key=lambda msg: msg.date, reverse=True)
