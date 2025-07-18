@@ -590,7 +590,7 @@ class TokenService:
     ) -> bool:
         """
         Check if granted scopes include all required scopes.
-        
+
         Handles Microsoft's hierarchical scopes where broader scopes include narrower ones:
         - Mail.ReadWrite includes Mail.Read and Mail.Send
         - Calendars.ReadWrite includes Calendars.Read
@@ -609,13 +609,13 @@ class TokenService:
                 "https://graph.microsoft.com/Files.Read",
             ],
         }
-        
+
         # Expand granted scopes to include all implied scopes
         expanded_granted_scopes = set(granted_scopes)
         for granted_scope in granted_scopes:
             if granted_scope in microsoft_scope_hierarchy:
                 expanded_granted_scopes.update(microsoft_scope_hierarchy[granted_scope])
-        
+
         # Check if all required scopes are in the expanded granted scopes
         return all(scope in expanded_granted_scopes for scope in required_scopes)
 

@@ -93,7 +93,7 @@ async def get_email_messages(
         # TODO: Only query providers that the user has actually connected
         # This should check the user's integrations and only query active providers
         # For now, we'll use the provided providers or default to all
-        
+
         # Default to all providers if not specified
         if not providers:
             providers = ["google", "microsoft"]
@@ -155,7 +155,9 @@ async def get_email_messages(
             provider_name = valid_providers[i]
 
             if isinstance(result, Exception):
-                logger.error(f"[{request_id}] Provider {provider_name} failed: {result}")
+                logger.error(
+                    f"[{request_id}] Provider {provider_name} failed: {result}"
+                )
                 provider_errors[provider_name] = str(result)
             elif result is not None and not isinstance(result, BaseException):
                 try:
