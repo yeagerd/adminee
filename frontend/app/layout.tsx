@@ -1,6 +1,7 @@
-import AuthSessionProvider from '@/components/auth/session-provider'
-import type { Metadata } from 'next'
-import './globals.css'
+import AuthSessionProvider from '@/components/auth/session-provider';
+import { IntegrationsProvider } from '@/contexts/integrations-context';
+import type { Metadata } from 'next';
+import './globals.css';
 
 export const metadata: Metadata = {
     title: 'Briefly',
@@ -16,7 +17,9 @@ export default function RootLayout({
         <html lang="en">
             <body>
                 <AuthSessionProvider>
-                    {children}
+                    <IntegrationsProvider>
+                        {children}
+                    </IntegrationsProvider>
                 </AuthSessionProvider>
             </body>
         </html>
