@@ -162,6 +162,9 @@ class BaseOfficeServiceIntegrationTest(BaseIntegrationTest):
 
         self.client = self.create_test_client(app)
 
+        # Set up default auth headers for tests
+        self.auth_headers = {"X-User-Id": "test-user@example.com"}
+
     def teardown_method(self, method: object) -> None:
         """Clean up Office Service specific patches."""
         # Stop all patches
