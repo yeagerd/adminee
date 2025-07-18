@@ -1,5 +1,6 @@
 "use client";
 
+import { useSession } from 'next-auth/react';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import gatewayClient, { Integration } from '../lib/gateway-client';
 
@@ -16,6 +17,7 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const [integrations, setIntegrations] = useState<Integration[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const { status } = useSession();
 
     const fetchIntegrations = useCallback(async () => {
         setLoading(true);
@@ -31,8 +33,14 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }, []);
 
     useEffect(() => {
-        fetchIntegrations();
-    }, [fetchIntegrations]);
+        if (status === 'authenticated') {
+            fetchIntegrations();
+        } else if (status === 'unauthenticated') {
+            setIntegrations([]);
+            setError(null);
+            setLoading(false);
+        }
+    }, [fetchIntegrations, status]);
 
     return (
         <IntegrationsContext.Provider value={{ integrations, loading, error, refreshIntegrations: fetchIntegrations }}>
