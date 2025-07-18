@@ -1,7 +1,8 @@
 'use client';
 
+import { gatewayClient, Integration } from '@/lib/gateway-client';
 import { useSession } from 'next-auth/react';
-import { useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 function parseUtcDate(dateString: string): Date {
     if (dateString.match(/(Z|[+-][0-9]{2}:[0-9]{2})$/)) {
@@ -17,15 +18,17 @@ function isTokenExpired(expiresAt: string): boolean {
 }
 
 export function useTokenAutoRefresh() {
+    const ENABLE_TOKEN_AUTO_REFRESH = false; // Set to true to enable auto-refresh
     const { data: session } = useSession();
     const lastRefreshRef = useRef(0);
     const isRefreshingRef = useRef(false);
     const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
-    // Temporarily disabled to prevent infinite loop
-    console.log('Auto refresh hook disabled to prevent infinite loop');
+    if (!ENABLE_TOKEN_AUTO_REFRESH) {
+        console.log('Auto refresh hook is currently disabled.');
+        return;
+    }
 
-    /*
     const autoRefreshExpiredTokens = useCallback(async (integrationsData: Integration[]) => {
         const expiredIntegrations = integrationsData.filter(integration => {
             return integration.status === 'error' &&
@@ -48,9 +51,8 @@ export function useTokenAutoRefresh() {
                 }
             }
             if (refreshed) {
-                // Don't dispatch the event to avoid circular dependency
-                // The integrations page will refresh on its own interval
-                console.log('Tokens refreshed, skipping integrations-updated event to prevent loop');
+                // No event dispatch to avoid circular dependency
+                console.log('Tokens refreshed.');
             }
         }
     }, []);
@@ -80,17 +82,15 @@ export function useTokenAutoRefresh() {
         } finally {
             isRefreshingRef.current = false;
         }
-    }, []);
+    }, [autoRefreshExpiredTokens]);
 
     useEffect(() => {
         if (session) {
             // Initial load
             loadAndRefreshIntegrations();
-
             // Set up interval for periodic refresh
             const intervalId = setInterval(loadAndRefreshIntegrations, REFRESH_INTERVAL);
             return () => clearInterval(intervalId);
         }
     }, [session, loadAndRefreshIntegrations]);
-    */
 }
