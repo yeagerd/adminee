@@ -217,6 +217,7 @@ def get_emails(
     unread_only: bool | None = None,
     folder: str | None = None,
     max_results: int | None = None,
+    providers: str | None = None,
 ) -> Dict[str, Any]:
     # Use service-to-service authentication
     headers = {"Content-Type": "application/json"}
@@ -235,11 +236,19 @@ def get_emails(
         params["folder"] = folder
     if max_results:
         params["max_results"] = str(max_results)
+    if providers:
+        # Handle providers as comma-separated string or list
+        if isinstance(providers, str):
+            provider_list = [p.strip() for p in providers.split(",")]
+        else:
+            provider_list = providers
+        for provider in provider_list:
+            params.setdefault("providers", []).append(provider)
 
     try:
         office_service_url = get_settings().office_service_url
         response = requests.get(
-            f"{office_service_url}/emails",
+            f"{office_service_url}/email/messages",
             headers=headers,
             params=params,
             timeout=10,
@@ -255,12 +264,12 @@ def get_emails(
 
         # Extract emails from the data field
         emails_data = data.get("data", {})
-        if "emails" not in emails_data:
+        if "messages" not in emails_data:
             return {
-                "error": "Malformed response from office-service: missing emails data."
+                "error": "Malformed response from office-service: missing messages data."
             }
 
-        return {"emails": emails_data["emails"]}
+        return {"emails": emails_data["messages"]}
 
     except requests.Timeout:
         return {"error": "Request to office-service timed out."}

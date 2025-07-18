@@ -231,7 +231,7 @@ export class GatewayClient {
 
     async getEmails(
         user_id: string,
-        provider: string,
+        providers: string[],
         limit?: number,
         offset?: number
     ): Promise<ApiResponse<GetEmailsResponse>> {
@@ -240,7 +240,12 @@ export class GatewayClient {
         if (limit) params.append('limit', limit.toString());
         if (offset) params.append('offset', offset.toString());
 
-        return this.request<ApiResponse<GetEmailsResponse>>(`/api/email/messages?provider=${provider}&${params.toString()}`);
+        // Add providers as a list
+        providers.forEach(provider => {
+            params.append('providers', provider);
+        });
+
+        return this.request<ApiResponse<GetEmailsResponse>>(`/api/email/messages?${params.toString()}`);
     }
 
     async getFiles(provider: string, path?: string) {

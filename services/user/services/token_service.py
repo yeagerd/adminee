@@ -588,8 +588,36 @@ class TokenService:
     def _has_required_scopes(
         self, granted_scopes: List[str], required_scopes: List[str]
     ) -> bool:
-        """Check if granted scopes include all required scopes."""
-        return all(scope in granted_scopes for scope in required_scopes)
+        """
+        Check if granted scopes include all required scopes.
+        
+        Handles Microsoft's hierarchical scopes where broader scopes include narrower ones:
+        - Mail.ReadWrite includes Mail.Read and Mail.Send
+        - Calendars.ReadWrite includes Calendars.Read
+        - Files.ReadWrite includes Files.Read
+        """
+        # Create a mapping of broader scopes to their included narrower scopes
+        microsoft_scope_hierarchy = {
+            "https://graph.microsoft.com/Mail.ReadWrite": [
+                "https://graph.microsoft.com/Mail.Read",
+                "https://graph.microsoft.com/Mail.Send",
+            ],
+            "https://graph.microsoft.com/Calendars.ReadWrite": [
+                "https://graph.microsoft.com/Calendars.Read",
+            ],
+            "https://graph.microsoft.com/Files.ReadWrite": [
+                "https://graph.microsoft.com/Files.Read",
+            ],
+        }
+        
+        # Expand granted scopes to include all implied scopes
+        expanded_granted_scopes = set(granted_scopes)
+        for granted_scope in granted_scopes:
+            if granted_scope in microsoft_scope_hierarchy:
+                expanded_granted_scopes.update(microsoft_scope_hierarchy[granted_scope])
+        
+        # Check if all required scopes are in the expanded granted scopes
+        return all(scope in expanded_granted_scopes for scope in required_scopes)
 
     async def revoke_tokens(
         self,
