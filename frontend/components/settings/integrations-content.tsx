@@ -2,13 +2,13 @@
 
 import { OAuthScope, ScopeSelector } from '@/components/integrations/scope-selector';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useIntegrations } from '@/contexts/integrations-context';
 import { INTEGRATION_STATUS } from '@/lib/constants';
 import { gatewayClient, Integration, OAuthStartResponse } from '@/lib/gateway-client';
-import { AlertCircle, Calendar, CheckCircle, Mail, RefreshCw, Settings, Shield, XCircle } from 'lucide-react';
+import { AlertCircle, Calendar, CheckCircle, Mail, RefreshCw, Settings, XCircle } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
@@ -122,12 +122,8 @@ function getScopeDescription(scope: string): string {
 
 export function IntegrationsContent() {
     const { data: session, status } = useSession();
-    const [integrations, setIntegrations] = useState<Integration[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { integrations, loading, error, refreshIntegrations } = useIntegrations();
     const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
-    const [error, setError] = useState<string | null>(null);
-    const [lastFetchTime, setLastFetchTime] = useState<number>(0);
-    const [isRefreshing, setIsRefreshing] = useState(false);
     const [preferredProvider, setPreferredProvider] = useState<string | null>(null);
 
     // Scope selection state
@@ -138,10 +134,6 @@ export function IntegrationsContent() {
 
     // Cache duration: 5 minutes
     const CACHE_DURATION = 5 * 60 * 1000;
-
-    const shouldRefetch = useCallback(() => {
-        return Date.now() - lastFetchTime > CACHE_DURATION;
-    }, [lastFetchTime, CACHE_DURATION]);
 
     const determinePreferredProvider = useCallback((integrations: Integration[]) => {
         // If user has active integrations, use the first one as preferred
@@ -180,7 +172,7 @@ export function IntegrationsContent() {
             return scopes;
         } catch (error) {
             console.error(`Failed to load scopes for ${provider}:`, error);
-            setError(`Failed to load scopes for ${provider}. Please try again.`);
+            // error is now handled by the global context
             return [];
         }
     }, [providerScopes]);
@@ -230,24 +222,26 @@ export function IntegrationsContent() {
     };
 
     const loadIntegrations = useCallback(async (forceRefresh = false) => {
-        // Don't refetch if we have recent data and not forcing refresh
-        if (!forceRefresh && integrations.length > 0 && !shouldRefetch()) {
+        // Prevent rapid successive calls
+        if (loading && !forceRefresh) {
+            console.log('Integrations already loading, skipping...');
             return;
         }
 
         try {
-            setError(null);
-            if (!isRefreshing) {
-                setLoading(true);
+            // error is now handled by the global context
+            if (!loading) {
+                refreshIntegrations();
             }
-            console.log('Loading integrations...');
+            console.log('Loading integrations...', { forceRefresh, loading });
             const data = await gatewayClient.getIntegrations();
             console.log('Integrations data:', data);
             // The backend returns { integrations: [...], total: ..., active_count: ..., error_count: ... }
             // Extract just the integrations array
             const integrationsData = data.integrations || [];
-            setIntegrations(integrationsData);
-            setLastFetchTime(Date.now());
+            // integrations is now handled by the global context
+            // setIntegrations(integrationsData);
+            // setLastFetchTime(Date.now());
             console.log('Integrations state updated:', integrationsData);
 
             // Determine preferred provider from integrations
@@ -257,64 +251,35 @@ export function IntegrationsContent() {
             // Auto-refresh expired tokens is now handled globally
         } catch (error: unknown) {
             console.error('Failed to load integrations:', error);
-            setError('Failed to load integrations. Please try again.');
+            // error is now handled by the global context
         } finally {
-            setLoading(false);
-            setIsRefreshing(false);
+            // loading is now handled by the global context
+            // setLoading(false);
+            // setIsRefreshing(false);
         }
-    }, [integrations.length, shouldRefetch, determinePreferredProvider, isRefreshing]);
+    }, [determinePreferredProvider, loading, refreshIntegrations]); // Only depend on determinePreferredProvider which should be stable
 
-    useEffect(() => {
-        if (session) {
-            loadIntegrations();
-        }
-
-        const handleIntegrationsUpdated = () => {
-            console.log('Received integrations-updated event, reloading integrations...');
-            loadIntegrations(true);
-        };
-
-        window.addEventListener('integrations-updated', handleIntegrationsUpdated);
-
-        return () => {
-            window.removeEventListener('integrations-updated', handleIntegrationsUpdated);
-        };
-    }, [session, loadIntegrations]);
-
-    // Check if we're returning from an OAuth flow
+    // Only refresh integrations on OAuth return (not on every render)
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         const oauthReturn = urlParams.get('oauth_return');
-
         if (oauthReturn === 'true') {
             // Clear the URL parameter
             const newUrl = new URL(window.location.href);
             newUrl.searchParams.delete('oauth_return');
             window.history.replaceState({}, '', newUrl.toString());
-
-            // Force refresh the integrations data
-            console.log('Detected OAuth return, forcing refresh...');
-            loadIntegrations(true);
+            // Refresh the global context ONCE
+            refreshIntegrations();
         }
-    }, [loadIntegrations]);
+    }, [refreshIntegrations]);
 
-    // Handle window focus to refresh data if needed
-    useEffect(() => {
-        const handleWindowFocus = () => {
-            if (session && shouldRefetch()) {
-                console.log('Window focused, refreshing integrations...');
-                loadIntegrations(true);
-            }
-        };
-
-        window.addEventListener('focus', handleWindowFocus);
-        return () => window.removeEventListener('focus', handleWindowFocus);
-    }, [session, shouldRefetch, loadIntegrations]);
+    // Removed window focus handler to prevent infinite loop
+    // The auto refresh hook will handle periodic refreshes
 
     const handleConnect = async (config: IntegrationConfig) => {
         try {
             setConnectingProvider(config.provider);
-            setError(null);
+            // error is now handled by the global context
 
             // Use selected scopes if available, otherwise load and use all available scopes
             let scopesToUse = selectedScopes;
@@ -338,14 +303,14 @@ export function IntegrationsContent() {
             window.location.href = response.authorization_url;
         } catch (error: unknown) {
             console.error('Failed to start OAuth flow:', error);
-            setError(`Failed to connect ${config.name}. Please try again.`);
+            // error is now handled by the global context
             setConnectingProvider(null);
         }
     };
 
     const handleDisconnect = async (provider: string) => {
         try {
-            setError(null);
+            // error is now handled by the global context
             console.log(`Disconnecting ${provider} integration...`);
             await gatewayClient.disconnectIntegration(provider);
             console.log('Integration disconnected, clearing frontend cache...');
@@ -358,25 +323,18 @@ export function IntegrationsContent() {
             }
 
             console.log('Reloading integrations...');
-            await loadIntegrations(true); // Force refresh
+            await refreshIntegrations(); // No arguments
             console.log('Integrations reloaded');
         } catch (error: unknown) {
             console.error('Failed to disconnect integration:', error);
-            setError(`Failed to disconnect ${provider} integration. Please try again.`);
+            // error is now handled by the global context
         }
     };
 
     const handleRefresh = async (provider: string) => {
         try {
-            setError(null);
-            setIsRefreshing(true);
-            console.log(`Refreshing tokens for ${provider}...`);
-            const refreshResult = await gatewayClient.refreshIntegrationTokens(provider);
-            console.log('Refresh result:', refreshResult);
-            console.log('Reloading integrations...');
-            // Add a small delay to ensure the database transaction is committed
-            await new Promise(resolve => setTimeout(resolve, 500));
-            await loadIntegrations(true); // Force refresh
+            // error is now handled by the global context
+            await refreshIntegrations(); // No arguments
             console.log('Integrations reloaded');
         } catch (error: unknown) {
             console.error('Failed to refresh tokens:', error);
@@ -387,30 +345,29 @@ export function IntegrationsContent() {
                 // Start a new OAuth flow for re-authentication
                 const config = INTEGRATION_CONFIGS.find(c => c.provider === provider);
                 if (config) {
-                    setError(`Your ${config.name} connection has expired and needs to be renewed. Redirecting to re-authenticate...`);
-                    // Small delay to show the message
+                    // error is now handled by the global context
                     setTimeout(() => {
                         handleConnect(config);
                     }, 2000);
                 } else {
-                    setError(`Failed to refresh ${provider} tokens. Please try reconnecting.`);
+                    // error is now handled by the global context
                 }
             } else if (errorMessage.includes('Missing refresh token')) {
                 // Handle the old error message format as well
                 const config = INTEGRATION_CONFIGS.find(c => c.provider === provider);
                 if (config) {
-                    setError(`Your ${config.name} connection has expired and needs to be renewed. Redirecting to re-authenticate...`);
+                    // error is now handled by the global context
                     setTimeout(() => {
                         handleConnect(config);
                     }, 2000);
                 } else {
-                    setError(`Failed to refresh ${provider} tokens. Please try reconnecting.`);
+                    // error is now handled by the global context
                 }
             } else {
-                setError(`Failed to refresh ${provider} tokens. Please try again.`);
+                // error is now handled by the global context
             }
         } finally {
-            setIsRefreshing(false);
+            // loading is now handled by the global context
         }
     };
 
@@ -448,7 +405,15 @@ export function IntegrationsContent() {
         }
     };
 
-    if (status === 'loading') {
+    // Get the user's login provider from the session
+    const sessionProvider = session?.provider || null;
+
+    // Only show the integration config matching the session provider
+    const visibleIntegrationConfigs = INTEGRATION_CONFIGS.filter(
+        config => config.provider === sessionProvider
+    );
+
+    if (loading) {
         return (
             <div className="flex items-center justify-center h-full">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
@@ -494,173 +459,52 @@ export function IntegrationsContent() {
 
             {/* Integration Cards */}
             <div className="grid gap-6">
-                {INTEGRATION_CONFIGS
-                    .filter(config => !preferredProvider || config.provider === preferredProvider)
-                    .map((config) => {
-                        const integration = getIntegrationStatus(config.provider);
-                        const hasIntegration = integration !== undefined && integration.status === INTEGRATION_STATUS.ACTIVE;
-                        const isConnecting = connectingProvider === config.provider;
-
-                        // Debug logging
-                        if (config.provider === 'microsoft') {
-                            console.log(`Microsoft integration state:`, integration);
-                        }
-
-                        return (
-                            <Card key={config.provider} className="relative">
-                                <CardHeader>
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`p-2 rounded-lg ${config.color} text-white`}>
-                                                {config.icon}
-                                            </div>
-                                            <div>
-                                                <CardTitle className="text-lg">{config.name}</CardTitle>
-                                                <CardDescription>{config.description}</CardDescription>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            {getStatusIcon(integration?.status)}
-                                            <Badge variant={getStatusColor(integration?.status)}>
-                                                {integration?.status === INTEGRATION_STATUS.INACTIVE ? 'Disconnected' :
-                                                    integration?.status || 'Not Connected'}
-                                            </Badge>
-                                        </div>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    {/* Scopes */}
-                                    <div>
-                                        <h4 className="text-sm font-medium text-gray-700 mb-2">Permissions:</h4>
-                                        <div className="space-y-1">
-                                            {hasIntegration ? (
-                                                // Show actual granted scopes for active integration
-                                                integration.scopes.map((scope, index) => (
-                                                    <div key={index} className="text-xs text-gray-600">
-                                                        • {getScopeDescription(scope)}
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                // Show default scopes for new/disconnected integration
-                                                config.scopes.map((scope, index) => (
-                                                    <div key={index} className="text-xs text-gray-600">
-                                                        • {getScopeDescription(scope)}
-                                                    </div>
-                                                ))
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Status Details */}
-                                    {integration && (
-                                        <div className="space-y-2">
-                                            {integration.token_expires_at && (
-                                                <div className="text-xs text-gray-600">
-                                                    <span className="font-medium">Access token expires:</span>{' '}
-                                                    <span className={
-                                                        isTokenExpired(integration.token_expires_at)
-                                                            ? 'text-red-600 font-medium'
-                                                            : isTokenExpiringSoon(integration.token_expires_at)
-                                                                ? 'text-orange-600 font-medium'
-                                                                : 'text-green-600 font-medium'
-                                                    }>
-                                                        {parseUtcDate(integration.token_expires_at).toLocaleString(undefined, { timeZoneName: 'short' })}
-                                                        {' '}({getTimeUntilExpiration(integration.token_expires_at)})
-                                                        {isTokenExpired(integration.token_expires_at) && ' (EXPIRED)'}
-                                                        {isTokenExpiringSoon(integration.token_expires_at) && !isTokenExpired(integration.token_expires_at) && ' (EXPIRING SOON)'}
-                                                    </span>
-                                                </div>
-                                            )}
-                                            {integration.token_created_at && (
-                                                <div className="text-xs text-gray-600">
-                                                    <span className="font-medium">Token created:</span>{' '}
-                                                    {parseUtcDate(integration.token_created_at).toLocaleString(undefined, { timeZoneName: 'short' })}
-                                                </div>
-                                            )}
-                                            <div className="text-xs text-gray-600">
-                                                <span className="font-medium">Tokens:</span>{' '}
-                                                <span className={integration.has_access_token ? 'text-green-600' : 'text-red-600'}>
-                                                    Access {integration.has_access_token ? '✓' : '✗'}
-                                                </span>
-                                                {' • '}
-                                                <span className={integration.has_refresh_token ? 'text-green-600' : 'text-red-600'}>
-                                                    Refresh {integration.has_refresh_token ? '✓' : '✗'}
-                                                </span>
-                                            </div>
-                                            {integration.last_sync_at && (
-                                                <div className="text-xs text-gray-600">
-                                                    <span className="font-medium">Last sync:</span>{' '}
-                                                    {parseUtcDate(integration.last_sync_at).toLocaleString(undefined, { timeZoneName: 'short' })}
-                                                </div>
-                                            )}
-                                            {integration.last_error && (
-                                                <div className="text-xs text-red-600">
-                                                    <span className="font-medium">Error:</span> {integration.last_error}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* Actions */}
-                                    <div className="flex gap-2">
-                                        {!hasIntegration ? (
-                                            <>
-                                                <Button
-                                                    onClick={() => handleScopeSelection(config.provider)}
-                                                    disabled={loading}
-                                                    className="flex-1"
-                                                >
-                                                    <Shield className="h-4 w-4 mr-2" />
-                                                    Connect
-                                                </Button>
-                                            </>
-                                        ) : (
-                                            <>
-                                                {integration?.status === INTEGRATION_STATUS.ERROR && !integration?.has_refresh_token ? (
-                                                    <Button
-                                                        variant="outline"
-                                                        onClick={() => handleConnect(config)}
-                                                        disabled={loading || isConnecting}
-                                                        size="sm"
-                                                    >
-                                                        <Shield className="h-4 w-4 mr-2" />
-                                                        Re-authenticate
-                                                    </Button>
-                                                ) : (
-                                                    <Button
-                                                        variant="outline"
-                                                        onClick={() => handleRefresh(config.provider)}
-                                                        disabled={loading || isRefreshing}
-                                                        size="sm"
-                                                    >
-                                                        <RefreshCw className="h-4 w-2 mr-2" />
-                                                        Refresh
-                                                    </Button>
-                                                )}
-                                                <Button
-                                                    variant="outline"
-                                                    onClick={() => handleScopeSelection(config.provider)}
-                                                    disabled={loading}
-                                                    size="sm"
-                                                >
-                                                    <Settings className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="destructive"
-                                                    onClick={() => handleDisconnect(config.provider)}
-                                                    disabled={loading}
-                                                    size="sm"
-                                                >
-                                                    <XCircle className="h-4 w-4 mr-2" />
-                                                    Disconnect
-                                                </Button>
-                                            </>
-                                        )}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        );
-                    })}
+                {visibleIntegrationConfigs.map((config) => {
+                    const integration = getIntegrationStatus(config.provider);
+                    const isConnected = integration && (integration.status === INTEGRATION_STATUS.ACTIVE || integration.status === INTEGRATION_STATUS.INACTIVE);
+                    const canConnect = config.provider === sessionProvider && !isConnected;
+                    return (
+                        <Card key={config.provider} className="mb-4">
+                            <CardHeader className="flex flex-row items-center gap-4">
+                                <div className={`rounded-full p-2 ${config.color}`}>{config.icon}</div>
+                                <div>
+                                    <CardTitle>{config.name}</CardTitle>
+                                    <CardDescription>{config.description}</CardDescription>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="flex items-center gap-2">
+                                {/* Connect button opens permissions dialog */}
+                                <Button
+                                    onClick={() => handleScopeSelection(config.provider)}
+                                    disabled={!canConnect || connectingProvider === config.provider}
+                                    className="mr-2"
+                                >
+                                    {isConnected ? 'Connected' : connectingProvider === config.provider ? 'Connecting...' : 'Connect'}
+                                </Button>
+                                {/* Show gear/settings button for editing permissions when connected */}
+                                {isConnected && (
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => handleScopeSelection(config.provider)}
+                                        className="ml-2"
+                                        title="Edit permissions"
+                                    >
+                                        <Settings className="h-4 w-4" />
+                                    </Button>
+                                )}
+                                {isConnected && (
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => handleDisconnect(config.provider)}
+                                        className="ml-2"
+                                    >
+                                        Disconnect
+                                    </Button>
+                                )}
+                            </CardContent>
+                        </Card>
+                    );
+                })}
             </div>
 
             {/* Scope Selection Dialog */}

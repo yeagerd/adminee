@@ -5,9 +5,10 @@ import DraftsList from '@/components/drafts/drafts-list';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { useIntegrations } from '@/contexts/integrations-context';
 import { useToolStateUtils } from '@/hooks/use-tool-state';
 import { INTEGRATION_STATUS } from '@/lib/constants';
-import { gatewayClient, Integration } from '@/lib/gateway-client';
+import { gatewayClient } from '@/lib/gateway-client';
 import { CalendarEvent } from '@/types/office-service';
 import { AlertCircle, ExternalLink } from 'lucide-react';
 import { useSession } from 'next-auth/react';
@@ -21,22 +22,7 @@ export function ToolContent() {
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
     const [calendarLoading, setCalendarLoading] = useState(false);
     const [calendarError, setCalendarError] = useState<string | null>(null);
-    const [integrations, setIntegrations] = useState<Integration[]>([]);
-    const [integrationsLoading, setIntegrationsLoading] = useState(false);
-
-    const fetchIntegrations = useCallback(async () => {
-        if (!session?.user?.id) return;
-
-        setIntegrationsLoading(true);
-        try {
-            const response = await gatewayClient.getIntegrations();
-            setIntegrations(response.integrations || []);
-        } catch (err) {
-            console.error('Failed to fetch integrations:', err);
-        } finally {
-            setIntegrationsLoading(false);
-        }
-    }, [session?.user?.id]);
+    const { integrations, loading: integrationsLoading, error: integrationsError, refreshIntegrations } = useIntegrations();
 
     const fetchCalendarEvents = useCallback(async () => {
         if (!session?.user?.id) {
@@ -44,13 +30,29 @@ export function ToolContent() {
             return;
         }
 
+        // Check if user has active calendar integrations
+        const activeCalendarIntegrations = integrations.filter(
+            integration =>
+                integration.status === INTEGRATION_STATUS.ACTIVE &&
+                (integration.provider === 'google' || integration.provider === 'microsoft')
+        );
+
+        if (activeCalendarIntegrations.length === 0) {
+            setCalendarError('No active calendar integrations found');
+            setCalendarEvents([]);
+            return;
+        }
+
         setCalendarLoading(true);
         setCalendarError(null);
 
         try {
+            // Use the user's actual connected providers
+            const providers = activeCalendarIntegrations.map(integration => integration.provider);
+
             const response = await gatewayClient.getCalendarEvents(
                 session.user.id,
-                session.provider ? [session.provider] : ['google', 'microsoft'],
+                providers,
                 10,
                 new Date().toISOString().split('T')[0],
                 new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -67,15 +69,22 @@ export function ToolContent() {
         } finally {
             setCalendarLoading(false);
         }
-    }, [session?.user?.id, session?.provider]);
+    }, [session?.user?.id, integrations]);
 
-    // Fetch integrations and calendar events when calendar tool is selected
+    // Fetch calendar events when integrations are loaded and user has active calendar integrations
     useEffect(() => {
-        if (activeTool === 'calendar' && session?.user?.id) {
-            fetchIntegrations();
-            fetchCalendarEvents();
+        if (activeTool === 'calendar' && !integrationsLoading && session?.user?.id) {
+            const hasActiveCalendarIntegration = integrations.some(
+                integration =>
+                    integration.status === INTEGRATION_STATUS.ACTIVE &&
+                    (integration.provider === 'google' || integration.provider === 'microsoft')
+            );
+
+            if (hasActiveCalendarIntegration) {
+                fetchCalendarEvents();
+            }
         }
-    }, [activeTool, session?.user?.id, fetchIntegrations, fetchCalendarEvents]);
+    }, [activeTool, integrationsLoading, integrations, session?.user?.id, fetchCalendarEvents]);
 
     // Check if user has active calendar integrations
     const hasActiveCalendarIntegration = integrations.some(

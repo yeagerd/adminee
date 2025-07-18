@@ -346,14 +346,31 @@ class IntegrationService:
                 raise ServiceError(message="Integration was not properly saved")
             await self._store_encrypted_tokens(integration.id, tokens)
 
+            # Extra logging: status before setting to ACTIVE
+            self.logger.info(
+                f"[OAUTH] Integration status BEFORE update: id={integration.id} provider={provider.value} status={integration.status} user_id={user_id}"
+            )
+
             # Update integration status
             async with async_session() as session:
+                # Log if this is an update or a new integration
+                if integration.id:
+                    self.logger.info(
+                        f"[OAUTH] Updating existing integration id={integration.id} for provider={provider.value} user_id={user_id}"
+                    )
+                else:
+                    self.logger.info(
+                        f"[OAUTH] Creating new integration for provider={provider.value} user_id={user_id}"
+                    )
                 integration.status = IntegrationStatus.ACTIVE
                 integration.last_sync_at = datetime.now(timezone.utc)
                 integration.error_message = None
                 integration.updated_at = datetime.now(timezone.utc)
                 session.add(integration)
                 await session.commit()
+                self.logger.info(
+                    f"[OAUTH] Integration status AFTER update: id={integration.id} provider={provider.value} status={integration.status} user_id={user_id}"
+                )
 
             # Clean up OAuth state
             self.oauth_config.remove_state(oauth_state.state)
