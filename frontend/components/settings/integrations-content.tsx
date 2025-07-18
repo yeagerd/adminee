@@ -253,7 +253,8 @@ export function IntegrationsContent() {
             <div className="grid gap-6">
                 {visibleIntegrationConfigs.map((config) => {
                     const integration = getIntegrationStatus(config.provider);
-                    const isConnected = integration && (integration.status === INTEGRATION_STATUS.ACTIVE || integration.status === INTEGRATION_STATUS.INACTIVE);
+                    const isActive = integration && integration.status === INTEGRATION_STATUS.ACTIVE;
+                    const isConnected = isActive;
                     const canConnect = config.provider === sessionProvider && !isConnected;
                     return (
                         <Card key={config.provider} className="mb-4">
@@ -273,8 +274,8 @@ export function IntegrationsContent() {
                                 >
                                     {isConnected ? 'Connected' : connectingProvider === config.provider ? 'Connecting...' : 'Connect'}
                                 </Button>
-                                {/* Show gear/settings button for editing permissions when connected */}
-                                {isConnected && (
+                                {/* Show gear/settings button for editing permissions when connected (active only) */}
+                                {isActive && (
                                     <Button
                                         variant="outline"
                                         onClick={() => handleScopeSelection(config.provider)}
@@ -284,7 +285,7 @@ export function IntegrationsContent() {
                                         <Settings className="h-4 w-4" />
                                     </Button>
                                 )}
-                                {isConnected && (
+                                {isActive && (
                                     <Button
                                         variant="outline"
                                         onClick={() => handleDisconnect(config.provider)}
