@@ -71,8 +71,21 @@ def get_calendar_events(
     start_date: str | None = None,
     end_date: str | None = None,
     time_zone: str | None = None,
-    providers: str | None = None,
+    providers: list[str] | None = None,
 ) -> Dict[str, Any]:
+    """
+    Retrieve calendar events for a user from the office service.
+
+    Args:
+        user_id: User identifier (used for X-User-Id header, not as a query param)
+        start_date: Start date filter (optional)
+        end_date: End date filter (optional)
+        time_zone: Time zone for event times (optional)
+        providers: List of provider names (e.g., ["google", "microsoft"]) (optional)
+
+    Returns:
+        Dictionary containing events or error information
+    """
     # Use service-to-service authentication
     headers = {"Content-Type": "application/json"}
     if not get_settings().api_chat_office_key:
@@ -80,8 +93,9 @@ def get_calendar_events(
             "error": "Could not retrieve calendar events due to an internal server error"
         }
     headers["X-API-Key"] = get_settings().api_chat_office_key  # type: ignore[assignment]
+    headers["X-User-Id"] = user_id
 
-    params: Dict[str, str | List[str]] = {"user_id": user_id}
+    params: Dict[str, str | list[str]] = {}
     if start_date:
         params["start_date"] = start_date
     if end_date:
@@ -99,9 +113,7 @@ def get_calendar_events(
                 "error": "No calendar integrations available. Please connect Google or Microsoft calendar first."
             }
     else:
-        # Convert comma-separated string to list format expected by office service
-        provider_list = [p.strip() for p in providers.split(",")]
-        params["providers"] = provider_list
+        params["providers"] = providers
 
     try:
         office_service_url = get_settings().office_service_url
@@ -217,15 +229,31 @@ def get_emails(
     unread_only: bool | None = None,
     folder: str | None = None,
     max_results: int | None = None,
-    providers: str | None = None,
+    providers: list[str] | None = None,
 ) -> Dict[str, Any]:
+    """
+    Retrieve emails for a user from the office service.
+
+    Args:
+        user_id: User identifier (used for X-User-Id header, not as a query param)
+        start_date: Start date filter (optional)
+        end_date: End date filter (optional)
+        unread_only: Filter for unread emails (optional)
+        folder: Email folder to filter (optional)
+        max_results: Maximum number of results (optional)
+        providers: List of provider names (e.g., ["google", "microsoft"]) (optional)
+
+    Returns:
+        Dictionary containing emails or error information
+    """
     # Use service-to-service authentication
     headers = {"Content-Type": "application/json"}
     if not get_settings().api_chat_office_key:
-        return {"error": "Could not retrieve emails due to an internal server error"}
+        return {"error": "Could not retrieve emails dufe to an internal server error"}
     headers["X-API-Key"] = get_settings().api_chat_office_key  # type: ignore[assignment]
+    headers["X-User-Id"] = user_id
 
-    params: Dict[str, str | List[str]] = {"user_id": user_id}
+    params: Dict[str, str | list[str]] = {}
     if start_date:
         params["start_date"] = start_date
     if end_date:
@@ -237,13 +265,7 @@ def get_emails(
     if max_results:
         params["max_results"] = str(max_results)
     if providers:
-        # Handle providers as comma-separated string or list
-        if isinstance(providers, str):
-            provider_list = [p.strip() for p in providers.split(",") if p.strip()]
-        else:
-            provider_list = list(providers) if providers is not None else []
-        if provider_list:
-            params["providers"] = provider_list
+        params["providers"] = providers
 
     try:
         office_service_url = get_settings().office_service_url
@@ -267,14 +289,13 @@ def get_emails(
 
         # Extract emails from the data field
         emails_data = data.get("data", {})
-        # Accept both 'messages' and 'emails' for compatibility with tests and service
-        if "emails" in emails_data:
-            return {"emails": emails_data["emails"]}
-        if "messages" in emails_data:
-            return {"emails": emails_data["messages"]}
-        return {
-            "error": "Malformed response from office-service: missing emails or messages data."
-        }
+        # Only accept 'emails' as the correct key
+        if "emails" not in emails_data:
+            return {
+                "error": "Malformed response from office-service: missing emails data."
+            }
+
+        return {"emails": emails_data["emails"]}
 
     except requests.Timeout:
         return {"error": "Request to office-service timed out."}
@@ -298,6 +319,7 @@ def get_notes(
     if not get_settings().api_chat_office_key:
         return {"error": "Could not retrieve notes due to an internal server error"}
     headers["X-API-Key"] = get_settings().api_chat_office_key  # type: ignore[assignment]
+    headers["X-User-Id"] = user_id
 
     params = {"user_id": user_id}
     if notebook:
@@ -358,6 +380,7 @@ def get_documents(
     if not get_settings().api_chat_office_key:
         return {"error": "Could not retrieve documents due to an internal server error"}
     headers["X-API-Key"] = get_settings().api_chat_office_key  # type: ignore[assignment]
+    headers["X-User-Id"] = user_id
 
     params = {"user_id": user_id}
     if document_type:
