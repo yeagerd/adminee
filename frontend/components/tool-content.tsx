@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useIntegrations } from '@/contexts/integrations-context';
 import { useToolStateUtils } from '@/hooks/use-tool-state';
-import { INTEGRATION_STATUS } from '@/lib/constants';
 import { gatewayClient } from '@/lib/gateway-client';
 import { CalendarEvent } from '@/types/office-service';
 import { AlertCircle, ExternalLink } from 'lucide-react';
@@ -22,42 +21,31 @@ export function ToolContent() {
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
     const [calendarLoading, setCalendarLoading] = useState(false);
     const [calendarError, setCalendarError] = useState<string | null>(null);
-    const { integrations, loading: integrationsLoading } = useIntegrations();
+    const { loading: integrationsLoading, activeProviders } = useIntegrations();
+
+    // Compute a loading boolean for tool data readiness
+    const toolDataLoading = integrationsLoading || !session?.user?.id;
 
     const fetchCalendarEvents = useCallback(async () => {
         if (!session?.user?.id) {
             setCalendarError('No user session');
             return;
         }
-
-        // Check if user has active calendar integrations
-        const activeCalendarIntegrations = integrations.filter(
-            integration =>
-                integration.status === INTEGRATION_STATUS.ACTIVE &&
-                (integration.provider === 'google' || integration.provider === 'microsoft')
-        );
-
-        if (activeCalendarIntegrations.length === 0) {
+        if (!activeProviders || activeProviders.length === 0) {
             setCalendarError('No active calendar integrations found');
             setCalendarEvents([]);
             return;
         }
-
         setCalendarLoading(true);
         setCalendarError(null);
-
         try {
-            // Use the user's actual connected providers
-            const providers = activeCalendarIntegrations.map(integration => integration.provider);
-
             const response = await gatewayClient.getCalendarEvents(
                 session.user.id,
-                providers,
+                activeProviders,
                 10,
                 new Date().toISOString().split('T')[0],
                 new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
             );
-
             if (response.success && response.data) {
                 setCalendarEvents(response.data.events || []);
             } else {
@@ -69,29 +57,17 @@ export function ToolContent() {
         } finally {
             setCalendarLoading(false);
         }
-    }, [session?.user?.id, integrations]);
+    }, [session?.user?.id, activeProviders]);
 
     // Fetch calendar events when integrations are loaded and user has active calendar integrations
     useEffect(() => {
-        if (activeTool === 'calendar' && !integrationsLoading && session?.user?.id) {
-            const hasActiveCalendarIntegration = integrations.some(
-                integration =>
-                    integration.status === INTEGRATION_STATUS.ACTIVE &&
-                    (integration.provider === 'google' || integration.provider === 'microsoft')
-            );
-
-            if (hasActiveCalendarIntegration) {
-                fetchCalendarEvents();
-            }
+        if (activeTool === 'calendar' && !integrationsLoading && session?.user?.id && activeProviders.length > 0) {
+            fetchCalendarEvents();
         }
-    }, [activeTool, integrationsLoading, integrations, session?.user?.id, fetchCalendarEvents]);
+    }, [activeTool, integrationsLoading, activeProviders, session?.user?.id, fetchCalendarEvents]);
 
-    // Check if user has active calendar integrations
-    const hasActiveCalendarIntegration = integrations.some(
-        integration =>
-            integration.status === INTEGRATION_STATUS.ACTIVE &&
-            (integration.provider === 'google' || integration.provider === 'microsoft')
-    );
+    // Use activeProviders to check for active calendar integrations
+    const hasActiveCalendarIntegration = activeProviders.length > 0;
 
     const renderToolContent = () => {
         switch (activeTool) {
@@ -177,7 +153,7 @@ export function ToolContent() {
                     </div>
                 );
             case 'email':
-                return <EmailView />;
+                return <EmailView toolDataLoading={toolDataLoading} activeTool={activeTool} />;
             case 'documents':
                 return (
                     <div className="p-8">
