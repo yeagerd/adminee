@@ -24,7 +24,6 @@ export function CalendarTest() {
 
         try {
             const response = await gatewayClient.getCalendarEvents(
-                session.user.id,
                 session.provider ? [session.provider] : ['google', 'microsoft'],
                 5,
                 new Date().toISOString().split('T')[0],

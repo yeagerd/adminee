@@ -196,7 +196,6 @@ export class GatewayClient {
 
     // Office Service
     async getCalendarEvents(
-        user_id: string,
         providers?: string[],
         limit: number = 50,
         start_date?: string,
@@ -206,7 +205,6 @@ export class GatewayClient {
         time_zone: string = 'UTC'
     ) {
         const params = new URLSearchParams();
-        params.append('user_id', user_id);
         if (providers && providers.length > 0) {
             providers.forEach(provider => params.append('providers', provider));
         }
@@ -230,13 +228,11 @@ export class GatewayClient {
     }
 
     async getEmails(
-        user_id: string,
         providers: string[],
         limit?: number,
         offset?: number
     ): Promise<ApiResponse<GetEmailsResponse>> {
         const params = new URLSearchParams();
-        params.append('user_id', user_id);
         if (limit) params.append('limit', limit.toString());
         if (offset) params.append('offset', offset.toString());
 

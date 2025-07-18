@@ -59,7 +59,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                 if (!userId) throw new Error('No user id found in session');
 
                 // Use the user's actual connected providers
-                const emailsResp = await gatewayClient.getEmails(userId, activeProviders, 50, 0) as { data?: { messages?: EmailMessage[] } };
+                const emailsResp = await gatewayClient.getEmails(activeProviders, 50, 0) as { data?: { messages?: EmailMessage[] } };
                 if (isMounted) setThreads(emailsResp.data?.messages || []);
                 setError(null);
             } catch (e: unknown) {
