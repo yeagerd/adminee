@@ -28,7 +28,6 @@ interface EmailViewProps {
 }
 
 const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTool }) => {
-    const lastActiveTool = React.useRef<string | undefined>(undefined);
     const [threads, setThreads] = useState<EmailMessage[]>([]); // If API returns messages, not threads
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -45,17 +44,11 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
             setLoading(false);
             return;
         }
-        if (lastActiveTool.current === activeTool) {
-            setLoading(false);
-            return;
-        }
-        lastActiveTool.current = activeTool;
         if (activeTool !== 'email') {
             setLoading(false);
             return;
         }
         // Only fetch if there is at least one active email integration
-        console.log('[EmailView] Fetching emails for user, providers:', activeProviders.join(','));
 
         let isMounted = true;
         setLoading(true);
