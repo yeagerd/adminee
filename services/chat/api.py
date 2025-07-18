@@ -31,13 +31,12 @@ This pattern ensures:
 import json
 from typing import AsyncGenerator, List, Optional
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from services.chat import history_manager
 from services.chat.agents.workflow_agent import WorkflowAgent
-from services.chat.auth import require_chat_auth
 from services.chat.history_manager import count_user_drafts
 from services.chat.models import (
     ChatRequest,
@@ -59,8 +58,22 @@ logger = get_logger(__name__)
 
 router = APIRouter()
 
+
+# Feedback data class for storing feedback records
+class Feedback(BaseModel):
+    """
+    Data class for storing feedback records.
+    Mirrors the structure of FeedbackRequest for consistency.
+    """
+
+    thread_id: str
+    message_id: str
+    feedback: str
+    user_id: str  # Added during feedback processing
+
+
 # In-memory feedback storage
-FEEDBACKS: List[FeedbackRequest] = []
+FEEDBACKS: List[Feedback] = []
 
 
 async def get_user_id_from_gateway(request: Request) -> str:
@@ -80,7 +93,6 @@ async def get_user_id_from_gateway(request: Request) -> str:
 async def chat_endpoint(
     request: Request,
     chat_request: ChatRequest,
-    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
 ) -> ChatResponse:
     """
     Chat endpoint using WorkflowAgent multi-agent system.
@@ -184,7 +196,6 @@ async def chat_endpoint(
 async def chat_stream_endpoint(
     request: Request,
     chat_request: ChatRequest,
-    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
 ) -> StreamingResponse:
     """
     Streaming chat endpoint using Server-Sent Events (SSE).
@@ -302,8 +313,7 @@ async def chat_stream_endpoint(
 
 @router.get("/threads", response_model=List[ThreadResponse])
 async def list_threads(
-    user_id: str,
-    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
+    request: Request,
 ) -> List[ThreadResponse]:
     """
     List threads for a given user using history_manager.
@@ -313,6 +323,8 @@ async def list_threads(
     models to API response models.
     """
     from services.chat import history_manager
+
+    user_id = await get_user_id_from_gateway(request)
 
     # Get database models (Thread objects with int IDs, datetime objects, relationships)
     threads = await history_manager.list_threads(user_id)
@@ -333,7 +345,6 @@ async def list_threads(
 @router.get("/threads/{thread_id}/history", response_model=ChatResponse)
 async def thread_history(
     thread_id: str,
-    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
 ) -> ChatResponse:
     """
     Get chat history for a given thread using history_manager.
@@ -370,14 +381,24 @@ async def thread_history(
 
 
 @router.post("/feedback", response_model=FeedbackResponse)
-def feedback_endpoint(
-    request: FeedbackRequest,
-    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
+async def feedback_endpoint(
+    request: Request,
+    feedback_request: FeedbackRequest,
 ) -> FeedbackResponse:
     """
     Receive user feedback for a message.
     """
-    FEEDBACKS.append(request)
+    user_id = await get_user_id_from_gateway(request)
+
+    # Create feedback request with user_id from gateway header
+    feedback_data = Feedback(
+        user_id=user_id,
+        thread_id=feedback_request.thread_id,
+        message_id=feedback_request.message_id,
+        feedback=feedback_request.feedback,
+    )
+
+    FEEDBACKS.append(feedback_data)
     return FeedbackResponse(status="success", detail="Feedback recorded")
 
 
@@ -386,7 +407,6 @@ def feedback_endpoint(
 async def create_user_draft_endpoint(
     request: Request,
     draft_request: UserDraftRequest,
-    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
 ) -> UserDraftResponse:
     """Create a new user draft."""
     user_id = await get_user_id_from_gateway(request)
@@ -438,7 +458,6 @@ async def list_user_drafts_endpoint(
     status: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
-    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
 ) -> UserDraftListResponse:
     """List user drafts with optional filtering."""
     user_id = await get_user_id_from_gateway(request)
@@ -490,7 +509,6 @@ async def list_user_drafts_endpoint(
 async def get_user_draft_endpoint(
     request: Request,
     draft_id: str,
-    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
 ) -> UserDraftResponse:
     """Get a specific user draft."""
     user_id = await get_user_id_from_gateway(request)
@@ -535,7 +553,6 @@ async def update_user_draft_endpoint(
     request: Request,
     draft_id: str,
     draft_request: UserDraftRequest,
-    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
 ) -> UserDraftResponse:
     """Update a user draft."""
     user_id = await get_user_id_from_gateway(request)
@@ -601,7 +618,6 @@ class DeleteUserDraftResponse(BaseModel):
 async def delete_user_draft_endpoint(
     request: Request,
     draft_id: str,
-    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
 ) -> DeleteUserDraftResponse:
     """Delete a user draft."""
     user_id = await get_user_id_from_gateway(request)

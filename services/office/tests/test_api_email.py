@@ -30,6 +30,12 @@ def client():
 
 
 @pytest.fixture
+def auth_headers():
+    """Create authentication headers with X-User-Id."""
+    return {"X-User-Id": "test_user"}
+
+
+@pytest.fixture
 def mock_email_message():
     """Create a mock EmailMessage for testing."""
     return EmailMessage(
@@ -78,6 +84,7 @@ class TestEmailMessagesEndpoint:
         mock_api_client_factory,
         mock_email_message,
         client,
+        auth_headers,
     ):
         """Test successful email messages retrieval."""
         # Mock fetch_provider_emails to return test data
@@ -86,7 +93,7 @@ class TestEmailMessagesEndpoint:
             ([mock_email_message], "microsoft"),
         ]
 
-        response = client.get("/email/messages?user_id=test_user&limit=10")
+        response = client.get("/email/messages?limit=10", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -105,6 +112,7 @@ class TestEmailMessagesEndpoint:
         mock_cache_manager,
         mock_api_client_factory,
         client,
+        auth_headers,
     ):
         """Test email messages retrieval with cache hit."""
         # Mock cache to return cached data
@@ -116,7 +124,7 @@ class TestEmailMessagesEndpoint:
         }
         mock_cache_manager.get_from_cache.return_value = cached_data
 
-        response = client.get("/email/messages?user_id=test_user&limit=10")
+        response = client.get("/email/messages?limit=10", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -136,6 +144,7 @@ class TestEmailMessagesEndpoint:
         mock_cache_manager,
         mock_api_client_factory,
         client,
+        auth_headers,
     ):
         """Test email messages retrieval with provider errors."""
         # Mock one provider success, one failure
@@ -144,7 +153,7 @@ class TestEmailMessagesEndpoint:
             ([], "microsoft"),
         ]
 
-        response = client.get("/email/messages?user_id=test_user&limit=10")
+        response = client.get("/email/messages?limit=10", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -154,16 +163,16 @@ class TestEmailMessagesEndpoint:
         assert data["data"]["providers_used"] == ["microsoft"]
 
     @pytest.mark.asyncio
-    async def test_get_email_messages_invalid_providers(self, client):
+    async def test_get_email_messages_invalid_providers(self, client, auth_headers):
         """Test email messages with invalid provider names."""
-        response = client.get("/email/messages?user_id=test_user&providers=invalid")
+        response = client.get("/email/messages?providers=invalid", headers=auth_headers)
 
         assert response.status_code == 422  # ValidationError now returns 422
         assert "No valid providers specified" in response.json()["message"]
 
     @pytest.mark.asyncio
     async def test_get_email_messages_missing_user_id(self, client):
-        """Test email messages without user_id parameter."""
+        """Test email messages without X-User-Id header."""
         response = client.get("/email/messages")
 
         assert response.status_code == 422  # Validation error
@@ -181,11 +190,12 @@ class TestEmailMessageDetailEndpoint:
         mock_api_client_factory,
         mock_email_message,
         client,
+        auth_headers,
     ):
         """Test successful single email message retrieval."""
         mock_fetch_single_message.return_value = mock_email_message
 
-        response = client.get("/email/messages/gmail_test123?user_id=test_user")
+        response = client.get("/email/messages/gmail_test123", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -203,11 +213,12 @@ class TestEmailMessageDetailEndpoint:
         mock_cache_manager,
         mock_api_client_factory,
         client,
+        auth_headers,
     ):
         """Test email message not found."""
         mock_fetch_single_message.return_value = None
 
-        response = client.get("/email/messages/gmail_nonexistent?user_id=test_user")
+        response = client.get("/email/messages/gmail_nonexistent", headers=auth_headers)
 
         assert response.status_code == 404
         assert "not found" in response.json()["message"]
@@ -234,6 +245,7 @@ class TestSendEmailEndpoint:
         mock_create_client,
         send_email_request,
         client,
+        auth_headers,
     ):
         """Test successful email sending via Google."""
         # Create a mock client that properly handles async context manager
@@ -258,8 +270,9 @@ class TestSendEmailEndpoint:
         mock_create_client.return_value = mock_google_client
 
         response = client.post(
-            "/email/send?user_id=test_user",
+            "/email/send",
             json=send_email_request.model_dump(),
+            headers=auth_headers,
         )
 
         assert response.status_code == 200
@@ -280,6 +293,7 @@ class TestSendEmailEndpoint:
         mock_create_client,
         send_email_request,
         client,
+        auth_headers,
     ):
         """Test successful email sending via Microsoft."""
         # Modify request to use Microsoft
@@ -305,8 +319,9 @@ class TestSendEmailEndpoint:
         mock_create_client.return_value = mock_microsoft_client
 
         response = client.post(
-            "/email/send?user_id=test_user",
+            "/email/send",
             json=send_email_request.model_dump(),
+            headers=auth_headers,
         )
 
         assert response.status_code == 200
@@ -327,6 +342,7 @@ class TestSendEmailEndpoint:
         self,
         mock_create_client,
         client,
+        auth_headers,
     ):
         """Test that default provider is Google when not specified."""
         # Create request without provider
@@ -340,8 +356,9 @@ class TestSendEmailEndpoint:
         mock_create_client.return_value = None
 
         response = client.post(
-            "/email/send?user_id=test_user",
+            "/email/send",
             json=request_data,
+            headers=auth_headers,
         )
 
         # Should fail because no client available, but verify it tried Google
@@ -349,7 +366,7 @@ class TestSendEmailEndpoint:
         mock_create_client.assert_called_once_with("test_user", "google")
 
     @pytest.mark.asyncio
-    async def test_send_email_invalid_provider(self, client):
+    async def test_send_email_invalid_provider(self, client, auth_headers):
         """Test sending email with invalid provider."""
         request_data = {
             "to": [{"email": "recipient@example.com", "name": "Test Recipient"}],
@@ -359,8 +376,9 @@ class TestSendEmailEndpoint:
         }
 
         response = client.post(
-            "/email/send?user_id=test_user",
+            "/email/send",
             json=request_data,
+            headers=auth_headers,
         )
 
         assert response.status_code == 422  # ValidationError now returns 422
@@ -373,14 +391,16 @@ class TestSendEmailEndpoint:
         mock_create_client,
         send_email_request,
         client,
+        auth_headers,
     ):
         """Test sending email when no API client is available."""
         # Mock API client factory to return None
         mock_create_client.return_value = None
 
         response = client.post(
-            "/email/send?user_id=test_user",
+            "/email/send",
             json=send_email_request.model_dump(),
+            headers=auth_headers,
         )
 
         assert response.status_code == 502  # ServiceError now returns 502
@@ -388,7 +408,7 @@ class TestSendEmailEndpoint:
 
     @pytest.mark.asyncio
     async def test_send_email_missing_user_id(self, send_email_request, client):
-        """Test sending email without user_id parameter."""
+        """Test sending email without X-User-Id header."""
         response = client.post(
             "/email/send",
             json=send_email_request.model_dump(),
@@ -397,7 +417,7 @@ class TestSendEmailEndpoint:
         assert response.status_code == 422  # Validation error
 
     @pytest.mark.asyncio
-    async def test_send_email_invalid_request_data(self, client):
+    async def test_send_email_invalid_request_data(self, client, auth_headers):
         """Test sending email with invalid request data."""
         # Missing required fields
         request_data = {
@@ -406,8 +426,9 @@ class TestSendEmailEndpoint:
         }
 
         response = client.post(
-            "/email/send?user_id=test_user",
+            "/email/send",
             json=request_data,
+            headers=auth_headers,
         )
 
         assert response.status_code == 422  # Validation error
@@ -418,6 +439,7 @@ class TestSendEmailEndpoint:
         self,
         mock_create_client,
         client,
+        auth_headers,
     ):
         """Test sending email with all optional fields."""
         # Create a mock client that properly handles async context manager
@@ -453,8 +475,9 @@ class TestSendEmailEndpoint:
         }
 
         response = client.post(
-            "/email/send?user_id=test_user",
+            "/email/send",
             json=request_data,
+            headers=auth_headers,
         )
 
         assert response.status_code == 200
@@ -471,14 +494,16 @@ class TestSendEmailEndpoint:
         mock_create_client.assert_called_once_with("test_user", "google")
 
     @pytest.mark.asyncio
-    async def test_get_email_message_invalid_id_format(self, client):
+    async def test_get_email_message_invalid_id_format(self, client, auth_headers):
         """Test invalid message ID format."""
-        response = client.get("/email/messages/invalid_id?user_id=test_user")
+        response = client.get("/email/messages/invalid_id", headers=auth_headers)
         assert response.status_code == 422  # ValidationError now returns 422
         assert "Invalid message ID format" in response.json()["message"]
 
     @pytest.mark.asyncio
-    async def test_get_email_message_with_cache_hit(self, mock_cache_manager, client):
+    async def test_get_email_message_with_cache_hit(
+        self, mock_cache_manager, client, auth_headers
+    ):
         """Test email message retrieval with cache hit."""
         cached_data = {
             "message": {"id": "gmail_test123", "subject": "Test"},
@@ -486,7 +511,7 @@ class TestSendEmailEndpoint:
         }
         mock_cache_manager.get_from_cache.return_value = cached_data
 
-        response = client.get("/email/messages/gmail_test123?user_id=test_user")
+        response = client.get("/email/messages/gmail_test123", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
