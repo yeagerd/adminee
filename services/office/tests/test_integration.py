@@ -208,15 +208,12 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
 
     def test_get_email_messages_success(self):
         """Test successful retrieval of email messages from multiple providers."""
-        integration_setup = self._get_integration_test_setup()
-        user_id = integration_setup["user_id"]
+        # user_id = integration_setup["user_id"]
 
         with self._setup_mock_token_manager():
             google_patch, microsoft_patch = self._setup_mock_api_clients()
             with google_patch, microsoft_patch:
-                response = self.client.get(
-                    "/email/messages", headers=self.auth_headers
-                )
+                response = self.client.get("/email/messages", headers=self.auth_headers)
                 assert response.status_code == status.HTTP_200_OK
 
                 data = response.json()
@@ -241,8 +238,7 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
 
     def test_get_email_messages_with_pagination(self):
         """Test email messages endpoint with pagination parameters."""
-        integration_setup = self._get_integration_test_setup()
-        user_id = integration_setup["user_id"]
+        # user_id = integration_setup["user_id"]
 
         with self._setup_mock_token_manager():
             google_patch, microsoft_patch = self._setup_mock_api_clients()
@@ -264,8 +260,7 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
 
     def test_get_email_message_by_id_success(self):
         """Test retrieval of specific email message by ID."""
-        integration_setup = self._get_integration_test_setup()
-        user_id = integration_setup["user_id"]
+        # user_id = integration_setup["user_id"]
         message_id = "google_msg-1"  # Fixed format: underscore instead of hyphen
 
         # Mock the actual Google API response format
@@ -302,8 +297,7 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
 
     def test_get_email_message_not_found(self):
         """Test retrieval of non-existent email message."""
-        integration_setup = self._get_integration_test_setup()
-        user_id = integration_setup["user_id"]
+        # user_id = integration_setup["user_id"]
 
         # Test with invalid message ID format (should return 422)
         response = self.client.get(
@@ -316,8 +310,7 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
 
     def test_send_email_success(self):
         """Test successful email sending."""
-        integration_setup = self._get_integration_test_setup()
-        user_id = integration_setup["user_id"]
+        # user_id = integration_setup["user_id"]
 
         email_data = {
             "to": [{"email": "recipient@example.com", "name": "Recipient"}],
@@ -383,8 +376,7 @@ class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
 
     def test_get_calendar_events_success(self):
         """Test successful retrieval of calendar events."""
-        integration_setup = self._get_integration_test_setup()
-        user_id = integration_setup["user_id"]
+        # user_id = integration_setup["user_id"]
 
         # Mock Google Calendar API response format
         mock_events = {
@@ -421,8 +413,7 @@ class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
 
     def test_get_calendar_events_with_date_range(self):
         """Test calendar events endpoint with date range parameters."""
-        integration_setup = self._get_integration_test_setup()
-        user_id = integration_setup["user_id"]
+        # user_id = integration_setup["user_id"]
 
         mock_events = {"items": []}
 
@@ -442,8 +433,7 @@ class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
 
     def test_create_calendar_event_success(self):
         """Test successful calendar event creation."""
-        integration_setup = self._get_integration_test_setup()
-        user_id = integration_setup["user_id"]
+        # user_id = integration_setup["user_id"]
 
         event_data = {
             "title": "New Test Event",
@@ -481,8 +471,7 @@ class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
 
     def test_delete_calendar_event_success(self):
         """Test successful calendar event deletion."""
-        integration_setup = self._get_integration_test_setup()
-        user_id = integration_setup["user_id"]
+        # user_id = integration_setup["user_id"]
         event_id = "google_event-123"
 
         with self._setup_mock_token_manager():
@@ -532,8 +521,7 @@ class TestFilesEndpoints(BaseOfficeServiceIntegrationTest):
 
     def test_get_files_success(self):
         """Test successful retrieval of files."""
-        integration_setup = self._get_integration_test_setup()
-        user_id = integration_setup["user_id"]
+        # user_id = integration_setup["user_id"]
 
         # Mock Google Drive API response format
         mock_files = {
@@ -572,8 +560,7 @@ class TestFilesEndpoints(BaseOfficeServiceIntegrationTest):
 
     def test_search_files_success(self):
         """Test successful file search."""
-        integration_setup = self._get_integration_test_setup()
-        user_id = integration_setup["user_id"]
+        # user_id = integration_setup["user_id"]
 
         mock_files = {"files": []}
 
@@ -593,8 +580,7 @@ class TestFilesEndpoints(BaseOfficeServiceIntegrationTest):
 
     def test_get_file_by_id_success(self):
         """Test successful retrieval of file by ID."""
-        integration_setup = self._get_integration_test_setup()
-        user_id = integration_setup["user_id"]
+        # user_id = integration_setup["user_id"]
         file_id = "google_file-123"
 
         # Mock Google Drive API response format with proper account_email
@@ -699,8 +685,7 @@ class TestCaching(BaseOfficeServiceIntegrationTest):
 
     def test_cache_hit_behavior(self):
         """Test cache hit behavior for repeated requests."""
-        integration_setup = self._get_integration_test_setup()
-        user_id = integration_setup["user_id"]
+        # user_id = integration_setup["user_id"]
 
         # Mock Google API response
         mock_messages = {
@@ -741,8 +726,7 @@ class TestCaching(BaseOfficeServiceIntegrationTest):
 
     def test_cache_miss_behavior(self):
         """Test cache miss behavior for different requests."""
-        integration_setup = self._get_integration_test_setup()
-        user_id = integration_setup["user_id"]
+        # user_id = integration_setup["user_id"]
 
         mock_messages = {
             "messages": [

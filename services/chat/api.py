@@ -380,11 +380,9 @@ async def feedback_endpoint(
     """
     Receive user feedback for a message.
     """
-    user_id = await get_user_id_from_gateway(request)
-
+    # Remove the unused user_id assignment
     # Create feedback request with user_id from gateway header
     feedback_data = FeedbackRequest(
-        user_id=user_id,
         thread_id=feedback_request.thread_id,
         message_id=feedback_request.message_id,
         feedback=feedback_request.feedback,
