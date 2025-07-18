@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, cast
 
-from fastapi import APIRouter, Path, Query
+from fastapi import APIRouter, Path, Query, Request
 
 from services.common.http_errors import NotFoundError, ServiceError, ValidationError
 from services.office.core.api_client_factory import APIClientFactory
@@ -39,9 +39,22 @@ router = APIRouter(prefix="/email", tags=["email"])
 api_client_factory = APIClientFactory()
 
 
+async def get_user_id_from_gateway(request: Request) -> str:
+    """
+    Extract user ID from gateway headers.
+
+    The office service only supports requests through the gateway,
+    which forwards user identity via X-User-Id header.
+    """
+    user_id = request.headers.get("X-User-Id")
+    if not user_id:
+        raise ValidationError(message="X-User-Id header is required", field="X-User-Id")
+    return user_id
+
+
 @router.get("/messages", response_model=EmailMessageList)
 async def get_email_messages(
-    user_id: str = Query(..., description="ID of the user to fetch emails for"),
+    request: Request,
     providers: Optional[List[str]] = Query(
         None,
         description="Providers to fetch from (google, microsoft). If not specified, fetches from all available providers",
@@ -82,6 +95,7 @@ async def get_email_messages(
     Returns:
         EmailMessageList with aggregated email messages
     """
+    user_id = await get_user_id_from_gateway(request)
     request_id = str(uuid.uuid4())
     start_time = datetime.now(timezone.utc)
 
@@ -220,8 +234,8 @@ async def get_email_messages(
 
 @router.get("/messages/{message_id}", response_model=EmailMessageList)
 async def get_email_message(
+    request: Request,
     message_id: str = Path(..., description="Message ID (format: provider_originalId)"),
-    user_id: str = Query(..., description="ID of the user who owns the message"),
     include_body: bool = Query(
         True, description="Whether to include message body content"
     ),
@@ -240,6 +254,7 @@ async def get_email_message(
     Returns:
         EmailMessageList with the specific email message
     """
+    user_id = await get_user_id_from_gateway(request)
     request_id = str(uuid.uuid4())
     start_time = datetime.now(timezone.utc)
 
@@ -314,8 +329,8 @@ async def get_email_message(
 
 @router.post("/send", response_model=SendEmailResponse)
 async def send_email(
+    request: Request,
     email_data: SendEmailRequest,
-    user_id: str = Query(..., description="ID of the user sending the email"),
 ) -> SendEmailResponse:
     """
     Send an email through a specific provider.
@@ -326,11 +341,11 @@ async def send_email(
 
     Args:
         email_data: Email content and configuration
-        user_id: ID of the user sending the email
 
     Returns:
         SendEmailResponse with sent message details
     """
+    user_id = await get_user_id_from_gateway(request)
     request_id = str(uuid.uuid4())
     start_time = datetime.now(timezone.utc)
 

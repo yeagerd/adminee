@@ -89,7 +89,7 @@ def test_end_to_end_chat_flow(app):
     headers_with_user = {**TEST_HEADERS, "X-User-Id": user_id}
 
     # List threads (record initial count)
-    resp = client.get("/threads", params={"user_id": user_id}, headers=TEST_HEADERS)
+    resp = client.get("/threads", headers=headers_with_user)
     assert resp.status_code == 200
 
     # Start a chat (should create a new thread and return response)
@@ -121,7 +121,7 @@ def test_end_to_end_chat_flow(app):
     assert len(data2["messages"][-1]["content"]) > 0
 
     # List threads (should contain the thread we just used)
-    resp = client.get("/threads", params={"user_id": user_id}, headers=TEST_HEADERS)
+    resp = client.get("/threads", headers=headers_with_user)
     assert resp.status_code == 200
     threads = resp.json()
     assert any(t["thread_id"] == thread_id for t in threads)
@@ -138,12 +138,11 @@ def test_end_to_end_chat_flow(app):
     resp = client.post(
         "/feedback",
         json={
-            "user_id": user_id,
             "thread_id": thread_id,
             "message_id": last_msg["message_id"],
             "feedback": "up",
         },
-        headers=TEST_HEADERS,
+        headers=headers_with_user,
     )
     assert resp.status_code == 200
     assert resp.json()["status"] == "success"
@@ -178,7 +177,7 @@ def test_multiple_blank_thread_creates_distinct_threads(app):
     assert thread_id1 != thread_id2
 
     # List threads and verify both thread IDs are present
-    resp = client.get("/threads", params={"user_id": user_id}, headers=TEST_HEADERS)
+    resp = client.get("/threads", headers=headers_with_user)
     assert resp.status_code == 200
     threads = resp.json()
     thread_ids = {t["thread_id"] for t in threads}

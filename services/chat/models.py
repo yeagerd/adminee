@@ -223,9 +223,9 @@ class FeedbackRequest(BaseModel):
     Request model for user feedback on messages.
 
     Allows users to provide thumbs up/down feedback on AI responses.
+    User ID is extracted from X-User-Id header by the gateway.
     """
 
-    user_id: str
     thread_id: str  # String for JSON compatibility
     message_id: str  # String for JSON compatibility
     feedback: str  # 'up' or 'down'

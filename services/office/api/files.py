@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import List, Optional, cast
 
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Depends, Path, Query, Request
 
 from services.common.http_errors import (
     ServiceError,
@@ -38,9 +38,22 @@ router = APIRouter(prefix="/files", tags=["files"])
 api_client_factory = APIClientFactory()
 
 
+async def get_user_id_from_gateway(request: Request) -> str:
+    """
+    Extract user ID from gateway headers.
+
+    The office service only supports requests through the gateway,
+    which forwards user identity via X-User-Id header.
+    """
+    user_id = request.headers.get("X-User-Id")
+    if not user_id:
+        raise ValidationError(message="X-User-Id header is required", field="X-User-Id")
+    return user_id
+
+
 @router.get("/", response_model=ApiResponse)
 async def get_files(
-    user_id: str = Query(..., description="ID of the user to fetch files for"),
+    request: Request,
     providers: Optional[List[str]] = Query(
         None,
         description="Providers to fetch from (google, microsoft). If not specified, fetches from all available providers",
@@ -83,6 +96,7 @@ async def get_files(
     Returns:
         ApiResponse with aggregated files
     """
+    user_id = await get_user_id_from_gateway(request)
     request_id = str(uuid.uuid4())
     start_time = datetime.now(timezone.utc)
 
@@ -319,7 +333,7 @@ async def get_files(
 
 @router.get("/search", response_model=ApiResponse)
 async def search_files(
-    user_id: str = Query(..., description="ID of the user to search files for"),
+    request: Request,
     q: str = Query(..., description="Search query"),
     providers: Optional[List[str]] = Query(
         None, description="Providers to search in (google, microsoft)"
@@ -339,7 +353,6 @@ async def search_files(
     returning aggregated and normalized results.
 
     Args:
-        user_id: ID of the user to search files for
         q: Search query string
         providers: List of providers to search (defaults to all)
         limit: Maximum results per provider
@@ -348,6 +361,7 @@ async def search_files(
     Returns:
         ApiResponse with search results
     """
+    user_id = await get_user_id_from_gateway(request)
     request_id = str(uuid.uuid4())
     start_time = datetime.now(timezone.utc)
 
@@ -539,8 +553,8 @@ async def search_files(
 
 @router.get("/{file_id}", response_model=ApiResponse)
 async def get_file(
+    request: Request,
     file_id: str = Path(..., description="File ID (format: provider_originalId)"),
-    user_id: str = Query(..., description="ID of the user who owns the file"),
     include_download_url: bool = Query(
         False, description="Whether to include download URL"
     ),
@@ -554,12 +568,12 @@ async def get_file(
 
     Args:
         file_id: File ID with provider prefix
-        user_id: ID of the user who owns the file
         include_download_url: Whether to include download URL
 
     Returns:
         ApiResponse with the specific file
     """
+    user_id = await get_user_id_from_gateway(request)
     request_id = str(uuid.uuid4())
     start_time = datetime.now(timezone.utc)
 
