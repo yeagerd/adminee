@@ -80,7 +80,6 @@ async def get_user_id_from_gateway(request: Request) -> str:
 async def chat_endpoint(
     request: Request,
     chat_request: ChatRequest,
-    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
 ) -> ChatResponse:
     """
     Chat endpoint using WorkflowAgent multi-agent system.
@@ -184,7 +183,6 @@ async def chat_endpoint(
 async def chat_stream_endpoint(
     request: Request,
     chat_request: ChatRequest,
-    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
 ) -> StreamingResponse:
     """
     Streaming chat endpoint using Server-Sent Events (SSE).
@@ -303,7 +301,6 @@ async def chat_stream_endpoint(
 @router.get("/threads", response_model=List[ThreadResponse])
 async def list_threads(
     request: Request,
-    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
 ) -> List[ThreadResponse]:
     """
     List threads for a given user using history_manager.
@@ -335,7 +332,6 @@ async def list_threads(
 @router.get("/threads/{thread_id}/history", response_model=ChatResponse)
 async def thread_history(
     thread_id: str,
-    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
 ) -> ChatResponse:
     """
     Get chat history for a given thread using history_manager.
@@ -375,14 +371,15 @@ async def thread_history(
 async def feedback_endpoint(
     request: Request,
     feedback_request: FeedbackRequest,
-    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
 ) -> FeedbackResponse:
     """
     Receive user feedback for a message.
     """
-    # Remove the unused user_id assignment
+    user_id = await get_user_id_from_gateway(request)
+
     # Create feedback request with user_id from gateway header
     feedback_data = FeedbackRequest(
+        user_id=user_id,
         thread_id=feedback_request.thread_id,
         message_id=feedback_request.message_id,
         feedback=feedback_request.feedback,
@@ -397,7 +394,6 @@ async def feedback_endpoint(
 async def create_user_draft_endpoint(
     request: Request,
     draft_request: UserDraftRequest,
-    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
 ) -> UserDraftResponse:
     """Create a new user draft."""
     user_id = await get_user_id_from_gateway(request)
@@ -449,7 +445,6 @@ async def list_user_drafts_endpoint(
     status: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
-    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
 ) -> UserDraftListResponse:
     """List user drafts with optional filtering."""
     user_id = await get_user_id_from_gateway(request)
@@ -501,7 +496,6 @@ async def list_user_drafts_endpoint(
 async def get_user_draft_endpoint(
     request: Request,
     draft_id: str,
-    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
 ) -> UserDraftResponse:
     """Get a specific user draft."""
     user_id = await get_user_id_from_gateway(request)
@@ -546,7 +540,6 @@ async def update_user_draft_endpoint(
     request: Request,
     draft_id: str,
     draft_request: UserDraftRequest,
-    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
 ) -> UserDraftResponse:
     """Update a user draft."""
     user_id = await get_user_id_from_gateway(request)
@@ -612,7 +605,6 @@ class DeleteUserDraftResponse(BaseModel):
 async def delete_user_draft_endpoint(
     request: Request,
     draft_id: str,
-    client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
 ) -> DeleteUserDraftResponse:
     """Delete a user draft."""
     user_id = await get_user_id_from_gateway(request)
