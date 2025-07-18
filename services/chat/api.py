@@ -31,13 +31,12 @@ This pattern ensures:
 import json
 from typing import AsyncGenerator, List, Optional
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from services.chat import history_manager
 from services.chat.agents.workflow_agent import WorkflowAgent
-from services.chat.auth import require_chat_auth
 from services.chat.history_manager import count_user_drafts
 from services.chat.models import (
     ChatRequest,
@@ -59,8 +58,22 @@ logger = get_logger(__name__)
 
 router = APIRouter()
 
+
+# Feedback data class for storing feedback records
+class Feedback(BaseModel):
+    """
+    Data class for storing feedback records.
+    Mirrors the structure of FeedbackRequest for consistency.
+    """
+
+    thread_id: str
+    message_id: str
+    feedback: str
+    user_id: str  # Added during feedback processing
+
+
 # In-memory feedback storage
-FEEDBACKS: List[FeedbackRequest] = []
+FEEDBACKS: List[Feedback] = []
 
 
 async def get_user_id_from_gateway(request: Request) -> str:
@@ -378,7 +391,7 @@ async def feedback_endpoint(
     user_id = await get_user_id_from_gateway(request)
 
     # Create feedback request with user_id from gateway header
-    feedback_data = FeedbackRequest(
+    feedback_data = Feedback(
         user_id=user_id,
         thread_id=feedback_request.thread_id,
         message_id=feedback_request.message_id,
