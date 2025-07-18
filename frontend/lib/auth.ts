@@ -90,7 +90,7 @@ export const authOptions: NextAuthOptions = {
             try {
                 // 1. Try to GET user by email and provider
                 let backendUser = null;
-                const getUrl = `${userServiceBase}/users/id?email=${encodeURIComponent(email)}&provider=${encodeURIComponent(provider)}`;
+                const getUrl = `${userServiceBase}/internal/users/id?email=${encodeURIComponent(email)}&provider=${encodeURIComponent(provider)}`;
                 console.log('BFF Debug - GET URL:', getUrl);
 
                 const getRes = await fetch(getUrl, {
@@ -108,7 +108,7 @@ export const authOptions: NextAuthOptions = {
                     console.log('BFF Debug - Found user:', { id: backendUser.id, email: backendUser.email });
                 } else if (getRes.status === 404) {
                     // 2. If not found, POST to create user
-                    const postUrl = `${userServiceBase}/users/`;
+                    const postUrl = `${userServiceBase}/internal/users/`;
                     const userData = {
                         external_auth_id,
                         auth_provider: provider,
@@ -132,7 +132,8 @@ export const authOptions: NextAuthOptions = {
                     console.log('BFF Debug - POST response:', postRes.status);
 
                     if (postRes.ok) {
-                        backendUser = await postRes.json();
+                        const response = await postRes.json();
+                        backendUser = response.user; // Extract user from the new response format
                         console.log('BFF Debug - Created user:', { id: backendUser.id, email: backendUser.email });
                     } else {
                         const errorText = await postRes.text();
