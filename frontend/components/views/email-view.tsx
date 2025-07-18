@@ -22,28 +22,40 @@ const OpenDraftPaneButton: React.FC = () => {
     );
 };
 
-const EmailView: React.FC = () => {
+interface EmailViewProps {
+    toolDataLoading?: boolean;
+    activeTool?: string;
+}
+
+const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTool }) => {
+    const lastActiveTool = React.useRef<string | undefined>(undefined);
     const [threads, setThreads] = useState<EmailMessage[]>([]); // If API returns messages, not threads
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [filters, setFilters] = useState<Record<string, unknown>>({});
-    const { integrations, loading: integrationsLoading } = useIntegrations();
+    const { loading: integrationsLoading, activeProviders } = useIntegrations();
 
     useEffect(() => {
-        if (integrationsLoading) return; // Wait for integrations to finish loading
-
-        // Only fetch if there is at least one active email integration
-        const activeEmailIntegrations = integrations.filter(
-            integration =>
-                integration.status === 'active' &&
-                (integration.provider === 'google' || integration.provider === 'microsoft')
-        );
-        if (activeEmailIntegrations.length === 0) {
+        // Only fetch when the tab is actually activated
+        if (toolDataLoading) return;
+        if (integrationsLoading) return;
+        if (!activeProviders || activeProviders.length === 0) {
             setError('No active email integrations found. Please connect your email account first.');
             setThreads([]);
             setLoading(false);
             return;
         }
+        if (lastActiveTool.current === activeTool) {
+            setLoading(false);
+            return;
+        }
+        lastActiveTool.current = activeTool;
+        if (activeTool !== 'email') {
+            setLoading(false);
+            return;
+        }
+        // Only fetch if there is at least one active email integration
+        console.log('[EmailView] Fetching emails for user, providers:', activeProviders.join(','));
 
         let isMounted = true;
         setLoading(true);
@@ -54,10 +66,7 @@ const EmailView: React.FC = () => {
                 if (!userId) throw new Error('No user id found in session');
 
                 // Use the user's actual connected providers
-                const providers = activeEmailIntegrations.map(integration => integration.provider);
-
-                // TODO: support pagination, filtering, etc.
-                const emailsResp = await gatewayClient.getEmails(userId, providers, 50, 0) as { data?: { messages?: EmailMessage[] } };
+                const emailsResp = await gatewayClient.getEmails(userId, activeProviders, 50, 0) as { data?: { messages?: EmailMessage[] } };
                 if (isMounted) setThreads(emailsResp.data?.messages || []);
                 setError(null);
             } catch (e: unknown) {
@@ -67,7 +76,7 @@ const EmailView: React.FC = () => {
             }
         })();
         return () => { isMounted = false; };
-    }, [filters, integrations, integrationsLoading]);
+    }, [filters, activeProviders, integrationsLoading, toolDataLoading, activeTool]);
 
     return (
         <div className="flex flex-col h-full">
