@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, cast
 
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Depends, Path, Query, Request
 
 from services.common.http_errors import (
     AuthError,
@@ -41,6 +41,19 @@ router = APIRouter(prefix="/calendar", tags=["calendar"])
 api_client_factory = APIClientFactory()
 
 
+async def get_user_id_from_gateway(request: Request) -> str:
+    """
+    Extract user ID from gateway headers.
+
+    The office service only supports requests through the gateway,
+    which forwards user identity via X-User-Id header.
+    """
+    user_id = request.headers.get("X-User-Id")
+    if not user_id:
+        raise ValidationError(message="X-User-Id header is required", field="X-User-Id")
+    return user_id
+
+
 def _get_calendar_scopes(provider: str) -> List[str]:
     """Get calendar-specific scopes for a provider."""
     if provider == "google":
@@ -53,7 +66,7 @@ def _get_calendar_scopes(provider: str) -> List[str]:
 
 @router.get("/events", response_model=ApiResponse)
 async def get_calendar_events(
-    user_id: str = Query(..., description="ID of the user to fetch events for"),
+    request: Request,
     providers: Optional[List[str]] = Query(
         None,
         description="Providers to fetch from (google, microsoft). If not specified, fetches from all available providers",
@@ -94,6 +107,7 @@ async def get_calendar_events(
     Returns:
         ApiResponse with aggregated calendar events
     """
+    user_id = await get_user_id_from_gateway(request)
     request_id = str(uuid.uuid4())
     start_time = datetime.now(timezone.utc)
 

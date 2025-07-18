@@ -93,7 +93,6 @@ The goal is to ensure secure, scalable, and maintainable authentication for both
 - [x] **HIGH PRIORITY**: Ensure gateway does not call `/internal` endpoints
 - [x] **HIGH PRIORITY**: Add proper error handling for missing/invalid JWTs
 - [x] **HIGH PRIORITY**: Add tests for JWT validation and user context forwarding
-- [ ] **HIGH PRIORITY**: Add tests for JWT validation and user context forwarding
 - [ ] **MEDIUM PRIORITY**: Add API key validation for `/internal` routes (future enhancement)
 
 #### 4.2. User Service - Internal Endpoints (Foundation)
@@ -106,15 +105,15 @@ The goal is to ensure secure, scalable, and maintainable authentication for both
 ### Phase 2: Backend Service Updates (Depends on Phase 1)
 
 #### 4.3. Chat Service Updates (Depends on Gateway)
-- [ ] **HIGH PRIORITY**: Add new endpoints that extract user from `X-User-Id` header (not query params)
-- [ ] **HIGH PRIORITY**: Update `get_user_id_from_gateway()` function to use header only
-- [ ] **HIGH PRIORITY**: Update all endpoint handlers to use gateway header
-- [ ] **HIGH PRIORITY**: Add/verify tests for user extraction from headers
+- [x] **HIGH PRIORITY**: Add new endpoints that extract user from `X-User-Id` header (not query params)
+- [x] **HIGH PRIORITY**: Update `get_user_id_from_gateway()` function to use header only
+- [x] **HIGH PRIORITY**: Update all endpoint handlers to use gateway header
+- [x] **HIGH PRIORITY**: Add/verify tests for user extraction from headers
 - [ ] **MEDIUM PRIORITY**: Add any missing `/internal` endpoints if needed for service-to-service calls
 
 #### 4.4. Office Service Updates (Depends on Gateway)
-- [ ] **HIGH PRIORITY**: Add new endpoints that extract user from `X-User-Id` header (not query params)
-- [ ] **HIGH PRIORITY**: Update endpoint handlers to use gateway header
+- [x] **HIGH PRIORITY**: Add new endpoints that extract user from `X-User-Id` header (not query params)
+- [x] **HIGH PRIORITY**: Update endpoint handlers to use gateway header
 - [ ] **HIGH PRIORITY**: Add/verify tests for user extraction from headers
 - [ ] **MEDIUM PRIORITY**: Add any missing `/internal` endpoints if needed for service-to-service calls
 
@@ -265,7 +264,7 @@ Below is a concrete mapping of current endpoints to their new standardized forms
 - **Current:** POST /chat (JWT via gateway header, but uses user_id query param)
 - **New:** POST /chat (JWT via gateway header only)
 - **Tasks:**
-  - [ ] Add new POST /chat endpoint that extracts user from X-User-Id header only
+  - [x] Add new POST /chat endpoint that extracts user from X-User-Id header only
   - [ ] Update frontend to use new endpoint (no user_id in query)
   - [ ] Remove old POST /chat endpoint with user_id query param
   - [ ] Update tests, docs
@@ -273,7 +272,7 @@ Below is a concrete mapping of current endpoints to their new standardized forms
 - **Current:** POST /chat/stream (JWT via gateway header, but uses user_id query param)
 - **New:** POST /chat/stream (JWT via gateway header only)
 - **Tasks:**
-  - [ ] Add new POST /chat/stream endpoint that extracts user from X-User-Id header only
+  - [x] Add new POST /chat/stream endpoint that extracts user from X-User-Id header only
   - [ ] Update frontend to use new endpoint (no user_id in query)
   - [ ] Remove old POST /chat/stream endpoint with user_id query param
   - [ ] Update tests, docs
@@ -281,7 +280,7 @@ Below is a concrete mapping of current endpoints to their new standardized forms
 - **Current:** GET /threads (JWT via gateway header, but uses user_id query param)
 - **New:** GET /threads (JWT via gateway header only)
 - **Tasks:**
-  - [ ] Add new GET /threads endpoint that extracts user from X-User-Id header only
+  - [x] Add new GET /threads endpoint that extracts user from X-User-Id header only
   - [ ] Update frontend to use new endpoint (no user_id in query)
   - [ ] Remove old GET /threads endpoint with user_id query param
   - [ ] Update tests, docs
@@ -295,13 +294,13 @@ Below is a concrete mapping of current endpoints to their new standardized forms
 - **Current:** POST /feedback (JWT via gateway header)
 - **New:** POST /feedback (JWT via gateway header)
 - **Tasks:**
-  - [ ] Confirm user is extracted from JWT or gateway header, not from URL/query
+  - [x] Confirm user is extracted from JWT or gateway header, not from URL/query
   - [ ] Update tests, docs
 
 - **Current:** POST /user-drafts (JWT via gateway header, but uses user_id query param)
 - **New:** POST /user-drafts (JWT via gateway header only)
 - **Tasks:**
-  - [ ] Add new POST /user-drafts endpoint that extracts user from X-User-Id header only
+  - [x] Add new POST /user-drafts endpoint that extracts user from X-User-Id header only
   - [ ] Update frontend to use new endpoint (no user_id in query)
   - [ ] Remove old POST /user-drafts endpoint with user_id query param
   - [ ] Update tests, docs
@@ -309,7 +308,7 @@ Below is a concrete mapping of current endpoints to their new standardized forms
 - **Current:** GET /user-drafts (JWT via gateway header, but uses user_id query param)
 - **New:** GET /user-drafts (JWT via gateway header only)
 - **Tasks:**
-  - [ ] Add new GET /user-drafts endpoint that extracts user from X-User-Id header only
+  - [x] Add new GET /user-drafts endpoint that extracts user from X-User-Id header only
   - [ ] Update frontend to use new endpoint (no user_id in query)
   - [ ] Remove old GET /user-drafts endpoint with user_id query param
   - [ ] Update tests, docs
@@ -317,19 +316,19 @@ Below is a concrete mapping of current endpoints to their new standardized forms
 - **Current:** GET /user-drafts/{draft_id} (JWT via gateway header)
 - **New:** GET /user-drafts/{draft_id} (JWT via gateway header)
 - **Tasks:**
-  - [ ] Confirm user is extracted from JWT or gateway header, not from URL/query
+  - [x] Confirm user is extracted from JWT or gateway header, not from URL/query
   - [ ] Update tests, docs
 
 - **Current:** PUT /user-drafts/{draft_id} (JWT via gateway header)
 - **New:** PUT /user-drafts/{draft_id} (JWT via gateway header)
 - **Tasks:**
-  - [ ] Confirm user is extracted from JWT or gateway header, not from URL/query
+  - [x] Confirm user is extracted from JWT or gateway header, not from URL/query
   - [ ] Update tests, docs
 
 - **Current:** DELETE /user-drafts/{draft_id} (JWT via gateway header)
 - **New:** DELETE /user-drafts/{draft_id} (JWT via gateway header)
 - **Tasks:**
-  - [ ] Confirm user is extracted from JWT or gateway header, not from URL/query
+  - [x] Confirm user is extracted from JWT or gateway header, not from URL/query
   - [ ] Update tests, docs
 
 #### Internal/Service Endpoints (API Key, /internal pattern)
@@ -342,7 +341,7 @@ Below is a concrete mapping of current endpoints to their new standardized forms
 - **Current:** GET /calendar/events (JWT via gateway header, but uses user_id query param)
 - **New:** GET /calendar/events (JWT via gateway header only)
 - **Tasks:**
-  - [ ] Add new GET /calendar/events endpoint that extracts user from X-User-Id header only
+  - [x] Add new GET /calendar/events endpoint that extracts user from X-User-Id header only
   - [ ] Update frontend to use new endpoint (no user_id in query)
   - [ ] Remove old GET /calendar/events endpoint with user_id query param
   - [ ] Update tests, docs
@@ -350,7 +349,7 @@ Below is a concrete mapping of current endpoints to their new standardized forms
 - **Current:** POST /calendar/events (JWT via gateway header, but uses user_id query param)
 - **New:** POST /calendar/events (JWT via gateway header only)
 - **Tasks:**
-  - [ ] Add new POST /calendar/events endpoint that extracts user from X-User-Id header only
+  - [x] Add new POST /calendar/events endpoint that extracts user from X-User-Id header only
   - [ ] Update frontend to use new endpoint (no user_id in query)
   - [ ] Remove old POST /calendar/events endpoint with user_id query param
   - [ ] Update tests, docs
@@ -358,7 +357,7 @@ Below is a concrete mapping of current endpoints to their new standardized forms
 - **Current:** GET /email/messages (JWT via gateway header, but uses user_id query param)
 - **New:** GET /email/messages (JWT via gateway header only)
 - **Tasks:**
-  - [ ] Add new GET /email/messages endpoint that extracts user from X-User-Id header only
+  - [x] Add new GET /email/messages endpoint that extracts user from X-User-Id header only
   - [ ] Update frontend to use new endpoint (no user_id in query)
   - [ ] Remove old GET /email/messages endpoint with user_id query param
   - [ ] Update tests, docs
@@ -366,7 +365,7 @@ Below is a concrete mapping of current endpoints to their new standardized forms
 - **Current:** POST /email/send (JWT via gateway header, but uses user_id query param)
 - **New:** POST /email/send (JWT via gateway header only)
 - **Tasks:**
-  - [ ] Add new POST /email/send endpoint that extracts user from X-User-Id header only
+  - [x] Add new POST /email/send endpoint that extracts user from X-User-Id header only
   - [ ] Update frontend to use new endpoint (no user_id in query)
   - [ ] Remove old POST /email/send endpoint with user_id query param
   - [ ] Update tests, docs
@@ -374,7 +373,7 @@ Below is a concrete mapping of current endpoints to their new standardized forms
 - **Current:** GET /files (JWT via gateway header, but uses user_id query param)
 - **New:** GET /files (JWT via gateway header only)
 - **Tasks:**
-  - [ ] Add new GET /files endpoint that extracts user from X-User-Id header only
+  - [x] Add new GET /files endpoint that extracts user from X-User-Id header only
   - [ ] Update frontend to use new endpoint (no user_id in query)
   - [ ] Remove old GET /files endpoint with user_id query param
   - [ ] Update tests, docs
@@ -382,7 +381,7 @@ Below is a concrete mapping of current endpoints to their new standardized forms
 - **Current:** GET /files/search (JWT via gateway header, but uses user_id query param)
 - **New:** GET /files/search (JWT via gateway header only)
 - **Tasks:**
-  - [ ] Add new GET /files/search endpoint that extracts user from X-User-Id header only
+  - [x] Add new GET /files/search endpoint that extracts user from X-User-Id header only
   - [ ] Update frontend to use new endpoint (no user_id in query)
   - [ ] Remove old GET /files/search endpoint with user_id query param
   - [ ] Update tests, docs
@@ -390,7 +389,7 @@ Below is a concrete mapping of current endpoints to their new standardized forms
 - **Current:** GET /files/{file_id} (JWT via gateway header, but uses user_id query param)
 - **New:** GET /files/{file_id} (JWT via gateway header only)
 - **Tasks:**
-  - [ ] Add new GET /files/{file_id} endpoint that extracts user from X-User-Id header only
+  - [x] Add new GET /files/{file_id} endpoint that extracts user from X-User-Id header only
   - [ ] Update frontend to use new endpoint (no user_id in query)
   - [ ] Remove old GET /files/{file_id} endpoint with user_id query param
   - [ ] Update tests, docs

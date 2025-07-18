@@ -302,7 +302,7 @@ async def chat_stream_endpoint(
 
 @router.get("/threads", response_model=List[ThreadResponse])
 async def list_threads(
-    user_id: str,
+    request: Request,
     client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
 ) -> List[ThreadResponse]:
     """
@@ -313,6 +313,8 @@ async def list_threads(
     models to API response models.
     """
     from services.chat import history_manager
+
+    user_id = await get_user_id_from_gateway(request)
 
     # Get database models (Thread objects with int IDs, datetime objects, relationships)
     threads = await history_manager.list_threads(user_id)
@@ -370,14 +372,25 @@ async def thread_history(
 
 
 @router.post("/feedback", response_model=FeedbackResponse)
-def feedback_endpoint(
-    request: FeedbackRequest,
+async def feedback_endpoint(
+    request: Request,
+    feedback_request: FeedbackRequest,
     client_name: str = Depends(require_chat_auth(allowed_clients=["frontend"])),
 ) -> FeedbackResponse:
     """
     Receive user feedback for a message.
     """
-    FEEDBACKS.append(request)
+    user_id = await get_user_id_from_gateway(request)
+
+    # Create feedback request with user_id from gateway header
+    feedback_data = FeedbackRequest(
+        user_id=user_id,
+        thread_id=feedback_request.thread_id,
+        message_id=feedback_request.message_id,
+        feedback=feedback_request.feedback,
+    )
+
+    FEEDBACKS.append(feedback_data)
     return FeedbackResponse(status="success", detail="Feedback recorded")
 
 
