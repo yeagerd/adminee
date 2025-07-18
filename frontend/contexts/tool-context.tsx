@@ -184,7 +184,6 @@ export function ToolProvider({ children }: { children: ReactNode }) {
         const toolFromUrl = searchParams.get('tool') as Tool;
         if (
             toolFromUrl &&
-            toolFromUrl !== state.activeTool &&
             defaultToolSettings[toolFromUrl] &&
             state.toolSettings[toolFromUrl]?.enabled
         ) {
