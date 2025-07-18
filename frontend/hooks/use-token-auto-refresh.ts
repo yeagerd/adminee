@@ -18,7 +18,7 @@ function isTokenExpired(expiresAt: string): boolean {
 }
 
 export function useTokenAutoRefresh() {
-    const ENABLE_TOKEN_AUTO_REFRESH = false; // Set to true to enable auto-refresh
+    const ENABLE_TOKEN_AUTO_REFRESH = true; // Set to true to enable auto-refresh
     const { data: session } = useSession();
     const lastRefreshRef = useRef(0);
     const isRefreshingRef = useRef(false);
