@@ -1,9 +1,9 @@
+import { useIntegrations } from '@/contexts/integrations-context';
 import { useDraftState } from '@/hooks/use-draft-state';
 import type { EmailMessage } from '@/types/office-service';
 import { getSession } from 'next-auth/react';
 import React, { useEffect, useState } from 'react';
 import gatewayClient from '../../lib/gateway-client';
-import { getProvider } from '../../lib/session-utils';
 import EmailFilters from '../email/email-filters';
 import EmailThread from '../email/email-thread';
 
@@ -27,18 +27,37 @@ const EmailView: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [filters, setFilters] = useState<Record<string, unknown>>({});
+    const { integrations } = useIntegrations();
 
     useEffect(() => {
         let isMounted = true;
         setLoading(true);
         (async () => {
             try {
+                // Check for active email integrations
+                const activeEmailIntegrations = integrations.filter(
+                    integration =>
+                        integration.status === 'active' &&
+                        (integration.provider === 'google' || integration.provider === 'microsoft')
+                );
+
+                if (activeEmailIntegrations.length === 0) {
+                    if (isMounted) {
+                        setError('No active email integrations found. Please connect your email account first.');
+                        setThreads([]);
+                    }
+                    return;
+                }
+
                 const session = await getSession();
-                const provider = getProvider(session);
                 const userId = session?.user?.id;
-                if (!provider || !userId) throw new Error('No provider or user id found in session');
+                if (!userId) throw new Error('No user id found in session');
+
+                // Use the user's actual connected providers
+                const providers = activeEmailIntegrations.map(integration => integration.provider);
+
                 // TODO: support pagination, filtering, etc.
-                const emailsResp = await gatewayClient.getEmails(userId, [provider], 50, 0) as { data?: { messages?: EmailMessage[] } };
+                const emailsResp = await gatewayClient.getEmails(userId, providers, 50, 0) as { data?: { messages?: EmailMessage[] } };
                 if (isMounted) setThreads(emailsResp.data?.messages || []);
                 setError(null);
             } catch (e: unknown) {
@@ -48,7 +67,7 @@ const EmailView: React.FC = () => {
             }
         })();
         return () => { isMounted = false; };
-    }, [filters]);
+    }, [filters, integrations]);
 
     return (
         <div className="flex flex-col h-full">
@@ -63,7 +82,24 @@ const EmailView: React.FC = () => {
                 {loading ? (
                     <div className="p-8 text-center text-muted-foreground">Loading…</div>
                 ) : error ? (
-                    <div className="p-8 text-center text-red-500">{error}</div>
+                    <div className="p-8 text-center">
+                        {error.includes('No active email integrations') ? (
+                            <div className="text-amber-600">
+                                <p className="mb-4">No active email integration found. Connect your Gmail or Microsoft Outlook to view your emails.</p>
+                                <a
+                                    href="/settings?page=integrations"
+                                    className="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 font-medium"
+                                >
+                                    <span>Go to Integrations</span>
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                    </svg>
+                                </a>
+                            </div>
+                        ) : (
+                            <div className="text-red-500">{error}</div>
+                        )}
+                    </div>
                 ) : threads.length === 0 ? (
                     <div className="p-8 text-center text-muted-foreground">No emails found.</div>
                 ) : (
