@@ -1,0 +1,8 @@
+feat: global integrations context, UI sync, and cleanup
+
+- Add IntegrationsProvider/context for global integrations state
+- Refactor integrations page, calendar, and email to use context (no local state)
+- Ensure integrations refresh after OAuth return, connect, disconnect
+- Fix infinite loop in integrations fetching
+- Remove all unused variables and functions flagged by linter
+- UI now always reflects backend state after integration changes 
