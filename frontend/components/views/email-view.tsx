@@ -27,28 +27,28 @@ const EmailView: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [filters, setFilters] = useState<Record<string, unknown>>({});
-    const { integrations } = useIntegrations();
+    const { integrations, loading: integrationsLoading } = useIntegrations();
 
     useEffect(() => {
+        if (integrationsLoading) return; // Wait for integrations to finish loading
+
+        // Only fetch if there is at least one active email integration
+        const activeEmailIntegrations = integrations.filter(
+            integration =>
+                integration.status === 'active' &&
+                (integration.provider === 'google' || integration.provider === 'microsoft')
+        );
+        if (activeEmailIntegrations.length === 0) {
+            setError('No active email integrations found. Please connect your email account first.');
+            setThreads([]);
+            setLoading(false);
+            return;
+        }
+
         let isMounted = true;
         setLoading(true);
         (async () => {
             try {
-                // Check for active email integrations
-                const activeEmailIntegrations = integrations.filter(
-                    integration =>
-                        integration.status === 'active' &&
-                        (integration.provider === 'google' || integration.provider === 'microsoft')
-                );
-
-                if (activeEmailIntegrations.length === 0) {
-                    if (isMounted) {
-                        setError('No active email integrations found. Please connect your email account first.');
-                        setThreads([]);
-                    }
-                    return;
-                }
-
                 const session = await getSession();
                 const userId = session?.user?.id;
                 if (!userId) throw new Error('No user id found in session');
@@ -67,7 +67,7 @@ const EmailView: React.FC = () => {
             }
         })();
         return () => { isMounted = false; };
-    }, [filters, integrations]);
+    }, [filters, integrations, integrationsLoading]);
 
     return (
         <div className="flex flex-col h-full">
