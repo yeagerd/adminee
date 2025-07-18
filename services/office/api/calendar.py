@@ -295,8 +295,8 @@ async def get_calendar_events(
 
 @router.get("/events/{event_id}", response_model=ApiResponse)
 async def get_calendar_event(
+    request: Request,
     event_id: str = Path(..., description="Event ID (format: provider_originalId)"),
-    user_id: str = Query(..., description="ID of the user who owns the event"),
     service_name: str = Depends(ServicePermissionRequired(["read_calendar"])),
 ) -> ApiResponse:
     """
@@ -307,11 +307,11 @@ async def get_calendar_event(
 
     Args:
         event_id: Event ID with provider prefix
-        user_id: ID of the user who owns the event
 
     Returns:
         ApiResponse with the specific calendar event
     """
+    user_id = await get_user_id_from_gateway(request)
     request_id = str(uuid.uuid4())
     start_time = datetime.now(timezone.utc)
 
@@ -378,8 +378,8 @@ async def get_calendar_event(
 
 @router.post("/events", response_model=ApiResponse)
 async def create_calendar_event(
+    request: Request,
     event_data: CreateCalendarEventRequest,
-    user_id: str = Query(..., description="ID of the user creating the event"),
     service_name: str = Depends(ServicePermissionRequired(["write_calendar"])),
 ) -> ApiResponse:
     """
@@ -390,11 +390,11 @@ async def create_calendar_event(
 
     Args:
         event_data: Event content and configuration
-        user_id: ID of the user creating the event
 
     Returns:
         ApiResponse with created event details
     """
+    user_id = await get_user_id_from_gateway(request)
     request_id = str(uuid.uuid4())
     start_time = datetime.now(timezone.utc)
 
@@ -910,8 +910,8 @@ async def update_microsoft_event(
 
 @router.delete("/events/{event_id}", response_model=ApiResponse)
 async def delete_calendar_event(
+    request: Request,
     event_id: str = Path(..., description="Event ID (format: provider_originalId)"),
-    user_id: str = Query(..., description="ID of the user who owns the event"),
     service_name: str = Depends(ServicePermissionRequired(["write_calendar"])),
 ) -> ApiResponse:
     """
@@ -922,11 +922,11 @@ async def delete_calendar_event(
 
     Args:
         event_id: Event ID with provider prefix (e.g., "google_abc123")
-        user_id: ID of the user who owns the event
 
     Returns:
         ApiResponse confirming deletion
     """
+    user_id = await get_user_id_from_gateway(request)
     request_id = str(uuid.uuid4())
     start_time = datetime.now(timezone.utc)
 

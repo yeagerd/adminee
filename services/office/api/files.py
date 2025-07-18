@@ -333,7 +333,7 @@ async def get_files(
 
 @router.get("/search", response_model=ApiResponse)
 async def search_files(
-    user_id: str = Query(..., description="ID of the user to search files for"),
+    request: Request,
     q: str = Query(..., description="Search query"),
     providers: Optional[List[str]] = Query(
         None, description="Providers to search in (google, microsoft)"
@@ -353,7 +353,6 @@ async def search_files(
     returning aggregated and normalized results.
 
     Args:
-        user_id: ID of the user to search files for
         q: Search query string
         providers: List of providers to search (defaults to all)
         limit: Maximum results per provider
@@ -362,6 +361,7 @@ async def search_files(
     Returns:
         ApiResponse with search results
     """
+    user_id = await get_user_id_from_gateway(request)
     request_id = str(uuid.uuid4())
     start_time = datetime.now(timezone.utc)
 
@@ -553,8 +553,8 @@ async def search_files(
 
 @router.get("/{file_id}", response_model=ApiResponse)
 async def get_file(
+    request: Request,
     file_id: str = Path(..., description="File ID (format: provider_originalId)"),
-    user_id: str = Query(..., description="ID of the user who owns the file"),
     include_download_url: bool = Query(
         False, description="Whether to include download URL"
     ),
@@ -568,12 +568,12 @@ async def get_file(
 
     Args:
         file_id: File ID with provider prefix
-        user_id: ID of the user who owns the file
         include_download_url: Whether to include download URL
 
     Returns:
         ApiResponse with the specific file
     """
+    user_id = await get_user_id_from_gateway(request)
     request_id = str(uuid.uuid4())
     start_time = datetime.now(timezone.utc)
 

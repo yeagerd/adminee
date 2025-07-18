@@ -214,7 +214,9 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
         with self._setup_mock_token_manager():
             google_patch, microsoft_patch = self._setup_mock_api_clients()
             with google_patch, microsoft_patch:
-                response = self.client.get(f"/email/messages?user_id={user_id}")
+                response = self.client.get(
+                    "/email/messages", headers=self.auth_headers
+                )
                 assert response.status_code == status.HTTP_200_OK
 
                 data = response.json()
@@ -246,7 +248,7 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
             google_patch, microsoft_patch = self._setup_mock_api_clients()
             with google_patch, microsoft_patch:
                 response = self.client.get(
-                    f"/email/messages?user_id={user_id}&limit=1&offset=0"
+                    "/email/messages?limit=1&offset=0", headers=self.auth_headers
                 )
                 assert response.status_code == status.HTTP_200_OK
 
@@ -288,7 +290,7 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
                 return_value=mock_message,
             ):
                 response = self.client.get(
-                    f"/email/messages/{message_id}?user_id={user_id}"
+                    f"/email/messages/{message_id}", headers=self.auth_headers
                 )
                 assert response.status_code == status.HTTP_200_OK
 
@@ -304,7 +306,9 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
         user_id = integration_setup["user_id"]
 
         # Test with invalid message ID format (should return 422)
-        response = self.client.get(f"/email/messages/invalid-format?user_id={user_id}")
+        response = self.client.get(
+            "/email/messages/invalid-format", headers=self.auth_headers
+        )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
         data = response.json()
@@ -330,7 +334,7 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
                 mock_send.return_value = {"id": "sent-message-123", "status": "sent"}
 
                 response = self.client.post(
-                    f"/email/send?user_id={user_id}", json=email_data
+                    "/email/send", json=email_data, headers=self.auth_headers
                 )
                 assert response.status_code == status.HTTP_200_OK
 
@@ -345,7 +349,7 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
         }
 
         response = self.client.post(
-            f"/email/send?user_id={self.test_user_id}", json=incomplete_data
+            "/email/send", json=incomplete_data, headers=self.auth_headers
         )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
@@ -401,8 +405,11 @@ class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
                 return_value=mock_events,
             ):
                 response = self.client.get(
-                    f"/calendar/events?user_id={user_id}",
-                    headers={"X-API-Key": get_test_api_keys()["frontend"]},
+                    "/calendar/events",
+                    headers={
+                        **self.auth_headers,
+                        "X-API-Key": get_test_api_keys()["frontend"],
+                    },
                 )
                 assert response.status_code == status.HTTP_200_OK
 
@@ -425,8 +432,11 @@ class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
                 return_value=mock_events,
             ):
                 response = self.client.get(
-                    f"/calendar/events?user_id={user_id}&start_date=2023-01-01&end_date=2023-01-31",
-                    headers={"X-API-Key": get_test_api_keys()["frontend"]},
+                    "/calendar/events?start_date=2023-01-01&end_date=2023-01-31",
+                    headers={
+                        **self.auth_headers,
+                        "X-API-Key": get_test_api_keys()["frontend"],
+                    },
                 )
                 assert response.status_code == status.HTTP_200_OK
 
@@ -456,9 +466,12 @@ class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
                 return_value=mock_created_event,
             ):
                 response = self.client.post(
-                    f"/calendar/events?user_id={user_id}",
+                    "/calendar/events",
                     json=event_data,
-                    headers={"X-API-Key": get_test_api_keys()["frontend"]},
+                    headers={
+                        **self.auth_headers,
+                        "X-API-Key": get_test_api_keys()["frontend"],
+                    },
                 )
                 # The actual API returns 200, not 201
                 assert response.status_code == status.HTTP_200_OK
@@ -478,8 +491,11 @@ class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
                 return_value=True,
             ):
                 response = self.client.delete(
-                    f"/calendar/events/{event_id}?user_id={user_id}",
-                    headers={"X-API-Key": get_test_api_keys()["frontend"]},
+                    f"/calendar/events/{event_id}",
+                    headers={
+                        **self.auth_headers,
+                        "X-API-Key": get_test_api_keys()["frontend"],
+                    },
                 )
                 assert response.status_code == status.HTTP_200_OK
 
@@ -541,8 +557,11 @@ class TestFilesEndpoints(BaseOfficeServiceIntegrationTest):
                 return_value=mock_files,
             ):
                 response = self.client.get(
-                    f"/files?user_id={user_id}",
-                    headers={"X-API-Key": get_test_api_keys()["frontend"]},
+                    "/files",
+                    headers={
+                        **self.auth_headers,
+                        "X-API-Key": get_test_api_keys()["frontend"],
+                    },
                 )
                 assert response.status_code == status.HTTP_200_OK
 
@@ -564,8 +583,11 @@ class TestFilesEndpoints(BaseOfficeServiceIntegrationTest):
                 return_value=mock_files,
             ):
                 response = self.client.get(
-                    f"/files/search?user_id={user_id}&q=test",  # Use 'q' parameter instead of 'query'
-                    headers={"X-API-Key": get_test_api_keys()["frontend"]},
+                    "/files/search?q=test",  # Use 'q' parameter instead of 'query'
+                    headers={
+                        **self.auth_headers,
+                        "X-API-Key": get_test_api_keys()["frontend"],
+                    },
                 )
                 assert response.status_code == status.HTTP_200_OK
 
@@ -593,8 +615,11 @@ class TestFilesEndpoints(BaseOfficeServiceIntegrationTest):
                 return_value=mock_file,
             ):
                 response = self.client.get(
-                    f"/files/{file_id}?user_id={user_id}",
-                    headers={"X-API-Key": get_test_api_keys()["frontend"]},
+                    f"/files/{file_id}",
+                    headers={
+                        **self.auth_headers,
+                        "X-API-Key": get_test_api_keys()["frontend"],
+                    },
                 )
                 assert response.status_code == status.HTTP_200_OK
 
@@ -622,7 +647,7 @@ class TestErrorScenarios(BaseOfficeServiceIntegrationTest):
             "services.office.core.token_manager.TokenManager.get_user_token",
             side_effect=failing_http_side_effect,
         ):
-            response = self.client.get(f"/email/messages?user_id={self.test_user_id}")
+            response = self.client.get("/email/messages", headers=self.auth_headers)
 
             # The API handles provider failures gracefully and returns partial results
             assert response.status_code == status.HTTP_200_OK
@@ -634,13 +659,13 @@ class TestErrorScenarios(BaseOfficeServiceIntegrationTest):
     def test_authentication_failure(self):
         """Test handling of authentication failures."""
         # Test without API key
-        response = self.client.get(f"/calendar/events?user_id={self.test_user_id}")
+        response = self.client.get("/calendar/events", headers=self.auth_headers)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
         # Test with invalid API key
         response = self.client.get(
-            f"/calendar/events?user_id={self.test_user_id}",
-            headers={"X-API-Key": "invalid-key"},
+            "/calendar/events",
+            headers={**self.auth_headers, "X-API-Key": "invalid-key"},
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -703,11 +728,15 @@ class TestCaching(BaseOfficeServiceIntegrationTest):
                 return_value=mock_messages,
             ):
                 # First request
-                response1 = self.client.get(f"/email/messages?user_id={user_id}")
+                response1 = self.client.get(
+                    "/email/messages", headers=self.auth_headers
+                )
                 assert response1.status_code == status.HTTP_200_OK
 
                 # Second request (should potentially hit cache)
-                response2 = self.client.get(f"/email/messages?user_id={user_id}")
+                response2 = self.client.get(
+                    "/email/messages", headers=self.auth_headers
+                )
                 assert response2.status_code == status.HTTP_200_OK
 
     def test_cache_miss_behavior(self):
@@ -741,10 +770,10 @@ class TestCaching(BaseOfficeServiceIntegrationTest):
             ):
                 # Different requests should not hit the same cache
                 response1 = self.client.get(
-                    f"/email/messages?user_id={user_id}&limit=10"
+                    "/email/messages?limit=10", headers=self.auth_headers
                 )
                 response2 = self.client.get(
-                    f"/email/messages?user_id={user_id}&limit=20"
+                    "/email/messages?limit=20", headers=self.auth_headers
                 )
 
                 assert response1.status_code == status.HTTP_200_OK

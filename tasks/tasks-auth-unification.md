@@ -109,12 +109,14 @@ The goal is to ensure secure, scalable, and maintainable authentication for both
 - [x] **HIGH PRIORITY**: Update `get_user_id_from_gateway()` function to use header only
 - [x] **HIGH PRIORITY**: Update all endpoint handlers to use gateway header
 - [x] **HIGH PRIORITY**: Add/verify tests for user extraction from headers
+- [x] **HIGH PRIORITY**: Update all tests to use new authentication pattern
 - [ ] **MEDIUM PRIORITY**: Add any missing `/internal` endpoints if needed for service-to-service calls
 
 #### 4.4. Office Service Updates (Depends on Gateway)
 - [x] **HIGH PRIORITY**: Add new endpoints that extract user from `X-User-Id` header (not query params)
 - [x] **HIGH PRIORITY**: Update endpoint handlers to use gateway header
-- [ ] **HIGH PRIORITY**: Add/verify tests for user extraction from headers
+- [x] **HIGH PRIORITY**: Add/verify tests for user extraction from headers
+- [x] **HIGH PRIORITY**: Update all tests to use new authentication pattern
 - [ ] **MEDIUM PRIORITY**: Add any missing `/internal` endpoints if needed for service-to-service calls
 
 ### Phase 3: Frontend Updates (Depends on Phase 2)
