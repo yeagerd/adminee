@@ -12,23 +12,11 @@ import { NextAuthOptions } from 'next-auth';
 import AzureADProvider from 'next-auth/providers/azure-ad';
 import GoogleProvider from 'next-auth/providers/google';
 
-// Environment validation
-function validateEnvironment() {
-    const required = [
-        'NEXTAUTH_SECRET',
-        'USER_SERVICE_URL',
-        'API_FRONTEND_USER_KEY'
-    ];
-
-    for (const var_name of required) {
-        if (!process.env[var_name]) {
-            throw new Error(`${var_name} environment variable is required`);
-        }
-    }
-}
+// Import server-side environment validation
+import { validateServerEnv } from './env-server';
 
 // Validate environment on module load
-validateEnvironment();
+validateServerEnv();
 
 export const authOptions: NextAuthOptions = {
     providers: [

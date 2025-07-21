@@ -126,7 +126,12 @@ The goal is to ensure secure, scalable, and maintainable authentication for both
 #### 4.5. Frontend API Client Updates (Depends on Backend)
 - [x] **HIGH PRIORITY**: Update all API client calls to use new endpoints (no user_id in query params)
 - [x] **HIGH PRIORITY**: Update office service calls to use new endpoints (no user_id in query params)
-- [ ] **HIGH PRIORITY**: Ensure no API keys are present in client-side code
+- [x] **HIGH PRIORITY**: Ensure no API keys are present in client-side code
+    - Created separate server-side and client-side environment files
+    - Moved all API keys to server-side only files
+    - Client-side env.ts now only contains safe public variables
+    - Refactored gateway-client.ts to use centralized env.ts instead of direct process.env access
+    - Added validateClientEnv() call in GatewayClient constructor for automatic environment validation
 - [ ] **HIGH PRIORITY**: Add/verify tests for correct session/JWT usage
 - [ ] **MEDIUM PRIORITY**: Update any hardcoded user ID references
 
