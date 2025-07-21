@@ -14,7 +14,7 @@ export function AppLayout({ sidebar, main, draft }: AppLayoutProps) {
         <div className="flex flex-col h-screen w-full bg-background">
             <Navbar />
             <div className="flex flex-1 min-h-0 w-full">
-                <div className="h-full flex items-start">
+                <div className="h-full flex items-stretch">
                     <SidebarProvider>
                         {sidebar || <div className="w-56 min-w-[64px] max-w-xs h-full border-r bg-sidebar flex items-center justify-center text-muted-foreground">Sidebar</div>}
                     </SidebarProvider>
