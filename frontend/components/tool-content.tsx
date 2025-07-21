@@ -40,7 +40,6 @@ export function ToolContent() {
         setCalendarError(null);
         try {
             const response = await gatewayClient.getCalendarEvents(
-                session.user.id,
                 activeProviders,
                 10,
                 new Date().toISOString().split('T')[0],
