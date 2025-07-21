@@ -132,7 +132,9 @@ The goal is to ensure secure, scalable, and maintainable authentication for both
     - Client-side env.ts now only contains safe public variables
     - Refactored gateway-client.ts to use centralized env.ts instead of direct process.env access
     - Added validateClientEnv() call in GatewayClient constructor for automatic environment validation
-- [ ] **HIGH PRIORITY**: Add/verify tests for correct session/JWT usage
+- [x] **HIGH PRIORITY**: Add/verify tests for correct session/JWT usage
+    - Added Jest test for frontend GatewayClient to verify JWT is attached to API requests
+    - Backend already has comprehensive JWT/session tests
 - [ ] **MEDIUM PRIORITY**: Update any hardcoded user ID references
 
 ### Phase 4: Background Jobs and Service-to-Service (Depends on Phase 1)

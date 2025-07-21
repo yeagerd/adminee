@@ -203,6 +203,10 @@ jobs:
       working-directory: ./frontend
       run: npx tsc --noEmit
 
+    - name: Run Jest tests
+      working-directory: ./frontend
+      run: npx jest --ci
+
     - name: Copy .example.env to frontend/.env
       run: cp .example.env frontend/.env
 
