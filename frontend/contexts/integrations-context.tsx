@@ -44,12 +44,13 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }, [fetchIntegrations, status]);
 
     // Helper to check if a token is expired
-    function isTokenExpired(token_expires_at?: string): boolean {
+    const isTokenExpired = useCallback((token_expires_at?: string): boolean => {
         if (!token_expires_at) return true;
         const expirationDate = new Date(token_expires_at);
         const now = new Date();
-        return expirationDate <= now;
-    }
+        // Check if the date is valid before comparison
+        return isNaN(expirationDate.getTime()) || expirationDate <= now;
+    }, []);
 
     // Memoized active providers array
     const activeProviders = useMemo(() => {
