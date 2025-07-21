@@ -111,19 +111,21 @@ The goal is to ensure secure, scalable, and maintainable authentication for both
 - [x] **HIGH PRIORITY**: Add/verify tests for user extraction from headers
 - [x] **HIGH PRIORITY**: Update all tests to use new authentication pattern
 - [ ] **MEDIUM PRIORITY**: Add any missing `/internal` endpoints if needed for service-to-service calls
+    - No `/internal` endpoints are needed at this time because there are no background jobs or service-to-service requirements yet.
 
 #### 4.4. Office Service Updates (Depends on Gateway)
 - [x] **HIGH PRIORITY**: Add new endpoints that extract user from `X-User-Id` header (not query params)
 - [x] **HIGH PRIORITY**: Update endpoint handlers to use gateway header
 - [x] **HIGH PRIORITY**: Add/verify tests for user extraction from headers
 - [x] **HIGH PRIORITY**: Update all tests to use new authentication pattern
-- [ ] **MEDIUM PRIORITY**: Add any missing `/internal` endpoints if needed for service-to-service calls
+- [x] **MEDIUM PRIORITY**: Add any missing `/internal` endpoints if needed for service-to-service calls
+    - No `/internal` endpoints are needed at this time because there are no background jobs or service-to-service requirements yet.
 
 ### Phase 3: Frontend Updates (Depends on Phase 2)
 
 #### 4.5. Frontend API Client Updates (Depends on Backend)
-- [ ] **HIGH PRIORITY**: Update all API client calls to use new endpoints (no user_id in query params)
-- [ ] **HIGH PRIORITY**: Update office service calls to use new endpoints (no user_id in query params)
+- [x] **HIGH PRIORITY**: Update all API client calls to use new endpoints (no user_id in query params)
+- [x] **HIGH PRIORITY**: Update office service calls to use new endpoints (no user_id in query params)
 - [ ] **HIGH PRIORITY**: Ensure no API keys are present in client-side code
 - [ ] **HIGH PRIORITY**: Add/verify tests for correct session/JWT usage
 - [ ] **MEDIUM PRIORITY**: Update any hardcoded user ID references
