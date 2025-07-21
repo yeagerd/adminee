@@ -1,6 +1,7 @@
 import { ApiResponse, CalendarEventsResponse, CreateCalendarEventRequest, GetEmailsResponse } from '@/types/office-service';
 import { getSession } from 'next-auth/react';
 import { IntegrationStatus } from './constants';
+import { env, validateClientEnv } from './env';
 
 interface GatewayClientOptions {
     method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -9,11 +10,9 @@ interface GatewayClientOptions {
 }
 
 export class GatewayClient {
-    private gatewayUrl: string;
-
     constructor() {
-        // Use gateway URL from environment, fallback to localhost
-        this.gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:3001';
+        // Validate client-side environment variables on instantiation
+        validateClientEnv();
     }
 
     private async getAuthHeaders(): Promise<Record<string, string>> {
@@ -46,7 +45,7 @@ export class GatewayClient {
             config.body = JSON.stringify(body);
         }
 
-        const url = `${this.gatewayUrl}${endpoint}`;
+        const url = `${env.GATEWAY_URL}${endpoint}`;
 
         try {
             const response = await fetch(url, config);
@@ -102,7 +101,7 @@ export class GatewayClient {
             headers['Authorization'] = `Bearer ${session.accessToken}`;
         }
 
-        const response = await fetch(`${this.gatewayUrl}/api/chat/stream`, {
+        const response = await fetch(`${env.GATEWAY_URL}/api/chat/stream`, {
             method: 'POST',
             headers,
             body: JSON.stringify({
@@ -303,7 +302,7 @@ export class GatewayClient {
 
     // WebSocket connection helper
     createWebSocketConnection(endpoint: string): WebSocket {
-        const wsUrl = this.gatewayUrl.replace('http', 'ws');
+        const wsUrl = env.GATEWAY_URL.replace('http', 'ws');
         return new WebSocket(`${wsUrl}${endpoint}`);
     }
 }
@@ -385,4 +384,4 @@ export interface DraftListResponse {
     has_more: boolean;
 }
 
-export default gatewayClient; 
+export default gatewayClient;
