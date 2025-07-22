@@ -1,15 +1,16 @@
 import Navbar from "@/components/navbar";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { ReactNode } from "react";
+import React, { ReactNode, useRef } from "react";
 
 interface AppLayoutProps {
     sidebar?: ReactNode;
     main: ReactNode;
-    draft?: ReactNode;
+    draft?: ReactNode; // Accepts ChatInterface with containerRef prop
 }
 
 export function AppLayout({ sidebar, main, draft }: AppLayoutProps) {
+    const chatPaneRef = useRef<HTMLDivElement>(null);
     return (
         <div className="flex flex-col h-screen w-full bg-background">
             <Navbar />
@@ -29,8 +30,11 @@ export function AppLayout({ sidebar, main, draft }: AppLayoutProps) {
                             </ResizablePanel>
                             <ResizableHandle withHandle />
                             <ResizablePanel minSize={20} defaultSize={30} collapsible className="h-full border-l bg-card">
-                                <div className="h-full overflow-auto">
-                                    {draft || <div className="flex-1 flex items-center justify-center text-muted-foreground">Draft Pane</div>}
+                                <div className="h-full overflow-auto" ref={chatPaneRef}>
+                                    {/* @ts-expect-error containerRef is a controlled prop for our ChatInterface */}
+                                    {draft && React.isValidElement(draft)
+                                        ? React.cloneElement(draft as React.ReactElement, { containerRef: chatPaneRef })
+                                        : draft || <div className="flex-1 flex items-center justify-center text-muted-foreground">Draft Pane</div>}
                                 </div>
                             </ResizablePanel>
                         </ResizablePanelGroup>

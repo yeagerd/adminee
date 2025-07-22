@@ -1,11 +1,10 @@
 "use client"
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { demoChatMessages } from "@/lib/demo-data"
-import { Bot, Send, User } from "lucide-react"
+import { Send } from "lucide-react"
 import { useState } from "react"
 
 export function DemoChatInterface() {
@@ -66,52 +65,18 @@ export function DemoChatInterface() {
                     {messages.map((message) => (
                         <div
                             key={message.id}
-                            className={`flex gap-3 ${message.isUser ? 'justify-end' : 'justify-start'}`}
+                            className={`w-full flex ${message.isUser ? 'justify-end' : 'justify-start'} min-w-0`}
                         >
-                            {!message.isUser && (
-                                <Avatar className="h-8 w-8">
-                                    <AvatarImage src="/placeholder-user.jpg" />
-                                    <AvatarFallback className="bg-teal-100 text-teal-600">
-                                        <Bot className="h-4 w-4" />
-                                    </AvatarFallback>
-                                </Avatar>
-                            )}
-
-                            <div
-                                className={`max-w-[80%] rounded-lg px-3 py-2 ${message.isUser
-                                        ? 'bg-teal-600 text-white'
-                                        : 'bg-white border text-gray-900'
-                                    }`}
+                            <span
+                                className={`max-w-[95%] min-w-0 inline-block rounded-lg px-2 py-2 text-sm overflow-anywhere ${message.isUser ? 'bg-teal-600 text-white ml-2' : 'bg-white border text-gray-900 mr-2'}`}
                             >
-                                <p className="text-sm">{message.content}</p>
-                                <p className={`text-xs mt-1 ${message.isUser ? 'text-teal-100' : 'text-gray-500'
-                                    }`}>
-                                    {message.timestamp.toLocaleTimeString([], {
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                    })}
-                                </p>
-                            </div>
-
-                            {message.isUser && (
-                                <Avatar className="h-8 w-8">
-                                    <AvatarImage src="/placeholder-user.jpg" />
-                                    <AvatarFallback className="bg-gray-100 text-gray-600">
-                                        <User className="h-4 w-4" />
-                                    </AvatarFallback>
-                                </Avatar>
-                            )}
+                                {message.content}
+                            </span>
                         </div>
                     ))}
 
                     {isTyping && (
                         <div className="flex gap-3 justify-start">
-                            <Avatar className="h-8 w-8">
-                                <AvatarImage src="/placeholder-user.jpg" />
-                                <AvatarFallback className="bg-teal-100 text-teal-600">
-                                    <Bot className="h-4 w-4" />
-                                </AvatarFallback>
-                            </Avatar>
                             <div className="bg-white border rounded-lg px-3 py-2">
                                 <div className="flex space-x-1">
                                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>

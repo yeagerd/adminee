@@ -2,13 +2,12 @@
 
 import type React from "react"
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useStreamingSetting } from "@/hooks/use-streaming-setting"
 import gatewayClient from "@/lib/gateway-client"
-import { Bot, Loader2, Send, User } from "lucide-react"
+import { Loader2, Send } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useEffect, useRef, useState } from "react"
 
@@ -86,13 +85,65 @@ const initialMessages: Message[] = [
     },
 ]
 
-export default function ChatInterface() {
+function isUnbreakableString(str: string, threshold: number) {
+    return typeof str === 'string' && str.length > threshold && !/\s/.test(str);
+}
+
+function ChatBubble({ content, sender, windowWidth }: { content: React.ReactNode, sender: "user" | "ai", windowWidth: number }) {
+    // Dynamic threshold scales with window width
+    const threshold = Math.floor(windowWidth / 15);
+    let breakClass = "";
+    if (typeof content === 'string') {
+        const words = content.split(/\s+/);
+        if (words.some(word => isUnbreakableString(word, threshold))) {
+            breakClass = "break-all";
+        }
+    }
+    console.log('Chat bubble word break threshold:', threshold, 'breakClass:', breakClass);
+    return (
+        <div
+            className={`max-w-[95%] min-w-0 rounded-lg p-2 text-sm overflow-anywhere ${breakClass} ${sender === "user" ? "bg-teal-600 text-white ml-2" : "bg-gray-100 text-gray-800 mr-2"}`}
+        >
+            {content}
+        </div>
+    );
+}
+
+interface ChatInterfaceProps {
+    containerRef?: React.RefObject<HTMLDivElement>;
+}
+
+export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
     const { data: session } = useSession()
     const [messages, setMessages] = useState<Message[]>(initialMessages)
     const [input, setInput] = useState("")
     const [isLoading, setIsLoading] = useState(false)
     const { enableStreaming } = useStreamingSetting()
     const messagesEndRef = useRef<HTMLDivElement>(null)
+    const internalRef = useRef<HTMLDivElement>(null);
+    const chatAreaRef = containerRef || internalRef;
+    const [chatWidth, setChatWidth] = useState(600)
+
+    // Track chat window width
+    useEffect(() => {
+        function updateWidth() {
+            if (chatAreaRef.current) {
+                setChatWidth(chatAreaRef.current.offsetWidth)
+            }
+        }
+        updateWidth();
+
+        // Use ResizeObserver for the chat pane
+        const observer = new window.ResizeObserver(() => {
+            updateWidth();
+        });
+        if (chatAreaRef.current) {
+            observer.observe(chatAreaRef.current);
+        }
+        return () => {
+            observer.disconnect();
+        };
+    }, [chatAreaRef]);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -202,81 +253,38 @@ export default function ChatInterface() {
     }
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full" ref={chatAreaRef}>
             <ScrollArea className="flex-1 p-4">
-                <div className="space-y-4">
+                <div className="flex flex-col space-y-4 w-full">
                     {messages.map((message) => (
-                        <div key={message.id} className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}>
-                            <div className={`flex gap-3 max-w-[80%] ${message.sender === "user" ? "flex-row-reverse" : ""}`}>
-                                <Avatar className="h-8 w-8">
-                                    {message.sender === "ai" ? (
-                                        <>
-                                            <AvatarImage className="bg-teal-100 text-teal-600">
-                                                <Bot className="h-4 w-4" />
-                                            </AvatarImage>
-                                            <AvatarFallback className="bg-teal-100 text-teal-600">
-                                                <Bot className="h-4 w-4" />
-                                            </AvatarFallback>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <AvatarImage className="bg-gray-100">
-                                                <User className="h-4 w-4" />
-                                            </AvatarImage>
-                                            <AvatarFallback className="bg-gray-100">
-                                                <User className="h-4 w-4" />
-                                            </AvatarFallback>
-                                        </>
-                                    )}
-                                </Avatar>
-                                <div
-                                    className={`rounded-lg p-3 ${message.sender === "user" ? "bg-teal-600 text-white" : "bg-gray-100 text-gray-800"}`}
-                                >
-                                    <p>{message.content}</p>
-                                    <p className="text-xs opacity-70 mt-1">
-                                        {message.timestamp.toLocaleTimeString([], {
-                                            hour: "2-digit",
-                                            minute: "2-digit",
-                                        })}
-                                    </p>
-                                </div>
-                            </div>
+                        <div
+                            key={message.id}
+                            className={`w-full flex ${message.sender === "user" ? "justify-end" : "justify-start"} min-w-0`}
+                        >
+                            <ChatBubble content={message.content} sender={message.sender} windowWidth={chatWidth} />
                         </div>
                     ))}
                     {isLoading && (
-                        <div className="flex justify-start">
-                            <div className="flex gap-3 max-w-[80%]">
-                                <Avatar className="h-8 w-8">
-                                    <AvatarFallback className="bg-teal-100 text-teal-600">
-                                        <Bot className="h-4 w-4" />
-                                    </AvatarFallback>
-                                </Avatar>
-                                <div className="rounded-lg p-3 bg-gray-100 text-gray-800">
-                                    <Loader2 className="h-5 w-5 animate-spin" />
-                                </div>
-                            </div>
+                        <div className="w-full flex justify-start min-w-0">
+                            <ChatBubble content={<Loader2 className="h-5 w-5 animate-spin" />} sender="ai" windowWidth={chatWidth} />
                         </div>
                     )}
                     <div ref={messagesEndRef} />
                 </div>
             </ScrollArea>
-
-            <div className="p-3 border-t flex gap-2">
-                <Input
-                    placeholder={session?.user?.email ? "Ask me anything about your schedule..." : "Please log in to chat..."}
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    className="flex-1"
-                    disabled={!session?.user?.email}
-                />
-                <Button
-                    onClick={handleSendMessage}
-                    disabled={isLoading || !input.trim() || !session?.user?.email}
-                    title={!session?.user?.email ? "Please log in to use chat" : ""}
-                >
-                    <Send className="h-4 w-4" />
-                </Button>
+            <div className="p-4 border-t">
+                <div className="flex gap-2">
+                    <Input
+                        placeholder="Type your message..."
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        className="flex-1"
+                    />
+                    <Button onClick={handleSendMessage} disabled={isLoading || !input.trim()}>
+                        {isLoading ? <Loader2 className="h-4 w-4 mr-2" /> : <Send className="h-4 w-4" />}
+                    </Button>
+                </div>
             </div>
         </div>
     )
