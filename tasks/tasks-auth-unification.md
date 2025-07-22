@@ -135,7 +135,9 @@ The goal is to ensure secure, scalable, and maintainable authentication for both
 - [x] **HIGH PRIORITY**: Add/verify tests for correct session/JWT usage
     - Added Jest test for frontend GatewayClient to verify JWT is attached to API requests
     - Backend already has comprehensive JWT/session tests
-- [ ] **MEDIUM PRIORITY**: Update any hardcoded user ID references
+- [x] **MEDIUM PRIORITY**: Update any hardcoded user ID references
+    - Removed all 'anonymous' fallbacks and hardcoded user IDs from the frontend
+    - All user context is now derived from authenticated session only
 
 ### Phase 4: Background Jobs and Service-to-Service (Depends on Phase 1)
 
