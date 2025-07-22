@@ -1,16 +1,16 @@
 import Navbar from "@/components/navbar";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import React, { ReactNode, useRef } from "react";
+import React, { ReactElement, ReactNode, RefObject, useRef } from "react";
 
 interface AppLayoutProps {
     sidebar?: ReactNode;
     main: ReactNode;
-    draft?: ReactNode; // Accepts ChatInterface with containerRef prop
+    draft?: ReactElement<{ containerRef?: RefObject<HTMLDivElement> }>;
 }
 
 export function AppLayout({ sidebar, main, draft }: AppLayoutProps) {
-    const chatPaneRef = useRef<HTMLDivElement>(null);
+    const chatPaneRef = useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>;
     return (
         <div className="flex flex-col h-screen w-full bg-background">
             <Navbar />
@@ -31,10 +31,9 @@ export function AppLayout({ sidebar, main, draft }: AppLayoutProps) {
                             <ResizableHandle withHandle />
                             <ResizablePanel minSize={20} defaultSize={30} collapsible className="h-full border-l bg-card">
                                 <div className="h-full overflow-auto" ref={chatPaneRef}>
-                                    {/* @ts-expect-error containerRef is a controlled prop for our ChatInterface */}
-                                    {draft && React.isValidElement(draft)
-                                        ? React.cloneElement(draft as React.ReactElement, { containerRef: chatPaneRef })
-                                        : draft || <div className="flex-1 flex items-center justify-center text-muted-foreground">Draft Pane</div>}
+                                    {draft
+                                        ? React.cloneElement(draft, { containerRef: chatPaneRef })
+                                        : <div className="flex-1 flex items-center justify-center text-muted-foreground">Draft Pane</div>}
                                 </div>
                             </ResizablePanel>
                         </ResizablePanelGroup>
