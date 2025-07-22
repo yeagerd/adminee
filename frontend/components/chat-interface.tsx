@@ -296,13 +296,15 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
                         : "I'm sorry, I couldn't process your request. Please try again."
 
                     // Add AI response
-                    const aiMessage: Message = {
-                        id: data.messages[data.messages.length - 1].message_id,
-                        content: aiResponse,
-                        sender: "ai",
-                        timestamp: new Date(),
+                    if (data.messages && data.messages.length > 0) {
+                        const aiMessage: Message = {
+                            id: data.messages[data.messages.length - 1].message_id,
+                            content: aiResponse,
+                            sender: "ai",
+                            timestamp: new Date(),
+                        }
+                        setMessages((prev) => [...prev, aiMessage])
                     }
-                    setMessages((prev) => [...prev, aiMessage])
                 }
             } catch (error) {
                 console.error('Chat error:', error)
