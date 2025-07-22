@@ -65,7 +65,7 @@ export function Sidebar() {
                                             disabled={!isEnabled || !isAvailable}
                                             tooltip={item.title}
                                         >
-                                            <item.icon className="h-4 w-4" />
+                                            <item.icon className={isActiveTool(item.id) ? "h-4 w-4 text-teal-600" : "h-4 w-4"} />
                                             <span>{item.title}</span>
                                             {badge && (
                                                 <span className="ml-auto text-xs bg-muted px-1.5 py-0.5 rounded group-data-[collapsible=icon]:hidden">
