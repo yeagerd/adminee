@@ -19,7 +19,7 @@ type Message = {
 }
 
 // Draft type interfaces based on chat service Pydantic models
-interface DraftEmail {
+export interface DraftEmail {
     type: "email"
     to?: string
     cc?: string
@@ -31,7 +31,7 @@ interface DraftEmail {
     updated_at?: string
 }
 
-interface DraftCalendarEvent {
+export interface DraftCalendarEvent {
     type: "calendar_event"
     title?: string
     start_time?: string
@@ -44,7 +44,7 @@ interface DraftCalendarEvent {
     updated_at?: string
 }
 
-interface DraftCalendarChange {
+export interface DraftCalendarChange {
     type: "calendar_change"
     event_id?: string
     change_type?: string
@@ -59,7 +59,7 @@ interface DraftCalendarChange {
     updated_at?: string
 }
 
-type DraftData = DraftEmail | DraftCalendarEvent | DraftCalendarChange
+export type DraftData = DraftEmail | DraftCalendarEvent | DraftCalendarChange
 
 interface ChatResponse {
     thread_id: string

@@ -7,12 +7,21 @@ import Sidebar from '@/components/layout/sidebar';
 import { ToolContent } from '@/components/tool-content';
 import { ToolProvider } from '@/contexts/tool-context';
 import { useDraftState } from '@/hooks/use-draft-state';
+import { convertDraftDataToDraft } from '@/lib/draft-utils';
 import { useSession } from 'next-auth/react';
 import { Suspense } from 'react';
+import { DraftData } from '@/components/chat-interface';
 
 function DashboardContent() {
     const { data: session, status } = useSession();
     const { state: draftState, setCurrentDraft } = useDraftState();
+
+    const handleDraftReceived = (draftData: DraftData) => {
+        if (session?.user?.id) {
+            const newDraft = convertDraftDataToDraft(draftData, session.user.id);
+            setCurrentDraft(newDraft);
+        }
+    };
 
     if (status === 'loading') {
         return (
@@ -49,7 +58,7 @@ function DashboardContent() {
                             <h2 className="text-lg font-semibold">Chat</h2>
                         </div>
                         <div className="flex-1 overflow-hidden">
-                            <ChatInterface onDraftReceived={setCurrentDraft} />
+                            <ChatInterface onDraftReceived={handleDraftReceived} />
                         </div>
                     </div>
                 </div>
