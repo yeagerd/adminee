@@ -16,7 +16,6 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, Path, Query
 
 from services.common.http_errors import (
-    AuthError,
     BrieflyAPIException,
     ErrorCode,
     NotFoundError,
@@ -43,12 +42,9 @@ from services.user.schemas.integration import (
 from services.user.schemas.user import (
     EmailResolutionRequest,
     UserCreate,
-    UserDeleteResponse,
     UserListResponse,
-    UserOnboardingUpdate,
     UserResponse,
     UserSearchRequest,
-    UserUpdate,
 )
 from services.user.services.audit_service import audit_logger
 from services.user.services.user_service import get_user_service
