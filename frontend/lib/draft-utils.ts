@@ -27,7 +27,7 @@ export function convertDraftDataToDraft(draftData: DraftData, userId: string): D
         metadata = {
             subject: emailData.subject,
             recipients: emailData.to ? [emailData.to] : [],
-            cc: emailData.cc,
+            cc: emailData.cc ? [emailData.cc] : [],
             bcc: emailData.bcc ? [emailData.bcc] : [],
         };
     } else if (draftData.type === 'calendar_event') {
@@ -38,7 +38,7 @@ export function convertDraftDataToDraft(draftData: DraftData, userId: string): D
             startTime: eventData.start_time,
             endTime: eventData.end_time,
             location: eventData.location,
-            attendees: eventData.attendees,
+            attendees: eventData.attendees ? [eventData.attendees] : [],
         };
     } else if (draftData.type === 'calendar_change') {
         const changeData = draftData as DraftCalendarChange;
@@ -48,7 +48,7 @@ export function convertDraftDataToDraft(draftData: DraftData, userId: string): D
             startTime: changeData.new_start_time,
             endTime: changeData.new_end_time,
             location: changeData.new_location,
-            attendees: changeData.new_attendees,
+            attendees: changeData.new_attendees ? [changeData.new_attendees] : [],
         };
     }
 

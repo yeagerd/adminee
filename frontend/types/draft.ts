@@ -5,12 +5,12 @@ export type DraftStatus = 'draft' | 'ready' | 'sent' | 'archived';
 export interface DraftMetadata {
     subject?: string;
     recipients?: string[];
-    cc?: string[] | string;
+    cc?: string[];
     bcc?: string[];
     startTime?: string | (() => string);
     endTime?: string | (() => string);
     location?: string;
-    attendees?: string[] | string;
+    attendees?: string[];
     title?: string;
     tags?: string[];
     priority?: 'low' | 'medium' | 'high';

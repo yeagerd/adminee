@@ -14,7 +14,7 @@ import { DraftData } from '@/components/chat-interface';
 
 function DashboardContent() {
     const { data: session, status } = useSession();
-    const { state: draftState, setCurrentDraft } = useDraftState();
+    const { state: draftState, setCurrentDraft, updateDraft, updateDraftMetadata } = useDraftState();
 
     const handleDraftReceived = (draftData: DraftData) => {
         if (session?.user?.email) {
@@ -63,7 +63,7 @@ function DashboardContent() {
                     </div>
                 </div>
             }
-            draft={<DraftPane draft={draftState.currentDraft} />}
+            draft={<DraftPane draft={draftState.currentDraft} onUpdate={updateDraft} onMetadataChange={updateDraftMetadata} />}
         />
     );
 }

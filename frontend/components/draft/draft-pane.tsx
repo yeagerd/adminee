@@ -1,27 +1,24 @@
 'use client';
 
-import { useDraftState } from '@/hooks/use-draft-state';
 import { cn } from '@/lib/utils';
-import { Draft, DraftType } from '@/types/draft';
+import { Draft, DraftMetadata, DraftType } from '@/types/draft';
 import { AIIndicator } from './ai-indicator';
 import { DraftActions } from './draft-actions';
 import { DraftEditor } from './draft-editor';
-import { DraftMetadata } from './draft-metadata';
+import { DraftMetadata as DraftMetadataComponent } from './draft-metadata';
 import { DraftTypeSwitcher } from './draft-type-switcher';
+import { useDraftState } from '@/hooks/use-draft-state';
 
 interface DraftPaneProps {
     className?: string;
     draft: Draft | null;
+    onUpdate: (updates: Partial<Draft>) => void;
+    onMetadataChange: (metadata: Partial<DraftMetadata>) => void;
     userId?: string;
 }
 
-export function DraftPane({ className, draft, userId }: DraftPaneProps) {
-    const {
-        state: { isLoading, error },
-        updateDraft,
-        updateDraftMetadata,
-        createNewDraft,
-    } = useDraftState();
+export function DraftPane({ className, draft, onUpdate, onMetadataChange, userId }: DraftPaneProps) {
+    const { createNewDraft } = useDraftState();
 
     const handleTypeChange = (type: DraftType) => {
         if (draft && draft.type !== type) {
@@ -50,19 +47,19 @@ export function DraftPane({ className, draft, userId }: DraftPaneProps) {
 
     const handleContentChange = (content: string) => {
         if (draft) {
-            updateDraft({ content });
+            onUpdate({ content });
         }
     };
 
-    const handleMetadataChange = (metadata: Partial<import('@/types/draft').DraftMetadata>) => {
+    const handleMetadataChange = (metadata: Partial<DraftMetadata>) => {
         if (draft) {
-            updateDraftMetadata(metadata);
+            onMetadataChange(metadata);
         }
     };
 
     const handleAutoSave = (content: string) => {
         if (draft) {
-            updateDraft({ content });
+            onUpdate({ content });
             // TODO: Implement actual auto-save to backend
             console.log('Auto-saving draft:', content);
         }
@@ -121,15 +118,8 @@ export function DraftPane({ className, draft, userId }: DraftPaneProps) {
                 </div>
             </div>
 
-            {/* Error Display */}
-            {error && (
-                <div className="p-4 bg-destructive/10 border-b border-destructive/20">
-                    <p className="text-sm text-destructive">{error}</p>
-                </div>
-            )}
-
             {/* Metadata */}
-            <DraftMetadata
+            <DraftMetadataComponent
                 draft={draft}
                 onUpdate={handleMetadataChange}
                 type={draft.type}
@@ -142,7 +132,7 @@ export function DraftPane({ className, draft, userId }: DraftPaneProps) {
                     content={draft.content}
                     onUpdate={handleContentChange}
                     onAutoSave={handleAutoSave}
-                    disabled={isLoading}
+                    disabled={false}
                 />
             </div>
 
