@@ -468,6 +468,9 @@ class PatchedFunctionCallingLLM(LoggingFunctionCallingLLM):
     astream_chat_with_tools.
     """
 
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+
     async def astream_chat_with_tools(
         self,
         tools: Sequence[BaseTool],
@@ -477,7 +480,7 @@ class PatchedFunctionCallingLLM(LoggingFunctionCallingLLM):
         allow_parallel_tool_calls: bool = True,
         tool_required: bool = False,
         **kwargs: Any,
-    ) -> AsyncGenerator[ChatResponse, None]:
+    ) -> ChatResponseAsyncGen:
         """
         Patched version of astream_chat_with_tools that correctly handles
         async generators.
@@ -491,8 +494,7 @@ class PatchedFunctionCallingLLM(LoggingFunctionCallingLLM):
             tool_required=tool_required,
             **kwargs,
         )
-        async for chunk in await self.astream_chat(**chat_kwargs):
-            yield chunk
+        return await self._llm.astream_chat(**chat_kwargs)
 
 
 def get_llm_manager() -> _LLMManager:
