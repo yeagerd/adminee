@@ -239,6 +239,58 @@ class TestIntegrationServiceCoverage(BaseUserManagementTest):
         assert integration.status == IntegrationStatus.ACTIVE
 
     @pytest.mark.asyncio
+    async def test_validate_status_sets_expired_with_expired_token_and_refresh_token(
+        self,
+    ):
+        """Test that status is set to EXPIRED when access token is expired and refresh token exists."""
+        from datetime import datetime, timedelta, timezone
+
+        integration = Integration(
+            id=1,
+            user_id=1,
+            provider=IntegrationProvider.MICROSOFT,
+            status=IntegrationStatus.ACTIVE,  # Should be corrected
+        )
+
+        mock_session = AsyncMock()
+        mock_session.add = MagicMock()
+
+        # Mock expired access token
+        class Token:
+            expires_at = datetime.now(timezone.utc) - timedelta(days=1)  # Expired
+
+        mock_access_token = Token()
+        mock_access_result = MagicMock()
+        mock_access_result.scalar_one_or_none.return_value = mock_access_token
+
+        # Mock valid refresh token
+        mock_refresh_token = Token()
+        mock_refresh_result = MagicMock()
+        mock_refresh_result.scalar_one_or_none.return_value = mock_refresh_token
+
+        # Mock session.execute to return different results for different queries
+        def mock_execute(query):
+            mock_session.execute.call_count += 1
+            if mock_session.execute.call_count == 1:
+                return mock_access_result
+            else:
+                return mock_refresh_result
+
+        mock_session.execute.side_effect = mock_execute
+        mock_session.execute.call_count = 0
+
+        result = (
+            await self.service._validate_and_correct_integration_status_with_session(
+                integration, mock_session
+            )
+        )
+
+        # Should correct to EXPIRED when access token is expired and refresh token exists
+        assert result == IntegrationStatus.EXPIRED
+        assert integration.status == IntegrationStatus.EXPIRED
+        assert integration.error_message == "Access token expired - refresh required"
+
+    @pytest.mark.asyncio
     async def test_disconnect_integration_sets_inactive_status(self):
         """Test that disconnect_integration properly sets INACTIVE status."""
         # This test would have caught the bug where disconnect_integration

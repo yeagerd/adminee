@@ -32,14 +32,18 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [filters, setFilters] = useState<Record<string, unknown>>({});
-    const { loading: integrationsLoading, activeProviders } = useIntegrations();
+    const { loading: integrationsLoading, activeProviders, hasExpiredButRefreshableTokens, integrations } = useIntegrations();
 
     useEffect(() => {
         // Only fetch when the tab is actually activated
         if (toolDataLoading) return;
         if (integrationsLoading) return;
-        if (!activeProviders || activeProviders.length === 0) {
-            setError('No active email integrations found. Please connect your email account first.');
+        if ((!activeProviders || activeProviders.length === 0)) {
+            if (hasExpiredButRefreshableTokens) {
+                setError('Your email integration token has expired and is being refreshed. Please wait or try reconnecting.');
+            } else {
+                setError('No active email integrations found. Please connect your email account first.');
+            }
             setThreads([]);
             setLoading(false);
             return;
@@ -69,7 +73,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
             }
         })();
         return () => { isMounted = false; };
-    }, [filters, activeProviders, integrationsLoading, toolDataLoading, activeTool]);
+    }, [filters, activeProviders, integrationsLoading, toolDataLoading, activeTool, hasExpiredButRefreshableTokens]);
 
     return (
         <div className="flex flex-col h-full">
@@ -88,6 +92,19 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                         {error.includes('No active email integrations') ? (
                             <div className="text-amber-600">
                                 <p className="mb-4">No active email integration found. Connect your Gmail or Microsoft Outlook to view your emails.</p>
+                                <a
+                                    href="/settings?page=integrations"
+                                    className="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 font-medium"
+                                >
+                                    <span>Go to Integrations</span>
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                    </svg>
+                                </a>
+                            </div>
+                        ) : error.includes('expired and is being refreshed') ? (
+                            <div className="text-amber-600">
+                                <p className="mb-4">Your email integration token has expired and is being refreshed. Please wait or try reconnecting.</p>
                                 <a
                                     href="/settings?page=integrations"
                                     className="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 font-medium"
