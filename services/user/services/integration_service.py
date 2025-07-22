@@ -1457,16 +1457,16 @@ class IntegrationService:
                 expires_at = expires_at.replace(tzinfo=timezone.utc)
 
             if expires_at <= datetime.now(timezone.utc):
-                # Token is expired but we have refresh token - should be ERROR until refreshed
-                if integration.status != IntegrationStatus.ERROR:
-                    integration.status = IntegrationStatus.ERROR
+                # Token is expired but we have refresh token - should be EXPIRED until refreshed
+                if integration.status != IntegrationStatus.EXPIRED:
+                    integration.status = IntegrationStatus.EXPIRED
                     integration.error_message = (
                         "Access token expired - refresh required"
                     )
                     integration.updated_at = datetime.now(timezone.utc)
                     session.add(integration)
                     await session.commit()  # Atomic commit for status correction
-                return IntegrationStatus.ERROR
+                return IntegrationStatus.EXPIRED
 
         # All checks passed - should be ACTIVE
         if integration.status != IntegrationStatus.ACTIVE:
