@@ -1,8 +1,9 @@
 """
 Unified calendar endpoints for the Office Service.
 
-Provides endpoints for reading calendar events across Google and Microsoft providers,
-with unified data models, caching, and parallel API calls for optimal performance.
+All user-facing endpoints extract user from the X-User-Id header (set by the gateway).
+No user_id is accepted in the path or query for user-facing endpoints.
+Internal/service endpoints, if any, should be under /internal and require API key auth.
 """
 
 import asyncio

@@ -1,3 +1,22 @@
+# Unified Authentication Patterns (Summary)
+
+- **User-facing endpoints:**
+  - Use NextAuth JWT authentication (user logs in via OAuth, receives JWT)
+  - JWT is attached as a Bearer token in the Authorization header for all API calls
+  - Endpoints use `/me` or header-based user extraction (no user_id in path/query)
+
+- **Service-to-service and background jobs:**
+  - Use API key authentication (API key in `X-API-Key` or `Authorization` header)
+  - Internal endpoints use `/internal` prefix and require API key
+  - API keys are stored in environment variables and must **never** be exposed to client-side code
+
+- **Environment variables:**
+  - `NEXTAUTH_SECRET`: Used to sign/validate JWTs (must match between frontend, gateway, and backend)
+  - `API_FRONTEND_USER_KEY`, `API_FRONTEND_CHAT_KEY`, `API_FRONTEND_OFFICE_KEY`: API keys for service-to-service auth (server-side only)
+  - `NEXT_PUBLIC_GATEWAY_URL`: Used by frontend to call the gateway
+
+---
+
 # Frontend Environment Setup
 
 This document describes the environment variables required for the frontend application.

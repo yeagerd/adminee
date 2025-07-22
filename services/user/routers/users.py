@@ -3,6 +3,10 @@ User profile management router for User Management Service.
 
 Implements CRUD operations for user profiles with authentication,
 authorization, and comprehensive error handling.
+
+# Endpoint Pattern Note:
+# - User-facing endpoints use /me and extract user from JWT/session (requires user authentication)
+# - Internal/service endpoints use /internal and require API key/service authentication
 """
 
 from datetime import datetime, timezone

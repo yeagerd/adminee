@@ -623,3 +623,32 @@ python -m pytest --durations=10 -q -n auto
 ## License
 
 See `LICENSE`
+
+## Unified Authentication Patterns
+
+- **User-facing endpoints:**
+  - Use NextAuth JWT authentication (user logs in via OAuth, receives JWT)
+  - JWT is attached as a Bearer token in the Authorization header for all API calls
+  - Gateway and backend services validate JWT and extract user context
+  - Endpoints use `/me` or header-based user extraction (no user_id in path/query)
+
+- **Service-to-service and background jobs:**
+  - Use API key authentication (API key in `X-API-Key` or `Authorization` header)
+  - Internal endpoints use `/internal` prefix and require API key
+  - API keys are stored in environment variables (never exposed to frontend)
+
+- **Environment variables:**
+  - `NEXTAUTH_SECRET`: Used to sign/validate JWTs (must match between frontend, gateway, and backend)
+  - `API_FRONTEND_USER_KEY`, `API_FRONTEND_CHAT_KEY`, `API_FRONTEND_OFFICE_KEY`: API keys for service-to-service auth
+  - `NEXT_PUBLIC_GATEWAY_URL`: Used by frontend to call the gateway
+
+- **Endpoint patterns:**
+  - `/me` endpoints for user-facing actions (require JWT)
+  - `/internal` endpoints for service-to-service (require API key)
+
+- **Key setup steps:**
+  - Set all required secrets and API keys in your environment (see .env.example and ENVIRONMENT_SETUP.md)
+  - Never expose API keys to client-side code
+  - Rotate secrets/keys as needed for security
+
+See `frontend/ENVIRONMENT_SETUP.md` and service READMEs for more details.
