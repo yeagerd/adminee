@@ -68,6 +68,8 @@ CREATE TABLE packages (
     recipient_address TEXT,
     shipper_name VARCHAR(255),
     package_description TEXT,
+    order_number VARCHAR(255), -- Order number from retailer (e.g., Amazon order ID)
+    tracking_link VARCHAR(500), -- Direct tracking URL from carrier or retailer
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
     archived_at TIMESTAMP,
@@ -170,6 +172,8 @@ POST   /api/tracking/webhook            - Webhook for carrier updates
       "recipient_name": "John Doe",
       "shipper_name": "Amazon",
       "package_description": "Electronics",
+      "order_number": "123-4567890-1234567",
+      "tracking_link": "https://www.ups.com/track?tracknum=1Z999AA1234567890",
       "last_updated": "2024-03-13T10:30:00Z",
       "events_count": 5,
       "labels": [
@@ -232,15 +236,27 @@ POST   /api/tracking/webhook            - Webhook for carrier updates
 const CARRIER_PATTERNS = {
   UPS: {
     subject: /ups.*ship|track.*ups/i,
-    tracking: /1Z[0-9A-Z]{16}/g
+    tracking: /1Z[0-9A-Z]{16}/g,
+    order_pattern: /order.*#?([A-Z0-9\-]+)/i,
+    tracking_link_pattern: /(https?:\/\/[^\s]*ups\.com[^\s]*)/i
   },
   FEDEX: {
     subject: /fedex.*ship|track.*fedex/i,
-    tracking: /\b[0-9]{12,14}\b/g
+    tracking: /\b[0-9]{12,14}\b/g,
+    order_pattern: /order.*#?([A-Z0-9\-]+)/i,
+    tracking_link_pattern: /(https?:\/\/[^\s]*fedex\.com[^\s]*)/i
   },
   USPS: {
     subject: /usps.*ship|postal.*track/i,
-    tracking: /\b[0-9]{20,22}\b/g
+    tracking: /\b[0-9]{20,22}\b/g,
+    order_pattern: /order.*#?([A-Z0-9\-]+)/i,
+    tracking_link_pattern: /(https?:\/\/[^\s]*usps\.com[^\s]*)/i
+  },
+  AMAZON: {
+    subject: /amazon.*ship|your.*order.*ship/i,
+    tracking: /1Z[0-9A-Z]{16}|\b[0-9]{12,14}\b|\b[0-9]{20,22}\b/g,
+    order_pattern: /order.*#([A-Z0-9\-]+)/i,
+    tracking_link_pattern: /(https?:\/\/[^\s]*amazon\.com[^\s]*track[^\s]*)/i
   }
 };
 ```
@@ -250,9 +266,10 @@ const CARRIER_PATTERNS = {
 2. Extract sender, subject, and body content
 3. Match against carrier patterns
 4. Extract tracking numbers using regex
-5. Parse shipping details (recipient, estimated delivery)
-6. Create or update package records
-7. Queue initial tracking status fetch
+5. Extract order numbers and tracking links using regex patterns
+6. Parse shipping details (recipient, estimated delivery)
+7. Create or update package records with order_number and tracking_link
+8. Queue initial tracking status fetch
 
 ### 6.2 Integration Points
 
@@ -628,6 +645,7 @@ const mockShippingEmail = {
     Tracking Number: 1Z999AA1234567890
     Carrier: UPS
     Estimated Delivery: March 15, 2024
+    Track your package: https://www.amazon.com/gp/track?tracking_id=1Z999AA1234567890
   `
 };
 ```
