@@ -40,7 +40,6 @@ from services.user.schemas.integration import (
     TokenRefreshResponse,
 )
 from services.user.schemas.user import (
-    EmailResolutionRequest,
     UserCreate,
     UserListResponse,
     UserResponse,
