@@ -130,6 +130,7 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
     const internalRef = useRef<HTMLDivElement>(null);
     const chatAreaRef = containerRef || internalRef;
     const [chatWidth, setChatWidth] = useState(600)
+    const streamControllerRef = useRef<AbortController | null>(null)
 
     // Track chat window width
     useEffect(() => {
@@ -160,21 +161,25 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
         scrollToBottom()
     }, [messages])
 
-    useEffect(() => {
-        const fetchChatHistory = async () => {
-            if (session) {
-                try {
-                    const threads = (await gatewayClient.getChatThreads()) as { thread_id: string; title: string; created_at: string }[]
-                    setChatHistory(threads)
-                } catch (error) {
-                    console.error("Failed to fetch chat history:", error)
-                }
+    const fetchChatHistory = async () => {
+        if (session) {
+            try {
+                const threads = (await gatewayClient.getChatThreads()) as { thread_id: string; title: string; created_at: string }[]
+                setChatHistory(threads)
+            } catch (error) {
+                console.error("Failed to fetch chat history:", error)
             }
         }
+    }
+
+    useEffect(() => {
         fetchChatHistory()
     }, [session])
 
     const handleNewChat = () => {
+        if (streamControllerRef.current) {
+            streamControllerRef.current.abort()
+        }
         setMessages(initialMessages)
         setCurrentThreadId(null)
     }
@@ -199,7 +204,7 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
         if (!session?.user?.email) {
             // Add message asking user to log in
             const loginMessage: Message = {
-                id: `client-${Date.now()}`,
+                id: self.crypto.randomUUID(),
                 content: "Please log in to use the chat functionality. You can sign in using the button in the top right corner.",
                 sender: "ai",
                 timestamp: new Date(),
@@ -211,7 +216,7 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
         if (input.trim()) {
             // Add user message
             const userMessage: Message = {
-                id: `client-${Date.now()}`,
+                id: self.crypto.randomUUID(),
                 content: input.trim(),
                 sender: "user",
                 timestamp: new Date(),
@@ -223,14 +228,15 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
 
             try {
                 if (enableStreaming) {
-                    // Streaming implementation using GatewayClient
+                    streamControllerRef.current = new AbortController()
                     const stream = await gatewayClient.chatStream(currentInput, currentThreadId ?? undefined)
                     const reader = stream.getReader()
                     const decoder = new TextDecoder()
+                    const placeholderId = self.crypto.randomUUID()
 
                     // Add AI message placeholder
                     const aiMessage: Message = {
-                        id: `server-placeholder-${Date.now()}`,
+                        id: placeholderId,
                         content: "",
                         sender: "ai",
                         timestamp: new Date(),
@@ -241,6 +247,7 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
                         const processStream = async () => {
                             let buffer = ""
                             let eventName: string | null = null
+                            let serverMessageId: string | null = null
                             while (true) {
                                 const { done, value } = await reader.read()
                                 if (done) break
@@ -258,6 +265,7 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
                                             try {
                                                 const data = JSON.parse(dataStr)
                                                 setCurrentThreadId(data.thread_id)
+                                                serverMessageId = data.message_id
                                             } catch (e) {
                                                 console.error("Failed to parse metadata:", e)
                                             }
@@ -283,12 +291,18 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
                                     }
                                 }
                             }
+                            if (serverMessageId) {
+                                setMessages((prev) => prev.map(m => m.id === placeholderId ? { ...m, id: serverMessageId! } : m))
+                            }
                         }
                         await processStream()
                     }
                 } else {
                     // Non-streaming implementation using GatewayClient
                     const data = await gatewayClient.chat(currentInput, currentThreadId ?? undefined) as ChatResponse
+                    if (!currentThreadId) {
+                        fetchChatHistory()
+                    }
                     setCurrentThreadId(data.thread_id)
 
                     // Extract the AI response from the backend response structure
@@ -298,7 +312,7 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
 
                     // Add AI response
                     const aiMessage: Message = {
-                        id: data.messages && data.messages.length > 0 ? data.messages[data.messages.length - 1].message_id : `error-${Date.now()}`,
+                        id: data.messages && data.messages.length > 0 ? data.messages[data.messages.length - 1].message_id : `error-${self.crypto.randomUUID()}`,
                         content: aiResponse,
                         sender: "ai",
                         timestamp: new Date(),
@@ -309,7 +323,7 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
                 console.error('Chat error:', error)
                 // Add error message
                 const errorMessage: Message = {
-                    id: `error-${Date.now()}`,
+                    id: `error-${self.crypto.randomUUID()}`,
                     content: "I'm sorry, there was an error processing your request. Please try again.",
                     sender: "ai",
                     timestamp: new Date(),
@@ -317,6 +331,7 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
                 setMessages((prev) => [...prev, errorMessage])
             } finally {
                 setIsLoading(false)
+                streamControllerRef.current = null
             }
         }
     }
