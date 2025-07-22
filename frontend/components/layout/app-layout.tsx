@@ -1,15 +1,16 @@
 import Navbar from "@/components/navbar";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { ReactNode } from "react";
+import React, { ReactElement, ReactNode, RefObject, useRef } from "react";
 
 interface AppLayoutProps {
     sidebar?: ReactNode;
     main: ReactNode;
-    draft?: ReactNode;
+    draft?: ReactElement<{ containerRef?: RefObject<HTMLDivElement> }>;
 }
 
 export function AppLayout({ sidebar, main, draft }: AppLayoutProps) {
+    const chatPaneRef = useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>;
     return (
         <div className="flex flex-col h-screen w-full bg-background">
             <Navbar />
@@ -29,8 +30,10 @@ export function AppLayout({ sidebar, main, draft }: AppLayoutProps) {
                             </ResizablePanel>
                             <ResizableHandle withHandle />
                             <ResizablePanel minSize={20} defaultSize={30} collapsible className="h-full border-l bg-card">
-                                <div className="h-full overflow-auto">
-                                    {draft || <div className="flex-1 flex items-center justify-center text-muted-foreground">Draft Pane</div>}
+                                <div className="h-full overflow-auto" ref={chatPaneRef}>
+                                    {draft
+                                        ? React.cloneElement(draft, { containerRef: chatPaneRef })
+                                        : <div className="flex-1 flex items-center justify-center text-muted-foreground">Draft Pane</div>}
                                 </div>
                             </ResizablePanel>
                         </ResizablePanelGroup>
