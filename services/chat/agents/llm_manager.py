@@ -462,6 +462,7 @@ class _LLMManager:
                 "default": False,
             }
 
+
 class PatchedFunctionCallingLLM(LoggingFunctionCallingLLM):
     """
     A patched version of LoggingFunctionCallingLLM that fixes a bug in
