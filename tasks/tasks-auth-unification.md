@@ -261,18 +261,18 @@ Below is a concrete mapping of current endpoints to their new standardized forms
 - **Current:** GET /users/id (API Key)
 - **New:** GET /internal/users/id (API Key)
 - **Tasks:**
-  - [ ] Add new GET /internal/users/id endpoint (API key only)
-  - [ ] Update BFF/gateway to use new endpoint
-  - [ ] Remove old GET /users/id endpoint
-  - [ ] Update tests, docs
+  - [x] Add new GET /internal/users/id endpoint (API key only)
+  - [x] Update BFF/gateway to use new endpoint
+  - [x] Remove old GET /users/id endpoint
+  - [x] Update tests, docs
 
 - **Current:** POST /users/ (API Key)
 - **New:** POST /internal/users/ (API Key)
 - **Tasks:**
-  - [ ] Add new POST /internal/users/ endpoint (API key only)
-  - [ ] Update BFF/gateway to use new endpoint
-  - [ ] Remove old POST /users/ endpoint
-  - [ ] Update tests, docs
+  - [x] Add new POST /internal/users/ endpoint (API key only)
+  - [x] Update BFF/gateway to use new endpoint
+  - [x] Remove old POST /users/ endpoint
+  - [x] Update tests, docs
 
 - **Current:** POST /internal/tokens/get (API Key) ✅
 - **Status:** Already correct - no changes needed
