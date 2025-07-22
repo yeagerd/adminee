@@ -9,7 +9,11 @@ from typing import Any, AsyncGenerator, Dict, Generator, Sequence, Union
 
 # noqa: F401 - get_llm_provider is present at runtime, linter is wrong
 from litellm.utils import get_llm_provider  # type: ignore
-from llama_index.core.base.llms.types import ChatResponse, CompletionResponse
+from llama_index.core.base.llms.types import (
+    ChatResponse,
+    ChatResponseAsyncGen,
+    CompletionResponse,
+)
 from llama_index.core.llms import ChatMessage, MessageRole
 from llama_index.core.llms.function_calling import FunctionCallingLLM
 from llama_index.core.tools import BaseTool
@@ -190,6 +194,7 @@ class FakeLLM(FunctionCallingLLM):
             "is_chat_model": True,
             "is_function_calling_model": True,
         }
+        self._prompt_logger = logging.getLogger(f"{__name__}.prompts")
         logger.warning("Using FakeLLM - no actual LLM calls are being made")
 
     @property
@@ -202,7 +207,7 @@ class FakeLLM(FunctionCallingLLM):
 
         # Create a simple object with the required attributes
         class SimpleMetadata:
-            def __init__(self):
+            def __init__(self) -> None:
                 self.model_name = "fake-llm"
                 self.is_chat_model = True
                 self.is_function_calling_model = True
@@ -213,7 +218,7 @@ class FakeLLM(FunctionCallingLLM):
 
     def _chat(
         self, messages: Sequence[Union[ChatMessage, Dict[str, Any]]], **kwargs: Any
-    ) -> ChatMessage:
+    ) -> ChatResponse:
         """Fake chat method that just echoes back the last user message."""
         from llama_index.core.llms import ChatMessage, MessageRole
 
@@ -236,9 +241,15 @@ class FakeLLM(FunctionCallingLLM):
             )
 
         response_text = f"[FAKE LLM RESPONSE] You said: {last_user_message}"
-        return ChatMessage(
+        chat_msg = ChatMessage(
             role=MessageRole.ASSISTANT,
             content=response_text,
+        )
+        return ChatResponse(
+            message=chat_msg,
+            delta=response_text,
+            raw={"model": "fake-model", "usage": {"total_tokens": 0}},
+            logprobs=None,
         )
 
     def _complete(self, prompt: str, **kwargs: Any) -> str:
@@ -313,44 +324,41 @@ class FakeLLM(FunctionCallingLLM):
     def complete(
         self, prompt: str, formatted: bool = False, **kwargs: Any
     ) -> CompletionResponse:
-        """Fake complete method that just echoes back the prompt."""
-        response_text = f"[FAKE LLM RESPONSE] You said: {prompt}"
-        return CompletionResponse(
-            text=response_text,
-            raw={"model": "fake-model", "usage": {"total_tokens": 0}},
-            logprobs=None,
-        )
+        self._prompt_logger.info(f"=== COMPLETE LLM CALL ===\nPrompt: {prompt}")
+        response = self._llm.complete(prompt, formatted=formatted, **kwargs)
+        self._prompt_logger.info(f"=== COMPLETE LLM RESPONSE ===\nResponse: {response}")
+        return response
 
     async def acomplete(
         self, prompt: str, formatted: bool = False, **kwargs: Any
     ) -> CompletionResponse:
-        """Async fake complete method that just echoes back the prompt."""
-        return self.complete(prompt, formatted=formatted, **kwargs)
+        self._prompt_logger.info(f"=== ACOMPLETE LLM CALL ===\nPrompt: {prompt}")
+        response = await self._llm.acomplete(prompt, formatted=formatted, **kwargs)
+        self._prompt_logger.info(
+            f"=== ACOMPLETE LLM RESPONSE ===\nResponse: {response}"
+        )
+        return response
 
     def stream_chat(self, messages: Sequence[ChatMessage], **kwargs: Any) -> Generator[ChatResponse, None, None]:
         """Fake stream chat method."""
         response = self.chat(messages, **kwargs)
         yield response
 
-    async def astream_chat(self, messages: Sequence[ChatMessage], **kwargs: Any) -> AsyncGenerator[ChatResponse, None]:
-        """Async fake stream chat method."""
-        response = await self.achat(messages, **kwargs)
-        yield response
+    async def astream_chat(  # type: ignore[override]
+        self, messages: Sequence[ChatMessage], **kwargs: Any
+    ) -> ChatResponseAsyncGen:
+        return await self._llm.astream_chat(messages, **kwargs)
 
     def stream_complete(
         self, prompt: str, formatted: bool = False, **kwargs: Any
     ) -> Generator[CompletionResponse, None, None]:
-        """Fake stream complete method."""
         yield self.complete(prompt, formatted=formatted, **kwargs)
 
     async def astream_complete(
         self, prompt: str, formatted: bool = False, **kwargs: Any
     ) -> AsyncGenerator[CompletionResponse, None]:
-        """Async fake stream complete method."""
-
-        async def gen():
+        async def gen() -> AsyncGenerator[CompletionResponse, None]:
             yield self.complete(prompt, formatted=formatted, **kwargs)
-
         return gen()
 
     async def astream_chat_with_tools(
@@ -363,11 +371,10 @@ class FakeLLM(FunctionCallingLLM):
         tool_required: bool = False,
         **kwargs: Any,
     ) -> AsyncGenerator[ChatResponse, None]:
-        async def gen():
+        async def gen() -> AsyncGenerator[ChatResponse, None]:
             messages = chat_history or []
             response = self.chat(messages, **kwargs)
             yield response
-
         return gen()
 
 
