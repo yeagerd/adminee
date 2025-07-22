@@ -7,6 +7,7 @@ authorization, and comprehensive error handling.
 # Endpoint Pattern Note:
 # - User-facing endpoints use /me and extract user from JWT/session (requires user authentication)
 # - Internal/service endpoints use /internal and require API key/service authentication
+# - /users/{user_id} endpoints are deprecated and removed; use /me instead
 """
 
 from datetime import datetime, timezone
@@ -15,7 +16,6 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, Path, Query
 
 from services.common.http_errors import (
-    AuthError,
     BrieflyAPIException,
     ErrorCode,
     NotFoundError,
@@ -42,12 +42,9 @@ from services.user.schemas.integration import (
 from services.user.schemas.user import (
     EmailResolutionRequest,
     UserCreate,
-    UserDeleteResponse,
     UserListResponse,
-    UserOnboardingUpdate,
     UserResponse,
     UserSearchRequest,
-    UserUpdate,
 )
 from services.user.services.audit_service import audit_logger
 from services.user.services.user_service import get_user_service
@@ -515,211 +512,6 @@ async def search_users(
     except Exception as e:
         logger.error(f"Unexpected error in user search: {e}")
         raise ServiceError(message="Failed to search users")
-
-
-@router.get(
-    "/{user_id}",
-    response_model=UserResponse,
-    summary="Get user profile",
-    description="Retrieve user profile information by user ID. Users can only access their own profile.",
-    responses={
-        200: {"description": "User profile retrieved successfully"},
-        401: {"description": "Authentication required"},
-        403: {"description": "Access denied - users can only access their own profile"},
-        404: {"description": "User not found"},
-    },
-)
-async def get_user_profile(
-    user_id: str = Path(..., description="User external auth ID"),
-    current_user_external_auth_id: str = Depends(get_current_user),
-) -> UserResponse:
-    """
-    Get user profile by external auth ID.
-
-    Users can only access their own profile. The user_id must match
-    the authenticated user's external auth ID.
-    """
-    try:
-        # Verify ownership - user can only access their own profile
-        if current_user_external_auth_id != user_id:
-            logger.warning(
-                f"User {current_user_external_auth_id} attempted to access profile of user {user_id}"
-            )
-            raise AuthError(
-                message="Access denied: You can only access your own profile"
-            )
-
-        # Get the user profile by external auth ID
-        user_profile = await get_user_service().get_user_profile_by_external_auth_id(
-            user_id
-        )
-
-        logger.info(f"Retrieved profile for user {user_id}")
-        return user_profile
-
-    except NotFoundError as e:
-        logger.warning(f"User not found: {e.message}")
-        raise e
-    except AuthError:
-        raise
-    except Exception as e:
-        logger.error(f"Unexpected error retrieving user profile {user_id}: {e}")
-        raise ServiceError(message="Failed to retrieve user profile")
-
-
-@router.put(
-    "/{user_id}",
-    response_model=UserResponse,
-    summary="Update user profile",
-    description="Update user profile information. Users can only update their own profile.",
-    responses={
-        200: {"description": "User profile updated successfully"},
-        401: {"description": "Authentication required"},
-        403: {"description": "Access denied - users can only update their own profile"},
-        404: {"description": "User not found"},
-        422: {"description": "Validation error in request data"},
-    },
-)
-async def update_user_profile(
-    user_data: UserUpdate,
-    user_id: str = Path(..., description="User external auth ID"),
-    current_user_external_auth_id: str = Depends(get_current_user),
-) -> UserResponse:
-    """
-    Update user profile.
-
-    Users can only update their own profile. Supports partial updates
-    - only provided fields will be updated.
-    """
-    try:
-        # Verify ownership - user can only update their own profile
-        if current_user_external_auth_id != user_id:
-            logger.warning(
-                f"User {current_user_external_auth_id} attempted to update profile of user {user_id}"
-            )
-            raise AuthError(
-                message="Access denied: You can only update your own profile"
-            )
-
-        updated_user = await get_user_service().update_user_by_external_auth_id(
-            user_id, user_data
-        )
-        user_response = UserResponse.from_orm(updated_user)
-
-        logger.info(f"Updated profile for user {user_id}")
-        return user_response
-
-    except NotFoundError as e:
-        logger.warning(f"User not found: {e.message}")
-        raise e
-    except Exception as e:
-        logger.error(f"Unexpected error updating user profile {user_id}: {e}")
-        raise ServiceError(message="Failed to update user profile")
-
-
-@router.delete(
-    "/{user_id}",
-    response_model=UserDeleteResponse,
-    summary="Delete user profile",
-    description="Soft delete user profile. Users can only delete their own profile.",
-    responses={
-        200: {"description": "User profile deleted successfully"},
-        401: {"description": "Authentication required"},
-        403: {"description": "Access denied - users can only delete their own profile"},
-        404: {"description": "User not found"},
-    },
-)
-async def delete_user_profile(
-    user_id: str = Path(..., description="User external auth ID"),
-    current_user_external_auth_id: str = Depends(get_current_user),
-) -> UserDeleteResponse:
-    """
-    Delete user profile (soft delete).
-
-    Users can only delete their own profile. This performs a soft delete
-    by setting the deleted_at timestamp.
-    """
-    try:
-        # Verify ownership - user can only delete their own profile
-        if current_user_external_auth_id != user_id:
-            logger.warning(
-                f"User {current_user_external_auth_id} attempted to delete profile of user {user_id}"
-            )
-            raise AuthError(
-                message="Access denied: You can only delete your own profile"
-            )
-
-        delete_response = await get_user_service().delete_user_by_external_auth_id(
-            user_id
-        )
-
-        logger.info(f"Deleted profile for user {user_id}")
-        return delete_response
-
-    except NotFoundError as e:
-        logger.warning(f"User not found: {e.message}")
-        raise e
-    except AuthError:
-        raise
-    except Exception as e:
-        logger.error(f"Unexpected error deleting user profile {user_id}: {e}")
-        raise ServiceError(message="Failed to delete user profile")
-
-
-@router.put(
-    "/{user_id}/onboarding",
-    response_model=UserResponse,
-    summary="Update user onboarding status",
-    description="Update user onboarding completion status and current step.",
-    responses={
-        200: {"description": "Onboarding status updated successfully"},
-        401: {"description": "Authentication required"},
-        403: {
-            "description": "Access denied - users can only update their own onboarding"
-        },
-        404: {"description": "User not found"},
-        422: {"description": "Validation error in onboarding data"},
-    },
-)
-async def update_user_onboarding(
-    onboarding_data: UserOnboardingUpdate,
-    user_id: str = Path(..., description="User external auth ID"),
-    current_user_external_auth_id: str = Depends(get_current_user),
-) -> UserResponse:
-    """
-    Update user onboarding status.
-
-    Users can only update their own onboarding status. This endpoint
-    is used to track user progress through the onboarding flow.
-    """
-    try:
-        # Verify ownership - user can only update their own onboarding
-        if current_user_external_auth_id != user_id:
-            logger.warning(
-                f"User {current_user_external_auth_id} attempted to update onboarding of user {user_id}"
-            )
-            raise AuthError(
-                message="Access denied: You can only update your own onboarding"
-            )
-
-        updated_user = (
-            await get_user_service().update_user_onboarding_by_external_auth_id(
-                user_id, onboarding_data
-            )
-        )
-        user_response = UserResponse.from_orm(updated_user)
-
-        logger.info(
-            f"Updated onboarding for user {user_id}: completed={onboarding_data.onboarding_completed}"
-        )
-        return user_response
-
-    except NotFoundError as e:
-        logger.warning(f"User not found: {e.message}")
-        raise e
-    except Exception as e:
-        logger.error(f"Unexpected error updating onboarding for user {user_id}: {e}")
-        raise ServiceError(message="Failed to update onboarding")
 
 
 @router.post(

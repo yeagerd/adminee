@@ -3,6 +3,10 @@ User preferences management router.
 
 Handles user preference retrieval, updates, and default restoration.
 Supports partial updates and preference validation.
+
+# Endpoint Pattern Note:
+# - User-facing endpoints use /me/preferences and extract user from JWT/session (requires user authentication)
+# - /users/{user_id}/preferences endpoints are deprecated and removed; use /me/preferences instead
 """
 
 from typing import Annotated
