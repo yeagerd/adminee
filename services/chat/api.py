@@ -1,31 +1,9 @@
 """
 Chat service API endpoints.
 
-This module implements the REST API for the chat service and demonstrates
-the conversion pattern between database models and API response models.
-
-Architectural Pattern - Database to API Model Conversion:
-This module shows how database models (Thread, Message) are converted to
-API response models (ThreadResponse, MessageResponse) to maintain clean
-separation of concerns.
-
-Key Conversion Examples:
-1. Thread (DB) -> ThreadResponse (API):
-   - int ID -> string ID for JSON compatibility
-   - datetime -> string for JSON serialization
-   - Exclude SQLAlchemy relationships
-
-2. Message (DB) -> MessageResponse (API):
-   - int ID -> string ID for JSON compatibility
-   - Add computed fields (llm_generated)
-   - datetime -> string for JSON serialization
-   - Exclude SQLAlchemy relationships
-
-This pattern ensures:
-- Type safety in database operations
-- JSON serialization compatibility in API responses
-- Independent evolution of database schema and API contracts
-- Clean separation between data persistence and API concerns
+All user-facing endpoints extract user from the X-User-Id header (set by the gateway).
+No user_id is accepted in the path or query for user-facing endpoints.
+Internal/service endpoints, if any, should be under /internal and require API key auth.
 """
 
 import json

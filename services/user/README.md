@@ -46,3 +46,15 @@ opentelemetry-instrument uvicorn services.user.main:app --reload --host 0.0.0.0 
 ```
 When you make a request to your local service, you will see trace data printed as JSON in your terminal.
 ---
+
+## API Endpoint Patterns
+
+- **User-facing endpoints:**
+  - Use `/me` (e.g., `/users/me`, `/users/me/preferences`)
+  - Require user authentication (JWT/session)
+  - Extract user from token, not from path/query
+
+- **Internal/service endpoints:**
+  - Use `/internal` prefix (e.g., `/internal/users/id`, `/internal/users/`)
+  - Require API key/service authentication
+  - Used for service-to-service and background job calls
