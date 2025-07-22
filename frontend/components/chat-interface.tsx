@@ -3,16 +3,22 @@
 import type React from "react"
 
 import { Button } from "@/components/ui/button"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useStreamingSetting } from "@/hooks/use-streaming-setting"
 import gatewayClient from "@/lib/gateway-client"
-import { Loader2, Send } from "lucide-react"
+import { History, Loader2, Plus, Send } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useEffect, useRef, useState } from "react"
 
 type Message = {
-    id: number
+    id: string
     content: string
     sender: "user" | "ai"
     timestamp: Date
@@ -77,7 +83,7 @@ interface ChatResponse {
 // Sample initial messages
 const initialMessages: Message[] = [
     {
-        id: 1,
+        id: "1",
         content:
             "Hello! I'm your calendar assistant. I can help you manage your schedule, draft emails, add tasks, and more. How can I help you today?",
         sender: "ai",
@@ -117,6 +123,8 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
     const [messages, setMessages] = useState<Message[]>(initialMessages)
     const [input, setInput] = useState("")
     const [isLoading, setIsLoading] = useState(false)
+    const [chatHistory, setChatHistory] = useState<{ thread_id: string; title: string; created_at: string }[]>([])
+    const [currentThreadId, setCurrentThreadId] = useState<string | null>(null)
     const { enableStreaming } = useStreamingSetting()
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const internalRef = useRef<HTMLDivElement>(null);
@@ -152,11 +160,46 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
         scrollToBottom()
     }, [messages])
 
+    useEffect(() => {
+        const fetchChatHistory = async () => {
+            if (session) {
+                try {
+                    const threads = await gatewayClient.getChatThreads()
+                    setChatHistory(threads)
+                } catch (error) {
+                    console.error("Failed to fetch chat history:", error)
+                }
+            }
+        }
+        fetchChatHistory()
+    }, [session])
+
+    const handleNewChat = () => {
+        setMessages(initialMessages)
+        setCurrentThreadId(null)
+    }
+
+    const handleLoadChat = async (threadId: string) => {
+        try {
+            const history = (await gatewayClient.getChatHistory(threadId)) as ChatResponse
+            const loadedMessages = history.messages.map((msg) => ({
+                id: msg.message_id,
+                content: msg.content,
+                sender: msg.llm_generated ? "ai" : "user",
+                timestamp: new Date(msg.created_at),
+            }))
+            setMessages(loadedMessages)
+            setCurrentThreadId(threadId)
+        } catch (error) {
+            console.error("Failed to load chat history:", error)
+        }
+    }
+
     const handleSendMessage = async () => {
         if (!session?.user?.email) {
             // Add message asking user to log in
             const loginMessage: Message = {
-                id: messages.length + 1,
+                id: (messages.length + 1).toString(),
                 content: "Please log in to use the chat functionality. You can sign in using the button in the top right corner.",
                 sender: "ai",
                 timestamp: new Date(),
@@ -168,7 +211,7 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
         if (input.trim()) {
             // Add user message
             const userMessage: Message = {
-                id: messages.length + 1,
+                id: (messages.length + 1).toString(),
                 content: input.trim(),
                 sender: "user",
                 timestamp: new Date(),
@@ -181,13 +224,13 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
             try {
                 if (enableStreaming) {
                     // Streaming implementation using GatewayClient
-                    const stream = await gatewayClient.chatStream(currentInput)
+                    const stream = await gatewayClient.chatStream(currentInput, currentThreadId)
                     const reader = stream.getReader()
                     const decoder = new TextDecoder()
 
                     // Add AI message placeholder
                     const aiMessage: Message = {
-                        id: messages.length + 2,
+                        id: (messages.length + 2).toString(),
                         content: "",
                         sender: "ai",
                         timestamp: new Date(),
@@ -212,7 +255,8 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
                     }
                 } else {
                     // Non-streaming implementation using GatewayClient
-                    const data = await gatewayClient.chat(currentInput) as ChatResponse
+                    const data = await gatewayClient.chat(currentInput, currentThreadId) as ChatResponse
+                    setCurrentThreadId(data.thread_id)
 
                     // Extract the AI response from the backend response structure
                     const aiResponse = data.messages && data.messages.length > 0
@@ -221,7 +265,7 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
 
                     // Add AI response
                     const aiMessage: Message = {
-                        id: messages.length + 2,
+                        id: (messages.length + 2).toString(),
                         content: aiResponse,
                         sender: "ai",
                         timestamp: new Date(),
@@ -232,7 +276,7 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
                 console.error('Chat error:', error)
                 // Add error message
                 const errorMessage: Message = {
-                    id: messages.length + 2,
+                    id: (messages.length + 2).toString(),
                     content: "I'm sorry, there was an error processing your request. Please try again.",
                     sender: "ai",
                     timestamp: new Date(),
@@ -253,6 +297,28 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
 
     return (
         <div className="flex flex-col h-full" ref={chatAreaRef}>
+            <div className="flex items-center justify-between p-4 border-b">
+                <h2 className="text-lg font-semibold">Chat</h2>
+                <div className="flex gap-2">
+                    <Button variant="ghost" size="icon" onClick={handleNewChat}>
+                        <Plus className="h-5 w-5" />
+                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                                <History className="h-5 w-5" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            {chatHistory.map((chat) => (
+                                <DropdownMenuItem key={chat.thread_id} onClick={() => handleLoadChat(chat.thread_id)}>
+                                    {chat.title || `Chat from ${new Date(chat.created_at).toLocaleString()}`}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+            </div>
             <ScrollArea className="flex-1 p-4">
                 <div className="flex flex-col space-y-4 w-full">
                     {messages.map((message) => (

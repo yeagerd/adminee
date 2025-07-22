@@ -119,6 +119,14 @@ export class GatewayClient {
         return response.body!;
     }
 
+    async getChatHistory(threadId: string) {
+        return this.request(`/api/chat/history/${threadId}`);
+    }
+
+    async getChatThreads() {
+        return this.request('/api/chat/threads');
+    }
+
     // User Service
     async getCurrentUser() {
         return this.request('/api/users/me');
