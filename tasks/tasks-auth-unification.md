@@ -151,8 +151,15 @@ The goal is to ensure secure, scalable, and maintainable authentication for both
 ### Phase 5: Cleanup and Documentation (Depends on all previous phases)
 
 #### 4.7. Remove Old Endpoints and Cleanup
-- [ ] **HIGH PRIORITY**: Remove old `/users/id` endpoint (after frontend/BFF updated)
-- [ ] **HIGH PRIORITY**: Remove old `/users/` (POST) endpoint (after frontend/BFF updated)
+- [x] **HIGH PRIORITY**: Remove old /users/{user_id} endpoints and update all user-facing code to use /me endpoints
+    - All user-facing endpoints now use /me or header-based user extraction
+    - No user_id in query params or paths for user, chat, or office endpoints
+- [x] **HIGH PRIORITY**: Remove old /chat?user_id=... and /threads?user_id=... endpoints and update all code to use header-based user extraction
+    - All chat endpoints now use header-based user extraction
+    - No user_id in query params or paths
+- [x] **HIGH PRIORITY**: Remove old /calendar/events?user_id=... and /email/messages?user_id=... endpoints and update all code to use header-based user extraction
+    - All office endpoints now use header-based user extraction
+    - No user_id in query params or paths
 - [ ] **HIGH PRIORITY**: Remove old user-facing endpoints with user_id in URL (after frontend updated)
 - [ ] **HIGH PRIORITY**: Clean up any deprecated auth dependencies
 - [ ] **MEDIUM PRIORITY**: Update OpenAPI docs to clearly distinguish user vs. internal endpoints
