@@ -1,4 +1,4 @@
-import { ApiResponse, CalendarEventsResponse, CreateCalendarEventRequest, GetEmailsResponse } from '@/types/office-service';
+import { ApiResponse, CalendarEventsResponse, GetEmailsResponse } from '@/types/office-service';
 import { getSession } from 'next-auth/react';
 import { IntegrationStatus } from './constants';
 import { env, validateClientEnv } from './env';
@@ -217,13 +217,6 @@ export class GatewayClient {
         params.append('time_zone', time_zone);
 
         return this.request<ApiResponse<CalendarEventsResponse>>(`/api/calendar/events?${params.toString()}`);
-    }
-
-    async createCalendarEvent(user_id: string, eventData: CreateCalendarEventRequest) {
-        return this.request<ApiResponse>(`/api/calendar/events?user_id=${user_id}`, {
-            method: 'POST',
-            body: eventData,
-        });
     }
 
     async getEmails(
