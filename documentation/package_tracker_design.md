@@ -10,7 +10,7 @@ This document outlines the technical design for adding package shipment tracking
 - **Email Parsing**: Automatically detect and parse shipping confirmation emails from major carriers (UPS, FedEx, USPS, DHL, Amazon)
 - **Tracking Integration**: Fetch real-time tracking status from carrier APIs
 - **User Interface**: Display consolidated package tracking dashboard
-- **Notifications**: Alert users about delivery updates and status changes
+- **Labels**: Allow users to create custom labels and attach them to packages for organization
 - **Manual Entry**: Allow users to manually add tracking numbers
 - **Archive Management**: Automatically archive delivered packages after 30 days
 
@@ -89,6 +89,29 @@ CREATE TABLE tracking_events (
 );
 ```
 
+#### labels
+```sql
+CREATE TABLE labels (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    name VARCHAR(100) NOT NULL,
+    color VARCHAR(7) DEFAULT '#3B82F6', -- Hex color code
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(user_id, name)
+);
+```
+
+#### package_labels
+```sql
+CREATE TABLE package_labels (
+    id SERIAL PRIMARY KEY,
+    package_id INTEGER REFERENCES packages(id),
+    label_id INTEGER REFERENCES labels(id),
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(package_id, label_id)
+);
+```
+
 #### carrier_configs
 ```sql
 CREATE TABLE carrier_configs (
@@ -108,12 +131,22 @@ CREATE TABLE carrier_configs (
 
 #### Package Management
 ```
-GET    /api/packages                    - List user's packages
+GET    /api/packages                    - List user's packages (supports label filtering)
 POST   /api/packages                    - Add package manually
 GET    /api/packages/:id                - Get package details
 PUT    /api/packages/:id                - Update package
 DELETE /api/packages/:id                - Delete package
 POST   /api/packages/:id/refresh        - Force refresh tracking
+POST   /api/packages/:id/labels         - Add label to package
+DELETE /api/packages/:id/labels/:labelId - Remove label from package
+```
+
+#### Label Management
+```
+GET    /api/labels                      - List user's labels
+POST   /api/labels                      - Create new label
+PUT    /api/labels/:id                  - Update label
+DELETE /api/labels/:id                  - Delete label
 ```
 
 #### Tracking
@@ -138,13 +171,54 @@ POST   /api/tracking/webhook            - Webhook for carrier updates
       "shipper_name": "Amazon",
       "package_description": "Electronics",
       "last_updated": "2024-03-13T10:30:00Z",
-      "events_count": 5
+      "events_count": 5,
+      "labels": [
+        {
+          "id": 1,
+          "name": "project_x",
+          "color": "#3B82F6"
+        },
+        {
+          "id": 3,
+          "name": "personal",
+          "color": "#10B981"
+        }
+      ]
     }
   ],
   "pagination": {
     "page": 1,
     "per_page": 20,
     "total": 45
+  }
+}
+```
+
+#### POST /api/labels
+```json
+// Request
+{
+  "name": "project_x",
+  "color": "#3B82F6"
+}
+
+// Response
+{
+  "id": 1,
+  "name": "project_x",
+  "color": "#3B82F6",
+  "created_at": "2024-03-13T10:30:00Z"
+}
+```
+
+#### GET /api/packages?labels=project_x,urgent
+```json
+{
+  "data": [
+    // Only packages with "project_x" OR "urgent" labels
+  ],
+  "filters": {
+    "labels": ["project_x", "urgent"]
   }
 }
 ```
@@ -316,7 +390,10 @@ src/components/packages/
 ├── PackageDetails.jsx
 ├── TrackingTimeline.jsx
 ├── AddPackageModal.jsx
-└── PackageFilters.jsx
+├── PackageFilters.jsx
+├── LabelManager.jsx
+├── LabelPicker.jsx
+└── LabelChip.jsx
 ```
 
 ### 9.2 State Management
@@ -328,7 +405,11 @@ const packagesSlice = createSlice({
   initialState: {
     items: [],
     loading: false,
-    filters: { status: 'all', carrier: 'all' }
+    filters: { 
+      status: 'all', 
+      carrier: 'all',
+      labels: [] 
+    }
   },
   reducers: {
     setPackages: (state, action) => {
@@ -339,12 +420,161 @@ const packagesSlice = createSlice({
       if (index >= 0) {
         state.items[index] = action.payload;
       }
+    },
+    setLabelFilter: (state, action) => {
+      state.filters.labels = action.payload;
+    }
+  }
+});
+
+// Labels slice
+const labelsSlice = createSlice({
+  name: 'labels',
+  initialState: {
+    items: [],
+    loading: false
+  },
+  reducers: {
+    setLabels: (state, action) => {
+      state.items = action.payload;
+    },
+    addLabel: (state, action) => {
+      state.items.push(action.payload);
+    },
+    updateLabel: (state, action) => {
+      const index = state.items.findIndex(l => l.id === action.payload.id);
+      if (index >= 0) {
+        state.items[index] = action.payload;
+      }
+    },
+    removeLabel: (state, action) => {
+      state.items = state.items.filter(l => l.id !== action.payload);
     }
   }
 });
 ```
 
-### 9.3 Real-time Updates
+### 9.3 Label Components
+
+```javascript
+// LabelChip component for displaying labels
+const LabelChip = ({ label, onRemove, removable = false }) => {
+  return (
+    <span 
+      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+      style={{ backgroundColor: label.color + '20', color: label.color }}
+    >
+      {label.name}
+      {removable && (
+        <button
+          onClick={() => onRemove(label.id)}
+          className="ml-1 hover:bg-gray-200 rounded-full p-0.5"
+        >
+          ×
+        </button>
+      )}
+    </span>
+  );
+};
+
+// PackageFilters component with label filtering
+const PackageFilters = ({ filters, onFiltersChange, labels }) => {
+  return (
+    <div className="flex gap-4 mb-4">
+      <select 
+        value={filters.status} 
+        onChange={(e) => onFiltersChange({...filters, status: e.target.value})}
+      >
+        <option value="all">All Statuses</option>
+        <option value="in_transit">In Transit</option>
+        <option value="delivered">Delivered</option>
+      </select>
+      
+      <select 
+        value={filters.carrier}
+        onChange={(e) => onFiltersChange({...filters, carrier: e.target.value})}
+      >
+        <option value="all">All Carriers</option>
+        <option value="UPS">UPS</option>
+        <option value="FEDEX">FedEx</option>
+        <option value="USPS">USPS</option>
+      </select>
+      
+      <div className="flex-1">
+        <LabelPicker
+          selectedLabels={filters.labels}
+          availableLabels={labels}
+          onChange={(selectedLabels) => 
+            onFiltersChange({...filters, labels: selectedLabels})
+          }
+          placeholder="Filter by labels..."
+        />
+      </div>
+    </div>
+  );
+};
+
+// LabelPicker for selecting multiple labels
+const LabelPicker = ({ selectedLabels, availableLabels, onChange, placeholder }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  const toggleLabel = (labelId) => {
+    const newSelection = selectedLabels.includes(labelId)
+      ? selectedLabels.filter(id => id !== labelId)
+      : [...selectedLabels, labelId];
+    onChange(newSelection);
+  };
+  
+  return (
+    <div className="relative">
+      <div 
+        className="border rounded-md p-2 cursor-pointer min-h-[40px]"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        {selectedLabels.length === 0 ? (
+          <span className="text-gray-400">{placeholder}</span>
+        ) : (
+          <div className="flex flex-wrap gap-1">
+            {selectedLabels.map(labelId => {
+              const label = availableLabels.find(l => l.id === labelId);
+              return label ? (
+                <LabelChip 
+                  key={labelId} 
+                  label={label} 
+                  onRemove={() => toggleLabel(labelId)}
+                  removable
+                />
+              ) : null;
+            })}
+          </div>
+        )}
+      </div>
+      
+      {isOpen && (
+        <div className="absolute z-10 w-full bg-white border rounded-md shadow-lg mt-1">
+          {availableLabels.map(label => (
+            <div
+              key={label.id}
+              className="p-2 hover:bg-gray-100 cursor-pointer flex items-center"
+              onClick={() => toggleLabel(label.id)}
+            >
+              <input
+                type="checkbox"
+                checked={selectedLabels.includes(label.id)}
+                readOnly
+                className="mr-2"
+              />
+              <LabelChip label={label} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+```
+
+### 9.4 Real-time Updates
 
 ```javascript
 // WebSocket integration for live updates
@@ -355,7 +585,6 @@ useEffect(() => {
     const update = JSON.parse(event.data);
     if (update.type === 'package_status_changed') {
       dispatch(updatePackage(update.package));
-      showNotification(`Package ${update.package.tracking_number} status updated`);
     }
   };
   
@@ -432,6 +661,9 @@ logger.info('Package created from email', {
 CREATE INDEX idx_packages_user_status ON packages(user_id, status);
 CREATE INDEX idx_packages_tracking ON packages(tracking_number, carrier);
 CREATE INDEX idx_tracking_events_package_date ON tracking_events(package_id, event_date);
+CREATE INDEX idx_labels_user ON labels(user_id);
+CREATE INDEX idx_package_labels_package ON package_labels(package_id);
+CREATE INDEX idx_package_labels_label ON package_labels(label_id);
 ```
 
 ### 13.2 Feature Rollout
@@ -450,6 +682,7 @@ CREATE INDEX idx_tracking_events_package_date ON tracking_events(package_id, eve
 - Integration with calendar for delivery scheduling
 - Package sharing with family members
 - International shipping support
+- Label templates and auto-labeling rules
 
 ### 14.2 Machine Learning Opportunities
 - Improved email parsing accuracy using ML models
