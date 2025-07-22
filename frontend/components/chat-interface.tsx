@@ -90,14 +90,13 @@ function isUnbreakableString(str: string, threshold: number) {
 }
 
 function ChatBubble({ content, sender, windowWidth }: { content: React.ReactNode, sender: "user" | "ai", windowWidth: number }) {
+    if (typeof content !== 'string') return null;
     // Dynamic threshold scales with window width
     const threshold = Math.floor(windowWidth / 15);
     let breakClass = "";
-    if (typeof content === 'string') {
-        const words = content.split(/\s+/);
-        if (words.some(word => isUnbreakableString(word, threshold))) {
-            breakClass = "break-all";
-        }
+    const words = content.split(/\s+/);
+    if (words.some(word => isUnbreakableString(word, threshold))) {
+        breakClass = "break-all";
     }
     console.log('Chat bubble word break threshold:', threshold, 'breakClass:', breakClass);
     return (
