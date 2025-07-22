@@ -199,7 +199,7 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
         if (!session?.user?.email) {
             // Add message asking user to log in
             const loginMessage: Message = {
-                id: (messages.length + 1).toString(),
+                id: `client-${Date.now()}`,
                 content: "Please log in to use the chat functionality. You can sign in using the button in the top right corner.",
                 sender: "ai",
                 timestamp: new Date(),
@@ -211,7 +211,7 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
         if (input.trim()) {
             // Add user message
             const userMessage: Message = {
-                id: (messages.length + 1).toString(),
+                id: `client-${Date.now()}`,
                 content: input.trim(),
                 sender: "user",
                 timestamp: new Date(),
@@ -230,7 +230,7 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
 
                     // Add AI message placeholder
                     const aiMessage: Message = {
-                        id: (messages.length + 2).toString(),
+                        id: `server-placeholder-${Date.now()}`,
                         content: "",
                         sender: "ai",
                         timestamp: new Date(),
@@ -240,6 +240,7 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
                     if (reader) {
                         const processStream = async () => {
                             let buffer = ""
+                            let eventName: string | null = null
                             while (true) {
                                 const { done, value } = await reader.read()
                                 if (done) break
@@ -249,24 +250,35 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
                                 buffer = lines.pop() ?? ""
 
                                 for (const line of lines) {
-                                    if (line.startsWith("event: metadata")) {
-                                        const dataLine = lines.find(l => l.startsWith("data:"))
-                                        if (dataLine) {
-                                            const data = JSON.parse(dataLine.substring(5))
-                                            setCurrentThreadId(data.thread_id)
-                                        }
+                                    if (line.startsWith("event:")) {
+                                        eventName = line.substring(6).trim()
                                     } else if (line.startsWith("data:")) {
-                                        const data = JSON.parse(line.substring(5))
-                                        if (data.delta) {
-                                            setMessages((prev) => {
-                                                const newMessages = [...prev]
-                                                const lastMessage = newMessages[newMessages.length - 1]
-                                                if (lastMessage.sender === "ai") {
-                                                    lastMessage.content += data.delta
+                                        const dataStr = line.substring(5).trim()
+                                        if (eventName === "metadata") {
+                                            try {
+                                                const data = JSON.parse(dataStr)
+                                                setCurrentThreadId(data.thread_id)
+                                            } catch (e) {
+                                                console.error("Failed to parse metadata:", e)
+                                            }
+                                        } else if (eventName === "chunk") {
+                                            try {
+                                                const data = JSON.parse(dataStr)
+                                                if (data.delta) {
+                                                    setMessages((prev) => {
+                                                        const newMessages = [...prev]
+                                                        const lastMessage = newMessages[newMessages.length - 1]
+                                                        if (lastMessage.sender === "ai") {
+                                                            lastMessage.content += data.delta
+                                                        }
+                                                        return newMessages
+                                                    })
                                                 }
-                                                return newMessages
-                                            })
+                                            } catch (e) {
+                                                console.error("Failed to parse chunk:", e)
+                                            }
                                         }
+                                        eventName = null // Reset event name
                                     }
                                 }
                             }
@@ -285,7 +297,7 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
 
                     // Add AI response
                     const aiMessage: Message = {
-                        id: (messages.length + 2).toString(),
+                        id: data.messages[data.messages.length - 1].message_id,
                         content: aiResponse,
                         sender: "ai",
                         timestamp: new Date(),
@@ -296,7 +308,7 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
                 console.error('Chat error:', error)
                 // Add error message
                 const errorMessage: Message = {
-                    id: (messages.length + 2).toString(),
+                    id: `error-${Date.now()}`,
                     content: "I'm sorry, there was an error processing your request. Please try again.",
                     sender: "ai",
                     timestamp: new Date(),
