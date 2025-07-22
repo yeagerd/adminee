@@ -32,7 +32,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [filters, setFilters] = useState<Record<string, unknown>>({});
-    const { loading: integrationsLoading, activeProviders, hasExpiredButRefreshableTokens, integrations } = useIntegrations();
+    const { loading: integrationsLoading, activeProviders, hasExpiredButRefreshableTokens } = useIntegrations();
 
     useEffect(() => {
         // Only fetch when the tab is actually activated
