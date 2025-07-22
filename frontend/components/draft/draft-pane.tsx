@@ -1,7 +1,8 @@
 'use client';
 
+import { useDraftState } from '@/hooks/use-draft-state';
 import { cn } from '@/lib/utils';
-import { Draft } from '@/types/draft';
+import { Draft, DraftType } from '@/types/draft';
 import { AIIndicator } from './ai-indicator';
 import { DraftActions } from './draft-actions';
 import { DraftEditor } from './draft-editor';
@@ -11,27 +12,60 @@ import { DraftTypeSwitcher } from './draft-type-switcher';
 interface DraftPaneProps {
     className?: string;
     draft: Draft | null;
+    userId?: string;
 }
 
-export function DraftPane({ className, draft }: DraftPaneProps) {
-    const handleTypeChange = () => {
-        // TODO: Implement type change logic
+export function DraftPane({ className, draft, userId }: DraftPaneProps) {
+    const {
+        state: { isLoading, error },
+        updateDraft,
+        updateDraftMetadata,
+        createNewDraft,
+    } = useDraftState();
+
+    const handleTypeChange = (type: DraftType) => {
+        if (draft && draft.type !== type) {
+            // If there's unsaved content, ask for confirmation
+            if (draft.content.trim() || Object.keys(draft.metadata).length > 0) {
+                if (confirm('You have unsaved changes. Are you sure you want to switch draft types?')) {
+                    if (userId) createNewDraft(type, userId);
+                }
+            } else {
+                if (userId) createNewDraft(type, userId);
+            }
+        } else if (!draft) {
+            if (userId) createNewDraft(type, userId);
+        }
     };
 
-    const handleActionComplete = () => {
-        // TODO: Implement action complete logic
+    const handleActionComplete = (action: string, success: boolean) => {
+        if (success) {
+            console.log(`${action} completed successfully`);
+            // TODO: Handle successful actions (e.g., close draft, show success message)
+        } else {
+            console.error(`${action} failed`);
+            // TODO: Handle failed actions (e.g., show error message)
+        }
     };
 
-    const handleContentChange = () => {
-        // TODO: Implement content change logic
+    const handleContentChange = (content: string) => {
+        if (draft) {
+            updateDraft({ content });
+        }
     };
 
-    const handleMetadataChange = () => {
-        // TODO: Implement metadata change logic
+    const handleMetadataChange = (metadata: Partial<import('@/types/draft').DraftMetadata>) => {
+        if (draft) {
+            updateDraftMetadata(metadata);
+        }
     };
 
-    const handleAutoSave = () => {
-        // TODO: Implement auto-save logic
+    const handleAutoSave = (content: string) => {
+        if (draft) {
+            updateDraft({ content });
+            // TODO: Implement actual auto-save to backend
+            console.log('Auto-saving draft:', content);
+        }
     };
 
     if (!draft) {
@@ -87,6 +121,13 @@ export function DraftPane({ className, draft }: DraftPaneProps) {
                 </div>
             </div>
 
+            {/* Error Display */}
+            {error && (
+                <div className="p-4 bg-destructive/10 border-b border-destructive/20">
+                    <p className="text-sm text-destructive">{error}</p>
+                </div>
+            )}
+
             {/* Metadata */}
             <DraftMetadata
                 draft={draft}
@@ -101,7 +142,7 @@ export function DraftPane({ className, draft }: DraftPaneProps) {
                     content={draft.content}
                     onUpdate={handleContentChange}
                     onAutoSave={handleAutoSave}
-                    disabled={false}
+                    disabled={isLoading}
                 />
             </div>
 

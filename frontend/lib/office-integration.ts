@@ -104,6 +104,8 @@ export class OfficeIntegrationService {
                 });
 
             case 'calendar':
+            case 'calendar_event':
+            case 'calendar_change':
                 return this.createCalendarEvent({
                     title: draft.metadata.title || 'New Event',
                     startTime: typeof draft.metadata.startTime === 'function' ? draft.metadata.startTime() : draft.metadata.startTime || new Date().toISOString(),

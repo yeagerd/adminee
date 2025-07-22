@@ -167,6 +167,8 @@ export function DraftMetadata({ draft, onUpdate, type }: DraftMetadataProps) {
             case 'email':
                 return renderEmailMetadata();
             case 'calendar':
+            case 'calendar_event':
+            case 'calendar_change':
                 return renderCalendarMetadata();
             case 'document':
                 return renderDocumentMetadata();
