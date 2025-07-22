@@ -97,7 +97,7 @@ export class OfficeIntegrationService {
             case 'email':
                 return this.sendEmail({
                     to: draft.metadata.recipients || [],
-                    cc: draft.metadata.cc,
+                    cc: Array.isArray(draft.metadata.cc) ? draft.metadata.cc : (draft.metadata.cc ? [draft.metadata.cc] : []),
                     bcc: draft.metadata.bcc,
                     subject: draft.metadata.subject || 'No Subject',
                     body: draft.content,
@@ -110,7 +110,7 @@ export class OfficeIntegrationService {
                     endTime: typeof draft.metadata.endTime === 'function' ? draft.metadata.endTime() : draft.metadata.endTime || new Date(Date.now() + 3600000).toISOString(),
                     location: draft.metadata.location,
                     description: draft.content,
-                    attendees: draft.metadata.attendees,
+                    attendees: Array.isArray(draft.metadata.attendees) ? draft.metadata.attendees : (draft.metadata.attendees ? [draft.metadata.attendees] : []),
                 });
 
             case 'document':

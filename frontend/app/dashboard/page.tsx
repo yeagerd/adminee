@@ -17,8 +17,8 @@ function DashboardContent() {
     const { state: draftState, setCurrentDraft } = useDraftState();
 
     const handleDraftReceived = (draftData: DraftData) => {
-        if (session?.user?.id) {
-            const newDraft = convertDraftDataToDraft(draftData, session.user.id);
+        if (session?.user?.email) {
+            const newDraft = convertDraftDataToDraft(draftData, session.user.email);
             setCurrentDraft(newDraft);
         }
     };

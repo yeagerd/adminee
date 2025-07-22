@@ -1,16 +1,16 @@
-export type DraftType = 'email' | 'calendar' | 'document';
+export type DraftType = 'email' | 'calendar' | 'document' | 'calendar_event' | 'calendar_change';
 
 export type DraftStatus = 'draft' | 'ready' | 'sent' | 'archived';
 
 export interface DraftMetadata {
     subject?: string;
     recipients?: string[];
-    cc?: string[];
+    cc?: string[] | string;
     bcc?: string[];
     startTime?: string | (() => string);
     endTime?: string | (() => string);
     location?: string;
-    attendees?: string[];
+    attendees?: string[] | string;
     title?: string;
     tags?: string[];
     priority?: 'low' | 'medium' | 'high';

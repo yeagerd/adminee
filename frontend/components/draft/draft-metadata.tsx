@@ -38,7 +38,7 @@ export function DraftMetadata({ draft, onUpdate, type }: DraftMetadataProps) {
                 <Label htmlFor="cc">CC</Label>
                 <Input
                     id="cc"
-                    value={draft.metadata.cc?.join(', ') || ''}
+                    value={Array.isArray(draft.metadata.cc) ? draft.metadata.cc.join(', ') : draft.metadata.cc || ''}
                     onChange={(e) => handleMetadataChange('cc', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
                     placeholder="cc@example.com"
                     className="w-full"
@@ -110,7 +110,7 @@ export function DraftMetadata({ draft, onUpdate, type }: DraftMetadataProps) {
                 <Label htmlFor="attendees">Attendees</Label>
                 <Input
                     id="attendees"
-                    value={draft.metadata.attendees?.join(', ') || ''}
+                    value={Array.isArray(draft.metadata.attendees) ? draft.metadata.attendees.join(', ') : draft.metadata.attendees || ''}
                     onChange={(e) => handleMetadataChange('attendees', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
                     placeholder="attendee@example.com, another@example.com"
                     className="w-full"
