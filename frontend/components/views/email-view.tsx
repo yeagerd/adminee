@@ -11,8 +11,8 @@ const OpenDraftPaneButton: React.FC = () => {
     const { createNewDraft } = useDraftState();
     const handleClick = async () => {
         const session = await getSession();
-        const userId = session?.user?.id || 'anonymous';
-        createNewDraft('email', userId);
+        const userId = session?.user?.id;
+        if (userId) createNewDraft('email', userId);
         // Optionally, scroll to or focus the draft pane if needed
     };
     return (

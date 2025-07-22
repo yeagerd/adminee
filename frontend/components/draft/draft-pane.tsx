@@ -27,13 +27,13 @@ export function DraftPane({ className, userId }: DraftPaneProps) {
             // If there's unsaved content, ask for confirmation
             if (currentDraft.content.trim() || Object.keys(currentDraft.metadata).length > 0) {
                 if (confirm('You have unsaved changes. Are you sure you want to switch draft types?')) {
-                    createNewDraft(type, userId || 'anonymous');
+                    if (userId) createNewDraft(type, userId);
                 }
             } else {
-                createNewDraft(type, userId || 'anonymous');
+                if (userId) createNewDraft(type, userId);
             }
         } else if (!currentDraft) {
-            createNewDraft(type, userId || 'anonymous');
+            if (userId) createNewDraft(type, userId);
         }
     };
 
