@@ -93,7 +93,8 @@ The goal is to ensure secure, scalable, and maintainable authentication for both
 - [x] **HIGH PRIORITY**: Ensure gateway does not call `/internal` endpoints
 - [x] **HIGH PRIORITY**: Add proper error handling for missing/invalid JWTs
 - [x] **HIGH PRIORITY**: Add tests for JWT validation and user context forwarding
-- [ ] **MEDIUM PRIORITY**: Add API key validation for `/internal` routes (future enhancement)
+- [x] **MEDIUM PRIORITY**: Add API key validation for `/internal` routes (future enhancement)
+    - Gateway blocks all /internal endpoints; backend services enforce API key validation for internal routes
 
 #### 4.2. User Service - Internal Endpoints (Foundation)
 - [x] **HIGH PRIORITY**: Add new `/internal/users/id` endpoint (API key only) alongside existing `/users/id`
@@ -142,11 +143,16 @@ The goal is to ensure secure, scalable, and maintainable authentication for both
 ### Phase 4: Background Jobs and Service-to-Service (Depends on Phase 1)
 
 #### 4.6. Background Jobs (Celery, etc.) (Depends on Internal Endpoints)
-- [ ] **HIGH PRIORITY**: Update all job code to use new `/internal` endpoints and API key auth
-- [ ] **HIGH PRIORITY**: Never use user JWTs in background jobs unless explicitly acting on behalf of a user
-- [ ] **HIGH PRIORITY**: Store API keys securely (env vars, secret manager)
-- [ ] **HIGH PRIORITY**: Add/verify tests for background job authentication flows
-- [ ] **MEDIUM PRIORITY**: Update any existing background job configurations
+- [x] **HIGH PRIORITY**: Update all job code to use new `/internal` endpoints and API key auth
+    - No background job code exists yet; nothing to update
+- [x] **HIGH PRIORITY**: Never use user JWTs in background jobs unless explicitly acting on behalf of a user
+    - No background job code exists yet; nothing to update
+- [x] **HIGH PRIORITY**: Store API keys securely (env vars, secret manager)
+    - No background job code exists yet; nothing to update
+- [x] **HIGH PRIORITY**: Add/verify tests for background job authentication flows
+    - No background job code exists yet; nothing to update
+- [x] **MEDIUM PRIORITY**: Update any existing background job configurations
+    - No background job code exists yet; nothing to update
 
 ### Phase 5: Cleanup and Documentation (Depends on all previous phases)
 
@@ -189,26 +195,26 @@ Below is a concrete mapping of current endpoints to their new standardized forms
 - **Current:** GET /users/{user_id} (JWT)
 - **New:** GET /users/me (JWT)
 - **Tasks:**
-  - [ ] Add new GET /users/me endpoint that extracts user from JWT
-  - [ ] Update frontend to use new endpoint
-  - [ ] Remove old GET /users/{user_id} endpoint
-  - [ ] Update tests, docs
+  - [x] Add new GET /users/me endpoint that extracts user from JWT
+  - [x] Update frontend to use new endpoint
+  - [x] Remove old GET /users/{user_id} endpoint
+  - [x] Update tests, docs
 
 - **Current:** PUT /users/{user_id} (JWT)
 - **New:** PUT /users/me (JWT)
 - **Tasks:**
-  - [ ] Add new PUT /users/me endpoint that extracts user from JWT
-  - [ ] Update frontend to use new endpoint
-  - [ ] Remove old PUT /users/{user_id} endpoint
-  - [ ] Update tests, docs
+  - [x] Add new PUT /users/me endpoint that extracts user from JWT
+  - [x] Update frontend to use new endpoint
+  - [x] Remove old PUT /users/{user_id} endpoint
+  - [x] Update tests, docs
 
 - **Current:** DELETE /users/{user_id} (JWT)
 - **New:** DELETE /users/me (JWT)
 - **Tasks:**
-  - [ ] Add new DELETE /users/me endpoint that extracts user from JWT
-  - [ ] Update frontend to use new endpoint
-  - [ ] Remove old DELETE /users/{user_id} endpoint
-  - [ ] Update tests, docs
+  - [x] Add new DELETE /users/me endpoint that extracts user from JWT
+  - [x] Update frontend to use new endpoint
+  - [x] Remove old DELETE /users/{user_id} endpoint
+  - [x] Update tests, docs
 
 - **Current:** GET /users/me/preferences (JWT) ✅
 - **Status:** Already correct - no changes needed
@@ -216,18 +222,18 @@ Below is a concrete mapping of current endpoints to their new standardized forms
 - **Current:** PUT /users/{user_id}/preferences (JWT)
 - **New:** PUT /users/me/preferences (JWT)
 - **Tasks:**
-  - [ ] Add new PUT /users/me/preferences endpoint that extracts user from JWT
-  - [ ] Update frontend to use new endpoint
-  - [ ] Remove old PUT /users/{user_id}/preferences endpoint
-  - [ ] Update tests, docs
+  - [x] Add new PUT /users/me/preferences endpoint that extracts user from JWT
+  - [x] Update frontend to use new endpoint
+  - [x] Remove old PUT /users/{user_id}/preferences endpoint
+  - [x] Update tests, docs
 
 - **Current:** POST /users/{user_id}/preferences/reset (JWT)
 - **New:** POST /users/me/preferences/reset (JWT)
 - **Tasks:**
-  - [ ] Add new POST /users/me/preferences/reset endpoint that extracts user from JWT
-  - [ ] Update frontend to use new endpoint
-  - [ ] Remove old POST /users/{user_id}/preferences/reset endpoint
-  - [ ] Update tests, docs
+  - [x] Add new POST /users/me/preferences/reset endpoint that extracts user from JWT
+  - [x] Update frontend to use new endpoint
+  - [x] Remove old POST /users/{user_id}/preferences/reset endpoint
+  - [x] Update tests, docs
 
 - **Current:** GET /users/me/integrations (JWT) ✅
 - **Status:** Already correct - no changes needed

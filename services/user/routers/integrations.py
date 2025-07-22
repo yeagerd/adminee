@@ -3,6 +3,10 @@ OAuth integrations management router.
 
 Handles OAuth flow management, integration status, token operations,
 and provider configuration with comprehensive authentication and validation.
+
+# Endpoint Pattern Note:
+# - User-facing endpoints use /me/integrations and extract user from JWT/session (requires user authentication)
+# - /users/{user_id}/integrations endpoints are deprecated and removed; use /me/integrations instead
 """
 
 from datetime import datetime, timezone
