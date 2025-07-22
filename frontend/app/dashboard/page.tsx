@@ -2,15 +2,17 @@
 
 import ChatInterface from '@/components/chat-interface';
 import AppLayout from '@/components/layout/app-layout';
-import DraftPane from '@/components/layout/draft-pane';
+import { DraftPane } from '@/components/draft/draft-pane';
 import Sidebar from '@/components/layout/sidebar';
 import { ToolContent } from '@/components/tool-content';
 import { ToolProvider } from '@/contexts/tool-context';
+import { useDraftState } from '@/hooks/use-draft-state';
 import { useSession } from 'next-auth/react';
 import { Suspense } from 'react';
 
 function DashboardContent() {
     const { data: session, status } = useSession();
+    const { state: draftState, setCurrentDraft } = useDraftState();
 
     if (status === 'loading') {
         return (
@@ -44,15 +46,15 @@ function DashboardContent() {
                     {/* Draft Pane - Bottom portion */}
                     <div className="h-80 border-t bg-card">
                         <div className="flex items-center justify-between p-4 border-b">
-                            <h2 className="text-lg font-semibold">Draft</h2>
+                            <h2 className="text-lg font-semibold">Chat</h2>
                         </div>
                         <div className="flex-1 overflow-hidden">
-                            <DraftPane />
+                            <ChatInterface onDraftReceived={setCurrentDraft} />
                         </div>
                     </div>
                 </div>
             }
-            draft={<ChatInterface />}
+            draft={<DraftPane draft={draftState.currentDraft} />}
         />
     );
 }

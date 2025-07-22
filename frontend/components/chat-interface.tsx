@@ -110,9 +110,10 @@ function ChatBubble({ content, sender, windowWidth }: { content: React.ReactNode
 
 interface ChatInterfaceProps {
     containerRef?: React.RefObject<HTMLDivElement>;
+    onDraftReceived?: (draft: DraftData) => void;
 }
 
-export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
+export default function ChatInterface({ containerRef, onDraftReceived }: ChatInterfaceProps) {
     const { data: session } = useSession()
     const [messages, setMessages] = useState<Message[]>(initialMessages)
     const [input, setInput] = useState("")
@@ -227,6 +228,11 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
                         timestamp: new Date(),
                     }
                     setMessages((prev) => [...prev, aiMessage])
+
+                    // If a draft is returned, pass it to the parent component
+                    if (data.drafts && data.drafts.length > 0 && onDraftReceived) {
+                        onDraftReceived(data.drafts[0]);
+                    }
                 }
             } catch (error) {
                 console.error('Chat error:', error)
