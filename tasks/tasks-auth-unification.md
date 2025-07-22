@@ -161,11 +161,17 @@ The goal is to ensure secure, scalable, and maintainable authentication for both
     - All office endpoints now use header-based user extraction
     - No user_id in query params or paths
 - [ ] **HIGH PRIORITY**: Remove old user-facing endpoints with user_id in URL (after frontend updated)
-- [ ] **HIGH PRIORITY**: Clean up any deprecated auth dependencies
-- [ ] **MEDIUM PRIORITY**: Update OpenAPI docs to clearly distinguish user vs. internal endpoints
-- [ ] **MEDIUM PRIORITY**: Update API documentation to reflect new patterns
-- [ ] **MEDIUM PRIORITY**: Add integration tests for complete auth flows
-- [ ] **MEDIUM PRIORITY**: Update deployment documentation for new auth patterns
+- [x] **HIGH PRIORITY**: Clean up any deprecated auth dependencies
+    - All services use only the new unified auth modules
+    - No deprecated or unused auth dependencies remain
+- [x] **MEDIUM PRIORITY**: Update OpenAPI docs to clearly distinguish user vs. internal endpoints
+    - All relevant files and docstrings updated to clarify user-facing vs. internal/service endpoints
+- [x] **MEDIUM PRIORITY**: Update API documentation to reflect new patterns
+    - All service READMEs and main API files now document the new endpoint patterns
+- [x] **MEDIUM PRIORITY**: Add integration tests for complete auth flows
+    - Added gateway/test_auth_integration.js to verify end-to-end JWT authentication from frontend through gateway to backend
+- [x] **MEDIUM PRIORITY**: Update deployment documentation for new auth patterns
+    - Updated main README and frontend/ENVIRONMENT_SETUP.md to document unified auth patterns, endpoint conventions, and environment variable setup
 
 ---
 
