@@ -278,7 +278,8 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
                                                 console.error("Failed to parse chunk:", e)
                                             }
                                         }
-                                        eventName = null // Reset event name
+                                    } else if (line.trim() === "") {
+                                        eventName = null // Reset on blank line
                                     }
                                 }
                             }
@@ -296,15 +297,13 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
                         : "I'm sorry, I couldn't process your request. Please try again."
 
                     // Add AI response
-                    if (data.messages && data.messages.length > 0) {
-                        const aiMessage: Message = {
-                            id: data.messages[data.messages.length - 1].message_id,
-                            content: aiResponse,
-                            sender: "ai",
-                            timestamp: new Date(),
-                        }
-                        setMessages((prev) => [...prev, aiMessage])
+                    const aiMessage: Message = {
+                        id: data.messages && data.messages.length > 0 ? data.messages[data.messages.length - 1].message_id : `error-${Date.now()}`,
+                        content: aiResponse,
+                        sender: "ai",
+                        timestamp: new Date(),
                     }
+                    setMessages((prev) => [...prev, aiMessage])
                 }
             } catch (error) {
                 console.error('Chat error:', error)
