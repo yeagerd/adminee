@@ -41,18 +41,18 @@ function DashboardContent() {
                         <ToolContent />
                     </div>
 
-                    {/* Chat Interface - Bottom portion */}
+                    {/* Draft Pane - Bottom portion */}
                     <div className="h-80 border-t bg-card">
                         <div className="flex items-center justify-between p-4 border-b">
-                            <h2 className="text-lg font-semibold">AI Assistant</h2>
+                            <h2 className="text-lg font-semibold">Draft</h2>
                         </div>
                         <div className="flex-1 overflow-hidden">
-                            <ChatInterface />
+                            <DraftPane />
                         </div>
                     </div>
                 </div>
             }
-            draft={<DraftPane />}
+            draft={<ChatInterface />}
         />
     );
 }
