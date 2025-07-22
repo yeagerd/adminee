@@ -10,6 +10,8 @@ interface IntegrationsContextType {
     error: string | null;
     refreshIntegrations: () => Promise<void>;
     activeProviders: string[];
+    hasExpiredButRefreshableTokens: boolean;
+    triggerAutoRefreshIfNeeded: () => void;
 }
 
 const IntegrationsContext = createContext<IntegrationsContextType | undefined>(undefined);
@@ -56,6 +58,17 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         return isNaN(expirationDate.getTime()) || expirationDate <= now;
     }, []);
 
+    // Helper to determine if an integration is expired but refreshable
+    function isExpiredButRefreshableIntegration(i: Integration): boolean {
+        return (
+            (i.status === 'expired' ||
+                (i.status === 'active' && isTokenExpired(i.token_expires_at))
+            ) &&
+            (i.provider === 'google' || i.provider === 'microsoft') &&
+            i.has_refresh_token
+        );
+    }
+
     // Memoized active providers array
     const activeProviders = useMemo(() => {
         return integrations
@@ -67,83 +80,60 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
             .map(i => i.provider);
     }, [integrations, isTokenExpired]);
 
-    // NEW: Check for expired but refreshable tokens
     const hasExpiredButRefreshableTokens = useMemo(() => {
-        return integrations.some(i =>
-            i.status === 'active' &&
-            (i.provider === 'google' || i.provider === 'microsoft') &&
-            isTokenExpired(i.token_expires_at) &&
-            i.has_refresh_token
-        );
+        return integrations.some(isExpiredButRefreshableIntegration);
     }, [integrations, isTokenExpired]);
 
-    // NEW: Auto-refresh when we have expired but refreshable tokens
-    useEffect(() => {
-        // Prevent concurrent refreshes and infinite loops
-        if (isRefreshingRef.current) {
+    const triggerAutoRefreshIfNeeded = useCallback(() => {
+        const expiredIntegrations = integrations.filter(isExpiredButRefreshableIntegration);
+        // For 'expired' status, only try once; for 'active', allow up to 3 attempts
+        const shouldRetry = expiredIntegrations.some(i =>
+            (i.status === 'expired' && (refreshAttemptsRef.current[i.provider] || 0) < 1) ||
+            (i.status === 'active' && (refreshAttemptsRef.current[i.provider] || 0) < 3)
+        );
+        if (
+            loading ||
+            !hasExpiredButRefreshableTokens ||
+            activeProviders.length !== 0 ||
+            !shouldRetry ||
+            expiredIntegrations.length === 0 ||
+            isRefreshingRef.current
+        ) {
             return;
         }
-
-        if (!loading && hasExpiredButRefreshableTokens && activeProviders.length === 0) {
-            const expiredIntegrations = integrations.filter(i =>
-                i.status === 'active' &&
-                (i.provider === 'google' || i.provider === 'microsoft') &&
-                isTokenExpired(i.token_expires_at) &&
-                i.has_refresh_token
-            );
-
-            // Check if we should retry (max 3 attempts per provider)
-            const shouldRetry = expiredIntegrations.some(i =>
-                (refreshAttemptsRef.current[i.provider] || 0) < 3
-            );
-
-            if (shouldRetry && expiredIntegrations.length > 0) {
-                console.log('Detected expired but refreshable tokens, triggering auto-refresh...');
-
-                isRefreshingRef.current = true;
-
-                const refreshExpiredTokens = async () => {
-                    try {
-                        console.log('Auto-refreshing expired tokens:', expiredIntegrations.map(i => i.provider));
-
-                        for (const integration of expiredIntegrations) {
-                            // Skip if we've exceeded retry attempts for this provider
-                            if ((refreshAttemptsRef.current[integration.provider] || 0) >= 3) {
-                                continue;
-                            }
-
-                            try {
-                                console.log(`Auto-refreshing tokens for ${integration.provider}...`);
-                                await gatewayClient.refreshIntegrationTokens(integration.provider);
-                                console.log(`Successfully auto-refreshed tokens for ${integration.provider}`);
-
-                                // Reset attempt counter on success
-                                refreshAttemptsRef.current[integration.provider] = 0;
-                            } catch (error) {
-                                console.error(`Failed to auto-refresh tokens for ${integration.provider}:`, error);
-
-                                // Increment attempt counter on failure
-                                refreshAttemptsRef.current[integration.provider] =
-                                    (refreshAttemptsRef.current[integration.provider] || 0) + 1;
-                            }
-                        }
-
-                        // Refresh the integrations list to get updated token data
-                        await fetchIntegrations();
-                    } catch (error) {
-                        console.error('Failed to auto-refresh expired tokens:', error);
-                    } finally {
-                        isRefreshingRef.current = false;
+        isRefreshingRef.current = true;
+        const refreshExpiredTokens = async () => {
+            try {
+                for (const integration of expiredIntegrations) {
+                    // For 'expired' status, only try once; for 'active', allow up to 3 attempts
+                    const maxAttempts = integration.status === 'expired' ? 1 : 3;
+                    if ((refreshAttemptsRef.current[integration.provider] || 0) >= maxAttempts) {
+                        continue;
                     }
-                };
-
-                refreshExpiredTokens();
+                    try {
+                        await gatewayClient.refreshIntegrationTokens(integration.provider);
+                        // Reset attempt counter on success
+                        refreshAttemptsRef.current[integration.provider] = 0;
+                    } catch (error) {
+                        // Increment attempt counter on failure
+                        refreshAttemptsRef.current[integration.provider] =
+                            (refreshAttemptsRef.current[integration.provider] || 0) + 1;
+                    }
+                }
+                // Refresh the integrations list to get updated token data
+                await fetchIntegrations();
+            } catch (error) {
+            } finally {
+                isRefreshingRef.current = false;
             }
-        }
-    }, [loading, hasExpiredButRefreshableTokens, activeProviders, integrations, isTokenExpired, fetchIntegrations]);
+        };
+        refreshExpiredTokens();
+    }, [integrations, isTokenExpired, loading, hasExpiredButRefreshableTokens, activeProviders, fetchIntegrations]);
+
+    // Remove the auto-refresh useEffect (now handled by triggerAutoRefreshIfNeeded)
 
     return (
-        <IntegrationsContext.Provider value={{ integrations, loading, error, refreshIntegrations: fetchIntegrations, activeProviders }}>
+        <IntegrationsContext.Provider value={{ integrations, loading, error, refreshIntegrations: fetchIntegrations, activeProviders, hasExpiredButRefreshableTokens, triggerAutoRefreshIfNeeded }}>
             {children}
         </IntegrationsContext.Provider>
     );

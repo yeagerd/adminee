@@ -4,6 +4,7 @@ export const INTEGRATION_STATUS = {
     INACTIVE: 'inactive',
     ERROR: 'error',
     PENDING: 'pending',
+    EXPIRED: 'expired',
 } as const;
 
 export type IntegrationStatus = typeof INTEGRATION_STATUS[keyof typeof INTEGRATION_STATUS];

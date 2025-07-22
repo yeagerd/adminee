@@ -21,7 +21,12 @@ export function ToolContent() {
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
     const [calendarLoading, setCalendarLoading] = useState(false);
     const [calendarError, setCalendarError] = useState<string | null>(null);
-    const { loading: integrationsLoading, activeProviders } = useIntegrations();
+    const { loading: integrationsLoading, activeProviders, triggerAutoRefreshIfNeeded } = useIntegrations();
+
+    // Call auto-refresh logic on every tool change
+    useEffect(() => {
+        triggerAutoRefreshIfNeeded();
+    }, [activeTool, triggerAutoRefreshIfNeeded]);
 
     // Compute a loading boolean for tool data readiness
     const toolDataLoading = integrationsLoading || !session?.user?.id;
