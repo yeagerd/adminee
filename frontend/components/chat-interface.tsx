@@ -164,7 +164,7 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
         const fetchChatHistory = async () => {
             if (session) {
                 try {
-                    const threads = await gatewayClient.getChatThreads()
+                    const threads = (await gatewayClient.getChatThreads()) as { thread_id: string; title: string; created_at: string }[]
                     setChatHistory(threads)
                 } catch (error) {
                     console.error("Failed to fetch chat history:", error)
@@ -182,7 +182,7 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
     const handleLoadChat = async (threadId: string) => {
         try {
             const history = (await gatewayClient.getChatHistory(threadId)) as ChatResponse
-            const loadedMessages = history.messages.map((msg) => ({
+            const loadedMessages: Message[] = history.messages.map((msg) => ({
                 id: msg.message_id,
                 content: msg.content,
                 sender: msg.llm_generated ? "ai" : "user",
@@ -224,7 +224,7 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
             try {
                 if (enableStreaming) {
                     // Streaming implementation using GatewayClient
-                    const stream = await gatewayClient.chatStream(currentInput, currentThreadId)
+                    const stream = await gatewayClient.chatStream(currentInput, currentThreadId ?? undefined)
                     const reader = stream.getReader()
                     const decoder = new TextDecoder()
 
@@ -238,24 +238,44 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
                     setMessages((prev) => [...prev, aiMessage])
 
                     if (reader) {
-                        while (true) {
-                            const { done, value } = await reader.read()
-                            if (done) break
+                        const processStream = async () => {
+                            let buffer = ""
+                            while (true) {
+                                const { done, value } = await reader.read()
+                                if (done) break
 
-                            const chunk = decoder.decode(value)
-                            setMessages((prev) => {
-                                const newMessages = [...prev]
-                                const lastMessage = newMessages[newMessages.length - 1]
-                                if (lastMessage.sender === "ai") {
-                                    lastMessage.content += chunk
+                                buffer += decoder.decode(value, { stream: true })
+                                const lines = buffer.split("\n")
+                                buffer = lines.pop() ?? ""
+
+                                for (const line of lines) {
+                                    if (line.startsWith("event: metadata")) {
+                                        const dataLine = lines.find(l => l.startsWith("data:"))
+                                        if (dataLine) {
+                                            const data = JSON.parse(dataLine.substring(5))
+                                            setCurrentThreadId(data.thread_id)
+                                        }
+                                    } else if (line.startsWith("data:")) {
+                                        const data = JSON.parse(line.substring(5))
+                                        if (data.delta) {
+                                            setMessages((prev) => {
+                                                const newMessages = [...prev]
+                                                const lastMessage = newMessages[newMessages.length - 1]
+                                                if (lastMessage.sender === "ai") {
+                                                    lastMessage.content += data.delta
+                                                }
+                                                return newMessages
+                                            })
+                                        }
+                                    }
                                 }
-                                return newMessages
-                            })
+                            }
                         }
+                        await processStream()
                     }
                 } else {
                     // Non-streaming implementation using GatewayClient
-                    const data = await gatewayClient.chat(currentInput, currentThreadId) as ChatResponse
+                    const data = await gatewayClient.chat(currentInput, currentThreadId ?? undefined) as ChatResponse
                     setCurrentThreadId(data.thread_id)
 
                     // Extract the AI response from the backend response structure
