@@ -26,9 +26,9 @@ export function convertDraftDataToDraft(draftData: DraftData, userId: string): D
         content = emailData.body || '';
         metadata = {
             subject: emailData.subject,
-            recipients: emailData.to ? [emailData.to] : [],
-            cc: emailData.cc ? [emailData.cc] : [],
-            bcc: emailData.bcc ? [emailData.bcc] : [],
+            recipients: emailData.to ? emailData.to.split(',').map(s => s.trim()) : [],
+            cc: emailData.cc ? emailData.cc.split(',').map(s => s.trim()) : [],
+            bcc: emailData.bcc ? emailData.bcc.split(',').map(s => s.trim()) : [],
         };
     } else if (draftData.type === 'calendar_event') {
         const eventData = draftData as DraftCalendarEvent;
@@ -38,7 +38,7 @@ export function convertDraftDataToDraft(draftData: DraftData, userId: string): D
             startTime: eventData.start_time,
             endTime: eventData.end_time,
             location: eventData.location,
-            attendees: eventData.attendees ? [eventData.attendees] : [],
+            attendees: eventData.attendees ? eventData.attendees.split(',').map(s => s.trim()) : [],
         };
     } else if (draftData.type === 'calendar_change') {
         const changeData = draftData as DraftCalendarChange;
@@ -48,7 +48,7 @@ export function convertDraftDataToDraft(draftData: DraftData, userId: string): D
             startTime: changeData.new_start_time,
             endTime: changeData.new_end_time,
             location: changeData.new_location,
-            attendees: changeData.new_attendees ? [changeData.new_attendees] : [],
+            attendees: changeData.new_attendees ? changeData.new_attendees.split(',').map(s => s.trim()) : [],
         };
     }
 

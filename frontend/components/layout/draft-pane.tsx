@@ -16,7 +16,7 @@ export function DraftPane({ children, draft, onUpdate, onMetadataChange, onTypeC
         return <div className="h-full overflow-auto">{children}</div>;
     }
 
-    return <DraftPaneComponent draft={draft} onUpdate={onUpdate} onMetadataChange={onMetadataChange} userId={userId} />;
+    return <DraftPaneComponent draft={draft} onUpdate={onUpdate} onMetadataChange={onMetadataChange} onTypeChange={onTypeChange} userId={userId} />;
 }
 
 export default DraftPane; 

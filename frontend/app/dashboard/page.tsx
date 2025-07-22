@@ -11,10 +11,11 @@ import { convertDraftDataToDraft } from '@/lib/draft-utils';
 import { useSession } from 'next-auth/react';
 import { Suspense } from 'react';
 import { DraftData } from '@/components/chat-interface';
+import { DraftType } from '@/types/draft';
 
 function DashboardContent() {
     const { data: session, status } = useSession();
-    const { state: draftState, setCurrentDraft, updateDraft, updateDraftMetadata } = useDraftState();
+    const { state: draftState, setCurrentDraft, updateDraft, updateDraftMetadata, createNewDraft } = useDraftState();
 
     const handleDraftReceived = (draftData: DraftData) => {
         if (session?.user?.email) {
@@ -22,6 +23,12 @@ function DashboardContent() {
             setCurrentDraft(newDraft);
         }
     };
+
+    const handleTypeChange = (type: DraftType) => {
+        if (session?.user?.email) {
+            createNewDraft(type, session.user.email);
+        }
+    }
 
     if (status === 'loading') {
         return (
@@ -63,7 +70,7 @@ function DashboardContent() {
                     </div>
                 </div>
             }
-            draft={<DraftPane draft={draftState.currentDraft} onUpdate={updateDraft} onMetadataChange={updateDraftMetadata} />}
+            draft={<DraftPane draft={draftState.currentDraft} onUpdate={updateDraft} onMetadataChange={updateDraftMetadata} onTypeChange={handleTypeChange} />}
         />
     );
 }

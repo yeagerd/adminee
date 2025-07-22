@@ -98,7 +98,7 @@ export class OfficeIntegrationService {
                 return this.sendEmail({
                     to: draft.metadata.recipients || [],
                     cc: Array.isArray(draft.metadata.cc) ? draft.metadata.cc : (draft.metadata.cc ? [draft.metadata.cc] : []),
-                    bcc: draft.metadata.bcc,
+                    bcc: Array.isArray(draft.metadata.bcc) ? draft.metadata.bcc : (draft.metadata.bcc ? [draft.metadata.bcc] : []),
                     subject: draft.metadata.subject || 'No Subject',
                     body: draft.content,
                 });

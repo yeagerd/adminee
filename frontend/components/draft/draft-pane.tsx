@@ -7,31 +7,29 @@ import { DraftActions } from './draft-actions';
 import { DraftEditor } from './draft-editor';
 import { DraftMetadata as DraftMetadataComponent } from './draft-metadata';
 import { DraftTypeSwitcher } from './draft-type-switcher';
-import { useDraftState } from '@/hooks/use-draft-state';
 
 interface DraftPaneProps {
     className?: string;
     draft: Draft | null;
     onUpdate: (updates: Partial<Draft>) => void;
     onMetadataChange: (metadata: Partial<DraftMetadata>) => void;
+    onTypeChange: (type: DraftType) => void;
     userId?: string;
 }
 
-export function DraftPane({ className, draft, onUpdate, onMetadataChange, userId }: DraftPaneProps) {
-    const { createNewDraft } = useDraftState();
-
+export function DraftPane({ className, draft, onUpdate, onMetadataChange, onTypeChange, userId }: DraftPaneProps) {
     const handleTypeChange = (type: DraftType) => {
         if (draft && draft.type !== type) {
             // If there's unsaved content, ask for confirmation
             if (draft.content.trim() || Object.keys(draft.metadata).length > 0) {
                 if (confirm('You have unsaved changes. Are you sure you want to switch draft types?')) {
-                    if (userId) createNewDraft(type, userId);
+                    if (userId) onTypeChange(type);
                 }
             } else {
-                if (userId) createNewDraft(type, userId);
+                if (userId) onTypeChange(type);
             }
         } else if (!draft) {
-            if (userId) createNewDraft(type, userId);
+            if (userId) onTypeChange(type);
         }
     };
 
