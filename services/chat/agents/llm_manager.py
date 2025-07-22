@@ -138,15 +138,15 @@ class LoggingFunctionCallingLLM(FunctionCallingLLM):
         self._prompt_logger.info(f"=== ACHAT LLM RESPONSE ===\nResponse: {response}")
         return response
 
-    def complete(self, prompt: Any, **kwargs: Any) -> Any:
+    def complete(self, prompt: str, formatted: bool = False, **kwargs: Any) -> CompletionResponse:
         self._prompt_logger.info(f"=== COMPLETE LLM CALL ===\nPrompt: {prompt}")
-        response = self._llm.complete(prompt, **kwargs)
+        response = self._llm.complete(prompt, formatted=formatted, **kwargs)
         self._prompt_logger.info(f"=== COMPLETE LLM RESPONSE ===\nResponse: {response}")
         return response
 
-    async def acomplete(self, prompt: Any, **kwargs: Any) -> Any:
+    async def acomplete(self, prompt: str, formatted: bool = False, **kwargs: Any) -> CompletionResponse:
         self._prompt_logger.info(f"=== ACOMPLETE LLM CALL ===\nPrompt: {prompt}")
-        response = await self._llm.acomplete(prompt, **kwargs)
+        response = await self._llm.acomplete(prompt, formatted=formatted, **kwargs)
         self._prompt_logger.info(
             f"=== ACOMPLETE LLM RESPONSE ===\nResponse: {response}"
         )
