@@ -91,7 +91,7 @@ export class GatewayClient {
         });
     }
 
-    async chatStream(message: string, threadId?: string, userTimezone?: string): Promise<ReadableStream> {
+    async chatStream(message: string, threadId?: string, userTimezone?: string, signal?: AbortSignal): Promise<ReadableStream> {
         const session = await getSession();
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
@@ -109,6 +109,7 @@ export class GatewayClient {
                 thread_id: threadId,
                 user_timezone: userTimezone,
             }),
+            signal,
         });
 
         if (!response.ok) {

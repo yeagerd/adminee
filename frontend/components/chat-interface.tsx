@@ -229,7 +229,7 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
             try {
                 if (enableStreaming) {
                     streamControllerRef.current = new AbortController()
-                    const stream = await gatewayClient.chatStream(currentInput, currentThreadId ?? undefined)
+                    const stream = await gatewayClient.chatStream(currentInput, currentThreadId ?? undefined, undefined, streamControllerRef.current.signal)
                     const reader = stream.getReader()
                     const decoder = new TextDecoder()
                     const placeholderId = self.crypto.randomUUID()
