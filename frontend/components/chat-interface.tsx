@@ -254,7 +254,7 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
     return (
         <div className="flex flex-col h-full" ref={chatAreaRef}>
             <ScrollArea className="flex-1 p-4">
-                <div className="flex flex-col space-y-4 w-full">
+                <div className="flex h-full flex-col justify-end space-y-4 w-full">
                     {messages.map((message) => (
                         <div
                             key={message.id}
