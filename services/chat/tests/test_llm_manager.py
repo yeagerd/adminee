@@ -45,19 +45,19 @@ def test_get_llm_success_real_provider_with_api_key(llm_manager):
 
     importlib.reload(llm_mod)
     llm_mod._LLMManager._instance = None
-    # Patch LoggingFunctionCallingLLM in the module where it is used
+    # Patch PatchedFunctionCallingLLM in the module where it is used
     with patch(
-        "services.chat.agents.llm_manager.LoggingFunctionCallingLLM"
-    ) as mock_logging_llm:
-        mock_logging_llm_instance = MagicMock()
-        mock_logging_llm.return_value = mock_logging_llm_instance
+        "services.chat.agents.llm_manager.PatchedFunctionCallingLLM"
+    ) as mock_patched_llm:
+        mock_patched_llm_instance = MagicMock()
+        mock_patched_llm.return_value = mock_patched_llm_instance
 
         manager = llm_mod.get_llm_manager()
         llm = manager.get_llm(model="gpt-4.1-nano", provider="openai")
-        mock_logging_llm.assert_called_once_with(
+        mock_patched_llm.assert_called_once_with(
             model="openai/gpt-4.1-nano", language="en"
         )
-        assert llm is mock_logging_llm_instance
+        assert llm is mock_patched_llm_instance
 
 
 def test_get_llm_missing_model_arg(llm_manager):

@@ -436,7 +436,7 @@ class _LLMManager:
             llm_kwargs["language"] = "en"
 
         # Always use FunctionCallingLLM for real LLMs
-        return LoggingFunctionCallingLLM(model=model, **llm_kwargs)
+        return PatchedFunctionCallingLLM(model=model, **llm_kwargs)
 
     def get_model_info(self, model: str) -> Dict[str, Any]:
         """
@@ -461,6 +461,38 @@ class _LLMManager:
                 "error": str(e),
                 "default": False,
             }
+
+class PatchedFunctionCallingLLM(LoggingFunctionCallingLLM):
+    """
+    A patched version of LoggingFunctionCallingLLM that fixes a bug in
+    astream_chat_with_tools.
+    """
+
+    async def astream_chat_with_tools(
+        self,
+        tools: Sequence[BaseTool],
+        user_msg: Union[str, ChatMessage, None] = None,
+        chat_history: list[ChatMessage] | None = None,
+        verbose: bool = False,
+        allow_parallel_tool_calls: bool = True,
+        tool_required: bool = False,
+        **kwargs: Any,
+    ) -> AsyncGenerator[ChatResponse, None]:
+        """
+        Patched version of astream_chat_with_tools that correctly handles
+        async generators.
+        """
+        chat_kwargs = self._prepare_chat_with_tools(
+            tools=tools,
+            user_msg=user_msg,
+            chat_history=chat_history,
+            verbose=verbose,
+            allow_parallel_tool_calls=allow_parallel_tool_calls,
+            tool_required=tool_required,
+            **kwargs,
+        )
+        async for chunk in await self.astream_chat(**chat_kwargs):
+            yield chunk
 
 
 def get_llm_manager() -> _LLMManager:
