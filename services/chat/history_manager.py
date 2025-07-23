@@ -372,14 +372,14 @@ async def update_message(message_id: int, content: str) -> Optional[Message]:
     async with get_async_session_factory()() as session:
         result = await session.execute(select(Message).where(Message.id == message_id))
         message = result.scalar_one_or_none()
-        
+
         if message:
             message.content = content
             message.updated_at = datetime.datetime.now(datetime.timezone.utc)
             await session.commit()
             await session.refresh(message)
             return message
-        
+
         return None
 
 

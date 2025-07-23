@@ -243,7 +243,7 @@ async def chat_stream_endpoint(
                 user_id="assistant",
                 content="",  # Empty content, will be updated later
             )
-            
+
             # Send initial metadata with the actual message ID
             yield f"event: metadata\ndata: {json.dumps({'thread_id': str(thread.id), 'user_id': user_id, 'message_id': str(placeholder_message.id)})}\n\n"
 
@@ -274,7 +274,9 @@ async def chat_stream_endpoint(
 
             # Update the placeholder message with the full response content
             if placeholder_message.id is not None:
-                await history_manager.update_message(placeholder_message.id, full_response)
+                await history_manager.update_message(
+                    placeholder_message.id, full_response
+                )
 
             # Send completion event
             completion_data = {
