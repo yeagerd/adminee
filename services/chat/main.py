@@ -3,6 +3,7 @@ from typing import AsyncIterator
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+from fastapi.routing import APIRoute
 from sqlmodel import select
 
 from services.chat import history_manager
@@ -92,7 +93,10 @@ app.include_router(router, prefix="/chat")
 # Print all registered routes for debugging
 print("=== Registered routes in chat service ===")
 for route in app.routes:
-    print(f"{','.join(route.methods)} {route.path}")
+    if isinstance(route, APIRoute):
+        print(f"{','.join(route.methods)} {route.path}")
+    else:
+        print(f"Non-APIRoute: {type(route).__name__}")
 print("=========================================")
 
 
