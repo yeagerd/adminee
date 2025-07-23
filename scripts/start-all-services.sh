@@ -148,7 +148,10 @@ start_python_service() {
     echo -e "${BLUE}🔄 Starting $service_name on port $port...${NC}"
     
     # Start service in background
-    uv run python -m uvicorn $module_path --host $host --port $port --reload &
+    uv run python -m uvicorn $module_path --host $host --port $port --reload \
+        --reload-exclude .nox \
+        --reload-exclude frontend \
+        --reload-exclude gateway &
     local pid=$!
     
     # Store PID for cleanup
