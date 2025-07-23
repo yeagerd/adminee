@@ -1,4 +1,4 @@
-export type DraftType = 'email' | 'calendar' | 'document';
+export type DraftType = 'email' | 'calendar' | 'document' | 'calendar_event' | 'calendar_change';
 
 export type DraftStatus = 'draft' | 'ready' | 'sent' | 'archived';
 

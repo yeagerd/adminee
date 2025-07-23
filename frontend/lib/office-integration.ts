@@ -97,20 +97,22 @@ export class OfficeIntegrationService {
             case 'email':
                 return this.sendEmail({
                     to: draft.metadata.recipients || [],
-                    cc: draft.metadata.cc,
-                    bcc: draft.metadata.bcc,
+                    cc: Array.isArray(draft.metadata.cc) ? draft.metadata.cc : (draft.metadata.cc ? [draft.metadata.cc] : []),
+                    bcc: Array.isArray(draft.metadata.bcc) ? draft.metadata.bcc : (draft.metadata.bcc ? [draft.metadata.bcc] : []),
                     subject: draft.metadata.subject || 'No Subject',
                     body: draft.content,
                 });
 
             case 'calendar':
+            case 'calendar_event':
+            case 'calendar_change':
                 return this.createCalendarEvent({
                     title: draft.metadata.title || 'New Event',
                     startTime: typeof draft.metadata.startTime === 'function' ? draft.metadata.startTime() : draft.metadata.startTime || new Date().toISOString(),
                     endTime: typeof draft.metadata.endTime === 'function' ? draft.metadata.endTime() : draft.metadata.endTime || new Date(Date.now() + 3600000).toISOString(),
                     location: draft.metadata.location,
                     description: draft.content,
-                    attendees: draft.metadata.attendees,
+                    attendees: Array.isArray(draft.metadata.attendees) ? draft.metadata.attendees : (draft.metadata.attendees ? [draft.metadata.attendees] : []),
                 });
 
             case 'document':

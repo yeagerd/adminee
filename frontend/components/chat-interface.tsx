@@ -25,7 +25,7 @@ type Message = {
 }
 
 // Draft type interfaces based on chat service Pydantic models
-interface DraftEmail {
+export interface DraftEmail {
     type: "email"
     to?: string
     cc?: string
@@ -37,7 +37,7 @@ interface DraftEmail {
     updated_at?: string
 }
 
-interface DraftCalendarEvent {
+export interface DraftCalendarEvent {
     type: "calendar_event"
     title?: string
     start_time?: string
@@ -50,7 +50,7 @@ interface DraftCalendarEvent {
     updated_at?: string
 }
 
-interface DraftCalendarChange {
+export interface DraftCalendarChange {
     type: "calendar_change"
     event_id?: string
     change_type?: string
@@ -65,7 +65,7 @@ interface DraftCalendarChange {
     updated_at?: string
 }
 
-type DraftData = DraftEmail | DraftCalendarEvent | DraftCalendarChange
+export type DraftData = DraftEmail | DraftCalendarEvent | DraftCalendarChange
 
 interface ChatResponse {
     thread_id: string
@@ -108,9 +108,10 @@ function ChatBubble({ content, sender, windowWidth }: { content: React.ReactNode
 
 interface ChatInterfaceProps {
     containerRef?: React.RefObject<HTMLDivElement>;
+    onDraftReceived?: (draft: DraftData) => void;
 }
 
-export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
+export default function ChatInterface({ containerRef, onDraftReceived }: ChatInterfaceProps) {
     const { data: session } = useSession()
     const [messages, setMessages] = useState<Message[]>(initialMessages)
     const [input, setInput] = useState("")
@@ -252,6 +253,7 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
                             let buffer = ""
                             let eventName: string | null = null
                             let serverMessageId: string | null = null
+                            let streamedDraft: DraftData | null = null;
                             while (true) {
                                 const { done, value } = await reader.read()
                                 if (done) break
@@ -270,6 +272,9 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
                                                 const data = JSON.parse(dataStr)
                                                 setCurrentThreadId(data.thread_id)
                                                 serverMessageId = data.message_id
+                                                if (data.drafts && data.drafts.length > 0) {
+                                                    streamedDraft = data.drafts[0];
+                                                }
                                             } catch (e) {
                                                 console.error("Failed to parse metadata:", e)
                                             }
@@ -298,6 +303,10 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
                             if (serverMessageId) {
                                 setMessages((prev) => prev.map(m => m.id === placeholderId ? { ...m, id: serverMessageId! } : m))
                             }
+                            // Call onDraftReceived if a draft was streamed
+                            if (streamedDraft && onDraftReceived) {
+                                onDraftReceived(streamedDraft);
+                            }
                         }
                         await processStream()
                     }
@@ -322,6 +331,11 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
                         timestamp: new Date(),
                     }
                     setMessages((prev) => [...prev, aiMessage])
+
+                    // If a draft is returned, pass it to the parent component
+                    if (data.drafts && data.drafts.length > 0 && onDraftReceived) {
+                        onDraftReceived(data.drafts[0]);
+                    }
                 }
             } catch (error) {
                 console.error('Chat error:', error)
