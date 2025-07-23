@@ -280,11 +280,17 @@ async def chat_stream_endpoint(
 
         except Exception as e:
             # On error, update the placeholder message with error or delete it if possible
-            if 'placeholder_message' in locals() and getattr(placeholder_message, 'id', None) is not None:
+            if (
+                "placeholder_message" in locals()
+                and getattr(placeholder_message, "id", None) is not None
+            ):
                 try:
-                    await history_manager.update_message(
-                        placeholder_message.id, f"[ERROR] {str(e)}"
-                    )
+                    # mypy fix: ensure id is int, not Optional[int]
+                    message_id = placeholder_message.id
+                    if message_id is not None:
+                        await history_manager.update_message(
+                            message_id, f"[ERROR] {str(e)}"
+                        )
                 except Exception:
                     pass  # Ignore errors during cleanup
             # Send error event
