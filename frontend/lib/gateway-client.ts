@@ -270,31 +270,31 @@ export class GatewayClient {
             }
         }
         if (filters?.search) params.append('search', filters.search);
-        return this.request<DraftListResponse>(`/api/user-drafts?${params.toString()}`);
+        return this.request<DraftListResponse>(`/api/drafts?${params.toString()}`);
     }
 
     async createDraft(draftData: { type: string; content: string; metadata?: Record<string, unknown>; threadId?: string; }): Promise<DraftApiResponse> {
-        return this.request<DraftApiResponse>('/api/user-drafts', {
+        return this.request<DraftApiResponse>('/api/drafts', {
             method: 'POST',
             body: draftData,
         });
     }
 
     async updateDraft(draftId: string, draftData: { content?: string; metadata?: Record<string, unknown>; status?: string; }): Promise<DraftApiResponse> {
-        return this.request<DraftApiResponse>(`/api/user-drafts/${draftId}`, {
+        return this.request<DraftApiResponse>(`/api/drafts/${draftId}`, {
             method: 'PUT',
             body: draftData,
         });
     }
 
     async deleteDraft(draftId: string): Promise<void> {
-        return this.request<void>(`/api/user-drafts/${draftId}`, {
+        return this.request<void>(`/api/drafts/${draftId}`, {
             method: 'DELETE',
         });
     }
 
     async getDraft(draftId: string): Promise<DraftApiResponse> {
-        return this.request<DraftApiResponse>(`/api/user-drafts/${draftId}`);
+        return this.request<DraftApiResponse>(`/api/drafts/${draftId}`);
     }
 
     // Health Check

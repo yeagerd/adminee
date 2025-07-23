@@ -58,7 +58,7 @@ export function convertDraftDataToDraft(draftData: DraftData, userId: string): D
     }
 
     return {
-        id: `draft_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: draftData.id ? draftData.id : `draft_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         type,
         status: 'draft',
         content,
