@@ -398,8 +398,8 @@ app.use('/api/email', validateAuth, standardLimiter, createServiceProxy(serviceR
 app.use('/api/email/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/email'], { '^/api/email': '/email' }));
 app.use('/api/files', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/files'], { '^/api/files': '/files' }));
 app.use('/api/files/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/files'], { '^/api/files': '/files' }));
-app.use('/api/drafts', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/drafts'], { '^/api/drafts': '/user-drafts' }));
-app.use('/api/drafts/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/drafts'], { '^/api/drafts': '/user-drafts' }));
+app.use('/api/drafts', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/drafts'], { '^/api/drafts': '/chat/drafts' }));
+app.use('/api/drafts/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/drafts'], { '^/api/drafts': '/chat/drafts' }));
 
 // Fallback for other API routes (default to user service)
 app.use('/api', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/users'], { '^/api': '' }));

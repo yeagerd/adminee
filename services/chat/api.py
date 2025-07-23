@@ -154,13 +154,17 @@ async def chat_endpoint(
         else:
             content = draft.get("content", "")
 
-        # Persist the draft to the database (create or update)
-        db_draft = await history_manager.create_or_update_draft(
-            int(thread.id),
-            draft_type,
-            content,
+        # Persist the draft as a UserDraft
+        user_draft = await history_manager.create_user_draft(
+            user_id=user_id,
+            draft_type=draft_type,
+            content=content,
+            metadata=json.dumps(draft.get("metadata", {})),
+            thread_id=int(thread.id),
         )
-        draft_id = str(db_draft.id) if db_draft and db_draft.id is not None else None
+        draft_id = (
+            str(user_draft.id) if user_draft and user_draft.id is not None else None
+        )
         draft_with_id = dict(draft)
         draft_with_id["id"] = draft_id
 
@@ -313,14 +317,21 @@ async def chat_stream_endpoint(
                 else:
                     content = draft.get("content", "")
 
-                # Persist the draft to the database (create or update)
-                db_draft = await history_manager.create_or_update_draft(
-                    int(thread.id),
-                    draft_type,
-                    content,
+                # Convert metadata to JSON string
+                metadata_json = json.dumps(draft.get("metadata", {}))
+
+                # Persist the draft as a UserDraft (match non-streaming endpoint)
+                user_draft = await history_manager.create_user_draft(
+                    user_id=user_id,
+                    draft_type=draft_type,
+                    content=content,
+                    metadata=metadata_json,
+                    thread_id=int(thread.id),
                 )
                 draft_id = (
-                    str(db_draft.id) if db_draft and db_draft.id is not None else None
+                    str(user_draft.id)
+                    if user_draft and user_draft.id is not None
+                    else None
                 )
                 draft_with_id = dict(draft)
                 draft_with_id["id"] = draft_id
@@ -468,7 +479,7 @@ async def feedback_endpoint(
 
 
 # User Draft Endpoints
-@router.post("/user-drafts", response_model=UserDraftResponse)
+@router.post("/drafts", response_model=UserDraftResponse)
 async def create_user_draft_endpoint(
     request: Request,
     draft_request: UserDraftRequest,
@@ -516,7 +527,7 @@ async def create_user_draft_endpoint(
     )
 
 
-@router.get("/user-drafts", response_model=UserDraftListResponse)
+@router.get("/drafts", response_model=UserDraftListResponse)
 async def list_user_drafts_endpoint(
     request: Request,
     draft_type: Optional[str] = None,
@@ -570,7 +581,7 @@ async def list_user_drafts_endpoint(
     )
 
 
-@router.get("/user-drafts/{draft_id}", response_model=UserDraftResponse)
+@router.get("/drafts/{draft_id}", response_model=UserDraftResponse)
 async def get_user_draft_endpoint(
     request: Request,
     draft_id: str,
@@ -613,7 +624,7 @@ async def get_user_draft_endpoint(
     )
 
 
-@router.put("/user-drafts/{draft_id}", response_model=UserDraftResponse)
+@router.put("/drafts/{draft_id}", response_model=UserDraftResponse)
 async def update_user_draft_endpoint(
     request: Request,
     draft_id: str,
@@ -679,7 +690,7 @@ class DeleteUserDraftResponse(BaseModel):
     message: str
 
 
-@router.delete("/user-drafts/{draft_id}", response_model=DeleteUserDraftResponse)
+@router.delete("/drafts/{draft_id}", response_model=DeleteUserDraftResponse)
 async def delete_user_draft_endpoint(
     request: Request,
     draft_id: str,

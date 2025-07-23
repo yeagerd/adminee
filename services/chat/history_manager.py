@@ -397,36 +397,6 @@ async def get_thread_history(
         return list(result.scalars().all())
 
 
-async def create_or_update_draft(
-    thread_id: int, draft_type: str, content: str
-) -> Draft:
-    async with get_async_session_factory()() as session:
-        # Try to get existing draft
-        result = await session.execute(
-            select(Draft).where(Draft.thread_id == thread_id, Draft.type == draft_type)
-        )
-        draft = result.scalar_one_or_none()
-
-        if draft:
-            draft.content = content
-            draft.updated_at = datetime.datetime.now(datetime.timezone.utc)
-        else:
-            draft = Draft(thread_id=thread_id, type=draft_type, content=content)
-            session.add(draft)
-
-        await session.commit()
-        await session.refresh(draft)
-
-        # Ensure the ID was properly assigned by the database
-        if draft.id is None:
-            raise RuntimeError(
-                f"Failed to create/update draft for thread {thread_id}: "
-                "Database did not assign an ID after commit"
-            )
-
-        return draft
-
-
 async def delete_draft(thread_id: int, draft_type: str) -> None:
     async with get_async_session_factory()() as session:
         result = await session.execute(
