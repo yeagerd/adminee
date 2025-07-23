@@ -15,7 +15,7 @@ import { useStreamingSetting } from "@/hooks/use-streaming-setting"
 import gatewayClient from "@/lib/gateway-client"
 import { History, Loader2, Plus, Send } from "lucide-react"
 import { useSession } from "next-auth/react"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 type Message = {
     id: string
@@ -153,7 +153,7 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
         scrollToBottom()
     }, [messages])
 
-    const fetchChatHistory = async () => {
+    const fetchChatHistory = useCallback(async () => {
         if (session) {
             try {
                 const threads = (await gatewayClient.getChatThreads()) as { thread_id: string; title: string; created_at: string }[]
@@ -164,11 +164,11 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
                 console.error("Failed to fetch chat history:", error)
             }
         }
-    }
+    }, [session])
 
     useEffect(() => {
         fetchChatHistory()
-    }, [session])
+    }, [fetchChatHistory])
 
     const handleNewChat = () => {
         if (streamControllerRef.current) {
