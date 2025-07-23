@@ -80,8 +80,9 @@ def get_calendar_events(
             "error": "Could not retrieve calendar events due to an internal server error"
         }
     headers["X-API-Key"] = get_settings().api_chat_office_key  # type: ignore[assignment]
+    headers["X-User-Id"] = user_id  # Add user_id as header, not as query param
 
-    params: Dict[str, str | List[str]] = {"user_id": user_id}
+    params: Dict[str, str | List[str]] = {}
     if start_date:
         params["start_date"] = start_date
     if end_date:
@@ -224,8 +225,9 @@ def get_emails(
     if not get_settings().api_chat_office_key:
         return {"error": "Could not retrieve emails due to an internal server error"}
     headers["X-API-Key"] = get_settings().api_chat_office_key  # type: ignore[assignment]
+    headers["X-User-Id"] = user_id  # Add user_id as header, not as query param
 
-    params: Dict[str, str | List[str]] = {"user_id": user_id}
+    params: Dict[str, str | List[str]] = {}
     if start_date:
         params["start_date"] = start_date
     if end_date:
@@ -358,8 +360,9 @@ def get_documents(
     if not get_settings().api_chat_office_key:
         return {"error": "Could not retrieve documents due to an internal server error"}
     headers["X-API-Key"] = get_settings().api_chat_office_key  # type: ignore[assignment]
+    headers["X-User-Id"] = user_id  # Add user_id as header, not as query param
 
-    params = {"user_id": user_id}
+    params = {}
     if document_type:
         params["document_type"] = document_type
     if start_date:
