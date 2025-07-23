@@ -87,7 +87,7 @@ async def ready_check() -> JSONResponse:
     )
 
 
-app.include_router(router)
+app.include_router(router, prefix="/chat")
 
 
 @app.get("/")

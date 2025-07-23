@@ -16,7 +16,7 @@ export function DemoChatInterface() {
         if (!inputValue.trim()) return
 
         const userMessage = {
-            id: Date.now().toString(),
+            id: self.crypto.randomUUID(),
             content: inputValue,
             isUser: true,
             timestamp: new Date()
@@ -39,7 +39,7 @@ export function DemoChatInterface() {
             const randomResponse = aiResponses[Math.floor(Math.random() * aiResponses.length)]
 
             const aiMessage = {
-                id: (Date.now() + 1).toString(),
+                id: self.crypto.randomUUID(),
                 content: randomResponse,
                 isUser: false,
                 timestamp: new Date()
