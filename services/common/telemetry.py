@@ -24,6 +24,7 @@ from opentelemetry.sdk.resources import Resource  # type: ignore[import-unresolv
 from opentelemetry.sdk.trace import TracerProvider  # type: ignore[import-unresolved]
 from opentelemetry.sdk.trace.export import (
     BatchSpanProcessor,  # type: ignore[import-unresolved]
+    ConsoleSpanExporter,  # type: ignore[import-unresolved]
 )
 
 
@@ -62,9 +63,8 @@ def setup_telemetry(service_name: str, service_version: str = "1.0.0") -> None:
             cloud_trace_exporter = CloudTraceSpanExporter(project_id=project_id)
             tracer_provider.add_span_processor(BatchSpanProcessor(cloud_trace_exporter))  # type: ignore[attr-defined]
     else:
-        # In development, you could add console exporter or other exporters
-        # For now, we'll just set up the basics
-        pass
+        # In development, use console exporter for local traces
+        tracer_provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
 
     # Auto-instrument FastAPI and HTTPX
     FastAPIInstrumentor.instrument()  # type: ignore[attr-defined]

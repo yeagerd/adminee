@@ -416,8 +416,13 @@ class BaseAPIClient(ABC):
         if headers:
             request_headers.update(headers)
 
-        # Generate request ID for tracking
-        request_id = self._generate_request_id()
+        # Propagate current request ID if present, otherwise generate a new one
+        from services.common.logging_config import request_id_var
+        context_request_id = request_id_var.get()
+        if context_request_id and context_request_id != "uninitialized":
+            request_id = context_request_id
+        else:
+            request_id = self._generate_request_id()
         request_headers["X-Request-ID"] = request_id
 
         # Start timing

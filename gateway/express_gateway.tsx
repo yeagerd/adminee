@@ -269,6 +269,24 @@ app.get('/health', (req, res) => {
 // Apply malicious traffic filtering to all routes
 app.use(maliciousTrafficFilter);
 
+// OpenTelemetry tracing for local development
+if (process.env.NODE_ENV !== 'production') {
+    try {
+        // Dynamically require OpenTelemetry only in dev
+        const { NodeSDK } = require('@opentelemetry/sdk-node');
+        const { getNodeAutoInstrumentations } = require('@opentelemetry/auto-instrumentations-node');
+        const { ConsoleSpanExporter } = require('@opentelemetry/exporter-trace-stdout');
+        const sdk = new NodeSDK({
+            traceExporter: new ConsoleSpanExporter(),
+            instrumentations: [getNodeAutoInstrumentations()],
+        });
+        sdk.start();
+        console.log('OpenTelemetry tracing enabled (console exporter)');
+    } catch (err) {
+        console.warn('OpenTelemetry tracing not enabled:', err.message);
+    }
+}
+
 // Service routing configuration
 const serviceRoutes = {
     '/api/users': process.env.USER_SERVICE_URL || 'http://127.0.0.1:8001',
