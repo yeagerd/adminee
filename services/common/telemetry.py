@@ -25,6 +25,9 @@ from opentelemetry.sdk.trace import TracerProvider  # type: ignore[import-unreso
 from opentelemetry.sdk.trace.export import (
     BatchSpanProcessor,  # type: ignore[import-unresolved]
 )
+from opentelemetry.sdk.trace.export import (
+    ConsoleSpanExporter,  # type: ignore[import-unresolved]
+)
 
 
 def setup_telemetry(service_name: str, service_version: str = "1.0.0") -> None:
@@ -53,6 +56,15 @@ def setup_telemetry(service_name: str, service_version: str = "1.0.0") -> None:
     trace.set_tracer_provider(TracerProvider(resource=resource))
     tracer_provider = trace.get_tracer_provider()
 
+    # Explicitly cast for mypy
+    from typing import cast
+
+    from opentelemetry.sdk.trace import (
+        TracerProvider as SDKTracerProvider,  # type: ignore[import-unresolved]
+    )
+
+    sdk_tracer_provider = cast(SDKTracerProvider, tracer_provider)
+
     # Set up exporters based on environment
     project_id = os.getenv("GOOGLE_CLOUD_PROJECT_ID")
 
@@ -60,11 +72,14 @@ def setup_telemetry(service_name: str, service_version: str = "1.0.0") -> None:
         # Use Google Cloud Trace in production
         if CloudTraceSpanExporter:
             cloud_trace_exporter = CloudTraceSpanExporter(project_id=project_id)
-            tracer_provider.add_span_processor(BatchSpanProcessor(cloud_trace_exporter))  # type: ignore[attr-defined]
+            sdk_tracer_provider.add_span_processor(
+                BatchSpanProcessor(cloud_trace_exporter)
+            )
     else:
-        # In development, you could add console exporter or other exporters
-        # For now, we'll just set up the basics
-        pass
+        # In development, use console exporter for local traces
+        sdk_tracer_provider.add_span_processor(
+            BatchSpanProcessor(ConsoleSpanExporter())
+        )
 
     # Auto-instrument FastAPI and HTTPX
     FastAPIInstrumentor.instrument()  # type: ignore[attr-defined]
