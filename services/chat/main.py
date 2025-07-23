@@ -89,6 +89,15 @@ async def ready_check() -> JSONResponse:
 
 app.include_router(router, prefix="/chat")
 
+# Print all registered routes for debugging
+# === Registered routes in chat service ===
+# for route in app.routes:
+#     if isinstance(route, APIRoute):
+#         print(f"{','.join(route.methods)} {route.path}")
+#     else:
+#         print(f"Non-APIRoute: {type(route).__name__}")
+# print("=========================================")
+
 
 @app.get("/")
 @app.get("/health")
