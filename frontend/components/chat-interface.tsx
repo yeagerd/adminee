@@ -165,7 +165,9 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
         if (session) {
             try {
                 const threads = (await gatewayClient.getChatThreads()) as { thread_id: string; title: string; created_at: string }[]
-                setChatHistory(threads)
+                // Sort in reverse-chronological order (newest first)
+                const sortedThreads = threads.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                setChatHistory(sortedThreads)
             } catch (error) {
                 console.error("Failed to fetch chat history:", error)
             }
@@ -344,47 +346,56 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
     }
 
     return (
-        <div className="flex flex-col h-full" ref={chatAreaRef}>
-            <div className="flex items-center justify-between p-4 border-b">
-                <h2 className="text-lg font-semibold">Chat</h2>
-                <div className="flex gap-2">
-                    <Button variant="ghost" size="icon" onClick={handleNewChat}>
-                        <Plus className="h-5 w-5" />
-                    </Button>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                                <History className="h-5 w-5" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                            {chatHistory.map((chat) => (
+        <div className="flex flex-col h-full relative" ref={chatAreaRef}>
+            {/* Floating action buttons */}
+            <div className="absolute top-4 right-4 z-10 flex gap-2">
+                <Button variant="ghost" size="icon" onClick={handleNewChat} className="bg-black text-white hover:bg-gray-700 hover:text-white border border-gray-600">
+                    <Plus className="h-5 w-5" />
+                </Button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="bg-black text-white hover:bg-gray-700 hover:text-white border border-gray-600">
+                            <History className="h-5 w-5" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="max-h-96 overflow-y-auto">
+                        {chatHistory.length === 0 ? (
+                            <DropdownMenuItem disabled>
+                                No chat history
+                            </DropdownMenuItem>
+                        ) : (
+                            chatHistory.map((chat) => (
                                 <DropdownMenuItem key={chat.thread_id} onClick={() => handleLoadChat(chat.thread_id)}>
                                     {chat.title || `Chat from ${new Date(chat.created_at).toLocaleString()}`}
                                 </DropdownMenuItem>
+                            ))
+                        )}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+
+            <div className="flex-1 flex flex-col">
+                <div className="flex-1 flex flex-col justify-end min-h-0">
+                    <ScrollArea className="p-4">
+                        <div className="flex flex-col space-y-4 w-full">
+                            {messages.map((message) => (
+                                <div
+                                    key={message.id}
+                                    className={`w-full flex ${message.sender === "user" ? "justify-end" : "justify-start"} min-w-0`}
+                                >
+                                    <ChatBubble content={message.content} sender={message.sender} windowWidth={chatWidth} />
+                                </div>
                             ))}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                            {isLoading && (
+                                <div className="w-full flex justify-start min-w-0">
+                                    <ChatBubble content={<Loader2 className="h-5 w-5 animate-spin" />} sender="ai" windowWidth={chatWidth} />
+                                </div>
+                            )}
+                            <div ref={messagesEndRef} />
+                        </div>
+                    </ScrollArea>
                 </div>
             </div>
-            <ScrollArea className="flex-1 p-4">
-                <div className="flex flex-col space-y-4 w-full">
-                    {messages.map((message) => (
-                        <div
-                            key={message.id}
-                            className={`w-full flex ${message.sender === "user" ? "justify-end" : "justify-start"} min-w-0`}
-                        >
-                            <ChatBubble content={message.content} sender={message.sender} windowWidth={chatWidth} />
-                        </div>
-                    ))}
-                    {isLoading && (
-                        <div className="w-full flex justify-start min-w-0">
-                            <ChatBubble content={<Loader2 className="h-5 w-5 animate-spin" />} sender="ai" windowWidth={chatWidth} />
-                        </div>
-                    )}
-                    <div ref={messagesEndRef} />
-                </div>
-            </ScrollArea>
             <div className="p-4 border-t">
                 <div className="flex gap-2">
                     <Input
