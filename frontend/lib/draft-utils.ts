@@ -20,6 +20,7 @@ export function sortDraftsByUpdated(drafts: Draft[]): Draft[] {
 export function convertDraftDataToDraft(draftData: DraftData, userId: string): Draft {
     let content = '';
     let metadata: DraftMetadata = {};
+    let type: DraftType = draftData.type as DraftType;
 
     if (draftData.type === 'email') {
         const emailData = draftData as DraftEmail;
@@ -30,31 +31,35 @@ export function convertDraftDataToDraft(draftData: DraftData, userId: string): D
             cc: emailData.cc ? emailData.cc.split(',').map(s => s.trim()).filter(s => s) : [],
             bcc: emailData.bcc ? emailData.bcc.split(',').map(s => s.trim()).filter(s => s) : [],
         };
-    } else if (draftData.type === 'calendar_event') {
-        const eventData = draftData as DraftCalendarEvent;
-        content = eventData.description || '';
-        metadata = {
-            title: eventData.title,
-            startTime: eventData.start_time,
-            endTime: eventData.end_time,
-            location: eventData.location,
-            attendees: eventData.attendees ? eventData.attendees.split(',').map(s => s.trim()).filter(s => s) : [],
-        };
-    } else if (draftData.type === 'calendar_change') {
-        const changeData = draftData as DraftCalendarChange;
-        content = changeData.new_description || '';
-        metadata = {
-            title: changeData.new_title,
-            startTime: changeData.new_start_time,
-            endTime: changeData.new_end_time,
-            location: changeData.new_location,
-            attendees: changeData.new_attendees ? changeData.new_attendees.split(',').map(s => s.trim()).filter(s => s) : [],
-        };
+    } else if (draftData.type === 'calendar_event' || draftData.type === 'calendar_change') {
+        // Normalize type to 'calendar' for UI consistency
+        type = 'calendar';
+        if (draftData.type === 'calendar_event') {
+            const eventData = draftData as DraftCalendarEvent;
+            content = eventData.description || '';
+            metadata = {
+                title: eventData.title,
+                startTime: eventData.start_time,
+                endTime: eventData.end_time,
+                location: eventData.location,
+                attendees: eventData.attendees ? eventData.attendees.split(',').map(s => s.trim()).filter(s => s) : [],
+            };
+        } else {
+            const changeData = draftData as DraftCalendarChange;
+            content = changeData.new_description || '';
+            metadata = {
+                title: changeData.new_title,
+                startTime: changeData.new_start_time,
+                endTime: changeData.new_end_time,
+                location: changeData.new_location,
+                attendees: changeData.new_attendees ? changeData.new_attendees.split(',').map(s => s.trim()).filter(s => s) : [],
+            };
+        }
     }
 
     return {
         id: `draft_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        type: draftData.type as DraftType,
+        type,
         status: 'draft',
         content,
         metadata,
@@ -62,5 +67,6 @@ export function convertDraftDataToDraft(draftData: DraftData, userId: string): D
         createdAt: draftData.created_at,
         updatedAt: draftData.updated_at || draftData.created_at,
         userId,
+        threadId: (draftData as any).thread_id || undefined,
     };
 }

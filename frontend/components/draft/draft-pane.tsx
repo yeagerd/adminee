@@ -23,13 +23,13 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
             // If there's unsaved content, ask for confirmation
             if (draft.content.trim() || Object.keys(draft.metadata).length > 0) {
                 if (confirm('You have unsaved changes. Are you sure you want to switch draft types?')) {
-                    if (userId) onTypeChange(type);
+                    onTypeChange(type);
                 }
             } else {
-                if (userId) onTypeChange(type);
+                onTypeChange(type);
             }
         } else if (!draft) {
-            if (userId) onTypeChange(type);
+            onTypeChange(type);
         }
     };
 
