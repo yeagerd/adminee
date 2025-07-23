@@ -14,7 +14,7 @@ import { Suspense } from 'react';
 
 function DashboardContent() {
     const { data: session, status } = useSession();
-    const { state: draftState, setCurrentDraft, updateDraft, updateDraftMetadata, createNewDraft } = useDraftState();
+    const { state: draftState, setCurrentDraft, updateDraft, updateDraftMetadata, createNewDraft, clearDraft } = useDraftState();
 
     const handleDraftReceived = (draftData: DraftData) => {
         if (session?.user?.email) {
@@ -28,6 +28,14 @@ function DashboardContent() {
             createNewDraft(type, session.user.email);
         }
     }
+
+    // Add a handler for draft actions (send, save, discard)
+    const handleDraftActionComplete = (action: string, success: boolean) => {
+        if (action === 'discard' && success) {
+            clearDraft();
+        }
+        // Optionally handle other actions (send, save) here
+    };
 
     if (status === 'loading') {
         return (
@@ -70,6 +78,7 @@ function DashboardContent() {
                                 onTypeChange={handleTypeChange}
                                 isLoading={draftState.isLoading}
                                 error={draftState.error}
+                                onActionComplete={handleDraftActionComplete}
                             />
                         </div>
                     </div>

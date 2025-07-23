@@ -45,8 +45,18 @@ export class DraftService {
     }
 
     async deleteDraft(draftId: string): Promise<boolean> {
-        await gatewayClient.deleteDraft(draftId);
-        return true;
+        // Add logging to debug deletion logic
+        console.log('[DraftService] Attempting to delete draft:', draftId);
+        // Only call backend if draftId is an integer
+        if (/^\d+$/.test(draftId)) {
+            console.log('[DraftService] draftId is integer, calling backend to delete.');
+            await gatewayClient.deleteDraft(draftId);
+            return true;
+        } else {
+            console.log('[DraftService] draftId is not integer, treating as local/unsaved draft. No backend call.');
+            // Local/unsaved draft, just remove from UI/state
+            return true;
+        }
     }
 
     async getDraft(draftId: string): Promise<Draft> {

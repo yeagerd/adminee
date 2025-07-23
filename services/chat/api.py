@@ -7,6 +7,7 @@ Internal/service endpoints, if any, should be under /internal and require API ke
 """
 
 import json
+import uuid
 from typing import AsyncGenerator, List, Optional
 
 from fastapi import APIRouter, Request
@@ -136,26 +137,46 @@ async def chat_endpoint(
     # Extract structured draft data
     draft_data = await agent.get_draft_data()
 
-    # Convert draft data to API models
+    # Convert draft data to API models, including the database id
     from services.chat.models import DraftCalendarChange, DraftCalendarEvent, DraftEmail
 
     structured_drafts = []
 
     for draft in draft_data:
         draft_type = draft.get("type", "")
+        # Determine the content field based on draft type
         if draft_type == "email":
-            structured_drafts.append(DraftEmail(**draft))
+            content = draft.get("body", "")
         elif draft_type == "calendar_event":
-            structured_drafts.append(DraftCalendarEvent(**draft))  # type: ignore[arg-type]
+            content = draft.get("description", "")
         elif draft_type == "calendar_change":
-            structured_drafts.append(DraftCalendarChange(**draft))  # type: ignore[arg-type]
+            content = draft.get("new_description", "")
+        else:
+            content = draft.get("content", "")
+
+        # Persist the draft to the database (create or update)
+        db_draft = await history_manager.create_or_update_draft(
+            int(thread.id),
+            draft_type,
+            content,
+        )
+        draft_id = str(db_draft.id) if db_draft and db_draft.id is not None else None
+        draft_with_id = dict(draft)
+        draft_with_id["id"] = draft_id
+
+        if draft_type == "email":
+            structured_drafts.append(DraftEmail(**draft_with_id))
+        elif draft_type == "calendar_event":
+            structured_drafts.append(DraftCalendarEvent(**draft_with_id))  # type: ignore[arg-type]
+        elif draft_type == "calendar_change":
+            structured_drafts.append(DraftCalendarChange(**draft_with_id))  # type: ignore[arg-type]
 
     # CONVERSION PATTERN: Create API response model from data
     # Note: This creates MessageResponse (API model) directly rather than
     # converting from Message (database model) since this is a new response
     pydantic_messages = [
         MessageResponse(
-            message_id="1",  # Simple counter since we're not fetching from DB
+            message_id=str(uuid.uuid4()),  # Generate a unique ID for each message
             thread_id=str(thread.id),  # Convert int to string for JSON
             user_id="assistant",  # Mark as assistant response
             llm_generated=True,  # Computed field not in database model
@@ -270,11 +291,57 @@ async def chat_stream_endpoint(
                     placeholder_message.id, full_response
                 )
 
-            # Send completion event
+            # --- DRAFT PERSISTENCE AND ID HANDLING (MATCH NON-STREAMING ENDPOINT) ---
+            # Extract structured draft data
+            draft_data = await agent.get_draft_data()
+            from services.chat.models import (
+                DraftCalendarChange,
+                DraftCalendarEvent,
+                DraftEmail,
+            )
+
+            structured_drafts = []
+            for draft in draft_data:
+                draft_type = draft.get("type", "")
+                # Determine the content field based on draft type
+                if draft_type == "email":
+                    content = draft.get("body", "")
+                elif draft_type == "calendar_event":
+                    content = draft.get("description", "")
+                elif draft_type == "calendar_change":
+                    content = draft.get("new_description", "")
+                else:
+                    content = draft.get("content", "")
+
+                # Persist the draft to the database (create or update)
+                db_draft = await history_manager.create_or_update_draft(
+                    int(thread.id),
+                    draft_type,
+                    content,
+                )
+                draft_id = (
+                    str(db_draft.id) if db_draft and db_draft.id is not None else None
+                )
+                draft_with_id = dict(draft)
+                draft_with_id["id"] = draft_id
+
+                if draft_type == "email":
+                    structured_drafts.append(DraftEmail(**draft_with_id))
+                elif draft_type == "calendar_event":
+                    structured_drafts.append(DraftCalendarEvent(**draft_with_id))  # type: ignore[arg-type]
+                elif draft_type == "calendar_change":
+                    structured_drafts.append(DraftCalendarChange(**draft_with_id))  # type: ignore[arg-type]
+
+            # Send completion event (now with drafts)
             completion_data = {
                 "thread_id": str(thread.id),
                 "full_response": full_response,
                 "status": "completed",
+                "drafts": (
+                    [d.model_dump() for d in structured_drafts]
+                    if structured_drafts
+                    else None
+                ),
             }
             yield f"event: completed\ndata: {json.dumps(completion_data)}\n\n"
 
