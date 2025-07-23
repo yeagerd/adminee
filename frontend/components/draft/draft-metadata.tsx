@@ -27,7 +27,7 @@ export function DraftMetadata({ draft, onUpdate, type }: DraftMetadataProps) {
                 <Label htmlFor="recipients">To</Label>
                 <Input
                     id="recipients"
-                    value={draft.metadata.recipients?.join(', ') || ''}
+                    value={Array.isArray(draft.metadata.recipients) ? draft.metadata.recipients.join(', ') : draft.metadata.recipients || ''}
                     onChange={(e) => handleMetadataChange('recipients', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
                     placeholder="recipient@example.com, another@example.com"
                     className="w-full"
@@ -38,7 +38,7 @@ export function DraftMetadata({ draft, onUpdate, type }: DraftMetadataProps) {
                 <Label htmlFor="cc">CC</Label>
                 <Input
                     id="cc"
-                    value={draft.metadata.cc?.join(', ') || ''}
+                    value={Array.isArray(draft.metadata.cc) ? draft.metadata.cc.join(', ') : draft.metadata.cc || ''}
                     onChange={(e) => handleMetadataChange('cc', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
                     placeholder="cc@example.com"
                     className="w-full"
@@ -49,7 +49,7 @@ export function DraftMetadata({ draft, onUpdate, type }: DraftMetadataProps) {
                 <Label htmlFor="bcc">BCC</Label>
                 <Input
                     id="bcc"
-                    value={draft.metadata.bcc?.join(', ') || ''}
+                    value={Array.isArray(draft.metadata.bcc) ? draft.metadata.bcc.join(', ') : draft.metadata.bcc || ''}
                     onChange={(e) => handleMetadataChange('bcc', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
                     placeholder="bcc@example.com"
                     className="w-full"
@@ -110,7 +110,7 @@ export function DraftMetadata({ draft, onUpdate, type }: DraftMetadataProps) {
                 <Label htmlFor="attendees">Attendees</Label>
                 <Input
                     id="attendees"
-                    value={draft.metadata.attendees?.join(', ') || ''}
+                    value={Array.isArray(draft.metadata.attendees) ? draft.metadata.attendees.join(', ') : draft.metadata.attendees || ''}
                     onChange={(e) => handleMetadataChange('attendees', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
                     placeholder="attendee@example.com, another@example.com"
                     className="w-full"
@@ -136,7 +136,7 @@ export function DraftMetadata({ draft, onUpdate, type }: DraftMetadataProps) {
                 <Label htmlFor="tags">Tags</Label>
                 <Input
                     id="tags"
-                    value={draft.metadata.tags?.join(', ') || ''}
+                    value={Array.isArray(draft.metadata.tags) ? draft.metadata.tags.join(', ') : draft.metadata.tags || ''}
                     onChange={(e) => handleMetadataChange('tags', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
                     placeholder="tag1, tag2, tag3"
                     className="w-full"
@@ -167,6 +167,8 @@ export function DraftMetadata({ draft, onUpdate, type }: DraftMetadataProps) {
             case 'email':
                 return renderEmailMetadata();
             case 'calendar':
+            case 'calendar_event':
+            case 'calendar_change':
                 return renderCalendarMetadata();
             case 'document':
                 return renderDocumentMetadata();
