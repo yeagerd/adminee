@@ -1,5 +1,6 @@
 import AuthSessionProvider from '@/components/auth/session-provider';
 import { IntegrationsProvider } from '@/contexts/integrations-context';
+import { UserPreferencesProvider } from '@/contexts/settings-context';
 import type { Metadata } from 'next';
 import './globals.css';
 
@@ -18,7 +19,9 @@ export default function RootLayout({
             <body>
                 <AuthSessionProvider>
                     <IntegrationsProvider>
-                        {children}
+                        <UserPreferencesProvider>
+                            {children}
+                        </UserPreferencesProvider>
                     </IntegrationsProvider>
                 </AuthSessionProvider>
             </body>

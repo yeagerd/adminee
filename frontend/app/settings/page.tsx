@@ -3,7 +3,7 @@
 import AppLayout from '@/components/layout/app-layout';
 import SettingsSidebar from '@/components/layout/settings-sidebar';
 import { SettingsContent } from '@/components/settings-content';
-import { SettingsProvider } from '@/contexts/settings-context';
+import { SettingsProvider, UserPreferencesProvider } from '@/contexts/settings-context';
 import { useSession } from 'next-auth/react';
 import { Suspense } from 'react';
 
@@ -47,7 +47,9 @@ export default function SettingsPage() {
     return (
         <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
             <SettingsProvider>
-                <SettingsPageContent />
+                <UserPreferencesProvider>
+                    <SettingsPageContent />
+                </UserPreferencesProvider>
             </SettingsProvider>
         </Suspense>
     );

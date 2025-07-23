@@ -116,6 +116,8 @@ class PreferencesService:
                 privacy=PrivacyPreferencesSchema(**preferences.privacy_preferences),
                 created_at=preferences.created_at,
                 updated_at=preferences.updated_at,
+                timezone_mode=getattr(preferences, "timezone_mode", "auto"),
+                manual_timezone=getattr(preferences, "manual_timezone", ""),
             )
 
         except NotFoundError:
@@ -203,6 +205,14 @@ class PreferencesService:
                     preferences_update.privacy.model_dump()
                 )
                 logger.debug("Updating privacy preferences", user_id=user_id)
+
+            # New: Update timezone_mode and manual_timezone if present
+            if preferences_update.timezone_mode is not None:
+                update_data["timezone_mode"] = preferences_update.timezone_mode
+                logger.debug("Updating timezone_mode", user_id=user_id)
+            if preferences_update.manual_timezone is not None:
+                update_data["manual_timezone"] = preferences_update.manual_timezone
+                logger.debug("Updating manual_timezone", user_id=user_id)
 
             if not update_data:
                 logger.warning("No preferences to update", user_id=user_id)

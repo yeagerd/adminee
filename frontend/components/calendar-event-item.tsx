@@ -25,6 +25,7 @@ import {
 } from "lucide-react"
 import { useState } from "react"
 
+import { useUserPreferences } from '@/contexts/settings-context'
 import { CalendarEvent } from "@/types/office-service"
 
 interface EventItemProps {
@@ -42,6 +43,7 @@ function parseUtcDate(dateString: string): Date {
 
 export function CalendarEventItem({ event }: EventItemProps) {
     const [isExpanded, setIsExpanded] = useState(false)
+    const { effectiveTimezone } = useUserPreferences();
 
     // Parse dates from ISO strings, always as UTC
     const startTime = parseUtcDate(event.start_time)
@@ -153,9 +155,9 @@ export function CalendarEventItem({ event }: EventItemProps) {
                                     <Clock className="h-3 w-3" />
                                     <span className="truncate">
                                         {event.all_day ? (
-                                            `${startTime.toLocaleDateString(undefined, { timeZoneName: 'short' })} (All Day)`
+                                            `${startTime.toLocaleDateString(undefined, { timeZone: effectiveTimezone, timeZoneName: 'short' })} (All Day)`
                                         ) : (
-                                            `${startTime.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })} - ${endTime.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })}`
+                                            `${startTime.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone: effectiveTimezone, timeZoneName: 'short' })} - ${endTime.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', timeZone: effectiveTimezone, timeZoneName: 'short' })}`
                                         )}
                                     </span>
                                 </div>

@@ -1,8 +1,8 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+    return twMerge(clsx(inputs))
 }
 
 /**
@@ -11,32 +11,32 @@ export function cn(...inputs: ClassValue[]) {
  * @param options - Intl.DateTimeFormat options
  */
 export function formatUtcToLocal(
-  utcDateString: string,
-  options: Intl.DateTimeFormatOptions = {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  }
+    utcDateString: string,
+    options: Intl.DateTimeFormatOptions = {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+    }
 ): string {
-  try {
-    const date = new Date(utcDateString);
-    return date.toLocaleTimeString([], options);
-  } catch (error) {
-    console.error("Failed to format date:", error);
-    return utcDateString; // fallback to original string
-  }
+    try {
+        const date = new Date(utcDateString);
+        return date.toLocaleTimeString([], options);
+    } catch (error) {
+        console.error("Failed to format date:", error);
+        return utcDateString; // fallback to original string
+    }
 }
 
 /**
  * Get user's timezone
  */
 export function getUserTimezone(): string {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone;
-  } catch (error) {
-    console.error("Failed to detect timezone:", error);
-    return "UTC";
-  }
+    try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone;
+    } catch (error) {
+        console.error("Failed to detect timezone:", error);
+        return "UTC";
+    }
 }
 
 /**
@@ -45,9 +45,9 @@ export function getUserTimezone(): string {
  * @param endTimeUtc - End time in UTC ISO string
  */
 export function formatTimeRange(startTimeUtc: string, endTimeUtc: string): string {
-  const startLocal = formatUtcToLocal(startTimeUtc);
-  const endLocal = formatUtcToLocal(endTimeUtc, { hour: "2-digit", minute: "2-digit", hour12: true });
-  return `${startLocal} to ${endLocal}`;
+    const startLocal = formatUtcToLocal(startTimeUtc);
+    const endLocal = formatUtcToLocal(endTimeUtc, { hour: "2-digit", minute: "2-digit", hour12: true });
+    return `${startLocal} to ${endLocal}`;
 }
 
 /**
@@ -55,12 +55,19 @@ export function formatTimeRange(startTimeUtc: string, endTimeUtc: string): strin
  * This function looks for time patterns in chat text and converts them to local time
  */
 export function formatCalendarTimesInText(text: string): string {
-  // Pattern to match "Time: HH:MM AM/PM to HH:MM AM/PM" 
-  const timePattern = /Time:\s*(\d{1,2}:\d{2}\s*(?:AM|PM))\s*to\s*(\d{1,2}:\d{2}\s*(?:AM|PM))/gi;
-  
-  return text.replace(timePattern, (match) => {
-    // Since the backend now handles timezone conversion, we can return the formatted times as-is
-    // The chat service already converts UTC to local time before sending the response
-    return match;
-  });
+    // Pattern to match "Time: HH:MM AM/PM to HH:MM AM/PM" 
+    const timePattern = /Time:\s*(\d{1,2}:\d{2}\s*(?:AM|PM))\s*to\s*(\d{1,2}:\d{2}\s*(?:AM|PM))/gi;
+
+    return text.replace(timePattern, (match) => {
+        // Since the backend now handles timezone conversion, we can return the formatted times as-is
+        // The chat service already converts UTC to local time before sending the response
+        return match;
+    });
+}
+
+// Utility to get effective timezone from context (for test/demo)
+import { useUserPreferences } from '@/contexts/settings-context';
+export function useEffectiveTimezone(): string {
+    const { effectiveTimezone } = useUserPreferences();
+    return effectiveTimezone;
 }

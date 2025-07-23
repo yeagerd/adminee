@@ -30,6 +30,8 @@ from services.user.schemas.user import (
     UserCreate,
     UserResponse,
 )
+from services.user.schemas.preferences import PreferencesResetRequest, UserPreferencesResponse, UserPreferencesUpdate
+from services.user.services.preferences_service import PreferencesService
 from services.user.services.token_service import get_token_service
 from services.user.services.user_service import get_user_service
 
@@ -361,6 +363,33 @@ async def create_or_upsert_user_internal(
         logger.error(f"Error type: {type(e)}")
         logger.error(f"Error details: {str(e)}")
         raise ServiceError(message="Failed to create or retrieve user")
+
+
+# --- INTERNAL-ONLY: /internal/users/{user_id}/preferences endpoints ---
+@router.put("/users/{user_id}/preferences", response_model=UserPreferencesResponse)
+async def update_user_preferences_internal(
+    user_id: str,
+    preferences_update: UserPreferencesUpdate,
+    current_service: str = Depends(get_current_service),
+) -> UserPreferencesResponse:
+    """
+    Internal service endpoint to update user preferences by user_id.
+    Requires service-to-service API key authentication.
+    """
+    return await PreferencesService.update_user_preferences(user_id, preferences_update)
+
+@router.post("/users/{user_id}/preferences/reset", response_model=UserPreferencesResponse)
+async def reset_user_preferences_internal(
+    user_id: str,
+    reset_request: PreferencesResetRequest,
+    current_service: str = Depends(get_current_service),
+) -> UserPreferencesResponse:
+    """
+    Internal service endpoint to reset user preferences by user_id.
+    Requires service-to-service API key authentication.
+    """
+    return await PreferencesService.reset_user_preferences(user_id, reset_request.categories)
+# --- END INTERNAL-ONLY ---
 
 
 @router.get("/users/{user_id}/preferences")

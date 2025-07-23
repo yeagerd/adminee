@@ -37,8 +37,12 @@ class UserPreferences(SQLModel, table=True):
     integration_preferences: Dict = Field(default_factory=dict, sa_column=Column(JSON))
     privacy_preferences: Dict = Field(default_factory=dict, sa_column=Column(JSON))
 
-    # User timezone preference (IANA timezone string)
-    timezone: str = Field(default="UTC", max_length=50)
+    # User timezone preference (IANA timezone string) [DEPRECATED: use timezone_mode/manual_timezone]
+    timezone: str = Field(default="UTC", max_length=50)  # DEPRECATED
+
+    # Timezone mode: "auto" (browser) or "manual" (user override)
+    timezone_mode: str = Field(default="auto", max_length=10, description="Timezone mode: 'auto' or 'manual'")
+    manual_timezone: str = Field(default="", max_length=50, description="Manual timezone override (IANA name, or empty if not set)")
 
     # Timestamps
     created_at: datetime = Field(

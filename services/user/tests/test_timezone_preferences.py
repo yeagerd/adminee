@@ -143,3 +143,52 @@ class TestTimezonePreferencesIntegration:
         for tz in common_timezones:
             preferences = UserPreferences(user_id=1, timezone=tz)
             assert preferences.timezone == tz
+
+
+class TestTimezoneModePreferences(BaseUserManagementIntegrationTest):
+    """Test new timezone_mode/manual_timezone logic."""
+
+    def test_default_timezone_mode(self):
+        user = User(
+            external_auth_id="tzmode_default",
+            auth_provider="microsoft",
+            email="tzmode_default@test.com",
+        )
+        preferences = UserPreferences(user=user)
+        assert preferences.timezone_mode == "auto"
+        assert preferences.manual_timezone == ""
+
+    def test_manual_timezone_override(self):
+        user = User(
+            external_auth_id="tzmode_manual",
+            auth_provider="microsoft",
+            email="tzmode_manual@test.com",
+        )
+        preferences = UserPreferences(user=user, timezone_mode="manual", manual_timezone="Europe/Paris")
+        assert preferences.timezone_mode == "manual"
+        assert preferences.manual_timezone == "Europe/Paris"
+
+    def test_api_update_and_retrieve_timezone_mode(self):
+        # Simulate API update and retrieval
+        user = User(
+            external_auth_id="tzmode_api",
+            auth_provider="microsoft",
+            email="tzmode_api@test.com",
+        )
+        preferences = UserPreferences(user=user)
+        preferences.timezone_mode = "manual"
+        preferences.manual_timezone = "Asia/Tokyo"
+        assert preferences.timezone_mode == "manual"
+        assert preferences.manual_timezone == "Asia/Tokyo"
+
+    def test_fallback_to_auto_if_manual_not_set(self):
+        user = User(
+            external_auth_id="tzmode_fallback",
+            auth_provider="microsoft",
+            email="tzmode_fallback@test.com",
+        )
+        preferences = UserPreferences(user=user, timezone_mode="auto", manual_timezone="")
+        # Simulate frontend logic
+        browser_tz = "America/Los_Angeles"
+        effective_tz = preferences.manual_timezone if preferences.timezone_mode == "manual" and preferences.manual_timezone else browser_tz
+        assert effective_tz == browser_tz
