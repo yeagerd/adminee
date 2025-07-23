@@ -216,7 +216,12 @@ class DraftAgent(FunctionAgent):
                 draft_types = ", ".join(other_drafts)
                 return f"Error: Cannot create email draft - {draft_types} draft(s) already exist. Please complete, delete, or cancel the existing draft(s) first."
 
-            result = create_draft_email(thread_id, to, subject, body)
+            result = create_draft_email(
+                thread_id,
+                to=to,
+                subject=subject,
+                body=body,
+            )
 
             # Record the draft info and log the result
             if result.get("success"):
