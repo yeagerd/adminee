@@ -3,16 +3,22 @@
 import type React from "react"
 
 import { Button } from "@/components/ui/button"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useStreamingSetting } from "@/hooks/use-streaming-setting"
 import gatewayClient from "@/lib/gateway-client"
-import { Loader2, Send } from "lucide-react"
+import { History, Loader2, Plus, Send } from "lucide-react"
 import { useSession } from "next-auth/react"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 type Message = {
-    id: number
+    id: string
     content: string
     sender: "user" | "ai"
     timestamp: Date
@@ -75,15 +81,7 @@ interface ChatResponse {
 }
 
 // Sample initial messages
-const initialMessages: Message[] = [
-    {
-        id: 1,
-        content:
-            "Hello! I'm your calendar assistant. I can help you manage your schedule, draft emails, add tasks, and more. How can I help you today?",
-        sender: "ai",
-        timestamp: new Date(),
-    },
-]
+const initialMessages: Message[] = []
 
 function isUnbreakableString(str: string, threshold: number) {
     return typeof str === 'string' && str.length > threshold && !/\s/.test(str);
@@ -118,11 +116,14 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
     const [messages, setMessages] = useState<Message[]>(initialMessages)
     const [input, setInput] = useState("")
     const [isLoading, setIsLoading] = useState(false)
+    const [chatHistory, setChatHistory] = useState<ThreadResponse[]>([])
+    const [currentThreadId, setCurrentThreadId] = useState<string | null>(null)
     const { enableStreaming } = useStreamingSetting()
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const internalRef = useRef<HTMLDivElement>(null);
     const chatAreaRef = containerRef || internalRef;
     const [chatWidth, setChatWidth] = useState(600)
+    const streamControllerRef = useRef<AbortController | null>(null)
 
     // Track chat window width
     useEffect(() => {
@@ -153,11 +154,62 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
         scrollToBottom()
     }, [messages])
 
+    // Use the correct ThreadResponse type for chat history
+    interface ThreadResponse {
+        thread_id: string;
+        user_id: string;
+        title?: string;
+        created_at: string;
+        updated_at: string;
+    }
+
+    const fetchChatHistory = useCallback(async () => {
+        if (session) {
+            try {
+                // Use the correct ThreadResponse type and fallback for missing title
+                const threads = (await gatewayClient.getChatThreads()) as ThreadResponse[]
+                // Sort in reverse-chronological order (newest first)
+                const sortedThreads = threads.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                setChatHistory(sortedThreads)
+            } catch (error) {
+                console.error("Failed to fetch chat history:", error)
+            }
+        }
+    }, [session])
+
+    useEffect(() => {
+        fetchChatHistory()
+    }, [fetchChatHistory])
+
+    const handleNewChat = () => {
+        if (streamControllerRef.current) {
+            streamControllerRef.current.abort()
+        }
+        setMessages(initialMessages)
+        setCurrentThreadId(null)
+    }
+
+    const handleLoadChat = async (threadId: string) => {
+        try {
+            const history = (await gatewayClient.getChatHistory(threadId)) as ChatResponse
+            const loadedMessages: Message[] = history.messages.map((msg) => ({
+                id: msg.message_id,
+                content: msg.content,
+                sender: msg.llm_generated ? "ai" : "user",
+                timestamp: new Date(msg.created_at),
+            }))
+            setMessages(loadedMessages)
+            setCurrentThreadId(threadId)
+        } catch (error) {
+            console.error("Failed to load chat history:", error)
+        }
+    }
+
     const handleSendMessage = async () => {
         if (!session?.user?.email) {
             // Add message asking user to log in
             const loginMessage: Message = {
-                id: messages.length + 1,
+                id: self.crypto.randomUUID(),
                 content: "Please log in to use the chat functionality. You can sign in using the button in the top right corner.",
                 sender: "ai",
                 timestamp: new Date(),
@@ -169,7 +221,7 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
         if (input.trim()) {
             // Add user message
             const userMessage: Message = {
-                id: messages.length + 1,
+                id: self.crypto.randomUUID(),
                 content: input.trim(),
                 sender: "user",
                 timestamp: new Date(),
@@ -181,14 +233,15 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
 
             try {
                 if (enableStreaming) {
-                    // Streaming implementation using GatewayClient
-                    const stream = await gatewayClient.chatStream(currentInput)
+                    streamControllerRef.current = new AbortController()
+                    const stream = await gatewayClient.chatStream(currentInput, currentThreadId ?? undefined, undefined, streamControllerRef.current.signal)
                     const reader = stream.getReader()
                     const decoder = new TextDecoder()
+                    const placeholderId = self.crypto.randomUUID()
 
                     // Add AI message placeholder
                     const aiMessage: Message = {
-                        id: messages.length + 2,
+                        id: placeholderId,
                         content: "",
                         sender: "ai",
                         timestamp: new Date(),
@@ -196,24 +249,66 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
                     setMessages((prev) => [...prev, aiMessage])
 
                     if (reader) {
-                        while (true) {
-                            const { done, value } = await reader.read()
-                            if (done) break
+                        const processStream = async () => {
+                            let buffer = ""
+                            let eventName: string | null = null
+                            let serverMessageId: string | null = null
+                            while (true) {
+                                const { done, value } = await reader.read()
+                                if (done) break
 
-                            const chunk = decoder.decode(value)
-                            setMessages((prev) => {
-                                const newMessages = [...prev]
-                                const lastMessage = newMessages[newMessages.length - 1]
-                                if (lastMessage.sender === "ai") {
-                                    lastMessage.content += chunk
+                                buffer += decoder.decode(value, { stream: true })
+                                const lines = buffer.split("\n")
+                                buffer = lines.pop() ?? ""
+
+                                for (const line of lines) {
+                                    if (line.startsWith("event:")) {
+                                        eventName = line.substring(6).trim()
+                                    } else if (line.startsWith("data:")) {
+                                        const dataStr = line.substring(5).trim()
+                                        if (eventName === "metadata") {
+                                            try {
+                                                const data = JSON.parse(dataStr)
+                                                setCurrentThreadId(data.thread_id)
+                                                serverMessageId = data.message_id
+                                            } catch (e) {
+                                                console.error("Failed to parse metadata:", e)
+                                            }
+                                        } else if (eventName === "chunk") {
+                                            try {
+                                                const data = JSON.parse(dataStr)
+                                                if (data.delta) {
+                                                    setMessages((prev) => {
+                                                        const newMessages = [...prev]
+                                                        const lastMessage = newMessages[newMessages.length - 1]
+                                                        if (lastMessage.sender === "ai") {
+                                                            lastMessage.content += data.delta
+                                                        }
+                                                        return newMessages
+                                                    })
+                                                }
+                                            } catch (e) {
+                                                console.error("Failed to parse chunk:", e)
+                                            }
+                                        }
+                                    } else if (line.trim() === "") {
+                                        eventName = null // Reset on blank line
+                                    }
                                 }
-                                return newMessages
-                            })
+                            }
+                            if (serverMessageId) {
+                                setMessages((prev) => prev.map(m => m.id === placeholderId ? { ...m, id: serverMessageId! } : m))
+                            }
                         }
+                        await processStream()
                     }
                 } else {
                     // Non-streaming implementation using GatewayClient
-                    const data = await gatewayClient.chat(currentInput) as ChatResponse
+                    const data = await gatewayClient.chat(currentInput, currentThreadId ?? undefined) as ChatResponse
+                    if (!currentThreadId) {
+                        fetchChatHistory()
+                    }
+                    setCurrentThreadId(data.thread_id)
 
                     // Extract the AI response from the backend response structure
                     const aiResponse = data.messages && data.messages.length > 0
@@ -222,7 +317,7 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
 
                     // Add AI response
                     const aiMessage: Message = {
-                        id: messages.length + 2,
+                        id: data.messages && data.messages.length > 0 ? data.messages[data.messages.length - 1].message_id : `error-${self.crypto.randomUUID()}`,
                         content: aiResponse,
                         sender: "ai",
                         timestamp: new Date(),
@@ -238,7 +333,7 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
                 console.error('Chat error:', error)
                 // Add error message
                 const errorMessage: Message = {
-                    id: messages.length + 2,
+                    id: `error-${self.crypto.randomUUID()}`,
                     content: "I'm sorry, there was an error processing your request. Please try again.",
                     sender: "ai",
                     timestamp: new Date(),
@@ -246,6 +341,7 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
                 setMessages((prev) => [...prev, errorMessage])
             } finally {
                 setIsLoading(false)
+                streamControllerRef.current = null
             }
         }
     }
@@ -258,25 +354,66 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
     }
 
     return (
-        <div className="flex flex-col h-full" ref={chatAreaRef}>
-            <ScrollArea className="flex-1 p-4">
-                <div className="flex flex-col space-y-4 w-full">
-                    {messages.map((message) => (
-                        <div
-                            key={message.id}
-                            className={`w-full flex ${message.sender === "user" ? "justify-end" : "justify-start"} min-w-0`}
-                        >
-                            <ChatBubble content={message.content} sender={message.sender} windowWidth={chatWidth} />
+        <div className="flex flex-col h-full relative" ref={chatAreaRef}>
+            {/* Floating action buttons */}
+            <div className="absolute top-4 right-4 z-10 flex gap-2">
+                <Button variant="ghost" size="icon" onClick={handleNewChat} className="bg-black text-white hover:bg-gray-700 hover:text-white border border-gray-600">
+                    <Plus className="h-5 w-5" />
+                </Button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="bg-black text-white hover:bg-gray-700 hover:text-white border border-gray-600">
+                            <History className="h-5 w-5" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="max-h-96 overflow-y-auto">
+                        {chatHistory.length === 0 ? (
+                            <DropdownMenuItem disabled>
+                                No chat history
+                            </DropdownMenuItem>
+                        ) : (
+                            chatHistory.map((chat) => (
+                                <DropdownMenuItem key={chat.thread_id} onClick={() => handleLoadChat(chat.thread_id)}>
+                                    {/* Fallback for missing title */}
+                                    {chat.title && chat.title.trim() !== '' ? chat.title : `Chat from ${new Date(chat.created_at).toLocaleString()}`}
+                                </DropdownMenuItem>
+                            ))
+                        )}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+
+            <div className="flex-1 flex flex-col">
+                <div className="flex-1 flex flex-col justify-end min-h-0">
+                    <ScrollArea className="p-4">
+                        <div className="flex flex-col space-y-4 w-full">
+                            {messages.length === 0 ? (
+                                <div className="flex items-center justify-center h-full min-h-[200px]">
+                                    <div className="text-center text-gray-500">
+                                        <div className="text-2xl font-semibold mb-2">What can I help you with?</div>
+                                        <div className="text-sm">I can help you manage your schedule, draft emails, add tasks, and more.</div>
+                                    </div>
+                                </div>
+                            ) : (
+                                messages.map((message) => (
+                                    <div
+                                        key={message.id}
+                                        className={`w-full flex ${message.sender === "user" ? "justify-end" : "justify-start"} min-w-0`}
+                                    >
+                                        <ChatBubble content={message.content} sender={message.sender} windowWidth={chatWidth} />
+                                    </div>
+                                ))
+                            )}
+                            {isLoading && (
+                                <div className="w-full flex justify-start min-w-0">
+                                    <ChatBubble content={<Loader2 className="h-5 w-5 animate-spin" />} sender="ai" windowWidth={chatWidth} />
+                                </div>
+                            )}
+                            <div ref={messagesEndRef} />
                         </div>
-                    ))}
-                    {isLoading && (
-                        <div className="w-full flex justify-start min-w-0">
-                            <ChatBubble content={<Loader2 className="h-5 w-5 animate-spin" />} sender="ai" windowWidth={chatWidth} />
-                        </div>
-                    )}
-                    <div ref={messagesEndRef} />
+                    </ScrollArea>
                 </div>
-            </ScrollArea>
+            </div>
             <div className="p-4 border-t">
                 <div className="flex gap-2">
                     <Input

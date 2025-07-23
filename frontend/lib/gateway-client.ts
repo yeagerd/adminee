@@ -81,7 +81,7 @@ export class GatewayClient {
 
     // Chat Service
     async chat(message: string, threadId?: string, userTimezone?: string) {
-        return this.request('/api/chat', {
+        return this.request('/api/chat/completions', {
             method: 'POST',
             body: {
                 message,
@@ -91,7 +91,7 @@ export class GatewayClient {
         });
     }
 
-    async chatStream(message: string, threadId?: string, userTimezone?: string): Promise<ReadableStream> {
+    async chatStream(message: string, threadId?: string, userTimezone?: string, signal?: AbortSignal): Promise<ReadableStream> {
         const session = await getSession();
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
@@ -101,7 +101,7 @@ export class GatewayClient {
             headers['Authorization'] = `Bearer ${session.accessToken}`;
         }
 
-        const response = await fetch(`${env.GATEWAY_URL}/api/chat/stream`, {
+        const response = await fetch(`${env.GATEWAY_URL}/api/chat/completions/stream`, {
             method: 'POST',
             headers,
             body: JSON.stringify({
@@ -109,6 +109,7 @@ export class GatewayClient {
                 thread_id: threadId,
                 user_timezone: userTimezone,
             }),
+            signal,
         });
 
         if (!response.ok) {
@@ -117,6 +118,14 @@ export class GatewayClient {
         }
 
         return response.body!;
+    }
+
+    async getChatHistory(threadId: string) {
+        return this.request(`/api/chat/threads/${threadId}/history`);
+    }
+
+    async getChatThreads() {
+        return this.request('/api/chat/threads');
     }
 
     // User Service

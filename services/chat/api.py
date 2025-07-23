@@ -67,7 +67,7 @@ async def get_user_id_from_gateway(request: Request) -> str:
     return user_id
 
 
-@router.post("/chat", response_model=ChatResponse)
+@router.post("/completions", response_model=ChatResponse)
 async def chat_endpoint(
     request: Request,
     chat_request: ChatRequest,
@@ -170,7 +170,7 @@ async def chat_endpoint(
     )
 
 
-@router.post("/chat/stream")
+@router.post("/completions/stream")
 async def chat_stream_endpoint(
     request: Request,
     chat_request: ChatRequest,
@@ -237,8 +237,15 @@ async def chat_stream_endpoint(
             # Build the agent workflow if not already built
             await agent.build_agent(user_input)
 
-            # Send initial metadata
-            yield f"event: metadata\ndata: {json.dumps({'thread_id': str(thread.id), 'user_id': user_id})}\n\n"
+            # Create a placeholder message for the AI response to get its ID
+            placeholder_message = await history_manager.append_message(
+                thread_id=int(thread.id),
+                user_id="assistant",
+                content="",  # Empty content, will be updated later
+            )
+
+            # Send initial metadata with the actual message ID
+            yield f"event: metadata\ndata: {json.dumps({'thread_id': str(thread.id), 'user_id': user_id, 'message_id': str(placeholder_message.id)})}\n\n"
 
             # Stream the workflow responses
             full_response = ""
@@ -257,13 +264,11 @@ async def chat_stream_endpoint(
 
                 yield f"event: chunk\ndata: {json.dumps(event_data)}\n\n"
 
-            # Wait for final response
-            try:
-                final_response = await agent.stream_chat(user_input).__anext__()
-                if not full_response:
-                    full_response = str(final_response)
-            except StopAsyncIteration:
-                pass
+            # After streaming, update the placeholder message with the full response content
+            if placeholder_message.id is not None:
+                await history_manager.update_message(
+                    placeholder_message.id, full_response
+                )
 
             # Send completion event
             completion_data = {
@@ -274,6 +279,20 @@ async def chat_stream_endpoint(
             yield f"event: completed\ndata: {json.dumps(completion_data)}\n\n"
 
         except Exception as e:
+            # On error, update the placeholder message with error or delete it if possible
+            if (
+                "placeholder_message" in locals()
+                and getattr(placeholder_message, "id", None) is not None
+            ):
+                try:
+                    # mypy fix: ensure id is int, not Optional[int]
+                    message_id = placeholder_message.id
+                    if message_id is not None:
+                        await history_manager.update_message(
+                            message_id, f"[ERROR] {str(e)}"
+                        )
+                except Exception:
+                    pass  # Ignore errors during cleanup
             # Send error event
             error_data = {"error": str(e), "status": "error"}
             yield f"event: error\ndata: {json.dumps(error_data)}\n\n"
@@ -312,6 +331,7 @@ async def list_threads(
         ThreadResponse(
             thread_id=str(t.id),  # CONVERT: int -> str for JSON compatibility
             user_id=t.user_id,  # DIRECT: string field passes through
+            title=t.title,  # DIRECT: optional string field passes through
             created_at=str(t.created_at),  # CONVERT: datetime -> str for JSON
             updated_at=str(t.updated_at),  # CONVERT: datetime -> str for JSON
             # NOTE: Relationships (messages, drafts) are excluded from API model

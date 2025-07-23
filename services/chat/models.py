@@ -171,6 +171,7 @@ class ThreadResponse(BaseModel):
 
     thread_id: str  # Converted from int ID in database model
     user_id: str
+    title: Optional[str] = None  # Optional title for thread organization
     created_at: str  # Converted from datetime in database model
     updated_at: str  # Converted from datetime in database model
 
