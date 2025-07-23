@@ -264,15 +264,7 @@ async def chat_stream_endpoint(
 
                 yield f"event: chunk\ndata: {json.dumps(event_data)}\n\n"
 
-            # Wait for final response
-            try:
-                final_response = await agent.stream_chat(user_input).__anext__()
-                if not full_response:
-                    full_response = str(final_response)
-            except StopAsyncIteration:
-                pass
-
-            # Update the placeholder message with the full response content
+            # After streaming, update the placeholder message with the full response content
             if placeholder_message.id is not None:
                 await history_manager.update_message(
                     placeholder_message.id, full_response
@@ -287,6 +279,14 @@ async def chat_stream_endpoint(
             yield f"event: completed\ndata: {json.dumps(completion_data)}\n\n"
 
         except Exception as e:
+            # On error, update the placeholder message with error or delete it if possible
+            if 'placeholder_message' in locals() and getattr(placeholder_message, 'id', None) is not None:
+                try:
+                    await history_manager.update_message(
+                        placeholder_message.id, f"[ERROR] {str(e)}"
+                    )
+                except Exception:
+                    pass  # Ignore errors during cleanup
             # Send error event
             error_data = {"error": str(e), "status": "error"}
             yield f"event: error\ndata: {json.dumps(error_data)}\n\n"
