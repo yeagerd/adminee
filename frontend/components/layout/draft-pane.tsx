@@ -8,15 +8,14 @@ interface DraftPaneProps {
     onUpdate: (updates: Partial<Draft>) => void;
     onMetadataChange: (metadata: Partial<DraftMetadata>) => void;
     onTypeChange: (type: DraftType) => void;
-    userId?: string;
 }
 
-export function DraftPane({ children, draft, onUpdate, onMetadataChange, onTypeChange, userId }: DraftPaneProps) {
+export function DraftPane({ children, draft, onUpdate, onMetadataChange, onTypeChange }: DraftPaneProps) {
     if (children) {
         return <div className="h-full overflow-auto">{children}</div>;
     }
 
-    return <DraftPaneComponent draft={draft} onUpdate={onUpdate} onMetadataChange={onMetadataChange} onTypeChange={onTypeChange} userId={userId} />;
+    return <DraftPaneComponent draft={draft} onUpdate={onUpdate} onMetadataChange={onMetadataChange} onTypeChange={onTypeChange} />;
 }
 
 export default DraftPane; 
