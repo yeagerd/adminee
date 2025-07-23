@@ -1,17 +1,16 @@
 'use client';
 
-import ChatInterface from '@/components/chat-interface';
-import AppLayout from '@/components/layout/app-layout';
+import ChatInterface, { DraftData } from '@/components/chat-interface';
 import { DraftPane } from '@/components/draft/draft-pane';
+import AppLayout from '@/components/layout/app-layout';
 import Sidebar from '@/components/layout/sidebar';
 import { ToolContent } from '@/components/tool-content';
 import { ToolProvider } from '@/contexts/tool-context';
 import { useDraftState } from '@/hooks/use-draft-state';
 import { convertDraftDataToDraft } from '@/lib/draft-utils';
+import { DraftType } from '@/types/draft';
 import { useSession } from 'next-auth/react';
 import { Suspense } from 'react';
-import { DraftData } from '@/components/chat-interface';
-import { DraftType } from '@/types/draft';
 
 function DashboardContent() {
     const { data: session, status } = useSession();
@@ -70,7 +69,14 @@ function DashboardContent() {
                     </div>
                 </div>
             }
-            draft={<DraftPane draft={draftState.currentDraft} onUpdate={updateDraft} onMetadataChange={updateDraftMetadata} onTypeChange={handleTypeChange} />}
+            draft={<DraftPane
+                draft={draftState.currentDraft}
+                onUpdate={updateDraft}
+                onMetadataChange={updateDraftMetadata}
+                onTypeChange={handleTypeChange}
+                isLoading={draftState.isLoading}
+                error={draftState.error}
+            />}
         />
     );
 }

@@ -14,9 +14,11 @@ interface DraftPaneProps {
     onUpdate: (updates: Partial<Draft>) => void;
     onMetadataChange: (metadata: Partial<DraftMetadata>) => void;
     onTypeChange: (type: DraftType) => void;
+    isLoading?: boolean;
+    error?: string | null;
 }
 
-export function DraftPane({ className, draft, onUpdate, onMetadataChange, onTypeChange }: DraftPaneProps) {
+export function DraftPane({ className, draft, onUpdate, onMetadataChange, onTypeChange, isLoading = false, error = null }: DraftPaneProps) {
     const handleTypeChange = (type: DraftType) => {
         if (draft && draft.type !== type) {
             // If there's unsaved content, ask for confirmation
@@ -122,14 +124,24 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
                 type={draft.type}
             />
 
+            {/* Error message */}
+            {error && (
+                <div className="text-sm text-red-500 px-4 py-2">{error}</div>
+            )}
+
             {/* Content Editor */}
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden relative">
+                {isLoading && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
+                    </div>
+                )}
                 <DraftEditor
                     type={draft.type}
                     content={draft.content}
                     onUpdate={handleContentChange}
                     onAutoSave={handleAutoSave}
-                    disabled={false}
+                    disabled={isLoading}
                 />
             </div>
 

@@ -253,6 +253,7 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
                             let buffer = ""
                             let eventName: string | null = null
                             let serverMessageId: string | null = null
+                            let streamedDraft: any = null;
                             while (true) {
                                 const { done, value } = await reader.read()
                                 if (done) break
@@ -271,6 +272,9 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
                                                 const data = JSON.parse(dataStr)
                                                 setCurrentThreadId(data.thread_id)
                                                 serverMessageId = data.message_id
+                                                if (data.drafts && data.drafts.length > 0) {
+                                                    streamedDraft = data.drafts[0];
+                                                }
                                             } catch (e) {
                                                 console.error("Failed to parse metadata:", e)
                                             }
@@ -298,6 +302,10 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
                             }
                             if (serverMessageId) {
                                 setMessages((prev) => prev.map(m => m.id === placeholderId ? { ...m, id: serverMessageId! } : m))
+                            }
+                            // Call onDraftReceived if a draft was streamed
+                            if (streamedDraft && onDraftReceived) {
+                                onDraftReceived(streamedDraft);
                             }
                         }
                         await processStream()
