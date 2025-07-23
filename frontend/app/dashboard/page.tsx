@@ -53,30 +53,29 @@ function DashboardContent() {
             sidebar={<Sidebar />}
             main={
                 <div className="h-full flex flex-col">
-                    {/* Tool Content - Top portion */}
+                    {/* Tool Content - Main portion */}
                     <div className="flex-1 overflow-auto">
                         <ToolContent />
                     </div>
-
                     {/* Draft Pane - Bottom portion */}
                     <div className="h-80 border-t bg-card">
                         <div className="flex items-center justify-between p-4 border-b">
-                            <h2 className="text-lg font-semibold">Chat</h2>
+                            <h2 className="text-lg font-semibold">Draft</h2>
                         </div>
                         <div className="flex-1 overflow-hidden">
-                            <ChatInterface onDraftReceived={handleDraftReceived} />
+                            <DraftPane
+                                draft={draftState.currentDraft}
+                                onUpdate={updateDraft}
+                                onMetadataChange={updateDraftMetadata}
+                                onTypeChange={handleTypeChange}
+                                isLoading={draftState.isLoading}
+                                error={draftState.error}
+                            />
                         </div>
                     </div>
                 </div>
             }
-            draft={<DraftPane
-                draft={draftState.currentDraft}
-                onUpdate={updateDraft}
-                onMetadataChange={updateDraftMetadata}
-                onTypeChange={handleTypeChange}
-                isLoading={draftState.isLoading}
-                error={draftState.error}
-            />}
+            draft={<ChatInterface onDraftReceived={handleDraftReceived} />}
         />
     );
 }

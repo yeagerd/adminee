@@ -33,7 +33,7 @@ export function AppLayout({ sidebar, main, draft }: AppLayoutProps) {
                                 <div className="h-full overflow-auto" ref={chatPaneRef}>
                                     {draft
                                         ? React.cloneElement(draft, { containerRef: chatPaneRef })
-                                        : <div className="flex-1 flex items-center justify-center text-muted-foreground">Draft Pane</div>}
+                                        : <div className="flex-1 flex items-center justify-center text-muted-foreground">Chat Pane</div>}
                                 </div>
                             </ResizablePanel>
                         </ResizablePanelGroup>
