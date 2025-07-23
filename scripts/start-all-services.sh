@@ -150,8 +150,8 @@ start_python_service() {
 
     echo -e "${BLUE}🔄 Starting $service_name on port $port...${NC}"
 
-    # Start service in background, only watching the service directory for reloads
-    uv run python -m uvicorn $module_path --host $host --port $port --reload --reload-dir $reload_dir &
+    # Start service in background, only watching the service directory and services/common for reloads
+    uv run python -m uvicorn $module_path --host $host --port $port --reload --reload-dir $reload_dir --reload-dir services/common &
     local pid=$!
     
     # Store PID for cleanup
