@@ -162,7 +162,9 @@ async def chat_endpoint(
             metadata=json.dumps(draft.get("metadata", {})),
             thread_id=int(thread.id),
         )
-        draft_id = str(user_draft.id) if user_draft and user_draft.id is not None else None
+        draft_id = (
+            str(user_draft.id) if user_draft and user_draft.id is not None else None
+        )
         draft_with_id = dict(draft)
         draft_with_id["id"] = draft_id
 
