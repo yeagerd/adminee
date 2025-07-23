@@ -14,10 +14,9 @@ interface DraftPaneProps {
     onUpdate: (updates: Partial<Draft>) => void;
     onMetadataChange: (metadata: Partial<DraftMetadata>) => void;
     onTypeChange: (type: DraftType) => void;
-    userId?: string;
 }
 
-export function DraftPane({ className, draft, onUpdate, onMetadataChange, onTypeChange, userId }: DraftPaneProps) {
+export function DraftPane({ className, draft, onUpdate, onMetadataChange, onTypeChange }: DraftPaneProps) {
     const handleTypeChange = (type: DraftType) => {
         if (draft && draft.type !== type) {
             // If there's unsaved content, ask for confirmation

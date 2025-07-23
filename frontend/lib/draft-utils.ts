@@ -67,6 +67,6 @@ export function convertDraftDataToDraft(draftData: DraftData, userId: string): D
         createdAt: draftData.created_at,
         updatedAt: draftData.updated_at || draftData.created_at,
         userId,
-        threadId: (draftData as any).thread_id || undefined,
+        threadId: (draftData as unknown as { thread_id?: string })?.thread_id || undefined,
     };
 }
