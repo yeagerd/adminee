@@ -31,6 +31,7 @@ from pydantic import BaseModel
 class DraftEmail(BaseModel):
     """Draft email data structure."""
 
+    id: Optional[str] = None
     type: str = "email"
     to: Optional[str] = None
     cc: Optional[str] = None
@@ -45,6 +46,7 @@ class DraftEmail(BaseModel):
 class DraftCalendarEvent(BaseModel):
     """Draft calendar event data structure."""
 
+    id: Optional[str] = None
     type: str = "calendar_event"
     title: Optional[str] = None
     start_time: Optional[str] = None
@@ -60,6 +62,7 @@ class DraftCalendarEvent(BaseModel):
 class DraftCalendarChange(BaseModel):
     """Draft calendar change data structure."""
 
+    id: Optional[str] = None
     type: str = "calendar_change"
     event_id: Optional[str] = None
     change_type: Optional[str] = None

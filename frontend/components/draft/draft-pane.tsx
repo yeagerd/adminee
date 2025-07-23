@@ -16,9 +16,10 @@ interface DraftPaneProps {
     onTypeChange: (type: DraftType) => void;
     isLoading?: boolean;
     error?: string | null;
+    onActionComplete?: (action: string, success: boolean) => void;
 }
 
-export function DraftPane({ className, draft, onUpdate, onMetadataChange, onTypeChange, isLoading = false, error = null }: DraftPaneProps) {
+export function DraftPane({ className, draft, onUpdate, onMetadataChange, onTypeChange, isLoading = false, error = null, onActionComplete }: DraftPaneProps) {
     const handleTypeChange = (type: DraftType) => {
         if (draft && draft.type !== type) {
             // If there's unsaved content, ask for confirmation
@@ -35,6 +36,9 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
     };
 
     const handleActionComplete = (action: string, success: boolean) => {
+        if (onActionComplete) {
+            onActionComplete(action, success);
+        }
         if (success) {
             console.log(`${action} completed successfully`);
             // TODO: Handle successful actions (e.g., close draft, show success message)

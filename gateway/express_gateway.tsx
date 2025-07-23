@@ -276,7 +276,7 @@ const serviceRoutes = {
     '/api/calendar': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
     '/api/email': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
     '/api/files': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
-    '/api/user-drafts': process.env.CHAT_SERVICE_URL || 'http://127.0.0.1:8002',
+    '/api/drafts': process.env.CHAT_SERVICE_URL || 'http://127.0.0.1:8002',
 };
 
 // Create proxy middleware factory
@@ -380,8 +380,8 @@ app.use('/api/email', validateAuth, standardLimiter, createServiceProxy(serviceR
 app.use('/api/email/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/email'], { '^/api/email': '/email' }));
 app.use('/api/files', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/files'], { '^/api/files': '/files' }));
 app.use('/api/files/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/files'], { '^/api/files': '/files' }));
-app.use('/api/user-drafts', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/user-drafts'], { '^/api/user-drafts': '/user-drafts' }));
-app.use('/api/user-drafts/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/user-drafts'], { '^/api/user-drafts': '/user-drafts' }));
+app.use('/api/drafts', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/drafts'], { '^/api/drafts': '/user-drafts' }));
+app.use('/api/drafts/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/drafts'], { '^/api/drafts': '/user-drafts' }));
 
 // Fallback for other API routes (default to user service)
 app.use('/api', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/users'], { '^/api': '' }));
@@ -412,7 +412,7 @@ const server = app.listen(PORT, () => {
     logger.info(`  /api/calendar → ${serviceRoutes['/api/calendar']}`);
     logger.info(`  /api/email    → ${serviceRoutes['/api/email']}`);
     logger.info(`  /api/files    → ${serviceRoutes['/api/files']}`);
-    logger.info(`  /api/user-drafts → ${serviceRoutes['/api/user-drafts']}`);
+    logger.info(`  /api/drafts     → ${serviceRoutes['/api/drafts']}`);
 });
 
 // Handle WebSocket upgrades
