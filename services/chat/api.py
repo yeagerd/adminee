@@ -317,14 +317,21 @@ async def chat_stream_endpoint(
                 else:
                     content = draft.get("content", "")
 
-                # Persist the draft to the database (create or update)
-                db_draft = await history_manager.create_or_update_draft(
-                    int(thread.id),
-                    draft_type,
-                    content,
+                # Convert metadata to JSON string
+                metadata_json = json.dumps(draft.get("metadata", {}))
+
+                # Persist the draft as a UserDraft (match non-streaming endpoint)
+                user_draft = await history_manager.create_user_draft(
+                    user_id=user_id,
+                    draft_type=draft_type,
+                    content=content,
+                    metadata=metadata_json,
+                    thread_id=int(thread.id),
                 )
                 draft_id = (
-                    str(db_draft.id) if db_draft and db_draft.id is not None else None
+                    str(user_draft.id)
+                    if user_draft and user_draft.id is not None
+                    else None
                 )
                 draft_with_id = dict(draft)
                 draft_with_id["id"] = draft_id
@@ -694,28 +701,19 @@ async def delete_user_draft_endpoint(
     try:
         draft_id_int = int(draft_id)
     except (ValueError, TypeError):
-        print(f"[DEBUG] Invalid draft_id format: {draft_id}")
         raise ValidationError(
             message="Invalid draft_id format. Must be an integer.",
             field="draft_id",
             value=draft_id,
         )
 
-    # List all existing draft IDs for this user for debugging
-    user_drafts = await history_manager.list_user_drafts(user_id)
-    draft_ids = [d.id for d in user_drafts]
-    print(f"[DEBUG] User {user_id} has draft IDs: {draft_ids}")
-    print(f"[DEBUG] Attempting to delete draft_id: {draft_id_int}")
-
     # Get the existing draft to check ownership
     existing_draft = await history_manager.get_user_draft(draft_id_int)
     if not existing_draft:
-        print(f"[DEBUG] Draft {draft_id_int} not found for user {user_id}")
         raise NotFoundError("UserDraft", draft_id)
 
     # Check if the draft belongs to the user
     if existing_draft.user_id != user_id:
-        print(f"[DEBUG] Draft {draft_id_int} does not belong to user {user_id}")
         raise ValidationError(
             message="Access denied. Draft does not belong to user.",
             field="draft_id",
@@ -725,10 +723,8 @@ async def delete_user_draft_endpoint(
     # Delete the draft
     success = await history_manager.delete_user_draft(draft_id_int)
     if not success:
-        print(f"[DEBUG] Failed to delete draft {draft_id_int} for user {user_id}")
         raise NotFoundError("UserDraft", draft_id)
 
-    print(f"[DEBUG] Successfully deleted draft {draft_id_int} for user {user_id}")
     return DeleteUserDraftResponse(
         status="success", message="Draft deleted successfully"
     )

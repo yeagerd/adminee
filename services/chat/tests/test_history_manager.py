@@ -109,15 +109,25 @@ async def test_update_message():
 async def test_create_update_delete_draft():
     t = await hm.create_thread("user3", "Draft Thread")
     assert t.id is not None
-    d1 = await hm.create_or_update_draft(t.id, "email", "Draft 1")
+    # Create a user draft
+    d1 = await hm.create_user_draft(
+        user_id="user3",
+        draft_type="email",
+        content="Draft 1",
+        thread_id=t.id,
+    )
     assert d1.content == "Draft 1"
-    d2 = await hm.create_or_update_draft(t.id, "email", "Draft 2")
+    # Update the user draft
+    d2 = await hm.update_user_draft(
+        draft_id=d1.id,
+        content="Draft 2",
+    )
     assert d2.content == "Draft 2"
-    d = await hm.get_draft(t.id, "email")
+    d = await hm.get_user_draft(d1.id)
     assert d is not None
     assert d.content == "Draft 2"
-    await hm.delete_draft(t.id, "email")
-    d_none = await hm.get_draft(t.id, "email")
+    await hm.delete_user_draft(d1.id)
+    d_none = await hm.get_user_draft(d1.id)
     assert d_none is None
 
 
@@ -125,14 +135,26 @@ async def test_create_update_delete_draft():
 async def test_draft_unique_constraint():
     t = await hm.create_thread("user4", "Unique Draft Thread")
     assert t.id is not None
-    d1 = await hm.create_or_update_draft(t.id, "calendar_event", "Event 1")
+    # Create a user draft
+    d1 = await hm.create_user_draft(
+        user_id="user4",
+        draft_type="calendar_event",
+        content="Event 1",
+        thread_id=t.id,
+    )
     assert d1.content == "Event 1"
-    d2 = await hm.create_or_update_draft(t.id, "calendar_event", "Event 2")
+    # Create another draft of the same type (should create a new draft, not update)
+    d2 = await hm.create_user_draft(
+        user_id="user4",
+        draft_type="calendar_event",
+        content="Event 2",
+        thread_id=t.id,
+    )
     assert d2.content == "Event 2"
-    assert d1.id == d2.id  # Should update, not create new
-    drafts = await hm.list_drafts(t.id)
-    assert len([d for d in drafts if d.type == "calendar_event"]) == 1
-    assert drafts[0].content == "Event 2"
+    # There should be two drafts for this user and thread/type
+    drafts = await hm.list_user_drafts("user4", draft_type="calendar_event")
+    assert len(drafts) == 2
+    assert any(d.content == "Event 2" for d in drafts)
 
 
 @pytest.mark.asyncio
