@@ -115,7 +115,7 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
     const [messages, setMessages] = useState<Message[]>(initialMessages)
     const [input, setInput] = useState("")
     const [isLoading, setIsLoading] = useState(false)
-    const [chatHistory, setChatHistory] = useState<{ thread_id: string; title: string; created_at: string }[]>([])
+    const [chatHistory, setChatHistory] = useState<ThreadResponse[]>([])
     const [currentThreadId, setCurrentThreadId] = useState<string | null>(null)
     const { enableStreaming } = useStreamingSetting()
     const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -153,10 +153,20 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
         scrollToBottom()
     }, [messages])
 
+    // Use the correct ThreadResponse type for chat history
+    interface ThreadResponse {
+        thread_id: string;
+        user_id: string;
+        title?: string;
+        created_at: string;
+        updated_at: string;
+    }
+
     const fetchChatHistory = useCallback(async () => {
         if (session) {
             try {
-                const threads = (await gatewayClient.getChatThreads()) as { thread_id: string; title: string; created_at: string }[]
+                // Use the correct ThreadResponse type and fallback for missing title
+                const threads = (await gatewayClient.getChatThreads()) as ThreadResponse[]
                 // Sort in reverse-chronological order (newest first)
                 const sortedThreads = threads.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                 setChatHistory(sortedThreads)
@@ -358,7 +368,8 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
                         ) : (
                             chatHistory.map((chat) => (
                                 <DropdownMenuItem key={chat.thread_id} onClick={() => handleLoadChat(chat.thread_id)}>
-                                    {chat.title || `Chat from ${new Date(chat.created_at).toLocaleString()}`}
+                                    {/* Fallback for missing title */}
+                                    {chat.title && chat.title.trim() !== '' ? chat.title : `Chat from ${new Date(chat.created_at).toLocaleString()}`}
                                 </DropdownMenuItem>
                             ))
                         )}

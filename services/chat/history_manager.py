@@ -367,6 +367,22 @@ async def append_message(thread_id: int, user_id: str, content: str) -> Message:
         return message
 
 
+async def update_message(message_id: int, content: str) -> Optional[Message]:
+    """Update an existing message's content."""
+    async with get_async_session_factory()() as session:
+        result = await session.execute(select(Message).where(Message.id == message_id))
+        message = result.scalar_one_or_none()
+        
+        if message:
+            message.content = content
+            message.updated_at = datetime.datetime.now(datetime.timezone.utc)
+            await session.commit()
+            await session.refresh(message)
+            return message
+        
+        return None
+
+
 async def get_thread_history(
     thread_id: int, limit: int = 50, offset: int = 0
 ) -> List[Message]:

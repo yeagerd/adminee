@@ -237,8 +237,15 @@ async def chat_stream_endpoint(
             # Build the agent workflow if not already built
             await agent.build_agent(user_input)
 
-            # Send initial metadata
-            yield f"event: metadata\ndata: {json.dumps({'thread_id': str(thread.id), 'user_id': user_id})}\n\n"
+            # Create a placeholder message for the AI response to get its ID
+            placeholder_message = await history_manager.append_message(
+                thread_id=int(thread.id),
+                user_id="assistant",
+                content="",  # Empty content, will be updated later
+            )
+            
+            # Send initial metadata with the actual message ID
+            yield f"event: metadata\ndata: {json.dumps({'thread_id': str(thread.id), 'user_id': user_id, 'message_id': str(placeholder_message.id)})}\n\n"
 
             # Stream the workflow responses
             full_response = ""
@@ -264,6 +271,10 @@ async def chat_stream_endpoint(
                     full_response = str(final_response)
             except StopAsyncIteration:
                 pass
+
+            # Update the placeholder message with the full response content
+            if placeholder_message.id is not None:
+                await history_manager.update_message(placeholder_message.id, full_response)
 
             # Send completion event
             completion_data = {
@@ -312,6 +323,7 @@ async def list_threads(
         ThreadResponse(
             thread_id=str(t.id),  # CONVERT: int -> str for JSON compatibility
             user_id=t.user_id,  # DIRECT: string field passes through
+            title=t.title,  # DIRECT: optional string field passes through
             created_at=str(t.created_at),  # CONVERT: datetime -> str for JSON
             updated_at=str(t.updated_at),  # CONVERT: datetime -> str for JSON
             # NOTE: Relationships (messages, drafts) are excluded from API model

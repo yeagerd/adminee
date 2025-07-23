@@ -80,6 +80,32 @@ async def test_append_and_get_history():
 
 
 @pytest.mark.asyncio
+async def test_update_message():
+    """Test updating an existing message's content."""
+    t = await hm.create_thread("user3", "Update Thread")
+    assert t.id is not None
+    
+    # Create a message
+    m = await hm.append_message(t.id, "user3", "Original content")
+    assert m.content == "Original content"
+    
+    # Update the message
+    updated_m = await hm.update_message(m.id, "Updated content")
+    assert updated_m is not None
+    assert updated_m.content == "Updated content"
+    assert updated_m.id == m.id
+    
+    # Verify the update is persisted
+    history = await hm.get_thread_history(t.id)
+    updated_from_history = next(msg for msg in history if msg.id == m.id)
+    assert updated_from_history.content == "Updated content"
+    
+    # Test updating non-existent message
+    non_existent = await hm.update_message(99999, "Should not work")
+    assert non_existent is None
+
+
+@pytest.mark.asyncio
 async def test_create_update_delete_draft():
     t = await hm.create_thread("user3", "Draft Thread")
     assert t.id is not None
