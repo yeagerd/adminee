@@ -7,7 +7,6 @@ Internal/service endpoints, if any, should be under /internal and require API ke
 """
 
 import json
-import uuid
 from typing import AsyncGenerator, List, Optional
 
 from fastapi import APIRouter, Request
