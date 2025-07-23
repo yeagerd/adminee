@@ -144,14 +144,14 @@ start_python_service() {
     local module_path=$2
     local port=$3
     local host=${4:-"0.0.0.0"}
-    
+
+    # Extract reload directory from module_path (e.g., services.chat.main -> services/chat)
+    local reload_dir=$(echo $module_path | awk -F. '{print $1 "/" $2}')
+
     echo -e "${BLUE}🔄 Starting $service_name on port $port...${NC}"
-    
-    # Start service in background
-    uv run python -m uvicorn $module_path --host $host --port $port --reload \
-        --reload-exclude .nox \
-        --reload-exclude frontend \
-        --reload-exclude gateway &
+
+    # Start service in background, only watching the service directory for reloads
+    uv run python -m uvicorn $module_path --host $host --port $port --reload --reload-dir $reload_dir &
     local pid=$!
     
     # Store PID for cleanup
