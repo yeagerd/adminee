@@ -1,5 +1,5 @@
+import { DraftCalendarChange, DraftCalendarEvent, DraftData, DraftEmail } from '@/components/chat-interface';
 import { Draft, DraftMetadata, DraftType } from '@/types/draft';
-import { DraftData, DraftEmail, DraftCalendarEvent, DraftCalendarChange } from '@/components/chat-interface';
 
 export function formatDraftDate(date: string): string {
     return new Date(date).toLocaleString();
@@ -26,9 +26,9 @@ export function convertDraftDataToDraft(draftData: DraftData, userId: string): D
         content = emailData.body || '';
         metadata = {
             subject: emailData.subject,
-            recipients: emailData.to ? emailData.to.split(',').map(s => s.trim()) : [],
-            cc: emailData.cc ? emailData.cc.split(',').map(s => s.trim()) : [],
-            bcc: emailData.bcc ? emailData.bcc.split(',').map(s => s.trim()) : [],
+            recipients: emailData.to ? emailData.to.split(',').map(s => s.trim()).filter(s => s) : [],
+            cc: emailData.cc ? emailData.cc.split(',').map(s => s.trim()).filter(s => s) : [],
+            bcc: emailData.bcc ? emailData.bcc.split(',').map(s => s.trim()).filter(s => s) : [],
         };
     } else if (draftData.type === 'calendar_event') {
         const eventData = draftData as DraftCalendarEvent;
@@ -38,7 +38,7 @@ export function convertDraftDataToDraft(draftData: DraftData, userId: string): D
             startTime: eventData.start_time,
             endTime: eventData.end_time,
             location: eventData.location,
-            attendees: eventData.attendees ? eventData.attendees.split(',').map(s => s.trim()) : [],
+            attendees: eventData.attendees ? eventData.attendees.split(',').map(s => s.trim()).filter(s => s) : [],
         };
     } else if (draftData.type === 'calendar_change') {
         const changeData = draftData as DraftCalendarChange;
@@ -48,7 +48,7 @@ export function convertDraftDataToDraft(draftData: DraftData, userId: string): D
             startTime: changeData.new_start_time,
             endTime: changeData.new_end_time,
             location: changeData.new_location,
-            attendees: changeData.new_attendees ? changeData.new_attendees.split(',').map(s => s.trim()) : [],
+            attendees: changeData.new_attendees ? changeData.new_attendees.split(',').map(s => s.trim()).filter(s => s) : [],
         };
     }
 
