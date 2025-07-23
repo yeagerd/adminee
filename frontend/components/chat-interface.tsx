@@ -81,15 +81,7 @@ interface ChatResponse {
 }
 
 // Sample initial messages
-const initialMessages: Message[] = [
-    {
-        id: "1",
-        content:
-            "Hello! I'm your calendar assistant. I can help you manage your schedule, draft emails, add tasks, and more. How can I help you today?",
-        sender: "ai",
-        timestamp: new Date(),
-    },
-]
+const initialMessages: Message[] = []
 
 function isUnbreakableString(str: string, threshold: number) {
     return typeof str === 'string' && str.length > threshold && !/\s/.test(str);
@@ -378,14 +370,23 @@ export default function ChatInterface({ containerRef }: ChatInterfaceProps) {
                 <div className="flex-1 flex flex-col justify-end min-h-0">
                     <ScrollArea className="p-4">
                         <div className="flex flex-col space-y-4 w-full">
-                            {messages.map((message) => (
-                                <div
-                                    key={message.id}
-                                    className={`w-full flex ${message.sender === "user" ? "justify-end" : "justify-start"} min-w-0`}
-                                >
-                                    <ChatBubble content={message.content} sender={message.sender} windowWidth={chatWidth} />
+                            {messages.length === 0 ? (
+                                <div className="flex items-center justify-center h-full min-h-[200px]">
+                                    <div className="text-center text-gray-500">
+                                        <div className="text-2xl font-semibold mb-2">What can I help you with?</div>
+                                        <div className="text-sm">I can help you manage your schedule, draft emails, add tasks, and more.</div>
+                                    </div>
                                 </div>
-                            ))}
+                            ) : (
+                                messages.map((message) => (
+                                    <div
+                                        key={message.id}
+                                        className={`w-full flex ${message.sender === "user" ? "justify-end" : "justify-start"} min-w-0`}
+                                    >
+                                        <ChatBubble content={message.content} sender={message.sender} windowWidth={chatWidth} />
+                                    </div>
+                                ))
+                            )}
                             {isLoading && (
                                 <div className="w-full flex justify-start min-w-0">
                                     <ChatBubble content={<Loader2 className="h-5 w-5 animate-spin" />} sender="ai" windowWidth={chatWidth} />

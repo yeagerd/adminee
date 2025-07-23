@@ -383,19 +383,19 @@ export interface DemoChatMessage {
 
 export const demoChatMessages: DemoChatMessage[] = [
     {
-        id: "1",
+        id: "demo-msg-1",
         content: "Hello! I'm your AI assistant. I can help you manage your calendar, tasks, and emails. What would you like to do today?",
         isUser: false,
         timestamp: new Date("2025-01-15T09:00:00")
     },
     {
-        id: "2",
+        id: "demo-msg-2",
         content: "Can you help me prepare for my 2pm meeting?",
         isUser: true,
         timestamp: new Date("2025-01-15T09:05:00")
     },
     {
-        id: "3",
+        id: "demo-msg-3",
         content: "I'd be happy to help! I can see you have a Project Kickoff Meeting at 2:00 PM today. I found some related documents in your Drive. Would you like me to summarize the key points from the Q4 Strategy Draft?",
         isUser: false,
         timestamp: new Date("2025-01-15T09:06:00")
