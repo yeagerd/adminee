@@ -81,7 +81,7 @@ export class GatewayClient {
 
     // Chat Service
     async chat(message: string, threadId?: string, userTimezone?: string) {
-        return this.request('/api/chat', {
+        return this.request('/api/chat/completions', {
             method: 'POST',
             body: {
                 message,
@@ -101,7 +101,7 @@ export class GatewayClient {
             headers['Authorization'] = `Bearer ${session.accessToken}`;
         }
 
-        const response = await fetch(`${env.GATEWAY_URL}/api/chat/stream`, {
+        const response = await fetch(`${env.GATEWAY_URL}/api/chat/completions/stream`, {
             method: 'POST',
             headers,
             body: JSON.stringify({
@@ -121,7 +121,7 @@ export class GatewayClient {
     }
 
     async getChatHistory(threadId: string) {
-        return this.request(`/api/chat/history/${threadId}`);
+        return this.request(`/api/chat/threads/${threadId}/history`);
     }
 
     async getChatThreads() {

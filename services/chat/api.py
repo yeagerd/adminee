@@ -67,7 +67,7 @@ async def get_user_id_from_gateway(request: Request) -> str:
     return user_id
 
 
-@router.post("/chat", response_model=ChatResponse)
+@router.post("/completions", response_model=ChatResponse)
 async def chat_endpoint(
     request: Request,
     chat_request: ChatRequest,
@@ -170,7 +170,7 @@ async def chat_endpoint(
     )
 
 
-@router.post("/chat/stream")
+@router.post("/completions/stream")
 async def chat_stream_endpoint(
     request: Request,
     chat_request: ChatRequest,
