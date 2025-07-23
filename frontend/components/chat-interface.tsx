@@ -253,7 +253,7 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
                             let buffer = ""
                             let eventName: string | null = null
                             let serverMessageId: string | null = null
-                            let streamedDraft: any = null;
+                            let streamedDraft: DraftData | null = null;
                             while (true) {
                                 const { done, value } = await reader.read()
                                 if (done) break
