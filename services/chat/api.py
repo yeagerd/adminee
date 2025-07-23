@@ -468,7 +468,7 @@ async def feedback_endpoint(
 
 
 # User Draft Endpoints
-@router.post("/user-drafts", response_model=UserDraftResponse)
+@router.post("/drafts", response_model=UserDraftResponse)
 async def create_user_draft_endpoint(
     request: Request,
     draft_request: UserDraftRequest,
@@ -516,7 +516,7 @@ async def create_user_draft_endpoint(
     )
 
 
-@router.get("/user-drafts", response_model=UserDraftListResponse)
+@router.get("/drafts", response_model=UserDraftListResponse)
 async def list_user_drafts_endpoint(
     request: Request,
     draft_type: Optional[str] = None,
@@ -570,7 +570,7 @@ async def list_user_drafts_endpoint(
     )
 
 
-@router.get("/user-drafts/{draft_id}", response_model=UserDraftResponse)
+@router.get("/drafts/{draft_id}", response_model=UserDraftResponse)
 async def get_user_draft_endpoint(
     request: Request,
     draft_id: str,
@@ -613,7 +613,7 @@ async def get_user_draft_endpoint(
     )
 
 
-@router.put("/user-drafts/{draft_id}", response_model=UserDraftResponse)
+@router.put("/drafts/{draft_id}", response_model=UserDraftResponse)
 async def update_user_draft_endpoint(
     request: Request,
     draft_id: str,
@@ -679,7 +679,7 @@ class DeleteUserDraftResponse(BaseModel):
     message: str
 
 
-@router.delete("/user-drafts/{draft_id}", response_model=DeleteUserDraftResponse)
+@router.delete("/drafts/{draft_id}", response_model=DeleteUserDraftResponse)
 async def delete_user_draft_endpoint(
     request: Request,
     draft_id: str,
