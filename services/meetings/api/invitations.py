@@ -24,11 +24,13 @@ async def send_invitations(poll_id: UUID, request: Request):
         )
         user_id = request.headers.get("X-User-Id") or str(poll.user_id)
         frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
-        poll_url = f"{frontend_url}/public/polls/{poll.poll_token}"
-        subject = f"You're invited: {poll.title}"
-        body = f"You have been invited to respond to a meeting poll: {poll.title}\n\n{poll.description or ''}\n\nRespond here: {poll_url}"
         # Send emails asynchronously
         for participant in participants:
+            response_url = (
+                f"{frontend_url}/public/meetings/respond/{participant.response_token}"
+            )
+            subject = f"You're invited: {poll.title}"
+            body = f"You have been invited to respond to a meeting poll: {poll.title}\n\n{poll.description or ''}\n\nRespond here: {response_url}"
             await email_integration.send_invitation_email(
                 participant.email, subject, body, user_id
             )

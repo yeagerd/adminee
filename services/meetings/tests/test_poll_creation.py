@@ -52,3 +52,31 @@ def test_create_poll_missing_user_id_returns_400(poll_payload):
     resp = client.post("/api/meetings/polls/", json=poll_payload)
     assert resp.status_code == 400
     assert "Missing X-User-Id header" in resp.text
+
+
+def test_token_based_poll_response_flow(poll_payload):
+    user_id = str(uuid4())
+    # Create poll
+    resp = client.post(
+        "/api/meetings/polls/", json=poll_payload, headers={"X-User-Id": user_id}
+    )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    # Get a participant's response_token
+    participant = data["participants"][0]
+    response_token = participant["response_token"]
+    # Submit a response via the new endpoint
+    response_payload = {
+        "responses": [
+            {
+                "time_slot_id": data["time_slots"][0]["id"],
+                "response": "available",
+                "comment": "Works for me!",
+            }
+        ]
+    }
+    resp2 = client.put(
+        f"/api/public/polls/meetings/response/{response_token}", json=response_payload
+    )
+    assert resp2.status_code == 200, resp2.text
+    assert resp2.json()["ok"] is True

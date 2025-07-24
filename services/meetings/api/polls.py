@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from secrets import token_hex
 from typing import List
 from uuid import UUID, uuid4
 
@@ -72,6 +73,7 @@ def create_poll(poll: MeetingPollCreate, request: Request):
                 poll_id=db_poll.id,
                 email=part.email,
                 name=part.name,
+                response_token=token_hex(32),
             )
             session.add(db_part)
         session.commit()
@@ -90,7 +92,9 @@ def update_poll(poll_id: UUID, poll: MeetingPollCreate, request: Request):
             raise HTTPException(status_code=404, detail="Poll not found")
         # Ownership check: only the poll creator can update
         if str(db_poll.user_id) != str(user_id):
-            raise HTTPException(status_code=403, detail="Not authorized to update this poll")
+            raise HTTPException(
+                status_code=403, detail="Not authorized to update this poll"
+            )
         db_poll.title = poll.title
         db_poll.description = poll.description
         db_poll.duration_minutes = poll.duration_minutes
@@ -117,7 +121,9 @@ def delete_poll(poll_id: UUID, request: Request):
             raise HTTPException(status_code=404, detail="Poll not found")
         # Ownership check: only the poll creator can delete
         if str(db_poll.user_id) != str(user_id):
-            raise HTTPException(status_code=403, detail="Not authorized to delete this poll")
+            raise HTTPException(
+                status_code=403, detail="Not authorized to delete this poll"
+            )
         session.delete(db_poll)
         session.commit()
         return {"ok": True}

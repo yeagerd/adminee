@@ -107,6 +107,7 @@ class PollParticipant(Base):
     invited_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     responded_at = Column(DateTime(timezone=True))
     reminder_sent_count = Column(Integer, default=0)
+    response_token = Column(String(64), unique=True, nullable=False)
 
     poll = relationship("MeetingPoll", back_populates="participants")
     responses = relationship(
