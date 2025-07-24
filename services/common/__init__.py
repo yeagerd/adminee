@@ -18,6 +18,17 @@ from .telemetry import (
     setup_telemetry,
 )
 
+
+def get_async_database_url(url: str) -> str:
+    """Convert database URL to async format for async SQLAlchemy drivers."""
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+asyncpg://")
+    elif url.startswith("sqlite://"):
+        return url.replace("sqlite://", "sqlite+aiosqlite://")
+    else:
+        return url
+
+
 __all__ = [
     "setup_telemetry",
     "get_tracer",
@@ -30,4 +41,5 @@ __all__ = [
     "get_openai_api_key",
     "get_llama_cloud_api_key",
     "clear_cache",
+    "get_async_database_url",
 ]
