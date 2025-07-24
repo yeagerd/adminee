@@ -3,6 +3,7 @@ import time
 import logging
 import json
 from schemas import GmailNotification
+from gmail_api_client import GmailAPIClient
 
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
 PUBSUB_EMULATOR_HOST = os.getenv("PUBSUB_EMULATOR_HOST")
@@ -16,7 +17,16 @@ def process_gmail_notification(message):
         data = json.loads(message.data.decode("utf-8"))
         notification = GmailNotification(**data)
         logging.info(f"Processing Gmail notification: {notification}")
-        # TODO: Fetch emails using Gmail API with notification.history_id
+        # TODO: Retrieve tokens and client info for the user (mocked for now)
+        access_token = os.getenv("GMAIL_ACCESS_TOKEN", "test-access-token")
+        refresh_token = os.getenv("GMAIL_REFRESH_TOKEN", "test-refresh-token")
+        client_id = os.getenv("GMAIL_CLIENT_ID", "test-client-id")
+        client_secret = os.getenv("GMAIL_CLIENT_SECRET", "test-client-secret")
+        token_uri = os.getenv("GMAIL_TOKEN_URI", "https://oauth2.googleapis.com/token")
+        gmail_client = GmailAPIClient(access_token, refresh_token, client_id, client_secret, token_uri)
+        # Fetch new/changed emails since history_id
+        emails = gmail_client.fetch_emails_since_history_id(notification.email_address, notification.history_id)
+        logging.info(f"Fetched {len(emails)} emails for {notification.email_address}")
         # TODO: Publish each email to email-processing topic
         message.ack()
     except Exception as e:
