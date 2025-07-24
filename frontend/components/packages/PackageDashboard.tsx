@@ -102,14 +102,14 @@ export default function PackageDashboard() {
             const matchesStatus = selectedStatusFilters.length === 0 || selectedStatusFilters.includes(status);
             const matchesCarrier = selectedCarrierFilters.length === 0 || selectedCarrierFilters.includes(pkg.carrier);
             // Date range filter
-            if (!pkg.shipped_at) {
-                // If no shipped_at, always include
+            if (!pkg.estimated_delivery) {
+                // If no estimated_delivery, always include
                 return matchesSearch && matchesStatus && matchesCarrier;
             }
-            let shippedDate = dayjs(pkg.shipped_at);
+            let estimatedDate = dayjs(pkg.estimated_delivery);
             let matchesDate = true;
-            if (startDate && shippedDate) {
-                matchesDate = shippedDate.isSameOrAfter(startDate, 'day') && shippedDate.isSameOrBefore(now, 'day');
+            if (startDate && estimatedDate) {
+                matchesDate = estimatedDate.isSameOrAfter(startDate, 'day') && estimatedDate.isSameOrBefore(now, 'day');
             }
             return matchesSearch && matchesStatus && matchesCarrier && matchesDate;
         });
