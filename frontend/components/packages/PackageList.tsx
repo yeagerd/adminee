@@ -113,7 +113,7 @@ export default function PackageList({
                 <TableBody>
                     {packages.length === 0 ? (
                         <TableRow>
-                            <TableCell colSpan={7} className="text-center text-gray-500 py-8">No packages found.</TableCell>
+                            <TableCell colSpan={6} className="text-center text-gray-500 py-8">No packages found.</TableCell>
                         </TableRow>
                     ) : (
                         packages.map(pkg => (
