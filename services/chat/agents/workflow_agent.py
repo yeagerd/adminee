@@ -317,8 +317,8 @@ class WorkflowAgent:
                 get_method = getattr(self.context, "get", None)
                 set_method = getattr(self.context, "set", None)
 
-                if get_method is None or set_method is None:
-                    logger.warning("Context object missing get/set methods")
+                if get_method is None:
+                    logger.warning("Context object missing get method")
                     return
 
                 # Try to get current state
@@ -351,20 +351,25 @@ class WorkflowAgent:
                 ]
 
                 # Try to set the state
-                logger.debug(f"Calling context.set('state', {state}) method")
-                set_result = set_method("state", state)
-                logger.debug(
-                    f"Context.set returned: {set_result} (type: {type(set_result)})"
-                )
-
-                # Handle both sync and async set methods
-                if hasattr(set_result, "__await__"):
-                    logger.debug("Context.set result is awaitable, awaiting it...")
-                    await set_result
-                    logger.debug("Context.set await completed successfully")
+                logger.debug(f"Calling context.store.set('state', {state}) method")
+                # Use context.store.set for modern async storage if available
+                if hasattr(self.context, "store") and hasattr(
+                    self.context.store, "set"
+                ):
+                    set_result = self.context.store.set("state", state)
+                    if hasattr(set_result, "__await__"):
+                        await set_result
+                    logger.debug("Modern context.store.set completed successfully")
+                elif set_method is not None:
+                    # Fallback to legacy context.set for compatibility
+                    logger.warning("Using legacy context.set method")
+                    set_result = set_method("state", state)
+                    if hasattr(set_result, "__await__"):
+                        await set_result
+                    logger.debug("Legacy context.set completed successfully")
                 else:
-                    logger.debug(
-                        "Context.set result is not awaitable, operation complete"
+                    logger.warning(
+                        "Context object missing both store.set and set methods; cannot set state."
                     )
 
                 logger.debug(

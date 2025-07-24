@@ -173,7 +173,8 @@ async def test_load_conversation_history(workflow_agent, mock_history_manager):
     # 1. Setup mock context
     mock_context = MagicMock()
     mock_context.get = AsyncMock(return_value={})  # Simulate current state is empty
-    mock_context.set = AsyncMock()
+    mock_context.store = MagicMock()
+    mock_context.store.set = AsyncMock()
     workflow_agent.context = mock_context
 
     # 2. Mock _load_chat_history_from_db
@@ -209,16 +210,16 @@ async def test_load_conversation_history(workflow_agent, mock_history_manager):
     # Assert context.get was called to fetch the current state
     mock_context.get.assert_called_once_with("state", {})
 
-    # Assert context.set was called with the correctly formatted history
+    # Assert context.store.set was called with the correctly formatted history
     expected_formatted_history = [
         {"role": "user", "content": "Hello there!"},
         {"role": "assistant", "content": "Hi, how can I help?"},
         {"role": "user", "content": "Tell me a joke."},
     ]
 
-    # The actual call to set will be like: mock_context.set('state', {'conversation_history': [...]})
+    # The actual call to set will be like: mock_context.store.set('state', {'conversation_history': [...]})
     # We need to check the arguments of the call
-    args, kwargs = mock_context.set.call_args
+    args, kwargs = mock_context.store.set.call_args
     assert args[0] == "state"  # First positional argument is 'state'
     assert (
         "conversation_history" in args[1]
@@ -226,7 +227,7 @@ async def test_load_conversation_history(workflow_agent, mock_history_manager):
     actual_history_set = args[1]["conversation_history"]
 
     assert actual_history_set == expected_formatted_history
-    mock_context.set.assert_called_once()
+    mock_context.store.set.assert_called_once()
 
 
 @pytest.mark.asyncio
