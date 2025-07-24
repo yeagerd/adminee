@@ -432,6 +432,7 @@ To enhance poll response security and tracking, each poll recipient will receive
   - [ ] The endpoint should look up the participant by their `response_token`, verify the poll, and accept the response.
 - [ ] **Frontend Update:**
   - [ ] Update the public poll response page to support the new URL structure and API.
+  - [ ] Remove the legacy meeting id from the frontend, backend, and DB.
 - [ ] **Testing:**
   - [ ] Add unit and integration tests for the new token-based response flow.
 
