@@ -248,6 +248,9 @@ else
     echo -e "${YELLOW}   cd frontend && npm run dev${NC}"
 fi
 
+# Start Meetings Service
+uv run python -m uvicorn services.meetings.main:app --reload --port 8003 &
+
 # Wait for all services to be ready
 echo -e "${BLUE}⏳ Waiting for all services to be ready...${NC}"
 

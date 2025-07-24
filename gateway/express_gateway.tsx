@@ -295,6 +295,7 @@ const serviceRoutes = {
     '/api/email': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
     '/api/files': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
     '/api/drafts': process.env.CHAT_SERVICE_URL || 'http://127.0.0.1:8002',
+    '/api/meetings': process.env.MEETINGS_SERVICE_URL || 'http://127.0.0.1:8003',
 };
 
 // Create proxy middleware factory
@@ -400,6 +401,8 @@ app.use('/api/files', validateAuth, standardLimiter, createServiceProxy(serviceR
 app.use('/api/files/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/files'], { '^/api/files': '/files' }));
 app.use('/api/drafts', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/drafts'], { '^/api/drafts': '/chat/drafts' }));
 app.use('/api/drafts/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/drafts'], { '^/api/drafts': '/chat/drafts' }));
+app.use('/api/meetings', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/meetings'], { '^/api/meetings': '/api/meetings' }));
+app.use('/api/meetings/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/meetings'], { '^/api/meetings': '/api/meetings' }));
 
 // Fallback for other API routes (default to user service)
 app.use('/api', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/users'], { '^/api': '' }));
@@ -431,6 +434,7 @@ const server = app.listen(PORT, () => {
     logger.info(`  /api/email    → ${serviceRoutes['/api/email']}`);
     logger.info(`  /api/files    → ${serviceRoutes['/api/files']}`);
     logger.info(`  /api/drafts     → ${serviceRoutes['/api/drafts']}`);
+    logger.info(`  /api/meetings → ${serviceRoutes['/api/meetings']}`);
 });
 
 // Handle WebSocket upgrades
@@ -447,6 +451,8 @@ server.on('upgrade', (request: any, socket: any, head: any) => {
         targetService = serviceRoutes['/api/chat'];
     } else if (path.startsWith('/api/calendar') || path.startsWith('/api/email') || path.startsWith('/api/files')) {
         targetService = serviceRoutes['/api/calendar']; // All office service endpoints
+    } else if (path.startsWith('/api/meetings')) {
+        targetService = serviceRoutes['/api/meetings'];
     }
 
     // Create proxy for WebSocket
