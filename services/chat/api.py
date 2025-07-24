@@ -407,7 +407,6 @@ async def list_threads(
     threads = await history_manager.list_threads(
         user_id, limit=limit + 1, offset=offset
     )
-    total_count = None
     # Optionally, count total threads for pagination (optional for perf)
     # total_count = await history_manager.count_threads(user_id)
     has_more = len(threads) > limit
