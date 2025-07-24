@@ -121,7 +121,7 @@ export default function PackageDashboard() {
     const handleRowClick = (pkg: any) => setSelectedPackage(pkg);
 
     return (
-        <div className="max-w-6xl mx-auto py-8 space-y-6">
+        <div className="max-w-6xl mx-auto py-8 space-y-6 px-4 m-1">
             {loading && <div className="text-center text-gray-500">Loading packages...</div>}
             {error && <div className="text-center text-red-500">{error}</div>}
             <div className="flex items-center justify-between mb-6">
