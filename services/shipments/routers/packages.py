@@ -4,13 +4,37 @@ from services.shipments.schemas import PackageOut, PackageCreate, PackageUpdate,
 from services.shipments.models import Package
 from services.shipments.database import get_async_session_dep
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+import logging
 
 router = APIRouter()
 
 @router.get("/", response_model=PackageListResponse)
-async def list_packages():
-    # TODO: Implement package listing with filtering
-    return {"data": [], "pagination": {"page": 1, "per_page": 20, "total": 0}}
+async def list_packages(session: AsyncSession = Depends(get_async_session_dep)):
+    logging.info('Fetching all packages from DB...')
+    result = await session.execute(select(Package))
+    packages = result.scalars().all()
+    logging.info(f'Found {len(packages)} packages')
+    # Convert to PackageOut (minimal fields for now)
+    package_out = [
+        PackageOut(
+            id=pkg.id,
+            tracking_number=pkg.tracking_number,
+            carrier=pkg.carrier,
+            status=pkg.status,
+            estimated_delivery=pkg.estimated_delivery,
+            actual_delivery=pkg.actual_delivery,
+            recipient_name=pkg.recipient_name,
+            shipper_name=pkg.shipper_name,
+            package_description=pkg.package_description,
+            order_number=pkg.order_number,
+            tracking_link=pkg.tracking_link,
+            updated_at=pkg.updated_at,
+            events_count=0,
+            labels=[],
+        ) for pkg in packages
+    ]
+    return {"data": package_out, "pagination": {"page": 1, "per_page": 100, "total": len(package_out)}}
 
 @router.post("/", response_model=PackageOut)
 async def add_package(pkg: PackageCreate, session: AsyncSession = Depends(get_async_session_dep)):

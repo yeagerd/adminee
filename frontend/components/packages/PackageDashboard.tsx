@@ -37,6 +37,8 @@ export default function PackageDashboard() {
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
     const [editingCell, setEditingCell] = useState<{ id: number; field: string } | null>(null);
     const [selectedPackage, setSelectedPackage] = useState<any | null>(null);
+    const [selectedStatusFilters, setSelectedStatusFilters] = useState<string[]>([]);
+    const [selectedCarrierFilters, setSelectedCarrierFilters] = useState<string[]>([]);
 
     useEffect(() => {
         setLoading(true);
@@ -60,8 +62,8 @@ export default function PackageDashboard() {
                 pkg.package_description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 pkg.order_number?.toLowerCase().includes(searchTerm.toLowerCase());
             const status = pkg.status || 'pending';
-            const matchesStatus = statusFilter === 'all' || status === statusFilter;
-            const matchesCarrier = carrierFilter === 'all' || pkg.carrier === carrierFilter;
+            const matchesStatus = selectedStatusFilters.length === 0 || selectedStatusFilters.includes(status);
+            const matchesCarrier = selectedCarrierFilters.length === 0 || selectedCarrierFilters.includes(pkg.carrier);
             return matchesSearch && matchesStatus && matchesCarrier;
         });
         filtered.sort((a, b) => {
@@ -75,7 +77,7 @@ export default function PackageDashboard() {
             return 0;
         });
         return filtered;
-    }, [packages, searchTerm, statusFilter, carrierFilter, sortField, sortDirection]);
+    }, [packages, searchTerm, selectedStatusFilters, selectedCarrierFilters, sortField, sortDirection]);
 
     const handleSort = (field: string) => {
         if (sortField === field) {
@@ -91,9 +93,18 @@ export default function PackageDashboard() {
         setEditingCell(null);
     };
 
-    const handleAddPackage = (pkg: any) => {
-        setPackages((prev) => [pkg, ...prev]);
+    const handleAddPackage = async (pkg: any) => {
         setShowAddModal(false);
+        setLoading(true);
+        setError(null);
+        try {
+            const res: any = await gatewayClient.request('/api/packages');
+            setPackages(res.data || []);
+        } catch (err: any) {
+            setError(err.message || 'Failed to refresh packages');
+        } finally {
+            setLoading(false);
+        }
     };
 
     // Status counts for summary cards
@@ -163,14 +174,10 @@ export default function PackageDashboard() {
             </div>
             {/* Filters and Search */}
             <PackageFilters
-                filters={{ searchTerm, statusFilter, carrierFilter }}
-                onFiltersChange={({ searchTerm, statusFilter, carrierFilter }: any) => {
+                filters={{ searchTerm }}
+                onFiltersChange={({ searchTerm }: any) => {
                     setSearchTerm(searchTerm);
-                    setStatusFilter(statusFilter);
-                    setCarrierFilter(carrierFilter);
                 }}
-                statusOptions={STATUS_OPTIONS}
-                carrierOptions={CARRIER_OPTIONS}
             />
             {/* Packages Table */}
             <PackageList
@@ -182,6 +189,10 @@ export default function PackageDashboard() {
                 setEditingCell={setEditingCell}
                 onCellEdit={handleCellEdit}
                 onRowClick={handleRowClick}
+                selectedStatusFilters={selectedStatusFilters}
+                selectedCarrierFilters={selectedCarrierFilters}
+                onStatusFilterChange={setSelectedStatusFilters}
+                onCarrierFilterChange={setSelectedCarrierFilters}
             />
             {showAddModal && (
                 <AddPackageModal onClose={() => setShowAddModal(false)} onAdd={handleAddPackage} />

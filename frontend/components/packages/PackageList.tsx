@@ -1,9 +1,57 @@
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Filter } from 'lucide-react';
+import { useState } from 'react';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import LabelChip from './LabelChip';
+
+const STATUS_OPTIONS = [
+    { value: 'pending', label: 'Pending' },
+    { value: 'shipped', label: 'Shipped' },
+    { value: 'late', label: 'Late' },
+    { value: 'delivered', label: 'Delivered' },
+];
+const CARRIER_OPTIONS = [
+    { value: 'UPS', label: 'UPS' },
+    { value: 'FedEx', label: 'FedEx' },
+    { value: 'USPS', label: 'USPS' },
+    { value: 'DHL', label: 'DHL' },
+    { value: 'Amazon', label: 'Amazon' },
+];
+
+function MultiSelectFilter({ options, selected, onChange }: {
+    options: { value: string, label: string }[],
+    selected: string[],
+    onChange: (values: string[]) => void,
+}) {
+    return (
+        <div className="bg-white border rounded shadow p-2 min-w-[180px] z-50">
+            <div className="flex gap-2 mb-2">
+                <Button size="sm" variant="outline" onClick={() => onChange(options.map(o => o.value))}>All</Button>
+                <Button size="sm" variant="outline" onClick={() => onChange([])}>None</Button>
+            </div>
+            <div className="max-h-40 overflow-y-auto">
+                {options.map(opt => (
+                    <label key={opt.value} className="flex items-center gap-2 cursor-pointer mb-1">
+                        <input
+                            type="checkbox"
+                            checked={selected.includes(opt.value)}
+                            onChange={e => {
+                                if (e.target.checked) {
+                                    onChange([...selected, opt.value]);
+                                } else {
+                                    onChange(selected.filter(v => v !== opt.value));
+                                }
+                            }}
+                        />
+                        {opt.label}
+                    </label>
+                ))}
+            </div>
+        </div>
+    );
+}
 
 export default function PackageList({
     packages,
@@ -14,6 +62,10 @@ export default function PackageList({
     setEditingCell,
     onCellEdit,
     onRowClick,
+    selectedStatusFilters,
+    selectedCarrierFilters,
+    onStatusFilterChange,
+    onCarrierFilterChange,
 }: {
     packages: any[],
     onSort: (field: string) => void,
@@ -23,15 +75,50 @@ export default function PackageList({
     setEditingCell: (cell: { id: number; field: string } | null) => void,
     onCellEdit: (id: number, field: string, value: string) => void,
     onRowClick: (pkg: any) => void,
+    selectedStatusFilters: string[],
+    selectedCarrierFilters: string[],
+    onStatusFilterChange: (values: string[]) => void,
+    onCarrierFilterChange: (values: string[]) => void,
 }) {
+    const [showStatusFilter, setShowStatusFilter] = useState(false);
+    const [showCarrierFilter, setShowCarrierFilter] = useState(false);
+
     return (
         <div className="overflow-x-auto">
             <Table>
                 <TableHeader>
                     <TableRow>
                         <TableHead className="cursor-pointer" onClick={() => onSort('tracking_number')}>Tracking Number</TableHead>
-                        <TableHead className="cursor-pointer" onClick={() => onSort('carrier')}>Carrier</TableHead>
-                        <TableHead className="cursor-pointer" onClick={() => onSort('status')}>Status</TableHead>
+                        <TableHead className="relative">
+                            <span className="cursor-pointer" onClick={() => onSort('carrier')}>Carrier</span>
+                            <Button size="sm" variant="ghost" className="ml-1 p-1" onClick={e => { e.stopPropagation(); setShowCarrierFilter(v => !v); }}>
+                                <Filter className="h-4 w-4" />
+                            </Button>
+                            {showCarrierFilter && (
+                                <div className="absolute left-0 top-8" onClick={e => e.stopPropagation()}>
+                                    <MultiSelectFilter
+                                        options={CARRIER_OPTIONS}
+                                        selected={selectedCarrierFilters}
+                                        onChange={onCarrierFilterChange}
+                                    />
+                                </div>
+                            )}
+                        </TableHead>
+                        <TableHead className="relative">
+                            <span className="cursor-pointer" onClick={() => onSort('status')}>Status</span>
+                            <Button size="sm" variant="ghost" className="ml-1 p-1" onClick={e => { e.stopPropagation(); setShowStatusFilter(v => !v); }}>
+                                <Filter className="h-4 w-4" />
+                            </Button>
+                            {showStatusFilter && (
+                                <div className="absolute left-0 top-8" onClick={e => e.stopPropagation()}>
+                                    <MultiSelectFilter
+                                        options={STATUS_OPTIONS}
+                                        selected={selectedStatusFilters}
+                                        onChange={onStatusFilterChange}
+                                    />
+                                </div>
+                            )}
+                        </TableHead>
                         <TableHead className="cursor-pointer" onClick={() => onSort('estimated_delivery')}>Est. Delivery</TableHead>
                         <TableHead className="cursor-pointer" onClick={() => onSort('recipient_name')}>Recipient</TableHead>
                         <TableHead>Description</TableHead>
