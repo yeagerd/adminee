@@ -1,8 +1,6 @@
 # mypy: disable-error-code=attr-defined
 import logging
-import os
 
-from dotenv import load_dotenv
 from flask import (  # type: ignore[attr-defined]
     Flask,
     Response,
@@ -13,20 +11,27 @@ from flask import (  # type: ignore[attr-defined]
 )
 from pydantic import ValidationError
 
+from services.common.settings import BaseSettings, Field
 from services.email_sync.microsoft_webhook import microsoft_webhook_bp
 from services.email_sync.pubsub_client import publish_message
 from services.email_sync.schemas import GmailNotification
 
-load_dotenv()
+
+class EmailSyncSettings(BaseSettings):
+    GMAIL_WEBHOOK_SECRET: str = Field(..., description="Gmail webhook secret")
+    PYTHON_ENV: str = Field("production", description="Python environment")
+
+
+settings = EmailSyncSettings()
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 
-GMAIL_WEBHOOK_SECRET = os.getenv("GMAIL_WEBHOOK_SECRET")
+GMAIL_WEBHOOK_SECRET = settings.GMAIL_WEBHOOK_SECRET
 GMAIL_TOPIC = "gmail-notifications"
 
 # Patch pubsub_client for test mode
-test_mode = os.getenv("PYTHON_ENV") == "test"
+test_mode = settings.PYTHON_ENV == "test"
 if test_mode:
     from unittest.mock import MagicMock
 

@@ -4,16 +4,28 @@ import os
 import time
 from typing import Any
 
+from services.common.settings import BaseSettings, Field
 from services.email_sync.microsoft_graph_client import MicrosoftGraphClient
 from services.email_sync.pubsub_client import publish_message
 
-PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
-PUBSUB_EMULATOR_HOST = os.getenv("PUBSUB_EMULATOR_HOST")
-MICROSOFT_TOPIC = "microsoft-notifications"
-MICROSOFT_SUBSCRIPTION = os.getenv(
-    "MICROSOFT_SUBSCRIPTION", "microsoft-notifications-sub"
-)
 
+class MicrosoftSyncSettings(BaseSettings):
+    GOOGLE_CLOUD_PROJECT: str = Field(..., description="GCP project ID")
+    PUBSUB_EMULATOR_HOST: str = Field("", description="PubSub emulator host")
+    MICROSOFT_SUBSCRIPTION: str = Field(
+        "microsoft-notifications-sub", description="Microsoft subscription name"
+    )
+    MS_GRAPH_ACCESS_TOKEN: str = Field(
+        "test-access-token", description="MS Graph access token"
+    )
+
+
+settings = MicrosoftSyncSettings()
+
+PROJECT_ID = settings.GOOGLE_CLOUD_PROJECT
+PUBSUB_EMULATOR_HOST = settings.PUBSUB_EMULATOR_HOST
+MICROSOFT_TOPIC = "microsoft-notifications"
+MICROSOFT_SUBSCRIPTION = settings.MICROSOFT_SUBSCRIPTION
 EMAIL_PROCESSING_TOPIC = "email-processing"
 
 logging.basicConfig(level=logging.INFO)
@@ -24,8 +36,7 @@ def process_microsoft_notification(message: Any) -> None:
         data = json.loads(message.data.decode("utf-8"))
         logging.info(f"Processing Microsoft notification: {data}")
         # TODO: Retrieve access token for the user (mocked for now)
-        access_token = os.getenv("MS_GRAPH_ACCESS_TOKEN", "test-access-token")
-        graph_client = MicrosoftGraphClient(access_token)
+        graph_client = MicrosoftGraphClient(settings.MS_GRAPH_ACCESS_TOKEN)
         # Fetch emails using notification
         emails = graph_client.fetch_emails_from_notification(data)
         logging.info(f"Fetched {len(emails)} emails from Microsoft Graph")

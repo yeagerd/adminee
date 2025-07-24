@@ -6,15 +6,24 @@ import re
 import time
 from typing import Any, Dict
 
+from services.common.settings import BaseSettings, Field
 from services.email_sync.pubsub_client import publish_message
 
-PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
-PUBSUB_EMULATOR_HOST = os.getenv("PUBSUB_EMULATOR_HOST")
-EMAIL_PROCESSING_TOPIC = "email-processing"
-EMAIL_PARSER_SUBSCRIPTION = os.getenv(
-    "EMAIL_PARSER_SUBSCRIPTION", "email-processing-sub"
-)
 
+class EmailParserSettings(BaseSettings):
+    GOOGLE_CLOUD_PROJECT: str = Field(..., description="GCP project ID")
+    PUBSUB_EMULATOR_HOST: str = Field("", description="PubSub emulator host")
+    EMAIL_PARSER_SUBSCRIPTION: str = Field(
+        "email-processing-sub", description="Email parser subscription name"
+    )
+
+
+settings = EmailParserSettings()
+
+PROJECT_ID = settings.GOOGLE_CLOUD_PROJECT
+PUBSUB_EMULATOR_HOST = settings.PUBSUB_EMULATOR_HOST
+EMAIL_PROCESSING_TOPIC = "email-processing"
+EMAIL_PARSER_SUBSCRIPTION = settings.EMAIL_PARSER_SUBSCRIPTION
 PACKAGE_TRACKER_TOPIC = "package-tracker-events"
 SURVEY_EVENTS_TOPIC = "survey-events"
 AMAZON_EVENTS_TOPIC = "amazon-events"
