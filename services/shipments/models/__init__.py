@@ -3,7 +3,7 @@ Database models for the shipments service
 """
 
 from datetime import date, datetime
-from typing import Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -34,8 +34,13 @@ class Package(SQLModel, table=True):
     archived_at: Optional[datetime] = None
     email_message_id: Optional[str] = Field(default=None, max_length=255)
 
-    tracking_events = Relationship(back_populates="package")
-    labels = Relationship(back_populates="packages", link_model=PackageLabel)
+    if TYPE_CHECKING:
+        from services.shipments.models import Label, Package, TrackingEvent
+
+    tracking_events: List["TrackingEvent"] = Relationship(back_populates="package")
+    labels: List["Label"] = Relationship(
+        back_populates="packages", link_model=PackageLabel
+    )
 
     __table_args__ = ({"sqlite_autoincrement": True},)
 
@@ -47,7 +52,12 @@ class Label(SQLModel, table=True):
     color: str = Field(default="#3B82F6", max_length=7)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    packages = Relationship(back_populates="labels", link_model=PackageLabel)
+    if TYPE_CHECKING:
+        from services.shipments.models import Package
+
+    packages: List["Package"] = Relationship(
+        back_populates="labels", link_model=PackageLabel
+    )
 
 
 class TrackingEvent(SQLModel, table=True):
@@ -59,7 +69,7 @@ class TrackingEvent(SQLModel, table=True):
     description: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    package = Relationship(back_populates="tracking_events")
+    package: Optional["Package"] = Relationship(back_populates="tracking_events")
 
 
 class CarrierConfig(SQLModel, table=True):
