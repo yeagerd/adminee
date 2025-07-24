@@ -23,12 +23,15 @@ def get_poll(poll_id: UUID):
         return poll
 
 @router.post("/", response_model=MeetingPoll)
-def create_poll(poll: MeetingPollCreate):
+def create_poll(poll: MeetingPollCreate, request: Request):
+    user_id = request.headers.get("X-User-Id")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Missing X-User-Id header")
     with get_session() as session:
         poll_token = uuid4().hex
         db_poll = MeetingPollModel(
             id=uuid4(),
-            user_id=uuid4(),  # TODO: Replace with actual user context
+            user_id=user_id,  # Use actual user context
             title=poll.title,
             description=poll.description,
             duration_minutes=poll.duration_minutes,
