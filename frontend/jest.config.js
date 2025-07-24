@@ -6,7 +6,7 @@ const tsJestTransformCfg = createDefaultPreset().transform;
 module.exports = {
     testEnvironment: "jsdom",
     transform: {
-        "^.+\\.(ts|tsx)$": "ts-jest"
+        "^.+\\.(ts|tsx)$": ["ts-jest", { tsconfig: "<rootDir>/tsconfig.test.json" }],
     },
     setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
     moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],
