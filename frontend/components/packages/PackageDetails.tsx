@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
+import type { Package, TrackingEvent } from './AddPackageModal';
 import LabelChip from './LabelChip';
 import TrackingTimeline from './TrackingTimeline';
 
-export default function PackageDetails({ pkg, onClose }: { pkg: any, onClose: () => void }) {
+export default function PackageDetails({ pkg, onClose }: { pkg: Package & { labels?: (string | { name: string })[], events?: TrackingEvent[] }, onClose: () => void }) {
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
@@ -29,7 +30,7 @@ export default function PackageDetails({ pkg, onClose }: { pkg: any, onClose: ()
                 <div className="mb-2"><b>Estimated Delivery:</b> {pkg.estimated_delivery}</div>
                 <div className="mb-2"><b>Recipient:</b> {pkg.recipient_name}</div>
                 <div className="mb-2"><b>Description:</b> {pkg.package_description}</div>
-                <div className="mb-2"><b>Labels:</b> {(pkg.labels || []).map((label: string, idx: number) => <LabelChip key={idx} label={label} />)}</div>
+                <div className="mb-2"><b>Labels:</b> {(pkg.labels || []).map((label: string | { name: string }, idx: number) => <LabelChip key={idx} label={typeof label === 'string' ? label : label?.name || ''} />)}</div>
                 <div className="mb-2"><b>Order Number:</b> {pkg.order_number}</div>
                 <div className="mb-2"><b>Tracking Link:</b> <a href={pkg.tracking_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">View</a></div>
                 <div className="mb-2"><b>Events:</b></div>

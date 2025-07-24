@@ -1,4 +1,6 @@
-export default function PackageCard({ pkg }: { pkg: any }) {
+import type { Package } from './AddPackageModal';
+
+export default function PackageCard({ pkg }: { pkg: Package }) {
     return (
         <div className="border rounded p-4 mb-2">
             <div className="font-bold">{pkg.tracking_number}</div>

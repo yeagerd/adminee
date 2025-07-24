@@ -1,7 +1,33 @@
 import { gatewayClient } from '@/lib/gateway-client';
 import { useState } from 'react';
 
-const initialState = {
+export interface TrackingEvent {
+    event_date: string;
+    status: string;
+    location?: string;
+    description?: string;
+}
+
+export interface Package {
+    id?: number;
+    tracking_number: string;
+    carrier: string;
+    status: string;
+    estimated_delivery?: string;
+    actual_delivery?: string;
+    recipient_name?: string;
+    recipient_address?: string;
+    shipper_name?: string;
+    package_description?: string;
+    order_number?: string;
+    tracking_link?: string;
+    email_message_id?: string;
+    labels?: (string | { name: string })[];
+    events?: TrackingEvent[];
+    [key: string]: unknown;
+}
+
+const initialState: Package = {
     tracking_number: '',
     carrier: '',
     status: 'pending',
@@ -26,7 +52,7 @@ const STATUS_OPTIONS = [
     { value: 'cancelled', label: 'Cancelled' },
 ];
 
-export default function AddPackageModal({ onClose, onAdd }: { onClose: () => void, onAdd: (pkg: any) => void }) {
+export default function AddPackageModal({ onClose, onAdd }: { onClose: () => void, onAdd: () => void }) {
     const [form, setForm] = useState(initialState);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -41,7 +67,7 @@ export default function AddPackageModal({ onClose, onAdd }: { onClose: () => voi
         setLoading(true);
         setError(null);
         try {
-            const data = await gatewayClient.request('/api/packages', {
+            await gatewayClient.request('/api/packages', {
                 method: 'POST',
                 body: {
                     tracking_number: form.tracking_number,
@@ -58,9 +84,15 @@ export default function AddPackageModal({ onClose, onAdd }: { onClose: () => voi
                     email_message_id: form.email_message_id || null,
                 },
             });
-            onAdd(data);
-        } catch (err: any) {
-            setError(err.message || 'Unknown error');
+            onAdd();
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                setError(err.message);
+            } else if (typeof err === 'object' && err !== null && 'message' in err) {
+                setError(String((err as { message: string }).message));
+            } else {
+                setError('Unknown error');
+            }
         } finally {
             setLoading(false);
         }

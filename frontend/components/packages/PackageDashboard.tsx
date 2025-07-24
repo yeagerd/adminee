@@ -9,6 +9,7 @@ import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { Input } from '../ui/input';
+import type { Package } from './AddPackageModal';
 import AddPackageModal from './AddPackageModal';
 import PackageDetails from './PackageDetails';
 import PackageList from './PackageList';
@@ -32,23 +33,6 @@ function SummaryBox({ icon: Icon, label, value, iconClass }: { icon: ReactNode, 
     );
 }
 
-const STATUS_OPTIONS = [
-    { value: 'all', label: 'All Status' },
-    { value: 'pending', label: 'Pending' },
-    { value: 'shipped', label: 'Shipped' },
-    { value: 'late', label: 'Late' },
-    { value: 'delivered', label: 'Delivered' },
-];
-
-const CARRIER_OPTIONS = [
-    { value: 'all', label: 'All Carriers' },
-    { value: 'UPS', label: 'UPS' },
-    { value: 'FedEx', label: 'FedEx' },
-    { value: 'USPS', label: 'USPS' },
-    { value: 'DHL', label: 'DHL' },
-    { value: 'Amazon', label: 'Amazon' },
-];
-
 const DATE_RANGE_OPTIONS = [
     { value: '7', label: 'Last 7 days' },
     { value: '30', label: 'Last 30 days' },
@@ -58,27 +42,25 @@ const DATE_RANGE_OPTIONS = [
 
 export default function PackageDashboard() {
     const [showAddModal, setShowAddModal] = useState(false);
-    const [packages, setPackages] = useState<any[]>([]); // TODO: Replace any with proper type
+    const [packages, setPackages] = useState<Package[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState('all');
-    const [carrierFilter, setCarrierFilter] = useState('all');
     const [sortField, setSortField] = useState('estimated_delivery');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
     const [editingCell, setEditingCell] = useState<{ id: number; field: string } | null>(null);
-    const [selectedPackage, setSelectedPackage] = useState<any | null>(null);
+    const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
     const [selectedStatusFilters, setSelectedStatusFilters] = useState<string[]>([]);
-    const [selectedCarrierFilters, setSelectedCarrierFilters] = useState<string[]>([]);
+    const [selectedCarrierFilters] = useState<string[]>([]);
     const [dateRange, setDateRange] = useState<'7' | '30' | '90' | 'all'>('7');
 
     useEffect(() => {
         setLoading(true);
         setError(null);
         gatewayClient.request('/api/packages')
-            .then((res: any) => {
-                // If backend returns { data: [...], pagination: {...} }
-                setPackages(res.data || []);
+            .then((res) => {
+                const typedRes = res as { data: Package[] };
+                setPackages(typedRes.data || []);
             })
             .catch((err) => {
                 setError(err.message || 'Failed to fetch packages');
@@ -88,10 +70,7 @@ export default function PackageDashboard() {
 
     const filteredAndSortedPackages = useMemo(() => {
         const now = dayjs();
-        let startDate: dayjs.Dayjs | null = null;
-        if (dateRange !== 'all') {
-            startDate = now.subtract(Number(dateRange) - 1, 'day').startOf('day');
-        }
+        const startDate: dayjs.Dayjs | null = dateRange !== 'all' ? now.subtract(Number(dateRange) - 1, 'day').startOf('day') : null;
         const filtered = packages.filter((pkg) => {
             const matchesSearch =
                 pkg.tracking_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -106,7 +85,7 @@ export default function PackageDashboard() {
                 // If no estimated_delivery, always include
                 return matchesSearch && matchesStatus && matchesCarrier;
             }
-            let estimatedDate = dayjs(pkg.estimated_delivery);
+            const estimatedDate = dayjs(pkg.estimated_delivery);
             let matchesDate = true;
             if (startDate && estimatedDate) {
                 matchesDate = estimatedDate.isSameOrAfter(startDate, 'day') && estimatedDate.isSameOrBefore(now, 'day');
@@ -114,13 +93,16 @@ export default function PackageDashboard() {
             return matchesSearch && matchesStatus && matchesCarrier && matchesDate;
         });
         filtered.sort((a, b) => {
-            let aValue = a[sortField];
-            let bValue = b[sortField];
+            const aValue = a[sortField] as string | number | undefined;
+            const bValue = b[sortField] as string | number | undefined;
             if (typeof aValue === 'string' && typeof bValue === 'string') {
                 return sortDirection === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
             }
-            if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-            if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+            if (typeof aValue === 'number' && typeof bValue === 'number') {
+                if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+                if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+                return 0;
+            }
             return 0;
         });
         return filtered;
@@ -136,19 +118,23 @@ export default function PackageDashboard() {
     };
 
     const handleCellEdit = (id: number, field: string, value: string) => {
-        setPackages(packages.map((pkg) => (pkg.id === id ? { ...pkg, [field]: value } : pkg)));
+        setPackages(packages.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
         setEditingCell(null);
     };
 
-    const handleAddPackage = async (pkg: any) => {
+    const handleAddPackage = async () => {
         setShowAddModal(false);
         setLoading(true);
         setError(null);
         try {
-            const res: any = await gatewayClient.request('/api/packages');
+            const res = await gatewayClient.request('/api/packages') as { data: Package[] };
             setPackages(res.data || []);
-        } catch (err: any) {
-            setError(err.message || 'Failed to refresh packages');
+        } catch (err) {
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError('Failed to refresh packages');
+            }
         } finally {
             setLoading(false);
         }
@@ -157,15 +143,15 @@ export default function PackageDashboard() {
     // Status counts for summary cards
     const statusCounts = useMemo(() => {
         const counts = { pending: 0, shipped: 0, late: 0, delivered: 0 };
-        packages.forEach((pkg) => {
-            const status = (pkg.status || 'pending') as keyof typeof counts;
+        for (const p of packages) {
+            const status = (p.status || 'pending') as keyof typeof counts;
             if (counts[status] !== undefined) counts[status]++;
-        });
+        }
         return counts;
     }, [packages]);
 
     // Handler for row click to show details
-    const handleRowClick = (pkg: any) => setSelectedPackage(pkg);
+    const handleRowClick = (pkg: Package) => setSelectedPackage(pkg);
 
     return (
         <div className="max-w-6xl mx-auto py-4 space-y-3 px-4 m-1">
@@ -244,17 +230,13 @@ export default function PackageDashboard() {
             {/* Packages Table */}
             <PackageList
                 packages={filteredAndSortedPackages}
-                onSort={handleSort}
-                sortField={sortField}
-                sortDirection={sortDirection}
                 editingCell={editingCell}
                 setEditingCell={setEditingCell}
                 onCellEdit={handleCellEdit}
                 onRowClick={handleRowClick}
                 selectedStatusFilters={selectedStatusFilters}
-                selectedCarrierFilters={selectedCarrierFilters}
                 onStatusFilterChange={setSelectedStatusFilters}
-                onCarrierFilterChange={setSelectedCarrierFilters}
+                onSort={handleSort}
             />
             {showAddModal && (
                 <AddPackageModal onClose={() => setShowAddModal(false)} onAdd={handleAddPackage} />
