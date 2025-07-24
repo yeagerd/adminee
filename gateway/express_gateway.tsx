@@ -296,7 +296,7 @@ const serviceRoutes = {
     '/api/files': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
     '/api/drafts': process.env.CHAT_SERVICE_URL || 'http://127.0.0.1:8002',
     '/api/meetings': process.env.MEETINGS_SERVICE_URL || 'http://127.0.0.1:8005',
-    '/api/public/polls': process.env.MEETINGS_SERVICE_URL || 'http://127.0.0.1:8003', // Added for public poll endpoints
+    '/api/public/polls': process.env.MEETINGS_SERVICE_URL || 'http://127.0.0.1:8005', // Fixed: should use meetings service, not office service
 };
 
 // Create proxy middleware factory

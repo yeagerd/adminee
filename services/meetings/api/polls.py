@@ -80,11 +80,17 @@ def create_poll(poll: MeetingPollCreate, request: Request):
 
 
 @router.put("/{poll_id}", response_model=MeetingPoll)
-def update_poll(poll_id: UUID, poll: MeetingPollCreate):
+def update_poll(poll_id: UUID, poll: MeetingPollCreate, request: Request):
+    user_id = request.headers.get("X-User-Id")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Missing X-User-Id header")
     with get_session() as session:
         db_poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
         if not db_poll:
             raise HTTPException(status_code=404, detail="Poll not found")
+        # Ownership check: only the poll creator can update
+        if str(db_poll.user_id) != str(user_id):
+            raise HTTPException(status_code=403, detail="Not authorized to update this poll")
         db_poll.title = poll.title
         db_poll.description = poll.description
         db_poll.duration_minutes = poll.duration_minutes
@@ -101,11 +107,17 @@ def update_poll(poll_id: UUID, poll: MeetingPollCreate):
 
 
 @router.delete("/{poll_id}")
-def delete_poll(poll_id: UUID):
+def delete_poll(poll_id: UUID, request: Request):
+    user_id = request.headers.get("X-User-Id")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Missing X-User-Id header")
     with get_session() as session:
         db_poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
         if not db_poll:
             raise HTTPException(status_code=404, detail="Poll not found")
+        # Ownership check: only the poll creator can delete
+        if str(db_poll.user_id) != str(user_id):
+            raise HTTPException(status_code=403, detail="Not authorized to delete this poll")
         session.delete(db_poll)
         session.commit()
         return {"ok": True}

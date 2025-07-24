@@ -3,6 +3,13 @@ import gatewayClient from "@/lib/gateway-client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+interface Poll {
+    title?: string;
+    description?: string;
+    duration_minutes?: number;
+    location?: string;
+}
+
 export default function EditMeetingPollPage({ params }: { params: { id: string } }) {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
@@ -17,10 +24,11 @@ export default function EditMeetingPollPage({ params }: { params: { id: string }
         setLoading(true);
         gatewayClient.getMeetingPoll(params.id)
             .then((poll) => {
-                setTitle(poll.title || "");
-                setDescription(poll.description || "");
-                setDuration(poll.duration_minutes || 60);
-                setLocation(poll.location || "");
+                const p = poll as Poll;
+                setTitle(p.title || "");
+                setDescription(p.description || "");
+                setDuration(p.duration_minutes || 60);
+                setLocation(p.location || "");
             })
             .catch((e) => setError(e.message || "Failed to load poll"))
             .finally(() => setLoading(false));

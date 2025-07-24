@@ -55,7 +55,7 @@ export default function PublicPollResponsePage({ params }: { params: { token: st
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     participantEmail,
-                    responses: Object.entries(responses).map(([timeSlotId, response]) => ({ timeSlotId, response })),
+                    responses: Object.entries(responses).map(([timeSlotId, response]) => ({ time_slot_id: timeSlotId, response })),
                 }),
             });
             if (!resp.ok) throw new Error(await resp.text());

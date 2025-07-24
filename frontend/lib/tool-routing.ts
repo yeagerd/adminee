@@ -11,6 +11,7 @@ export const TOOL_ROUTES: Record<Tool, string> = {
     pulse: '/dashboard?tool=pulse',
     insights: '/dashboard?tool=insights',
     drafts: '/dashboard?tool=drafts',
+    meetings: '/dashboard?tool=meetings',
 };
 
 // Tool display names
@@ -24,6 +25,7 @@ export const TOOL_NAMES: Record<Tool, string> = {
     pulse: 'Pulse',
     insights: 'Insights',
     drafts: 'Drafts',
+    meetings: 'Meetings',
 };
 
 // Tool descriptions
@@ -37,6 +39,7 @@ export const TOOL_DESCRIPTIONS: Record<Tool, string> = {
     pulse: 'Industry news and trends',
     insights: 'Analytics and insights',
     drafts: 'View and manage your drafts',
+    meetings: 'View and manage your meetings',
 };
 
 // Get tool from URL
@@ -94,6 +97,7 @@ export function getToolFromPathname(pathname: string): Tool | null {
         'pulse': 'pulse',
         'insights': 'insights',
         'drafts': 'drafts',
+        'meetings': 'meetings',
     };
 
     return pathToTool[path] || null;
@@ -121,6 +125,7 @@ export function getToolIconName(tool: Tool): string {
         pulse: 'TrendingUp',
         insights: 'BarChart3',
         drafts: 'Copy',
+        meetings: 'Calendar',
     };
     return iconMap[tool];
 }
@@ -137,6 +142,7 @@ export function getToolColor(tool: Tool): string {
         pulse: 'pink',
         insights: 'teal',
         drafts: 'gray',
+        meetings: 'blue',
     };
     return colorMap[tool];
 }
@@ -153,6 +159,7 @@ export function getToolBadge(tool: Tool): string | null {
         pulse: null,
         insights: null,
         drafts: null,
+        meetings: null,
     };
     return badgeMap[tool];
 }
