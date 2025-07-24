@@ -159,8 +159,10 @@ export default function PackageDashboard() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-center space-y-0 py-4 px-2">
                         <div className="flex items-center gap-2 w-full justify-center">
-                            <span className="text-2xl font-bold">{statusCounts.pending}</span>
-                            <span className="text-sm font-medium hidden md:inline">Pending</span>
+                            <div className="flex flex-col md:flex-row items-center md:gap-2">
+                                <span className="text-2xl font-bold">{statusCounts.pending}</span>
+                                <span className="text-sm font-medium">Pending</span>
+                            </div>
                             <Clock className="h-4 w-4 text-yellow-600 flex-shrink-0" />
                         </div>
                     </CardHeader>
@@ -168,8 +170,10 @@ export default function PackageDashboard() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-center space-y-0 py-4 px-2">
                         <div className="flex items-center gap-2 w-full justify-center">
-                            <span className="text-2xl font-bold">{statusCounts.shipped}</span>
-                            <span className="text-sm font-medium hidden md:inline">Shipped</span>
+                            <div className="flex flex-col md:flex-row items-center md:gap-2">
+                                <span className="text-2xl font-bold">{statusCounts.shipped}</span>
+                                <span className="text-sm font-medium">Shipped</span>
+                            </div>
                             <Truck className="h-4 w-4 text-blue-600 flex-shrink-0" />
                         </div>
                     </CardHeader>
@@ -177,8 +181,10 @@ export default function PackageDashboard() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-center space-y-0 py-4 px-2">
                         <div className="flex items-center gap-2 w-full justify-center">
-                            <span className="text-2xl font-bold">{statusCounts.late}</span>
-                            <span className="text-sm font-medium hidden md:inline">Late</span>
+                            <div className="flex flex-col md:flex-row items-center md:gap-2">
+                                <span className="text-2xl font-bold">{statusCounts.late}</span>
+                                <span className="text-sm font-medium">Late</span>
+                            </div>
                             <AlertTriangle className="h-4 w-4 text-red-600 flex-shrink-0" />
                         </div>
                     </CardHeader>
@@ -186,8 +192,10 @@ export default function PackageDashboard() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-center space-y-0 py-4 px-2">
                         <div className="flex items-center gap-2 w-full justify-center">
-                            <span className="text-2xl font-bold">{statusCounts.delivered}</span>
-                            <span className="text-sm font-medium hidden md:inline">Delivered</span>
+                            <div className="flex flex-col md:flex-row items-center md:gap-2">
+                                <span className="text-2xl font-bold">{statusCounts.delivered}</span>
+                                <span className="text-sm font-medium">Delivered</span>
+                            </div>
                             <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
                         </div>
                     </CardHeader>
