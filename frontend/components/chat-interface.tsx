@@ -180,9 +180,16 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
         }
     }, [session])
 
-    useEffect(() => {
-        fetchChatHistory()
-    }, [fetchChatHistory])
+    // Add state to track dropdown open
+    const [historyDropdownOpen, setHistoryDropdownOpen] = useState(false);
+
+    // Fetch chat history only when dropdown is opened and not already loaded
+    const handleHistoryDropdownOpenChange = async (open: boolean) => {
+        setHistoryDropdownOpen(open);
+        if (open && chatHistory.length === 0) {
+            await fetchChatHistory();
+        }
+    };
 
     const handleNewChat = () => {
         if (streamControllerRef.current) {
@@ -371,7 +378,7 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
                 <Button variant="ghost" size="icon" onClick={handleNewChat} className="bg-black text-white hover:bg-gray-700 hover:text-white border border-gray-600">
                     <Plus className="h-5 w-5" />
                 </Button>
-                <DropdownMenu>
+                <DropdownMenu onOpenChange={handleHistoryDropdownOpenChange}>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="bg-black text-white hover:bg-gray-700 hover:text-white border border-gray-600">
                             <History className="h-5 w-5" />
