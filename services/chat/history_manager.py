@@ -344,9 +344,15 @@ async def create_thread(user_id: str, title: Optional[str] = None) -> Thread:
         return thread
 
 
-async def list_threads(user_id: str) -> List[Thread]:
+async def list_threads(user_id: str, limit: int = 20, offset: int = 0) -> List[Thread]:
     async with get_async_session_factory()() as session:
-        result = await session.execute(select(Thread).where(Thread.user_id == user_id))
+        result = await session.execute(
+            select(Thread)
+            .where(Thread.user_id == user_id)
+            .order_by(Thread.updated_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
         return list(result.scalars().all())
 
 

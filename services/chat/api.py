@@ -10,8 +10,8 @@ import json
 import uuid
 from typing import AsyncGenerator, List, Optional
 
-from fastapi import APIRouter, Request
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Request, Query
+from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
 
 from services.chat import history_manager
@@ -386,10 +386,12 @@ async def chat_stream_endpoint(
     )
 
 
-@router.get("/threads", response_model=List[ThreadResponse])
+@router.get("/threads")
 async def list_threads(
     request: Request,
-) -> List[ThreadResponse]:
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+) -> JSONResponse:
     """
     List threads for a given user using history_manager.
 
@@ -402,20 +404,32 @@ async def list_threads(
     user_id = await get_user_id_from_gateway(request)
 
     # Get database models (Thread objects with int IDs, datetime objects, relationships)
-    threads = await history_manager.list_threads(user_id)
+    threads = await history_manager.list_threads(user_id, limit=limit+1, offset=offset)
+    total_count = None
+    # Optionally, count total threads for pagination (optional for perf)
+    # total_count = await history_manager.count_threads(user_id)
+    has_more = len(threads) > limit
+    if has_more:
+        threads = threads[:-1]
 
     # CONVERSION: Database Thread models -> API ThreadResponse models
-    return [
+    thread_responses = [
         ThreadResponse(
-            thread_id=str(t.id),  # CONVERT: int -> str for JSON compatibility
-            user_id=t.user_id,  # DIRECT: string field passes through
-            title=t.title,  # DIRECT: optional string field passes through
-            created_at=str(t.created_at),  # CONVERT: datetime -> str for JSON
-            updated_at=str(t.updated_at),  # CONVERT: datetime -> str for JSON
-            # NOTE: Relationships (messages, drafts) are excluded from API model
+            thread_id=str(t.id),
+            user_id=t.user_id,
+            title=t.title,
+            created_at=str(t.created_at),
+            updated_at=str(t.updated_at),
         )
         for t in threads
     ]
+    return JSONResponse({
+        "threads": [tr.dict() for tr in thread_responses],
+        "has_more": has_more,
+        "offset": offset,
+        "limit": limit,
+        # "total_count": total_count,  # Uncomment if you add counting
+    })
 
 
 @router.get("/threads/{thread_id}/history", response_model=ChatResponse)

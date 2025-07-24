@@ -121,6 +121,10 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
     const [isLoading, setIsLoading] = useState(false)
     const [chatHistory, setChatHistory] = useState<ThreadResponse[]>([])
     const [currentThreadId, setCurrentThreadId] = useState<string | null>(null)
+    const [historyHasMore, setHistoryHasMore] = useState(true);
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const HISTORY_PAGE_SIZE = 10;
+    const [historyOffset, setHistoryOffset] = useState(0);
     const { enableStreaming } = useStreamingSetting()
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const internalRef = useRef<HTMLDivElement>(null);
@@ -166,29 +170,43 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
         updated_at: string;
     }
 
-    const fetchChatHistory = useCallback(async () => {
-        if (session) {
-            try {
-                // Use the correct ThreadResponse type and fallback for missing title
-                const threads = (await gatewayClient.getChatThreads()) as ThreadResponse[]
-                // Sort in reverse-chronological order (newest first)
-                const sortedThreads = threads.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                setChatHistory(sortedThreads)
-            } catch (error) {
-                console.error("Failed to fetch chat history:", error)
+    const fetchChatHistory = useCallback(async (reset = false) => {
+        if (!session) return;
+        setHistoryLoading(true);
+        try {
+            const offset = reset ? 0 : historyOffset;
+            const resp = await gatewayClient.getChatThreads(HISTORY_PAGE_SIZE, offset) as { threads: ThreadResponse[]; has_more: boolean; offset: number; limit: number; };
+            const threads = resp.threads;
+            if (reset) {
+                setChatHistory(threads);
+            } else {
+                setChatHistory(prev => [...prev, ...threads]);
             }
+            setHistoryHasMore(resp.has_more);
+            setHistoryOffset(offset + threads.length);
+        } catch (error) {
+            console.error("Failed to fetch chat history:", error);
+        } finally {
+            setHistoryLoading(false);
         }
-    }, [session])
+    }, [session, historyOffset]);
 
     // Add state to track dropdown open
     const [historyDropdownOpen, setHistoryDropdownOpen] = useState(false);
 
-    // Fetch chat history only when dropdown is opened and not already loaded
+    // Always refetch on open
     const handleHistoryDropdownOpenChange = async (open: boolean) => {
         setHistoryDropdownOpen(open);
-        if (open && chatHistory.length === 0) {
-            await fetchChatHistory();
+        if (open) {
+            setHistoryOffset(0);
+            await fetchChatHistory(true);
         }
+    };
+
+    // Progressive loading handler
+    const handleLoadMoreHistory = async () => {
+        if (!historyHasMore || historyLoading) return;
+        await fetchChatHistory(false);
     };
 
     const handleNewChat = () => {
@@ -385,17 +403,29 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="max-h-96 overflow-y-auto">
-                        {chatHistory.length === 0 ? (
+                        {chatHistory.length === 0 && !historyLoading ? (
                             <DropdownMenuItem disabled>
                                 No chat history
                             </DropdownMenuItem>
                         ) : (
-                            chatHistory.map((chat) => (
-                                <DropdownMenuItem key={chat.thread_id} onClick={() => handleLoadChat(chat.thread_id)}>
-                                    {/* Fallback for missing title */}
-                                    {chat.title && chat.title.trim() !== '' ? chat.title : `Chat from ${new Date(chat.created_at).toLocaleString()}`}
-                                </DropdownMenuItem>
-                            ))
+                            <>
+                                {chatHistory.map((chat) => (
+                                    <DropdownMenuItem key={chat.thread_id} onClick={() => handleLoadChat(chat.thread_id)}>
+                                        {/* Fallback for missing title */}
+                                        {chat.title && chat.title.trim() !== '' ? chat.title : `Chat from ${new Date(chat.created_at).toLocaleString()}`}
+                                    </DropdownMenuItem>
+                                ))}
+                                {historyLoading && (
+                                    <DropdownMenuItem disabled>
+                                        Loading...
+                                    </DropdownMenuItem>
+                                )}
+                                {historyHasMore && !historyLoading && (
+                                    <DropdownMenuItem onClick={handleLoadMoreHistory}>
+                                        Load more
+                                    </DropdownMenuItem>
+                                )}
+                            </>
                         )}
                     </DropdownMenuContent>
                 </DropdownMenu>
