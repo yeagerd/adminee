@@ -16,10 +16,12 @@ import gatewayClient from "@/lib/gateway-client"
 import { History, Loader2, Plus, Send } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useCallback, useEffect, useRef, useState } from "react"
+import LoadingBubble from './ui/loading-bubble';
+
 
 type Message = {
     id: string
-    content: string
+    content: string | React.ReactNode
     sender: "user" | "ai"
     timestamp: Date
 }
@@ -91,7 +93,13 @@ function isUnbreakableString(str: string, threshold: number) {
 }
 
 function ChatBubble({ content, sender, windowWidth }: { content: React.ReactNode, sender: "user" | "ai", windowWidth: number }) {
-    if (typeof content !== 'string') return null;
+    if (typeof content !== 'string') {
+        return (
+            <div className={`max-w-[95%] min-w-0 rounded-lg p-2 text-sm overflow-anywhere ${sender === "user" ? "bg-teal-600 text-white ml-2" : "bg-gray-100 text-gray-800 mr-2"}`}>
+                {content}
+            </div>
+        );
+    }
     // Dynamic threshold scales with window width
     const threshold = Math.floor(windowWidth / 15);
     let breakClass = "";
@@ -234,6 +242,15 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
             setInput("")
             setIsLoading(true)
 
+            // Add interim loading bubble
+            const loadingMessage: Message = {
+                id: self.crypto.randomUUID(),
+                content: <LoadingBubble />,
+                sender: "ai",
+                timestamp: new Date(),
+            };
+            setMessages(prevMessages => [...prevMessages, loadingMessage]);
+
             try {
                 if (enableStreaming) {
                     streamControllerRef.current = new AbortController()
@@ -249,7 +266,7 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
                         sender: "ai",
                         timestamp: new Date(),
                     }
-                    setMessages((prev) => [...prev, aiMessage])
+                    setMessages((prev) => [...prev.filter(m => m.id !== loadingMessage.id), aiMessage])
 
                     if (reader) {
                         const processStream = async () => {
@@ -333,7 +350,7 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
                         sender: "ai",
                         timestamp: new Date(),
                     }
-                    setMessages((prev) => [...prev, aiMessage])
+                    setMessages((prev) => [...prev.filter(m => m.id !== loadingMessage.id), aiMessage])
 
                     // If a draft is returned, pass it to the parent component
                     if (data.drafts && data.drafts.length > 0 && onDraftReceived) {
@@ -414,11 +431,6 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
                                         <ChatBubble content={message.content} sender={message.sender} windowWidth={chatWidth} />
                                     </div>
                                 ))
-                            )}
-                            {isLoading && (
-                                <div className="w-full flex justify-start min-w-0">
-                                    <ChatBubble content={<Loader2 className="h-5 w-5 animate-spin" />} sender="ai" windowWidth={chatWidth} />
-                                </div>
                             )}
                             <div ref={messagesEndRef} />
                         </div>
