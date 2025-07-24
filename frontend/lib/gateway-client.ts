@@ -124,8 +124,9 @@ export class GatewayClient {
         return this.request(`/api/chat/threads/${threadId}/history`);
     }
 
-    async getChatThreads() {
-        return this.request('/api/chat/threads');
+    async getChatThreads(limit = 20, offset = 0) {
+        const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+        return this.request(`/api/chat/threads?${params.toString()}`);
     }
 
     // User Service
