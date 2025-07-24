@@ -296,6 +296,7 @@ const serviceRoutes = {
     '/api/files': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
     '/api/drafts': process.env.CHAT_SERVICE_URL || 'http://127.0.0.1:8002',
     '/api/meetings': process.env.MEETINGS_SERVICE_URL || 'http://127.0.0.1:8005',
+    '/api/public/polls': process.env.MEETINGS_SERVICE_URL || 'http://127.0.0.1:8003', // Added for public poll endpoints
 };
 
 // Create proxy middleware factory
@@ -403,6 +404,8 @@ app.use('/api/drafts', validateAuth, standardLimiter, createServiceProxy(service
 app.use('/api/drafts/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/drafts'], { '^/api/drafts': '/chat/drafts' }));
 app.use('/api/meetings', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/meetings'], { '^/api/meetings': '/api/meetings' }));
 app.use('/api/meetings/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/meetings'], { '^/api/meetings': '/api/meetings' }));
+app.use('/api/public/polls', standardLimiter, createServiceProxy(serviceRoutes['/api/public/polls'], { '^/api/public/polls': '/api/public/polls' }));
+app.use('/api/public/polls/*', standardLimiter, createServiceProxy(serviceRoutes['/api/public/polls'], { '^/api/public/polls': '/api/public/polls' }));
 
 // Fallback for other API routes (default to user service)
 app.use('/api', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/users'], { '^/api': '' }));
@@ -435,6 +438,7 @@ const server = app.listen(PORT, () => {
     logger.info(`  /api/files    → ${serviceRoutes['/api/files']}`);
     logger.info(`  /api/drafts     → ${serviceRoutes['/api/drafts']}`);
     logger.info(`  /api/meetings → ${serviceRoutes['/api/meetings']}`);
+    logger.info(`  /api/public/polls → ${serviceRoutes['/api/public/polls']}`);
 });
 
 // Handle WebSocket upgrades
@@ -453,6 +457,8 @@ server.on('upgrade', (request: any, socket: any, head: any) => {
         targetService = serviceRoutes['/api/calendar']; // All office service endpoints
     } else if (path.startsWith('/api/meetings')) {
         targetService = serviceRoutes['/api/meetings'];
+    } else if (path.startsWith('/api/public/polls')) {
+        targetService = serviceRoutes['/api/public/polls'];
     }
 
     // Create proxy for WebSocket
