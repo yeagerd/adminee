@@ -491,3 +491,27 @@ CREATE INDEX idx_poll_responses_participant_slot ON poll_responses(participant_i
 - Email notification backup systems
 
 This technical design provides a comprehensive foundation for implementing the meeting scheduler tool. The modular approach allows for iterative development while maintaining system scalability and reliability.
+
+## Outstanding Implementation Tasks
+
+### Backend
+- [ ] Implement calendar integration (availability, event creation)
+- [ ] Add email invitation and response processing
+- [ ] Add AI/NLP intent extraction for chat-based poll creation
+- [ ] Add analytics endpoints and real-time updates (WebSocket/SSE)
+- [ ] Add public poll response endpoints and security/rate limiting
+- [ ] Expand tests for all workflows (unit/integration)
+
+### Frontend
+- [ ] Build public poll response page (mobile-friendly)
+- [ ] Enhance poll creation wizard (multi-step, validation, time zones)
+- [ ] Add response visualization and analytics to results page
+- [ ] Add real-time updates and notifications
+- [ ] Improve error/loading/accessibility/mobile support
+- [ ] Add automated frontend tests
+
+### DevOps/Docs
+- [ ] Generate/apply Alembic migrations for meetings
+- [ ] Add MEETINGS_SERVICE_URL to gateway/.env and docs
+- [ ] Expand README/setup documentation for meetings service
+
