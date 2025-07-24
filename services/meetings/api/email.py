@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+import logging
 
 router = APIRouter()
 
@@ -10,5 +11,7 @@ class EmailResponseRequest(BaseModel):
 
 @router.post("/")
 def process_email_response(req: EmailResponseRequest):
-    # TODO: Implement email parsing and DB update logic
-    return {"ok": True} 
+    # TODO: Parse email content, match to poll/participant, update response
+    logging.info(f"Received email response from {req.sender}: {req.content}")
+    # For now, just acknowledge receipt
+    return {"ok": True, "received_from": req.sender} 
