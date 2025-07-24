@@ -101,6 +101,9 @@ def test_fast(session: nox.Session) -> None:
     session.run(
         "python", "-m", "pytest", "services/office/tests/", "-v", "-k", "not slow"
     )
+    session.run(
+        "python", "-m", "pytest", "services/email_sync/", "-v", "-k", "not slow"
+    )
 
 
 @nox.session(python="3.12")
@@ -142,6 +145,15 @@ def test_cov(session: nox.Session) -> None:
         "--cov-report=xml:coverage-office-service.xml",
         "-v",
     )
+    session.run(
+        "python",
+        "-m",
+        "pytest",
+        "services/email_sync/",
+        "--cov=services/email_sync",
+        "--cov-report=xml:coverage-email-sync.xml",
+        "-v",
+    )
 
 
 @nox.session(python="3.12")
@@ -159,3 +171,4 @@ def test_serial(session: nox.Session) -> None:
     session.run("python", "-m", "pytest", "services/user/tests/", "-v", "--tb=short")
     session.run("python", "-m", "pytest", "services/chat/tests/", "-v", "--tb=short")
     session.run("python", "-m", "pytest", "services/office/tests/", "-v", "--tb=short")
+    session.run("python", "-m", "pytest", "services/email_sync/", "-v", "--tb=short")
