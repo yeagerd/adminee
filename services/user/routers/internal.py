@@ -25,12 +25,16 @@ from services.user.schemas.integration import (
     InternalTokenResponse,
     InternalUserStatusResponse,
 )
+from services.user.schemas.preferences import (
+    PreferencesResetRequest,
+    UserPreferencesResponse,
+    UserPreferencesUpdate,
+)
 from services.user.schemas.user import (
     EmailResolutionRequest,
     UserCreate,
     UserResponse,
 )
-from services.user.schemas.preferences import PreferencesResetRequest, UserPreferencesResponse, UserPreferencesUpdate
 from services.user.services.preferences_service import PreferencesService
 from services.user.services.token_service import get_token_service
 from services.user.services.user_service import get_user_service
@@ -378,7 +382,10 @@ async def update_user_preferences_internal(
     """
     return await PreferencesService.update_user_preferences(user_id, preferences_update)
 
-@router.post("/users/{user_id}/preferences/reset", response_model=UserPreferencesResponse)
+
+@router.post(
+    "/users/{user_id}/preferences/reset", response_model=UserPreferencesResponse
+)
 async def reset_user_preferences_internal(
     user_id: str,
     reset_request: PreferencesResetRequest,
@@ -388,7 +395,11 @@ async def reset_user_preferences_internal(
     Internal service endpoint to reset user preferences by user_id.
     Requires service-to-service API key authentication.
     """
-    return await PreferencesService.reset_user_preferences(user_id, reset_request.categories)
+    return await PreferencesService.reset_user_preferences(
+        user_id, reset_request.categories
+    )
+
+
 # --- END INTERNAL-ONLY ---
 
 

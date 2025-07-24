@@ -13,12 +13,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
 
-from services.common.http_errors import (
-    NotFoundError,
-    ServiceError,
-)
 from services.common.logging_config import get_logger
-from services.user.auth.nextauth import get_current_user, verify_user_ownership
+from services.user.auth.nextauth import get_current_user
 from services.user.schemas.preferences import (
     PreferencesResetRequest,
     UserPreferencesResponse,
@@ -48,6 +44,7 @@ async def get_my_preferences(
     """
     return await PreferencesService.get_user_preferences(current_user)
 
+
 @router.put(
     "/users/me/preferences",
     response_model=UserPreferencesResponse,
@@ -62,7 +59,10 @@ async def update_my_preferences(
     """
     Update preferences for the authenticated user (user-facing endpoint).
     """
-    return await PreferencesService.update_user_preferences(current_user, preferences_update)
+    return await PreferencesService.update_user_preferences(
+        current_user, preferences_update
+    )
+
 
 @router.post(
     "/users/me/preferences/reset",
@@ -78,6 +78,9 @@ async def reset_my_preferences(
     """
     Reset preferences for the authenticated user (user-facing endpoint).
     """
-    return await PreferencesService.reset_user_preferences(current_user, reset_request.categories)
+    return await PreferencesService.reset_user_preferences(
+        current_user, reset_request.categories
+    )
+
 
 # --- END USER-FACING ENDPOINTS ---

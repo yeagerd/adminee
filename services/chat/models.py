@@ -132,7 +132,7 @@ class ChatRequest(BaseModel):
     @property
     def effective_timezone(self) -> Optional[str]:
         if self.user_context and isinstance(self.user_context, dict):
-            tz = self.user_context.get('timezone')
+            tz = self.user_context.get("timezone")
             if isinstance(tz, str) and tz:
                 return tz
         return self.user_timezone

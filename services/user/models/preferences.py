@@ -41,8 +41,14 @@ class UserPreferences(SQLModel, table=True):
     timezone: str = Field(default="UTC", max_length=50)  # DEPRECATED
 
     # Timezone mode: "auto" (browser) or "manual" (user override)
-    timezone_mode: str = Field(default="auto", max_length=10, description="Timezone mode: 'auto' or 'manual'")
-    manual_timezone: str = Field(default="", max_length=50, description="Manual timezone override (IANA name, or empty if not set)")
+    timezone_mode: str = Field(
+        default="auto", max_length=10, description="Timezone mode: 'auto' or 'manual'"
+    )
+    manual_timezone: str = Field(
+        default="",
+        max_length=50,
+        description="Manual timezone override (IANA name, or empty if not set)",
+    )
 
     # Timestamps
     created_at: datetime = Field(

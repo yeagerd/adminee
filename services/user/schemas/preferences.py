@@ -447,8 +447,13 @@ class UserPreferencesResponse(BaseModel):
     created_at: datetime = Field(description="Creation timestamp")
     updated_at: datetime = Field(description="Last update timestamp")
     # New timezone fields
-    timezone_mode: str = Field(default="auto", description="Timezone mode: 'auto' or 'manual'")
-    manual_timezone: str = Field(default="", description="Manual timezone override (IANA name, or empty if not set)")
+    timezone_mode: str = Field(
+        default="auto", description="Timezone mode: 'auto' or 'manual'"
+    )
+    manual_timezone: str = Field(
+        default="",
+        description="Manual timezone override (IANA name, or empty if not set)",
+    )
 
     model_config = ConfigDict(
         json_schema_extra={
