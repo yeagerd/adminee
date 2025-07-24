@@ -359,3 +359,59 @@ A multi-provider email integration system that processes Gmail and Microsoft ema
 - Testing frameworks (Jest, pytest, etc.)
 - API testing tools (Postman, curl)
 - Code coverage tools
+
+## Stubbed Items: Tasks to Fully Complete
+
+- [ ] **Gmail API Client (Real Implementation)**
+    - [ ] Implement `fetch_emails_since_history_id` in `gmail_api_client.py` to call the real Gmail API using the Google API client, handle pagination, and return actual email data.
+    - [ ] Implement token refresh logic for expired/invalid tokens.
+    - [ ] Add integration tests with a real or test Gmail account.
+
+- [ ] **Microsoft Graph API Client (Real Implementation)**
+    - [ ] Implement `fetch_emails_from_notification` in `microsoft_graph_client.py` to call the real Microsoft Graph API, fetch emails based on notification, and return actual email data.
+    - [ ] Implement token refresh logic for expired/invalid tokens.
+    - [ ] Add integration tests with a real or test Microsoft account.
+
+- [ ] **Gmail Subscription Manager (Production Integration)**
+    - [ ] Implement the real Gmail Watch API call in `refresh_gmail_subscription` to create/refresh push notification subscriptions for each user.
+    - [ ] Implement logic to detect expiring/failed subscriptions and automatically re-subscribe.
+    - [ ] Add integration tests with the Gmail Watch API.
+    - [ ] Add alerting for subscription failures using your monitoring system.
+
+- [ ] **Microsoft Subscription Manager (Production Integration)**
+    - [ ] Implement the real Microsoft Graph API call in `refresh_microsoft_subscription` to refresh/extend webhook subscriptions for each user.
+    - [ ] Implement logic to detect expiring/failed subscriptions and automatically re-subscribe.
+    - [ ] Add integration tests with the Microsoft Graph API.
+    - [ ] Add alerting for subscription failures using your monitoring system.
+
+- [ ] **End-to-End Integration Testing**
+    - [ ] Implement a real e2e test suite in `test_integration_pipeline.py` that:
+        - [ ] Starts all services (including pubsub emulator)
+        - [ ] Sends test webhook notifications
+        - [ ] Verifies that emails are fetched, parsed, and events are published end-to-end
+        - [ ] Uses mocks or test accounts for Gmail and Microsoft APIs
+
+- [ ] **Performance, Load, and Chaos Testing**
+    - [ ] Implement test data generators for high-volume email scenarios.
+    - [ ] Add performance/load tests for webhook endpoints and pubsub processing.
+    - [ ] Add chaos tests for network failures, API errors, and pubsub outages.
+    - [ ] Document and automate these tests as part of CI/CD.
+
+- [ ] **Observability: Production Metrics and Tracing**
+    - [ ] Integrate `observability.py` with a real metrics exporter (e.g., Prometheus, Stackdriver).
+    - [ ] Integrate distributed tracing with OpenTelemetry and export to a tracing backend.
+    - [ ] Build dashboards and alerting rules for system health, latency, and errors.
+
+- [ ] **Security & Compliance: Production-Ready**
+    - [ ] Integrate with a real secret management system (e.g., GCP Secret Manager) for all credentials.
+    - [ ] Implement rate limiting on all endpoints using Flask-Limiter or similar.
+    - [ ] Add real access control and authentication for all endpoints and pubsub topics.
+    - [ ] Implement and test PII redaction in logs and outputs.
+    - [ ] Run a security scan and address any high-severity issues.
+    - [ ] Complete compliance documentation and add automated compliance checks.
+
+- [ ] **Documentation: Architecture, Troubleshooting, and Diagrams**
+    - [ ] Add detailed troubleshooting guides for common failure scenarios.
+    - [ ] Create and include architecture and data flow diagrams in the documentation.
+    - [ ] Ensure all documentation is up to date with the production implementation.
+
