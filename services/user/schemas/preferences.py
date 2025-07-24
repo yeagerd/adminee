@@ -123,7 +123,7 @@ class UIPreferencesSchema(BaseModel):
         default=ThemeMode.SYSTEM, description="Theme mode preference"
     )
     language: Language = Field(default=Language.EN, description="Display language")
-    timezone: Timezone = Field(default=Timezone.UTC, description="User timezone")
+    # timezone: Timezone = Field(default=Timezone.UTC, description="User timezone")  # DEPRECATED: use top-level timezone_mode/manual_timezone
     date_format: DateFormat = Field(
         default=DateFormat.US, description="Date format preference"
     )
@@ -139,7 +139,7 @@ class UIPreferencesSchema(BaseModel):
             "example": {
                 "theme": "dark",
                 "language": "en",
-                "timezone": "America/New_York",
+                # "timezone": "America/New_York",  # DEPRECATED
                 "date_format": "MM/DD/YYYY",
                 "time_format": "12h",
                 "compact_mode": False,
@@ -446,6 +446,14 @@ class UserPreferencesResponse(BaseModel):
     privacy: PrivacyPreferencesSchema = Field(description="Privacy preferences")
     created_at: datetime = Field(description="Creation timestamp")
     updated_at: datetime = Field(description="Last update timestamp")
+    # New timezone fields
+    timezone_mode: str = Field(
+        default="auto", description="Timezone mode: 'auto' or 'manual'"
+    )
+    manual_timezone: str = Field(
+        default="",
+        description="Manual timezone override (IANA name, or empty if not set)",
+    )
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -454,8 +462,10 @@ class UserPreferencesResponse(BaseModel):
                 "ui": {
                     "theme": "dark",
                     "language": "en",
-                    "timezone": "America/New_York",
+                    # "timezone": "America/New_York",  # DEPRECATED
                 },
+                "timezone_mode": "manual",
+                "manual_timezone": "America/New_York",
                 "notifications": {
                     "email_notifications": True,
                     "summary_frequency": "daily",
@@ -489,11 +499,20 @@ class UserPreferencesUpdate(BaseModel):
     privacy: Optional[PrivacyPreferencesSchema] = Field(
         None, description="Privacy preferences to update"
     )
+    # New timezone fields (optional for partial update)
+    timezone_mode: Optional[str] = Field(
+        None, description="Timezone mode: 'auto' or 'manual'"
+    )
+    manual_timezone: Optional[str] = Field(
+        None, description="Manual timezone override (IANA name, or empty if not set)"
+    )
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
                 "ui": {"theme": "dark", "language": "en"},
+                "timezone_mode": "manual",
+                "manual_timezone": "America/New_York",
                 "notifications": {"email_notifications": False},
             }
         }
