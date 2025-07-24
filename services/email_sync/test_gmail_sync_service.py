@@ -56,6 +56,6 @@ def test_process_gmail_notification_pubsub_failure(monkeypatch):
             patch("time.sleep", lambda x: None),
         ):
             process_gmail_notification(msg)
-            assert msg.acked
-            assert not msg.nacked
+            assert not msg.acked
+            assert msg.nacked
             assert mock_publish.call_count == 5

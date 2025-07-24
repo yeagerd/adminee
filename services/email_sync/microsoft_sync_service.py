@@ -46,6 +46,8 @@ def process_microsoft_notification(message: Any) -> None:
                 logging.error(
                     f"ALERT: Failed to publish email after retries. Email: {email}"
                 )
+                message.nack()
+                return
         message.ack()
     except Exception as e:
         logging.error(f"Failed to process message: {e}")
