@@ -25,7 +25,19 @@ def process_microsoft_notification(message):
         # Fetch emails using notification
         emails = graph_client.fetch_emails_from_notification(data)
         logging.info(f"Fetched {len(emails)} emails from Microsoft Graph")
-        # TODO: Publish each email to email-processing topic
+        # Publish each email to email-processing topic with retry
+        for email in emails:
+            backoff = 1
+            for attempt in range(5):
+                try:
+                    publish_message(EMAIL_PROCESSING_TOPIC, email)
+                    break
+                except Exception as e:
+                    logging.error(f"Failed to publish email to pubsub: {e}, retrying in {backoff}s")
+                    time.sleep(backoff)
+                    backoff = min(backoff * 2, 60)
+            else:
+                logging.error(f"ALERT: Failed to publish email after retries. Email: {email}")
         message.ack()
     except Exception as e:
         logging.error(f"Failed to process message: {e}")
