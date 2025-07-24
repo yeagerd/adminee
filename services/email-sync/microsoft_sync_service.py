@@ -3,10 +3,15 @@ import time
 import logging
 import json
 
+from microsoft_graph_client import MicrosoftGraphClient
+from pubsub_client import publish_message
+
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
 PUBSUB_EMULATOR_HOST = os.getenv("PUBSUB_EMULATOR_HOST")
 MICROSOFT_TOPIC = "microsoft-notifications"
 MICROSOFT_SUBSCRIPTION = os.getenv("MICROSOFT_SUBSCRIPTION", "microsoft-notifications-sub")
+
+EMAIL_PROCESSING_TOPIC = "email-processing"
 
 logging.basicConfig(level=logging.INFO)
 
@@ -14,7 +19,12 @@ def process_microsoft_notification(message):
     try:
         data = json.loads(message.data.decode("utf-8"))
         logging.info(f"Processing Microsoft notification: {data}")
-        # TODO: Fetch emails using Microsoft Graph API
+        # TODO: Retrieve access token for the user (mocked for now)
+        access_token = os.getenv("MS_GRAPH_ACCESS_TOKEN", "test-access-token")
+        graph_client = MicrosoftGraphClient(access_token)
+        # Fetch emails using notification
+        emails = graph_client.fetch_emails_from_notification(data)
+        logging.info(f"Fetched {len(emails)} emails from Microsoft Graph")
         # TODO: Publish each email to email-processing topic
         message.ack()
     except Exception as e:
