@@ -1,12 +1,19 @@
-import { AlertTriangle, CheckCircle, Clock, Plus, Truck } from 'lucide-react';
+import dayjs from 'dayjs';
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
+import { AlertTriangle, Calendar, CheckCircle, Clock, Plus, Truck } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import gatewayClient from '../../lib/gateway-client';
 import { Button } from '../ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Card, CardHeader } from '../ui/card';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { Input } from '../ui/input';
 import AddPackageModal from './AddPackageModal';
 import PackageDetails from './PackageDetails';
 import PackageList from './PackageList';
+
+dayjs.extend(isSameOrAfter);
+dayjs.extend(isSameOrBefore);
 
 const STATUS_OPTIONS = [
     { value: 'all', label: 'All Status' },
@@ -25,6 +32,13 @@ const CARRIER_OPTIONS = [
     { value: 'Amazon', label: 'Amazon' },
 ];
 
+const DATE_RANGE_OPTIONS = [
+    { value: '7', label: 'Last 7 days' },
+    { value: '30', label: 'Last 30 days' },
+    { value: '90', label: 'Last 90 days' },
+    { value: 'all', label: 'All' },
+];
+
 export default function PackageDashboard() {
     const [showAddModal, setShowAddModal] = useState(false);
     const [packages, setPackages] = useState<any[]>([]); // TODO: Replace any with proper type
@@ -39,6 +53,7 @@ export default function PackageDashboard() {
     const [selectedPackage, setSelectedPackage] = useState<any | null>(null);
     const [selectedStatusFilters, setSelectedStatusFilters] = useState<string[]>([]);
     const [selectedCarrierFilters, setSelectedCarrierFilters] = useState<string[]>([]);
+    const [dateRange, setDateRange] = useState<'7' | '30' | '90' | 'all'>('7');
 
     useEffect(() => {
         setLoading(true);
@@ -55,6 +70,11 @@ export default function PackageDashboard() {
     }, []);
 
     const filteredAndSortedPackages = useMemo(() => {
+        const now = dayjs();
+        let startDate: dayjs.Dayjs | null = null;
+        if (dateRange !== 'all') {
+            startDate = now.subtract(Number(dateRange) - 1, 'day').startOf('day');
+        }
         const filtered = packages.filter((pkg) => {
             const matchesSearch =
                 pkg.tracking_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -64,7 +84,17 @@ export default function PackageDashboard() {
             const status = pkg.status || 'pending';
             const matchesStatus = selectedStatusFilters.length === 0 || selectedStatusFilters.includes(status);
             const matchesCarrier = selectedCarrierFilters.length === 0 || selectedCarrierFilters.includes(pkg.carrier);
-            return matchesSearch && matchesStatus && matchesCarrier;
+            // Date range filter
+            if (!pkg.shipped_at) {
+                // If no shipped_at, always include
+                return matchesSearch && matchesStatus && matchesCarrier;
+            }
+            let shippedDate = dayjs(pkg.shipped_at);
+            let matchesDate = true;
+            if (startDate && shippedDate) {
+                matchesDate = shippedDate.isSameOrAfter(startDate, 'day') && shippedDate.isSameOrBefore(now, 'day');
+            }
+            return matchesSearch && matchesStatus && matchesCarrier && matchesDate;
         });
         filtered.sort((a, b) => {
             let aValue = a[sortField];
@@ -77,7 +107,7 @@ export default function PackageDashboard() {
             return 0;
         });
         return filtered;
-    }, [packages, searchTerm, selectedStatusFilters, selectedCarrierFilters, sortField, sortDirection]);
+    }, [packages, searchTerm, selectedStatusFilters, selectedCarrierFilters, sortField, sortDirection, dateRange]);
 
     const handleSort = (field: string) => {
         if (sortField === field) {
@@ -127,40 +157,40 @@ export default function PackageDashboard() {
             {/* Status Overview Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Pending</CardTitle>
-                        <Clock className="h-4 w-4 text-yellow-600" />
+                    <CardHeader className="flex flex-row items-center justify-center space-y-0 pb-2">
+                        <div className="flex items-center gap-2 w-full justify-center">
+                            <span className="text-2xl font-bold">{statusCounts.pending}</span>
+                            <span className="text-sm font-medium">Pending</span>
+                            <Clock className="h-4 w-4 text-yellow-600" />
+                        </div>
                     </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{statusCounts.pending}</div>
-                    </CardContent>
                 </Card>
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Shipped</CardTitle>
-                        <Truck className="h-4 w-4 text-blue-600" />
+                    <CardHeader className="flex flex-row items-center justify-center space-y-0 pb-2">
+                        <div className="flex items-center gap-2 w-full justify-center">
+                            <span className="text-2xl font-bold">{statusCounts.shipped}</span>
+                            <span className="text-sm font-medium">Shipped</span>
+                            <Truck className="h-4 w-4 text-blue-600" />
+                        </div>
                     </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{statusCounts.shipped}</div>
-                    </CardContent>
                 </Card>
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Late</CardTitle>
-                        <AlertTriangle className="h-4 w-4 text-red-600" />
+                    <CardHeader className="flex flex-row items-center justify-center space-y-0 pb-2">
+                        <div className="flex items-center gap-2 w-full justify-center">
+                            <span className="text-2xl font-bold">{statusCounts.late}</span>
+                            <span className="text-sm font-medium">Late</span>
+                            <AlertTriangle className="h-4 w-4 text-red-600" />
+                        </div>
                     </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{statusCounts.late}</div>
-                    </CardContent>
                 </Card>
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Delivered</CardTitle>
-                        <CheckCircle className="h-4 w-4 text-green-600" />
+                    <CardHeader className="flex flex-row items-center justify-center space-y-0 pb-2">
+                        <div className="flex items-center gap-2 w-full justify-center">
+                            <span className="text-2xl font-bold">{statusCounts.delivered}</span>
+                            <span className="text-sm font-medium">Delivered</span>
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                        </div>
                     </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{statusCounts.delivered}</div>
-                    </CardContent>
                 </Card>
             </div>
             {/* Filters and Search */}
@@ -171,6 +201,25 @@ export default function PackageDashboard() {
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
                 />
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="icon" className="h-10" aria-label="Filter by date range">
+                            <Calendar className="h-5 w-5" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        {DATE_RANGE_OPTIONS.map(opt => (
+                            <DropdownMenuItem
+                                key={opt.value}
+                                onClick={() => setDateRange(opt.value as '7' | '30' | '90' | 'all')}
+                                className={dateRange === opt.value ? 'font-bold bg-accent text-accent-foreground' : ''}
+                            >
+                                {opt.label}
+                                {dateRange === opt.value && <CheckCircle className="ml-2 h-4 w-4 text-green-600" />}
+                            </DropdownMenuItem>
+                        ))}
+                    </DropdownMenuContent>
+                </DropdownMenu>
                 <div className="shrink-0">
                     <Button
                         variant="default"
