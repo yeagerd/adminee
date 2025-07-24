@@ -43,7 +43,8 @@ dependencies = [
 [project.optional-dependencies]
 test = [
     "pytest",
-    "pytest-asyncio"
+    "pytest-asyncio",
+    "respx"
 ]
 
 [build-system]

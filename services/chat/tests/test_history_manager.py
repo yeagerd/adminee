@@ -135,6 +135,10 @@ async def test_create_update_delete_draft():
 async def test_draft_unique_constraint():
     t = await hm.create_thread("user4", "Unique Draft Thread")
     assert t.id is not None
+    # Clean up any existing drafts for this user/thread/type
+    drafts = await hm.list_user_drafts("user4", draft_type="calendar_event")
+    for d in drafts:
+        await hm.delete_user_draft(d.id)
     # Create a user draft
     d1 = await hm.create_user_draft(
         user_id="user4",
@@ -151,9 +155,9 @@ async def test_draft_unique_constraint():
         thread_id=t.id,
     )
     assert d2.content == "Event 2"
-    # There should be two drafts for this user and thread/type
+    # There should be only one draft for this user and thread/type
     drafts = await hm.list_user_drafts("user4", draft_type="calendar_event")
-    assert len(drafts) == 2
+    assert len(drafts) == 1
     assert any(d.content == "Event 2" for d in drafts)
 
 
