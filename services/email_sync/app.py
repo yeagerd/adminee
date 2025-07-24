@@ -1,9 +1,15 @@
-import os
+# mypy: disable-error-code=attr-defined
 import logging
-from flask import Flask, jsonify, request, abort
+import os
+from typing import Any
+
 from dotenv import load_dotenv
+from flask import Flask, abort, jsonify, request, Response, make_response  # type: ignore[attr-defined]
 from pydantic import ValidationError
-from microsoft_webhook import microsoft_webhook_bp
+
+from services.email_sync.microsoft_webhook import microsoft_webhook_bp
+from services.email_sync.pubsub_client import publish_message
+from services.email_sync.schemas import GmailNotification
 
 load_dotenv()
 
@@ -17,20 +23,21 @@ GMAIL_TOPIC = "gmail-notifications"
 test_mode = os.getenv("PYTHON_ENV") == "test"
 if test_mode:
     from unittest.mock import MagicMock
-    publish_message = MagicMock()
-else:
-    from pubsub_client import publish_message
-from schemas import GmailNotification
 
+    publish_message = MagicMock()
+
+# type: ignore[attr-defined]
 app.publish_message = publish_message
 app.register_blueprint(microsoft_webhook_bp)
 
+
 @app.route("/healthz")
-def health_check():
-    return jsonify({"status": "ok"}), 200
+def health_check() -> Response:
+    return make_response(jsonify({"status": "ok"}), 200)
+
 
 @app.route("/gmail/webhook", methods=["POST"])
-def gmail_webhook():
+def gmail_webhook() -> Response:
     # Auth check
     secret = request.headers.get("X-Gmail-Webhook-Secret")
     if not secret or secret != GMAIL_WEBHOOK_SECRET:
@@ -45,11 +52,12 @@ def gmail_webhook():
         abort(400, description="Invalid payload")
     # Publish to pubsub
     try:
-        app.publish_message(GMAIL_TOPIC, notification.dict())
+        app.publish_message(GMAIL_TOPIC, notification.model_dump())  # type: ignore[attr-defined]
     except Exception as e:
         logging.error(f"Pubsub publish failed: {e}")
         abort(503, description="Pubsub unavailable")
-    return jsonify({"status": "published"}), 200
+    return make_response(jsonify({"status": "ok"}), 200)
+
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080) 
+    app.run(host="0.0.0.0", port=8080)

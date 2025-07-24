@@ -1,15 +1,17 @@
 import os
-import pytest
 from unittest.mock import patch
+
 from app import app
 
 os.environ["MICROSOFT_WEBHOOK_SECRET"] = "test-microsoft-secret"
 
+
 def valid_payload():
     return {"value": [{"changeType": "created", "resource": "me/messages/1"}]}
 
+
 def test_microsoft_webhook_success():
-    with patch("microsoft_webhook.publish_message") as mock_publish:
+    with patch("services.email_sync.microsoft_webhook.publish_message") as mock_publish:
         with app.test_client() as client:
             resp = client.post(
                 "/microsoft/webhook",
@@ -20,8 +22,9 @@ def test_microsoft_webhook_success():
             assert resp.json["status"] == "published"
             mock_publish.assert_called_once()
 
+
 def test_microsoft_webhook_invalid_signature():
-    with patch("microsoft_webhook.publish_message") as mock_publish:
+    with patch("services.email_sync.microsoft_webhook.publish_message") as mock_publish:
         with app.test_client() as client:
             resp = client.post(
                 "/microsoft/webhook",
@@ -31,8 +34,9 @@ def test_microsoft_webhook_invalid_signature():
             assert resp.status_code == 401
             mock_publish.assert_not_called()
 
+
 def test_microsoft_webhook_invalid_payload():
-    with patch("microsoft_webhook.publish_message") as mock_publish:
+    with patch("services.email_sync.microsoft_webhook.publish_message") as mock_publish:
         with app.test_client() as client:
             resp = client.post(
                 "/microsoft/webhook",
@@ -43,8 +47,12 @@ def test_microsoft_webhook_invalid_payload():
             assert resp.status_code == 400
             mock_publish.assert_not_called()
 
+
 def test_microsoft_webhook_pubsub_failure():
-    with patch("microsoft_webhook.publish_message", side_effect=Exception("pubsub error")) as mock_publish:
+    with patch(
+        "services.email_sync.microsoft_webhook.publish_message",
+        side_effect=Exception("pubsub error"),
+    ) as mock_publish:
         with app.test_client() as client:
             resp = client.post(
                 "/microsoft/webhook",
@@ -52,4 +60,4 @@ def test_microsoft_webhook_pubsub_failure():
                 headers={"X-Microsoft-Signature": "test-microsoft-secret"},
             )
             assert resp.status_code == 400
-            mock_publish.assert_called_once() 
+            mock_publish.assert_called_once()

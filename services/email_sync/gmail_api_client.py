@@ -1,12 +1,20 @@
-import os
 import time
-from typing import List, Dict, Any
+from typing import Any, Dict, List
+
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+
 class GmailAPIClient:
-    def __init__(self, access_token: str, refresh_token: str, client_id: str, client_secret: str, token_uri: str):
+    def __init__(
+        self,
+        access_token: str,
+        refresh_token: str,
+        client_id: str,
+        client_secret: str,
+        token_uri: str,
+    ):
         self.creds = Credentials(
             token=access_token,
             refresh_token=refresh_token,
@@ -16,7 +24,9 @@ class GmailAPIClient:
         )
         self.service = build("gmail", "v1", credentials=self.creds)
 
-    def fetch_emails_since_history_id(self, user_id: str, history_id: str, max_retries: int = 5) -> List[Dict[str, Any]]:
+    def fetch_emails_since_history_id(
+        self, user_id: str, history_id: str, max_retries: int = 5
+    ) -> List[Dict[str, Any]]:
         backoff = 1
         for attempt in range(max_retries):
             try:
@@ -34,4 +44,4 @@ class GmailAPIClient:
                     raise
                 else:
                     raise
-        raise Exception("Max retries exceeded for Gmail API fetch") 
+        raise Exception("Max retries exceeded for Gmail API fetch")

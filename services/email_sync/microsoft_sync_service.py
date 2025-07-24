@@ -1,21 +1,25 @@
+import json
+import logging
 import os
 import time
-import logging
-import json
+from typing import Any
 
-from microsoft_graph_client import MicrosoftGraphClient
-from pubsub_client import publish_message
+from services.email_sync.microsoft_graph_client import MicrosoftGraphClient
+from services.email_sync.pubsub_client import publish_message
 
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
 PUBSUB_EMULATOR_HOST = os.getenv("PUBSUB_EMULATOR_HOST")
 MICROSOFT_TOPIC = "microsoft-notifications"
-MICROSOFT_SUBSCRIPTION = os.getenv("MICROSOFT_SUBSCRIPTION", "microsoft-notifications-sub")
+MICROSOFT_SUBSCRIPTION = os.getenv(
+    "MICROSOFT_SUBSCRIPTION", "microsoft-notifications-sub"
+)
 
 EMAIL_PROCESSING_TOPIC = "email-processing"
 
 logging.basicConfig(level=logging.INFO)
 
-def process_microsoft_notification(message):
+
+def process_microsoft_notification(message: Any) -> None:
     try:
         data = json.loads(message.data.decode("utf-8"))
         logging.info(f"Processing Microsoft notification: {data}")
@@ -33,18 +37,24 @@ def process_microsoft_notification(message):
                     publish_message(EMAIL_PROCESSING_TOPIC, email)
                     break
                 except Exception as e:
-                    logging.error(f"Failed to publish email to pubsub: {e}, retrying in {backoff}s")
+                    logging.error(
+                        f"Failed to publish email to pubsub: {e}, retrying in {backoff}s"
+                    )
                     time.sleep(backoff)
                     backoff = min(backoff * 2, 60)
             else:
-                logging.error(f"ALERT: Failed to publish email after retries. Email: {email}")
+                logging.error(
+                    f"ALERT: Failed to publish email after retries. Email: {email}"
+                )
         message.ack()
     except Exception as e:
         logging.error(f"Failed to process message: {e}")
         message.nack()
 
-def run():
-    from google.cloud import pubsub_v1
+
+def run() -> None:
+    from google.cloud import pubsub_v1  # type: ignore[attr-defined]
+
     if PUBSUB_EMULATOR_HOST:
         os.environ["PUBSUB_EMULATOR_HOST"] = PUBSUB_EMULATOR_HOST
     subscriber = pubsub_v1.SubscriberClient()
@@ -62,5 +72,6 @@ def run():
             time.sleep(backoff)
             backoff = min(backoff * 2, 60)
 
+
 if __name__ == "__main__":
-    run() 
+    run()

@@ -1,10 +1,12 @@
+import json
+import logging
 import os
 import time
-import logging
-import json
-from schemas import GmailNotification
-from gmail_api_client import GmailAPIClient
-from pubsub_client import publish_message
+from typing import Any
+
+from services.email_sync.gmail_api_client import GmailAPIClient
+from services.email_sync.pubsub_client import publish_message
+from services.email_sync.schemas import GmailNotification
 
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
 PUBSUB_EMULATOR_HOST = os.getenv("PUBSUB_EMULATOR_HOST")
@@ -15,7 +17,8 @@ EMAIL_PROCESSING_TOPIC = "email-processing"
 
 logging.basicConfig(level=logging.INFO)
 
-def process_gmail_notification(message):
+
+def process_gmail_notification(message: Any) -> None:
     try:
         data = json.loads(message.data.decode("utf-8"))
         notification = GmailNotification(**data)
@@ -26,9 +29,13 @@ def process_gmail_notification(message):
         client_id = os.getenv("GMAIL_CLIENT_ID", "test-client-id")
         client_secret = os.getenv("GMAIL_CLIENT_SECRET", "test-client-secret")
         token_uri = os.getenv("GMAIL_TOKEN_URI", "https://oauth2.googleapis.com/token")
-        gmail_client = GmailAPIClient(access_token, refresh_token, client_id, client_secret, token_uri)
+        gmail_client = GmailAPIClient(
+            access_token, refresh_token, client_id, client_secret, token_uri
+        )
         # Fetch new/changed emails since history_id
-        emails = gmail_client.fetch_emails_since_history_id(notification.email_address, notification.history_id)
+        emails = gmail_client.fetch_emails_since_history_id(
+            notification.email_address, notification.history_id
+        )
         logging.info(f"Fetched {len(emails)} emails for {notification.email_address}")
         # Publish each email to email-processing topic with retry
         for email in emails:
@@ -38,18 +45,24 @@ def process_gmail_notification(message):
                     publish_message(EMAIL_PROCESSING_TOPIC, email)
                     break
                 except Exception as e:
-                    logging.error(f"Failed to publish email to pubsub: {e}, retrying in {backoff}s")
+                    logging.error(
+                        f"Failed to publish email to pubsub: {e}, retrying in {backoff}s"
+                    )
                     time.sleep(backoff)
                     backoff = min(backoff * 2, 60)
             else:
-                logging.error(f"ALERT: Failed to publish email after retries. Email: {email}")
+                logging.error(
+                    f"ALERT: Failed to publish email after retries. Email: {email}"
+                )
         message.ack()
     except Exception as e:
         logging.error(f"Failed to process message: {e}")
         message.nack()
 
-def run():
-    from google.cloud import pubsub_v1
+
+def run() -> None:
+    from google.cloud import pubsub_v1  # type: ignore[attr-defined]
+
     if PUBSUB_EMULATOR_HOST:
         os.environ["PUBSUB_EMULATOR_HOST"] = PUBSUB_EMULATOR_HOST
     subscriber = pubsub_v1.SubscriberClient()
@@ -67,5 +80,6 @@ def run():
             time.sleep(backoff)
             backoff = min(backoff * 2, 60)
 
+
 if __name__ == "__main__":
-    run() 
+    run()

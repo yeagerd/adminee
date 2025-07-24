@@ -1,5 +1,3 @@
-import pytest
-
 def test_gmail_pipeline_integration():
     """
     Integration test stub for the Gmail processing pipeline:
@@ -10,4 +8,4 @@ def test_gmail_pipeline_integration():
     """
     # TODO: Use test pubsub emulator, mock Gmail API, and parser
     # This is a placeholder for a full e2e test
-    assert True 
+    assert True
