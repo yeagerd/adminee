@@ -6,7 +6,7 @@ default value management, and preference validation.
 """
 
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import select
@@ -177,7 +177,7 @@ class PreferencesService:
                     raise NotFoundError(resource="Preferences", identifier=user_id)
 
             # Prepare update data
-            update_data = {}
+            update_data: dict[str, Any] = {}
 
             # Update only provided categories
             if preferences_update.ui is not None:
