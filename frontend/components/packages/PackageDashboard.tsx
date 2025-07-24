@@ -3,9 +3,9 @@ import { useEffect, useMemo, useState } from 'react';
 import gatewayClient from '../../lib/gateway-client';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Input } from '../ui/input';
 import AddPackageModal from './AddPackageModal';
 import PackageDetails from './PackageDetails';
-import PackageFilters from './PackageFilters';
 import PackageList from './PackageList';
 
 const STATUS_OPTIONS = [
@@ -173,12 +173,25 @@ export default function PackageDashboard() {
                 </Card>
             </div>
             {/* Filters and Search */}
-            <PackageFilters
-                filters={{ searchTerm }}
-                onFiltersChange={({ searchTerm }: any) => {
-                    setSearchTerm(searchTerm);
-                }}
-            />
+            <div className="flex items-center gap-2 mb-6">
+                <Input
+                    placeholder="Search packages..."
+                    className="flex-1 min-w-0 h-10"
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                />
+                <div className="shrink-0">
+                    <Button
+                        variant="default"
+                        size="icon"
+                        className="h-10"
+                        onClick={() => setShowAddModal(true)}
+                        aria-label="Add Package"
+                    >
+                        <Plus className="h-5 w-5" />
+                    </Button>
+                </div>
+            </div>
             {/* Packages Table */}
             <PackageList
                 packages={filteredAndSortedPackages}

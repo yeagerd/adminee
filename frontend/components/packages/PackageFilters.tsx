@@ -6,14 +6,12 @@ export default function PackageFilters({ filters, onFiltersChange }: {
 }) {
     return (
         <div className="flex flex-col sm:flex-row gap-4 mb-4">
-            <div className="relative flex-1">
-                <Input
-                    className="pl-10"
-                    placeholder="Search packages..."
-                    value={filters.searchTerm}
-                    onChange={e => onFiltersChange({ ...filters, searchTerm: e.target.value })}
-                />
-            </div>
+            <Input
+                className="flex-1 min-w-0"
+                placeholder="Search packages..."
+                value={filters.searchTerm}
+                onChange={e => onFiltersChange({ ...filters, searchTerm: e.target.value })}
+            />
         </div>
     );
 }
