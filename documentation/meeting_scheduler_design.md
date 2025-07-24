@@ -412,6 +412,30 @@ CREATE INDEX idx_poll_responses_participant_slot ON poll_responses(participant_i
 
 This technical design provides a comprehensive foundation for implementing the meeting scheduler tool. The modular approach allows for iterative development while maintaining system scalability and reliability.
 
+## New Feature: Per-Recipient Poll Response Tokens and URLs
+
+### Overview
+To enhance poll response security and tracking, each poll recipient will receive a unique, long, random URL specific to them and the meeting. This URL will be used as a special authentication mechanism for submitting poll responses, ensuring that only the intended recipient can respond using their link.
+
+### Implementation Tasks
+- [ ] **Database Migration:**
+  - [ ] Add a `response_token` (unique, random string) column to the `poll_participants` table.
+  - [ ] Ensure this token is unique and not nullable.
+- [ ] **Model Update:**
+  - [ ] Update the `PollParticipant` model to include the new `response_token` field.
+- [ ] **Poll Creation Logic:**
+  - [ ] When creating poll participants, generate and store a unique `response_token` for each.
+- [ ] **Invitation Email Update:**
+  - [ ] Send invitation emails with URLs like `/public/meetings/respond/{response_token}` for each participant.
+- [ ] **New Public API Endpoint:**
+  - [ ] Implement `PUT /public/meetings/response/{response_token}` to accept poll responses using only the token.
+  - [ ] The endpoint should look up the participant by their `response_token`, verify the poll, and accept the response.
+- [ ] **Frontend Update:**
+  - [ ] Update the public poll response page to support the new URL structure and API.
+- [ ] **Testing:**
+  - [ ] Add unit and integration tests for the new token-based response flow.
+
+
 ## Outstanding Implementation Tasks
 
 ### Backend
@@ -434,4 +458,3 @@ This technical design provides a comprehensive foundation for implementing the m
 - [ ] Generate/apply Alembic migrations for meetings
 - [ ] Add MEETINGS_SERVICE_URL to gateway/.env and docs
 - [ ] Expand README/setup documentation for meetings service
-
