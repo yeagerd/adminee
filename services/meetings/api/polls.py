@@ -1,8 +1,10 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from uuid import UUID, uuid4
 from ..schemas import MeetingPoll, MeetingPollCreate
 from ..models import MeetingPoll as MeetingPollModel, TimeSlot as TimeSlotModel, PollParticipant as PollParticipantModel, get_session
 from typing import List
+from ..services import calendar_integration
+from datetime import datetime, timedelta
 
 router = APIRouter()
 
@@ -91,4 +93,38 @@ def delete_poll(poll_id: UUID):
             raise HTTPException(status_code=404, detail="Poll not found")
         session.delete(db_poll)
         session.commit()
-        return {"ok": True} 
+        return {"ok": True}
+
+@router.get("/{poll_id}/suggest-slots")
+async def suggest_slots(poll_id: UUID, request: Request):
+    user_id = request.headers.get("X-User-Id")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Missing X-User-Id header")
+    # For demo, use poll duration and a 2-week window
+    with get_session() as session:
+        poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
+        if not poll:
+            raise HTTPException(status_code=404, detail="Poll not found")
+        duration = poll.duration_minutes
+    start = datetime.utcnow().isoformat()
+    end = (datetime.utcnow() + timedelta(days=14)).isoformat()
+    slots = await calendar_integration.get_user_availability(user_id, start, end, duration)
+    return slots
+
+@router.post("/{poll_id}/schedule")
+async def schedule_meeting(poll_id: UUID, request: Request, body: dict):
+    user_id = request.headers.get("X-User-Id")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Missing X-User-Id header")
+    selected_slot_id = body.get("selectedSlotId")
+    participants = body.get("participants", [])
+    if not selected_slot_id:
+        raise HTTPException(status_code=400, detail="Missing selectedSlotId")
+    result = await calendar_integration.create_calendar_event(user_id, str(poll_id), selected_slot_id, participants)
+    # Optionally update poll status to scheduled here
+    with get_session() as session:
+        poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
+        if poll:
+            poll.status = "scheduled"
+            session.commit()
+    return result 
