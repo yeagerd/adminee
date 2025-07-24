@@ -9,6 +9,7 @@ from services.common.settings import (
     SettingsConfigDict,
 )
 
+
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
@@ -25,10 +26,12 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+
 _settings: Settings | None = None
+
 
 def get_settings() -> Settings:
     global _settings
     if _settings is None:
         _settings = Settings()
-    return _settings 
+    return _settings

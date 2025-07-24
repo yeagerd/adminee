@@ -1,17 +1,29 @@
+import enum
 import uuid
+from datetime import datetime
+
 from sqlalchemy import (
-    Column, String, Text, Integer, Boolean, DateTime, Enum, ForeignKey, UniqueConstraint
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from datetime import datetime
+
 from . import Base
-import enum
+
 
 class MeetingType(str, enum.Enum):
     in_person = "in_person"
     virtual = "virtual"
     tbd = "tbd"
+
 
 class PollStatus(str, enum.Enum):
     draft = "draft"
@@ -19,15 +31,18 @@ class PollStatus(str, enum.Enum):
     closed = "closed"
     scheduled = "scheduled"
 
+
 class ParticipantStatus(str, enum.Enum):
     pending = "pending"
     responded = "responded"
     declined = "declined"
 
+
 class ResponseType(str, enum.Enum):
     available = "available"
     unavailable = "unavailable"
     maybe = "maybe"
+
 
 class MeetingPoll(Base):
     __tablename__ = "meeting_polls"
@@ -44,17 +59,28 @@ class MeetingPoll(Base):
     max_participants = Column(Integer)
     allow_anonymous_responses = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(
+        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+    )
     scheduled_slot_id = Column(UUID(as_uuid=True), ForeignKey("time_slots.id"))
     poll_token = Column(String(64), unique=True, nullable=False)
 
-    time_slots = relationship("TimeSlot", back_populates="poll", cascade="all, delete-orphan")
-    participants = relationship("PollParticipant", back_populates="poll", cascade="all, delete-orphan")
+    time_slots = relationship(
+        "TimeSlot", back_populates="poll", cascade="all, delete-orphan"
+    )
+    participants = relationship(
+        "PollParticipant", back_populates="poll", cascade="all, delete-orphan"
+    )
+
 
 class TimeSlot(Base):
     __tablename__ = "time_slots"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    poll_id = Column(UUID(as_uuid=True), ForeignKey("meeting_polls.id", ondelete="CASCADE"), nullable=False)
+    poll_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("meeting_polls.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     start_time = Column(DateTime(timezone=True), nullable=False)
     end_time = Column(DateTime(timezone=True), nullable=False)
     timezone = Column(String(50), nullable=False)
@@ -62,12 +88,19 @@ class TimeSlot(Base):
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
     poll = relationship("MeetingPoll", back_populates="time_slots")
-    responses = relationship("PollResponse", back_populates="time_slot", cascade="all, delete-orphan")
+    responses = relationship(
+        "PollResponse", back_populates="time_slot", cascade="all, delete-orphan"
+    )
+
 
 class PollParticipant(Base):
     __tablename__ = "poll_participants"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    poll_id = Column(UUID(as_uuid=True), ForeignKey("meeting_polls.id", ondelete="CASCADE"), nullable=False)
+    poll_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("meeting_polls.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     email = Column(String(255), nullable=False)
     name = Column(String(255))
     status = Column(Enum(ParticipantStatus), default=ParticipantStatus.pending)
@@ -76,25 +109,45 @@ class PollParticipant(Base):
     reminder_sent_count = Column(Integer, default=0)
 
     poll = relationship("MeetingPoll", back_populates="participants")
-    responses = relationship("PollResponse", back_populates="participant", cascade="all, delete-orphan")
+    responses = relationship(
+        "PollResponse", back_populates="participant", cascade="all, delete-orphan"
+    )
 
-    __table_args__ = (UniqueConstraint('poll_id', 'email', name='_poll_email_uc'),)
+    __table_args__ = (UniqueConstraint("poll_id", "email", name="_poll_email_uc"),)
+
 
 class PollResponse(Base):
     __tablename__ = "poll_responses"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    poll_id = Column(UUID(as_uuid=True), ForeignKey("meeting_polls.id", ondelete="CASCADE"), nullable=False)
-    participant_id = Column(UUID(as_uuid=True), ForeignKey("poll_participants.id", ondelete="CASCADE"), nullable=False)
-    time_slot_id = Column(UUID(as_uuid=True), ForeignKey("time_slots.id", ondelete="CASCADE"), nullable=False)
+    poll_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("meeting_polls.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    participant_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("poll_participants.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    time_slot_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("time_slots.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     response = Column(Enum(ResponseType), nullable=False)
     comment = Column(Text)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(
+        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+    )
 
     participant = relationship("PollParticipant", back_populates="responses")
     time_slot = relationship("TimeSlot", back_populates="responses")
 
-    __table_args__ = (UniqueConstraint('participant_id', 'time_slot_id', name='_participant_slot_uc'),)
+    __table_args__ = (
+        UniqueConstraint("participant_id", "time_slot_id", name="_participant_slot_uc"),
+    )
+
 
 class ChatMeeting(Base):
     __tablename__ = "chat_meetings"
@@ -103,4 +156,4 @@ class ChatMeeting(Base):
     chat_message = Column(Text, nullable=False)
     extracted_intent = Column(Text)  # Store as JSON string
     poll_id = Column(UUID(as_uuid=True), ForeignKey("meeting_polls.id"))
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow) 
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
