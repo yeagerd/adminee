@@ -19,6 +19,11 @@ async def get_async_session():
     async with AsyncSession(engine) as session:
         yield session
 
+# FastAPI-compatible dependency
+async def get_async_session_dep():
+    async with AsyncSession(engine) as session:
+        yield session
+
 def create_all_tables():
     import asyncio
     async def _create():
