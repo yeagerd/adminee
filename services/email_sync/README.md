@@ -20,7 +20,7 @@ This service handles email webhook notifications (Gmail, Microsoft) and publishe
    ```
    docker-compose up --build
    ```
-2. The email-sync service will be available at http://localhost:8080
+2. The email_sync service will be available at http://localhost:8080
 3. The PubSub emulator will be available at localhost:8085
 
 ## Environment Variables
@@ -81,7 +81,7 @@ See code for payload schemas and authentication headers.
 
 ## Deployment & Runbook
 
-- Build and deploy the email-sync service container to your environment.
+- Build and deploy the email_sync service container to your environment.
 - Ensure environment variables and secrets are set for all providers.
 - Monitor logs for errors and alerts (pubsub failures, API errors, subscription issues).
 - Use the health check endpoint for liveness/readiness probes.

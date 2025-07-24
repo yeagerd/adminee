@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO)
 
 # Regex patterns
 UPS_REGEX = re.compile(r"1Z[0-9A-Z]{16}")
-FEDEX_REGEX = re.compile(r"(\d{4}\s?\d{4}\s?\d{4}|\d{12})")
+FEDEX_REGEX = re.compile(r"\b(\d{12}|\d{15}|\d{4}\s?\d{4}\s?\d{4})\b")
 USPS_REGEX = re.compile(r"\d{20,22}")
 SURVEY_URL_REGEX = re.compile(r"https://survey\.ourapp\.com/response/[a-zA-Z0-9]+")
 AMAZON_STATUS_REGEX = re.compile(r"(shipped|expected delivery|delayed|delivered)", re.IGNORECASE)

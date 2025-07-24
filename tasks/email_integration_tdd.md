@@ -21,7 +21,7 @@ A multi-provider email integration system that processes Gmail and Microsoft ema
 ## Phase 1: Foundation & Gmail Integration (Week 1-2)
 
 ### Task 1.1: Project Setup
-- [x] Set up project structure with appropriate directories (e.g., `services/email-sync/`, `services/common/`)
+- [x] Set up project structure with appropriate directories (e.g., `services/email_sync/`, `services/common/`)
 - [x] Initialize package.json/requirements.txt with dependencies
 - [x] Configure environment variables and secrets management (integrate with `services/common/config_secrets.py`)
 - [x] Set up logging framework with structured logging (integrate with `services/common/logging_config.py`)

@@ -1,6 +1,19 @@
 import pytest
-from email_parser_service import process_email, UPS_REGEX, FEDEX_REGEX, USPS_REGEX, SURVEY_URL_REGEX
+from services.email_sync.email_parser_service import process_email, UPS_REGEX, FEDEX_REGEX, USPS_REGEX, SURVEY_URL_REGEX
 from unittest.mock import patch
+from services.common.test_utils import BaseIntegrationTest
+
+@pytest.fixture(autouse=True, scope="function")
+def prevent_network_calls(request):
+    base = BaseIntegrationTest()
+    base.setup_method(request.function)
+    yield
+    base.teardown_method(request.function)
+
+@pytest.fixture(autouse=True)
+def patch_publish_message():
+    with patch("email_parser_service.publish_message") as _fixture:
+        yield _fixture
 
 class DummyMessage:
     def __init__(self, data):
@@ -26,11 +39,24 @@ def test_ups_extraction():
     assert UPS_REGEX.findall(f"Your UPS tracking: {tracking}") == [tracking]
 
 def test_fedex_extraction():
+    # 12-digit FedEx
     msg = make_email("FedEx: 1234 5678 9012 and 123456789012")
     process_email(msg)
     assert msg.acked
     assert not msg.nacked
     assert FEDEX_REGEX.findall("FedEx: 1234 5678 9012 and 123456789012") == ["1234 5678 9012", "123456789012"]
+    # 15-digit FedEx
+    msg2 = make_email("FedEx: 123456789012345")
+    process_email(msg2)
+    assert msg2.acked
+    assert not msg2.nacked
+    assert FEDEX_REGEX.findall("FedEx: 123456789012345") == ["123456789012345"]
+    # 20-digit (should NOT match as FedEx)
+    msg3 = make_email("FedEx: 12345678901234567890")
+    process_email(msg3)
+    assert msg3.acked
+    assert not msg3.nacked
+    assert FEDEX_REGEX.findall("FedEx: 12345678901234567890") == []
 
 def test_usps_extraction():
     msg = make_email("USPS: 9400111899223856928499")
@@ -93,8 +119,8 @@ def test_publish_events():
     msg = make_email("UPS: 1Z12345E1512345676 FedEx: 1234 5678 9012 USPS: 9400111899223856928499 Survey: https://survey.ourapp.com/response/abc123 Amazon: shipped. View order: https://www.amazon.com/gp/your-account/order-details?orderID=123ABC456", from_addr="order-update@amazon.com")
     with patch("email_parser_service.publish_message") as mock_publish:
         process_email(msg)
-        # Should publish 1 UPS, 2 FedEx (FedEx regex matches a substring of USPS), 1 USPS, 1 survey, 1 Amazon event
-        assert mock_publish.call_count == 6
+        # Should publish 1 UPS, 1 FedEx, 1 USPS, 1 survey, 1 Amazon event
+        assert mock_publish.call_count == 5
         carriers = [c[0][0] for c in mock_publish.call_args_list]
         assert any("package-tracker-events" in c for c in carriers)
         assert any("survey-events" in c for c in carriers)
