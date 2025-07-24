@@ -121,20 +121,11 @@ export default function PackageDashboard() {
     const handleRowClick = (pkg: any) => setSelectedPackage(pkg);
 
     return (
-        <div className="max-w-6xl mx-auto py-8 space-y-6 px-4 m-1">
+        <div className="max-w-6xl mx-auto py-4 space-y-3 px-4 m-1">
             {loading && <div className="text-center text-gray-500">Loading packages...</div>}
             {error && <div className="text-center text-red-500">{error}</div>}
-            <div className="flex items-center justify-between mb-6">
-                <div>
-                    <h1 className="text-3xl font-bold">Package Tracker</h1>
-                    <p className="text-muted-foreground">Track shipments across all your projects</p>
-                </div>
-                <Button onClick={() => setShowAddModal(true)}>
-                    <Plus className="h-4 w-4 mr-2" /> Add Package
-                </Button>
-            </div>
             {/* Status Overview Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Pending</CardTitle>
@@ -173,7 +164,7 @@ export default function PackageDashboard() {
                 </Card>
             </div>
             {/* Filters and Search */}
-            <div className="flex items-center gap-2 mb-6">
+            <div className="flex items-center gap-2 mb-3">
                 <Input
                     placeholder="Search packages..."
                     className="flex-1 min-w-0 h-10"
