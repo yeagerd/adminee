@@ -3,11 +3,18 @@ import re
 import time
 import logging
 import json
+import html
 
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
 PUBSUB_EMULATOR_HOST = os.getenv("PUBSUB_EMULATOR_HOST")
 EMAIL_PROCESSING_TOPIC = "email-processing"
 EMAIL_PARSER_SUBSCRIPTION = os.getenv("EMAIL_PARSER_SUBSCRIPTION", "email-processing-sub")
+
+from pubsub_client import publish_message
+
+PACKAGE_TRACKER_TOPIC = "package-tracker-events"
+SURVEY_EVENTS_TOPIC = "survey-events"
+AMAZON_EVENTS_TOPIC = "amazon-events"
 
 logging.basicConfig(level=logging.INFO)
 
@@ -20,10 +27,17 @@ AMAZON_STATUS_REGEX = re.compile(r"(shipped|expected delivery|delayed|delivered)
 AMAZON_ORDER_LINK_REGEX = re.compile(r"https://www\.amazon\.com/gp/your-account/order-details\?orderID=[A-Z0-9]+", re.IGNORECASE)
 
 
+def sanitize_email_content(content):
+    # Basic sanitization: strip HTML tags, unescape, limit length
+    text = re.sub(r'<[^>]+>', '', content)
+    text = html.unescape(text)
+    return text[:10000]  # Limit to 10k chars
+
+
 def process_email(message):
     try:
         data = json.loads(message.data.decode("utf-8"))
-        email_body = data.get("body", "")
+        email_body = sanitize_email_content(data.get("body", ""))
         found = {
             "ups": UPS_REGEX.findall(email_body),
             "fedex": FEDEX_REGEX.findall(email_body),
@@ -45,7 +59,37 @@ def process_email(message):
             if not amazon_status:
                 logging.info(f"Unsupported Amazon email format: {email_body[:100]}")
         logging.info(f"Parsed email: {found}")
-        # TODO: Event publishing, sanitization
+        # Event publishing
+        for ups in found["ups"]:
+            event = {"carrier": "UPS", "tracking_number": ups, "raw": email_body}
+            try:
+                publish_message(PACKAGE_TRACKER_TOPIC, event)
+            except Exception as e:
+                logging.error(f"Failed to publish UPS event: {e}")
+        for fedex in found["fedex"]:
+            event = {"carrier": "FedEx", "tracking_number": fedex, "raw": email_body}
+            try:
+                publish_message(PACKAGE_TRACKER_TOPIC, event)
+            except Exception as e:
+                logging.error(f"Failed to publish FedEx event: {e}")
+        for usps in found["usps"]:
+            event = {"carrier": "USPS", "tracking_number": usps, "raw": email_body}
+            try:
+                publish_message(PACKAGE_TRACKER_TOPIC, event)
+            except Exception as e:
+                logging.error(f"Failed to publish USPS event: {e}")
+        for url in found["survey_urls"]:
+            event = {"survey_url": url, "raw": email_body}
+            try:
+                publish_message(SURVEY_EVENTS_TOPIC, event)
+            except Exception as e:
+                logging.error(f"Failed to publish survey event: {e}")
+        if amazon_status:
+            event = {"status": amazon_status, "order_link": amazon_order_link, "raw": email_body}
+            try:
+                publish_message(AMAZON_EVENTS_TOPIC, event)
+            except Exception as e:
+                logging.error(f"Failed to publish Amazon event: {e}")
         message.ack()
     except Exception as e:
         logging.error(f"Failed to process email: {e}")

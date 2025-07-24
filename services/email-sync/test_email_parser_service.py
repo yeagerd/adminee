@@ -1,5 +1,6 @@
 import pytest
 from email_parser_service import process_email, UPS_REGEX, FEDEX_REGEX, USPS_REGEX, SURVEY_URL_REGEX
+from unittest.mock import patch
 
 class DummyMessage:
     def __init__(self, data):
@@ -87,3 +88,24 @@ def test_amazon_order_link():
     process_email(msg)
     assert msg.acked
     assert not msg.nacked 
+
+def test_publish_events():
+    msg = make_email("UPS: 1Z12345E1512345676 FedEx: 1234 5678 9012 USPS: 9400111899223856928499 Survey: https://survey.ourapp.com/response/abc123 Amazon: shipped. View order: https://www.amazon.com/gp/your-account/order-details?orderID=123ABC456", from_addr="order-update@amazon.com")
+    with patch("email_parser_service.publish_message") as mock_publish:
+        process_email(msg)
+        # Should publish 1 UPS, 2 FedEx (FedEx regex matches a substring of USPS), 1 USPS, 1 survey, 1 Amazon event
+        assert mock_publish.call_count == 6
+        carriers = [c[0][0] for c in mock_publish.call_args_list]
+        assert any("package-tracker-events" in c for c in carriers)
+        assert any("survey-events" in c for c in carriers)
+        assert any("amazon-events" in c for c in carriers)
+
+def test_sanitize_email_content():
+    from email_parser_service import sanitize_email_content
+    html_email = "<html><body><b>UPS:</b> 1Z12345E1512345676</body></html>"
+    text = sanitize_email_content(html_email)
+    assert "<b>" not in text
+    assert "UPS:" in text
+    long_email = "a" * 20000
+    text = sanitize_email_content(long_email)
+    assert len(text) == 10000 
