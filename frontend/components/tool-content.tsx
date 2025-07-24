@@ -155,7 +155,7 @@ export function ToolContent() {
                                     Found {calendarEvents.length} events for the next 7 days
                                 </div>
                                 {calendarEvents.map((event) => (
-                                    <CalendarEventItem key={event.id} event={event} />
+                                    <CalendarEventItem key={event.id} event={event} effectiveTimezone={effectiveTimezone} />
                                 ))}
                             </div>
                         )}

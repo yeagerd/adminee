@@ -27,9 +27,11 @@ import { useState } from "react"
 
 import { useUserPreferences } from '@/contexts/settings-context'
 import { CalendarEvent } from "@/types/office-service"
+import { DateTime } from 'luxon'
 
 interface EventItemProps {
     event: CalendarEvent
+    effectiveTimezone?: string
 }
 
 const attendanceIconSize = "h-4 w-4"
@@ -41,9 +43,10 @@ function parseUtcDate(dateString: string): Date {
     return new Date(dateString + 'Z');
 }
 
-export function CalendarEventItem({ event }: EventItemProps) {
+export function CalendarEventItem({ event, effectiveTimezone: propTimezone }: EventItemProps) {
     const [isExpanded, setIsExpanded] = useState(false)
-    const { effectiveTimezone } = useUserPreferences();
+    const context = useUserPreferences();
+    const effectiveTimezone = propTimezone || context.effectiveTimezone;
 
     // Parse dates from ISO strings, always as UTC
     const startTime = parseUtcDate(event.start_time)
@@ -80,6 +83,10 @@ export function CalendarEventItem({ event }: EventItemProps) {
 
     // Mock notes found (could be enhanced with real data)
     const notesFound: { title: string; source: "Drive" | "OneNote" | "Notion"; lastModified: string }[] = []
+
+    // Format times using Luxon for robust timezone support
+    const startLuxon = DateTime.fromJSDate(startTime).setZone(effectiveTimezone);
+    const endLuxon = DateTime.fromJSDate(endTime).setZone(effectiveTimezone);
 
     const getStatusIcon = (status: string) => {
         switch (status) {
@@ -155,9 +162,9 @@ export function CalendarEventItem({ event }: EventItemProps) {
                                     <Clock className="h-3 w-3" />
                                     <span className="truncate">
                                         {event.all_day ? (
-                                            `${startTime.toLocaleDateString(undefined, { timeZone: effectiveTimezone, timeZoneName: 'short' })} (All Day)`
+                                            `${startLuxon.toLocaleString({ month: 'short', day: 'numeric', year: 'numeric', timeZoneName: 'short' })} (All Day)`
                                         ) : (
-                                            `${startTime.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone: effectiveTimezone, timeZoneName: 'short' })} - ${endTime.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', timeZone: effectiveTimezone, timeZoneName: 'short' })}`
+                                            `${startLuxon.toLocaleString(DateTime.TIME_SIMPLE)} – ${endLuxon.toLocaleString(DateTime.TIME_SIMPLE)} ${startLuxon.offsetNameShort} (${startLuxon.zoneName})`
                                         )}
                                     </span>
                                 </div>
