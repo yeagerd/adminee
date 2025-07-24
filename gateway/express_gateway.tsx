@@ -54,6 +54,8 @@ dotenv.config({ path: envPath });
         'API_FRONTEND_USER_KEY',
         'API_FRONTEND_CHAT_KEY',
         'API_FRONTEND_OFFICE_KEY',
+        'SHIPMENTS_SERVICE_URL',
+        'API_FRONTEND_SHIPMENTS_KEY',
     ];
     const missing = required.filter((key) => !process.env[key]);
     if (missing.length > 0) {
@@ -87,6 +89,18 @@ if (!process.env.API_FRONTEND_CHAT_KEY) {
 if (!process.env.API_FRONTEND_OFFICE_KEY) {
     logger.error('❌ API_FRONTEND_OFFICE_KEY is required but not set in .env file');
     logger.error('   Please add API_FRONTEND_OFFICE_KEY=your-frontend-office-api-key to your .env file');
+    process.exit(1);
+}
+// Add explicit validation for SHIPMENTS_SERVICE_URL
+if (!process.env.SHIPMENTS_SERVICE_URL) {
+    logger.error('❌ SHIPMENTS_SERVICE_URL is required but not set in .env file');
+    logger.error('   Please add SHIPMENTS_SERVICE_URL=http://localhost:8004 to your .env file');
+    process.exit(1);
+}
+// Add explicit validation for API_FRONTEND_SHIPMENTS_KEY
+if (!process.env.API_FRONTEND_SHIPMENTS_KEY) {
+    logger.error('❌ API_FRONTEND_SHIPMENTS_KEY is required but not set in .env file');
+    logger.error('   Please add API_FRONTEND_SHIPMENTS_KEY=your-frontend-shipments-api-key to your .env file');
     process.exit(1);
 }
 
@@ -295,7 +309,7 @@ const serviceRoutes = {
     '/api/email': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
     '/api/files': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
     '/api/drafts': process.env.CHAT_SERVICE_URL || 'http://127.0.0.1:8002',
-    '/api/packages': process.env.SHIPMENTS_SERVICE_URL || 'http://127.0.0.1:8004', // <-- Shipments service
+    '/api/packages': process.env.SHIPMENTS_SERVICE_URL || 'http://127.0.0.1:8004',
 };
 
 // Create proxy middleware factory
