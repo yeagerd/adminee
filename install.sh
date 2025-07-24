@@ -37,6 +37,7 @@ echo "🗄️ Setting up databases..."
 alembic -c services/user/alembic.ini upgrade head
 alembic -c services/chat/alembic.ini upgrade head
 alembic -c services/office/alembic.ini upgrade head
+alembic -c services/shipments/alembic.ini upgrade head
 
 echo "✅ Development environment setup complete!"
 echo ""
