@@ -4,6 +4,7 @@ import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import { AlertTriangle, Calendar, CheckCircle, Clock, Plus, Truck } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import gatewayClient from '../../lib/gateway-client';
+import '../../styles/summary-grid.css';
 import { Button } from '../ui/button';
 import { Card, CardHeader } from '../ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
@@ -156,51 +157,54 @@ export default function PackageDashboard() {
             {error && <div className="text-center text-red-500">{error}</div>}
             {/* Status Overview Cards */}
             {/* Log container size */}
-            <div className="grid grid-cols-1 [@container(min-width:350px)]:grid-cols-4 gap-2 container" style={{ containerType: 'inline-size' }}>
-                <Card className="container" style={{ containerType: 'inline-size' }}>
-                    <CardHeader className="flex flex-row items-center justify-center space-y-0 py-4 px-2">
-                        <div className="flex items-center gap-2 w-full justify-center">
-                            <div className="flex flex-col [@container(min-width:180px)]:flex-row items-center [@container(min-width:180px)]:gap-2">
-                                <span className="text-2xl font-bold">{statusCounts.pending}</span>
-                                <span className="text-sm font-medium [@container(max-width:140px)]:hidden">Pending</span>
+            {/* Add a wrapper div for the container query context */}
+            <div className="summary-container">
+                <div className="summary-grid">
+                    <Card className="container" style={{ containerType: 'inline-size' }}>
+                        <CardHeader className="flex flex-row items-center justify-center space-y-0 py-4 px-2">
+                            <div className="flex items-center gap-2 w-full justify-center">
+                                <div className="flex flex-col [@container(min-width:180px)]:flex-row items-center [@container(min-width:180px)]:gap-2">
+                                    <span className="text-2xl font-bold">{statusCounts.pending}</span>
+                                    <span className="text-sm font-medium [@container(max-width:140px)]:hidden">Pending</span>
+                                </div>
+                                <Clock className="h-4 w-4 text-yellow-600 flex-shrink-0" />
                             </div>
-                            <Clock className="h-4 w-4 text-yellow-600 flex-shrink-0" />
-                        </div>
-                    </CardHeader>
-                </Card>
-                <Card className="container" style={{ containerType: 'inline-size' }}>
-                    <CardHeader className="flex flex-row items-center justify-center space-y-0 py-4 px-2">
-                        <div className="flex items-center gap-2 w-full justify-center">
-                            <div className="flex flex-col [@container(min-width:180px)]:flex-row items-center [@container(min-width:180px)]:gap-2">
-                                <span className="text-2xl font-bold">{statusCounts.shipped}</span>
-                                <span className="text-sm font-medium [@container(max-width:140px)]:hidden">Shipped</span>
+                        </CardHeader>
+                    </Card>
+                    <Card className="container" style={{ containerType: 'inline-size' }}>
+                        <CardHeader className="flex flex-row items-center justify-center space-y-0 py-4 px-2">
+                            <div className="flex items-center gap-2 w-full justify-center">
+                                <div className="flex flex-col [@container(min-width:180px)]:flex-row items-center [@container(min-width:180px)]:gap-2">
+                                    <span className="text-2xl font-bold">{statusCounts.shipped}</span>
+                                    <span className="text-sm font-medium [@container(max-width:140px)]:hidden">Shipped</span>
+                                </div>
+                                <Truck className="h-4 w-4 text-blue-600 flex-shrink-0" />
                             </div>
-                            <Truck className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                        </div>
-                    </CardHeader>
-                </Card>
-                <Card className="container" style={{ containerType: 'inline-size' }}>
-                    <CardHeader className="flex flex-row items-center justify-center space-y-0 py-4 px-2">
-                        <div className="flex items-center gap-2 w-full justify-center">
-                            <div className="flex flex-col [@container(min-width:180px)]:flex-row items-center [@container(min-width:180px)]:gap-2">
-                                <span className="text-2xl font-bold">{statusCounts.late}</span>
-                                <span className="text-sm font-medium [@container(max-width:140px)]:hidden">Late</span>
+                        </CardHeader>
+                    </Card>
+                    <Card className="container" style={{ containerType: 'inline-size' }}>
+                        <CardHeader className="flex flex-row items-center justify-center space-y-0 py-4 px-2">
+                            <div className="flex items-center gap-2 w-full justify-center">
+                                <div className="flex flex-col [@container(min-width:180px)]:flex-row items-center [@container(min-width:180px)]:gap-2">
+                                    <span className="text-2xl font-bold">{statusCounts.late}</span>
+                                    <span className="text-sm font-medium [@container(max-width:140px)]:hidden">Late</span>
+                                </div>
+                                <AlertTriangle className="h-4 w-4 text-red-600 flex-shrink-0" />
                             </div>
-                            <AlertTriangle className="h-4 w-4 text-red-600 flex-shrink-0" />
-                        </div>
-                    </CardHeader>
-                </Card>
-                <Card className="container" style={{ containerType: 'inline-size' }}>
-                    <CardHeader className="flex flex-row items-center justify-center space-y-0 py-4 px-2">
-                        <div className="flex items-center gap-2 w-full justify-center">
-                            <div className="flex flex-col [@container(min-width:180px)]:flex-row items-center [@container(min-width:180px)]:gap-2">
-                                <span className="text-2xl font-bold">{statusCounts.delivered}</span>
-                                <span className="text-sm font-medium [@container(max-width:140px)]:hidden">Delivered</span>
+                        </CardHeader>
+                    </Card>
+                    <Card className="container" style={{ containerType: 'inline-size' }}>
+                        <CardHeader className="flex flex-row items-center justify-center space-y-0 py-4 px-2">
+                            <div className="flex items-center gap-2 w-full justify-center">
+                                <div className="flex flex-col [@container(min-width:180px)]:flex-row items-center [@container(min-width:180px)]:gap-2">
+                                    <span className="text-2xl font-bold">{statusCounts.delivered}</span>
+                                    <span className="text-sm font-medium [@container(max-width:140px)]:hidden">Delivered</span>
+                                </div>
+                                <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
                             </div>
-                            <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
-                        </div>
-                    </CardHeader>
-                </Card>
+                        </CardHeader>
+                    </Card>
+                </div>
             </div>
             {/* Filters and Search */}
             <div className="flex items-center gap-2 mb-3">
