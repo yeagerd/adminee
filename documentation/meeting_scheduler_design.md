@@ -418,23 +418,23 @@ This technical design provides a comprehensive foundation for implementing the m
 To enhance poll response security and tracking, each poll recipient will receive a unique, long, random URL specific to them and the meeting. This URL will be used as a special authentication mechanism for submitting poll responses, ensuring that only the intended recipient can respond using their link.
 
 ### Implementation Tasks
-- [ ] **Database Migration:**
-  - [ ] Add a `response_token` (unique, random string) column to the `poll_participants` table.
-  - [ ] Ensure this token is unique and not nullable.
-- [ ] **Model Update:**
-  - [ ] Update the `PollParticipant` model to include the new `response_token` field.
-- [ ] **Poll Creation Logic:**
-  - [ ] When creating poll participants, generate and store a unique `response_token` for each.
-- [ ] **Invitation Email Update:**
-  - [ ] Send invitation emails with URLs like `/public/meetings/respond/{response_token}` for each participant.
-- [ ] **New Public API Endpoint:**
-  - [ ] Implement `PUT /public/meetings/response/{response_token}` to accept poll responses using only the token.
-  - [ ] The endpoint should look up the participant by their `response_token`, verify the poll, and accept the response.
+- [x] **Database Migration:**
+  - [x] Add a `response_token` (unique, random string) column to the `poll_participants` table.
+  - [x] Ensure this token is unique and not nullable.
+- [x] **Model Update:**
+  - [x] Update the `PollParticipant` model to include the new `response_token` field.
+- [x] **Poll Creation Logic:**
+  - [x] When creating poll participants, generate and store a unique `response_token` for each.
+- [x] **Invitation Email Update:**
+  - [x] Send invitation emails with URLs like `/public/meetings/respond/{response_token}` for each participant.
+- [x] **New Public API Endpoint:**
+  - [x] Implement `PUT /public/meetings/response/{response_token}` to accept poll responses using only the token.
+  - [x] The endpoint should look up the participant by their `response_token`, verify the poll, and accept the response.
 - [ ] **Frontend Update:**
   - [ ] Update the public poll response page to support the new URL structure and API.
   - [ ] Remove the legacy meeting id from the frontend, backend, and DB.
-- [ ] **Testing:**
-  - [ ] Add unit and integration tests for the new token-based response flow.
+- [x] **Testing:**
+  - [x] Add unit and integration tests for the new token-based response flow.
 
 
 ## Outstanding Implementation Tasks
