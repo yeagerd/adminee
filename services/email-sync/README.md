@@ -72,6 +72,13 @@ curl -X POST http://localhost:8080/microsoft/webhook \
 
 See code for payload schemas and authentication headers.
 
+## Observability & Monitoring
+
+- Metrics: Use `record_metric` in `observability.py` to log and collect metrics. Integrate with Prometheus or Stackdriver as needed.
+- Tracing: Use `@trace_function` decorator for distributed tracing (OpenTelemetry stub included).
+- Health checks: Use `/healthz` endpoint for liveness/readiness probes.
+- Extend logging and alerting for production monitoring and dashboards.
+
 ## Deployment & Runbook
 
 - Build and deploy the email-sync service container to your environment.
@@ -79,3 +86,12 @@ See code for payload schemas and authentication headers.
 - Monitor logs for errors and alerts (pubsub failures, API errors, subscription issues).
 - Use the health check endpoint for liveness/readiness probes.
 - See `docker-compose.yml` for local development and testing setup. 
+
+## Security & Compliance
+
+- Secret management: Use environment variables or integrate with GCP Secret Manager.
+- Input validation: Use `validate_input` in `security.py` for all incoming data.
+- Rate limiting: Add Flask-Limiter or similar for endpoint protection.
+- Audit logging: Use `audit_log` for sensitive operations.
+- PII redaction: Use `redact_pii` to sanitize logs and outputs.
+- See `security.py` for stubs and extension points. 
