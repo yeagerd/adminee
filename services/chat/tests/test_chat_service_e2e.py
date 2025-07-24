@@ -125,7 +125,8 @@ def test_end_to_end_chat_flow(app):
     # List threads (should contain the thread we just used)
     resp = client.get("/chat/threads", headers=headers_with_user)
     assert resp.status_code == 200
-    threads = resp.json()
+    threads_resp = resp.json()
+    threads = threads_resp["threads"]
     assert any(t["thread_id"] == thread_id for t in threads)
 
     # Get thread history
@@ -181,7 +182,8 @@ def test_multiple_blank_thread_creates_distinct_threads(app):
     # List threads and verify both thread IDs are present
     resp = client.get("/chat/threads", headers=headers_with_user)
     assert resp.status_code == 200
-    threads = resp.json()
+    threads_resp = resp.json()
+    threads = threads_resp["threads"]
     thread_ids = {t["thread_id"] for t in threads}
     assert thread_id1 in thread_ids
     assert thread_id2 in thread_ids

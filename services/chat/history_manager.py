@@ -20,7 +20,7 @@ Key Design Decisions:
 import datetime
 from typing import Any, AsyncGenerator, List, Optional
 
-from sqlalchemy import Text, UniqueConstraint, func
+from sqlalchemy import Text, UniqueConstraint, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import registry
 from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, select
@@ -349,7 +349,7 @@ async def list_threads(user_id: str, limit: int = 20, offset: int = 0) -> List[T
         result = await session.execute(
             select(Thread)
             .where(Thread.user_id == user_id)
-            .order_by(Thread.updated_at.desc())
+            .order_by(desc(Thread.updated_at))
             .offset(offset)
             .limit(limit)
         )

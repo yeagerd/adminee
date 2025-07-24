@@ -10,8 +10,8 @@ import json
 import uuid
 from typing import AsyncGenerator, List, Optional
 
-from fastapi import APIRouter, Request, Query
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi import APIRouter, Query, Request
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from services.chat import history_manager
@@ -404,7 +404,9 @@ async def list_threads(
     user_id = await get_user_id_from_gateway(request)
 
     # Get database models (Thread objects with int IDs, datetime objects, relationships)
-    threads = await history_manager.list_threads(user_id, limit=limit+1, offset=offset)
+    threads = await history_manager.list_threads(
+        user_id, limit=limit + 1, offset=offset
+    )
     total_count = None
     # Optionally, count total threads for pagination (optional for perf)
     # total_count = await history_manager.count_threads(user_id)
@@ -423,13 +425,15 @@ async def list_threads(
         )
         for t in threads
     ]
-    return JSONResponse({
-        "threads": [tr.dict() for tr in thread_responses],
-        "has_more": has_more,
-        "offset": offset,
-        "limit": limit,
-        # "total_count": total_count,  # Uncomment if you add counting
-    })
+    return JSONResponse(
+        {
+            "threads": [tr.dict() for tr in thread_responses],
+            "has_more": has_more,
+            "offset": offset,
+            "limit": limit,
+            # "total_count": total_count,  # Uncomment if you add counting
+        }
+    )
 
 
 @router.get("/threads/{thread_id}/history", response_model=ChatResponse)

@@ -191,12 +191,10 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
         }
     }, [session, historyOffset]);
 
-    // Add state to track dropdown open
-    const [historyDropdownOpen, setHistoryDropdownOpen] = useState(false);
+    // Removed unused historyDropdownOpen state
 
     // Always refetch on open
     const handleHistoryDropdownOpenChange = async (open: boolean) => {
-        setHistoryDropdownOpen(open);
         if (open) {
             setHistoryOffset(0);
             await fetchChatHistory(true);
