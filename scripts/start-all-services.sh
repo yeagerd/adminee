@@ -233,6 +233,10 @@ start_python_service "chat-service" "services.chat.main:app" 8002
 # Start Office Service
 start_python_service "office-service" "services.office.app.main:app" 8003
 
+# Start Meetings Service
+start_python_service "meetings-service" "services.meetings.main:app" 8004
+
+
 # Start Gateway
 echo -e "${BLUE}🚀 Starting Express Gateway...${NC}"
 ./scripts/start-gateway.sh &
@@ -247,9 +251,6 @@ else
     echo -e "${YELLOW}📱 Frontend skipped - start it separately with:${NC}"
     echo -e "${YELLOW}   cd frontend && npm run dev${NC}"
 fi
-
-# Start Meetings Service
-uv run python -m uvicorn services.meetings.main:app --reload --port 8003 &
 
 # Wait for all services to be ready
 echo -e "${BLUE}⏳ Waiting for all services to be ready...${NC}"
