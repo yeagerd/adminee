@@ -80,6 +80,13 @@ def test_fedex_extraction():
     assert msg3.acked
     assert not msg3.nacked
     assert FEDEX_REGEX.findall("FedEx: 12345678901234567890") == []
+    # Overlap test: USPS number should not be matched as FedEx
+    usps_number = "9400111899223856928499"  # 22 digits
+    msg4 = make_email(f"FedEx: {usps_number}")
+    process_email(msg4)
+    assert msg4.acked
+    assert not msg4.nacked
+    assert FEDEX_REGEX.findall(f"FedEx: {usps_number}") == []
 
 
 def test_usps_extraction():
