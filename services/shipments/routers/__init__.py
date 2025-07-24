@@ -4,7 +4,12 @@ API routers for the shipments service
 
 from fastapi import APIRouter
 
-from services.shipments.routers import packages, labels, tracking_events, carrier_configs
+from services.shipments.routers import (
+    carrier_configs,
+    labels,
+    packages,
+    tracking_events,
+)
 
 api_router = APIRouter()
 api_router.include_router(packages.router, prefix="/packages", tags=["Packages"])

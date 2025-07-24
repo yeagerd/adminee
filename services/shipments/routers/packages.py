@@ -1,24 +1,32 @@
-from fastapi import APIRouter, Depends, HTTPException
-from typing import List
-from services.shipments.schemas import PackageOut, PackageCreate, PackageUpdate, PackageListResponse, LabelOut
-from services.shipments.models import Package
-from services.shipments.database import get_async_session_dep
+import logging
+from datetime import datetime
+
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-import logging
+
+from services.shipments.database import get_async_session_dep
+from services.shipments.models import Package
+from services.shipments.schemas import (
+    PackageCreate,
+    PackageListResponse,
+    PackageOut,
+    PackageUpdate,
+)
 
 router = APIRouter()
 
+
 @router.get("/", response_model=PackageListResponse)
-async def list_packages(session: AsyncSession = Depends(get_async_session_dep)):
-    logging.info('Fetching all packages from DB...')
+async def list_packages(session: AsyncSession = Depends(get_async_session_dep)) -> dict:
+    logging.info("Fetching all packages from DB...")
     result = await session.execute(select(Package))
     packages = result.scalars().all()
-    logging.info(f'Found {len(packages)} packages')
+    logging.info(f"Found {len(packages)} packages")
     # Convert to PackageOut (minimal fields for now)
     package_out = [
         PackageOut(
-            id=pkg.id,
+            id=pkg.id if pkg.id is not None else 0,
             tracking_number=pkg.tracking_number,
             carrier=pkg.carrier,
             status=pkg.status,
@@ -29,21 +37,28 @@ async def list_packages(session: AsyncSession = Depends(get_async_session_dep)):
             package_description=pkg.package_description,
             order_number=pkg.order_number,
             tracking_link=pkg.tracking_link,
-            last_updated=pkg.updated_at,
+            updated_at=pkg.updated_at,
             events_count=0,
             labels=[],
-        ) for pkg in packages
+        )
+        for pkg in packages
     ]
-    return {"data": package_out, "pagination": {"page": 1, "per_page": 100, "total": len(package_out)}}
+    return {
+        "data": package_out,
+        "pagination": {"page": 1, "per_page": 100, "total": len(package_out)},
+    }
+
 
 @router.post("/", response_model=PackageOut)
-async def add_package(pkg: PackageCreate, session: AsyncSession = Depends(get_async_session_dep)):
+async def add_package(
+    pkg: PackageCreate, session: AsyncSession = Depends(get_async_session_dep)
+) -> PackageOut:
     db_pkg = Package(**pkg.dict())
     session.add(db_pkg)
     await session.commit()
     await session.refresh(db_pkg)
     return PackageOut(
-        id=db_pkg.id,
+        id=db_pkg.id if db_pkg.id is not None else 0,
         tracking_number=db_pkg.tracking_number,
         carrier=db_pkg.carrier,
         status=db_pkg.status,
@@ -54,13 +69,16 @@ async def add_package(pkg: PackageCreate, session: AsyncSession = Depends(get_as
         package_description=db_pkg.package_description,
         order_number=db_pkg.order_number,
         tracking_link=db_pkg.tracking_link,
-        last_updated=db_pkg.updated_at,
+        updated_at=db_pkg.updated_at,
         events_count=0,  # TODO: Query for real count
-        labels=[],       # TODO: Query for real labels
+        labels=[],  # TODO: Query for real labels
     )
 
+
 @router.get("/{id}", response_model=PackageOut)
-async def get_package(id: int, session: AsyncSession = Depends(get_async_session_dep)):
+async def get_package(
+    id: int, session: AsyncSession = Depends(get_async_session_dep)
+) -> PackageOut:
     # TODO: Implement get package details
     # For now, return a dummy response
     return PackageOut(
@@ -75,13 +93,16 @@ async def get_package(id: int, session: AsyncSession = Depends(get_async_session
         package_description=None,
         order_number=None,
         tracking_link=None,
-        last_updated=None,
+        updated_at=datetime.utcnow(),
         events_count=0,
         labels=[],
     )
 
+
 @router.put("/{id}", response_model=PackageOut)
-async def update_package(id: int, pkg: PackageUpdate, session: AsyncSession = Depends(get_async_session_dep)):
+async def update_package(
+    id: int, pkg: PackageUpdate, session: AsyncSession = Depends(get_async_session_dep)
+) -> PackageOut:
     # TODO: Implement update package
     return PackageOut(
         id=id,
@@ -95,27 +116,39 @@ async def update_package(id: int, pkg: PackageUpdate, session: AsyncSession = De
         package_description=None,
         order_number=None,
         tracking_link=None,
-        last_updated=None,
+        updated_at=datetime.utcnow(),
         events_count=0,
         labels=[],
     )
 
+
 @router.delete("/{id}")
-async def delete_package(id: int, session: AsyncSession = Depends(get_async_session_dep)):
+async def delete_package(
+    id: int, session: AsyncSession = Depends(get_async_session_dep)
+) -> dict:
     # TODO: Implement delete package
     return {"success": True}
 
+
 @router.post("/{id}/refresh")
-async def refresh_package(id: int, session: AsyncSession = Depends(get_async_session_dep)):
+async def refresh_package(
+    id: int, session: AsyncSession = Depends(get_async_session_dep)
+) -> dict:
     # TODO: Implement force refresh tracking
     return {"success": True}
 
+
 @router.post("/{id}/labels")
-async def add_label_to_package(id: int, session: AsyncSession = Depends(get_async_session_dep)):
+async def add_label_to_package(
+    id: int, session: AsyncSession = Depends(get_async_session_dep)
+) -> dict:
     # TODO: Implement add label to package
     return {"success": True}
 
+
 @router.delete("/{id}/labels/{label_id}")
-async def remove_label_from_package(id: int, label_id: int, session: AsyncSession = Depends(get_async_session_dep)):
+async def remove_label_from_package(
+    id: int, label_id: int, session: AsyncSession = Depends(get_async_session_dep)
+) -> dict:
     # TODO: Implement remove label from package
-    return {"success": True} 
+    return {"success": True}
