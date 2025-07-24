@@ -295,7 +295,7 @@ const serviceRoutes = {
     '/api/email': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
     '/api/files': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
     '/api/drafts': process.env.CHAT_SERVICE_URL || 'http://127.0.0.1:8002',
-    '/api/meetings': process.env.MEETINGS_SERVICE_URL || 'http://127.0.0.1:8003',
+    '/api/meetings': process.env.MEETINGS_SERVICE_URL || 'http://127.0.0.1:8005',
 };
 
 // Create proxy middleware factory
