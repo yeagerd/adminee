@@ -90,21 +90,6 @@ export default function PackageList({
                     <TableRow>
                         <TableHead className="cursor-pointer" onClick={() => onSort('tracking_number')}>Tracking Number</TableHead>
                         <TableHead className="relative">
-                            <span className="cursor-pointer" onClick={() => onSort('carrier')}>Carrier</span>
-                            <Button size="sm" variant="ghost" className="ml-1 p-1" onClick={e => { e.stopPropagation(); setShowCarrierFilter(v => !v); }}>
-                                <Filter className="h-4 w-4" />
-                            </Button>
-                            {showCarrierFilter && (
-                                <div className="absolute left-0 top-8" onClick={e => e.stopPropagation()}>
-                                    <MultiSelectFilter
-                                        options={CARRIER_OPTIONS}
-                                        selected={selectedCarrierFilters}
-                                        onChange={onCarrierFilterChange}
-                                    />
-                                </div>
-                            )}
-                        </TableHead>
-                        <TableHead className="relative">
                             <span className="cursor-pointer" onClick={() => onSort('status')}>Status</span>
                             <Button size="sm" variant="ghost" className="ml-1 p-1" onClick={e => { e.stopPropagation(); setShowStatusFilter(v => !v); }}>
                                 <Filter className="h-4 w-4" />
@@ -128,7 +113,7 @@ export default function PackageList({
                 <TableBody>
                     {packages.length === 0 ? (
                         <TableRow>
-                            <TableCell colSpan={8} className="text-center text-gray-500 py-8">No packages found.</TableCell>
+                            <TableCell colSpan={7} className="text-center text-gray-500 py-8">No packages found.</TableCell>
                         </TableRow>
                     ) : (
                         packages.map(pkg => (
@@ -148,7 +133,6 @@ export default function PackageList({
                                         <span className="cursor-pointer" onClick={() => setEditingCell({ id: pkg.id, field: 'tracking_number' })}>{pkg.tracking_number}</span>
                                     )}
                                 </TableCell>
-                                <TableCell><Badge variant="outline">{pkg.carrier}</Badge></TableCell>
                                 <TableCell><Badge>{pkg.status}</Badge></TableCell>
                                 <TableCell onClick={e => e.stopPropagation()}>
                                     {editingCell?.id === pkg.id && editingCell?.field === 'estimated_delivery' ? (
