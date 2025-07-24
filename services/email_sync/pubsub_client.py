@@ -1,3 +1,4 @@
+import json
 import os
 from typing import Any
 
@@ -12,5 +13,7 @@ def publish_message(topic: str, message: Any) -> None:
         os.environ["PUBSUB_EMULATOR_HOST"] = PUBSUB_EMULATOR_HOST
     publisher = pubsub_v1.PublisherClient()
     project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
+    if not project_id:
+        raise ValueError("GOOGLE_CLOUD_PROJECT environment variable is not set.")
     topic_path = publisher.topic_path(project_id, topic)
-    publisher.publish(topic_path, data=str(message).encode("utf-8"))
+    publisher.publish(topic_path, data=json.dumps(message).encode("utf-8"))
