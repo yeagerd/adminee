@@ -157,7 +157,7 @@ export default function PackageDashboard() {
             {/* Status Overview Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-center space-y-0 pb-2">
+                    <CardHeader className="flex flex-row items-center justify-center space-y-0 py-4">
                         <div className="flex items-center gap-2 w-full justify-center">
                             <span className="text-2xl font-bold">{statusCounts.pending}</span>
                             <span className="text-sm font-medium">Pending</span>
@@ -166,7 +166,7 @@ export default function PackageDashboard() {
                     </CardHeader>
                 </Card>
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-center space-y-0 pb-2">
+                    <CardHeader className="flex flex-row items-center justify-center space-y-0 py-4">
                         <div className="flex items-center gap-2 w-full justify-center">
                             <span className="text-2xl font-bold">{statusCounts.shipped}</span>
                             <span className="text-sm font-medium">Shipped</span>
@@ -175,7 +175,7 @@ export default function PackageDashboard() {
                     </CardHeader>
                 </Card>
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-center space-y-0 pb-2">
+                    <CardHeader className="flex flex-row items-center justify-center space-y-0 py-4">
                         <div className="flex items-center gap-2 w-full justify-center">
                             <span className="text-2xl font-bold">{statusCounts.late}</span>
                             <span className="text-sm font-medium">Late</span>
@@ -184,7 +184,7 @@ export default function PackageDashboard() {
                     </CardHeader>
                 </Card>
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-center space-y-0 pb-2">
+                    <CardHeader className="flex flex-row items-center justify-center space-y-0 py-4">
                         <div className="flex items-center gap-2 w-full justify-center">
                             <span className="text-2xl font-bold">{statusCounts.delivered}</span>
                             <span className="text-sm font-medium">Delivered</span>

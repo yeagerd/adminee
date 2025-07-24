@@ -138,7 +138,10 @@ export default function PackageList({
                                         <Input
                                             defaultValue={pkg.tracking_number}
                                             onBlur={e => onCellEdit(pkg.id, 'tracking_number', e.target.value)}
-                                            onKeyDown={e => { if (e.key === 'Enter') onCellEdit(pkg.id, 'tracking_number', e.currentTarget.value); }}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter') onCellEdit(pkg.id, 'tracking_number', e.currentTarget.value);
+                                                if (e.key === 'Escape') setEditingCell(null);
+                                            }}
                                             autoFocus
                                         />
                                     ) : (
@@ -153,7 +156,10 @@ export default function PackageList({
                                             type="date"
                                             defaultValue={pkg.estimated_delivery}
                                             onBlur={e => onCellEdit(pkg.id, 'estimated_delivery', e.target.value)}
-                                            onKeyDown={e => { if (e.key === 'Enter') onCellEdit(pkg.id, 'estimated_delivery', e.currentTarget.value); }}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter') onCellEdit(pkg.id, 'estimated_delivery', e.currentTarget.value);
+                                                if (e.key === 'Escape') setEditingCell(null);
+                                            }}
                                             autoFocus
                                         />
                                     ) : (
@@ -165,7 +171,10 @@ export default function PackageList({
                                         <Input
                                             defaultValue={pkg.package_description}
                                             onBlur={e => onCellEdit(pkg.id, 'package_description', e.target.value)}
-                                            onKeyDown={e => { if (e.key === 'Enter') onCellEdit(pkg.id, 'package_description', e.currentTarget.value); }}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter') onCellEdit(pkg.id, 'package_description', e.currentTarget.value);
+                                                if (e.key === 'Escape') setEditingCell(null);
+                                            }}
                                             autoFocus
                                         />
                                     ) : (
