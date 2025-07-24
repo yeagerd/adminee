@@ -34,7 +34,7 @@ def upgrade():
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('scheduled_slot_id', sa.UUID(), nullable=True),
     sa.Column('poll_token', sa.String(length=64), nullable=False),
-    sa.ForeignKeyConstraint(['scheduled_slot_id'], ['time_slots.id'], ),
+    # sa.ForeignKeyConstraint(['scheduled_slot_id'], ['time_slots.id'], ),  # Removed for now
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('poll_token')
     )
@@ -48,6 +48,12 @@ def upgrade():
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=True),
     sa.ForeignKeyConstraint(['poll_id'], ['meeting_polls.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
+    )
+    # Add the foreign key constraint after both tables exist
+    op.create_foreign_key(
+        'fk_meeting_polls_scheduled_slot_id_time_slots',
+        'meeting_polls', 'time_slots',
+        ['scheduled_slot_id'], ['id']
     )
     op.create_table('chat_meetings',
     sa.Column('id', sa.UUID(), nullable=False),
