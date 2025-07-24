@@ -8,9 +8,10 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from contextlib import contextmanager
+from services.meetings.settings import get_settings
 
 def get_engine():
-    db_url = os.environ.get("MEETINGS_DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/meetings_db")
+    db_url = get_settings().db_url_meetings
     return create_engine(db_url, echo=False, future=True)
 
 def get_sessionmaker():

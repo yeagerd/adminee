@@ -35,6 +35,7 @@ members = [
     "services/chat",
     "services/user",
     "services/office",
+    "services/meetings",
     # Add other services as needed
 ]
 

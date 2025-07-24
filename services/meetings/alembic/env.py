@@ -3,22 +3,21 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 
+# Import all models so they are registered with metadata
+from services.meetings import models  # noqa: F401
+from services.meetings.models import Base
+from services.meetings.settings import get_settings
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
+# Set the database URL from our settings
+config.set_main_option("sqlalchemy.url", get_settings().db_url_meetings)
+
 # Interpret the config file for Python logging.
-fileConfig(config.config_file_name)
-
-db_url = os.environ.get("MEETINGS_DATABASE_URL")
-if db_url:
-    config.set_main_option("sqlalchemy.url", db_url)
-
-from services.meetings.models import Base
-
-# Import models here for 'autogenerate' support
-# from services.meetings import models
-# target_metadata = models.Base.metadata
+if config.config_file_name is not None:
+    fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
 

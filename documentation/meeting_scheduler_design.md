@@ -5,19 +5,10 @@
 ### 1.1 Functional Requirements
 
 #### Core Features
-- **AI-Powered Meeting Creation**: Users can request meetings via AI chat with natural language
 - **Meeting Poll Management**: Create, edit, and manage meeting polls with multiple time slot options
 - **Multi-Platform Calendar Integration**: Support for Microsoft and Google calendar APIs
 - **Recipient Response Collection**: Accept responses via web interface and email parsing
 - **Real-time Status Tracking**: Dashboard showing poll status, responses, and analytics
-
-#### AI Chat Interface Requirements
-- Parse natural language requests for meeting scheduling
-- Extract participant emails, meeting duration, date preferences, and constraints
-- Auto-populate meeting polls based on user's calendar availability
-- Handle various date formats: specific dates, relative dates (2 weeks from now), date ranges
-- Support meeting types: one-time meetings, recurring meetings
-- Validate participant email addresses and meeting constraints
 
 #### Meeting Poll Requirements
 - **Time Slot Management**: 
@@ -77,10 +68,8 @@
 - Secure email parsing and processing
 
 #### Usability Requirements
-- Intuitive AI chat interface with example prompts
 - Mobile-first responsive design for poll responses
 - Clear visual indicators for availability conflicts
-- Accessibility compliance (WCAG 2.1 AA)
 
 ### 1.3 Integration Requirements
 - Microsoft Graph API for Outlook calendar and email
@@ -181,29 +170,11 @@ CREATE TABLE poll_responses (
 );
 ```
 
-#### AI Chat History Table
-```sql
-CREATE TABLE chat_meetings (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id),
-    chat_message TEXT NOT NULL,
-    extracted_intent JSONB, -- Parsed meeting requirements
-    poll_id UUID REFERENCES meeting_polls(id),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-```
 
 ### 2.3 API Endpoints
 
 #### Meeting Poll Management
 ```typescript
-// Create meeting poll from AI chat
-POST /api/meetings/create-from-chat
-{
-  message: string;
-  context?: ChatContext;
-}
-Response: { poll: MeetingPoll; suggestions: TimeSlot[]; }
 
 // CRUD operations for meeting polls
 GET /api/meetings/polls
@@ -288,55 +259,6 @@ POST /api/calendar/create-meeting
    - Design mobile-responsive layout
    - Create time slot selection interface
    - Add form validation and submission
-
-### 3.2 Phase 2: AI Integration (Week 3-4)
-
-#### AI Chat Service Implementation
-```typescript
-interface MeetingIntent {
-  participants: string[];
-  duration: number;
-  datePreferences: {
-    type: 'specific' | 'relative' | 'range';
-    value: string | Date | { start: Date; end: Date };
-  };
-  constraints?: {
-    businessHoursOnly?: boolean;
-    timezone?: string;
-    excludeDays?: string[];
-  };
-}
-
-class MeetingAIService {
-  async parseMeetingRequest(message: string, userId: string): Promise<MeetingIntent> {
-    // Use NLP to extract meeting parameters
-    // Validate participant emails
-    // Parse date expressions
-  }
-
-  async suggestTimeSlots(intent: MeetingIntent, userId: string): Promise<TimeSlot[]> {
-    // Get user's calendar availability
-    // Generate smart time slot suggestions
-    // Consider participant time zones
-  }
-}
-```
-
-#### Natural Language Processing
-1. **Date/Time Parsing**
-   - Handle relative dates ("next week", "in 3 days")
-   - Support date ranges ("between Jan 1-15")
-   - Parse specific dates in multiple formats
-
-2. **Participant Extraction**
-   - Extract email addresses from text
-   - Handle name/email pairs
-   - Validate against user's contacts
-
-3. **Meeting Context Understanding**
-   - Duration parsing ("30 minute meeting", "2 hour session")
-   - Meeting type detection ("video call", "in-person")
-   - Location extraction
 
 ### 3.3 Phase 3: Email Integration (Week 5-6)
 
@@ -453,7 +375,6 @@ CREATE INDEX idx_poll_responses_participant_slot ON poll_responses(participant_i
 ## 5. Testing Strategy
 
 ### 5.1 Unit Testing
-- AI message parsing accuracy
 - Calendar availability logic
 - Email response processing
 - Poll response validation
@@ -465,7 +386,6 @@ CREATE INDEX idx_poll_responses_participant_slot ON poll_responses(participant_i
 - Real-time update delivery
 
 ### 5.3 User Acceptance Testing
-- AI chat interface usability
 - Mobile poll response experience
 - Email workflow completeness
 - Dashboard functionality and performance
@@ -495,19 +415,19 @@ This technical design provides a comprehensive foundation for implementing the m
 ## Outstanding Implementation Tasks
 
 ### Backend
-- [ ] Implement calendar integration (availability, event creation)
-- [ ] Add email invitation and response processing
-- [ ] Add AI/NLP intent extraction for chat-based poll creation
+- [x] Implement calendar integration (availability, event creation)
+- [x] Add email invitation and response processing
 - [ ] Add analytics endpoints and real-time updates (WebSocket/SSE)
-- [ ] Add public poll response endpoints and security/rate limiting
-- [ ] Expand tests for all workflows (unit/integration)
+- [x] Add public poll response endpoints and security/rate limiting
+- [x] Expand tests for all workflows (unit/integration)
 
 ### Frontend
-- [ ] Build public poll response page (mobile-friendly)
-- [ ] Enhance poll creation wizard (multi-step, validation, time zones)
-- [ ] Add response visualization and analytics to results page
+- [x] Send out emails upon Meeting Poll Create/Send button.
+- [x] Build public poll response page (mobile-friendly)
+- [x] Enhance poll creation wizard (multi-step, validation, time zones)
+- [x] Add response visualization and analytics to results page
 - [ ] Add real-time updates and notifications
-- [ ] Improve error/loading/accessibility/mobile support
+- [ ] Improve error/loading/mobile support
 - [ ] Add automated frontend tests
 
 ### DevOps/Docs

@@ -10,6 +10,7 @@ resolution-markers = [
 members = [
     "briefly",
     "briefly-chat",
+    "briefly-meetings",
     "briefly-office",
     "briefly-user",
 ]
@@ -384,6 +385,11 @@ requires-dist = [
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.22.0,<1.0.0" },
 ]
 provides-extras = ["test"]
+
+[[package]]
+name = "briefly-meetings"
+version = "0.1.0"
+source = { virtual = "services/meetings" }
 
 [[package]]
 name = "briefly-office"
