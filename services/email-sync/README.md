@@ -62,3 +62,20 @@ curl -X POST http://localhost:8080/microsoft/webhook \
 ```
 
 - Check logs for downstream processing and event publishing. 
+
+## API Documentation
+
+### Endpoints
+- `POST /gmail/webhook` — Receives Gmail push notifications
+- `POST /microsoft/webhook` — Receives Microsoft Graph webhook notifications
+- `GET /healthz` — Health check endpoint
+
+See code for payload schemas and authentication headers.
+
+## Deployment & Runbook
+
+- Build and deploy the email-sync service container to your environment.
+- Ensure environment variables and secrets are set for all providers.
+- Monitor logs for errors and alerts (pubsub failures, API errors, subscription issues).
+- Use the health check endpoint for liveness/readiness probes.
+- See `docker-compose.yml` for local development and testing setup. 
