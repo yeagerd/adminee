@@ -29,7 +29,7 @@ async def list_packages(session: AsyncSession = Depends(get_async_session_dep)):
             package_description=pkg.package_description,
             order_number=pkg.order_number,
             tracking_link=pkg.tracking_link,
-            updated_at=pkg.updated_at,
+            last_updated=pkg.updated_at,
             events_count=0,
             labels=[],
         ) for pkg in packages
@@ -54,7 +54,7 @@ async def add_package(pkg: PackageCreate, session: AsyncSession = Depends(get_as
         package_description=db_pkg.package_description,
         order_number=db_pkg.order_number,
         tracking_link=db_pkg.tracking_link,
-        updated_at=db_pkg.updated_at,
+        last_updated=db_pkg.updated_at,
         events_count=0,  # TODO: Query for real count
         labels=[],       # TODO: Query for real labels
     )
@@ -75,7 +75,7 @@ async def get_package(id: int, session: AsyncSession = Depends(get_async_session
         package_description=None,
         order_number=None,
         tracking_link=None,
-        updated_at=None,
+        last_updated=None,
         events_count=0,
         labels=[],
     )
@@ -95,7 +95,7 @@ async def update_package(id: int, pkg: PackageUpdate, session: AsyncSession = De
         package_description=None,
         order_number=None,
         tracking_link=None,
-        updated_at=None,
+        last_updated=None,
         events_count=0,
         labels=[],
     )
