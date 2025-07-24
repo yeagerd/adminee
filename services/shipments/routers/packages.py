@@ -18,7 +18,6 @@ async def add_package(pkg: PackageCreate, session: AsyncSession = Depends(get_as
     session.add(db_pkg)
     await session.commit()
     await session.refresh(db_pkg)
-    # Return a Pydantic schema, not the ORM object
     return PackageOut(
         id=db_pkg.id,
         tracking_number=db_pkg.tracking_number,
@@ -31,7 +30,7 @@ async def add_package(pkg: PackageCreate, session: AsyncSession = Depends(get_as
         package_description=db_pkg.package_description,
         order_number=db_pkg.order_number,
         tracking_link=db_pkg.tracking_link,
-        last_updated=db_pkg.updated_at,
+        updated_at=db_pkg.updated_at,
         events_count=0,  # TODO: Query for real count
         labels=[],       # TODO: Query for real labels
     )
@@ -52,7 +51,7 @@ async def get_package(id: int, session: AsyncSession = Depends(get_async_session
         package_description=None,
         order_number=None,
         tracking_link=None,
-        last_updated=None,
+        updated_at=None,
         events_count=0,
         labels=[],
     )
@@ -72,7 +71,7 @@ async def update_package(id: int, pkg: PackageUpdate, session: AsyncSession = De
         package_description=None,
         order_number=None,
         tracking_link=None,
-        last_updated=None,
+        updated_at=None,
         events_count=0,
         labels=[],
     )
