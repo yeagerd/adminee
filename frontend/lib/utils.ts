@@ -64,10 +64,3 @@ export function formatCalendarTimesInText(text: string): string {
         return match;
     });
 }
-
-// Utility to get effective timezone from context (for test/demo)
-import { useUserPreferences } from '@/contexts/settings-context';
-export function useEffectiveTimezone(): string {
-    const { effectiveTimezone } = useUserPreferences();
-    return effectiveTimezone;
-}
