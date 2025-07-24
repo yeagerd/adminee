@@ -59,6 +59,8 @@ def run() -> None:
 
     if PUBSUB_EMULATOR_HOST:
         os.environ["PUBSUB_EMULATOR_HOST"] = PUBSUB_EMULATOR_HOST
+    if not PROJECT_ID:
+        raise ValueError("GOOGLE_CLOUD_PROJECT environment variable is not set.")
     subscriber = pubsub_v1.SubscriberClient()
     subscription_path = subscriber.subscription_path(PROJECT_ID, MICROSOFT_SUBSCRIPTION)
     backoff = 1
