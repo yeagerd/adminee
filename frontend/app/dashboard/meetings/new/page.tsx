@@ -25,7 +25,6 @@ export default function NewMeetingPollPage() {
     // General
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [reviewing, setReviewing] = useState(false);
 
     // Validation helpers
     const isStep1Valid = title && duration > 0 && timeZone;
@@ -72,8 +71,12 @@ export default function NewMeetingPollPage() {
             };
             await gatewayClient.createMeetingPoll(pollData);
             router.push("/dashboard/meetings");
-        } catch (e: any) {
-            setError(e.message || "Failed to create poll");
+        } catch (e: unknown) {
+            if (e && typeof e === 'object' && 'message' in e) {
+                setError((e as { message?: string }).message || "Failed to create poll");
+            } else {
+                setError("Failed to create poll");
+            }
         } finally {
             setLoading(false);
         }

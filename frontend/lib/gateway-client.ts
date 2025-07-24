@@ -310,23 +310,23 @@ export class GatewayClient {
     }
 
     // Meetings Service
-    async listMeetingPolls(): Promise<any[]> {
-        return this.request<any[]>('/api/meetings/polls');
+    async listMeetingPolls(): Promise<unknown[]> {
+        return this.request<unknown[]>('/api/meetings/polls');
     }
 
-    async getMeetingPoll(pollId: string): Promise<any> {
-        return this.request<any>(`/api/meetings/polls/${pollId}`);
+    async getMeetingPoll(pollId: string): Promise<unknown> {
+        return this.request<unknown>(`/api/meetings/polls/${pollId}`);
     }
 
-    async createMeetingPoll(pollData: any): Promise<any> {
-        return this.request<any>('/api/meetings/polls', {
+    async createMeetingPoll(pollData: unknown): Promise<unknown> {
+        return this.request<unknown>('/api/meetings/polls', {
             method: 'POST',
             body: pollData,
         });
     }
 
-    async updateMeetingPoll(pollId: string, pollData: any): Promise<any> {
-        return this.request<any>(`/api/meetings/polls/${pollId}`, {
+    async updateMeetingPoll(pollId: string, pollData: unknown): Promise<unknown> {
+        return this.request<unknown>(`/api/meetings/polls/${pollId}`, {
             method: 'PUT',
             body: pollData,
         });

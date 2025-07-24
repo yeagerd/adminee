@@ -1,10 +1,21 @@
 "use client";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+interface TimeSlot {
+    id: string;
+    start_time: string;
+    end_time: string;
+}
+
+interface Poll {
+    id: string;
+    title: string;
+    description?: string;
+    time_slots: TimeSlot[];
+}
+
 export default function PublicPollResponsePage({ params }: { params: { token: string } }) {
-    const router = useRouter();
-    const [poll, setPoll] = useState<any>(null);
+    const [poll, setPoll] = useState<Poll | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [participantEmail, setParticipantEmail] = useState("");
@@ -19,8 +30,14 @@ export default function PublicPollResponsePage({ params }: { params: { token: st
                 if (!res.ok) throw new Error(await res.text());
                 return res.json();
             })
-            .then(setPoll)
-            .catch((e) => setError(e.message || "Failed to load poll"))
+            .then((data) => setPoll(data as Poll))
+            .catch((e: unknown) => {
+                if (e && typeof e === 'object' && 'message' in e) {
+                    setError((e as { message?: string }).message || "Failed to load poll");
+                } else {
+                    setError("Failed to load poll");
+                }
+            })
             .finally(() => setLoading(false));
     }, [params.token]);
 
@@ -43,8 +60,12 @@ export default function PublicPollResponsePage({ params }: { params: { token: st
             });
             if (!resp.ok) throw new Error(await resp.text());
             setSubmitted(true);
-        } catch (e: any) {
-            setError(e.message || "Failed to submit response");
+        } catch (e: unknown) {
+            if (e && typeof e === 'object' && 'message' in e) {
+                setError((e as { message?: string }).message || "Failed to submit response");
+            } else {
+                setError("Failed to submit response");
+            }
         } finally {
             setSubmitting(false);
         }
@@ -73,7 +94,7 @@ export default function PublicPollResponsePage({ params }: { params: { token: st
                 <div>
                     <label className="block font-semibold mb-2">Select your availability:</label>
                     <div className="space-y-2">
-                        {(poll.time_slots || []).map((slot: any) => (
+                        {(poll.time_slots || []).map((slot) => (
                             <div key={slot.id} className="flex flex-col sm:flex-row sm:items-center gap-2 border-b pb-2">
                                 <div className="flex-1">
                                     <span className="font-mono text-sm">{slot.start_time?.slice(0, 16).replace("T", " ")} - {slot.end_time?.slice(11, 16)}</span>

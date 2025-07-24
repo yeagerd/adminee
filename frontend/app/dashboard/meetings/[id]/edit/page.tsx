@@ -38,8 +38,12 @@ export default function EditMeetingPollPage({ params }: { params: { id: string }
                 location,
             });
             router.push("/dashboard/meetings");
-        } catch (e: any) {
-            setError(e.message || "Failed to update poll");
+        } catch (e: unknown) {
+            if (e && typeof e === 'object' && 'message' in e) {
+                setError((e as { message?: string }).message || "Failed to update poll");
+            } else {
+                setError("Failed to update poll");
+            }
         } finally {
             setSaving(false);
         }

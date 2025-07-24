@@ -1,27 +1,18 @@
 from sqlalchemy.orm import declarative_base
-
-Base = declarative_base()
-
-import os
 from contextlib import contextmanager
-
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-
 from services.meetings.settings import get_settings
 
-from .meeting import *
-
+Base = declarative_base()
 
 def get_engine():
     db_url = get_settings().db_url_meetings
     return create_engine(db_url, echo=False, future=True)
 
-
 def get_sessionmaker():
     engine = get_engine()
     return sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
-
 
 @contextmanager
 def get_session():

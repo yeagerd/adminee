@@ -3,8 +3,15 @@ import gatewayClient from "@/lib/gateway-client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+interface Poll {
+    id: string;
+    title: string;
+    status: string;
+    created_at: string;
+}
+
 export default function MeetingsDashboardPage() {
-    const [polls, setPolls] = useState<any[]>([]);
+    const [polls, setPolls] = useState<Poll[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -12,8 +19,14 @@ export default function MeetingsDashboardPage() {
     const fetchPolls = () => {
         setLoading(true);
         gatewayClient.listMeetingPolls()
-            .then(setPolls)
-            .catch((e) => setError(e.message || "Failed to load polls"))
+            .then((data) => setPolls(data as Poll[]))
+            .catch((e: unknown) => {
+                if (e && typeof e === 'object' && 'message' in e) {
+                    setError((e as { message?: string }).message || "Failed to load polls");
+                } else {
+                    setError("Failed to load polls");
+                }
+            })
             .finally(() => setLoading(false));
     };
 
@@ -27,8 +40,12 @@ export default function MeetingsDashboardPage() {
         try {
             await gatewayClient.deleteMeetingPoll(id);
             fetchPolls();
-        } catch (e: any) {
-            alert(e.message || "Failed to delete poll");
+        } catch (e: unknown) {
+            if (e && typeof e === 'object' && 'message' in e) {
+                alert((e as { message?: string }).message || "Failed to delete poll");
+            } else {
+                alert("Failed to delete poll");
+            }
         } finally {
             setDeletingId(null);
         }
