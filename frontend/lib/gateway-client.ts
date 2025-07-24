@@ -80,18 +80,18 @@ export class GatewayClient {
     }
 
     // Chat Service
-    async chat(message: string, threadId?: string, userTimezone?: string) {
+    async chat(message: string, threadId?: string, userContext?: Record<string, unknown>) {
         return this.request('/api/chat/completions', {
             method: 'POST',
             body: {
                 message,
                 thread_id: threadId,
-                user_timezone: userTimezone,
+                user_context: userContext,
             },
         });
     }
 
-    async chatStream(message: string, threadId?: string, userTimezone?: string, signal?: AbortSignal): Promise<ReadableStream> {
+    async chatStream(message: string, threadId?: string, userContext?: Record<string, unknown>, signal?: AbortSignal): Promise<ReadableStream> {
         const session = await getSession();
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
@@ -107,7 +107,7 @@ export class GatewayClient {
             body: JSON.stringify({
                 message,
                 thread_id: threadId,
-                user_timezone: userTimezone,
+                user_context: userContext,
             }),
             signal,
         });

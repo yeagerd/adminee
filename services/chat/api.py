@@ -83,7 +83,8 @@ async def chat_endpoint(
     user_id = await get_user_id_from_gateway(request)
     thread_id = chat_request.thread_id
     user_input = chat_request.message
-    user_timezone = chat_request.user_timezone
+    user_timezone = chat_request.effective_timezone  # Use property
+    # user_context = chat_request.user_context  # For future use
 
     # Get user timezone from preferences if not provided
     if not user_timezone:
@@ -213,7 +214,8 @@ async def chat_stream_endpoint(
     user_id = await get_user_id_from_gateway(request)
     thread_id = chat_request.thread_id
     user_input = chat_request.message
-    user_timezone = chat_request.user_timezone
+    user_timezone = chat_request.effective_timezone  # Use property
+    # user_context = chat_request.user_context  # For future use
 
     # Get user timezone from preferences if not provided
     if not user_timezone:

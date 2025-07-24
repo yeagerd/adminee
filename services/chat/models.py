@@ -119,13 +119,23 @@ class ChatRequest(BaseModel):
 
     Represents a user's chat message request with optional thread context.
     User ID is provided via X-User-Id header from the gateway.
+    user_timezone is deprecated; use user_context['timezone'] instead.
     """
 
     thread_id: Optional[str] = None  # String for JSON compatibility
     message: str
+    user_context: Optional[dict] = None  # New: user context dict (tool, timezone, etc.)
     user_timezone: Optional[str] = (
-        None  # Will be looked up from user preferences if not provided
+        None  # Deprecated: Will be looked up from user_context if not provided
     )
+
+    @property
+    def effective_timezone(self) -> Optional[str]:
+        if self.user_context and isinstance(self.user_context, dict):
+            tz = self.user_context.get('timezone')
+            if isinstance(tz, str) and tz:
+                return tz
+        return self.user_timezone
 
 
 class ChatResponse(BaseModel):
