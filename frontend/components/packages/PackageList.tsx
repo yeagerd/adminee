@@ -120,7 +120,6 @@ export default function PackageList({
                             )}
                         </TableHead>
                         <TableHead className="cursor-pointer" onClick={() => onSort('estimated_delivery')}>Est. Delivery</TableHead>
-                        <TableHead className="cursor-pointer" onClick={() => onSort('recipient_name')}>Recipient</TableHead>
                         <TableHead>Description</TableHead>
                         <TableHead>Labels</TableHead>
                         <TableHead>Actions</TableHead>
@@ -159,18 +158,6 @@ export default function PackageList({
                                         />
                                     ) : (
                                         <span className="cursor-pointer" onClick={() => setEditingCell({ id: pkg.id, field: 'estimated_delivery' })}>{pkg.estimated_delivery}</span>
-                                    )}
-                                </TableCell>
-                                <TableCell onClick={e => e.stopPropagation()}>
-                                    {editingCell?.id === pkg.id && editingCell?.field === 'recipient_name' ? (
-                                        <Input
-                                            defaultValue={pkg.recipient_name}
-                                            onBlur={e => onCellEdit(pkg.id, 'recipient_name', e.target.value)}
-                                            onKeyDown={e => { if (e.key === 'Enter') onCellEdit(pkg.id, 'recipient_name', e.currentTarget.value); }}
-                                            autoFocus
-                                        />
-                                    ) : (
-                                        <span className="cursor-pointer" onClick={() => setEditingCell({ id: pkg.id, field: 'recipient_name' })}>{pkg.recipient_name}</span>
                                     )}
                                 </TableCell>
                                 <TableCell onClick={e => e.stopPropagation()}>
