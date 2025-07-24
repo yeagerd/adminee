@@ -16,17 +16,16 @@ depends_on = None
 
 
 def upgrade():
-    op.add_column(
-        "poll_participants",
-        sa.Column("response_token", sa.String(length=64), nullable=False),
-    )
-    op.create_unique_constraint(
-        "uq_poll_participants_response_token", "poll_participants", ["response_token"]
-    )
+    with op.batch_alter_table("poll_participants") as batch_op:
+        batch_op.add_column(
+            sa.Column("response_token", sa.String(length=64), nullable=False),
+        )
+        batch_op.create_unique_constraint(
+            "uq_poll_participants_response_token", ["response_token"]
+        )
 
 
 def downgrade():
-    op.drop_constraint(
-        "uq_poll_participants_response_token", "poll_participants", type_="unique"
-    )
-    op.drop_column("poll_participants", "response_token")
+    with op.batch_alter_table("poll_participants") as batch_op:
+        batch_op.drop_constraint("uq_poll_participants_response_token", type_="unique")
+        batch_op.drop_column("response_token")
