@@ -155,40 +155,40 @@ export default function PackageDashboard() {
             {loading && <div className="text-center text-gray-500">Loading packages...</div>}
             {error && <div className="text-center text-red-500">{error}</div>}
             {/* Status Overview Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-center space-y-0 py-4">
+                    <CardHeader className="flex flex-row items-center justify-center space-y-0 py-4 px-2">
                         <div className="flex items-center gap-2 w-full justify-center">
                             <span className="text-2xl font-bold">{statusCounts.pending}</span>
-                            <span className="text-sm font-medium">Pending</span>
-                            <Clock className="h-4 w-4 text-yellow-600" />
+                            <span className="text-sm font-medium hidden md:inline">Pending</span>
+                            <Clock className="h-4 w-4 text-yellow-600 flex-shrink-0" />
                         </div>
                     </CardHeader>
                 </Card>
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-center space-y-0 py-4">
+                    <CardHeader className="flex flex-row items-center justify-center space-y-0 py-4 px-2">
                         <div className="flex items-center gap-2 w-full justify-center">
                             <span className="text-2xl font-bold">{statusCounts.shipped}</span>
-                            <span className="text-sm font-medium">Shipped</span>
-                            <Truck className="h-4 w-4 text-blue-600" />
+                            <span className="text-sm font-medium hidden md:inline">Shipped</span>
+                            <Truck className="h-4 w-4 text-blue-600 flex-shrink-0" />
                         </div>
                     </CardHeader>
                 </Card>
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-center space-y-0 py-4">
+                    <CardHeader className="flex flex-row items-center justify-center space-y-0 py-4 px-2">
                         <div className="flex items-center gap-2 w-full justify-center">
                             <span className="text-2xl font-bold">{statusCounts.late}</span>
-                            <span className="text-sm font-medium">Late</span>
-                            <AlertTriangle className="h-4 w-4 text-red-600" />
+                            <span className="text-sm font-medium hidden md:inline">Late</span>
+                            <AlertTriangle className="h-4 w-4 text-red-600 flex-shrink-0" />
                         </div>
                     </CardHeader>
                 </Card>
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-center space-y-0 py-4">
+                    <CardHeader className="flex flex-row items-center justify-center space-y-0 py-4 px-2">
                         <div className="flex items-center gap-2 w-full justify-center">
                             <span className="text-2xl font-bold">{statusCounts.delivered}</span>
-                            <span className="text-sm font-medium">Delivered</span>
-                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <span className="text-sm font-medium hidden md:inline">Delivered</span>
+                            <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
                         </div>
                     </CardHeader>
                 </Card>
