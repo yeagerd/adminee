@@ -18,10 +18,12 @@ import gatewayClient from "@/lib/gateway-client"
 import { History, Loader2, Plus, Send } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useCallback, useEffect, useRef, useState } from "react"
+import LoadingBubble from './ui/loading-bubble';
+
 
 type Message = {
     id: string
-    content: string
+    content: string | React.ReactNode
     sender: "user" | "ai"
     timestamp: Date
 }
@@ -93,7 +95,13 @@ function isUnbreakableString(str: string, threshold: number) {
 }
 
 function ChatBubble({ content, sender, windowWidth }: { content: React.ReactNode, sender: "user" | "ai", windowWidth: number }) {
-    if (typeof content !== 'string') return null;
+    if (typeof content !== 'string') {
+        return (
+            <div className={`max-w-[95%] min-w-0 rounded-lg p-2 text-sm overflow-anywhere ${sender === "user" ? "bg-teal-600 text-white ml-2" : "bg-gray-100 text-gray-800 mr-2"}`}>
+                {content}
+            </div>
+        );
+    }
     // Dynamic threshold scales with window width
     const threshold = Math.floor(windowWidth / 15);
     let breakClass = "";
@@ -123,6 +131,10 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
     const [isLoading, setIsLoading] = useState(false)
     const [chatHistory, setChatHistory] = useState<ThreadResponse[]>([])
     const [currentThreadId, setCurrentThreadId] = useState<string | null>(null)
+    const [historyHasMore, setHistoryHasMore] = useState(true);
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const HISTORY_PAGE_SIZE = 10;
+    const [historyOffset, setHistoryOffset] = useState(0);
     const { enableStreaming } = useStreamingSetting()
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const internalRef = useRef<HTMLDivElement>(null);
@@ -170,23 +182,42 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
         updated_at: string;
     }
 
-    const fetchChatHistory = useCallback(async () => {
-        if (session) {
-            try {
-                // Use the correct ThreadResponse type and fallback for missing title
-                const threads = (await gatewayClient.getChatThreads()) as ThreadResponse[]
-                // Sort in reverse-chronological order (newest first)
-                const sortedThreads = threads.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                setChatHistory(sortedThreads)
-            } catch (error) {
-                console.error("Failed to fetch chat history:", error)
+    const fetchChatHistory = useCallback(async (reset = false) => {
+        if (!session) return;
+        setHistoryLoading(true);
+        try {
+            const offset = reset ? 0 : historyOffset;
+            const resp = await gatewayClient.getChatThreads(HISTORY_PAGE_SIZE, offset) as { threads: ThreadResponse[]; has_more: boolean; offset: number; limit: number; };
+            const threads = resp.threads;
+            if (reset) {
+                setChatHistory(threads);
+            } else {
+                setChatHistory(prev => [...prev, ...threads]);
             }
+            setHistoryHasMore(resp.has_more);
+            setHistoryOffset(offset + threads.length);
+        } catch (error) {
+            console.error("Failed to fetch chat history:", error);
+        } finally {
+            setHistoryLoading(false);
         }
-    }, [session])
+    }, [session, historyOffset]);
 
-    useEffect(() => {
-        fetchChatHistory()
-    }, [fetchChatHistory])
+    // Removed unused historyDropdownOpen state
+
+    // Always refetch on open
+    const handleHistoryDropdownOpenChange = async (open: boolean) => {
+        if (open) {
+            setHistoryOffset(0);
+            await fetchChatHistory(true);
+        }
+    };
+
+    // Progressive loading handler
+    const handleLoadMoreHistory = async () => {
+        if (!historyHasMore || historyLoading) return;
+        await fetchChatHistory(false);
+    };
 
     const handleNewChat = () => {
         if (streamControllerRef.current) {
@@ -238,6 +269,15 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
             setInput("")
             setIsLoading(true)
 
+            // Add interim loading bubble
+            const loadingMessage: Message = {
+                id: self.crypto.randomUUID(),
+                content: <LoadingBubble />,
+                sender: "ai",
+                timestamp: new Date(),
+            };
+            setMessages(prevMessages => [...prevMessages, loadingMessage]);
+
             try {
                 // Build userContext
                 const userContext = {
@@ -258,7 +298,7 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
                         sender: "ai",
                         timestamp: new Date(),
                     }
-                    setMessages((prev) => [...prev, aiMessage])
+                    setMessages((prev) => [...prev.filter(m => m.id !== loadingMessage.id), aiMessage])
 
                     if (reader) {
                         const processStream = async () => {
@@ -342,7 +382,7 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
                         sender: "ai",
                         timestamp: new Date(),
                     }
-                    setMessages((prev) => [...prev, aiMessage])
+                    setMessages((prev) => [...prev.filter(m => m.id !== loadingMessage.id), aiMessage])
 
                     // If a draft is returned, pass it to the parent component
                     if (data.drafts && data.drafts.length > 0 && onDraftReceived) {
@@ -380,24 +420,36 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
                 <Button variant="ghost" size="icon" onClick={handleNewChat} className="bg-black text-white hover:bg-gray-700 hover:text-white border border-gray-600">
                     <Plus className="h-5 w-5" />
                 </Button>
-                <DropdownMenu>
+                <DropdownMenu onOpenChange={handleHistoryDropdownOpenChange}>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="bg-black text-white hover:bg-gray-700 hover:text-white border border-gray-600">
                             <History className="h-5 w-5" />
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="max-h-96 overflow-y-auto">
-                        {chatHistory.length === 0 ? (
+                        {chatHistory.length === 0 && !historyLoading ? (
                             <DropdownMenuItem disabled>
                                 No chat history
                             </DropdownMenuItem>
                         ) : (
-                            chatHistory.map((chat) => (
-                                <DropdownMenuItem key={chat.thread_id} onClick={() => handleLoadChat(chat.thread_id)}>
-                                    {/* Fallback for missing title */}
-                                    {chat.title && chat.title.trim() !== '' ? chat.title : `Chat from ${new Date(chat.created_at).toLocaleString()}`}
-                                </DropdownMenuItem>
-                            ))
+                            <>
+                                {chatHistory.map((chat) => (
+                                    <DropdownMenuItem key={chat.thread_id} onClick={() => handleLoadChat(chat.thread_id)}>
+                                        {/* Fallback for missing title */}
+                                        {chat.title && chat.title.trim() !== '' ? chat.title : `Chat from ${new Date(chat.created_at).toLocaleString()}`}
+                                    </DropdownMenuItem>
+                                ))}
+                                {historyLoading && (
+                                    <DropdownMenuItem disabled>
+                                        Loading...
+                                    </DropdownMenuItem>
+                                )}
+                                {historyHasMore && !historyLoading && (
+                                    <DropdownMenuItem onClick={handleLoadMoreHistory}>
+                                        Load more
+                                    </DropdownMenuItem>
+                                )}
+                            </>
                         )}
                     </DropdownMenuContent>
                 </DropdownMenu>
@@ -423,11 +475,6 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
                                         <ChatBubble content={message.content} sender={message.sender} windowWidth={chatWidth} />
                                     </div>
                                 ))
-                            )}
-                            {isLoading && (
-                                <div className="w-full flex justify-start min-w-0">
-                                    <ChatBubble content={<Loader2 className="h-5 w-5 animate-spin" />} sender="ai" windowWidth={chatWidth} />
-                                </div>
                             )}
                             <div ref={messagesEndRef} />
                         </div>
