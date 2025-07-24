@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useIntegrations } from '@/contexts/integrations-context';
+import { useUserPreferences } from '@/contexts/settings-context';
 import { useToolStateUtils } from '@/hooks/use-tool-state';
 import { gatewayClient } from '@/lib/gateway-client';
 import { CalendarEvent } from '@/types/office-service';
@@ -18,6 +19,7 @@ import EmailView from './views/email-view';
 export function ToolContent() {
     const { activeTool } = useToolStateUtils();
     const { data: session } = useSession();
+    const { effectiveTimezone } = useUserPreferences();
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
     const [calendarLoading, setCalendarLoading] = useState(false);
     const [calendarError, setCalendarError] = useState<string | null>(null);
@@ -48,7 +50,10 @@ export function ToolContent() {
                 activeProviders,
                 10,
                 new Date().toISOString().split('T')[0],
-                new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+                new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                undefined,
+                undefined,
+                effectiveTimezone // Pass the effective timezone
             );
             if (response.success && response.data) {
                 setCalendarEvents(response.data.events || []);
@@ -61,14 +66,14 @@ export function ToolContent() {
         } finally {
             setCalendarLoading(false);
         }
-    }, [session?.user?.id, activeProviders]);
+    }, [session?.user?.id, activeProviders, effectiveTimezone]);
 
     // Fetch calendar events when integrations are loaded and user has active calendar integrations
     useEffect(() => {
         if (activeTool === 'calendar' && !integrationsLoading && session?.user?.id && activeProviders.length > 0) {
             fetchCalendarEvents();
         }
-    }, [activeTool, integrationsLoading, activeProviders, session?.user?.id, fetchCalendarEvents]);
+    }, [activeTool, integrationsLoading, activeProviders, session?.user?.id, fetchCalendarEvents, effectiveTimezone]);
 
     // Use activeProviders to check for active calendar integrations
     const hasActiveCalendarIntegration = activeProviders.length > 0;
@@ -150,7 +155,7 @@ export function ToolContent() {
                                     Found {calendarEvents.length} events for the next 7 days
                                 </div>
                                 {calendarEvents.map((event) => (
-                                    <CalendarEventItem key={event.id} event={event} />
+                                    <CalendarEventItem key={event.id} event={event} effectiveTimezone={effectiveTimezone} />
                                 ))}
                             </div>
                         )}

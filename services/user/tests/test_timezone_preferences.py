@@ -92,16 +92,55 @@ class TestTimezonePreferencesAPI(BaseUserManagementIntegrationTest):
         }
 
     def test_preferences_timezone_in_schema(self):
-        """Test that timezone field is included in the preferences schema."""
-        from services.user.schemas.preferences import Timezone, UIPreferencesSchema
+        """Test that timezone fields are included in the preferences schema (top-level, not UI)."""
+        from datetime import datetime
 
-        # Test UI preferences schema which contains timezone
-        ui_prefs = UIPreferencesSchema(timezone=Timezone.US_EASTERN)
-        assert ui_prefs.timezone == "America/New_York"
+        from services.user.schemas.preferences import (
+            AIPreferencesSchema,
+            IntegrationPreferencesSchema,
+            NotificationPreferencesSchema,
+            PrivacyPreferencesSchema,
+            UIPreferencesSchema,
+            UserPreferencesResponse,
+        )
 
-        # Test with different timezone
-        ui_prefs_pacific = UIPreferencesSchema(timezone=Timezone.US_PACIFIC)
-        assert ui_prefs_pacific.timezone == "America/Los_Angeles"
+        # Test that the new timezone fields exist and have correct defaults
+        prefs = UserPreferencesResponse(
+            user_id="test",
+            version="1.0",
+            ui=UIPreferencesSchema(),
+            notifications=NotificationPreferencesSchema(),
+            ai=AIPreferencesSchema(),
+            integrations=IntegrationPreferencesSchema(),
+            privacy=PrivacyPreferencesSchema(),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        assert hasattr(prefs, "timezone_mode")
+        assert hasattr(prefs, "manual_timezone")
+        assert prefs.timezone_mode == "auto"
+        assert prefs.manual_timezone == ""
+
+        # Optionally, test with explicit values
+        prefs2 = UserPreferencesResponse(
+            user_id="test2",
+            version="1.0",
+            ui=UIPreferencesSchema(),
+            notifications=NotificationPreferencesSchema(),
+            ai=AIPreferencesSchema(),
+            integrations=IntegrationPreferencesSchema(),
+            privacy=PrivacyPreferencesSchema(),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+            timezone_mode="manual",
+            manual_timezone="America/New_York",
+        )
+        assert prefs2.timezone_mode == "manual"
+        assert prefs2.manual_timezone == "America/New_York"
+
+        # The UI schema no longer has a timezone field
+        ui_prefs = UIPreferencesSchema()
+        assert not hasattr(ui_prefs, "timezone")
 
 
 class TestTimezonePreferencesIntegration:
@@ -143,3 +182,60 @@ class TestTimezonePreferencesIntegration:
         for tz in common_timezones:
             preferences = UserPreferences(user_id=1, timezone=tz)
             assert preferences.timezone == tz
+
+
+class TestTimezoneModePreferences(BaseUserManagementIntegrationTest):
+    """Test new timezone_mode/manual_timezone logic."""
+
+    def test_default_timezone_mode(self):
+        user = User(
+            external_auth_id="tzmode_default",
+            auth_provider="microsoft",
+            email="tzmode_default@test.com",
+        )
+        preferences = UserPreferences(user=user)
+        assert preferences.timezone_mode == "auto"
+        assert preferences.manual_timezone == ""
+
+    def test_manual_timezone_override(self):
+        user = User(
+            external_auth_id="tzmode_manual",
+            auth_provider="microsoft",
+            email="tzmode_manual@test.com",
+        )
+        preferences = UserPreferences(
+            user=user, timezone_mode="manual", manual_timezone="Europe/Paris"
+        )
+        assert preferences.timezone_mode == "manual"
+        assert preferences.manual_timezone == "Europe/Paris"
+
+    def test_api_update_and_retrieve_timezone_mode(self):
+        # Simulate API update and retrieval
+        user = User(
+            external_auth_id="tzmode_api",
+            auth_provider="microsoft",
+            email="tzmode_api@test.com",
+        )
+        preferences = UserPreferences(user=user)
+        preferences.timezone_mode = "manual"
+        preferences.manual_timezone = "Asia/Tokyo"
+        assert preferences.timezone_mode == "manual"
+        assert preferences.manual_timezone == "Asia/Tokyo"
+
+    def test_fallback_to_auto_if_manual_not_set(self):
+        user = User(
+            external_auth_id="tzmode_fallback",
+            auth_provider="microsoft",
+            email="tzmode_fallback@test.com",
+        )
+        preferences = UserPreferences(
+            user=user, timezone_mode="auto", manual_timezone=""
+        )
+        # Simulate frontend logic
+        browser_tz = "America/Los_Angeles"
+        effective_tz = (
+            preferences.manual_timezone
+            if preferences.timezone_mode == "manual" and preferences.manual_timezone
+            else browser_tz
+        )
+        assert effective_tz == browser_tz
