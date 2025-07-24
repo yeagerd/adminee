@@ -1,5 +1,8 @@
 'use client';
 
+import { gatewayClient } from '@/lib/gateway-client';
+import { getUserTimezone } from '@/lib/utils';
+import { useSession } from 'next-auth/react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
@@ -70,6 +73,79 @@ export function useSettings() {
     const context = useContext(SettingsContext);
     if (context === undefined) {
         throw new Error('useSettings must be used within a SettingsProvider');
+    }
+    return context;
+}
+
+export interface UserPreferences {
+    timezone_mode: 'auto' | 'manual';
+    manual_timezone: string;
+    // ...other fields as needed
+}
+
+interface UserPreferencesContextType {
+    userPreferences: UserPreferences | null;
+    effectiveTimezone: string;
+    setUserPreferences: (prefs: Partial<UserPreferences>) => Promise<void>;
+}
+
+const UserPreferencesContext = createContext<UserPreferencesContextType | undefined>(undefined);
+
+export function UserPreferencesProvider({ children }: { children: ReactNode }) {
+    const { data: session, status } = useSession();
+    const [userPreferences, setUserPreferencesState] = useState<UserPreferences | null>(null);
+    const [effectiveTimezone, setEffectiveTimezone] = useState<string>(getUserTimezone());
+
+    // Fetch preferences on sign-in
+    useEffect(() => {
+        if (status === 'authenticated' && session?.user?.id) {
+            gatewayClient.getUserPreferences().then((prefsRaw: unknown) => {
+                // Type guard and defaults
+                const obj = (prefsRaw && typeof prefsRaw === 'object') ? prefsRaw as Record<string, unknown> : {};
+                const prefs: UserPreferences = {
+                    timezone_mode: (typeof obj.timezone_mode === 'string' && (obj.timezone_mode === 'auto' || obj.timezone_mode === 'manual')) ? obj.timezone_mode : 'auto',
+                    manual_timezone: (typeof obj.manual_timezone === 'string') ? obj.manual_timezone : '',
+                    // ...other fields as needed
+                };
+                setUserPreferencesState(prefs);
+                const tz = (prefs.timezone_mode === 'manual' && prefs.manual_timezone)
+                    ? prefs.manual_timezone
+                    : getUserTimezone();
+                setEffectiveTimezone(tz);
+            }).catch(() => {
+                setUserPreferencesState(null);
+                setEffectiveTimezone(getUserTimezone());
+            });
+        }
+    }, [status, session?.user?.id]);
+
+    // Update preferences and recompute effectiveTimezone
+    const setUserPreferences = async (prefs: Partial<UserPreferences>) => {
+        const updated: UserPreferences = {
+            timezone_mode: prefs.timezone_mode ?? userPreferences?.timezone_mode ?? 'auto',
+            manual_timezone: prefs.manual_timezone ?? userPreferences?.manual_timezone ?? '',
+            // ...other fields as needed
+        };
+        await gatewayClient.updateUserPreferences(updated as unknown as Record<string, unknown>);
+        setUserPreferencesState(updated);
+        const tz = (updated.timezone_mode === 'manual' && updated.manual_timezone)
+            ? updated.manual_timezone
+            : getUserTimezone();
+        console.log(`[UserPreferences] Updating timezone to: ${tz}`);
+        setEffectiveTimezone(tz);
+    };
+
+    return (
+        <UserPreferencesContext.Provider value={{ userPreferences, effectiveTimezone, setUserPreferences }}>
+            {children}
+        </UserPreferencesContext.Provider>
+    );
+}
+
+export function useUserPreferences() {
+    const context = useContext(UserPreferencesContext);
+    if (context === undefined) {
+        throw new Error('useUserPreferences must be used within a UserPreferencesProvider');
     }
     return context;
 } 

@@ -5,14 +5,24 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useUserPreferences } from '@/contexts/settings-context';
 import { useStreamingSetting } from '@/hooks/use-streaming-setting';
+import { getUserTimezone } from '@/lib/utils';
 import { Settings, User } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 
+const IANA_TIMEZONES = [
+    'UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
+    'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Asia/Tokyo', 'Asia/Seoul', 'Asia/Shanghai', 'Australia/Sydney',
+    // ...add more as needed
+];
+
 export function ProfileContent() {
     const { data: session, status } = useSession();
+    const { userPreferences, effectiveTimezone, setUserPreferences } = useUserPreferences();
     const { enableStreaming, updateStreamingSetting, isLoaded } = useStreamingSetting();
+    const browserTimezone = getUserTimezone();
 
     if (status === 'loading') {
         return (
@@ -102,6 +112,48 @@ export function ProfileContent() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                    {/* Timezone Settings */}
+                    <div className="space-y-2">
+                        <label className="block text-sm font-medium">Timezone Preference</label>
+                        <div className="flex items-center gap-4">
+                            <label className="flex items-center gap-1">
+                                <input
+                                    type="radio"
+                                    name="timezone_mode"
+                                    checked={userPreferences?.timezone_mode === 'auto'}
+                                    onChange={() => setUserPreferences({ timezone_mode: 'auto' })}
+                                />
+                                Automatic (use browser timezone)
+                            </label>
+                            <label className="flex items-center gap-1">
+                                <input
+                                    type="radio"
+                                    name="timezone_mode"
+                                    checked={userPreferences?.timezone_mode === 'manual'}
+                                    onChange={() => setUserPreferences({ timezone_mode: 'manual', manual_timezone: userPreferences?.manual_timezone || browserTimezone })}
+                                />
+                                Manual
+                            </label>
+                        </div>
+                        {userPreferences?.timezone_mode === 'manual' && (
+                            <div className="mt-2">
+                                <select
+                                    className="border rounded px-2 py-1"
+                                    value={userPreferences.manual_timezone || ''}
+                                    onChange={e => setUserPreferences({ manual_timezone: e.target.value })}
+                                >
+                                    {IANA_TIMEZONES.map(tz => (
+                                        <option key={tz} value={tz}>{tz}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                        <div className="text-xs text-gray-500 mt-1">
+                            Effective timezone: <b>{effectiveTimezone}</b> <br />
+                            Browser timezone: <b>{browserTimezone}</b>
+                        </div>
+                    </div>
+                    {/* Streaming Settings */}
                     <div className="space-y-4">
                         <div className="flex items-center space-x-2">
                             <Checkbox

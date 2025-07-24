@@ -6,7 +6,7 @@ default value management, and preference validation.
 """
 
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import select
@@ -116,6 +116,8 @@ class PreferencesService:
                 privacy=PrivacyPreferencesSchema(**preferences.privacy_preferences),
                 created_at=preferences.created_at,
                 updated_at=preferences.updated_at,
+                timezone_mode=getattr(preferences, "timezone_mode", "auto"),
+                manual_timezone=getattr(preferences, "manual_timezone", ""),
             )
 
         except NotFoundError:
@@ -175,7 +177,7 @@ class PreferencesService:
                     raise NotFoundError(resource="Preferences", identifier=user_id)
 
             # Prepare update data
-            update_data = {}
+            update_data: dict[str, Any] = {}
 
             # Update only provided categories
             if preferences_update.ui is not None:
@@ -203,6 +205,14 @@ class PreferencesService:
                     preferences_update.privacy.model_dump()
                 )
                 logger.debug("Updating privacy preferences", user_id=user_id)
+
+            # New: Update timezone_mode and manual_timezone if present
+            if preferences_update.timezone_mode is not None:
+                update_data["timezone_mode"] = preferences_update.timezone_mode
+                logger.debug("Updating timezone_mode", user_id=user_id)
+            if preferences_update.manual_timezone is not None:
+                update_data["manual_timezone"] = preferences_update.manual_timezone
+                logger.debug("Updating manual_timezone", user_id=user_id)
 
             if not update_data:
                 logger.warning("No preferences to update", user_id=user_id)
