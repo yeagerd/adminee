@@ -349,7 +349,7 @@ async def list_threads(user_id: str, limit: int = 20, offset: int = 0) -> List[T
         result = await session.execute(
             select(Thread)
             .where(Thread.user_id == user_id)
-            .order_by(desc(Thread.updated_at))
+            .order_by(desc(Thread.__table__.c.updated_at))
             .offset(offset)
             .limit(limit)
         )
