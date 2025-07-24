@@ -17,7 +17,7 @@ branch_labels = None
 depends_on = None
 
 
-def upgrade():
+def upgrade() -> None:
     op.add_column(
         "user_preferences",
         sa.Column(
@@ -32,6 +32,6 @@ def upgrade():
     )
 
 
-def downgrade():
+def downgrade() -> None:
     op.drop_column("user_preferences", "manual_timezone")
     op.drop_column("user_preferences", "timezone_mode")

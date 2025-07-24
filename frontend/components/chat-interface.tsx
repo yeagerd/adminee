@@ -129,7 +129,7 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
     const chatAreaRef = containerRef || internalRef;
     const [chatWidth, setChatWidth] = useState(600)
     const streamControllerRef = useRef<AbortController | null>(null)
-    const { userPreferences, effectiveTimezone } = useUserPreferences();
+    const { effectiveTimezone } = useUserPreferences();
     const { state: toolState } = useToolState();
 
     // Track chat window width

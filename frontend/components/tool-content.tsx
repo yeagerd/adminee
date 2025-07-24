@@ -19,7 +19,7 @@ import EmailView from './views/email-view';
 export function ToolContent() {
     const { activeTool } = useToolStateUtils();
     const { data: session } = useSession();
-    const { userPreferences, effectiveTimezone } = useUserPreferences();
+    const { effectiveTimezone } = useUserPreferences();
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
     const [calendarLoading, setCalendarLoading] = useState(false);
     const [calendarError, setCalendarError] = useState<string | null>(null);
