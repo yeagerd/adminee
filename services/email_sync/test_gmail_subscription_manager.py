@@ -20,7 +20,8 @@ def test_scheduled_refresh_job_logs(monkeypatch, caplog):
         return True
 
     monkeypatch.setattr(
-        "services.email_sync.gmail_subscription_manager.refresh_gmail_subscription", fake_refresh
+        "services.email_sync.gmail_subscription_manager.refresh_gmail_subscription",
+        fake_refresh,
     )
     with caplog.at_level("INFO"):
         scheduled_refresh_job()

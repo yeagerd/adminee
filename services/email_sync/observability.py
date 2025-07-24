@@ -1,5 +1,5 @@
 import logging
-from typing import Callable, Any
+from typing import Any, Callable
 
 
 def record_metric(name: str, value: float, tags: dict = None) -> None:
@@ -29,7 +29,9 @@ def trace_function(name: str) -> Callable[[Callable[..., Any]], Callable[..., An
                 with tracer.start_as_current_span(name):
                     return func(*args, **kwargs)
             return func(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -37,14 +39,18 @@ def trace_function(name: str) -> Callable[[Callable[..., Any]], Callable[..., An
 # @trace_function("process_email")
 # def process_email(...): ...
 
+
 def setup_observability() -> None:
     pass
+
 
 def get_tracer() -> None:
     pass
 
+
 def function_1() -> None:
     pass
+
 
 def function_2() -> None:
     pass

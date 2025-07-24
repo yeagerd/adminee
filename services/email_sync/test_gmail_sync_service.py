@@ -26,7 +26,9 @@ def test_process_gmail_notification_valid(monkeypatch):
             {"id": "email1"},
             {"id": "email2"},
         ]
-        with patch("services.email_sync.gmail_sync_service.publish_message") as mock_publish:
+        with patch(
+            "services.email_sync.gmail_sync_service.publish_message"
+        ) as mock_publish:
             process_gmail_notification(msg)
             assert msg.acked
             assert not msg.nacked
@@ -43,14 +45,16 @@ def test_process_gmail_notification_invalid(monkeypatch):
 def test_process_gmail_notification_pubsub_failure(monkeypatch):
     notif = GmailNotification(history_id="12345", email_address="user@example.com")
     msg = DummyMessage(data=notif.model_dump_json().encode("utf-8"))
-    with patch(
-        "services.email_sync.gmail_sync_service.GmailAPIClient"
-    ) as MockClient:
+    with patch("services.email_sync.gmail_sync_service.GmailAPIClient") as MockClient:
         mock_client = MockClient.return_value
         mock_client.fetch_emails_since_history_id.return_value = [{"id": "email1"}]
-        with patch(
-            "services.email_sync.gmail_sync_service.publish_message", side_effect=Exception("pubsub error")
-        ) as mock_publish, patch("time.sleep", lambda x: None):
+        with (
+            patch(
+                "services.email_sync.gmail_sync_service.publish_message",
+                side_effect=Exception("pubsub error"),
+            ) as mock_publish,
+            patch("time.sleep", lambda x: None),
+        ):
             process_gmail_notification(msg)
             assert msg.acked
             assert not msg.nacked

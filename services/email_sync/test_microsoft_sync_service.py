@@ -56,10 +56,13 @@ def test_process_microsoft_notification_pubsub_failure():
     ) as MockClient:
         mock_client = MockClient.return_value
         mock_client.fetch_emails_from_notification.return_value = [{"id": "email1"}]
-        with patch(
-            "services.email_sync.microsoft_sync_service.publish_message",
-            side_effect=Exception("pubsub error"),
-        ) as mock_publish, patch("time.sleep", lambda x: None):
+        with (
+            patch(
+                "services.email_sync.microsoft_sync_service.publish_message",
+                side_effect=Exception("pubsub error"),
+            ) as mock_publish,
+            patch("time.sleep", lambda x: None),
+        ):
             process_microsoft_notification(msg)
             assert msg.acked
             assert not msg.nacked

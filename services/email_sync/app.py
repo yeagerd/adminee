@@ -1,10 +1,16 @@
 # mypy: disable-error-code=attr-defined
 import logging
 import os
-from typing import Any
 
 from dotenv import load_dotenv
-from flask import Flask, abort, jsonify, request, Response, make_response  # type: ignore[attr-defined]
+from flask import (  # type: ignore[attr-defined]
+    Flask,
+    Response,
+    abort,
+    jsonify,
+    make_response,
+    request,
+)
 from pydantic import ValidationError
 
 from services.email_sync.microsoft_webhook import microsoft_webhook_bp

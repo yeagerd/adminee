@@ -73,7 +73,9 @@ def process_email(message: Any) -> None:
             if order_link_match:
                 amazon_order_link = order_link_match.group(0)
             found["amazon_status"] = amazon_status if amazon_status is not None else ""
-            found["amazon_order_link"] = amazon_order_link if amazon_order_link is not None else ""
+            found["amazon_order_link"] = (
+                amazon_order_link if amazon_order_link is not None else ""
+            )
             if not amazon_status:
                 logging.info(f"Unsupported Amazon email format: {email_body[:100]}")
         logging.info(f"Parsed email: {found}")
