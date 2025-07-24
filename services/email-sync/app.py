@@ -3,6 +3,7 @@ import logging
 from flask import Flask, jsonify, request, abort
 from dotenv import load_dotenv
 from pydantic import ValidationError
+from microsoft_webhook import microsoft_webhook_bp
 
 load_dotenv()
 
@@ -22,6 +23,7 @@ else:
 from schemas import GmailNotification
 
 app.publish_message = publish_message
+app.register_blueprint(microsoft_webhook_bp)
 
 @app.route("/healthz")
 def health_check():

@@ -1,0 +1,55 @@
+import os
+import pytest
+from unittest.mock import patch
+from app import app
+
+os.environ["MICROSOFT_WEBHOOK_SECRET"] = "test-microsoft-secret"
+
+def valid_payload():
+    return {"value": [{"changeType": "created", "resource": "me/messages/1"}]}
+
+def test_microsoft_webhook_success():
+    with patch("microsoft_webhook.publish_message") as mock_publish:
+        with app.test_client() as client:
+            resp = client.post(
+                "/microsoft/webhook",
+                json=valid_payload(),
+                headers={"X-Microsoft-Signature": "test-microsoft-secret"},
+            )
+            assert resp.status_code == 200
+            assert resp.json["status"] == "published"
+            mock_publish.assert_called_once()
+
+def test_microsoft_webhook_invalid_signature():
+    with patch("microsoft_webhook.publish_message") as mock_publish:
+        with app.test_client() as client:
+            resp = client.post(
+                "/microsoft/webhook",
+                json=valid_payload(),
+                headers={"X-Microsoft-Signature": "wrong-secret"},
+            )
+            assert resp.status_code == 401
+            mock_publish.assert_not_called()
+
+def test_microsoft_webhook_invalid_payload():
+    with patch("microsoft_webhook.publish_message") as mock_publish:
+        with app.test_client() as client:
+            resp = client.post(
+                "/microsoft/webhook",
+                data="not a json",
+                headers={"X-Microsoft-Signature": "test-microsoft-secret"},
+                content_type="application/json",
+            )
+            assert resp.status_code == 400
+            mock_publish.assert_not_called()
+
+def test_microsoft_webhook_pubsub_failure():
+    with patch("microsoft_webhook.publish_message", side_effect=Exception("pubsub error")) as mock_publish:
+        with app.test_client() as client:
+            resp = client.post(
+                "/microsoft/webhook",
+                json=valid_payload(),
+                headers={"X-Microsoft-Signature": "test-microsoft-secret"},
+            )
+            assert resp.status_code == 400
+            mock_publish.assert_called_once() 
