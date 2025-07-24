@@ -16,6 +16,8 @@ UPS_REGEX = re.compile(r"1Z[0-9A-Z]{16}")
 FEDEX_REGEX = re.compile(r"(\d{4}\s?\d{4}\s?\d{4}|\d{12})")
 USPS_REGEX = re.compile(r"\d{20,22}")
 SURVEY_URL_REGEX = re.compile(r"https://survey\.ourapp\.com/response/[a-zA-Z0-9]+")
+AMAZON_STATUS_REGEX = re.compile(r"(shipped|expected delivery|delayed|delivered)", re.IGNORECASE)
+AMAZON_ORDER_LINK_REGEX = re.compile(r"https://www\.amazon\.com/gp/your-account/order-details\?orderID=[A-Z0-9]+", re.IGNORECASE)
 
 
 def process_email(message):
@@ -28,8 +30,22 @@ def process_email(message):
             "usps": USPS_REGEX.findall(email_body),
             "survey_urls": SURVEY_URL_REGEX.findall(email_body),
         }
+        # Amazon status extraction
+        amazon_status = None
+        amazon_order_link = None
+        if "amazon" in data.get("from", "").lower() or "amazon" in email_body.lower():
+            status_match = AMAZON_STATUS_REGEX.search(email_body)
+            if status_match:
+                amazon_status = status_match.group(1).lower()
+            order_link_match = AMAZON_ORDER_LINK_REGEX.search(email_body)
+            if order_link_match:
+                amazon_order_link = order_link_match.group(0)
+            found["amazon_status"] = amazon_status
+            found["amazon_order_link"] = amazon_order_link
+            if not amazon_status:
+                logging.info(f"Unsupported Amazon email format: {email_body[:100]}")
         logging.info(f"Parsed email: {found}")
-        # TODO: Amazon status, event publishing, sanitization
+        # TODO: Event publishing, sanitization
         message.ack()
     except Exception as e:
         logging.error(f"Failed to process email: {e}")
