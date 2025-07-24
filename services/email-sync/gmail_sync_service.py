@@ -4,11 +4,14 @@ import logging
 import json
 from schemas import GmailNotification
 from gmail_api_client import GmailAPIClient
+from pubsub_client import publish_message
 
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
 PUBSUB_EMULATOR_HOST = os.getenv("PUBSUB_EMULATOR_HOST")
 GMAIL_TOPIC = "gmail-notifications"
 GMAIL_SUBSCRIPTION = os.getenv("GMAIL_SUBSCRIPTION", "gmail-notifications-sub")
+
+EMAIL_PROCESSING_TOPIC = "email-processing"
 
 logging.basicConfig(level=logging.INFO)
 
@@ -27,7 +30,19 @@ def process_gmail_notification(message):
         # Fetch new/changed emails since history_id
         emails = gmail_client.fetch_emails_since_history_id(notification.email_address, notification.history_id)
         logging.info(f"Fetched {len(emails)} emails for {notification.email_address}")
-        # TODO: Publish each email to email-processing topic
+        # Publish each email to email-processing topic with retry
+        for email in emails:
+            backoff = 1
+            for attempt in range(5):
+                try:
+                    publish_message(EMAIL_PROCESSING_TOPIC, email)
+                    break
+                except Exception as e:
+                    logging.error(f"Failed to publish email to pubsub: {e}, retrying in {backoff}s")
+                    time.sleep(backoff)
+                    backoff = min(backoff * 2, 60)
+            else:
+                logging.error(f"ALERT: Failed to publish email after retries. Email: {email}")
         message.ack()
     except Exception as e:
         logging.error(f"Failed to process message: {e}")
