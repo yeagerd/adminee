@@ -1,12 +1,13 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Draft, DraftMetadata, DraftType } from '@/types/draft';
+import { Calendar, FileText, Mail } from 'lucide-react';
 import { AIIndicator } from './ai-indicator';
 import { DraftActions } from './draft-actions';
 import { DraftEditor } from './draft-editor';
 import { DraftMetadata as DraftMetadataComponent } from './draft-metadata';
-import { DraftTypeSwitcher } from './draft-type-switcher';
 
 interface DraftPaneProps {
     className?: string;
@@ -20,6 +21,12 @@ interface DraftPaneProps {
 }
 
 export function DraftPane({ className, draft, onUpdate, onMetadataChange, onTypeChange, isLoading = false, error = null, onActionComplete }: DraftPaneProps) {
+    const draftTypes: { type: DraftType; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+        { type: 'email', label: 'Email', icon: Mail },
+        { type: 'calendar', label: 'Calendar', icon: Calendar },
+        { type: 'document', label: 'Document', icon: FileText },
+    ];
+
     const handleTypeChange = (type: DraftType) => {
         if (draft && draft.type !== type) {
             // If there's unsaved content, ask for confirmation
@@ -74,11 +81,18 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
                 'flex flex-col items-center justify-center p-4',
                 className
             )}>
-                <DraftTypeSwitcher
-                    currentType="email"
-                    onTypeChange={handleTypeChange}
-                    className="justify-center"
-                />
+                <div className="flex flex-wrap gap-2 justify-center">
+                    {draftTypes.map(({ type, label, icon: Icon }) => (
+                        <Button
+                            key={type}
+                            onClick={() => handleTypeChange(type)}
+                            className="flex items-center gap-2 px-4 py-2"
+                        >
+                            <Icon className="h-4 w-4" />
+                            {label}
+                        </Button>
+                    ))}
+                </div>
             </div>
         );
     }
@@ -91,10 +105,6 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b">
                 <div className="flex items-center gap-3">
-                    <DraftTypeSwitcher
-                        currentType={draft.type}
-                        onTypeChange={handleTypeChange}
-                    />
                     {draft.isAIGenerated && (
                         <AIIndicator isAIGenerated={true} size="sm" />
                     )}
