@@ -12,7 +12,7 @@ async def get_user_availability(
 ) -> dict:
     url = f"{OFFICE_SERVICE_URL}/calendar/availability"
     headers = {"X-API-Key": API_KEY, "X-User-Id": user_id}
-    params = {"start": start, "end": end, "duration": duration}
+    params = {"start": start, "end": end, "duration": str(duration)}
     async with httpx.AsyncClient() as client:
         resp = await client.get(url, headers=headers, params=params)
         resp.raise_for_status()

@@ -26,10 +26,10 @@ app.include_router(
 
 
 @app.get("/")
-def root():
+def root() -> dict:
     return {"message": "Welcome to the Briefly Meetings Service"}
 
 
 @app.get("/health")
-def health():
+def health() -> dict:
     return {"status": "ok"}

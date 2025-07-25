@@ -9,7 +9,7 @@ API_KEY = os.environ.get("API_FRONTEND_OFFICE_KEY", "test-office-key")
 
 async def send_invitation_email(
     to_email: str, subject: str, body: str, user_id: str, provider: Optional[str] = None
-):
+) -> dict:
     url = f"{OFFICE_SERVICE_URL}/email/send"
     headers = {"X-API-Key": API_KEY, "X-User-Id": user_id}
     data = {

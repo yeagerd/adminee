@@ -13,7 +13,7 @@ class EmailResponseRequest(BaseModel):
 
 
 @router.post("/")
-def process_email_response(req: EmailResponseRequest):
+def process_email_response(req: EmailResponseRequest) -> dict:
     # TODO: Parse email content, match to poll/participant, update response
     logging.info(f"Received email response from {req.sender}: {req.content}")
     # For now, just acknowledge receipt

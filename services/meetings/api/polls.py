@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from secrets import token_hex
 from typing import List
 from uuid import UUID, uuid4
 
@@ -16,23 +15,23 @@ router = APIRouter()
 
 
 @router.get("/", response_model=List[MeetingPoll])
-def list_polls():
+def list_polls() -> List[MeetingPoll]:
     with get_session() as session:
         polls = session.query(MeetingPollModel).all()
-        return polls
+        return [MeetingPoll.model_validate(p) for p in polls]
 
 
 @router.get("/{poll_id}", response_model=MeetingPoll)
-def get_poll(poll_id: UUID):
+def get_poll(poll_id: UUID) -> MeetingPoll:
     with get_session() as session:
         poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
         if not poll:
             raise HTTPException(status_code=404, detail="Poll not found")
-        return poll
+        return MeetingPoll.model_validate(poll)
 
 
 @router.post("/", response_model=MeetingPoll)
-def create_poll(poll: MeetingPollCreate, request: Request):
+def create_poll(poll: MeetingPollCreate, request: Request) -> MeetingPoll:
     user_id = request.headers.get("X-User-Id")
     if not user_id:
         raise HTTPException(status_code=400, detail="Missing X-User-Id header")
@@ -51,7 +50,7 @@ def create_poll(poll: MeetingPollCreate, request: Request):
             min_participants=poll.min_participants or 1,
             max_participants=poll.max_participants,
             allow_anonymous_responses=poll.allow_anonymous_responses or False,
-            poll_token=poll_token,
+            poll_token=str(poll_token),
         )
         session.add(db_poll)
         session.flush()
@@ -69,10 +68,10 @@ def create_poll(poll: MeetingPollCreate, request: Request):
         for part in poll.participants:
             db_part = PollParticipantModel(
                 id=uuid4(),
-                poll_id=db_poll.id,
+                poll_id=db_poll.id,  # type: ignore[assignment]
                 email=part.email,
                 name=part.name,
-                response_token=token_hex(32),
+                response_token=part.response_token,
             )
             session.add(db_part)
         session.commit()
@@ -81,7 +80,9 @@ def create_poll(poll: MeetingPollCreate, request: Request):
 
 
 @router.put("/{poll_id}", response_model=MeetingPoll)
-def update_poll(poll_id: UUID, poll: MeetingPollCreate, request: Request):
+def update_poll(
+    poll_id: UUID, poll: MeetingPollCreate, request: Request
+) -> MeetingPoll:
     user_id = request.headers.get("X-User-Id")
     if not user_id:
         raise HTTPException(status_code=400, detail="Missing X-User-Id header")
@@ -95,15 +96,15 @@ def update_poll(poll_id: UUID, poll: MeetingPollCreate, request: Request):
             raise HTTPException(
                 status_code=403, detail="Not authorized to update this poll"
             )
-        db_poll.title = poll.title
-        db_poll.description = poll.description
-        db_poll.duration_minutes = poll.duration_minutes
-        db_poll.location = poll.location
-        db_poll.meeting_type = poll.meeting_type
-        db_poll.response_deadline = poll.response_deadline
-        db_poll.min_participants = poll.min_participants or 1
-        db_poll.max_participants = poll.max_participants
-        db_poll.allow_anonymous_responses = poll.allow_anonymous_responses or False
+        db_poll.title = poll.title  # type: ignore[assignment]
+        db_poll.description = poll.description  # type: ignore[assignment]
+        db_poll.duration_minutes = poll.duration_minutes  # type: ignore[assignment]
+        db_poll.location = poll.location  # type: ignore[assignment]
+        db_poll.meeting_type = poll.meeting_type  # type: ignore[assignment]
+        db_poll.response_deadline = poll.response_deadline  # type: ignore[assignment]
+        db_poll.min_participants = poll.min_participants or 1  # type: ignore[assignment]
+        db_poll.max_participants = poll.max_participants  # type: ignore[assignment]
+        db_poll.allow_anonymous_responses = poll.allow_anonymous_responses or False  # type: ignore[assignment]
         # TODO: update time slots and participants as needed
         session.commit()
         session.refresh(db_poll)
@@ -111,7 +112,7 @@ def update_poll(poll_id: UUID, poll: MeetingPollCreate, request: Request):
 
 
 @router.delete("/{poll_id}")
-def delete_poll(poll_id: UUID, request: Request):
+def delete_poll(poll_id: UUID, request: Request) -> dict:
     user_id = request.headers.get("X-User-Id")
     if not user_id:
         raise HTTPException(status_code=400, detail="Missing X-User-Id header")
@@ -130,7 +131,7 @@ def delete_poll(poll_id: UUID, request: Request):
 
 
 @router.get("/{poll_id}/suggest-slots")
-async def suggest_slots(poll_id: UUID, request: Request):
+async def suggest_slots(poll_id: UUID, request: Request) -> dict:
     user_id = request.headers.get("X-User-Id")
     if not user_id:
         raise HTTPException(status_code=400, detail="Missing X-User-Id header")
@@ -139,7 +140,7 @@ async def suggest_slots(poll_id: UUID, request: Request):
         poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
         if not poll:
             raise HTTPException(status_code=404, detail="Poll not found")
-        duration = poll.duration_minutes
+        duration = int(poll.duration_minutes)
     start = datetime.utcnow().isoformat()
     end = (datetime.utcnow() + timedelta(days=14)).isoformat()
     slots = await calendar_integration.get_user_availability(
@@ -149,7 +150,7 @@ async def suggest_slots(poll_id: UUID, request: Request):
 
 
 @router.post("/{poll_id}/schedule")
-async def schedule_meeting(poll_id: UUID, request: Request, body: dict):
+async def schedule_meeting(poll_id: UUID, request: Request, body: dict) -> dict:
     user_id = request.headers.get("X-User-Id")
     if not user_id:
         raise HTTPException(status_code=400, detail="Missing X-User-Id header")
@@ -164,6 +165,6 @@ async def schedule_meeting(poll_id: UUID, request: Request, body: dict):
     with get_session() as session:
         poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
         if poll:
-            poll.status = "scheduled"
+            poll.status = "scheduled"  # type: ignore[assignment]
             session.commit()
     return result

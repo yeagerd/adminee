@@ -15,7 +15,7 @@ branch_labels = None
 depends_on = None
 
 
-def upgrade():
+def upgrade() -> None:
     import uuid
 
     from sqlalchemy.sql import column, table
@@ -51,7 +51,7 @@ def upgrade():
         )
 
 
-def downgrade():
+def downgrade() -> None:
     with op.batch_alter_table("poll_participants") as batch_op:
         batch_op.drop_constraint("uq_poll_participants_response_token", type_="unique")
         batch_op.drop_column("response_token")

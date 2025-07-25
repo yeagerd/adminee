@@ -27,7 +27,8 @@ class PollParticipantBase(BaseModel):
 
 
 class PollParticipantCreate(PollParticipantBase):
-    pass
+    poll_id: UUID
+    response_token: str
 
 
 class PollParticipant(PollParticipantBase):

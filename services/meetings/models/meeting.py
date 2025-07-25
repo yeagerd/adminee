@@ -52,8 +52,8 @@ class MeetingPoll(Base):
     description = Column(Text)
     duration_minutes = Column(Integer, nullable=False)
     location = Column(String(500))
-    meeting_type = Column(Enum(MeetingType), default=MeetingType.tbd)
-    status = Column(Enum(PollStatus), default=PollStatus.draft)
+    meeting_type: Column = Column(Enum(MeetingType), default=MeetingType.tbd)
+    status: Column = Column(Enum(PollStatus), default=PollStatus.draft)
     response_deadline = Column(DateTime(timezone=True))
     min_participants = Column(Integer, default=1)
     max_participants = Column(Integer)
@@ -108,7 +108,7 @@ class PollParticipant(Base):
     )
     email = Column(String(255), nullable=False)
     name = Column(String(255))
-    status = Column(Enum(ParticipantStatus), default=ParticipantStatus.pending)
+    status: Column = Column(Enum(ParticipantStatus), default=ParticipantStatus.pending)
     invited_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     responded_at = Column(DateTime(timezone=True))
     reminder_sent_count = Column(Integer, default=0)
@@ -140,7 +140,7 @@ class PollResponse(Base):
         ForeignKey("time_slots.id", ondelete="CASCADE"),
         nullable=False,
     )
-    response = Column(Enum(ResponseType), nullable=False)
+    response: Column = Column(Enum(ResponseType), nullable=False)
     comment = Column(Text)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(

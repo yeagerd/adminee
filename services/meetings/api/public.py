@@ -9,18 +9,18 @@ from services.meetings.models import PollResponse as PollResponseModel
 from services.meetings.models import (
     get_session,
 )
-from services.meetings.schemas import PollResponseCreate
+from services.meetings.schemas import MeetingPoll, PollResponseCreate
 
 router = APIRouter()
 
 
 @router.get("/{token}")
-def get_public_poll(token: str):
+def get_public_poll(token: str) -> MeetingPoll:
     with get_session() as session:
         poll = session.query(MeetingPollModel).filter_by(poll_token=token).first()
         if not poll:
             raise HTTPException(status_code=404, detail="Poll not found")
-        return poll
+        return MeetingPoll.model_validate(poll)
 
 
 class PollResponseTokenRequest(BaseModel):
@@ -28,7 +28,9 @@ class PollResponseTokenRequest(BaseModel):
 
 
 @router.put("/meetings/response/{response_token}", status_code=status.HTTP_200_OK)
-def respond_with_token(response_token: str, req: PollResponseTokenRequest = Body(...)):
+def respond_with_token(
+    response_token: str, req: PollResponseTokenRequest = Body(...)
+) -> dict:
     with get_session() as session:
         participant = (
             session.query(PollParticipantModel)
@@ -50,6 +52,6 @@ def respond_with_token(response_token: str, req: PollResponseTokenRequest = Body
                 comment=resp.comment,
             )
             session.add(db_resp)
-        participant.status = "responded"
+        participant.status = "responded"  # type: ignore[assignment]
         session.commit()
         return {"ok": True}

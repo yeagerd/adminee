@@ -12,7 +12,7 @@ router = APIRouter()
 
 
 @router.post("/")
-async def send_invitations(poll_id: UUID, request: Request):
+async def send_invitations(poll_id: UUID, request: Request) -> dict:
     with get_session() as session:
         poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
         if not poll:
@@ -30,8 +30,8 @@ async def send_invitations(poll_id: UUID, request: Request):
             subject = f"You're invited: {poll.title}"
             body = f"You have been invited to respond to a meeting poll: {poll.title}\n\n{poll.description or ''}\n\nRespond here: {response_url}"
             await email_integration.send_invitation_email(
-                participant.email, subject, body, user_id
+                participant.email, subject, body, user_id  # type: ignore[arg-type]
             )
-            participant.status = "pending"  # Mark as invited
+            participant.status = "pending"  # type: ignore[assignment]
         session.commit()
     return {"ok": True, "sent": [p.email for p in participants]}
