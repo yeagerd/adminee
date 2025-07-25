@@ -133,7 +133,7 @@ This task list outlines the work required to add "v1" versioning to all APIs in 
 ## Remaining Tasks
 
 ### High Priority:
-- [ ] Fix remaining 33 failing tests (mostly integration endpoint tests)
+- [ ] Fix remaining 31 failing tests (mostly integration endpoint tests)
 - [ ] Update API documentation to reflect v1 endpoints
 - [ ] Update any remaining hardcoded API paths in tests
 
@@ -159,10 +159,16 @@ This task list outlines the work required to add "v1" versioning to all APIs in 
 ### Test Fixes (In Progress)
 **Issue**: Tests failing due to API response schema mismatches after v1 migration
 **Files Fixed**:
-- `services/office/tests/test_integration.py` - Updated all API endpoints to use v1 prefixes
-- `services/user/tests/test_integration_endpoints.py` - Fixed OAuth callback response schemas
-**Progress**: Reduced failing tests from 53 to 33 (20 tests fixed)
+- `services/office/tests/test_integration.py` - Updated all API endpoints to use v1 prefixes and properly mocked health endpoint dependencies
+- `services/user/tests/test_integration_endpoints.py` - Fixed OAuth callback response schemas and removed unused variables
+**Progress**: Reduced failing tests from 53 to 31 (22 tests fixed)
 **Status**: 🔄 In Progress
+
+### Code Quality (Fixed)
+**Issue**: Ruff linting errors in test files
+**Files Fixed**:
+- `services/user/tests/test_integration_endpoints.py` - Removed unused imports and variables
+**Status**: ✅ All ruff issues resolved
 
 ## Migration Strategy ✅ COMPLETED
 

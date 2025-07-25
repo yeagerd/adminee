@@ -38,22 +38,36 @@ class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
 
     def test_health_basic(self):
         """Test basic health check endpoint."""
-        response = self.client.get("/ready")
-        assert response.status_code == status.HTTP_200_OK
+        # Mock the health check methods directly
+        with patch(
+            "services.office.api.health.check_database_health",
+            return_value=True,
+        ):
+            with patch(
+                "services.office.api.health.check_redis_connection",
+                return_value=True,
+            ):
+                with patch(
+                    "services.office.api.health.check_service_connection",
+                    return_value=True,
+                ):
+                    response = self.client.get("/v1/health")
+                    assert response.status_code == status.HTTP_200_OK
 
-        data = response.json()
-        assert data["status"] == "ok"
-        assert "service" in data
-        assert "version" in data
-        assert "timestamp" in data
+                    data = response.json()
+                    assert data["status"] == "healthy"
+                    assert "timestamp" in data
+                    assert "checks" in data
+                    assert data["checks"]["database"] is True
+                    assert data["checks"]["redis"] is True
 
     def test_health_integrations_success(self):
-        """Test health check with integrations."""
+        """Test integration health check with successful token retrieval."""
         user_id = "test-user@example.com"
 
         # Mock successful token retrieval
         mock_token_data = TokenData(
-            access_token="mock-token",
+            access_token="mock-google-token",
             refresh_token="mock-refresh",
             expires_at=None,
             scopes=[],
@@ -69,19 +83,20 @@ class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
             assert response.status_code == status.HTTP_200_OK
 
             data = response.json()
-            assert data["status"] == "ok"
-            assert "integrations" in data
+            assert data["user_id"] == user_id
             assert "google" in data["integrations"]
-            assert data["integrations"]["google"]["status"] == "healthy"
+            assert "microsoft" in data["integrations"]
+            assert data["integrations"]["google"]["healthy"] is True
+            assert data["integrations"]["microsoft"]["healthy"] is True
 
     def test_health_integrations_partial_failure(self):
-        """Test health check with partial integration failures."""
+        """Test integration health with one provider failing."""
         user_id = "test-user@example.com"
 
         def failing_token_side_effect(user_id, provider, scopes=None):
             if provider == "google":
                 return TokenData(
-                    access_token="mock-token",
+                    access_token="mock-google-token",
                     refresh_token="mock-refresh",
                     expires_at=None,
                     scopes=[],
@@ -89,7 +104,9 @@ class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
                     user_id=user_id,
                 )
             else:
-                raise Exception("Token not found")
+                from services.office.models import Provider
+
+                raise ProviderError("Microsoft integration failed", Provider.MICROSOFT)
 
         with patch(
             "services.office.core.token_manager.TokenManager.get_user_token",
@@ -99,10 +116,9 @@ class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
             assert response.status_code == status.HTTP_200_OK
 
             data = response.json()
-            assert data["status"] == "ok"
-            assert "integrations" in data
-            assert "google" in data["integrations"]
-            assert data["integrations"]["google"]["status"] == "healthy"
+            assert data["integrations"]["google"]["healthy"] is True
+            assert data["integrations"]["microsoft"]["healthy"] is False
+            assert "error" in data["integrations"]["microsoft"]
 
 
 class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):

@@ -18,7 +18,6 @@ from services.user.models.integration import (
 from services.user.schemas.integration import (
     IntegrationListResponse,
 )
-from services.user.services.integration_service import ServiceError
 from services.user.tests.test_base import BaseUserManagementIntegrationTest
 
 
@@ -214,7 +213,6 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
 
     def test_complete_oauth_flow_success(self):
         """Test successful OAuth flow completion."""
-        user_id = "user_123"
         request_data = {
             "code": "authorization_code_123",
             "state": "state_123",
@@ -249,7 +247,6 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
 
     def test_complete_oauth_flow_microsoft_success(self):
         """Test successful OAuth flow completion for Microsoft."""
-        user_id = "user_123"
         request_data = {
             "code": "authorization_code_456",
             "state": "state_456",
@@ -285,7 +282,6 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
     @patch("services.user.services.audit_service.audit_logger.log_audit_event")
     def test_complete_oauth_flow_with_error(self, mock_audit):
         """Test OAuth flow completion with error."""
-        user_id = "user_123"
         request_data = {
             "code": "invalid_code",
             "state": "state_123",
@@ -308,7 +304,6 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
 
     def test_complete_oauth_flow_service_error(self):
         """Test OAuth flow completion with service error."""
-        user_id = "user_123"
         request_data = {
             "code": "authorization_code_123",
             "state": "state_123",
