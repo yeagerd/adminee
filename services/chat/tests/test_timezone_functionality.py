@@ -24,7 +24,7 @@ def mock_settings_for_timezone_tests():
         mock_settings_obj.db_url_chat = "sqlite:///test.db"
         mock_settings_obj.api_chat_user_key = "test-api-key"
         mock_settings_obj.api_chat_office_key = "test-api-key"
-        mock_settings_obj.api_frontend_chat_key = "test-api-key"
+        mock_settings_obj.api_frontend_chat_key = "test-FRONTEND_CHAT_KEY"
         mock_settings_obj.user_management_service_url = "http://test-user-server"
         mock_settings_obj.office_service_url = "http://test-office-server"
         mock_settings_obj.llm_provider = "fake"

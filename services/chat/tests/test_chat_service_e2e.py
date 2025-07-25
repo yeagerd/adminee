@@ -16,7 +16,7 @@ from fastapi.testclient import TestClient
 from httpx import Response
 
 # Test API key for authentication
-TEST_API_KEY = "test-frontend-chat-key"
+TEST_API_KEY = "test-FRONTEND_CHAT_KEY"
 TEST_HEADERS = {"X-API-Key": TEST_API_KEY}
 
 
@@ -82,7 +82,7 @@ def set_db_url_chat():
 
 
 # Test API key for authentication
-TEST_API_KEY = "test-frontend-chat-key"
+TEST_API_KEY = "test-FRONTEND_CHAT_KEY"
 TEST_HEADERS = {"X-API-Key": TEST_API_KEY}
 
 
