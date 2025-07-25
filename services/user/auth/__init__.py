@@ -15,10 +15,6 @@ from .nextauth import (
     verify_user_ownership,
 )
 from .service_auth import (
-    client_has_permission,
-    get_client_permissions,
-    get_current_service,
-    require_service_auth,
     verify_service_authentication,
 )
 

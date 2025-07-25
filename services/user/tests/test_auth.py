@@ -22,12 +22,8 @@ from services.user.auth.nextauth import (
     verify_user_ownership,
 )
 from services.user.auth.service_auth import (
-    client_has_permission,
-    get_client_permissions,
-    get_current_service,
-    get_service_auth,
-    require_service_auth,
     verify_service_authentication,
+    service_permission_required,
 )
 
 
@@ -398,9 +394,9 @@ class TestAuthenticationIntegration:
     def setup_service_auth(self):
         """Set up service auth with test API key."""
         with patch("services.user.auth.service_auth.get_settings") as mock_settings:
-            mock_settings.return_value.api_frontend_user_key = "test-frontend-key"
-            mock_settings.return_value.api_chat_user_key = "test-chat-key"
-            mock_settings.return_value.api_office_user_key = "test-office-key"
+            mock_settings.return_value.api_frontend_key = "test-frontend-key"
+            mock_settings.return_value.api_chat_key = "test-chat-key"
+            mock_settings.return_value.api_office_key = "test-office-key"
 
             # Reset the global service auth instance
             import services.user.auth.service_auth as auth_module
