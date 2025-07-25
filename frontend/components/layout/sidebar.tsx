@@ -17,7 +17,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 const navigationItems: NavigationItem[] = [
     { id: "calendar", title: "Calendar", icon: Calendar, path: "/dashboard?tool=calendar", enabled: true },
-    { id: "meetings", title: "Meetings", icon: Calendar, path: "/dashboard/meetings", enabled: true },
+    { id: "meetings", title: "Meetings", icon: Calendar, path: "/dashboard?tool=meetings", enabled: true },
     { id: "email", title: "Email", icon: Mail, path: "/dashboard?tool=email", enabled: true },
     { id: "documents", title: "Documents", icon: FileText, path: "/dashboard?tool=documents", enabled: true },
     { id: "tasks", title: "Tasks", icon: ListChecks, path: "/dashboard?tool=tasks", enabled: true },
