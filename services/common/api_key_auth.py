@@ -167,7 +167,7 @@ def make_service_permission_required(
         verify_service_authentication = make_verify_service_authentication(
             api_key_configs, get_settings
         )
-        service_name = await verify_service_authentication(request)
+        service_name = verify_service_authentication(request)
         api_key_mapping = build_api_key_mapping(api_key_configs, get_settings)
         api_key = getattr(request.state, "api_key", None)
         if not api_key:

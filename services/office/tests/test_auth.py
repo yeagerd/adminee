@@ -22,12 +22,14 @@ from services.common.api_key_auth import (
 from services.common.http_errors import AuthError
 from services.office.core.auth import (
     API_KEY_CONFIGS,
-    get_api_key_from_request,
-    get_settings,
+    ServiceAPIKeyAuth,
+    build_api_key_mapping,
     optional_service_auth,
     service_permission_required,
     verify_service_authentication,
 )
+from services.common.api_key_auth import get_api_key_from_request, get_permissions_from_api_key, has_permission, verify_api_key
+from services.office.core.settings import get_settings
 
 
 # Test settings fixture
