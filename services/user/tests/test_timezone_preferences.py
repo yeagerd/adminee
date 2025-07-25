@@ -93,7 +93,7 @@ class TestTimezonePreferencesAPI(BaseUserManagementIntegrationTest):
 
     def test_preferences_timezone_in_schema(self):
         """Test that timezone fields are included in the preferences schema (top-level, not UI)."""
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         from services.user.schemas.preferences import (
             AIPreferencesSchema,
@@ -113,8 +113,8 @@ class TestTimezonePreferencesAPI(BaseUserManagementIntegrationTest):
             ai=AIPreferencesSchema(),
             integrations=IntegrationPreferencesSchema(),
             privacy=PrivacyPreferencesSchema(),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
         assert hasattr(prefs, "timezone_mode")
         assert hasattr(prefs, "manual_timezone")
@@ -130,8 +130,8 @@ class TestTimezonePreferencesAPI(BaseUserManagementIntegrationTest):
             ai=AIPreferencesSchema(),
             integrations=IntegrationPreferencesSchema(),
             privacy=PrivacyPreferencesSchema(),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
             timezone_mode="manual",
             manual_timezone="America/New_York",
         )
