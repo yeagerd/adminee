@@ -21,7 +21,7 @@ export default function PollResponsePage() {
 
     useEffect(() => {
         if (!response_token) return;
-        fetch(`/api/public/meetings/response/${response_token}`)
+        fetch(`/api/v1/public/polls/response/${response_token}`)
             .then(res => res.json())
             .then(data => {
                 setPoll(data.poll);
@@ -37,7 +37,7 @@ export default function PollResponsePage() {
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
-        const res = await fetch(`/api/public/meetings/response/${response_token}`, {
+        const res = await fetch(`/api/v1/public/polls/response/${response_token}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ responses }),

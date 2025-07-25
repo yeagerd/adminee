@@ -12,6 +12,7 @@ interface DraftEditorProps {
     onAutoSave?: (content: string) => void;
     className?: string;
     disabled?: boolean;
+    updatedAt?: string;
 }
 
 export function DraftEditor({
@@ -20,7 +21,8 @@ export function DraftEditor({
     onUpdate,
     onAutoSave,
     className,
-    disabled = false
+    disabled = false,
+    updatedAt
 }: DraftEditorProps) {
     const renderEditor = () => {
         switch (type) {
@@ -32,6 +34,7 @@ export function DraftEditor({
                         onAutoSave={onAutoSave}
                         className={className}
                         disabled={disabled}
+                        updatedAt={updatedAt}
                     />
                 );
             case 'email':
@@ -42,6 +45,7 @@ export function DraftEditor({
                         onAutoSave={onAutoSave}
                         className={className}
                         disabled={disabled}
+                        updatedAt={updatedAt}
                     />
                 );
             case 'calendar':
@@ -52,6 +56,7 @@ export function DraftEditor({
                         onAutoSave={onAutoSave}
                         className={className}
                         disabled={disabled}
+                        updatedAt={updatedAt}
                     />
                 );
             default:
@@ -62,6 +67,7 @@ export function DraftEditor({
                         onAutoSave={onAutoSave}
                         className={className}
                         disabled={disabled}
+                        updatedAt={updatedAt}
                     />
                 );
         }

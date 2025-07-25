@@ -178,12 +178,12 @@ def create_app() -> FastAPI:
     # Register exception handlers
     register_briefly_exception_handlers(app)
 
-    # Register API routers
-    app.include_router(users_router)
-    app.include_router(preferences_router)
-    app.include_router(integrations_router)
-    app.include_router(provider_router)
-    app.include_router(internal_router)
+    # Register API routers with v1 prefix
+    app.include_router(users_router, prefix="/v1")
+    app.include_router(preferences_router, prefix="/v1")
+    app.include_router(integrations_router, prefix="/v1")
+    app.include_router(provider_router, prefix="/v1")
+    app.include_router(internal_router, prefix="/v1")
 
     return app
 

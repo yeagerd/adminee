@@ -37,13 +37,13 @@ class TestApplicationStartup(BaseUserManagementIntegrationTest):
 
     def test_routers_registered(self):
         # First test: With mocked authentication (should succeed)
-        response = self.client.get("/users/search")
+        response = self.client.get("/v1/users/search")
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert "users" in data or "total" in data  # Check for valid response structure
 
-        # Test: /users/me with mocked authentication (should succeed)
-        response = self.client.get("/users/me")
+        # Test: /v1/users/me with mocked authentication (should succeed)
+        response = self.client.get("/v1/users/me")
         # This might return 404 if the mocked user doesn't exist in the test DB, which is fine
         assert response.status_code in [
             status.HTTP_200_OK,
@@ -57,8 +57,8 @@ class TestApplicationStartup(BaseUserManagementIntegrationTest):
         if get_current_user in self.app.dependency_overrides:
             del self.app.dependency_overrides[get_current_user]
 
-        # Now /users/search should return 401 when unauthenticated
-        response = self.client.get("/users/search")
+        # Now /v1/users/search should return 401 when unauthenticated
+        response = self.client.get("/v1/users/search")
         assert response.status_code in [
             status.HTTP_401_UNAUTHORIZED,
             status.HTTP_403_FORBIDDEN,

@@ -61,7 +61,7 @@ class ServiceClient:
 
             url = get_settings().user_management_service_url or ""  # type: ignore[assignment]
             response = await self.http_client.get(
-                f"{url}/users/{user_id}",
+                f"{url}/v1/users/{user_id}",
                 headers=headers,
             )
 
@@ -87,7 +87,7 @@ class ServiceClient:
 
             url = get_settings().user_management_service_url or ""  # type: ignore[assignment]
             response = await self.http_client.get(
-                f"{url}/internal/users/{user_id}/preferences",
+                f"{url}/v1/internal/users/{user_id}/preferences",
                 headers=headers,
             )
 
@@ -118,7 +118,7 @@ class ServiceClient:
             headers = self._get_headers_for_service("office")
 
             response = await self.http_client.get(
-                f"{get_settings().office_service_url}/calendar/events?user_id={user_id}&days_ahead={days_ahead}",
+                f"{get_settings().office_service_url}/v1/calendar/events?user_id={user_id}&days_ahead={days_ahead}",
                 headers=headers,
             )
 
@@ -142,7 +142,7 @@ class ServiceClient:
             headers = self._get_headers_for_service("office")
 
             response = await self.http_client.get(
-                f"{get_settings().office_service_url}/files?user_id={user_id}&limit={limit}",
+                f"{get_settings().office_service_url}/v1/files?user_id={user_id}&limit={limit}",
                 headers=headers,
             )
 
