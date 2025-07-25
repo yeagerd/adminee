@@ -239,7 +239,6 @@ class TestTimezoneIntegration:
 
         def mock_get(*args, **kwargs):
             url = args[0]
-            print(f"Mocked GET request to URL: {url}")  # Debug print
             mock_response = MagicMock()
             mock_response.raise_for_status.return_value = None
 
@@ -281,7 +280,6 @@ class TestTimezoneIntegration:
                 }
             else:
                 # Default: return empty integrations
-                print(f"Default mock for URL: {url}")
                 mock_response.status_code = 200
                 mock_response.json.return_value = {
                     "integrations": [],

@@ -66,18 +66,8 @@ class TestChatServiceAuth:
             db_url_chat="sqlite+aiosqlite:///file::memory:?cache=shared",
         )
         chat_settings._settings = test_settings
-        import logging
-
-        logger = logging.getLogger("test.diagnostics")
-        settings = get_settings()
-        logger.warning(
-            f"get_settings().api_frontend_chat_key: {getattr(settings, 'api_frontend_chat_key', None)}"
-        )
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        logger.warning(f"api_key_mapping: {api_key_mapping}")
-        logger.warning("Test key value: 'test-FRONTEND_CHAT_KEY'")
         service_name = verify_api_key("test-FRONTEND_CHAT_KEY", api_key_mapping)
-        logger.warning(f"verify_api_key returned: {service_name}")
         assert service_name == "chat-service-access"
         # Cleanup
         chat_settings._settings = None
