@@ -69,7 +69,7 @@ class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
                     "services.office.api.health.check_service_connection",
                     return_value=True,
                 ):
-                    response = self.client.get("/v1/health")
+                    response = self.client.get("/v1/health", headers=self.auth_headers)
                     assert response.status_code == status.HTTP_200_OK
 
                     data = response.json()
@@ -97,7 +97,7 @@ class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
             "services.office.core.token_manager.TokenManager.get_user_token",
             return_value=mock_token_data,
         ):
-            response = self.client.get(f"/v1/health/integrations/{user_id}")
+            response = self.client.get(f"/v1/health/integrations/{user_id}", headers=self.auth_headers)
             assert response.status_code == status.HTTP_200_OK
 
             data = response.json()
@@ -130,7 +130,7 @@ class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
             "services.office.core.token_manager.TokenManager.get_user_token",
             side_effect=failing_token_side_effect,
         ):
-            response = self.client.get(f"/v1/health/integrations/{user_id}")
+            response = self.client.get(f"/v1/health/integrations/{user_id}", headers=self.auth_headers)
             assert response.status_code == status.HTTP_200_OK
 
             data = response.json()
@@ -275,7 +275,9 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
 
     def test_get_email_messages_missing_user_id(self):
         """Test email messages endpoint without user_id parameter."""
-        response = self.client.get("/v1/email/messages")
+        # Include API key but not user ID
+        headers = {"X-API-Key": "test-frontend-office-key"}
+        response = self.client.get("/v1/email/messages", headers=headers)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     def test_get_email_message_by_id_success(self):
@@ -669,13 +671,13 @@ class TestErrorScenarios(BaseOfficeServiceIntegrationTest):
     def test_authentication_failure(self):
         """Test handling of authentication failures."""
         # Test without API key
-        response = self.client.get("/v1/calendar/events", headers=self.auth_headers)
+        response = self.client.get("/v1/calendar/events")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
         # Test with invalid API key
         response = self.client.get(
             "/v1/calendar/events",
-            headers={**self.auth_headers, "X-API-Key": "invalid-key"},
+            headers={"X-API-Key": "invalid-key"},
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 

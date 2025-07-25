@@ -186,7 +186,9 @@ class TestEmailMessagesEndpoint:
     @pytest.mark.asyncio
     async def test_get_email_messages_missing_user_id(self, client):
         """Test email messages without X-User-Id header."""
-        response = client.get("/v1/email/messages")
+        # Include API key but not user ID
+        headers = {"X-API-Key": "test-frontend-office-key"}
+        response = client.get("/v1/email/messages", headers=headers)
 
         assert response.status_code == 422  # Validation error
 
