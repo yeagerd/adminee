@@ -98,7 +98,7 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
 
     return (
         <div className={cn(
-            'h-full flex flex-col bg-background',
+            'h-full flex flex-col bg-background min-h-0',
             className
         )}>
             {/* Metadata */}

@@ -34,7 +34,7 @@ export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = fa
                                             </div>
                                         </ResizablePanel>
                                         <ResizableHandle withHandle />
-                                        <ResizablePanel minSize={20} defaultSize={30} collapsible className="h-full border-t bg-card">
+                                        <ResizablePanel minSize={20} defaultSize={30} collapsible className="h-full min-h-0 border-t bg-card">
                                             <div className="h-full overflow-auto">
                                                 {draftPane}
                                             </div>
@@ -72,7 +72,7 @@ export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = fa
                                         </div>
                                     </ResizablePanel>
                                     <ResizableHandle withHandle />
-                                    <ResizablePanel minSize={20} defaultSize={30} collapsible className="h-full border-t bg-card">
+                                    <ResizablePanel minSize={20} defaultSize={30} collapsible className="h-full min-h-0 border-t bg-card">
                                         <div className="h-full overflow-auto">
                                             {draftPane}
                                         </div>
