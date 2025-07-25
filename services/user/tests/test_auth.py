@@ -13,6 +13,7 @@ import pytest
 from fastapi import HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials
 
+import services.user.settings
 from services.common.http_errors import AuthError
 from services.user.auth.nextauth import (
     extract_user_id_from_token,
@@ -27,7 +28,6 @@ from services.user.auth.service_auth import (
     service_permission_required,
     verify_service_authentication,
 )
-from services.user.settings import Settings
 
 
 class TestNextAuthAuthentication:
@@ -235,21 +235,16 @@ class TestServiceAuthentication:
 
     @pytest.fixture(autouse=True)
     def setup_service_auth(self):
-        """Set up service auth with test API key."""
-        with patch("services.user.settings.get_settings") as mock_settings:
-            test_settings = Settings(db_url_user_management="sqlite:///:memory:")
-            test_settings.api_frontend_user_key = "test-frontend-key"
-            test_settings.api_chat_user_key = "test-chat-key"
-            test_settings.api_office_user_key = "test-office-key"
-            mock_settings.return_value = test_settings
-            print(
-                "TEST SETTINGS api_frontend_user_key:",
-                test_settings.api_frontend_user_key,
-            )
-            from services.user.auth import service_auth
-
-            print("API_KEY_CONFIGS:", service_auth.API_KEY_CONFIGS)
-            yield
+        """Set up service auth with test API key by patching the settings singleton."""
+        test_settings = services.user.settings.Settings(
+            db_url_user_management="sqlite:///:memory:"
+        )
+        test_settings.api_frontend_user_key = "test-api-key"
+        test_settings.api_chat_user_key = "test-CHAT_USER_KEY"
+        test_settings.api_office_user_key = "test-OFFICE_USER_KEY"
+        services.user.settings._settings = test_settings
+        yield
+        services.user.settings._settings = None
 
     def test_user_management_api_key_auth_verify_valid_key(self):
         """Test valid API key verification."""
@@ -383,32 +378,32 @@ class TestServiceAuthentication:
     @pytest.mark.asyncio
     async def test_require_service_auth_restriction_failure(self):
         """Test require_service_auth decorator with client restriction failure."""
-        from services.user.settings import Settings
+        # Patch the singleton for this test only
+        test_settings = services.user.settings.Settings(
+            db_url_user_management="sqlite:///:memory:"
+        )
+        test_settings.api_frontend_user_key = "test-api-key"
+        test_settings.api_chat_user_key = "test-CHAT_USER_KEY"
+        test_settings.api_office_user_key = "test-OFFICE_USER_KEY"
+        services.user.settings._settings = test_settings
+        from services.user.auth import service_auth
 
-        with patch("services.user.settings.get_settings") as mock_settings:
-            test_settings = Settings(db_url_user_management="sqlite:///:memory:")
-            test_settings.api_frontend_user_key = "test-api-key"
-            test_settings.api_chat_user_key = "test-CHAT_USER_KEY"
-            test_settings.api_office_user_key = "test-OFFICE_USER_KEY"
-            mock_settings.return_value = test_settings
-            # Patch API_KEY_CONFIGS for this test only
-            from services.user.auth import service_auth
-
-            service_auth.API_KEY_CONFIGS["api_frontend_user_key"] = (
-                service_auth.APIKeyConfig(
-                    client="frontend",
-                    service="user-management-access",
-                    permissions=["read_users"],
-                    settings_key="api_frontend_user_key",
-                )
+        service_auth.API_KEY_CONFIGS["api_frontend_user_key"] = (
+            service_auth.APIKeyConfig(
+                client="frontend",
+                service="user-management-access",
+                permissions=["read_users"],
+                settings_key="api_frontend_user_key",
             )
-            request = MagicMock(spec=Request)
-            request.headers = {"Authorization": "Bearer test-api-key"}
-            request.state = Mock()
-            auth_dep = service_permission_required(["write_tokens"])
-            with pytest.raises(AuthError) as exc_info:
-                await auth_dep(request)
-            assert exc_info.value.status_code == 403
+        )
+        request = MagicMock(spec=Request)
+        request.headers = {"Authorization": "Bearer test-api-key"}
+        request.state = Mock()
+        auth_dep = service_permission_required(["write_tokens"])
+        with pytest.raises(AuthError) as exc_info:
+            await auth_dep(request)
+        assert exc_info.value.status_code == 403
+        services.user.settings._settings = None
 
     def test_require_service_auth_decorator_factory(self):
         """Test require_service_auth decorator factory."""
@@ -423,7 +418,9 @@ class TestAuthenticationIntegration:
     def setup_service_auth(self):
         """Set up service auth with test API key."""
         with patch("services.user.settings.get_settings") as mock_settings:
-            test_settings = Settings(db_url_user_management="sqlite:///:memory:")
+            test_settings = services.user.settings.Settings(
+                db_url_user_management="sqlite:///:memory:"
+            )
             test_settings.api_frontend_user_key = "test-frontend-key"
             test_settings.api_chat_user_key = "test-chat-key"
             test_settings.api_office_user_key = "test-office-key"
@@ -453,20 +450,20 @@ class TestAuthenticationIntegration:
             {"X-API-Key": "test-api-key"},
             {"X-Service-Key": "test-api-key"},
         ]
-        from services.user.settings import Settings
-
-        with patch("services.user.settings.get_settings") as mock_settings:
-            test_settings = Settings(db_url_user_management="sqlite:///:memory:")
-            test_settings.api_frontend_user_key = "test-frontend-key"
-            test_settings.api_chat_user_key = "test-chat-key"
-            test_settings.api_office_user_key = "test-office-key"
-            mock_settings.return_value = test_settings
-            for headers in test_cases:
-                request = MagicMock(spec=Request)
-                request.headers = headers
-                request.state = Mock()
-                service_name = verify_service_authentication(request)
-                assert service_name == "user-management-access"
+        test_settings = services.user.settings.Settings(
+            db_url_user_management="sqlite:///:memory:"
+        )
+        test_settings.api_frontend_user_key = "test-api-key"
+        test_settings.api_chat_user_key = "test-CHAT_USER_KEY"
+        test_settings.api_office_user_key = "test-OFFICE_USER_KEY"
+        services.user.settings._settings = test_settings
+        for headers in test_cases:
+            request = MagicMock(spec=Request)
+            request.headers = headers
+            request.state = Mock()
+            service_name = verify_service_authentication(request)
+            assert service_name == "user-management-access"
+        services.user.settings._settings = None
 
 
 class TestNextAuthSecurity:
