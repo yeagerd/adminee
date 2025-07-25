@@ -13,12 +13,16 @@ from services.shipments.schemas import (
     PackageOut,
     PackageUpdate,
 )
+from services.shipments.service_auth import service_permission_required
 
 router = APIRouter()
 
 
 @router.get("/", response_model=PackageListResponse)
-async def list_packages(session: AsyncSession = Depends(get_async_session_dep)) -> dict:
+async def list_packages(
+    session: AsyncSession = Depends(get_async_session_dep),
+    service_name: str = Depends(service_permission_required(["read_shipments"])),
+) -> dict:
     logging.info("Fetching all packages from DB...")
     result = await session.execute(select(Package))
     packages = result.scalars().all()
@@ -51,7 +55,9 @@ async def list_packages(session: AsyncSession = Depends(get_async_session_dep)) 
 
 @router.post("/", response_model=PackageOut)
 async def add_package(
-    pkg: PackageCreate, session: AsyncSession = Depends(get_async_session_dep)
+    pkg: PackageCreate,
+    session: AsyncSession = Depends(get_async_session_dep),
+    service_name: str = Depends(service_permission_required(["write_shipments"])),
 ) -> PackageOut:
     db_pkg = Package(**pkg.dict())
     session.add(db_pkg)
@@ -77,7 +83,9 @@ async def add_package(
 
 @router.get("/{id}", response_model=PackageOut)
 async def get_package(
-    id: int, session: AsyncSession = Depends(get_async_session_dep)
+    id: int,
+    session: AsyncSession = Depends(get_async_session_dep),
+    service_name: str = Depends(service_permission_required(["read_shipments"])),
 ) -> PackageOut:
     # TODO: Implement get package details
     # For now, return a dummy response
@@ -101,7 +109,10 @@ async def get_package(
 
 @router.put("/{id}", response_model=PackageOut)
 async def update_package(
-    id: int, pkg: PackageUpdate, session: AsyncSession = Depends(get_async_session_dep)
+    id: int,
+    pkg: PackageUpdate,
+    session: AsyncSession = Depends(get_async_session_dep),
+    service_name: str = Depends(service_permission_required(["write_shipments"])),
 ) -> PackageOut:
     # TODO: Implement update package
     return PackageOut(
@@ -124,7 +135,9 @@ async def update_package(
 
 @router.delete("/{id}")
 async def delete_package(
-    id: int, session: AsyncSession = Depends(get_async_session_dep)
+    id: int,
+    session: AsyncSession = Depends(get_async_session_dep),
+    service_name: str = Depends(service_permission_required(["write_shipments"])),
 ) -> dict:
     # TODO: Implement delete package
     return {"success": True}
@@ -132,7 +145,9 @@ async def delete_package(
 
 @router.post("/{id}/refresh")
 async def refresh_package(
-    id: int, session: AsyncSession = Depends(get_async_session_dep)
+    id: int,
+    session: AsyncSession = Depends(get_async_session_dep),
+    service_name: str = Depends(service_permission_required(["write_shipments"])),
 ) -> dict:
     # TODO: Implement force refresh tracking
     return {"success": True}
@@ -140,7 +155,9 @@ async def refresh_package(
 
 @router.post("/{id}/labels")
 async def add_label_to_package(
-    id: int, session: AsyncSession = Depends(get_async_session_dep)
+    id: int,
+    session: AsyncSession = Depends(get_async_session_dep),
+    service_name: str = Depends(service_permission_required(["write_shipments"])),
 ) -> dict:
     # TODO: Implement add label to package
     return {"success": True}
@@ -148,7 +165,10 @@ async def add_label_to_package(
 
 @router.delete("/{id}/labels/{label_id}")
 async def remove_label_from_package(
-    id: int, label_id: int, session: AsyncSession = Depends(get_async_session_dep)
+    id: int,
+    label_id: int,
+    session: AsyncSession = Depends(get_async_session_dep),
+    service_name: str = Depends(service_permission_required(["write_shipments"])),
 ) -> dict:
     # TODO: Implement remove label from package
     return {"success": True}
