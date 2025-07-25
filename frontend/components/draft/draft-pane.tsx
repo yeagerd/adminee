@@ -71,7 +71,7 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
     if (!draft) {
         return (
             <div className={cn(
-                'h-full flex flex-col items-center justify-center p-6',
+                'flex flex-col items-center justify-center p-4',
                 className
             )}>
                 <DraftTypeSwitcher
