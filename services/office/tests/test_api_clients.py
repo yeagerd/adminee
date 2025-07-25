@@ -20,7 +20,7 @@ from services.office.models import Provider
 
 
 @pytest.fixture(autouse=True)
-def patch_settings():
+def patch_settings(monkeypatch):
     """Patch the _settings global variable to return test settings."""
     import services.office.core.settings as office_settings
 
@@ -31,10 +31,7 @@ def patch_settings():
         api_office_user_key="test-office-user-key",
     )
 
-    # Directly set the singleton instead of using monkeypatch
-    office_settings._settings = test_settings
-    yield
-    office_settings._settings = None
+    monkeypatch.setattr("services.office.core.settings._settings", test_settings)
 
 
 class MockAPIClient(BaseAPIClient):

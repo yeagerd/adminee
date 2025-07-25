@@ -18,7 +18,7 @@ from services.office.core.auth import service_permission_required
 from services.office.core.cache_manager import cache_manager
 from services.office.core.settings import get_settings
 from services.office.core.token_manager import TokenManager
-from services.office.models import ApiCall, async_session
+from services.office.models import ApiCall, get_async_session_factory
 
 logger = logging.getLogger(__name__)
 
@@ -172,7 +172,8 @@ async def check_database_health() -> bool:
     """Check if the database connection is healthy."""
     try:
         # Test database connection by executing a simple query
-        async with async_session() as session:
+        async_session_factory = get_async_session_factory()
+        async with async_session_factory() as session:
             await session.execute(select(ApiCall).limit(1))
             logger.debug("Database health check passed")
             return True
