@@ -8,6 +8,8 @@ and configuration management.
 import os
 from unittest.mock import patch
 
+import pytest
+
 from services.common.settings import SettingsConfigDict
 from services.user.settings import Settings
 
@@ -32,7 +34,10 @@ class TestSettings:
         with patch.dict(
             os.environ,
             {
-                "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly"
+                "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
+                "API_FRONTEND_USER_KEY": "test-frontend-key",
+                "API_CHAT_USER_KEY": "test-chat-key",
+                "API_OFFICE_USER_KEY": "test-office-key",
             },
             clear=True,
         ):
@@ -50,6 +55,9 @@ class TestSettings:
                 == "postgresql://postgres:postgres@localhost:5432/briefly"
             )
             assert settings.redis_url == "redis://localhost:6379"
+            assert settings.api_frontend_user_key == "test-frontend-key"
+            assert settings.api_chat_user_key == "test-chat-key"
+            assert settings.api_office_user_key == "test-office-key"
 
     def test_environment_variable_override(self):
         """Test that environment variables override default settings."""
@@ -62,6 +70,9 @@ class TestSettings:
                 "DEBUG": "true",
                 "LOG_LEVEL": "DEBUG",
                 "DB_URL_USER_MANAGEMENT": "postgresql://test:test@testhost:5432/testdb",
+                "API_FRONTEND_USER_KEY": "test-frontend-key",
+                "API_CHAT_USER_KEY": "test-chat-key",
+                "API_OFFICE_USER_KEY": "test-office-key",
             },
             clear=True,
         ):
@@ -76,6 +87,9 @@ class TestSettings:
                 settings.db_url_user_management
                 == "postgresql://test:test@testhost:5432/testdb"
             )
+            assert settings.api_frontend_user_key == "test-frontend-key"
+            assert settings.api_chat_user_key == "test-chat-key"
+            assert settings.api_office_user_key == "test-office-key"
 
     def test_security_settings(self):
         """Test security-related settings."""
@@ -83,14 +97,18 @@ class TestSettings:
             os.environ,
             {
                 "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
-                "API_FRONTEND_USER_KEY": "test-api-key",
+                "API_FRONTEND_USER_KEY": "test-frontend-key",
+                "API_CHAT_USER_KEY": "test-chat-key",
+                "API_OFFICE_USER_KEY": "test-office-key",
                 "TOKEN_ENCRYPTION_SALT": "test-salt",
             },
             clear=True,
         ):
             settings = _TestableSettings()
 
-            assert settings.api_frontend_user_key == "test-api-key"
+            assert settings.api_frontend_user_key == "test-frontend-key"
+            assert settings.api_chat_user_key == "test-chat-key"
+            assert settings.api_office_user_key == "test-office-key"
             assert settings.token_encryption_salt == "test-salt"
 
     def test_oauth_provider_settings(self):
@@ -99,6 +117,9 @@ class TestSettings:
             os.environ,
             {
                 "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
+                "API_FRONTEND_USER_KEY": "test-frontend-key",
+                "API_CHAT_USER_KEY": "test-chat-key",
+                "API_OFFICE_USER_KEY": "test-office-key",
                 "GOOGLE_CLIENT_ID": "test-google-id",
                 "GOOGLE_CLIENT_SECRET": "test-google-secret",
                 "AZURE_AD_CLIENT_ID": "test-microsoft-id",
@@ -119,6 +140,9 @@ class TestSettings:
             os.environ,
             {
                 "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
+                "API_FRONTEND_USER_KEY": "test-frontend-key",
+                "API_CHAT_USER_KEY": "test-chat-key",
+                "API_OFFICE_USER_KEY": "test-office-key",
                 "REDIS_URL": "redis://testhost:6380",
                 "CELERY_BROKER_URL": "redis://testhost:6380/1",
                 "CELERY_RESULT_BACKEND": "redis://testhost:6380/2",
@@ -131,13 +155,47 @@ class TestSettings:
             assert settings.celery_broker_url == "redis://testhost:6380/1"
             assert settings.celery_result_backend == "redis://testhost:6380/2"
 
+    def test_required_api_keys(self):
+        """Test that API keys are required fields."""
+        # Test that settings fail to load without required API keys
+        with patch.dict(
+            os.environ,
+            {
+                "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly"
+            },
+            clear=True,
+        ):
+            with pytest.raises(ValueError):
+                _TestableSettings()
+
+    def test_api_keys_loaded_correctly(self):
+        """Test that API keys are loaded correctly when provided."""
+        with patch.dict(
+            os.environ,
+            {
+                "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
+                "API_FRONTEND_USER_KEY": "test-frontend-key",
+                "API_CHAT_USER_KEY": "test-chat-key",
+                "API_OFFICE_USER_KEY": "test-office-key",
+            },
+            clear=True,
+        ):
+            settings = _TestableSettings()
+
+            assert settings.api_frontend_user_key == "test-frontend-key"
+            assert settings.api_chat_user_key == "test-chat-key"
+            assert settings.api_office_user_key == "test-office-key"
+
     def test_optional_settings_none_by_default(self):
         """Test that optional settings are None by default."""
         # Clear environment variables to test defaults
         with patch.dict(
             os.environ,
             {
-                "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly"
+                "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
+                "API_FRONTEND_USER_KEY": "test-frontend-key",
+                "API_CHAT_USER_KEY": "test-chat-key",
+                "API_OFFICE_USER_KEY": "test-office-key",
             },
             clear=True,
         ):
@@ -155,6 +213,9 @@ class TestSettings:
             os.environ,
             {
                 "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
+                "API_FRONTEND_USER_KEY": "test-frontend-key",
+                "API_CHAT_USER_KEY": "test-chat-key",
+                "API_OFFICE_USER_KEY": "test-office-key",
                 "service_name": "lowercase-test",
                 "HOST": "uppercase-test",
             },
@@ -184,6 +245,9 @@ class TestSettings:
                 os.environ,
                 {
                     "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
+                    "API_FRONTEND_USER_KEY": "test-frontend-key",
+                    "API_CHAT_USER_KEY": "test-chat-key",
+                    "API_OFFICE_USER_KEY": "test-office-key",
                     "DEBUG": env_value,
                 },
                 clear=True,
@@ -197,6 +261,9 @@ class TestSettings:
             os.environ,
             {
                 "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
+                "API_FRONTEND_USER_KEY": "test-frontend-key",
+                "API_CHAT_USER_KEY": "test-chat-key",
+                "API_OFFICE_USER_KEY": "test-office-key",
                 "PORT": "8080",
             },
             clear=True,
@@ -211,6 +278,9 @@ class TestSettings:
             os.environ,
             {
                 "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
+                "API_FRONTEND_USER_KEY": "test-frontend-key",
+                "API_CHAT_USER_KEY": "test-chat-key",
+                "API_OFFICE_USER_KEY": "test-office-key",
                 "PORT": "8001",
             },
             clear=True,
