@@ -12,6 +12,7 @@ import os
 
 import pytest
 import pytest_asyncio  # Import pytest_asyncio
+import sqlalchemy
 
 import services.chat.history_manager as hm
 
@@ -33,6 +34,14 @@ async def setup_test_database():
             os.environ["DB_URL_CHAT"] = original_db_url
         elif "DB_URL_CHAT" in os.environ:
             del os.environ["DB_URL_CHAT"]
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def clear_user4_drafts():
+    # Remove all user4 calendar_event drafts before each test to ensure isolation
+    async with hm.get_async_session_factory()() as session:
+        await session.execute(sqlalchemy.delete(hm.UserDraft).where(hm.UserDraft.user_id == "user4", hm.UserDraft.type == "calendar_event"))
+        await session.commit()
 
 
 @pytest.mark.asyncio
