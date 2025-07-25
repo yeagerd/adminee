@@ -21,7 +21,7 @@ from services.common.http_errors import (
     ValidationError,
 )
 from services.office.core.api_client_factory import APIClientFactory
-from services.office.core.auth import ServicePermissionRequired
+from services.office.core.auth import service_permission_required
 from services.office.core.cache_manager import cache_manager, generate_cache_key
 from services.office.core.clients.google import GoogleAPIClient
 from services.office.core.clients.microsoft import MicrosoftAPIClient
@@ -86,7 +86,7 @@ async def get_calendar_events(
     ),
     q: Optional[str] = Query(None, description="Search query to filter events"),
     time_zone: Optional[str] = Query("UTC", description="Time zone for date filtering"),
-    service_name: str = Depends(ServicePermissionRequired(["read_calendar"])),
+    service_name: str = Depends(service_permission_required(["read_calendar"])),
 ) -> ApiResponse:
     """
     Get unified calendar events from multiple providers.
@@ -298,7 +298,7 @@ async def get_calendar_events(
 async def get_calendar_event(
     request: Request,
     event_id: str = Path(..., description="Event ID (format: provider_originalId)"),
-    service_name: str = Depends(ServicePermissionRequired(["read_calendar"])),
+    service_name: str = Depends(service_permission_required(["read_calendar"])),
 ) -> ApiResponse:
     """
     Get a specific calendar event by ID.
@@ -381,7 +381,7 @@ async def get_calendar_event(
 async def create_calendar_event(
     request: Request,
     event_data: CreateCalendarEventRequest,
-    service_name: str = Depends(ServicePermissionRequired(["write_calendar"])),
+    service_name: str = Depends(service_permission_required(["write_calendar"])),
 ) -> ApiResponse:
     """
     Create a calendar event in a specific provider.
@@ -484,7 +484,7 @@ async def update_calendar_event(
     event_data: CreateCalendarEventRequest,
     event_id: str = Path(..., description="Event ID (format: provider_originalId)"),
     user_id: str = Query(..., description="ID of the user updating the event"),
-    service_name: str = Depends(ServicePermissionRequired(["write_calendar"])),
+    service_name: str = Depends(service_permission_required(["write_calendar"])),
 ) -> ApiResponse:
     """
     Update a calendar event by ID.
@@ -913,7 +913,7 @@ async def update_microsoft_event(
 async def delete_calendar_event(
     request: Request,
     event_id: str = Path(..., description="Event ID (format: provider_originalId)"),
-    service_name: str = Depends(ServicePermissionRequired(["write_calendar"])),
+    service_name: str = Depends(service_permission_required(["write_calendar"])),
 ) -> ApiResponse:
     """
     Delete a calendar event by ID.
