@@ -13,6 +13,9 @@ export function useToolStateUtils() {
         isToolEnabled,
         getLastVisited,
         setLastVisited,
+        setMeetingSubView,
+        getMeetingSubView,
+        getMeetingPollId,
     } = useToolState();
 
     // Get all enabled tools
@@ -115,6 +118,11 @@ export function useToolStateUtils() {
         isToolEnabled,
         getLastVisited,
         setLastVisited,
+
+        // Meeting-specific actions
+        setMeetingSubView,
+        getMeetingSubView,
+        getMeetingPollId,
 
         // Utility functions
         getEnabledTools,
