@@ -28,7 +28,6 @@ def setup_meetings_settings_and_tables(monkeypatch):
         )
     monkeypatch.setattr(models, "get_engine", lambda: models._test_engine)
 
-
     Base.metadata.create_all(models._test_engine)
 
 
