@@ -26,7 +26,7 @@ from services.common.api_key_auth import (
 from services.common.http_errors import AuthError
 
 
-@pytest.fixture(autouse=True, scope="session")
+@pytest.fixture(autouse=True)
 def set_db_url_chat():
     # Save the original singleton to restore later
     original_settings = services.chat.settings._settings
