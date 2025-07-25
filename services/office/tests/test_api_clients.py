@@ -5,13 +5,6 @@ Tests the base API client, provider-specific clients (Google, Microsoft),
 and API client factory with mocked HTTP responses and error handling.
 """
 
-# Set required environment variables before any imports
-import os
-
-os.environ.setdefault("DB_URL_OFFICE", "sqlite:///test.db")
-os.environ.setdefault("API_OFFICE_USER_KEY", "test-api-key")
-
-
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -24,6 +17,21 @@ from services.office.core.clients.google import GoogleAPIClient
 from services.office.core.clients.microsoft import MicrosoftAPIClient
 from services.office.core.token_manager import TokenData
 from services.office.models import Provider
+
+
+@pytest.fixture(autouse=True)
+def patch_settings(monkeypatch):
+    """Patch the _settings global variable to return test settings."""
+    import services.office.core.settings as office_settings
+
+    test_settings = office_settings.Settings(
+        db_url_office="sqlite:///:memory:",
+        api_frontend_office_key="test-frontend-office-key",
+        api_chat_office_key="test-chat-office-key",
+        api_office_user_key="test-office-user-key",
+    )
+
+    monkeypatch.setattr("services.office.core.settings._settings", test_settings)
 
 
 class MockAPIClient(BaseAPIClient):

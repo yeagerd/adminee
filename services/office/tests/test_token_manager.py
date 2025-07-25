@@ -20,6 +20,24 @@ import pytest
 from services.office.core.token_manager import TokenData, TokenManager
 
 
+@pytest.fixture(autouse=True)
+def patch_settings():
+    """Patch the _settings global variable to return test settings."""
+    import services.office.core.settings as office_settings
+
+    test_settings = office_settings.Settings(
+        db_url_office="sqlite:///:memory:",
+        api_frontend_office_key="test-frontend-office-key",
+        api_chat_office_key="test-chat-office-key",
+        api_office_user_key="test-office-user-key",
+    )
+
+    # Directly set the singleton instead of using monkeypatch
+    office_settings._settings = test_settings
+    yield
+    office_settings._settings = None
+
+
 class TestTokenManager:
     """Tests for TokenManager class."""
 
