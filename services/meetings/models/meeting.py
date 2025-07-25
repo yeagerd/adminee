@@ -47,7 +47,7 @@ class ResponseType(str, enum.Enum):
 class MeetingPoll(Base):
     __tablename__ = "meeting_polls"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), nullable=False)
+    user_id = Column(String(255), nullable=False)
     title = Column(String(255), nullable=False)
     description = Column(Text)
     duration_minutes = Column(Integer, nullable=False)
@@ -157,7 +157,7 @@ class PollResponse(Base):
 class ChatMeeting(Base):
     __tablename__ = "chat_meetings"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), nullable=False)
+    user_id = Column(String(255), nullable=False)
     chat_message = Column(Text, nullable=False)
     extracted_intent = Column(Text)  # Store as JSON string
     poll_id = Column(UUID(as_uuid=True), ForeignKey("meeting_polls.id"))

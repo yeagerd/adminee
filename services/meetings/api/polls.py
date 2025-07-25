@@ -14,7 +14,7 @@ from services.meetings.services import calendar_integration
 router = APIRouter()
 
 
-def get_user_id_from_request(request: Request) -> UUID:
+def get_user_id_from_request(request: Request) -> str:
     """
     Extract user ID from request headers.
 
@@ -23,10 +23,7 @@ def get_user_id_from_request(request: Request) -> UUID:
     user_id_str = request.headers.get("X-User-Id")
     if not user_id_str:
         raise HTTPException(status_code=400, detail="Missing X-User-Id header")
-    try:
-        return UUID(user_id_str)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid X-User-Id format")
+    return user_id_str
 
 
 @router.get("/", response_model=List[MeetingPoll])
