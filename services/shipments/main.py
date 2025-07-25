@@ -31,8 +31,8 @@ app.add_middleware(
 # Register exception handlers
 register_briefly_exception_handlers(app)
 
-# Register routers
-app.include_router(api_router, prefix="/api")
+# Register routers with v1 prefix
+app.include_router(api_router, prefix="/api/v1")
 
 
 @app.get("/health")
