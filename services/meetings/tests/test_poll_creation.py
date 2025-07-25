@@ -22,6 +22,13 @@ def set_db_url_meetings(monkeypatch):
     monkeypatch.setenv("DB_URL_MEETINGS", "sqlite:///:memory:")
 
 
+@pytest.fixture(autouse=True)
+def reset_settings_cache():
+    import services.meetings.settings
+
+    services.meetings.settings._settings = None
+
+
 @pytest.fixture
 def poll_payload():
     now = datetime.utcnow()
