@@ -42,6 +42,20 @@ def mock_settings_for_timezone_tests():
         yield mock_settings_obj
 
 
+@pytest.fixture(autouse=True)
+def patch_chat_settings_singleton():
+    import services.chat.settings as chat_settings
+    from services.chat.settings import Settings
+
+    chat_settings._settings = Settings(
+        api_frontend_chat_key="test-FRONTEND_CHAT_KEY",
+        api_chat_office_key="test-CHAT_OFFICE_KEY",
+        db_url_chat="sqlite+aiosqlite:///file::memory:?cache=shared",
+    )
+    yield
+    chat_settings._settings = None
+
+
 class TestTimezoneFormatting:
     """Test the format_event_time_for_display function."""
 
