@@ -16,10 +16,36 @@ depends_on = None
 
 
 def upgrade():
+    import uuid
+
+    from sqlalchemy.sql import column, table
+
+    # 1. Add as nullable
     with op.batch_alter_table("poll_participants") as batch_op:
         batch_op.add_column(
-            sa.Column("response_token", sa.String(length=64), nullable=False),
+            sa.Column("response_token", sa.String(length=64), nullable=True),
         )
+
+    # 2. Populate with unique values for existing rows
+    poll_participants = table(
+        "poll_participants",
+        column("id", sa.String),
+        column("response_token", sa.String(64)),
+    )
+    conn = op.get_bind()
+    results = conn.execute(
+        sa.text("SELECT id FROM poll_participants WHERE response_token IS NULL")
+    ).fetchall()
+    for row in results:
+        conn.execute(
+            poll_participants.update()
+            .where(poll_participants.c.id == row[0])
+            .values(response_token=str(uuid.uuid4()))
+        )
+
+    # 3. Alter to NOT NULL
+    with op.batch_alter_table("poll_participants") as batch_op:
+        batch_op.alter_column("response_token", nullable=False)
         batch_op.create_unique_constraint(
             "uq_poll_participants_response_token", ["response_token"]
         )
