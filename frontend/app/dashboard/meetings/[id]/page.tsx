@@ -40,9 +40,9 @@ function getSlotStats(poll: Poll) {
     return stats;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default function MeetingPollResultsPage(props: any) {
-    const { params } = props;
+type MeetingPollResultsPageProps = { params: { id: string } };
+
+const MeetingPollResultsPage = ({ params }: MeetingPollResultsPageProps) => {
     const [poll, setPoll] = useState<Poll | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -103,10 +103,10 @@ export default function MeetingPollResultsPage(props: any) {
                                 <tbody>
                                     {(poll?.time_slots || []).map((slot) => (
                                         <tr key={slot.id}>
-                                            <td className="px-2 py-1 border font-mono">{slot.start_time?.slice(0, 16).replace("T", " ")} - {slot.end_time?.slice(11, 16)}</td>
-                                            <td className="px-2 py-1 border text-green-700 font-bold">{slotStats[slot.id]?.available || 0}</td>
-                                            <td className="px-2 py-1 border text-yellow-700">{slotStats[slot.id]?.maybe || 0}</td>
-                                            <td className="px-2 py-1 border text-red-700">{slotStats[slot.id]?.unavailable || 0}</td>
+                                            <td className="px-2 py-1 border">{slot.start_time} - {slot.end_time}</td>
+                                            <td className="px-2 py-1 border">{slotStats[slot.id]?.available || 0}</td>
+                                            <td className="px-2 py-1 border">{slotStats[slot.id]?.maybe || 0}</td>
+                                            <td className="px-2 py-1 border">{slotStats[slot.id]?.unavailable || 0}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -117,4 +117,6 @@ export default function MeetingPollResultsPage(props: any) {
             ) : null}
         </div>
     );
-} 
+};
+
+export default MeetingPollResultsPage satisfies (props: MeetingPollResultsPageProps) => React.JSX.Element; 

@@ -10,9 +10,9 @@ interface Poll {
     location?: string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default function EditMeetingPollPage(props: any) {
-    const { params } = props;
+type EditMeetingPollPageProps = { params: { id: string } };
+
+const EditMeetingPollPage = ({ params }: EditMeetingPollPageProps) => {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -92,4 +92,6 @@ export default function EditMeetingPollPage(props: any) {
             )}
         </div>
     );
-} 
+};
+
+export default EditMeetingPollPage satisfies (props: EditMeetingPollPageProps) => React.JSX.Element; 
