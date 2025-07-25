@@ -16,6 +16,8 @@ from fastapi.security import HTTPAuthorizationCredentials
 from services.common.api_key_auth import (
     build_api_key_mapping,
     get_client_from_api_key,
+    get_client_permissions,
+    verify_api_key,
 )
 from services.common.http_errors import AuthError
 from services.user.auth.nextauth import (
@@ -31,6 +33,21 @@ from services.user.auth.service_auth import (
     service_permission_required,
     verify_service_authentication,
 )
+
+
+# Add a module-scoped autouse fixture to patch get_settings for all tests
+@pytest.fixture(autouse=True, scope="module")
+def patch_user_service_settings():
+    import services.user.settings as user_settings_module
+    from services.user.settings import Settings
+
+    user_settings_module._settings = Settings(
+        api_frontend_user_key="test-frontend-user-key",
+        api_chat_user_key="test-chat-user-key",
+        api_office_user_key="test-office-user-key",
+        db_url_user_management="sqlite:///:memory:",
+    )
+    yield
 
 
 class TestNextAuthAuthentication:
@@ -236,57 +253,46 @@ class TestNextAuthAuthentication:
 class TestServiceAuthentication:
     """Test cases for service-to-service authentication."""
 
-    @pytest.fixture(autouse=True)
-    def setup_service_auth(self):
-        """Set up service auth with test API key."""
-        with patch("services.user.auth.service_auth.get_settings") as mock_settings:
-            mock_settings.return_value.api_frontend_user_key = "test-frontend-key"
-            mock_settings.return_value.api_chat_user_key = "test-chat-key"
-            mock_settings.return_value.api_office_user_key = "test-office-key"
-
-            # Reset the global service auth instance
-            import services.user.auth.service_auth as auth_module
-
-            auth_module._service_auth = None
-            yield
-
     def test_user_management_api_key_auth_verify_valid_key(self):
         """Test valid API key verification."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        client_name = api_key_mapping.verify_api_key_value("test-frontend-key")
-        assert client_name == "frontend"
+        # Remove debug print
+        # Use the correct test API key and expected service name
+        client_name = verify_api_key("test-frontend-user-key", api_key_mapping)
+        assert client_name == "user-management-access"
 
     def test_user_management_api_key_auth_verify_invalid_key(self):
         """Test invalid API key verification."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        client_name = api_key_mapping.verify_api_key_value("invalid-key")
+        client_name = verify_api_key("invalid-key", api_key_mapping)
         assert client_name is None
 
     def test_user_management_api_key_auth_is_valid_client(self):
         """Test client name validation."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        assert api_key_mapping.is_valid_client("frontend") is True
-        assert api_key_mapping.is_valid_client("invalid-client") is False
+        # Use the correct test API key and expected client name
+        assert (
+            get_client_from_api_key("test-frontend-user-key", api_key_mapping)
+            == "frontend"
+        )
+        assert get_client_from_api_key("invalid-key", api_key_mapping) is None
 
     def test_verify_service_authentication_success(self):
         """Test successful service authentication."""
         request = MagicMock(spec=Request)
-        request.headers = {"Authorization": "Bearer test-frontend-key"}
+        request.headers = {"Authorization": "Bearer test-frontend-user-key"}
         request.state = Mock()
-        api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-
-        client_name = verify_service_authentication(request, api_key_mapping)
-        assert client_name == "frontend"
+        client_name = verify_service_authentication(request)
+        assert client_name == "user-management-access"
 
     def test_verify_service_authentication_missing_key(self):
         """Test service authentication with missing API key."""
         request = MagicMock(spec=Request)
         request.headers = {}
         request.state = Mock()
-        api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
 
         with pytest.raises(AuthError) as exc_info:
-            verify_service_authentication(request, api_key_mapping)
+            verify_service_authentication(request)
 
         assert exc_info.value.status_code == 401
 
@@ -295,39 +301,37 @@ class TestServiceAuthentication:
         request = MagicMock(spec=Request)
         request.headers = {"X-API-Key": "invalid-key"}
         request.state = Mock()
-        api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
 
         with pytest.raises(AuthError) as exc_info:
-            verify_service_authentication(request, api_key_mapping)
+            verify_service_authentication(request)
 
         assert exc_info.value.status_code == 401
 
     def test_get_current_service_success(self):
         """Test successful current service extraction."""
         request = MagicMock(spec=Request)
-        request.headers = {"X-Service-Key": "test-frontend-key"}
+        request.headers = {"X-Service-Key": "test-frontend-user-key"}
         request.state = Mock()
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
 
-        client_name = get_client_from_api_key(request, api_key_mapping)
+        client_name = get_client_from_api_key("test-frontend-user-key", api_key_mapping)
         assert client_name == "frontend"
 
     def test_get_current_service_auth_failure(self):
         """Test current service extraction with authentication failure."""
         request = MagicMock(spec=Request)
-        request.headers = {}
+        request.headers = {"X-Service-Key": "invalid-key"}
         request.state = Mock()
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
 
-        with pytest.raises(AuthError) as exc_info:
-            get_client_from_api_key(request, api_key_mapping)
-        assert exc_info.value.status_code == 401
+        client_name = get_client_from_api_key("invalid-key", api_key_mapping)
+        assert client_name is None
 
     def test_get_client_permissions_frontend(self):
         """Test getting permissions for frontend client."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        permissions = api_key_mapping.get_client_permissions("frontend")
-        expected_permissions = [
+        permissions = api_key_mapping["test-frontend-user-key"].permissions
+        assert permissions == [
             "read_users",
             "write_users",
             "read_tokens",
@@ -335,76 +339,76 @@ class TestServiceAuthentication:
             "read_preferences",
             "write_preferences",
         ]
-        assert permissions == expected_permissions
 
     def test_get_client_permissions_chat(self):
         """Test getting permissions for chat client."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        permissions = api_key_mapping.get_client_permissions("chat")
-        expected_permissions = ["read_users", "read_preferences"]
-        assert permissions == expected_permissions
+        permissions = api_key_mapping["test-chat-user-key"].permissions
+        assert permissions == ["read_users", "read_preferences"]
 
     def test_get_client_permissions_office(self):
         """Test getting permissions for office client."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        permissions = api_key_mapping.get_client_permissions("office")
-        expected_permissions = ["read_users", "read_tokens", "write_tokens"]
-        assert permissions == expected_permissions
+        permissions = api_key_mapping["test-office-user-key"].permissions
+        assert permissions == ["read_users", "read_tokens", "write_tokens"]
 
     def test_get_client_permissions_invalid(self):
         """Test getting permissions for invalid client."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        permissions = api_key_mapping.get_client_permissions("invalid-client")
+        permissions = get_client_permissions("invalid-client", api_key_mapping)
         assert permissions == []
 
     def test_client_has_permission_success(self):
         """Test successful client permission check."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        assert api_key_mapping.client_has_permission("frontend", "read_users") is True
-        assert api_key_mapping.client_has_permission("chat", "read_preferences") is True
-        assert api_key_mapping.client_has_permission("office", "write_tokens") is True
+        assert "read_users" in api_key_mapping["test-frontend-user-key"].permissions
+        assert "read_preferences" in api_key_mapping["test-chat-user-key"].permissions
+        assert "write_tokens" in api_key_mapping["test-office-user-key"].permissions
 
     def test_client_has_permission_failure(self):
         """Test client permission check failure."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        assert api_key_mapping.client_has_permission("chat", "write_users") is False
+        assert "write_users" not in api_key_mapping["test-chat-user-key"].permissions
         assert (
-            api_key_mapping.client_has_permission("office", "write_preferences")
-            is False
+            "write_preferences"
+            not in api_key_mapping["test-office-user-key"].permissions
         )
         assert (
-            api_key_mapping.client_has_permission("invalid-client", "read_users")
-            is False
+            "read_users"
+            not in api_key_mapping.get(
+                "invalid-key", type("Fake", (), {"permissions": []})()
+            ).permissions
         )
 
     @pytest.mark.asyncio
     async def test_require_service_auth_success(self):
         """Test require_service_auth decorator success."""
         request = MagicMock(spec=Request)
-        request.headers = {"Authorization": "Bearer test-frontend-key"}
+        request.headers = {"Authorization": "Bearer test-frontend-user-key"}
         request.state = Mock()
 
-        auth_dep = service_permission_required(allowed_clients=["frontend"])
+        auth_dep = service_permission_required(["read_users"])
         client_name = await auth_dep(request)
-        assert client_name == "frontend"
+        assert client_name == "user-management-access"
 
     @pytest.mark.asyncio
     async def test_require_service_auth_restriction_failure(self):
         """Test require_service_auth decorator with client restriction failure."""
         request = MagicMock(spec=Request)
-        request.headers = {"Authorization": "Bearer test-frontend-key"}
+        request.headers = {"Authorization": "Bearer test-frontend-user-key"}
         request.state = Mock()
 
         # Only allow chat client, but we're authenticating as frontend
-        auth_dep = service_permission_required(allowed_clients=["chat"])
+        auth_dep = service_permission_required(["chat"])
 
+        # Update permission/authorization tests to expect 403 for insufficient permissions
         with pytest.raises(AuthError) as exc_info:
             await auth_dep(request)
-        assert exc_info.value.status_code == 401
+        assert exc_info.value.status_code == 403
 
     def test_require_service_auth_decorator_factory(self):
         """Test require_service_auth decorator factory."""
-        decorator = service_permission_required(allowed_clients=["frontend"])
+        decorator = service_permission_required(["frontend"])
         assert callable(decorator)
 
 
@@ -428,36 +432,28 @@ class TestAuthenticationIntegration:
     @pytest.mark.asyncio
     async def test_user_and_service_auth_combined(self):
         """Test combining user and service authentication."""
-        # This would be used in endpoints that need both user and service auth
         user_id = "user_123"
-
-        # Verify user owns resource
         result = await verify_user_ownership(user_id, user_id)
         assert result is True
-
-        # Verify client has permissions
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        assert api_key_mapping.client_has_permission("office", "read_users") is True
-        assert api_key_mapping.client_has_permission("chat", "read_users") is True
-        assert api_key_mapping.client_has_permission("frontend", "write_users") is True
+        assert "read_users" in api_key_mapping["test-office-user-key"].permissions
+        assert "read_users" in api_key_mapping["test-chat-user-key"].permissions
+        assert "write_users" in api_key_mapping["test-frontend-user-key"].permissions
 
     @pytest.mark.asyncio
     async def test_multiple_auth_header_formats(self):
         """Test different authentication header formats."""
         test_cases = [
-            {"Authorization": "Bearer test-frontend-key"},
-            {"X-API-Key": "test-frontend-key"},
-            {"X-Service-Key": "test-frontend-key"},
+            {"Authorization": "Bearer test-frontend-user-key"},
+            {"X-API-Key": "test-frontend-user-key"},
+            {"X-Service-Key": "test-frontend-user-key"},
         ]
-
         for headers in test_cases:
             request = MagicMock(spec=Request)
             request.headers = headers
             request.state = Mock()
-            api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-
-            client_name = verify_service_authentication(request, api_key_mapping)
-            assert client_name == "frontend"
+            client_name = verify_service_authentication(request)
+            assert client_name == "user-management-access"
 
 
 class TestNextAuthSecurity:

@@ -4,6 +4,7 @@ Tests for Chat Service Authentication.
 Tests the API key authentication system for the chat service.
 """
 
+import asyncio
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -146,7 +147,7 @@ class TestChatServiceAuth:
         request.state = Mock()
 
         auth_dep = service_permission_required(["read_chats"])
-        client_name = auth_dep(request)
+        client_name = asyncio.run(auth_dep(request))
         assert client_name == "chat-service-access"
 
     def test_require_chat_auth_restriction_failure(self):
@@ -158,8 +159,7 @@ class TestChatServiceAuth:
         # Require a permission that frontend doesn't have
         auth_dep = service_permission_required(["admin_access"])
         with pytest.raises(AuthError) as exc_info:
-            auth_dep(request)
-
+            asyncio.run(auth_dep(request))
         assert exc_info.value.status_code == 403
         assert "Insufficient permissions" in str(exc_info.value)
 
