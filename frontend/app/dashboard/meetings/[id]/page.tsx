@@ -1,6 +1,7 @@
 "use client";
 import gatewayClient from "@/lib/gateway-client";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 interface Participant {
@@ -40,16 +41,17 @@ function getSlotStats(poll: Poll) {
     return stats;
 }
 
-type MeetingPollResultsPageProps = { params: { id: string } };
-
-const MeetingPollResultsPage = ({ params }: MeetingPollResultsPageProps) => {
+const MeetingPollResultsPage = () => {
+    const params = useParams();
+    const id = params.id as string;
     const [poll, setPoll] = useState<Poll | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
+        if (!id) return;
         setLoading(true);
-        gatewayClient.getMeetingPoll(params.id)
+        gatewayClient.getMeetingPoll(id)
             .then((data) => setPoll(data as Poll))
             .catch((e: unknown) => {
                 if (e && typeof e === 'object' && 'message' in e) {
@@ -59,7 +61,7 @@ const MeetingPollResultsPage = ({ params }: MeetingPollResultsPageProps) => {
                 }
             })
             .finally(() => setLoading(false));
-    }, [params.id]);
+    }, [id]);
 
     const slotStats = poll ? getSlotStats(poll) : {};
     const totalParticipants = poll?.participants?.length || 0;
@@ -119,4 +121,4 @@ const MeetingPollResultsPage = ({ params }: MeetingPollResultsPageProps) => {
     );
 };
 
-export default MeetingPollResultsPage satisfies (props: MeetingPollResultsPageProps) => React.JSX.Element; 
+export default MeetingPollResultsPage; 

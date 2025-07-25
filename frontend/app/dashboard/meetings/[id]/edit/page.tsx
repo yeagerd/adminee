@@ -1,6 +1,6 @@
 "use client";
 import gatewayClient from "@/lib/gateway-client";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 interface Poll {
@@ -10,10 +10,10 @@ interface Poll {
     location?: string;
 }
 
-type EditMeetingPollPageProps = { params: { id: string } };
-
-const EditMeetingPollPage = ({ params }: EditMeetingPollPageProps) => {
+const EditMeetingPollPage = () => {
     const router = useRouter();
+    const params = useParams();
+    const id = params.id as string;
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
@@ -23,8 +23,9 @@ const EditMeetingPollPage = ({ params }: EditMeetingPollPageProps) => {
     const [location, setLocation] = useState("");
 
     useEffect(() => {
+        if (!id) return;
         setLoading(true);
-        gatewayClient.getMeetingPoll(params.id)
+        gatewayClient.getMeetingPoll(id)
             .then((poll) => {
                 const p = poll as Poll;
                 setTitle(p.title || "");
@@ -34,14 +35,14 @@ const EditMeetingPollPage = ({ params }: EditMeetingPollPageProps) => {
             })
             .catch((e) => setError(e.message || "Failed to load poll"))
             .finally(() => setLoading(false));
-    }, [params.id]);
+    }, [id]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setSaving(true);
         setError(null);
         try {
-            await gatewayClient.updateMeetingPoll(params.id, {
+            await gatewayClient.updateMeetingPoll(id, {
                 title,
                 description,
                 duration_minutes: duration,
@@ -94,4 +95,4 @@ const EditMeetingPollPage = ({ params }: EditMeetingPollPageProps) => {
     );
 };
 
-export default EditMeetingPollPage satisfies (props: EditMeetingPollPageProps) => React.JSX.Element; 
+export default EditMeetingPollPage; 
