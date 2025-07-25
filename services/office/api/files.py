@@ -19,7 +19,7 @@ from services.common.http_errors import (
     ValidationError,
 )
 from services.office.core.api_client_factory import APIClientFactory
-from services.office.core.auth import ServicePermissionRequired
+from services.office.core.auth import service_permission_required
 from services.office.core.cache_manager import cache_manager, generate_cache_key
 from services.office.core.normalizer import (
     normalize_google_drive_file,
@@ -75,7 +75,7 @@ async def get_files(
     include_folders: bool = Query(
         True, description="Whether to include folders in results"
     ),
-    service_name: str = Depends(ServicePermissionRequired(["read_files"])),
+    service_name: str = Depends(service_permission_required(["read_files"])),
 ) -> ApiResponse:
     """
     Get unified files from multiple providers.
@@ -345,7 +345,7 @@ async def search_files(
     file_types: Optional[List[str]] = Query(
         None, description="Filter by file types/mime types"
     ),
-    service_name: str = Depends(ServicePermissionRequired(["read_files"])),
+    service_name: str = Depends(service_permission_required(["read_files"])),
 ) -> ApiResponse:
     """
     Search files across multiple providers.
@@ -559,7 +559,7 @@ async def get_file(
     include_download_url: bool = Query(
         False, description="Whether to include download URL"
     ),
-    service_name: str = Depends(ServicePermissionRequired(["read_files"])),
+    service_name: str = Depends(service_permission_required(["read_files"])),
 ) -> ApiResponse:
     """
     Get a specific file by ID.
