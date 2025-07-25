@@ -113,8 +113,8 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
                 <div className="text-sm text-red-500 px-4 py-2">{error}</div>
             )}
 
-            {/* Content Editor + Actions - Scrollable Container */}
-            <div className="flex-1 min-h-0 overflow-auto relative">
+            {/* Content Editor - Fixed height, scrollable content */}
+            <div className="flex-1 min-h-0 relative">
                 {isLoading && (
                     <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
@@ -128,14 +128,14 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
                     disabled={isLoading}
                     updatedAt={draft.updatedAt}
                 />
+            </div>
 
-                {/* Actions - Now inside the scrollable container */}
-                <div className="p-4 border-t">
-                    <DraftActions
-                        draft={draft}
-                        onActionComplete={handleActionComplete}
-                    />
-                </div>
+            {/* Actions - Always visible at bottom */}
+            <div className="p-4 border-t bg-background">
+                <DraftActions
+                    draft={draft}
+                    onActionComplete={handleActionComplete}
+                />
             </div>
         </div>
     );

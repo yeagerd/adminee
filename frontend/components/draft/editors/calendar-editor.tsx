@@ -60,9 +60,7 @@ export function CalendarEditor({
                     className={cn(
                         'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl max-w-none',
                         'focus:outline-none',
-                        'overflow-y-auto',
-                        'h-full',
-                        'max-h-[400px]',
+                        'min-h-[200px]',
                         disabled && 'opacity-50 pointer-events-none'
                     )}
                 />
