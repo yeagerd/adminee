@@ -69,24 +69,24 @@ function DashboardContent() {
             }
             draft={<ChatInterface onDraftReceived={handleDraftReceived} />}
             draftPane={
-                draftState.currentDraft ? (
-                    <div className="h-full flex flex-col bg-card border-l">
+                <div className="h-full flex flex-col bg-card border-l">
+                    {draftState.currentDraft && (
                         <div className="flex items-center justify-between p-4 border-b">
                             <h2 className="text-lg font-semibold">Draft</h2>
                         </div>
-                        <div className="flex-1 overflow-hidden">
-                            <DraftPane
-                                draft={draftState.currentDraft}
-                                onUpdate={updateDraft}
-                                onMetadataChange={updateDraftMetadata}
-                                onTypeChange={handleTypeChange}
-                                isLoading={draftState.isLoading}
-                                error={draftState.error}
-                                onActionComplete={handleDraftActionComplete}
-                            />
-                        </div>
+                    )}
+                    <div className="flex-1 overflow-hidden">
+                        <DraftPane
+                            draft={draftState.currentDraft}
+                            onUpdate={updateDraft}
+                            onMetadataChange={updateDraftMetadata}
+                            onTypeChange={handleTypeChange}
+                            isLoading={draftState.isLoading}
+                            error={draftState.error}
+                            onActionComplete={handleDraftActionComplete}
+                        />
                     </div>
-                ) : null
+                </div>
             }
         />
     );
