@@ -50,6 +50,11 @@ class TestChatServiceAuth:
             import services.chat.auth as auth_module
 
             auth_module._chat_auth = None
+
+            # Reset the global settings cache to ensure patching works
+            import services.chat.settings as chat_settings
+
+            chat_settings._settings = None
             yield
 
     def test_chat_service_auth_verify_valid_key(self):
