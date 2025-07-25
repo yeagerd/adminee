@@ -113,7 +113,7 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
                 <div className="text-sm text-red-500 px-4 py-2">{error}</div>
             )}
 
-            {/* Content Editor */}
+            {/* Content Editor + Actions - Scrollable Container */}
             <div className="flex-1 min-h-0 overflow-auto relative">
                 {isLoading && (
                     <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70">
@@ -128,13 +128,15 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
                     disabled={isLoading}
                     updatedAt={draft.updatedAt}
                 />
-            </div>
 
-            {/* Actions */}
-            <DraftActions
-                draft={draft}
-                onActionComplete={handleActionComplete}
-            />
+                {/* Actions - Now inside the scrollable container */}
+                <div className="p-4 border-t">
+                    <DraftActions
+                        draft={draft}
+                        onActionComplete={handleActionComplete}
+                    />
+                </div>
+            </div>
         </div>
     );
 }
