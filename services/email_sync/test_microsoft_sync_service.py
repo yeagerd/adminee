@@ -1,3 +1,13 @@
+import os
+import pytest
+
+@pytest.fixture(autouse=True)
+def set_microsoft_sync_env(monkeypatch):
+    monkeypatch.setenv("GOOGLE_CLOUD_PROJECT", "test-project")
+    monkeypatch.setenv("PUBSUB_EMULATOR_HOST", "test-emulator-host")
+    monkeypatch.setenv("MICROSOFT_SUBSCRIPTION", "test-microsoft-sub")
+    yield
+
 from unittest.mock import patch
 
 from services.email_sync.microsoft_sync_service import process_microsoft_notification

@@ -20,18 +20,16 @@ class MicrosoftSyncSettings(BaseSettings):
     )
 
 
-settings = MicrosoftSyncSettings()
-
-PROJECT_ID = settings.GOOGLE_CLOUD_PROJECT
-PUBSUB_EMULATOR_HOST = settings.PUBSUB_EMULATOR_HOST
 MICROSOFT_TOPIC = "microsoft-notifications"
-MICROSOFT_SUBSCRIPTION = settings.MICROSOFT_SUBSCRIPTION
 EMAIL_PROCESSING_TOPIC = "email-processing"
 
 logging.basicConfig(level=logging.INFO)
 
 
 def process_microsoft_notification(message: Any) -> None:
+    settings = MicrosoftSyncSettings()
+    PROJECT_ID = settings.GOOGLE_CLOUD_PROJECT
+    MICROSOFT_SUBSCRIPTION = settings.MICROSOFT_SUBSCRIPTION
     try:
         data = json.loads(message.data.decode("utf-8"))
         logging.info(f"Processing Microsoft notification: {data}")
@@ -67,7 +65,10 @@ def process_microsoft_notification(message: Any) -> None:
 
 def run() -> None:
     from google.cloud import pubsub_v1  # type: ignore[attr-defined]
-
+    settings = MicrosoftSyncSettings()
+    PROJECT_ID = settings.GOOGLE_CLOUD_PROJECT
+    PUBSUB_EMULATOR_HOST = settings.PUBSUB_EMULATOR_HOST
+    MICROSOFT_SUBSCRIPTION = settings.MICROSOFT_SUBSCRIPTION
     if PUBSUB_EMULATOR_HOST:
         os.environ["PUBSUB_EMULATOR_HOST"] = PUBSUB_EMULATOR_HOST
     if not PROJECT_ID:

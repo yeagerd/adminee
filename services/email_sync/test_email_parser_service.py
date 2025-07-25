@@ -1,3 +1,13 @@
+import os
+import pytest
+
+@pytest.fixture(autouse=True)
+def set_email_parser_env(monkeypatch):
+    monkeypatch.setenv("GOOGLE_CLOUD_PROJECT", "test-project")
+    monkeypatch.setenv("PUBSUB_EMULATOR_HOST", "test-emulator-host")
+    monkeypatch.setenv("EMAIL_PARSER_SUBSCRIPTION", "test-email-parser-sub")
+    yield
+
 from unittest.mock import patch
 
 import pytest

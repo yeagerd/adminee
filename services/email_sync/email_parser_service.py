@@ -9,6 +9,10 @@ from typing import Any, Dict
 from services.common.settings import BaseSettings, Field
 from services.email_sync.pubsub_client import publish_message
 
+PACKAGE_TRACKER_TOPIC = "package-tracker-events"
+SURVEY_EVENTS_TOPIC = "survey-events"
+AMAZON_EVENTS_TOPIC = "amazon-events"
+
 
 class EmailParserSettings(BaseSettings):
     GOOGLE_CLOUD_PROJECT: str = Field(..., description="GCP project ID")
@@ -17,16 +21,6 @@ class EmailParserSettings(BaseSettings):
         "email-processing-sub", description="Email parser subscription name"
     )
 
-
-settings = EmailParserSettings()
-
-PROJECT_ID = settings.GOOGLE_CLOUD_PROJECT
-PUBSUB_EMULATOR_HOST = settings.PUBSUB_EMULATOR_HOST
-EMAIL_PROCESSING_TOPIC = "email-processing"
-EMAIL_PARSER_SUBSCRIPTION = settings.EMAIL_PARSER_SUBSCRIPTION
-PACKAGE_TRACKER_TOPIC = "package-tracker-events"
-SURVEY_EVENTS_TOPIC = "survey-events"
-AMAZON_EVENTS_TOPIC = "amazon-events"
 
 logging.basicConfig(level=logging.INFO)
 
@@ -62,6 +56,7 @@ def _ensure_list(val: object) -> list[str]:
 
 
 def process_email(message: Any) -> None:
+    settings = EmailParserSettings()
     try:
         data = json.loads(message.data.decode("utf-8"))
         email_body = sanitize_email_content(data.get("body", ""))
@@ -131,6 +126,10 @@ def process_email(message: Any) -> None:
 
 def run() -> None:
     from google.cloud import pubsub_v1  # type: ignore[attr-defined]
+    settings = EmailParserSettings()
+    PROJECT_ID = settings.GOOGLE_CLOUD_PROJECT
+    PUBSUB_EMULATOR_HOST = settings.PUBSUB_EMULATOR_HOST
+    EMAIL_PARSER_SUBSCRIPTION = settings.EMAIL_PARSER_SUBSCRIPTION
 
     if PUBSUB_EMULATOR_HOST:
         os.environ["PUBSUB_EMULATOR_HOST"] = PUBSUB_EMULATOR_HOST
