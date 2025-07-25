@@ -4,6 +4,7 @@ Tests for Chat Service Authentication.
 Tests the API key authentication system for the chat service.
 """
 
+import os
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -23,6 +24,17 @@ from services.common.api_key_auth import (
     verify_api_key,
 )
 from services.common.http_errors import AuthError
+
+
+@pytest.fixture(autouse=True, scope="session")
+def set_db_url_chat():
+    original_db_url = os.environ.get("DB_URL_CHAT")
+    os.environ["DB_URL_CHAT"] = "sqlite+aiosqlite:///file::memory:?cache=shared"
+    yield
+    if original_db_url:
+        os.environ["DB_URL_CHAT"] = original_db_url
+    elif "DB_URL_CHAT" in os.environ:
+        del os.environ["DB_URL_CHAT"]
 
 
 class TestChatServiceAuth:
