@@ -98,7 +98,7 @@ def service_permission_required(
 
 
 # For compatibility with old tests and code
-def get_client_permissions(client_name):
+def get_client_permissions(client_name: str) -> list[str]:
     return shared_get_client_permissions(
         client_name,
         {
@@ -123,7 +123,7 @@ def get_client_permissions(client_name):
     )
 
 
-def client_has_permission(client_name, required_permission):
+def client_has_permission(client_name: str, required_permission: str) -> bool:
     return shared_client_has_permission(
         client_name,
         required_permission,
