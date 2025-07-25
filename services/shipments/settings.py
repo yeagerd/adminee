@@ -1,5 +1,3 @@
-from functools import lru_cache
-
 from services.common.settings import BaseSettings, Field, SettingsConfigDict
 
 
@@ -10,7 +8,7 @@ class Settings(BaseSettings):
     log_format: str = Field(default="json", validation_alias="LOG_FORMAT")
     db_url_shipments: str = Field(..., validation_alias="DB_URL_SHIPMENTS")
     api_frontend_shipments_key: str = Field(
-        default="", validation_alias="API_FRONTEND_SHIPMENTS_KEY"
+        ..., validation_alias="API_FRONTEND_SHIPMENTS_KEY"
     )
     redis_url: str = Field(
         default="redis://localhost:6379/0", validation_alias="REDIS_URL"
@@ -27,6 +25,13 @@ class Settings(BaseSettings):
     )
 
 
-@lru_cache()
+# Global settings instance
+_settings: Settings | None = None
+
+
 def get_settings() -> Settings:
-    return Settings()
+    """Get the global settings instance, creating it if necessary."""
+    global _settings
+    if _settings is None:
+        _settings = Settings()
+    return _settings
