@@ -173,9 +173,27 @@ class TestEmailNormalization:
 @pytest_asyncio.fixture(scope="function")
 async def db_setup(monkeypatch):
     db_fd, db_path = tempfile.mkstemp(suffix=".db")
-    os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite+aiosqlite:///{db_path}"
+
+    # Create test settings and patch the global singleton
+    import services.user.settings as user_settings
+
+    test_settings = user_settings.Settings(
+        db_url_user_management=f"sqlite+aiosqlite:///{db_path}",
+        token_encryption_salt="dGVzdC1zYWx0LTE2Ynl0ZQ==",
+        api_frontend_user_key="test-api-key",
+        api_chat_user_key="test-chat-key",
+        api_office_user_key="test-office-key",
+    )
+
+    # Save original settings and set test settings
+    original_settings = user_settings._settings
+    user_settings._settings = test_settings
+
     await create_all_tables()
     yield
+
+    # Restore original settings
+    user_settings._settings = original_settings
     os.close(db_fd)
     os.unlink(db_path)
 
