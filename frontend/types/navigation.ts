@@ -10,6 +10,8 @@ export type Tool =
     | 'insights'
     | 'meetings';
 
+export type MeetingSubView = 'list' | 'view' | 'edit' | 'new';
+
 export interface ToolSettings {
     id: Tool;
     enabled: boolean;
@@ -21,6 +23,9 @@ export interface ToolState {
     toolSettings: Record<Tool, ToolSettings>;
     lastVisited: Record<Tool, string>; // URL paths
     visitTimestamps: Record<Tool, number>; // Timestamps for recency sorting
+    // Sub-views for specific tools
+    meetingSubView: MeetingSubView;
+    meetingPollId: string | null; // For view/edit specific polls
 }
 
 export interface ToolContextType {
@@ -31,6 +36,10 @@ export interface ToolContextType {
     isToolEnabled: (tool: Tool) => boolean;
     getLastVisited: (tool: Tool) => string | null;
     setLastVisited: (tool: Tool, path: string) => void;
+    // Meeting-specific actions
+    setMeetingSubView: (subView: MeetingSubView, pollId?: string) => void;
+    getMeetingSubView: () => MeetingSubView;
+    getMeetingPollId: () => string | null;
 }
 
 export interface NavigationItem {
