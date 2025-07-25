@@ -16,7 +16,8 @@ from fastapi.security import HTTPAuthorizationCredentials
 from services.common.api_key_auth import (
     build_api_key_mapping,
     get_client_from_api_key,
-    get_client_permissions,
+    get_permissions_from_api_key,
+    has_permission,
     verify_api_key,
 )
 from services.common.http_errors import AuthError
@@ -330,7 +331,9 @@ class TestServiceAuthentication:
     def test_get_client_permissions_frontend(self):
         """Test getting permissions for frontend client."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        permissions = api_key_mapping["test-frontend-user-key"].permissions
+        permissions = get_permissions_from_api_key(
+            "test-frontend-user-key", api_key_mapping
+        )
         assert permissions == [
             "read_users",
             "write_users",
@@ -343,42 +346,40 @@ class TestServiceAuthentication:
     def test_get_client_permissions_chat(self):
         """Test getting permissions for chat client."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        permissions = api_key_mapping["test-chat-user-key"].permissions
+        permissions = get_permissions_from_api_key(
+            "test-chat-user-key", api_key_mapping
+        )
         assert permissions == ["read_users", "read_preferences"]
 
     def test_get_client_permissions_office(self):
         """Test getting permissions for office client."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        permissions = api_key_mapping["test-office-user-key"].permissions
+        permissions = get_permissions_from_api_key(
+            "test-office-user-key", api_key_mapping
+        )
         assert permissions == ["read_users", "read_tokens", "write_tokens"]
 
     def test_get_client_permissions_invalid(self):
         """Test getting permissions for invalid client."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        permissions = get_client_permissions("invalid-client", api_key_mapping)
+        permissions = get_permissions_from_api_key("invalid-client", api_key_mapping)
         assert permissions == []
 
     def test_client_has_permission_success(self):
         """Test successful client permission check."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        assert "read_users" in api_key_mapping["test-frontend-user-key"].permissions
-        assert "read_preferences" in api_key_mapping["test-chat-user-key"].permissions
-        assert "write_tokens" in api_key_mapping["test-office-user-key"].permissions
+        assert has_permission("test-frontend-user-key", "read_users", api_key_mapping)
+        assert has_permission("test-chat-user-key", "read_preferences", api_key_mapping)
+        assert has_permission("test-office-user-key", "write_tokens", api_key_mapping)
 
     def test_client_has_permission_failure(self):
         """Test client permission check failure."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        assert "write_users" not in api_key_mapping["test-chat-user-key"].permissions
-        assert (
-            "write_preferences"
-            not in api_key_mapping["test-office-user-key"].permissions
+        assert not has_permission("test-chat-user-key", "write_users", api_key_mapping)
+        assert not has_permission(
+            "test-office-user-key", "write_preferences", api_key_mapping
         )
-        assert (
-            "read_users"
-            not in api_key_mapping.get(
-                "invalid-key", type("Fake", (), {"permissions": []})()
-            ).permissions
-        )
+        assert not has_permission("invalid-key", "read_users", api_key_mapping)
 
     @pytest.mark.asyncio
     async def test_require_service_auth_success(self):
@@ -436,9 +437,9 @@ class TestAuthenticationIntegration:
         result = await verify_user_ownership(user_id, user_id)
         assert result is True
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        assert "read_users" in api_key_mapping["test-office-user-key"].permissions
-        assert "read_users" in api_key_mapping["test-chat-user-key"].permissions
-        assert "write_users" in api_key_mapping["test-frontend-user-key"].permissions
+        assert has_permission("test-office-user-key", "read_users", api_key_mapping)
+        assert has_permission("test-chat-user-key", "read_users", api_key_mapping)
+        assert has_permission("test-frontend-user-key", "write_users", api_key_mapping)
 
     @pytest.mark.asyncio
     async def test_multiple_auth_header_formats(self):
