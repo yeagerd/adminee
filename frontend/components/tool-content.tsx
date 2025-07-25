@@ -94,7 +94,6 @@ export function ToolContent() {
     const [polls, setPolls] = useState<MeetingPoll[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [deletingId, setDeletingId] = useState<string | null>(null);
 
     const fetchPolls = () => {
         setLoading(true);
@@ -117,22 +116,7 @@ export function ToolContent() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeTool]);
 
-    const handleDelete = async (id: string) => {
-        if (!window.confirm('Are you sure you want to delete this meeting poll?')) return;
-        setDeletingId(id);
-        try {
-            await gatewayClient.deleteMeetingPoll(id);
-            fetchPolls();
-        } catch (e: unknown) {
-            if (e && typeof e === 'object' && 'message' in e) {
-                alert((e as { message?: string }).message || 'Failed to delete poll');
-            } else {
-                alert('Failed to delete poll');
-            }
-        } finally {
-            setDeletingId(null);
-        }
-    };
+
 
     const renderToolContent = () => {
         switch (activeTool) {
@@ -295,21 +279,14 @@ export function ToolContent() {
                                         <tr key={poll.id} className="hover:bg-gray-50">
                                             <td className="px-4 py-2 border-b font-medium">{poll.title}</td>
                                             <td className="px-4 py-2 border-b capitalize">{poll.status}</td>
-                                            <td className="px-4 py-2 border-b">{poll.created_at?.slice(0, 10) || ""}</td>
+                                            <td className="px-4 py-2 border-b whitespace-nowrap">{poll.created_at?.slice(0, 10) || ""}</td>
                                             <td className="px-4 py-2 border-b space-x-2">
                                                 <Link href={`/dashboard/meetings/${poll.id}`} className="text-teal-600 hover:underline font-semibold">
-                                                    View Results
+                                                    View
                                                 </Link>
                                                 <Link href={`/dashboard/meetings/${poll.id}/edit`} className="text-blue-600 hover:underline font-semibold">
                                                     Edit
                                                 </Link>
-                                                <button
-                                                    className="text-red-600 hover:underline font-semibold disabled:opacity-50"
-                                                    onClick={() => handleDelete(poll.id)}
-                                                    disabled={deletingId === poll.id}
-                                                >
-                                                    {deletingId === poll.id ? "Deleting..." : "Delete"}
-                                                </button>
                                             </td>
                                         </tr>
                                     ))}

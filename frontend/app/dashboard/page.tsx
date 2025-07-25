@@ -66,11 +66,13 @@ function DashboardContent() {
                         <ToolContent />
                     </div>
                     {/* Draft Pane - Bottom portion */}
-                    <div className="h-80 border-t bg-card">
-                        <div className="flex items-center justify-between p-4 border-b">
-                            <h2 className="text-lg font-semibold">Draft</h2>
-                        </div>
-                        <div className="flex-1 overflow-hidden">
+                    <div className={draftState.currentDraft ? "h-80 border-t bg-card" : "border-t bg-card"}>
+                        {draftState.currentDraft && (
+                            <div className="flex items-center justify-between p-4 border-b">
+                                <h2 className="text-lg font-semibold">Draft</h2>
+                            </div>
+                        )}
+                        <div className={draftState.currentDraft ? "flex-1 overflow-hidden" : ""}>
                             <DraftPane
                                 draft={draftState.currentDraft}
                                 onUpdate={updateDraft}

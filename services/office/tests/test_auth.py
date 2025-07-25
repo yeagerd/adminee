@@ -30,6 +30,24 @@ from services.office.core.auth import (
 from services.office.core.settings import get_settings
 
 
+@pytest.fixture(autouse=True)
+def patch_settings():
+    """Patch the _settings global variable to return test settings."""
+    import services.office.core.settings as office_settings
+
+    test_settings = office_settings.Settings(
+        db_url_office="sqlite:///:memory:",
+        api_frontend_office_key="test-frontend-office-key",
+        api_chat_office_key="test-chat-office-key",
+        api_office_user_key="test-office-user-key",
+    )
+
+    # Directly set the singleton instead of using monkeypatch
+    office_settings._settings = test_settings
+    yield
+    office_settings._settings = None
+
+
 # Test settings fixture
 @pytest.fixture(scope="session")
 def test_settings():
@@ -118,6 +136,7 @@ class TestAPIKeyFunctions:
             "write_calendar",
             "read_files",
             "write_files",
+            "health",
         ]
         assert permissions == expected
 
@@ -127,7 +146,7 @@ class TestAPIKeyFunctions:
         permissions = get_permissions_from_api_key(
             get_test_api_keys()["chat"], api_key_mapping
         )
-        expected = ["read_emails", "read_calendar", "read_files"]
+        expected = ["read_emails", "read_calendar", "read_files", "health"]
         assert permissions == expected
 
     def test_get_permissions_from_api_key_invalid(self):
@@ -539,6 +558,7 @@ class TestPermissionMatrix:
             "write_calendar",
             "read_files",
             "write_files",
+            "health",
         ]
 
         for permission in expected:

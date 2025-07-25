@@ -18,13 +18,7 @@ from services.office.api.files import router as files_router
 from services.office.api.health import router as health_router
 from services.office.core.settings import get_settings
 
-# Set up centralized logging
-settings = get_settings()
-setup_service_logging(
-    service_name="office-service",
-    log_level=settings.LOG_LEVEL,
-    log_format=settings.LOG_FORMAT,
-)
+# Set up centralized logging - will be initialized in lifespan
 
 logger = get_logger(__name__)
 
@@ -33,6 +27,14 @@ logger = get_logger(__name__)
 async def lifespan(app: FastAPI) -> AsyncGenerator:
     # Startup event logic
     settings = get_settings()
+
+    # Set up centralized logging
+    setup_service_logging(
+        service_name="office-service",
+        log_level=settings.LOG_LEVEL,
+        log_format=settings.LOG_FORMAT,
+    )
+
     log_service_startup(
         "office-service",
         app_name=settings.APP_NAME,
@@ -47,10 +49,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
 
 
 app = FastAPI(
-    title=get_settings().APP_NAME,
+    title="Office Service",
     description="A backend microservice responsible for all external API interactions with Google and Microsoft services",
-    version=get_settings().APP_VERSION,
-    debug=get_settings().DEBUG,
+    version="0.1.0",
+    debug=False,
     lifespan=lifespan,
 )
 
@@ -81,7 +83,7 @@ async def ready_check() -> Dict[str, str]:
     """
     return {
         "status": "ok",
-        "service": get_settings().APP_NAME,
-        "version": get_settings().APP_VERSION,
+        "service": "Office Service",
+        "version": "0.1.0",
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }

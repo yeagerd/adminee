@@ -17,6 +17,7 @@ const EditMeetingPollPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
+    const [deleting, setDeleting] = useState(false);
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [duration, setDuration] = useState(60);
@@ -60,6 +61,24 @@ const EditMeetingPollPage = () => {
         }
     };
 
+    const handleDelete = async () => {
+        if (!window.confirm('Are you sure you want to delete this meeting poll?')) return;
+        setDeleting(true);
+        setError(null);
+        try {
+            await gatewayClient.deleteMeetingPoll(id);
+            router.push("/dashboard?tool=meetings");
+        } catch (e: unknown) {
+            if (e && typeof e === 'object' && 'message' in e) {
+                setError((e as { message?: string }).message || "Failed to delete poll");
+            } else {
+                setError("Failed to delete poll");
+            }
+        } finally {
+            setDeleting(false);
+        }
+    };
+
     return (
         <div className="max-w-xl mx-auto p-8">
             <h1 className="text-2xl font-bold mb-6">Edit Meeting Poll</h1>
@@ -86,9 +105,28 @@ const EditMeetingPollPage = () => {
                         <input className="w-full border rounded px-3 py-2" value={location} onChange={e => setLocation(e.target.value)} />
                     </div>
                     {error && <div className="text-red-600">{error}</div>}
-                    <button type="submit" className="w-full bg-teal-600 text-white py-2 rounded font-semibold hover:bg-teal-700" disabled={saving}>
-                        {saving ? "Saving..." : "Save Changes"}
-                    </button>
+                    <div className="flex gap-3">
+                        <button
+                            type="button"
+                            onClick={() => router.push("/dashboard?tool=meetings")}
+                            className="flex-1 bg-gray-800 text-white py-2 rounded font-semibold hover:bg-gray-900"
+                        >
+                            Cancel
+                        </button>
+                        <button type="submit" className="flex-1 bg-teal-600 text-white py-2 rounded font-semibold hover:bg-teal-700" disabled={saving}>
+                            {saving ? "Saving..." : "Save Changes"}
+                        </button>
+                    </div>
+                    <div className="pt-4 border-t">
+                        <button
+                            type="button"
+                            onClick={handleDelete}
+                            disabled={deleting}
+                            className="w-full bg-red-600 text-white py-2 rounded font-semibold hover:bg-red-700 disabled:opacity-50"
+                        >
+                            {deleting ? "Deleting..." : "Delete Meeting Poll"}
+                        </button>
+                    </div>
                 </form>
             )}
         </div>

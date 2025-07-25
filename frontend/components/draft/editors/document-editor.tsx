@@ -13,6 +13,7 @@ interface DocumentEditorProps {
     placeholder?: string;
     className?: string;
     disabled?: boolean;
+    updatedAt?: string;
 }
 
 export function DocumentEditor({
@@ -20,7 +21,8 @@ export function DocumentEditor({
     onUpdate,
     onAutoSave,
     className,
-    disabled = false
+    disabled = false,
+    updatedAt
 }: DocumentEditorProps) {
     const { editor, validateContent, getWordCount, getCharacterCount } = useEditor({
         content,
@@ -77,11 +79,18 @@ export function DocumentEditor({
                     )}
                 </div>
 
-                {onAutoSave && (
-                    <span className="text-green-600">
-                        Auto-save enabled
-                    </span>
-                )}
+                <div className="flex items-center gap-4">
+                    {updatedAt && (
+                        <span>
+                            Last updated: {new Date(updatedAt).toLocaleTimeString()}
+                        </span>
+                    )}
+                    {onAutoSave && (
+                        <span className="text-green-600">
+                            Auto-save enabled
+                        </span>
+                    )}
+                </div>
             </div>
 
             {/* Error Display */}
