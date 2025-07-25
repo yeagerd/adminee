@@ -55,14 +55,15 @@ export function CalendarEditor({
 
             {/* Editor Content */}
             <div className="flex-1 min-h-0 overflow-auto">
-                <div className="p-4 h-full">
+                <div className="p-4 h-full max-h-full">
                     <EditorContent
                         editor={editor}
                         className={cn(
-                            'h-full prose prose-sm sm:prose lg:prose-lg xl:prose-2xl max-w-none overflow-auto',
+                            'max-h-full overflow-y-auto prose prose-sm sm:prose lg:prose-lg xl:prose-2xl max-w-none',
                             'focus:outline-none',
                             disabled && 'opacity-50 pointer-events-none'
                         )}
+                        style={{ maxHeight: '100%' }}
                     />
                 </div>
             </div>
