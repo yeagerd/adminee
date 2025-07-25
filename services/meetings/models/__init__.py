@@ -1,11 +1,16 @@
 from contextlib import contextmanager
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
+from services.meetings.models.base import Base
+from services.meetings.models.meeting import (
+    MeetingPoll,
+    PollParticipant,
+    PollResponse,
+    TimeSlot,
+)
 from services.meetings.settings import get_settings
-
-Base = declarative_base()
 
 
 def get_engine():

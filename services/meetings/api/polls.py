@@ -36,6 +36,7 @@ def create_poll(poll: MeetingPollCreate, request: Request):
     user_id = request.headers.get("X-User-Id")
     if not user_id:
         raise HTTPException(status_code=400, detail="Missing X-User-Id header")
+    user_id = UUID(user_id)
     with get_session() as session:
         poll_token = uuid4().hex
         db_poll = MeetingPollModel(
@@ -84,6 +85,7 @@ def update_poll(poll_id: UUID, poll: MeetingPollCreate, request: Request):
     user_id = request.headers.get("X-User-Id")
     if not user_id:
         raise HTTPException(status_code=400, detail="Missing X-User-Id header")
+    user_id = UUID(user_id)
     with get_session() as session:
         db_poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
         if not db_poll:

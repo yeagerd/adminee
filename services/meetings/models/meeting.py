@@ -16,7 +16,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
-from services.meetings.models import Base
+from services.meetings.models.base import Base
 
 
 class MeetingType(str, enum.Enum):
@@ -66,7 +66,10 @@ class MeetingPoll(Base):
     poll_token = Column(String(64), unique=True, nullable=False)
 
     time_slots = relationship(
-        "TimeSlot", back_populates="poll", cascade="all, delete-orphan"
+        "TimeSlot",
+        back_populates="poll",
+        cascade="all, delete-orphan",
+        foreign_keys="[TimeSlot.poll_id]",
     )
     participants = relationship(
         "PollParticipant", back_populates="poll", cascade="all, delete-orphan"
@@ -87,7 +90,9 @@ class TimeSlot(Base):
     is_available = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
-    poll = relationship("MeetingPoll", back_populates="time_slots")
+    poll = relationship(
+        "MeetingPoll", back_populates="time_slots", foreign_keys="[TimeSlot.poll_id]"
+    )
     responses = relationship(
         "PollResponse", back_populates="time_slot", cascade="all, delete-orphan"
     )
