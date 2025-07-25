@@ -9,6 +9,7 @@ from services.meetings.models import PollResponse as PollResponseModel
 from services.meetings.models import (
     get_session,
 )
+from services.meetings.models.meeting import ParticipantStatus
 from services.meetings.schemas import MeetingPoll, PollResponseCreate
 
 router = APIRouter()
@@ -52,6 +53,6 @@ def respond_with_token(
                 comment=resp.comment,
             )
             session.add(db_resp)
-        participant.status = "responded"  # type: ignore[assignment]
+        participant.status = ParticipantStatus.responded
         session.commit()
         return {"ok": True}

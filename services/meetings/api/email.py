@@ -100,7 +100,7 @@ def process_email_response(req: EmailResponseRequest, request: Request) -> Respo
                 .first()
             )
             if existing:
-                existing.response = ResponseType(parsed.response).value  # type: ignore[assignment]
+                existing.response = ResponseType(parsed.response)
                 existing.comment = parsed.comment  # type: ignore[assignment]
                 existing.updated_at = datetime.datetime.utcnow()  # type: ignore[assignment]
             else:
@@ -109,11 +109,11 @@ def process_email_response(req: EmailResponseRequest, request: Request) -> Respo
                     poll_id=poll.id,
                     participant_id=participant.id,
                     time_slot_id=slot.id,
-                    response=ResponseType(parsed.response).value,  # type: ignore[assignment]
+                    response=ResponseType(parsed.response),
                     comment=parsed.comment,  # type: ignore[assignment]
                 )
                 session.add(resp)
-        participant.status = ParticipantStatus.responded.value  # type: ignore[assignment]
+        participant.status = ParticipantStatus.responded
         participant.responded_at = datetime.datetime.utcnow()  # type: ignore[assignment]
         session.commit()
         logging.info(

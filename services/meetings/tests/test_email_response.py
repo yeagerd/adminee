@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from services.meetings.main import app
 from services.meetings.models import MeetingPoll, PollParticipant, get_session
 from services.meetings.models.base import Base
-from services.meetings.models.meeting import ParticipantStatus
+from services.meetings.models.meeting import ParticipantStatus, ResponseType
 
 client = TestClient(app)
 
@@ -109,7 +109,7 @@ def test_process_email_response_success():
         )
         responses = list(slot_db.responses)  # type: ignore[reportGeneralTypeIssues]
         assert len(responses) > 0
-        assert any(r.response.value == "available" for r in responses)
+        assert any(r.response == ResponseType.available for r in responses)
 
 
 def test_process_email_response_invalid_key():

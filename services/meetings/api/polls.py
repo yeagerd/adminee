@@ -8,6 +8,7 @@ from services.meetings.models import MeetingPoll as MeetingPollModel
 from services.meetings.models import PollParticipant as PollParticipantModel
 from services.meetings.models import TimeSlot as TimeSlotModel
 from services.meetings.models import get_session
+from services.meetings.models.meeting import PollStatus
 from services.meetings.schemas import MeetingPoll, MeetingPollCreate
 from services.meetings.services import calendar_integration
 
@@ -166,6 +167,6 @@ async def schedule_meeting(poll_id: UUID, request: Request, body: dict) -> dict:
     with get_session() as session:
         poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
         if poll:
-            poll.status = "scheduled"  # type: ignore[assignment]
+            poll.status = PollStatus.scheduled
             session.commit()
     return result
