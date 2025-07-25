@@ -308,6 +308,35 @@ export class GatewayClient {
         const wsUrl = env.GATEWAY_URL.replace('http', 'ws');
         return new WebSocket(`${wsUrl}${endpoint}`);
     }
+
+    // Meetings Service
+    async listMeetingPolls(): Promise<unknown[]> {
+        return this.request<unknown[]>('/api/meetings/polls');
+    }
+
+    async getMeetingPoll(pollId: string): Promise<unknown> {
+        return this.request<unknown>(`/api/meetings/polls/${pollId}`);
+    }
+
+    async createMeetingPoll(pollData: unknown): Promise<unknown> {
+        return this.request<unknown>('/api/meetings/polls', {
+            method: 'POST',
+            body: pollData,
+        });
+    }
+
+    async updateMeetingPoll(pollId: string, pollData: unknown): Promise<unknown> {
+        return this.request<unknown>(`/api/meetings/polls/${pollId}`, {
+            method: 'PUT',
+            body: pollData,
+        });
+    }
+
+    async deleteMeetingPoll(pollId: string): Promise<void> {
+        return this.request<void>(`/api/meetings/polls/${pollId}`, {
+            method: 'DELETE',
+        });
+    }
 }
 
 // Export singleton instance

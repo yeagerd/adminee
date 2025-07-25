@@ -6,7 +6,6 @@ Debug script to clear cached calendar events and test fresh API calls.
 import asyncio
 import redis.asyncio as redis
 import os
-from datetime import datetime
 
 async def clear_demo_user_cache() -> None:
     """Clear all cached data for demo_user to force fresh API calls."""

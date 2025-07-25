@@ -430,7 +430,6 @@ async def create_user_draft(
     thread_id: Optional[int] = None,
 ) -> UserDraft:
     async with get_async_session_factory()() as session:
-        # Check for existing draft for this user, thread, and type
         result = await session.execute(
             select(UserDraft).where(
                 UserDraft.user_id == user_id,

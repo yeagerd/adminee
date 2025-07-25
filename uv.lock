@@ -10,6 +10,7 @@ resolution-markers = [
 members = [
     "briefly",
     "briefly-chat",
+    "briefly-meetings",
     "briefly-office",
     "briefly-user",
 ]
@@ -278,6 +279,7 @@ dev = [
     { name = "pytest-mock" },
     { name = "pytest-timeout" },
     { name = "pytest-xdist" },
+    { name = "respx" },
     { name = "ruff" },
     { name = "types-pytz" },
     { name = "types-requests" },
@@ -304,6 +306,7 @@ requires-dist = [
     { name = "pytest-mock", marker = "extra == 'dev'" },
     { name = "pytest-timeout", marker = "extra == 'dev'" },
     { name = "pytest-xdist", marker = "extra == 'dev'" },
+    { name = "respx", marker = "extra == 'dev'" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "types-pytz", marker = "extra == 'dev'" },
     { name = "types-requests", marker = "extra == 'dev'" },
@@ -386,6 +389,11 @@ requires-dist = [
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.22.0,<1.0.0" },
 ]
 provides-extras = ["test"]
+
+[[package]]
+name = "briefly-meetings"
+version = "0.1.0"
+source = { virtual = "services/meetings" }
 
 [[package]]
 name = "briefly-office"

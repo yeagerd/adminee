@@ -3,11 +3,12 @@ export type Tool =
     | 'email'
     | 'documents'
     | 'tasks'
+    | 'drafts'
     | 'packages'
     | 'research'
     | 'pulse'
     | 'insights'
-    | 'drafts';
+    | 'meetings';
 
 export interface ToolSettings {
     id: Tool;
