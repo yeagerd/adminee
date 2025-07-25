@@ -5,7 +5,7 @@ Tests the API key authentication system for the chat service.
 """
 
 import os
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock
 
 import pytest
 from fastapi import Request
@@ -50,23 +50,6 @@ def patch_settings(monkeypatch):
 
 class TestChatServiceAuth:
     """Test cases for ChatServiceAuth class."""
-
-    @pytest.fixture(autouse=True)
-    def setup_chat_auth_for_service_tests(self):
-        """Set up chat auth with test API key."""
-        with patch("services.chat.auth.get_settings") as mock_settings:
-            mock_settings.return_value.api_frontend_chat_key = "test-FRONTEND_CHAT_KEY"
-
-            # Reset the global chat auth instance
-            import services.chat.auth as auth_module
-
-            auth_module._chat_auth = None
-
-            # Reset the global settings cache to ensure patching works
-            import services.chat.settings as chat_settings
-
-            chat_settings._settings = None
-            yield
 
     def test_chat_service_auth_verify_valid_key(self):
         """Test valid API key verification."""
@@ -216,18 +199,6 @@ class TestChatServiceAuth:
 
 class TestChatAuthIntegration:
     """Integration tests for chat authentication."""
-
-    @pytest.fixture(autouse=True)
-    def setup_chat_auth_for_integration_tests(self):
-        """Set up chat auth with test API key."""
-        with patch("services.chat.auth.get_settings") as mock_settings:
-            mock_settings.return_value.api_frontend_chat_key = "test-FRONTEND_CHAT_KEY"
-
-            # Reset the global chat auth instance
-            import services.chat.auth as auth_module
-
-            auth_module._chat_auth = None
-            yield
 
     def test_chat_auth_singleton(self):
         """Test that chat auth instance is a singleton."""
