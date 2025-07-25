@@ -5,28 +5,31 @@ import pytest
 from fastapi.testclient import TestClient
 
 from services.meetings.main import app
-from services.meetings.models import get_engine
 from services.meetings.models.base import Base
 
 client = TestClient(app)
 
 
-@pytest.fixture(scope="session", autouse=True)
-def create_tables():
-    engine = get_engine()
-    Base.metadata.create_all(engine)
-
-
 @pytest.fixture(autouse=True)
-def set_db_url_meetings(monkeypatch):
-    monkeypatch.setenv("DB_URL_MEETINGS", "sqlite:///:memory:")
-
-
-@pytest.fixture(autouse=True)
-def reset_settings_cache():
+def setup_meetings_settings_and_tables(monkeypatch):
     import services.meetings.settings
 
     services.meetings.settings._settings = None
+    db_url = "sqlite:///file::memory:?cache=shared"
+    monkeypatch.setenv("DB_URL_MEETINGS", db_url)
+
+    from sqlalchemy import create_engine
+
+    from services.meetings import models
+
+    if not hasattr(models, "_test_engine"):
+        models._test_engine = create_engine(
+            db_url, echo=False, future=True, connect_args={"check_same_thread": False}
+        )
+    monkeypatch.setattr(models, "get_engine", lambda: models._test_engine)
+
+
+    Base.metadata.create_all(models._test_engine)
 
 
 @pytest.fixture
