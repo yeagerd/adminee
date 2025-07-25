@@ -46,7 +46,7 @@ export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = fa
                                             {main || <div className="flex-1 flex items-center justify-center text-muted-foreground">Main Pane</div>}
                                         </div>
                                         {draftPane && !hasActiveDraft && (
-                                            <div className="border-t bg-card">
+                                            <div className="border-t bg-card overflow-auto">
                                                 {draftPane}
                                             </div>
                                         )}
@@ -84,7 +84,7 @@ export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = fa
                                         {main || <div className="flex-1 flex items-center justify-center text-muted-foreground">Main Pane</div>}
                                     </div>
                                     {draftPane && !hasActiveDraft && (
-                                        <div className="border-t bg-card">
+                                        <div className="border-t bg-card overflow-auto">
                                             {draftPane}
                                         </div>
                                     )}
