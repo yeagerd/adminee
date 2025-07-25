@@ -10,4 +10,5 @@ if [ -d ".venv" ]; then
     source .venv/bin/activate
 fi
 
-uv run python -m uvicorn services.shipments.main:app --host 0.0.0.0 --port 8004 --reload --reload-dir services/shipments --reload-dir services/common
+# Disable uvicorn access logs since we handle request logging in our middleware
+uv run python -m uvicorn services.shipments.main:app --host 0.0.0.0 --port 8004 --reload --reload-dir services/shipments --reload-dir services/common --no-access-log

@@ -11,4 +11,5 @@ if [ -d ".venv" ]; then
 fi
 
 # Run uvicorn with UV for better performance
-uv run python -m uvicorn services.chat.main:app --port 8002 --host 0.0.0.0 --env-file .env "$@"
+# Disable uvicorn access logs since we handle request logging in our middleware
+uv run python -m uvicorn services.chat.main:app --port 8002 --host 0.0.0.0 --env-file .env --no-access-log "$@"
