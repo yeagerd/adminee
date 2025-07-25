@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 
 class TimeSlotBase(BaseModel):
@@ -18,9 +18,7 @@ class TimeSlotCreate(TimeSlotBase):
 class TimeSlot(TimeSlotBase):
     id: UUID
     is_available: bool
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PollParticipantBase(BaseModel):
@@ -38,9 +36,8 @@ class PollParticipant(PollParticipantBase):
     invited_at: datetime
     responded_at: Optional[datetime]
     reminder_sent_count: int
-
-    class Config:
-        orm_mode = True
+    response_token: str
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PollResponseBase(BaseModel):
@@ -58,9 +55,7 @@ class PollResponse(PollResponseBase):
     participant_id: UUID
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class MeetingPollBase(BaseModel):
@@ -89,9 +84,7 @@ class MeetingPoll(MeetingPollBase):
     poll_token: str
     time_slots: List[TimeSlot]
     participants: List[PollParticipant]
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ChatMeetingBase(BaseModel):
@@ -108,6 +101,4 @@ class ChatMeeting(ChatMeetingBase):
     user_id: UUID
     poll_id: Optional[UUID]
     created_at: datetime
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)

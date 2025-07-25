@@ -77,7 +77,7 @@ def create_poll(poll: MeetingPollCreate, request: Request):
             session.add(db_part)
         session.commit()
         session.refresh(db_poll)
-        return db_poll
+        return MeetingPoll.model_validate(db_poll)
 
 
 @router.put("/{poll_id}", response_model=MeetingPoll)
@@ -107,7 +107,7 @@ def update_poll(poll_id: UUID, poll: MeetingPollCreate, request: Request):
         # TODO: update time slots and participants as needed
         session.commit()
         session.refresh(db_poll)
-        return db_poll
+        return MeetingPoll.model_validate(db_poll)
 
 
 @router.delete("/{poll_id}")
