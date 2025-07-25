@@ -24,7 +24,7 @@ from services.common.http_errors import (
 )
 from services.common.logging_config import get_logger
 from services.user.auth import get_current_user
-from services.user.auth.service_auth import get_current_service
+from services.user.auth.service_auth import service_permission_required
 from services.user.models.integration import IntegrationProvider, IntegrationStatus
 from services.user.schemas.integration import (
     IntegrationDisconnectRequest,
@@ -455,7 +455,7 @@ async def search_users(
 )
 async def create_or_upsert_user(
     user_data: UserCreate,
-    current_service: str = Depends(get_current_service),
+    service_name: str = Depends(service_permission_required(["write_users"])),
 ) -> UserResponse:
     """
     Create a new user or return existing user by external_auth_id and auth_provider.
@@ -469,7 +469,7 @@ async def create_or_upsert_user(
     - Only authorized services (frontend, chat, office) can create users
     """
     # Add detailed logging for debugging
-    logger.info(f"User creation request from service: {current_service}")
+    logger.info(f"User creation request from service: {service_name}")
     logger.info(
         f"User data received: external_auth_id={user_data.external_auth_id}, "
         f"auth_provider={user_data.auth_provider}, email={user_data.email}, "

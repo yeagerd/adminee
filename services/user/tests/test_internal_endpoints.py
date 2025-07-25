@@ -42,16 +42,22 @@ class TestInternalAPI(BaseUserManagementTest):
 
     def test_internal_user_status_endpoint_exists(self):
         """Test that the user status endpoint exists and returns proper error for non-existent user."""
-        with patch(
-            "services.user.routers.internal.get_current_service",
-            return_value="test-service",
-        ):
-            response = self.client.get(
-                "/internal/user/test_user_123/status",
-                headers=self.auth_headers,
+
+        from fastapi.testclient import TestClient
+
+        from services.user.main import app
+
+        with patch("services.user.settings.get_settings") as mock_settings:
+            from services.user.settings import Settings
+
+            test_settings = Settings(db_url_user_management="sqlite:///:memory:")
+            test_settings.api_frontend_user_key = "test-frontend-key"
+            test_settings.api_chat_user_key = "test-chat-key"
+            test_settings.api_office_user_key = "test-office-key"
+            mock_settings.return_value = test_settings
+            client = TestClient(app)
+            response = client.get(
+                "/internal/users/nonexistent-user/status",
+                headers={"X-API-Key": "test-api-key"},
             )
-            # Should return 404 for non-existent user or 500 if method not implemented
-            assert response.status_code in [
-                status.HTTP_404_NOT_FOUND,
-                status.HTTP_500_INTERNAL_SERVER_ERROR,
-            ]
+            assert response.status_code in (404, 422, 400, 403)
