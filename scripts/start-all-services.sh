@@ -211,8 +211,13 @@ cleanup() {
         fi
     done
     
-    # Kill any remaining processes on our ports
-    for port in 3000 3001 8001 8002 8003; do
+    # Kill any remaining processes on our ports (only for services we started)
+    local ports_to_kill="3001 8001 8002 8003 8004 8005"
+    if [ "$SKIP_FRONTEND" = false ]; then
+        ports_to_kill="$ports_to_kill 3000"
+    fi
+
+    for port in $ports_to_kill; do
         lsof -ti:$port 2>/dev/null | xargs -r kill -9 2>/dev/null || true
     done
     
