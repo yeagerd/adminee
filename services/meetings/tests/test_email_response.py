@@ -86,7 +86,7 @@ def test_process_email_response_success():
         "sender": "alice@example.com",
     }
     resp = client.post(
-        "/api/meetings/process-email-response/",
+        "/api/v1/meetings/process-email-response/",
         json=payload,
         headers={"X-API-Key": API_KEY},
     )
@@ -120,7 +120,7 @@ def test_process_email_response_invalid_key():
         "sender": "alice@example.com",
     }
     resp = client.post(
-        "/api/meetings/process-email-response/",
+        "/api/v1/meetings/process-email-response/",
         json=payload,
         headers={"X-API-Key": "wrong-key"},
     )
@@ -135,7 +135,7 @@ def test_process_email_response_unparseable_content():
         "sender": "alice@example.com",
     }
     resp = client.post(
-        "/api/meetings/process-email-response/",
+        "/api/v1/meetings/process-email-response/",
         json=payload,
         headers={"X-API-Key": API_KEY},
     )
@@ -151,7 +151,7 @@ def test_process_email_response_unknown_sender():
         "sender": "unknown@example.com",
     }
     resp = client.post(
-        "/api/meetings/process-email-response/",
+        "/api/v1/meetings/process-email-response/",
         json=payload,
         headers={"X-API-Key": API_KEY},
     )

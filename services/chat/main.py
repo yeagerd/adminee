@@ -87,7 +87,7 @@ async def ready_check() -> JSONResponse:
     )
 
 
-app.include_router(router, prefix="/chat")
+app.include_router(router, prefix="/v1/chat")
 
 # Print all registered routes for debugging
 # === Registered routes in chat service ===
