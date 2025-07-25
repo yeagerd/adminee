@@ -23,6 +23,21 @@ from services.office.core.settings import get_settings
 from services.office.core.token_manager import TokenData
 
 
+@pytest.fixture(autouse=True)
+def patch_settings(monkeypatch):
+    """Patch the _settings global variable to return test settings."""
+    import services.office.core.settings as office_settings
+
+    test_settings = office_settings.Settings(
+        db_url_office="sqlite:///:memory:",
+        api_frontend_office_key="test-frontend-office-key",
+        api_chat_office_key="test-chat-office-key",
+        api_office_user_key="test-office-user-key",
+    )
+
+    monkeypatch.setattr("services.office.core.settings._settings", test_settings)
+
+
 # Helper function to get API key values
 def get_test_api_keys():
     """Get the actual API key values from settings for testing."""
