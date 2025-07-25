@@ -1,5 +1,5 @@
 import asyncio
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock
 
 import pytest
 from fastapi import Request
@@ -10,16 +10,14 @@ import services.shipments.settings
 class TestServiceAuth:
     @pytest.fixture(autouse=True)
     def setup_service_auth(self):
-        """Set up service auth with test API key by patching the get_settings function."""
+        """Set up service auth with test API key by setting the settings singleton."""
         test_settings = services.shipments.settings.Settings(
             db_url_shipments="sqlite:///:memory:"
         )
         test_settings.api_frontend_shipments_key = "test-api-key"
-
-        with patch(
-            "services.shipments.settings.get_settings", return_value=test_settings
-        ):
-            yield
+        services.shipments.settings._settings = test_settings
+        yield
+        services.shipments.settings._settings = None
 
     def test_get_client_permissions(self):
         from services.shipments.service_auth import get_client_permissions

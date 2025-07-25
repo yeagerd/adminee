@@ -1,4 +1,3 @@
-from functools import lru_cache
 
 from services.common.settings import BaseSettings, Field, SettingsConfigDict
 
@@ -27,6 +26,13 @@ class Settings(BaseSettings):
     )
 
 
-@lru_cache()
+# Global settings instance
+_settings: Settings | None = None
+
+
 def get_settings() -> Settings:
-    return Settings()
+    """Get the global settings instance, creating it if necessary."""
+    global _settings
+    if _settings is None:
+        _settings = Settings()
+    return _settings
