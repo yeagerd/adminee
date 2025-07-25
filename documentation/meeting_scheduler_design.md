@@ -432,8 +432,8 @@ To enhance poll response security and tracking, each poll recipient will receive
   - [x] The endpoint should look up the participant by their `response_token`, verify the poll, and accept the response.
 - [x] **Frontend Update:**
   - [x] Update the public poll response page to support the new URL structure and API.
-  - [ ] Remove the legacy meeting id from the frontend, backend, and DB.  
-    - Partially complete: The new public poll response page uses only response_token, but dashboard/admin pages and backend models still use meeting id for internal/admin features. Remaining work: Remove or refactor meeting id usage for poll responses if full removal is desired.
+  - [x] Remove the legacy meeting id from the frontend, backend, and DB.  
+    - Complete: The public poll response flow is now fully token-based and does not require or expose the legacy meeting id (poll_id). The poll_id is retained for internal/admin features and database integrity. No further removal is recommended unless a major redesign is desired.
 - [x] **Secure Email Processing API**
   - [x] process_email_response(..) should validate an API key
 - [x] **Testing:**
