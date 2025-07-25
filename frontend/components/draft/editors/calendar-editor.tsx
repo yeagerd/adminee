@@ -1,5 +1,6 @@
 'use client';
 
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useEditor } from '@/hooks/use-editor';
 import { cn } from '@/lib/utils';
 import { EditorContent } from '@tiptap/react';
@@ -28,12 +29,13 @@ export function CalendarEditor({
         content,
         onUpdate,
         onAutoSave,
-        autoSaveDelay: 2000,
+        autoSaveDelay: 3000,
     });
 
     const [hasInteracted, setHasInteracted] = useState(false);
     const [initialMount, setInitialMount] = useState(true);
 
+    // Track user interaction after initial mount
     useEffect(() => {
         if (initialMount) {
             setInitialMount(false);
@@ -45,7 +47,6 @@ export function CalendarEditor({
     const errors = validateContent(content);
     const wordCount = getWordCount(content);
     const characterCount = getCharacterCount(content);
-
     const showErrors = hasInteracted && errors.length > 0;
 
     return (
@@ -54,17 +55,19 @@ export function CalendarEditor({
             <EditorToolbar editor={editor} />
 
             {/* Editor Content */}
-            <div className="flex-1 min-h-0 overflow-auto" style={{ height: '300px' }}>
-                <div className="p-4 h-full">
-                    <EditorContent
-                        editor={editor}
-                        className={cn(
-                            'h-full prose prose-sm sm:prose lg:prose-lg xl:prose-2xl max-w-none overflow-auto',
-                            'focus:outline-none',
-                            disabled && 'opacity-50 pointer-events-none'
-                        )}
-                    />
-                </div>
+            <div className="flex-1 min-h-0">
+                <ScrollArea className="h-full">
+                    <div className="p-4">
+                        <EditorContent
+                            editor={editor}
+                            className={cn(
+                                'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl max-w-none',
+                                'focus:outline-none',
+                                disabled && 'opacity-50 pointer-events-none'
+                            )}
+                        />
+                    </div>
+                </ScrollArea>
             </div>
 
             {/* Status Bar */}
