@@ -1,0 +1,92 @@
+import json
+import logging
+import os
+import time
+from typing import Any
+
+from services.common.settings import BaseSettings, Field
+from services.email_sync.microsoft_graph_client import MicrosoftGraphClient
+from services.email_sync.pubsub_client import publish_message
+
+
+class MicrosoftSyncSettings(BaseSettings):
+    GOOGLE_CLOUD_PROJECT: str = Field(..., description="GCP project ID")
+    PUBSUB_EMULATOR_HOST: str = Field("", description="PubSub emulator host")
+    MICROSOFT_SUBSCRIPTION: str = Field(
+        "microsoft-notifications-sub", description="Microsoft subscription name"
+    )
+    MS_GRAPH_ACCESS_TOKEN: str = Field(
+        "test-access-token", description="MS Graph access token"
+    )
+
+
+MICROSOFT_TOPIC = "microsoft-notifications"
+EMAIL_PROCESSING_TOPIC = "email-processing"
+
+logging.basicConfig(level=logging.INFO)
+
+
+def process_microsoft_notification(message: Any) -> None:
+    settings = MicrosoftSyncSettings()
+    try:
+        data = json.loads(message.data.decode("utf-8"))
+        logging.info(f"Processing Microsoft notification: {data}")
+        # TODO: Retrieve access token for the user (mocked for now)
+        graph_client = MicrosoftGraphClient(settings.MS_GRAPH_ACCESS_TOKEN)
+        # Fetch emails using notification
+        emails = graph_client.fetch_emails_from_notification(data)
+        logging.info(f"Fetched {len(emails)} emails from Microsoft Graph")
+        # Publish each email to email-processing topic with retry
+        for email in emails:
+            backoff = 1
+            for attempt in range(5):
+                try:
+                    publish_message(EMAIL_PROCESSING_TOPIC, email)
+                    break
+                except Exception as e:
+                    logging.error(
+                        f"Failed to publish email to pubsub: {e}, retrying in {backoff}s"
+                    )
+                    time.sleep(backoff)
+                    backoff = min(backoff * 2, 60)
+            else:
+                logging.error(
+                    f"ALERT: Failed to publish email after retries. Email: {email}"
+                )
+                message.nack()
+                return
+        message.ack()
+    except Exception as e:
+        logging.error(f"Failed to process message: {e}")
+        message.nack()
+
+
+def run() -> None:
+    from google.cloud import pubsub_v1  # type: ignore[attr-defined]
+
+    settings = MicrosoftSyncSettings()
+    PROJECT_ID = settings.GOOGLE_CLOUD_PROJECT
+    PUBSUB_EMULATOR_HOST = settings.PUBSUB_EMULATOR_HOST
+    MICROSOFT_SUBSCRIPTION = settings.MICROSOFT_SUBSCRIPTION
+    if PUBSUB_EMULATOR_HOST:
+        os.environ["PUBSUB_EMULATOR_HOST"] = PUBSUB_EMULATOR_HOST
+    if not PROJECT_ID:
+        raise ValueError("GOOGLE_CLOUD_PROJECT environment variable is not set.")
+    subscriber = pubsub_v1.SubscriberClient()
+    subscription_path = subscriber.subscription_path(PROJECT_ID, MICROSOFT_SUBSCRIPTION)
+    backoff = 1
+    while True:
+        try:
+            streaming_pull_future = subscriber.subscribe(
+                subscription_path, callback=process_microsoft_notification
+            )
+            logging.info(f"Listening for messages on {subscription_path}...")
+            streaming_pull_future.result()
+        except Exception as e:
+            logging.error(f"Subscriber error: {e}, retrying in {backoff}s")
+            time.sleep(backoff)
+            backoff = min(backoff * 2, 60)
+
+
+if __name__ == "__main__":
+    run()
