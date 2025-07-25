@@ -33,11 +33,11 @@ class Settings(BaseSettings):
 
     # API Keys for service communication
     api_frontend_office_key: str = Field(
-        default="default-office-key",
+        ...,  # Required field - no default to prevent production mistakes
         description="Frontend API key to access this Office service",
     )
     api_chat_office_key: str = Field(
-        default="default-chat-office-key",
+        ...,  # Required field - no default to prevent production mistakes
         description="Chat service API key to access this Office service",
     )
     api_office_user_key: Optional[str] = Field(

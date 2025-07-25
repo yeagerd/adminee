@@ -11,17 +11,32 @@ from sqlmodel import Column, DateTime, Field, SQLModel
 from services.common import get_async_database_url
 from services.office.core.settings import get_settings
 
-engine = create_async_engine(
-    get_async_database_url(get_settings().db_url_office),
-    echo=False,
-)
+# Global variables for lazy initialization
+_engine = None
+_async_session = None
 
-# Session factory for dependency injection
-async_session = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-)
+
+def get_engine() -> Any:
+    """Get database engine with lazy initialization."""
+    global _engine
+    if _engine is None:
+        settings = get_settings()
+        database_url = get_async_database_url(settings.db_url_office)
+        _engine = create_async_engine(database_url, echo=False)
+    return _engine
+
+
+def get_async_session_factory() -> Any:
+    """Get async session factory with lazy initialization."""
+    global _async_session
+    if _async_session is None:
+        engine = get_engine()
+        _async_session = async_sessionmaker(
+            engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+        )
+    return _async_session
 
 
 class Provider(str, Enum):
@@ -103,16 +118,19 @@ class RateLimitBucket(SQLModel, table=True):
 # Database lifecycle management
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     """Get async database session for dependency injection."""
-    async with async_session() as session:
+    async_session_factory = get_async_session_factory()
+    async with async_session_factory() as session:
         yield session
 
 
 async def create_all_tables() -> None:
     """Create all database tables."""
+    engine = get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
 
 
 async def close_db() -> None:
     """Close database connections."""
+    engine = get_engine()
     await engine.dispose()
