@@ -1,4 +1,3 @@
-
 from services.common.settings import BaseSettings, Field, SettingsConfigDict
 
 
