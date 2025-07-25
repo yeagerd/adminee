@@ -56,7 +56,7 @@ export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = fa
                             </ResizablePanel>
                         </ResizablePanelGroup>
                     ) : (
-                        <div className="flex-1 min-w-0 h-full">
+                        <div className="flex-1 min-w-0 h-full flex flex-col">
                             {draftPane && hasActiveDraft ? (
                                 <ResizablePanelGroup direction="vertical" className="h-full">
                                     <ResizablePanel minSize={30} defaultSize={70} className="h-full">
@@ -71,19 +71,17 @@ export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = fa
                                         </div>
                                     </ResizablePanel>
                                 </ResizablePanelGroup>
-                            ) : draftPane ? (
-                                <div className="flex h-full">
+                            ) : (
+                                <>
                                     <div className="flex-1 overflow-auto">
                                         {main || <div className="flex-1 flex items-center justify-center text-muted-foreground">Main Pane</div>}
                                     </div>
-                                    <div className="w-80 border-l bg-card">
-                                        {draftPane}
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="h-full overflow-auto">
-                                    {main || <div className="flex-1 flex items-center justify-center text-muted-foreground">Main Pane</div>}
-                                </div>
+                                    {draftPane && !hasActiveDraft && (
+                                        <div className="h-80 border-t bg-card">
+                                            {draftPane}
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
                     )}
