@@ -54,12 +54,12 @@ export function DocumentEditor({
             <EditorToolbar editor={editor} />
 
             {/* Editor Content */}
-            <div className="flex-1 overflow-auto">
-                <div className="p-4 h-full">
+            <div className="flex-1 min-h-0 overflow-auto">
+                <div className="p-4">
                     <EditorContent
                         editor={editor}
                         className={cn(
-                            'h-full min-h-[300px] prose prose-sm sm:prose lg:prose-lg xl:prose-2xl max-w-none',
+                            'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl max-w-none',
                             'focus:outline-none',
                             disabled && 'opacity-50 pointer-events-none'
                         )}
