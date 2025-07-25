@@ -212,6 +212,14 @@ export function ToolContent() {
                         <DraftsList />
                     </div>
                 );
+            case 'meetings':
+                return (
+                    <div className="h-full">
+                        {/* Meetings tool main content */}
+                        {/* Use the Next.js dynamic import to render the meetings dashboard page */}
+                        {require('@/app/dashboard/meetings/page').default()}
+                    </div>
+                );
             default:
                 return (
                     <div className="p-8">
