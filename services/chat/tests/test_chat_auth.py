@@ -99,7 +99,7 @@ class TestChatServiceAuth:
         with pytest.raises(AuthError) as exc_info:
             verify_service_authentication(request)
 
-        assert exc_info.value.status_code == 401
+        assert exc_info.value.status_code == 403
         assert "Invalid API key" in str(exc_info.value)
 
     def test_get_client_permissions_frontend(self):
