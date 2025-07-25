@@ -5,13 +5,13 @@ from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlmodel import SQLModel
 
+from services.common import get_async_database_url
 from services.shipments.settings import get_settings
 
 settings = get_settings()
 DATABASE_URL = settings.db_url_shipments
-
 engine = create_async_engine(
-    DATABASE_URL.replace("sqlite://", "sqlite+aiosqlite://"),
+    get_async_database_url(DATABASE_URL),
     echo=settings.debug,
     future=True,
 )
