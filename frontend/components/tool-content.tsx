@@ -2,6 +2,7 @@
 
 import { CalendarEventItem } from '@/components/calendar-event-item';
 import DraftsList from '@/components/drafts/drafts-list';
+import PackageDashboard from '@/components/packages/PackageDashboard';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -233,12 +234,7 @@ export function ToolContent() {
                     </div>
                 );
             case 'packages':
-                return (
-                    <div className="p-8">
-                        <h1 className="text-3xl font-bold mb-4">Package Tracker</h1>
-                        <p>Package tracker view coming soon...</p>
-                    </div>
-                );
+                return <PackageDashboard />;
             case 'research':
                 return (
                     <div className="p-8">

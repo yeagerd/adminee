@@ -1,0 +1,51 @@
+[project]
+name = "briefly-shipments"
+version = "0.1.0"
+description = "Briefly Package Shipments Tracking Service"
+requires-python = ">=3.12"
+dependencies = [
+    # Web Framework
+    "fastapi>=0.116.1,<1.0.0",
+    "uvicorn[standard]>=0.22.0,<1.0.0",
+    "pydantic==2.11.7",
+    "python-dotenv>=1.0.0,<2.0.0",
+    "structlog>=25.4.0,<26.0.0",
+    "httpx>=0.24.0,<1.0.0",
+    "requests>=2.31.0,<3.0.0",
+    # Database
+    "sqlmodel>=0.0.24",
+    "sqlalchemy>=2.0.0",
+    "aiosqlite",
+    "asyncpg",
+    "psycopg2-binary",
+    "alembic",
+    # Background tasks
+    "celery",
+    "redis",
+    # Time zone handling
+    "pytz",
+    # OpenTelemetry
+    "opentelemetry-api",
+    "opentelemetry-sdk",
+    "opentelemetry-instrumentation",
+    "opentelemetry-instrumentation-fastapi",
+    "opentelemetry-instrumentation-httpx",
+    "opentelemetry-distro",
+    "opentelemetry-exporter-gcp-trace",
+    # GCP
+    "google-cloud-secret-manager",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-asyncio"
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["*"]
