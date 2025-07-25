@@ -213,7 +213,9 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
         with self._setup_mock_token_manager():
             google_patch, microsoft_patch = self._setup_mock_api_clients()
             with google_patch, microsoft_patch:
-                response = self.client.get("/v1/email/messages", headers=self.auth_headers)
+                response = self.client.get(
+                    "/v1/email/messages", headers=self.auth_headers
+                )
                 assert response.status_code == status.HTTP_200_OK
 
                 data = response.json()

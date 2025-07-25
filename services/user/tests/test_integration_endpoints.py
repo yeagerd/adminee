@@ -17,6 +17,8 @@ from services.user.models.integration import (
 )
 from services.user.schemas.integration import (
     IntegrationListResponse,
+    OAuthCallbackResponse,
+    TokenRefreshResponse,
 )
 from services.user.tests.test_base import BaseUserManagementIntegrationTest
 
@@ -213,19 +215,15 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
 
     def test_complete_oauth_flow_success(self):
         """Test successful OAuth flow completion."""
-        request_data = {
-            "code": "authorization_code_123",
-            "state": "state_123",
-        }
-
-        mock_response = {
-            "success": True,
-            "integration_id": 123,
-            "provider": "google",
-            "status": "active",
-            "scopes": ["https://www.googleapis.com/auth/calendar"],
-            "external_user_info": {"email": "test@example.com", "name": "Test User"},
-        }
+        mock_response = OAuthCallbackResponse(
+            success=True,
+            integration_id=123,
+            provider=IntegrationProvider.GOOGLE,
+            status=IntegrationStatus.ACTIVE,
+            scopes=["https://www.googleapis.com/auth/calendar"],
+            external_user_info={"email": "test@example.com", "name": "Test User"},
+            error=None,
+        )
 
         with patch(
             "services.user.routers.integrations.get_integration_service"
@@ -235,31 +233,30 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
             )
             response = self.client.post(
                 "/v1/users/user_123/integrations/oauth/callback?provider=google",
-                json=request_data,
+                json={
+                    "code": "authorization_code_123",
+                    "state": "state_123",
+                },
                 headers={"Authorization": "Bearer valid-token"},
             )
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        assert data["success"] == mock_response["success"]
-        assert data["integration_id"] == mock_response["integration_id"]
-        assert data["provider"] == mock_response["provider"]
-        assert data["status"] == mock_response["status"]
+        assert data["success"] is True
+        assert data["integration_id"] == 123
+        assert data["provider"] == "google"
+        assert data["status"] == "active"
 
     def test_complete_oauth_flow_microsoft_success(self):
         """Test successful OAuth flow completion for Microsoft."""
-        request_data = {
-            "code": "authorization_code_456",
-            "state": "state_456",
-        }
-
-        mock_response = {
-            "success": True,
-            "integration_id": 456,
-            "provider": "microsoft",
-            "status": "active",
-            "scopes": ["https://graph.microsoft.com/Calendars.ReadWrite"],
-            "external_user_info": {"email": "test@example.com", "name": "Test User"},
-        }
+        mock_response = OAuthCallbackResponse(
+            success=True,
+            integration_id=456,
+            provider=IntegrationProvider.MICROSOFT,
+            status=IntegrationStatus.ACTIVE,
+            scopes=["https://graph.microsoft.com/Calendars.ReadWrite"],
+            external_user_info={"email": "test@example.com", "name": "Test User"},
+            error=None,
+        )
 
         with patch(
             "services.user.routers.integrations.get_integration_service"
@@ -269,15 +266,18 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
             )
             response = self.client.post(
                 "/v1/users/user_123/integrations/oauth/callback?provider=microsoft",
-                json=request_data,
+                json={
+                    "code": "authorization_code_456",
+                    "state": "state_456",
+                },
                 headers={"Authorization": "Bearer valid-token"},
             )
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        assert data["success"] == mock_response["success"]
-        assert data["integration_id"] == mock_response["integration_id"]
-        assert data["provider"] == mock_response["provider"]
-        assert data["status"] == mock_response["status"]
+        assert data["success"] is True
+        assert data["integration_id"] == 456
+        assert data["provider"] == "microsoft"
+        assert data["status"] == "active"
 
     @patch("services.user.services.audit_service.audit_logger.log_audit_event")
     def test_complete_oauth_flow_with_error(self, mock_audit):
@@ -368,13 +368,14 @@ class TestIntegrationManagementEndpoints(BaseUserManagementIntegrationTest):
         user_id = "user_123"
         provider = "google"
 
-        mock_response = {
-            "success": True,
-            "integration_id": 123,
-            "provider": "google",
-            "token_expires_at": datetime.now(timezone.utc),
-            "refreshed_at": datetime.now(timezone.utc),
-        }
+        mock_response = TokenRefreshResponse(
+            success=True,
+            integration_id=123,
+            provider=IntegrationProvider.GOOGLE,
+            token_expires_at=datetime.now(timezone.utc),
+            refreshed_at=datetime.now(timezone.utc),
+            error=None,
+        )
 
         with patch(
             "services.user.routers.integrations.get_integration_service"
@@ -388,9 +389,9 @@ class TestIntegrationManagementEndpoints(BaseUserManagementIntegrationTest):
             )
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        assert data["success"] == mock_response["success"]
-        assert data["integration_id"] == mock_response["integration_id"]
-        assert data["provider"] == mock_response["provider"]
+        assert data["success"] is True
+        assert data["integration_id"] == 123
+        assert data["provider"] == "google"
 
     def test_refresh_integration_tokens_failure(self):
         """Test token refresh failure."""
