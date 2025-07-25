@@ -114,7 +114,7 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
             )}
 
             {/* Content Editor */}
-            <div className="flex-1 overflow-hidden relative">
+            <div className="flex-1 overflow-auto relative">
                 {isLoading && (
                     <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
