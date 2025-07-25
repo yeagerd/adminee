@@ -21,7 +21,7 @@ from services.office.core.token_manager import TokenData, TokenManager
 
 
 @pytest.fixture(autouse=True)
-def patch_settings(monkeypatch):
+def patch_settings():
     """Patch the _settings global variable to return test settings."""
     import services.office.core.settings as office_settings
 
@@ -32,7 +32,10 @@ def patch_settings(monkeypatch):
         api_office_user_key="test-office-user-key",
     )
 
-    monkeypatch.setattr("services.office.core.settings._settings", test_settings)
+    # Directly set the singleton instead of using monkeypatch
+    office_settings._settings = test_settings
+    yield
+    office_settings._settings = None
 
 
 class TestTokenManager:
