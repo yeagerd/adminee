@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Draft, DraftMetadata, DraftType } from '@/types/draft';
 import { Calendar, FileText, Mail } from 'lucide-react';
-import { AIIndicator } from './ai-indicator';
 import { DraftActions } from './draft-actions';
 import { DraftEditor } from './draft-editor';
 import { DraftMetadata as DraftMetadataComponent } from './draft-metadata';
@@ -102,23 +101,6 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
             'h-full flex flex-col bg-background',
             className
         )}>
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b">
-                <div className="flex items-center gap-3">
-                    {draft.isAIGenerated && (
-                        <AIIndicator isAIGenerated={true} size="sm" />
-                    )}
-                </div>
-
-                <div className="text-xs text-muted-foreground">
-                    {draft.updatedAt && (
-                        <span>
-                            Last updated: {new Date(draft.updatedAt).toLocaleTimeString()}
-                        </span>
-                    )}
-                </div>
-            </div>
-
             {/* Metadata */}
             <DraftMetadataComponent
                 draft={draft}
@@ -144,6 +126,7 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
                     onUpdate={handleContentChange}
                     onAutoSave={handleAutoSave}
                     disabled={isLoading}
+                    updatedAt={draft.updatedAt}
                 />
             </div>
 
