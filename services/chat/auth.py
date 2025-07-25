@@ -8,7 +8,7 @@ from typing import Any, Callable, Dict, List
 
 from fastapi import Request
 
-import services.chat.settings
+from services.chat.settings import get_settings
 from services.common.api_key_auth import (
     APIKeyConfig,
     make_service_permission_required,
@@ -60,7 +60,7 @@ SERVICE_PERMISSIONS = {
 }
 
 verify_service_authentication = make_verify_service_authentication(
-    API_KEY_CONFIGS, services.chat.settings.get_settings
+    API_KEY_CONFIGS, get_settings
 )
 
 
@@ -70,6 +70,6 @@ def service_permission_required(
     return make_service_permission_required(
         required_permissions,
         API_KEY_CONFIGS,
-        services.chat.settings.get_settings,
+        get_settings,
         SERVICE_PERMISSIONS,
     )

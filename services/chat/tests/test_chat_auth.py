@@ -9,13 +9,12 @@ from unittest.mock import MagicMock, Mock
 import pytest
 from fastapi import Request
 
-import services.chat.settings
 from services.chat.auth import (
     API_KEY_CONFIGS,
     service_permission_required,
     verify_service_authentication,
 )
-from services.chat.settings import Settings, get_settings
+from services.chat.settings import get_settings
 from services.common.api_key_auth import (
     build_api_key_mapping,
     get_client_from_api_key,
@@ -27,23 +26,27 @@ from services.common.http_errors import AuthError
 
 
 @pytest.fixture(autouse=True)
-def set_db_url_chat():
+def set_db_url_chat(monkeypatch):
+    import services.chat.settings as chat_settings
+
     # Save the original singleton to restore later
-    original_settings = services.chat.settings._settings
+    original_settings = chat_settings._settings
     # Set the singleton to a test instance
-    services.chat.settings._settings = services.chat.settings.Settings(
+    chat_settings._settings = chat_settings.Settings(
         api_frontend_chat_key="test-FRONTEND_CHAT_KEY",
         db_url_chat="sqlite+aiosqlite:///file::memory:?cache=shared",
     )
     yield
     # Restore the original singleton after the session
-    services.chat.settings._settings = original_settings
+    chat_settings._settings = original_settings
 
 
 @pytest.fixture(autouse=True)
 def patch_settings(monkeypatch):
+    import services.chat.settings as chat_settings
+
     def _test_settings():
-        return Settings(
+        return chat_settings.Settings(
             api_frontend_chat_key="test-FRONTEND_CHAT_KEY",
             db_url_chat="sqlite+aiosqlite:///file::memory:?cache=shared",
         )
@@ -56,20 +59,18 @@ class TestChatServiceAuth:
 
     def test_chat_service_auth_verify_valid_key(self):
         """Test valid API key verification."""
-        import services.chat.settings
+        import services.chat.settings as chat_settings
 
-        test_settings = services.chat.settings.Settings(
+        test_settings = chat_settings.Settings(
             api_frontend_chat_key="test-FRONTEND_CHAT_KEY",
             db_url_chat="sqlite+aiosqlite:///file::memory:?cache=shared",
         )
-        services.chat.settings._settings = test_settings
-        api_key_mapping = build_api_key_mapping(
-            API_KEY_CONFIGS, services.chat.settings.get_settings
-        )
+        chat_settings._settings = test_settings
+        api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
         service_name = verify_api_key("test-FRONTEND_CHAT_KEY", api_key_mapping)
         assert service_name == "chat-service-access"
         # Cleanup
-        services.chat.settings._settings = None
+        chat_settings._settings = None
 
     def test_chat_service_auth_verify_invalid_key(self):
         """Test invalid API key verification."""
