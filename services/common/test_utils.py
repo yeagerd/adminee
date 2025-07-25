@@ -11,6 +11,8 @@ from unittest.mock import MagicMock, patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from services.office.core.settings import get_settings
+
 
 class BaseIntegrationTest:
     """Base class for integration tests with HTTP call detection rakes."""
@@ -163,7 +165,11 @@ class BaseOfficeServiceIntegrationTest(BaseIntegrationTest):
         self.client = self.create_test_client(app)
 
         # Set up default auth headers for tests
-        self.auth_headers = {"X-User-Id": "test-user@example.com"}
+        settings = get_settings()
+        self.auth_headers = {
+            "X-User-Id": "test-user@example.com",
+            "Authorization": f"Bearer {settings.api_frontend_office_key}",
+        }
 
     def teardown_method(self, method: object) -> None:
         """Clean up Office Service specific patches."""

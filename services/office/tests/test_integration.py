@@ -51,7 +51,7 @@ class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
                     "services.office.api.health.check_service_connection",
                     return_value=True,
                 ):
-                    response = self.client.get("/health")
+                    response = self.client.get("/health", headers=self.auth_headers)
                     assert response.status_code == status.HTTP_200_OK
 
                     data = response.json()
@@ -79,7 +79,9 @@ class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
             "services.office.core.token_manager.TokenManager.get_user_token",
             return_value=mock_token_data,
         ):
-            response = self.client.get(f"/health/integrations/{user_id}")
+            response = self.client.get(
+                f"/health/integrations/{user_id}", headers=self.auth_headers
+            )
             assert response.status_code == status.HTTP_200_OK
 
             data = response.json()
@@ -112,7 +114,9 @@ class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
             "services.office.core.token_manager.TokenManager.get_user_token",
             side_effect=failing_token_side_effect,
         ):
-            response = self.client.get(f"/health/integrations/{user_id}")
+            response = self.client.get(
+                f"/health/integrations/{user_id}", headers=self.auth_headers
+            )
             assert response.status_code == status.HTTP_200_OK
 
             data = response.json()
