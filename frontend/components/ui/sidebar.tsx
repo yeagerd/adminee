@@ -207,26 +207,27 @@ const Sidebar = React.forwardRef<
         return (
             <div
                 ref={ref}
-                className="group peer hidden md:block text-sidebar-foreground"
+                className={cn(
+                    "h-full flex flex-col group peer text-sidebar-foreground",
+                    className
+                )}
                 data-state={state}
-                data-collapsible={state === "collapsed" ? collapsible : ""}
+                data-collapsible={state === "collapsed" ? collapsible : "none"}
                 data-variant={variant}
                 data-side={side}
+                {...props}
             >
                 <div
                     className={cn(
-                        // REMOVED: z-10
-                        "duration-200 relative hidden h-full w-auto min-w-[3rem] max-w-[20rem] transition-[left,right,width] ease-linear md:flex",
+                        "h-full flex flex-col duration-200 relative w-auto min-w-[3rem] max-w-[20rem] transition-[left,right,width] ease-linear",
                         side === "left"
                             ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
                             : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
-                        // Adjust the padding for floating and inset variants.
                         variant === "floating" || variant === "inset"
                             ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]"
                             : "group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l",
                         className
                     )}
-                    {...props}
                 >
                     <div
                         data-sidebar="sidebar"
