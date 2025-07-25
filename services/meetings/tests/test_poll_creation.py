@@ -60,7 +60,7 @@ def poll_payload():
 def test_create_poll_sets_user_id(poll_payload):
     user_id = str(uuid4())
     resp = client.post(
-        "/api/meetings/polls/", json=poll_payload, headers={"X-User-Id": user_id}
+        "/api/v1/meetings/polls/", json=poll_payload, headers={"X-User-Id": user_id}
     )
     assert resp.status_code == 200, resp.text
     data = resp.json()
@@ -70,7 +70,7 @@ def test_create_poll_sets_user_id(poll_payload):
 
 
 def test_create_poll_missing_user_id_returns_400(poll_payload):
-    resp = client.post("/api/meetings/polls/", json=poll_payload)
+    resp = client.post("/api/v1/meetings/polls/", json=poll_payload)
     assert resp.status_code == 400
     assert "Missing X-User-Id header" in resp.text
 
@@ -79,7 +79,7 @@ def test_token_based_poll_response_flow(poll_payload):
     user_id = str(uuid4())
     # Create poll
     resp = client.post(
-        "/api/meetings/polls/", json=poll_payload, headers={"X-User-Id": user_id}
+        "/api/v1/meetings/polls/", json=poll_payload, headers={"X-User-Id": user_id}
     )
     assert resp.status_code == 200, resp.text
     data = resp.json()
@@ -97,7 +97,8 @@ def test_token_based_poll_response_flow(poll_payload):
         ]
     }
     resp2 = client.put(
-        f"/api/public/polls/meetings/response/{response_token}", json=response_payload
+        f"/api/v1/public/polls/meetings/response/{response_token}",
+        json=response_payload,
     )
     assert resp2.status_code == 200, resp2.text
     assert resp2.json()["ok"] is True

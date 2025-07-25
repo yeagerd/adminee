@@ -62,11 +62,11 @@ app.middleware("http")(create_request_logging_middleware())
 register_briefly_exception_handlers(app)
 
 
-# Include routers
-app.include_router(health_router)
-app.include_router(email_router)
-app.include_router(calendar_router)
-app.include_router(files_router)
+# Include routers with v1 prefix
+app.include_router(health_router, prefix="/v1")
+app.include_router(email_router, prefix="/v1")
+app.include_router(calendar_router, prefix="/v1")
+app.include_router(files_router, prefix="/v1")
 
 
 @app.get("/")

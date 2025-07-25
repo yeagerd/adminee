@@ -41,7 +41,7 @@ export class OfficeIntegrationService {
     async sendEmail(request: EmailSendRequest): Promise<{ success: boolean; messageId?: string; error?: string }> {
         try {
             const result = await this.gatewayClient.request<{ messageId: string }>(
-                '/api/email/send',
+                '/api/v1/email/send',
                 {
                     method: 'POST',
                     body: {
@@ -59,7 +59,7 @@ export class OfficeIntegrationService {
     async createCalendarEvent(request: CalendarEventRequest): Promise<{ success: boolean; eventId?: string; error?: string }> {
         try {
             const result = await this.gatewayClient.request<{ eventId: string }>(
-                '/api/calendar/events',
+                '/api/v1/calendar/events',
                 {
                     method: 'POST',
                     body: {
@@ -77,7 +77,7 @@ export class OfficeIntegrationService {
     async saveDocument(request: DocumentSaveRequest): Promise<{ success: boolean; documentId?: string; error?: string }> {
         try {
             const result = await this.gatewayClient.request<{ documentId: string }>(
-                '/api/documents',
+                '/api/v1/documents',
                 {
                     method: 'POST',
                     body: {
