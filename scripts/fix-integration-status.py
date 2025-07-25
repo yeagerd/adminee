@@ -8,7 +8,6 @@ and corrects any mismatches between the status and the actual token state.
 
 import asyncio
 import sys
-from datetime import datetime, timezone
 from typing import Optional
 
 # Add the services directory to the path
@@ -51,7 +50,7 @@ async def fix_integration_status(user_id: Optional[str] = None, provider: Option
             if integration.last_error:
                 print(f"  Error: {integration.last_error}")
                 
-        print(f"\n✓ Integration status validation completed")
+        print("\n✓ Integration status validation completed")
         print(f"  Active integrations: {response.active_count}")
         print(f"  Error integrations: {response.error_count}")
         

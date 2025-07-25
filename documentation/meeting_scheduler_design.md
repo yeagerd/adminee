@@ -5,19 +5,10 @@
 ### 1.1 Functional Requirements
 
 #### Core Features
-- **AI-Powered Meeting Creation**: Users can request meetings via AI chat with natural language
 - **Meeting Poll Management**: Create, edit, and manage meeting polls with multiple time slot options
 - **Multi-Platform Calendar Integration**: Support for Microsoft and Google calendar APIs
 - **Recipient Response Collection**: Accept responses via web interface and email parsing
 - **Real-time Status Tracking**: Dashboard showing poll status, responses, and analytics
-
-#### AI Chat Interface Requirements
-- Parse natural language requests for meeting scheduling
-- Extract participant emails, meeting duration, date preferences, and constraints
-- Auto-populate meeting polls based on user's calendar availability
-- Handle various date formats: specific dates, relative dates (2 weeks from now), date ranges
-- Support meeting types: one-time meetings, recurring meetings
-- Validate participant email addresses and meeting constraints
 
 #### Meeting Poll Requirements
 - **Time Slot Management**: 
@@ -77,10 +68,8 @@
 - Secure email parsing and processing
 
 #### Usability Requirements
-- Intuitive AI chat interface with example prompts
 - Mobile-first responsive design for poll responses
 - Clear visual indicators for availability conflicts
-- Accessibility compliance (WCAG 2.1 AA)
 
 ### 1.3 Integration Requirements
 - Microsoft Graph API for Outlook calendar and email
@@ -130,7 +119,6 @@ CREATE TABLE meeting_polls (
     response_deadline TIMESTAMP WITH TIME ZONE,
     min_participants INTEGER DEFAULT 1,
     max_participants INTEGER,
-    allow_anonymous_responses BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     scheduled_slot_id UUID REFERENCES time_slots(id),
@@ -162,6 +150,7 @@ CREATE TABLE poll_participants (
     invited_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     responded_at TIMESTAMP WITH TIME ZONE,
     reminder_sent_count INTEGER DEFAULT 0,
+    response_token VARCHAR(64) UNIQUE NOT NULL, -- For secure response access
     UNIQUE(poll_id, email)
 );
 ```
@@ -181,29 +170,11 @@ CREATE TABLE poll_responses (
 );
 ```
 
-#### AI Chat History Table
-```sql
-CREATE TABLE chat_meetings (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES users(id),
-    chat_message TEXT NOT NULL,
-    extracted_intent JSONB, -- Parsed meeting requirements
-    poll_id UUID REFERENCES meeting_polls(id),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-```
 
 ### 2.3 API Endpoints
 
 #### Meeting Poll Management
 ```typescript
-// Create meeting poll from AI chat
-POST /api/meetings/create-from-chat
-{
-  message: string;
-  context?: ChatContext;
-}
-Response: { poll: MeetingPoll; suggestions: TimeSlot[]; }
 
 // CRUD operations for meeting polls
 GET /api/meetings/polls
@@ -288,55 +259,6 @@ POST /api/calendar/create-meeting
    - Design mobile-responsive layout
    - Create time slot selection interface
    - Add form validation and submission
-
-### 3.2 Phase 2: AI Integration (Week 3-4)
-
-#### AI Chat Service Implementation
-```typescript
-interface MeetingIntent {
-  participants: string[];
-  duration: number;
-  datePreferences: {
-    type: 'specific' | 'relative' | 'range';
-    value: string | Date | { start: Date; end: Date };
-  };
-  constraints?: {
-    businessHoursOnly?: boolean;
-    timezone?: string;
-    excludeDays?: string[];
-  };
-}
-
-class MeetingAIService {
-  async parseMeetingRequest(message: string, userId: string): Promise<MeetingIntent> {
-    // Use NLP to extract meeting parameters
-    // Validate participant emails
-    // Parse date expressions
-  }
-
-  async suggestTimeSlots(intent: MeetingIntent, userId: string): Promise<TimeSlot[]> {
-    // Get user's calendar availability
-    // Generate smart time slot suggestions
-    // Consider participant time zones
-  }
-}
-```
-
-#### Natural Language Processing
-1. **Date/Time Parsing**
-   - Handle relative dates ("next week", "in 3 days")
-   - Support date ranges ("between Jan 1-15")
-   - Parse specific dates in multiple formats
-
-2. **Participant Extraction**
-   - Extract email addresses from text
-   - Handle name/email pairs
-   - Validate against user's contacts
-
-3. **Meeting Context Understanding**
-   - Duration parsing ("30 minute meeting", "2 hour session")
-   - Meeting type detection ("video call", "in-person")
-   - Location extraction
 
 ### 3.3 Phase 3: Email Integration (Week 5-6)
 
@@ -453,7 +375,6 @@ CREATE INDEX idx_poll_responses_participant_slot ON poll_responses(participant_i
 ## 5. Testing Strategy
 
 ### 5.1 Unit Testing
-- AI message parsing accuracy
 - Calendar availability logic
 - Email response processing
 - Poll response validation
@@ -465,7 +386,6 @@ CREATE INDEX idx_poll_responses_participant_slot ON poll_responses(participant_i
 - Real-time update delivery
 
 ### 5.3 User Acceptance Testing
-- AI chat interface usability
 - Mobile poll response experience
 - Email workflow completeness
 - Dashboard functionality and performance
@@ -491,3 +411,59 @@ CREATE INDEX idx_poll_responses_participant_slot ON poll_responses(participant_i
 - Email notification backup systems
 
 This technical design provides a comprehensive foundation for implementing the meeting scheduler tool. The modular approach allows for iterative development while maintaining system scalability and reliability.
+
+## New Feature: Per-Recipient Poll Response Tokens and URLs
+
+### Overview
+To enhance poll response security and tracking, each poll recipient will receive a unique, long, random URL specific to them and the meeting. This URL will be used as a special authentication mechanism for submitting poll responses, ensuring that only the intended recipient can respond using their link.
+
+### Implementation Tasks
+- [x] **Database Migration:**
+  - [x] Add a `response_token` (unique, random string) column to the `poll_participants` table.
+  - [x] Ensure this token is unique and not nullable.
+- [x] **Model Update:**
+  - [x] Update the `PollParticipant` model to include the new `response_token` field.
+- [x] **Poll Creation Logic:**
+  - [x] When creating poll participants, generate and store a unique `response_token` for each.
+- [x] **Invitation Email Update:**
+  - [x] Send invitation emails with URLs like `/public/meetings/respond/{response_token}` for each participant.
+- [x] **New Public API Endpoint:**
+  - [x] Implement `PUT /public/meetings/response/{response_token}` to accept poll responses using only the token.
+  - [x] The endpoint should look up the participant by their `response_token`, verify the poll, and accept the response.
+- [x] **Frontend Update:**
+  - [x] Update the public poll response page to support the new URL structure and API.
+  - [x] Remove the legacy meeting id from the frontend, backend, and DB.  
+    - Complete: The public poll response flow is now fully token-based and does not require or expose the legacy meeting id (poll_id). The poll_id is retained for internal/admin features and database integrity. No further removal is recommended unless a major redesign is desired.
+- [x] **Secure Email Processing API**
+  - [x] process_email_response(..) should validate an API key
+- [x] **Testing:**
+  - [x] Add unit and integration tests for the new token-based response flow.
+
+
+## Outstanding Implementation Tasks
+
+### Backend
+- [x] Implement calendar integration (availability, event creation)
+- [x] Add email invitation and response processing
+- [ ] Add analytics endpoints and real-time updates (WebSocket/SSE)  
+    - Not started: No analytics endpoints or real-time (WebSocket/SSE) features implemented in backend.
+- [x] Add public poll response endpoints and security/rate limiting
+- [x] Expand tests for all workflows (unit/integration)
+
+### Frontend
+- [x] Send out emails upon Meeting Poll Create/Send button.
+- [x] Build public poll response page (mobile-friendly)
+- [x] Enhance poll creation wizard (multi-step, validation, time zones)
+- [x] Add response visualization and analytics to results page
+- [ ] Add real-time updates and notifications  
+    - Not started: No WebSocket/SSE or notification logic for meetings in frontend. Notification UI is present but marked "coming soon."
+- [ ] Improve error/loading/mobile support  
+    - Partially complete: Error/loading state handling exists in poll response and dashboard pages. Comprehensive mobile/responsive improvements and systematic error handling for all meeting features are not fully implemented.
+- [ ] Add automated frontend tests  
+    - Partially complete: Some test infrastructure exists, but no dedicated automated tests for meeting poll flows.
+
+### DevOps/Docs
+- [x] Generate/apply Alembic migrations for meetings
+- [ ] Add MEETINGS_SERVICE_URL to gateway/.env and docs  
+    - Partially complete: MEETINGS_SERVICE_URL is referenced in gateway code, but not shown in .env or documentation examples. Remaining work: Add explicit mention to .env and docs.
+- [x] Expand README/setup documentation for meetings service

@@ -15,6 +15,7 @@ const defaultToolSettings: Record<Tool, ToolSettings> = {
     pulse: { id: 'pulse', enabled: true, preferences: {} },
     insights: { id: 'insights', enabled: false, preferences: {} },
     drafts: { id: 'drafts', enabled: true, preferences: {} },
+    meetings: { id: 'meetings', enabled: true, preferences: {} },
 };
 
 // Initial state
@@ -31,6 +32,7 @@ const initialState: ToolState = {
         pulse: '/dashboard?tool=pulse',
         insights: '/dashboard?tool=insights',
         drafts: '/dashboard?tool=drafts',
+        meetings: '/dashboard?tool=meetings',
     },
     visitTimestamps: {
         calendar: 0,
@@ -42,6 +44,7 @@ const initialState: ToolState = {
         pulse: 0,
         insights: 0,
         drafts: 0,
+        meetings: 0,
     },
 };
 

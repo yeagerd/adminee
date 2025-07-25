@@ -16,6 +16,7 @@ dev = [
     "isort", 
     "ruff",
     "mypy",
+    "respx",
     "types-requests",
     "types-pytz",
     "nox",
@@ -35,6 +36,7 @@ members = [
     "services/chat",
     "services/user",
     "services/office",
+    "services/meetings",
     # Add other services as needed
 ]
 
