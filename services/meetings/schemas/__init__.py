@@ -68,7 +68,6 @@ class MeetingPollBase(BaseModel):
     response_deadline: Optional[datetime]
     min_participants: Optional[int] = None
     max_participants: Optional[int] = None
-    allow_anonymous_responses: Optional[bool]
 
 
 class MeetingPollCreate(MeetingPollBase):

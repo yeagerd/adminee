@@ -119,7 +119,6 @@ CREATE TABLE meeting_polls (
     response_deadline TIMESTAMP WITH TIME ZONE,
     min_participants INTEGER DEFAULT 1,
     max_participants INTEGER,
-    allow_anonymous_responses BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     scheduled_slot_id UUID REFERENCES time_slots(id),
@@ -151,6 +150,7 @@ CREATE TABLE poll_participants (
     invited_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     responded_at TIMESTAMP WITH TIME ZONE,
     reminder_sent_count INTEGER DEFAULT 0,
+    response_token VARCHAR(64) UNIQUE NOT NULL, -- For secure response access
     UNIQUE(poll_id, email)
 );
 ```

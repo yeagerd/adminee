@@ -55,3 +55,15 @@ def downgrade() -> None:
     with op.batch_alter_table("poll_participants") as batch_op:
         batch_op.drop_constraint("uq_poll_participants_response_token", type_="unique")
         batch_op.drop_column("response_token")
+
+"""
+Drop allow_anonymous_responses column from meeting_polls table
+"""
+from alembic import op
+import sqlalchemy as sa
+
+def upgrade():
+    op.drop_column('meeting_polls', 'allow_anonymous_responses')
+
+def downgrade():
+    op.add_column('meeting_polls', sa.Column('allow_anonymous_responses', sa.Boolean(), server_default=sa.false(), nullable=True))

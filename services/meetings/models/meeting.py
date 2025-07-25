@@ -57,7 +57,6 @@ class MeetingPoll(Base):
     response_deadline = Column(DateTime(timezone=True))
     min_participants = Column(Integer, default=1)
     max_participants = Column(Integer)
-    allow_anonymous_responses = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(
         DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow

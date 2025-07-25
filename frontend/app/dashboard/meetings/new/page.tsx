@@ -1,7 +1,7 @@
 "use client";
 import gatewayClient from "@/lib/gateway-client";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import React, { useState } from "react"; // Added for useEffect
 
 const getTimeZones = () =>
     Intl.supportedValuesOf ? Intl.supportedValuesOf("timeZone") : ["UTC"];
@@ -16,8 +16,9 @@ export default function NewMeetingPollPage() {
     const [location, setLocation] = useState("");
     const [timeZone, setTimeZone] = useState("UTC");
     // Step 2: Participants
-    const [participants, setParticipants] = useState<string[]>([]);
-    const [participantInput, setParticipantInput] = useState("");
+    const [participants, setParticipants] = useState<{ email: string, name: string }[]>([]);
+    const [participantEmailInput, setParticipantEmailInput] = useState("");
+    const [participantNameInput, setParticipantNameInput] = useState("");
     // Step 3: Time Slots
     const [timeSlots, setTimeSlots] = useState<{ start: string; end: string }[]>([]);
     const [slotStart, setSlotStart] = useState("");
@@ -28,7 +29,7 @@ export default function NewMeetingPollPage() {
 
     // Validation helpers
     const isStep1Valid = title && duration > 0 && timeZone;
-    const isStep2Valid = participants.length > 0 && participants.every(e => /.+@.+\..+/.test(e));
+    const isStep2Valid = participants.length > 0 && participants.every(p => /.+@.+\..+/.test(p.email) && p.name.trim().length > 0);
     const isStep3Valid = timeSlots.length > 0 && timeSlots.every(s => s.start && s.end);
 
     // Step navigation
@@ -37,12 +38,18 @@ export default function NewMeetingPollPage() {
 
     // Add participant
     const addParticipant = () => {
-        if (participantInput && /.+@.+\..+/.test(participantInput) && !participants.includes(participantInput)) {
-            setParticipants([...participants, participantInput]);
-            setParticipantInput("");
+        if (
+            participantEmailInput &&
+            /.+@.+\..+/.test(participantEmailInput) &&
+            participantNameInput.trim().length > 0 &&
+            !participants.some(p => p.email === participantEmailInput)
+        ) {
+            setParticipants([...participants, { email: participantEmailInput, name: participantNameInput }]);
+            setParticipantEmailInput("");
+            setParticipantNameInput("");
         }
     };
-    const removeParticipant = (email: string) => setParticipants(participants.filter(e => e !== email));
+    const removeParticipant = (email: string) => setParticipants(participants.filter(p => p.email !== email));
 
     // Add time slot
     const addTimeSlot = () => {
@@ -53,6 +60,17 @@ export default function NewMeetingPollPage() {
         }
     };
     const removeTimeSlot = (idx: number) => setTimeSlots(timeSlots.filter((_, i) => i !== idx));
+
+    // Step 4: Response Deadline
+    // Compute default response_deadline as the day of the first possible meeting in the range
+    const defaultResponseDeadline = timeSlots.length > 0 ? new Date(timeSlots[0].start).toISOString().slice(0, 10) : "";
+    const [responseDeadline, setResponseDeadline] = useState(defaultResponseDeadline);
+    // Update responseDeadline when timeSlots changes
+    React.useEffect(() => {
+        if (timeSlots.length > 0) {
+            setResponseDeadline(new Date(timeSlots[0].start).toISOString().slice(0, 10));
+        }
+    }, [timeSlots]);
 
     // Submit
     const handleSubmit = async (e: React.FormEvent) => {
@@ -66,8 +84,9 @@ export default function NewMeetingPollPage() {
                 duration_minutes: duration,
                 location,
                 meeting_type: "tbd",
+                response_deadline: responseDeadline ? new Date(responseDeadline).toISOString() : undefined,
                 time_slots: timeSlots.map((s) => ({ start_time: s.start, end_time: s.end, timezone: timeZone })),
-                participants: participants.map((email) => ({ email })),
+                participants: participants.map((p) => ({ email: p.email, name: p.name })),
             };
             await gatewayClient.createMeetingPoll(pollData);
             router.push("/dashboard/meetings");
@@ -117,22 +136,29 @@ export default function NewMeetingPollPage() {
                 {step === 2 && (
                     <div className="space-y-4">
                         <div>
-                            <label className="block font-semibold mb-1">Participants (emails)</label>
+                            <label className="block font-semibold mb-1">Participants</label>
                             <div className="flex gap-2 mb-2">
                                 <input
-                                    className="flex-1 border rounded px-3 py-2"
-                                    value={participantInput}
-                                    onChange={e => setParticipantInput(e.target.value)}
-                                    placeholder="Add email"
+                                    className="border rounded px-3 py-2"
+                                    value={participantNameInput}
+                                    onChange={e => setParticipantNameInput(e.target.value)}
+                                    placeholder="Name"
+                                    type="text"
+                                />
+                                <input
+                                    className="border rounded px-3 py-2"
+                                    value={participantEmailInput}
+                                    onChange={e => setParticipantEmailInput(e.target.value)}
+                                    placeholder="Email"
                                     type="email"
                                 />
-                                <button type="button" className="bg-teal-600 text-white px-3 py-2 rounded" onClick={addParticipant} disabled={!/.+@.+\..+/.test(participantInput)}>Add</button>
+                                <button type="button" className="bg-teal-600 text-white px-3 py-2 rounded" onClick={addParticipant} disabled={!(participantNameInput.trim().length > 0 && /.+@.+\..+/.test(participantEmailInput))}>Add</button>
                             </div>
                             <ul className="flex flex-wrap gap-2">
-                                {participants.map(email => (
-                                    <li key={email} className="bg-gray-100 px-2 py-1 rounded flex items-center">
-                                        <span>{email}</span>
-                                        <button type="button" className="ml-2 text-red-600" onClick={() => removeParticipant(email)}>&times;</button>
+                                {participants.map(p => (
+                                    <li key={p.email} className="bg-gray-100 px-2 py-1 rounded flex items-center">
+                                        <span>{p.name} ({p.email})</span>
+                                        <button type="button" className="ml-2 text-red-600" onClick={() => removeParticipant(p.email)}>&times;</button>
                                     </li>
                                 ))}
                             </ul>
@@ -177,13 +203,23 @@ export default function NewMeetingPollPage() {
                         <div><b>Duration:</b> {duration} min</div>
                         <div><b>Location:</b> {location}</div>
                         <div><b>Time Zone:</b> {timeZone}</div>
-                        <div><b>Participants:</b> {participants.join(", ")}</div>
+                        <div><b>Participants:</b> {participants.map(p => `${p.name} (${p.email})`).join(", ")}</div>
                         <div><b>Time Slots:</b>
                             <ul className="ml-4 list-disc">
                                 {timeSlots.map((slot, idx) => (
                                     <li key={idx}>{slot.start.replace("T", " ")} - {slot.end.slice(11, 16)} ({timeZone})</li>
                                 ))}
                             </ul>
+                        </div>
+                        <div>
+                            <b>Response Deadline:</b>
+                            <input
+                                type="date"
+                                className="ml-2 border rounded px-3 py-1"
+                                value={responseDeadline}
+                                onChange={e => setResponseDeadline(e.target.value)}
+                                required
+                            />
                         </div>
                     </div>
                 )}

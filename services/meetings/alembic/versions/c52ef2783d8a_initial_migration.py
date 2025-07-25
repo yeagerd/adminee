@@ -60,14 +60,14 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["poll_id"], ["meeting_polls.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    # Add the foreign key constraint after both tables exist
-    op.create_foreign_key(
-        "fk_meeting_polls_scheduled_slot_id_time_slots",
-        "meeting_polls",
-        "time_slots",
-        ["scheduled_slot_id"],
-        ["id"],
-    )
+    # Add the foreign key constraint after both tables exist, using batch_alter_table for SQLite compatibility
+    with op.batch_alter_table("meeting_polls", schema=None) as batch_op:
+        batch_op.create_foreign_key(
+            "fk_meeting_polls_scheduled_slot_id_time_slots",
+            "time_slots",
+            ["scheduled_slot_id"],
+            ["id"],
+        )
     op.create_table(
         "chat_meetings",
         sa.Column("id", sa.UUID(), nullable=False),

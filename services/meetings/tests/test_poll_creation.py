@@ -43,7 +43,6 @@ def poll_payload():
         "response_deadline": (now + timedelta(days=2)).isoformat() + "Z",
         "min_participants": 1,
         "max_participants": 5,
-        "allow_anonymous_responses": False,
         "time_slots": [
             {
                 "start_time": (now + timedelta(days=3)).isoformat() + "Z",

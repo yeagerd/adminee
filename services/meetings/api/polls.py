@@ -63,7 +63,6 @@ def create_poll(poll: MeetingPollCreate, request: Request) -> MeetingPoll:
             response_deadline=poll.response_deadline,
             min_participants=poll.min_participants or 1,
             max_participants=poll.max_participants,
-            allow_anonymous_responses=poll.allow_anonymous_responses or False,
             poll_token=str(poll_token),
         )
         session.add(db_poll)
@@ -116,7 +115,6 @@ def update_poll(
         db_poll.response_deadline = poll.response_deadline  # type: ignore[assignment]
         db_poll.min_participants = poll.min_participants or 1  # type: ignore[assignment]
         db_poll.max_participants = poll.max_participants  # type: ignore[assignment]
-        db_poll.allow_anonymous_responses = poll.allow_anonymous_responses or False  # type: ignore[assignment]
         # TODO: update time slots and participants as needed
         session.commit()
         session.refresh(db_poll)
