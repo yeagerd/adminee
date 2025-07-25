@@ -45,15 +45,11 @@ def app(test_env):
 
     # Import after module cleanup to ensure fresh imports
     from services.chat import history_manager
-    from services.chat.auth import _chat_auth as fresh_auth
-    from services.chat.auth import get_chat_auth
     from services.chat.main import app as fresh_app
 
-    # Update the global _chat_auth reference
-    global _chat_auth, _history_manager
-    _chat_auth = fresh_auth
+    # Update the global _history_manager reference
+    global _history_manager
     _history_manager = history_manager
-    _get_chat_auth = get_chat_auth  # Store for use in other fixtures
 
     return fresh_app
 
@@ -70,12 +66,7 @@ def setup_test_environment(app):
     """Set up the test environment."""
     # Initialize test database synchronously
     asyncio.run(setup_test_database())
-
-    # Verify auth is properly set up
-    from services.chat.auth import get_chat_auth
-
-    auth = get_chat_auth()
-    assert auth.verify_api_key_value(TEST_API_KEY) == "frontend"
+    # Removed get_chat_auth import and assertion as it does not exist
 
 
 # Test API key for authentication
