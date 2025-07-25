@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import AsyncGenerator, Dict
+from typing import Any, AsyncGenerator, Dict
 
 from fastapi import FastAPI
 
@@ -15,7 +15,6 @@ from services.common.logging_config import (
 from services.office.api.calendar import router as calendar_router
 from services.office.api.email import router as email_router
 from services.office.api.files import router as files_router
-from services.office.api.health import router as health_router
 from services.office.core.settings import get_settings
 
 # Set up centralized logging - will be initialized in lifespan
@@ -63,7 +62,6 @@ register_briefly_exception_handlers(app)
 
 
 # Include routers with v1 prefix
-app.include_router(health_router, prefix="/v1")
 app.include_router(email_router, prefix="/v1")
 app.include_router(calendar_router, prefix="/v1")
 app.include_router(files_router, prefix="/v1")
@@ -77,16 +75,66 @@ async def read_root() -> Dict[str, str]:
 
 
 @app.get("/health")
-async def health_check() -> Dict[str, str]:
+async def health_check() -> Dict[str, Any]:
     """
-    Simple health check endpoint for load balancers and monitoring.
-    This endpoint is used by the start-all-services.sh script.
+    Health check endpoint for load balancers and monitoring.
+    Checks database connectivity and basic configuration.
     """
+    import time
+    from datetime import datetime, timezone
+
+    start_time = time.time()
+
+    # Database health check
+    db_status = "ok"
+    db_error = None
+    db_response_time = None
+
+    try:
+        from sqlmodel import text
+
+        from services.office.models import get_async_session_factory
+
+        async_session_factory = get_async_session_factory()
+        async with async_session_factory() as session:
+            db_start = time.time()
+            await session.execute(text("SELECT 1"))
+            db_response_time = round((time.time() - db_start) * 1000, 2)
+    except Exception as e:
+        db_status = "error"
+        db_error = str(e) if get_settings().DEBUG else "Database unavailable"
+
+    # Configuration check
+    config_issues = []
+    if not get_settings().api_frontend_office_key:
+        config_issues.append("API_FRONTEND_OFFICE_KEY not configured")
+    if not get_settings().api_chat_office_key:
+        config_issues.append("API_CHAT_OFFICE_KEY not configured")
+    if not get_settings().USER_MANAGEMENT_SERVICE_URL:
+        config_issues.append("USER_MANAGEMENT_SERVICE_URL not configured")
+
+    config_status = "ok" if not config_issues else "error"
+
+    # Determine overall status
+    overall_status = "ok" if db_status == "ok" and config_status == "ok" else "error"
+
+    # Calculate total response time
+    total_duration = round((time.time() - start_time) * 1000, 2)
+
     return {
-        "status": "ok",
+        "status": overall_status,
         "service": "Office Service",
         "version": "0.1.0",
         "timestamp": datetime.now(timezone.utc).isoformat(),
+        "checks": {
+            "database": {
+                "status": db_status,
+                "response_time_ms": db_response_time,
+                "error": db_error,
+            },
+            "configuration": {"status": config_status, "issues": config_issues},
+        },
+        "performance": {"total_check_time_ms": total_duration},
     }
 
 

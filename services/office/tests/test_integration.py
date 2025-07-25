@@ -64,90 +64,118 @@ class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
         assert data["service"] == "Office Service"
         assert "version" in data
         assert "timestamp" in data
+        assert "checks" in data
+        assert "database" in data["checks"]
+        assert "configuration" in data["checks"]
+        assert "performance" in data
+        assert data["checks"]["database"]["status"] == "ok"
+        assert data["checks"]["configuration"]["status"] == "ok"
 
-    def test_health_basic(self):
-        """Test basic health check endpoint."""
-        # Mock the health check methods directly
-        with patch(
-            "services.office.api.health.check_database_health",
-            return_value=True,
+    def test_health_database_failure(self):
+        """Test health check when database is unavailable."""
+        # Create a mock settings object with debug enabled
+        mock_settings = MagicMock()
+        mock_settings.DEBUG = True
+
+        # Mock the session.execute to raise an exception and patch settings
+        with (
+            patch("sqlmodel.text") as mock_text,
+            patch("services.office.app.main.get_settings", return_value=mock_settings),
         ):
-            with patch(
-                "services.office.api.health.check_redis_connection",
-                return_value=True,
-            ):
-                with patch(
-                    "services.office.api.health.check_service_connection",
-                    return_value=True,
-                ):
-                    response = self.client.get("/v1/health")
-                    assert response.status_code == status.HTTP_200_OK
+            mock_text.side_effect = Exception("Database connection failed")
 
-                    data = response.json()
-                    assert data["status"] == "healthy"
-                    assert "timestamp" in data
-                    assert "checks" in data
-                    assert data["checks"]["database"] is True
-                    assert data["checks"]["redis"] is True
+            response = self.client.get("/health")
+            assert (
+                response.status_code == status.HTTP_200_OK
+            )  # Health endpoint should still return 200
 
-    def test_health_integrations_success(self):
-        """Test integration health check with successful token retrieval."""
-        user_id = "test-user@example.com"
+            data = response.json()
+            assert data["status"] == "error"  # Overall status should be error
+            assert data["checks"]["database"]["status"] == "error"
+            # In debug mode, we should see the actual error message
+            assert "Database connection failed" in data["checks"]["database"]["error"]
+            assert (
+                data["checks"]["configuration"]["status"] == "ok"
+            )  # Config should still be ok
 
-        # Mock successful token retrieval
-        mock_token_data = TokenData(
-            access_token="mock-google-token",
-            refresh_token="mock-refresh",
-            expires_at=None,
-            scopes=[],
-            provider="google",
-            user_id=user_id,
-        )
+    def test_health_configuration_failure(self):
+        """Test health check when configuration is missing."""
+        # Create a mock settings object with missing configuration
+        mock_settings = MagicMock()
+        mock_settings.api_frontend_office_key = None
+        mock_settings.api_chat_office_key = None
+        mock_settings.USER_MANAGEMENT_SERVICE_URL = None
+        mock_settings.DEBUG = True
 
-        with patch(
-            "services.office.core.token_manager.TokenManager.get_user_token",
-            return_value=mock_token_data,
-        ):
-            response = self.client.get(f"/v1/health/integrations/{user_id}")
+        # Patch the get_settings function to return our mock
+        with patch("services.office.app.main.get_settings", return_value=mock_settings):
+            response = self.client.get("/health")
             assert response.status_code == status.HTTP_200_OK
 
             data = response.json()
-            assert data["user_id"] == user_id
-            assert "google" in data["integrations"]
-            assert "microsoft" in data["integrations"]
-            assert data["integrations"]["google"]["healthy"] is True
-            assert data["integrations"]["microsoft"]["healthy"] is True
+            assert data["status"] == "error"  # Overall status should be error
+            assert data["checks"]["database"]["status"] == "ok"  # DB should still be ok
+            assert data["checks"]["configuration"]["status"] == "error"
+            assert len(data["checks"]["configuration"]["issues"]) == 3
+            assert (
+                "API_FRONTEND_OFFICE_KEY not configured"
+                in data["checks"]["configuration"]["issues"]
+            )
+            assert (
+                "API_CHAT_OFFICE_KEY not configured"
+                in data["checks"]["configuration"]["issues"]
+            )
+            assert (
+                "USER_MANAGEMENT_SERVICE_URL not configured"
+                in data["checks"]["configuration"]["issues"]
+            )
 
-    def test_health_integrations_partial_failure(self):
-        """Test integration health with one provider failing."""
-        user_id = "test-user@example.com"
+    def test_health_performance_metrics(self):
+        """Test that performance metrics are included."""
+        response = self.client.get("/health")
+        assert response.status_code == status.HTTP_200_OK
 
-        def failing_token_side_effect(user_id, provider, scopes=None):
-            if provider == "google":
-                return TokenData(
-                    access_token="mock-google-token",
-                    refresh_token="mock-refresh",
-                    expires_at=None,
-                    scopes=[],
-                    provider="google",
-                    user_id=user_id,
-                )
-            else:
-                from services.office.models import Provider
+        data = response.json()
+        assert "performance" in data
+        assert "total_check_time_ms" in data["performance"]
+        assert isinstance(data["performance"]["total_check_time_ms"], (int, float))
+        assert data["performance"]["total_check_time_ms"] > 0
 
-                raise ProviderError("Microsoft integration failed", Provider.MICROSOFT)
+        # Database response time should also be present
+        assert "response_time_ms" in data["checks"]["database"]
+        assert isinstance(data["checks"]["database"]["response_time_ms"], (int, float))
+        assert data["checks"]["database"]["response_time_ms"] > 0
 
-        with patch(
-            "services.office.core.token_manager.TokenManager.get_user_token",
-            side_effect=failing_token_side_effect,
-        ):
-            response = self.client.get(f"/v1/health/integrations/{user_id}")
-            assert response.status_code == status.HTTP_200_OK
+    def test_health_database_response_time(self):
+        """Test that database response time is measured correctly."""
+        response = self.client.get("/health")
+        assert response.status_code == status.HTTP_200_OK
 
-            data = response.json()
-            assert data["integrations"]["google"]["healthy"] is True
-            assert data["integrations"]["microsoft"]["healthy"] is False
-            assert "error" in data["integrations"]["microsoft"]
+        data = response.json()
+        db_check = data["checks"]["database"]
+        assert db_check["status"] == "ok"
+        assert "response_time_ms" in db_check
+        assert isinstance(db_check["response_time_ms"], (int, float))
+        assert db_check["response_time_ms"] > 0
+        assert db_check["error"] is None
+
+    def test_health_debug_mode_error_hiding(self):
+        """Test that errors are hidden in non-debug mode."""
+        with patch("services.office.models.get_async_session_factory") as mock_factory:
+            # Mock database failure
+            mock_factory.side_effect = Exception("Database connection failed")
+
+            with patch("services.office.core.settings.get_settings") as mock_settings:
+                # Set debug mode to False
+                mock_settings.return_value.DEBUG = False
+
+                response = self.client.get("/health")
+                assert response.status_code == status.HTTP_200_OK
+
+                data = response.json()
+                assert (
+                    data["checks"]["database"]["error"] == "Database unavailable"
+                )  # Generic error message
 
 
 class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
