@@ -66,8 +66,8 @@ class MeetingPollBase(BaseModel):
     location: Optional[str]
     meeting_type: str
     response_deadline: Optional[datetime]
-    min_participants: Optional[int]
-    max_participants: Optional[int]
+    min_participants: Optional[int] = None
+    max_participants: Optional[int] = None
     allow_anonymous_responses: Optional[bool]
 
 

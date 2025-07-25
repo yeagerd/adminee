@@ -30,6 +30,7 @@ def get_user_id_from_request(request: Request) -> UUID:
 
 
 @router.get("/", response_model=List[MeetingPoll])
+@router.get("", response_model=List[MeetingPoll])
 def list_polls() -> List[MeetingPoll]:
     with get_session() as session:
         polls = session.query(MeetingPollModel).all()
@@ -46,6 +47,7 @@ def get_poll(poll_id: UUID) -> MeetingPoll:
 
 
 @router.post("/", response_model=MeetingPoll)
+@router.post("", response_model=MeetingPoll)
 def create_poll(poll: MeetingPollCreate, request: Request) -> MeetingPoll:
     user_id = get_user_id_from_request(request)
     with get_session() as session:
