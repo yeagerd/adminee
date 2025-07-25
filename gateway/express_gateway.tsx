@@ -12,33 +12,125 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import winston from 'winston';
 
-// Create a logger instance
+// Enhanced logging configuration for better debugging
 const logger = winston.createLogger({
     level: 'info',
     format: winston.format.combine(
         winston.format.timestamp({
-            format: 'YYYY-MM-DD HH:mm:ss,SSS'
+            format: 'YYYY-MM-DDTHH:mm:ss.SSS[Z]'
         }),
-        winston.format.printf((info: any) => `${info.timestamp} - ${info.level.toUpperCase()} - ${info.message}`)
+        winston.format.errors({ stack: true }),
+        winston.format.printf((info: any) => {
+            const {
+                timestamp,
+                level,
+                message,
+                service = 'gateway',
+                requestId,
+                userId,
+                file,
+                line,
+                method,
+                path,
+                statusCode,
+                duration,
+                ...extra
+            } = info;
+
+            // Build the enhanced log line
+            let logLine = `${timestamp} [${service}] [${level.toUpperCase()}]`;
+
+            // Add request ID if present (last 4 chars for readability)
+            if (requestId) {
+                const shortId = requestId.length >= 4 ? requestId.slice(-4) : requestId;
+                logLine += ` [${shortId}]`;
+            }
+
+            // Add logger name and file/line info
+            logLine += ` ${info.logger || 'gateway'}`;
+            if (file && line) {
+                logLine += ` ${file}:${line}`;
+            }
+
+            // Add the main message
+            logLine += ` - ${message}`;
+
+            // Add user context if present
+            if (userId) {
+                logLine += ` | User: ${userId}`;
+            }
+
+            // Add HTTP context if present
+            if (method && path) {
+                logLine += ` | ${method} ${path}`;
+                if (statusCode) {
+                    logLine += ` → ${statusCode}`;
+                }
+                if (duration) {
+                    logLine += ` (${duration}ms)`;
+                }
+            }
+
+            // Add extra context as key=value pairs
+            const extraContext = Object.entries(extra)
+                .filter(([key, value]) => value !== undefined && value !== null)
+                .map(([key, value]) => `${key}=${value}`)
+                .join(' ');
+
+            if (extraContext) {
+                logLine += ` | ${extraContext}`;
+            }
+
+            return logLine;
+        })
     ),
     transports: [
         new winston.transports.Console()
     ]
 });
 
+// Helper function to get file and line information
+const getFileLineInfo = () => {
+    const stack = new Error().stack;
+    if (stack) {
+        const lines = stack.split('\n');
+        // Skip the first few lines (Error, getFileLineInfo, caller)
+        for (let i = 3; i < lines.length; i++) {
+            const line = lines[i];
+            const match = line.match(/at\s+(.+?)\s+\((.+?):(\d+):(\d+)\)/);
+            if (match) {
+                const [, , filePath, lineNum] = match;
+                const fileName = filePath.split('/').pop() || filePath.split('\\').pop() || filePath;
+                return { file: fileName, line: parseInt(lineNum) };
+            }
+        }
+    }
+    return { file: 'unknown', line: 0 };
+};
+
+// Enhanced logging helper
+const logWithContext = (level: string, message: string, context: any = {}) => {
+    const fileLine = getFileLineInfo();
+    logger.log(level, message, {
+        service: 'gateway',
+        ...fileLine,
+        ...context
+    });
+};
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const envPath = path.join(__dirname, '.env');
 console.log('[DEBUG] Loading .env file from:', envPath);
 if (!fs.existsSync(envPath)) {
-    logger.error('❌ .env file not found in gateway directory');
-    logger.error(`   Expected location: ${envPath}`);
-    logger.error('   Please create a .env file with:');
-    logger.error('   NEXTAUTH_SECRET=your-secret-here');
-    logger.error('   USER_SERVICE_URL=http://localhost:8001');
-    logger.error('   CHAT_SERVICE_URL=http://localhost:8002');
-    logger.error('   OFFICE_SERVICE_URL=http://localhost:8003');
-    logger.error('   FRONTEND_URL=http://localhost:3000');
+    logWithContext('error', '❌ .env file not found in gateway directory');
+    logWithContext('error', `   Expected location: ${envPath}`);
+    logWithContext('error', '   Please create a .env file with:');
+    logWithContext('error', '   NEXTAUTH_SECRET=your-secret-here');
+    logWithContext('error', '   USER_SERVICE_URL=http://localhost:8001');
+    logWithContext('error', '   CHAT_SERVICE_URL=http://localhost:8002');
+    logWithContext('error', '   OFFICE_SERVICE_URL=http://localhost:8003');
+    logWithContext('error', '   FRONTEND_URL=http://localhost:3000');
     process.exit(1);
 }
 dotenv.config({ path: envPath });
@@ -67,7 +159,7 @@ dotenv.config({ path: envPath });
     }
 })();
 
-logger.info('✅ Environment loaded successfully');
+logWithContext('info', '✅ Environment loaded successfully');
 
 const app = express();
 
@@ -124,13 +216,24 @@ const maliciousTrafficFilter = (req: any, res: any, next: any) => {
     ];
 
     if (suspiciousUserAgents.some(pattern => pattern.test(userAgent))) {
-        logger.warn(`Blocked suspicious user agent: ${userAgent}`);
+        logWithContext('warn', 'Blocked suspicious user agent', {
+            userAgent,
+            method: req.method,
+            path: req.path,
+            ip: req.ip
+        });
         return res.status(403).json({ error: 'Access denied' });
     }
 
     // Block requests with suspicious content types
     if (contentType.includes('application/x-www-form-urlencoded') && contentLength > 1000000) {
-        logger.warn(`Blocked large form data: ${contentLength} bytes`);
+        logWithContext('warn', 'Blocked large form data', {
+            contentLength,
+            contentType,
+            method: req.method,
+            path: req.path,
+            ip: req.ip
+        });
         return res.status(413).json({ error: 'Payload too large' });
     }
 
@@ -141,7 +244,11 @@ const maliciousTrafficFilter = (req: any, res: any, next: any) => {
     );
 
     if (hasSuspiciousHeaders) {
-        logger.warn(`Blocked request with suspicious headers from ${req.ip}`);
+        logWithContext('warn', 'Blocked request with suspicious headers', {
+            ip: req.ip,
+            method: req.method,
+            path: req.path
+        });
         return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -152,7 +259,11 @@ const maliciousTrafficFilter = (req: any, res: any, next: any) => {
     );
 
     if (hasSuspiciousParams) {
-        logger.warn(`Blocked request with suspicious parameters from ${req.ip}`);
+        logWithContext('warn', 'Blocked request with suspicious parameters', {
+            ip: req.ip,
+            method: req.method,
+            path: req.path
+        });
         return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -162,7 +273,11 @@ const maliciousTrafficFilter = (req: any, res: any, next: any) => {
 // Block /internal endpoints at the gateway level
 app.use((req, res, next) => {
     if (req.path.startsWith('/api/internal') || req.path.startsWith('/internal')) {
-        logger.warn(`Blocked attempt to access internal endpoint: ${req.method} ${req.path}`);
+        logWithContext('warn', 'Blocked attempt to access internal endpoint', {
+            method: req.method,
+            path: req.path,
+            ip: req.ip
+        });
         return res.status(403).json({ error: 'Access to internal endpoints is forbidden via gateway' });
     }
     next();
@@ -223,12 +338,22 @@ const validateAuth = async (req: any, res: any, next: any) => {
 
         req.user = payload;
 
-        // Log authenticated requests (optional)
-        logger.info(`Authenticated request: ${req.method} ${req.path} - User: ${payload.sub || payload.email}`);
+        // Log authenticated requests with enhanced context
+        logWithContext('info', 'Authenticated request', {
+            method: req.method,
+            path: req.path,
+            userId: payload.sub || payload.email,
+            requestId: req.headers['x-request-id']
+        });
 
         next();
     } catch (err: any) {
-        logger.error('Auth validation error:', err.message);
+        logWithContext('error', 'Auth validation error', {
+            error: err.message,
+            method: req.method,
+            path: req.path,
+            requestId: req.headers['x-request-id']
+        });
         return res.status(401).json({ error: 'Invalid or expired token' });
     }
 };
@@ -241,6 +366,49 @@ app.get('/health', (req, res) => {
         version: process.env.npm_package_version || '1.0.0',
         uptime: process.uptime()
     });
+});
+
+// Request timing and ID middleware
+app.use((req: any, res: any, next: any) => {
+    // Generate or use existing request ID
+    req.requestId = req.headers['x-request-id'] || Math.random().toString(36).substr(2, 9);
+
+    // Add request ID to response headers
+    res.setHeader('X-Request-Id', req.requestId);
+
+    // Start timing
+    req.startTime = Date.now();
+
+    // Log incoming request
+    logWithContext('info', '→ Incoming request', {
+        method: req.method,
+        path: req.path,
+        requestId: req.requestId,
+        ip: req.ip,
+        userAgent: req.headers['user-agent']
+    });
+
+    // Override res.end to log response timing
+    const originalEnd = res.end;
+    res.end = function (chunk: any, encoding: any) {
+        const duration = Date.now() - req.startTime;
+
+        // Log response
+        const logLevel = res.statusCode >= 400 ? 'error' : 'info';
+        const statusEmoji = res.statusCode >= 400 ? '❌' : '✅';
+
+        logWithContext(logLevel, `${statusEmoji} Response completed`, {
+            method: req.method,
+            path: req.path,
+            statusCode: res.statusCode,
+            duration,
+            requestId: req.requestId
+        });
+
+        originalEnd.call(this, chunk, encoding);
+    };
+
+    next();
 });
 
 // Apply malicious traffic filtering to all routes
@@ -343,7 +511,7 @@ const createServiceProxy = (targetUrl: string, pathRewrite?: Record<string, stri
             }
 
             // Add request ID for tracing
-            const requestId = req.headers['x-request-id'] || Math.random().toString(36).substr(2, 9);
+            const requestId = req.requestId || req.headers['x-request-id'] || Math.random().toString(36).substr(2, 9);
             proxyReq.setHeader('X-Request-Id', requestId);
 
             // Re-write the request body for proxying
@@ -354,15 +522,24 @@ const createServiceProxy = (targetUrl: string, pathRewrite?: Record<string, stri
                 logger.info(`Rewriting body for proxy: ${bodyData}`);
             }
 
-            // Log proxied requests
-            logger.info(`Proxying: ${req.method} ${req.path} -> ${targetUrl}${proxyReq.path}`);
+            // Log proxied requests with enhanced context
+            logWithContext('info', 'Proxying request', {
+                method: req.method,
+                path: req.path,
+                targetUrl: `${targetUrl}${proxyReq.path}`,
+                requestId: req.requestId || requestId,
+                userId: req.user?.sub || req.user?.email
+            });
         },
 
         // Handle proxy responses
         onProxyRes: (proxyRes: any, req: any, res: any) => {
             // Handle Server-Sent Events - disable buffering
             if (proxyRes.headers['content-type']?.includes('text/event-stream')) {
-                logger.info('Handling SSE stream');
+                logWithContext('info', 'Handling SSE stream', {
+                    statusCode: proxyRes.statusCode,
+                    contentType: proxyRes.headers['content-type']
+                });
                 res.writeHead(proxyRes.statusCode || 200, {
                     ...proxyRes.headers,
                     'Cache-Control': 'no-cache',
@@ -380,13 +557,22 @@ const createServiceProxy = (targetUrl: string, pathRewrite?: Record<string, stri
 
         // Handle WebSocket upgrades
         onProxyReqWs: (proxyReq: any, req: any, socket: any, options: any, head: any) => {
-            logger.info('WebSocket upgrade request');
+            logWithContext('info', 'WebSocket upgrade request', {
+                path: req.path,
+                targetUrl
+            });
             // You could add WebSocket-specific auth here if needed
         },
 
         // Error handling
         onError: (err: any, req: any, res: any) => {
-            logger.error(`Proxy error to ${targetUrl}:`, err.message);
+            logWithContext('error', 'Proxy error', {
+                targetUrl,
+                error: err.message,
+                method: req.method,
+                path: req.path,
+                requestId: req.headers['x-request-id']
+            });
             if (!res.headersSent) {
                 res.status(500).json({
                     error: 'Service unavailable',
@@ -428,7 +614,13 @@ app.use('*', (req, res) => {
 
 // Global error handler
 app.use((err: any, req: any, res: any, next: any) => {
-    logger.error('Global error:', err);
+    logWithContext('error', 'Global error', {
+        error: err.message,
+        stack: err.stack,
+        method: req.method,
+        path: req.path,
+        requestId: req.headers['x-request-id']
+    });
     res.status(500).json({
         error: 'Internal server error',
         message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
@@ -437,25 +629,24 @@ app.use((err: any, req: any, res: any, next: any) => {
 
 const PORT = process.env.PORT || 3001;
 const server = app.listen(PORT, () => {
-    logger.info(`Auth proxy running on port ${PORT}`);
-    logger.info(`Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
-    logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    logger.info('');
-    logger.info('Service Routing:');
-    logger.info(`  /api/v1/users    → ${serviceRoutes['/api/v1/users']}`);
-    logger.info(`  /api/v1/chat     → ${serviceRoutes['/api/v1/chat']}`);
-    logger.info(`  /api/v1/calendar → ${serviceRoutes['/api/v1/calendar']}`);
-    logger.info(`  /api/v1/email    → ${serviceRoutes['/api/v1/email']}`);
-    logger.info(`  /api/v1/files    → ${serviceRoutes['/api/v1/files']}`);
-    logger.info(`  /api/v1/drafts     → ${serviceRoutes['/api/v1/drafts']}`);
-    logger.info(`  /api/v1/meetings → ${serviceRoutes['/api/v1/meetings']}`);
-    logger.info(`  /api/v1/public/polls → ${serviceRoutes['/api/v1/public/polls']}`);
-    logger.info(`  /api/v1/packages → ${serviceRoutes['/api/v1/packages']}`);
+    logWithContext('info', `Auth proxy running on port ${PORT}`);
+    logWithContext('info', `Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+    logWithContext('info', `Environment: ${process.env.NODE_ENV || 'development'}`);
+    logWithContext('info', 'Service Routing:');
+    logWithContext('info', `  /api/v1/users    → ${serviceRoutes['/api/v1/users']}`);
+    logWithContext('info', `  /api/v1/chat     → ${serviceRoutes['/api/v1/chat']}`);
+    logWithContext('info', `  /api/v1/calendar → ${serviceRoutes['/api/v1/calendar']}`);
+    logWithContext('info', `  /api/v1/email    → ${serviceRoutes['/api/v1/email']}`);
+    logWithContext('info', `  /api/v1/files    → ${serviceRoutes['/api/v1/files']}`);
+    logWithContext('info', `  /api/v1/drafts     → ${serviceRoutes['/api/v1/drafts']}`);
+    logWithContext('info', `  /api/v1/meetings → ${serviceRoutes['/api/v1/meetings']}`);
+    logWithContext('info', `  /api/v1/public/polls → ${serviceRoutes['/api/v1/public/polls']}`);
+    logWithContext('info', `  /api/v1/packages → ${serviceRoutes['/api/v1/packages']}`);
 });
 
 // Handle WebSocket upgrades
 server.on('upgrade', (request: any, socket: any, head: any) => {
-    logger.info('WebSocket upgrade event');
+    logWithContext('info', 'WebSocket upgrade event');
 
     // Route WebSocket connections based on path
     const url = new URL(request.url || '', `http://${request.headers.host}`);
@@ -480,24 +671,24 @@ server.on('upgrade', (request: any, socket: any, head: any) => {
     if (wsProxy && typeof wsProxy.upgrade === 'function') {
         wsProxy.upgrade(request, socket, head);
     } else {
-        logger.error('WebSocket proxy upgrade function not available');
+        logWithContext('error', 'WebSocket proxy upgrade function not available');
         socket.destroy();
     }
 });
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-    logger.info('Received SIGTERM, shutting down gracefully');
+    logWithContext('info', 'Received SIGTERM, shutting down gracefully');
     server.close(() => {
-        logger.info('Server closed');
+        logWithContext('info', 'Server closed');
         process.exit(0);
     });
 });
 
 process.on('SIGINT', () => {
-    logger.info('Received SIGINT, shutting down gracefully');
+    logWithContext('info', 'Received SIGINT, shutting down gracefully');
     server.close(() => {
-        logger.info('Server closed');
+        logWithContext('info', 'Server closed');
         process.exit(0);
     });
 });
