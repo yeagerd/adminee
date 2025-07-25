@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional, Type
 
 import httpx
 
-from services.chat.settings import get_settings
+import services.chat.settings
 from services.common.logging_config import get_logger, request_id_var
 
 logger = get_logger(__name__)
@@ -47,10 +47,16 @@ class ServiceClient:
         if request_id and request_id != "uninitialized":
             headers["X-Request-Id"] = request_id
 
-        if service_name == "user-management" and get_settings().api_chat_user_key:
-            headers["X-API-Key"] = get_settings().api_chat_user_key  # type: ignore[assignment]
-        elif service_name == "office" and get_settings().api_chat_office_key:
-            headers["X-API-Key"] = get_settings().api_chat_office_key  # type: ignore[assignment]
+        if (
+            service_name == "user-management"
+            and services.chat.settings.get_settings().api_chat_user_key
+        ):
+            headers["X-API-Key"] = services.chat.settings.get_settings().api_chat_user_key  # type: ignore[assignment]
+        elif (
+            service_name == "office"
+            and services.chat.settings.get_settings().api_chat_office_key
+        ):
+            headers["X-API-Key"] = services.chat.settings.get_settings().api_chat_office_key  # type: ignore[assignment]
 
         return headers
 
@@ -59,7 +65,7 @@ class ServiceClient:
         try:
             headers = self._get_headers_for_service("user-management")
 
-            url = get_settings().user_management_service_url or ""  # type: ignore[assignment]
+            url = services.chat.settings.get_settings().user_management_service_url or ""  # type: ignore[assignment]
             response = await self.http_client.get(
                 f"{url}/users/{user_id}",
                 headers=headers,
@@ -85,7 +91,7 @@ class ServiceClient:
         try:
             headers = self._get_headers_for_service("user-management")
 
-            url = get_settings().user_management_service_url or ""  # type: ignore[assignment]
+            url = services.chat.settings.get_settings().user_management_service_url or ""  # type: ignore[assignment]
             response = await self.http_client.get(
                 f"{url}/internal/users/{user_id}/preferences",
                 headers=headers,
@@ -118,7 +124,7 @@ class ServiceClient:
             headers = self._get_headers_for_service("office")
 
             response = await self.http_client.get(
-                f"{get_settings().office_service_url}/calendar/events?user_id={user_id}&days_ahead={days_ahead}",
+                f"{services.chat.settings.get_settings().office_service_url}/calendar/events?user_id={user_id}&days_ahead={days_ahead}",
                 headers=headers,
             )
 
@@ -142,7 +148,7 @@ class ServiceClient:
             headers = self._get_headers_for_service("office")
 
             response = await self.http_client.get(
-                f"{get_settings().office_service_url}/files?user_id={user_id}&limit={limit}",
+                f"{services.chat.settings.get_settings().office_service_url}/files?user_id={user_id}&limit={limit}",
                 headers=headers,
             )
 
