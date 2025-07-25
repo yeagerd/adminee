@@ -442,10 +442,10 @@ class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
         # user_id = integration_setup["user_id"]
 
         event_data = {
-            "summary": "New Test Event",
+            "title": "New Test Event",
             "description": "Test event description",
-            "start": {"dateTime": "2023-01-01T10:00:00Z"},
-            "end": {"dateTime": "2023-01-01T11:00:00Z"},
+            "start_time": "2023-01-01T10:00:00Z",
+            "end_time": "2023-01-01T11:00:00Z",
             "location": "Test Location",
         }
 
@@ -473,7 +473,7 @@ class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
 
                 data = response.json()
                 assert data["success"] is True
-                assert data["data"]["id"] == "new-event-123"
+                assert data["data"]["event_id"] == "new-event-123"
 
     def test_delete_calendar_event_success(self):
         """Test successful deletion of calendar event."""

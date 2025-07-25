@@ -6,7 +6,7 @@ The old user-specific APIs have been deprecated and removed.
 """
 
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi import status
 
@@ -167,8 +167,14 @@ class TestMeIntegrationEndpoints(BaseUserManagementIntegrationTest):
         with patch(
             "services.user.services.integration_service.get_integration_service"
         ) as mock_service:
-            mock_service.return_value.get_user_integration = AsyncMock(
-                return_value=mock_response
+            # Mock get_user_integrations to return a list with one integration
+            mock_service.return_value.get_user_integrations = AsyncMock(
+                return_value=IntegrationListResponse(
+                    integrations=[mock_response],
+                    total=1,
+                    active_count=1,
+                    error_count=0,
+                )
             )
             response = self.client.get(
                 f"/v1/users/me/integrations/{provider}",
@@ -214,30 +220,30 @@ class TestMeIntegrationEndpoints(BaseUserManagementIntegrationTest):
         """Test successful retrieval of provider scopes."""
         provider = "google"
 
-        mock_response = {
-            "provider": "google",
-            "scopes": [
-                {
-                    "name": "email",
-                    "description": "Access to email address",
-                    "required": True,
-                    "sensitive": False,
-                },
-                {
-                    "name": "profile",
-                    "description": "Access to profile information",
-                    "required": False,
-                    "sensitive": False,
-                },
-            ],
-        }
-
         with patch(
-            "services.user.services.integration_service.get_integration_service"
-        ) as mock_service:
-            mock_service.return_value.get_provider_scopes = AsyncMock(
-                return_value=mock_response
+            "services.user.integrations.oauth_config.get_oauth_config"
+        ) as mock_oauth_config:
+            # Mock the OAuth config to return a provider config with scopes
+            mock_provider_config = MagicMock()
+            mock_provider_config.scopes = [
+                MagicMock(
+                    name="email",
+                    description="Access to email address",
+                    required=True,
+                    sensitive=False,
+                ),
+                MagicMock(
+                    name="profile",
+                    description="Access to profile information",
+                    required=False,
+                    sensitive=False,
+                ),
+            ]
+            mock_provider_config.default_scopes = ["email"]
+            mock_oauth_config.return_value.get_provider_config.return_value = (
+                mock_provider_config
             )
+
             response = self.client.get(
                 f"/v1/users/me/integrations/{provider}/scopes",
                 headers={"Authorization": "Bearer valid-token"},
