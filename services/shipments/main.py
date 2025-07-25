@@ -7,6 +7,7 @@ Provides package shipment tracking, label management, and carrier integration.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from services.common.http_errors import register_briefly_exception_handlers
 from services.shipments.routers import api_router
 from services.shipments.settings import get_settings
 
@@ -26,6 +27,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Register exception handlers
+register_briefly_exception_handlers(app)
 
 # Register routers
 app.include_router(api_router, prefix="/api")

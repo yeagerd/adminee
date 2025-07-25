@@ -286,22 +286,50 @@ const createServiceProxy = (targetUrl: string, pathRewrite?: Record<string, stri
         timeout: 60000, // 60 second timeout
         proxyTimeout: 60000,
         pathRewrite,
-
-        // Handle proxy requests
+        // Configure header forwarding
         onProxyReq: (proxyReq: any, req: any, res: any) => {
+            // REQUIREMENT: Explicitly forward all headers from original request to proxy request
+            // 
+            // The http-proxy-middleware library does not automatically forward all headers
+            // from the original request to the target service. This was causing API key
+            // authentication to fail because custom headers like X-API-Key, Authorization,
+            // and X-Service-Key were being dropped during the proxy forwarding process.
+            //
+            // By explicitly iterating through all original request headers and setting them
+            // on the proxy request, we ensure that:
+            // 1. All original headers are preserved and forwarded to the target service
+            // 2. Custom authentication headers set via proxyReq.setHeader() are not dropped
+            // 3. The proxy middleware doesn't lose any headers during forwarding
+            //
+            // This fix was discovered after extensive debugging showed that the gateway
+            // was correctly setting API key headers on the proxy request, but the shipments
+            // service was not receiving them. The issue was that the proxy middleware
+            // was not forwarding these headers to the target service.
+            Object.keys(req.headers).forEach(key => {
+                if (req.headers[key]) {
+                    proxyReq.setHeader(key, req.headers[key]);
+                }
+            });
+
             // Add service API key for backend authentication
             if (targetUrl.includes('8001')) {
                 // User service
                 proxyReq.setHeader('X-API-Key', process.env.API_FRONTEND_USER_KEY || '');
+                logger.debug(`Setting API key for user service: ${process.env.API_FRONTEND_USER_KEY ? 'present' : 'missing'}`);
             } else if (targetUrl.includes('8002')) {
                 // Chat service
                 proxyReq.setHeader('X-API-Key', process.env.API_FRONTEND_CHAT_KEY || '');
+                logger.debug(`Setting API key for chat service: ${process.env.API_FRONTEND_CHAT_KEY ? 'present' : 'missing'}`);
             } else if (targetUrl.includes('8003')) {
                 // Office service
                 proxyReq.setHeader('X-API-Key', process.env.API_FRONTEND_OFFICE_KEY || '');
+                logger.debug(`Setting API key for office service: ${process.env.API_FRONTEND_OFFICE_KEY ? 'present' : 'missing'}`);
             } else if (targetUrl.includes('8004')) {
                 // Shipments service
                 proxyReq.setHeader('X-API-Key', process.env.API_FRONTEND_SHIPMENTS_KEY || '');
+                logger.debug(`Setting API key for shipments service: ${process.env.API_FRONTEND_SHIPMENTS_KEY ? 'present' : 'missing'}`);
+            } else {
+                logger.warn(`No API key assigned for target URL: ${targetUrl}`);
             }
 
             // Forward user identity to backend
