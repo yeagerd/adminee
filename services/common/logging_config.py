@@ -90,7 +90,8 @@ def add_file_line_context(
     frame = inspect.currentframe()
     try:
         # Go up the call stack to find the actual caller
-        for _ in range(5):  # Skip a few frames to get to the actual caller
+        # We need to skip more frames to get past the logging system
+        for _ in range(8):  # Skip more frames to get to the actual caller
             if frame:
                 frame = frame.f_back
             if not frame:
@@ -99,6 +100,18 @@ def add_file_line_context(
         if frame:
             filename = frame.f_code.co_filename
             lineno = frame.f_lineno
+
+            # Skip if we're still in the logging system
+            if "logging" in filename or "structlog" in filename:
+                # Go up a few more frames
+                for _ in range(3):
+                    if frame:
+                        frame = frame.f_back
+                    if not frame:
+                        break
+                if frame:
+                    filename = frame.f_code.co_filename
+                    lineno = frame.f_lineno
 
             # Extract just the filename without path for cleaner output
             if "/" in filename:
@@ -212,7 +225,7 @@ def setup_service_logging(
     """
 
     # Configure structlog for consistent structured logging
-    processors = [
+    processors: list = [
         structlog.stdlib.filter_by_level,
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,

@@ -664,4 +664,5 @@ if __name__ == "__main__":
         port=8001,
         reload=get_settings().debug,
         log_level="info" if not get_settings().debug else "debug",
+        access_log=False,  # Disable uvicorn access logs, we handle request logging in middleware
     )
