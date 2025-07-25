@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     log_format: str = Field(default="json", validation_alias="LOG_FORMAT")
     db_url_shipments: str = Field(..., validation_alias="DB_URL_SHIPMENTS")
     api_frontend_shipments_key: str = Field(
-        default="", validation_alias="API_FRONTEND_SHIPMENTS_KEY"
+        ..., validation_alias="API_FRONTEND_SHIPMENTS_KEY"
     )
     redis_url: str = Field(
         default="redis://localhost:6379/0", validation_alias="REDIS_URL"
