@@ -75,7 +75,7 @@ class TestMeIntegrationEndpoints(BaseUserManagementIntegrationTest):
             )
         assert response.status_code == status.HTTP_200_OK
         mock_service.return_value.get_user_integrations.assert_called_once_with(
-            user_id="test_user_123",  # From the test base class
+            user_id="user_123",  # Updated to match actual user ID format
             provider=IntegrationProvider.GOOGLE,
             status=IntegrationStatus.ACTIVE,
             include_token_info=False,
@@ -146,7 +146,7 @@ class TestMeIntegrationEndpoints(BaseUserManagementIntegrationTest):
 
         mock_response = {
             "id": 123,
-            "user_id": "test_user_123",
+            "user_id": "user_123",  # Updated to match actual user ID format
             "provider": "google",
             "status": "active",
             "scopes": ["email", "profile"],
