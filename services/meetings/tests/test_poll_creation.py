@@ -5,8 +5,21 @@ import pytest
 from fastapi.testclient import TestClient
 
 from services.meetings.main import app
+from services.meetings.models import get_engine
+from services.meetings.models.base import Base
 
 client = TestClient(app)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def create_tables():
+    engine = get_engine()
+    Base.metadata.create_all(engine)
+
+
+@pytest.fixture(autouse=True)
+def set_db_url_meetings(monkeypatch):
+    monkeypatch.setenv("DB_URL_MEETINGS", "sqlite:///:memory:")
 
 
 @pytest.fixture
