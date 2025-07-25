@@ -5,12 +5,15 @@ Each service should define its own API_KEY_CONFIGS and get_settings function, an
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Callable, Any
+from typing import Any, Callable, Dict, List, Optional
+
 from fastapi import Request
+
 from services.common.http_errors import AuthError, ServiceError
 from services.common.logging_config import get_logger
 
 logger = get_logger(__name__)
+
 
 @dataclass(frozen=True)
 class APIKeyConfig:
@@ -19,7 +22,10 @@ class APIKeyConfig:
     permissions: List[str]
     settings_key: str  # The key name in settings to look up the actual API key value
 
-def build_api_key_mapping(api_key_configs: Dict[str, APIKeyConfig], get_settings: Callable[[], Any]) -> Dict[str, APIKeyConfig]:
+
+def build_api_key_mapping(
+    api_key_configs: Dict[str, APIKeyConfig], get_settings: Callable[[], Any]
+) -> Dict[str, APIKeyConfig]:
     """
     Build a mapping from actual API key values to their configurations.
     """
@@ -32,6 +38,7 @@ def build_api_key_mapping(api_key_configs: Dict[str, APIKeyConfig], get_settings
         else:
             logger.warning(f"API key not found in settings: {config.settings_key}")
     return api_key_mapping
+
 
 def get_api_key_from_request(request: Request) -> Optional[str]:
     """
@@ -48,7 +55,10 @@ def get_api_key_from_request(request: Request) -> Optional[str]:
         return service_key
     return None
 
-def verify_api_key(api_key: str, api_key_mapping: Dict[str, APIKeyConfig]) -> Optional[str]:
+
+def verify_api_key(
+    api_key: str, api_key_mapping: Dict[str, APIKeyConfig]
+) -> Optional[str]:
     """
     Verify an API key and return the service name it's authorized for.
     """
@@ -59,27 +69,46 @@ def verify_api_key(api_key: str, api_key_mapping: Dict[str, APIKeyConfig]) -> Op
         return None
     return key_config.service
 
-def get_client_from_api_key(api_key: str, api_key_mapping: Dict[str, APIKeyConfig]) -> Optional[str]:
+
+def get_client_from_api_key(
+    api_key: str, api_key_mapping: Dict[str, APIKeyConfig]
+) -> Optional[str]:
     key_config = api_key_mapping.get(api_key)
     return key_config.client if key_config else None
 
-def get_permissions_from_api_key(api_key: str, api_key_mapping: Dict[str, APIKeyConfig]) -> List[str]:
+
+def get_permissions_from_api_key(
+    api_key: str, api_key_mapping: Dict[str, APIKeyConfig]
+) -> List[str]:
     key_config = api_key_mapping.get(api_key)
     return key_config.permissions if key_config else []
 
-def has_permission(api_key: str, required_permission: str, api_key_mapping: Dict[str, APIKeyConfig]) -> bool:
+
+def has_permission(
+    api_key: str, required_permission: str, api_key_mapping: Dict[str, APIKeyConfig]
+) -> bool:
     permissions = get_permissions_from_api_key(api_key, api_key_mapping)
     return required_permission in permissions
 
-def get_client_permissions(client_name: str, client_permissions: Dict[str, List[str]]) -> List[str]:
+
+def get_client_permissions(
+    client_name: str, client_permissions: Dict[str, List[str]]
+) -> List[str]:
     return client_permissions.get(client_name, [])
 
-def client_has_permission(client_name: str, required_permission: str, client_permissions: Dict[str, List[str]]) -> bool:
+
+def client_has_permission(
+    client_name: str, required_permission: str, client_permissions: Dict[str, List[str]]
+) -> bool:
     permissions = get_client_permissions(client_name, client_permissions)
     return required_permission in permissions
 
-def get_service_permissions(service_name: str, service_permissions: Dict[str, List[str]]) -> List[str]:
+
+def get_service_permissions(
+    service_name: str, service_permissions: Dict[str, List[str]]
+) -> List[str]:
     return service_permissions.get(service_name, [])
+
 
 def validate_service_permissions(
     service_name: str,
@@ -101,8 +130,11 @@ def validate_service_permissions(
         return all(perm in allowed_permissions for perm in required_permissions)
     return False
 
+
 # FastAPI dependencies (parameterized)
-def make_verify_service_authentication(api_key_configs: Dict[str, APIKeyConfig], get_settings: Callable[[], Any]) -> Callable[[Request], Any]:
+def make_verify_service_authentication(
+    api_key_configs: Dict[str, APIKeyConfig], get_settings: Callable[[], Any]
+) -> Callable[[Request], Any]:
     async def verify_service_authentication(request: Request) -> str:
         api_key = get_api_key_from_request(request)  # FIX: removed await
         api_key_mapping = build_api_key_mapping(api_key_configs, get_settings)
@@ -116,9 +148,13 @@ def make_verify_service_authentication(api_key_configs: Dict[str, APIKeyConfig],
         request.state.api_key = api_key
         request.state.service_name = service_name
         request.state.client_name = get_client_from_api_key(api_key, api_key_mapping)
-        logger.info(f"Service authenticated: {service_name} (client: {request.state.client_name})")
+        logger.info(
+            f"Service authenticated: {service_name} (client: {request.state.client_name})"
+        )
         return service_name
+
     return verify_service_authentication
+
 
 def make_service_permission_required(
     required_permissions: List[str],
@@ -127,13 +163,23 @@ def make_service_permission_required(
     service_permissions: Optional[Dict[str, List[str]]] = None,
 ) -> Callable[[Request], Any]:
     async def dependency(request: Request) -> str:
-        verify_service_authentication = make_verify_service_authentication(api_key_configs, get_settings)
+        verify_service_authentication = make_verify_service_authentication(
+            api_key_configs, get_settings
+        )
         service_name = await verify_service_authentication(request)
         api_key_mapping = build_api_key_mapping(api_key_configs, get_settings)
         api_key = getattr(request.state, "api_key", None)
         if not api_key:
-            raise ServiceError(message="API key not found in request state", status_code=500)
-        if not validate_service_permissions(service_name, required_permissions, api_key, api_key_mapping, service_permissions):
+            raise ServiceError(
+                message="API key not found in request state", status_code=500
+            )
+        if not validate_service_permissions(
+            service_name,
+            required_permissions,
+            api_key,
+            api_key_mapping,
+            service_permissions,
+        ):
             client_name = getattr(request.state, "client_name", "unknown")
             logger.warning(
                 f"Permission denied: {client_name} lacks permissions {required_permissions}",
@@ -144,6 +190,10 @@ def make_service_permission_required(
                     "api_key_prefix": api_key[:8] if api_key else None,
                 },
             )
-            raise AuthError(message=f"Insufficient permissions. Required: {required_permissions}", status_code=403)
+            raise AuthError(
+                message=f"Insufficient permissions. Required: {required_permissions}",
+                status_code=403,
+            )
         return service_name
-    return dependency 
+
+    return dependency

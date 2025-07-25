@@ -5,25 +5,19 @@ Provides granular permission-based API key authentication for service-to-service
 and frontend-to-service communication with the principle of least privilege.
 """
 
-from dataclasses import dataclass
-from typing import Dict, List, Optional, Callable, Any
+from typing import Any, Callable, Dict, List, Optional
 
 from fastapi import Request
 
-from services.common.http_errors import AuthError, ServiceError
-from services.common.logging_config import get_logger
 from services.common.api_key_auth import (
     APIKeyConfig,
     build_api_key_mapping,
-    get_api_key_from_request,
-    verify_api_key,
-    get_client_from_api_key,
-    get_permissions_from_api_key,
-    has_permission,
-    validate_service_permissions,
-    make_verify_service_authentication,
     make_service_permission_required,
+    make_verify_service_authentication,
+    verify_api_key,
 )
+from services.common.http_errors import AuthError
+from services.common.logging_config import get_logger
 from services.office.core.settings import get_settings
 
 logger = get_logger(__name__)
@@ -71,9 +65,14 @@ SERVICE_PERMISSIONS = {
 }
 
 # FastAPI dependencies
-verify_service_authentication = make_verify_service_authentication(API_KEY_CONFIGS, get_settings)
+verify_service_authentication = make_verify_service_authentication(
+    API_KEY_CONFIGS, get_settings
+)
 
-def service_permission_required(required_permissions: List[str]) -> Callable[[Request], Any]:
+
+def service_permission_required(
+    required_permissions: List[str],
+) -> Callable[[Request], Any]:
     return make_service_permission_required(
         required_permissions,
         API_KEY_CONFIGS,
@@ -112,6 +111,7 @@ class ServiceAPIKeyAuth:
 # Global service auth instance for backward compatibility
 service_auth = ServiceAPIKeyAuth()
 
+
 # Helper function for testing
 def get_test_api_keys() -> Dict[str, str]:
     """Get test API keys for testing purposes."""
@@ -120,6 +120,7 @@ def get_test_api_keys() -> Dict[str, str]:
         "frontend": settings.api_frontend_office_key,
         "chat": settings.api_chat_office_key,
     }
+
 
 # Helper function for testing
 def verify_api_key_for_testing(api_key: str) -> Optional[str]:

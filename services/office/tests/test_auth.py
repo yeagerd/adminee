@@ -5,29 +5,28 @@ Tests the granular API key authentication and permission system for the office s
 including API key validation, permission checking, and service authentication dependencies.
 """
 
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
-from services.common.http_errors import AuthError, ServiceError
-from services.office.core.auth import (
-    APIKeyConfig,
-    verify_service_authentication,
-    service_permission_required,
-    get_api_key_from_request,
-    optional_service_auth,
-    API_KEY_CONFIGS,
-    get_settings,
-)
 from services.common.api_key_auth import (
-    verify_api_key,
+    build_api_key_mapping,
     get_client_from_api_key,
     get_permissions_from_api_key,
     has_permission,
     validate_service_permissions,
-    build_api_key_mapping,
+    verify_api_key,
+)
+from services.common.http_errors import AuthError
+from services.office.core.auth import (
+    API_KEY_CONFIGS,
+    get_api_key_from_request,
+    get_settings,
+    optional_service_auth,
+    service_permission_required,
+    verify_service_authentication,
 )
 
 
@@ -82,7 +81,9 @@ class TestAPIKeyFunctions:
     def test_get_client_from_api_key_frontend(self):
         """Test getting client name from frontend API key."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        client = get_client_from_api_key(get_test_api_keys()["frontend"], api_key_mapping)
+        client = get_client_from_api_key(
+            get_test_api_keys()["frontend"], api_key_mapping
+        )
         assert client == "frontend"
 
     def test_get_client_from_api_key_chat_service(self):
@@ -100,7 +101,9 @@ class TestAPIKeyFunctions:
     def test_get_permissions_from_api_key_frontend(self):
         """Test getting permissions from frontend API key."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        permissions = get_permissions_from_api_key(get_test_api_keys()["frontend"], api_key_mapping)
+        permissions = get_permissions_from_api_key(
+            get_test_api_keys()["frontend"], api_key_mapping
+        )
         expected = [
             "read_emails",
             "send_emails",
@@ -114,7 +117,9 @@ class TestAPIKeyFunctions:
     def test_get_permissions_from_api_key_chat_service(self):
         """Test getting permissions from chat service API key."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        permissions = get_permissions_from_api_key(get_test_api_keys()["chat"], api_key_mapping)
+        permissions = get_permissions_from_api_key(
+            get_test_api_keys()["chat"], api_key_mapping
+        )
         expected = ["read_emails", "read_calendar", "read_files"]
         assert permissions == expected
 
@@ -127,17 +132,28 @@ class TestAPIKeyFunctions:
     def test_has_permission_frontend_send_emails(self):
         """Test frontend has send_emails permission."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        assert has_permission(get_test_api_keys()["frontend"], "send_emails", api_key_mapping) is True
+        assert (
+            has_permission(
+                get_test_api_keys()["frontend"], "send_emails", api_key_mapping
+            )
+            is True
+        )
 
     def test_has_permission_chat_service_no_send_emails(self):
         """Test chat service does not have send_emails permission."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        assert has_permission(get_test_api_keys()["chat"], "send_emails", api_key_mapping) is False
+        assert (
+            has_permission(get_test_api_keys()["chat"], "send_emails", api_key_mapping)
+            is False
+        )
 
     def test_has_permission_chat_service_read_emails(self):
         """Test chat service has read_emails permission."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        assert has_permission(get_test_api_keys()["chat"], "read_emails", api_key_mapping) is True
+        assert (
+            has_permission(get_test_api_keys()["chat"], "read_emails", api_key_mapping)
+            is True
+        )
 
     def test_has_permission_invalid_key(self):
         """Test that invalid key has no permissions."""
@@ -195,7 +211,12 @@ class TestServicePermissionValidation:
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
         # Define service permissions for the fallback test
         service_permissions = {
-            "office-service-access": ["read_emails", "send_emails", "read_calendar", "write_calendar"]
+            "office-service-access": [
+                "read_emails",
+                "send_emails",
+                "read_calendar",
+                "write_calendar",
+            ]
         }
         result = validate_service_permissions(
             "office-service-access",
@@ -506,7 +527,9 @@ class TestPermissionMatrix:
     def test_frontend_permissions_complete(self):
         """Test that frontend key has all expected permissions."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        permissions = get_permissions_from_api_key(get_test_api_keys()["frontend"], api_key_mapping)
+        permissions = get_permissions_from_api_key(
+            get_test_api_keys()["frontend"], api_key_mapping
+        )
         expected = [
             "read_emails",
             "send_emails",
@@ -524,7 +547,9 @@ class TestPermissionMatrix:
     def test_chat_service_permissions_read_only(self):
         """Test that chat service key has only read permissions."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        permissions = get_permissions_from_api_key(get_test_api_keys()["chat"], api_key_mapping)
+        permissions = get_permissions_from_api_key(
+            get_test_api_keys()["chat"], api_key_mapping
+        )
 
         # Should have read permissions
         assert "read_emails" in permissions
@@ -544,30 +569,64 @@ class TestSecurityScenarios:
         """Test that only authorized clients can send emails."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
         # Frontend can send
-        assert has_permission(get_test_api_keys()["frontend"], "send_emails", api_key_mapping) is True
+        assert (
+            has_permission(
+                get_test_api_keys()["frontend"], "send_emails", api_key_mapping
+            )
+            is True
+        )
 
         # Chat service cannot send
-        assert has_permission(get_test_api_keys()["chat"], "send_emails", api_key_mapping) is False
+        assert (
+            has_permission(get_test_api_keys()["chat"], "send_emails", api_key_mapping)
+            is False
+        )
 
     def test_calendar_writing_security(self):
         """Test that only authorized clients can write to calendar."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
         # Frontend can write
-        assert has_permission(get_test_api_keys()["frontend"], "write_calendar", api_key_mapping) is True
+        assert (
+            has_permission(
+                get_test_api_keys()["frontend"], "write_calendar", api_key_mapping
+            )
+            is True
+        )
 
         # Chat service cannot write
-        assert has_permission(get_test_api_keys()["chat"], "write_calendar", api_key_mapping) is False
+        assert (
+            has_permission(
+                get_test_api_keys()["chat"], "write_calendar", api_key_mapping
+            )
+            is False
+        )
 
     def test_file_access_security(self):
         """Test file access permissions."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
         # Frontend can read and write
-        assert has_permission(get_test_api_keys()["frontend"], "read_files", api_key_mapping) is True
-        assert has_permission(get_test_api_keys()["frontend"], "write_files", api_key_mapping) is True
+        assert (
+            has_permission(
+                get_test_api_keys()["frontend"], "read_files", api_key_mapping
+            )
+            is True
+        )
+        assert (
+            has_permission(
+                get_test_api_keys()["frontend"], "write_files", api_key_mapping
+            )
+            is True
+        )
 
         # Chat service can only read
-        assert has_permission(get_test_api_keys()["chat"], "read_files", api_key_mapping) is True
-        assert has_permission(get_test_api_keys()["chat"], "write_files", api_key_mapping) is False
+        assert (
+            has_permission(get_test_api_keys()["chat"], "read_files", api_key_mapping)
+            is True
+        )
+        assert (
+            has_permission(get_test_api_keys()["chat"], "write_files", api_key_mapping)
+            is False
+        )
 
     def test_privilege_escalation_prevention(self):
         """Test that services cannot escalate privileges."""

@@ -23,7 +23,6 @@ from services.user.auth.nextauth import (
 )
 from services.user.auth.service_auth import (
     verify_service_authentication,
-    service_permission_required,
 )
 
 

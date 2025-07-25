@@ -10,14 +10,14 @@ import pytest
 from fastapi import Request
 
 from services.chat.auth import (
-    verify_service_authentication,
-    service_permission_required,
-    get_permissions_from_api_key,
-    has_permission,
     API_KEY_CONFIGS,
-    get_settings,
-    verify_api_key,
     get_client_from_api_key,
+    get_permissions_from_api_key,
+    get_settings,
+    has_permission,
+    service_permission_required,
+    verify_api_key,
+    verify_service_authentication,
 )
 from services.common.api_key_auth import build_api_key_mapping
 from services.common.http_errors import AuthError
@@ -95,7 +95,9 @@ class TestChatServiceAuth:
     def test_get_client_permissions_frontend(self):
         """Test getting permissions for frontend client."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        permissions = get_permissions_from_api_key("test-FRONTEND_CHAT_KEY", api_key_mapping)
+        permissions = get_permissions_from_api_key(
+            "test-FRONTEND_CHAT_KEY", api_key_mapping
+        )
         expected = [
             "read_chats",
             "write_chats",
@@ -110,7 +112,9 @@ class TestChatServiceAuth:
         """Test getting permissions for chat client."""
         # Chat service only has frontend key, so test with invalid key
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        permissions = get_permissions_from_api_key("test-chat-service-key", api_key_mapping)
+        permissions = get_permissions_from_api_key(
+            "test-chat-service-key", api_key_mapping
+        )
         assert permissions == []
 
     def test_get_client_permissions_invalid(self):
@@ -122,13 +126,19 @@ class TestChatServiceAuth:
     def test_client_has_permission_success(self):
         """Test successful client permission check."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        assert has_permission("test-FRONTEND_CHAT_KEY", "read_chats", api_key_mapping) is True
+        assert (
+            has_permission("test-FRONTEND_CHAT_KEY", "read_chats", api_key_mapping)
+            is True
+        )
 
     def test_client_has_permission_failure(self):
         """Test client permission check failure."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
         # Test with invalid key since chat service only has frontend key
-        assert has_permission("test-chat-service-key", "write_chats", api_key_mapping) is False
+        assert (
+            has_permission("test-chat-service-key", "write_chats", api_key_mapping)
+            is False
+        )
 
     @pytest.mark.asyncio
     async def test_require_chat_auth_success(self):
@@ -204,7 +214,9 @@ class TestChatAuthIntegration:
     def test_permission_matrix(self):
         """Test the complete permission matrix for frontend client."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        permissions = get_permissions_from_api_key("test-FRONTEND_CHAT_KEY", api_key_mapping)
+        permissions = get_permissions_from_api_key(
+            "test-FRONTEND_CHAT_KEY", api_key_mapping
+        )
 
         # Verify all expected permissions exist
         expected_permissions = [
@@ -218,7 +230,10 @@ class TestChatAuthIntegration:
 
         for permission in expected_permissions:
             assert permission in permissions
-            assert has_permission("test-FRONTEND_CHAT_KEY", permission, api_key_mapping) is True
+            assert (
+                has_permission("test-FRONTEND_CHAT_KEY", permission, api_key_mapping)
+                is True
+            )
 
         assert len(permissions) == len(expected_permissions)
 

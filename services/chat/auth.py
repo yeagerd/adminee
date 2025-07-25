@@ -4,25 +4,17 @@ Authentication module for Chat Service.
 Provides API key based authentication for incoming requests from the frontend.
 """
 
-from typing import Callable, Dict, List, Optional, Any
+from typing import Any, Callable, Dict, List
 
 from fastapi import Request
 
 from services.chat.settings import get_settings
-from services.common.http_errors import AuthError
-from services.common.logging_config import get_logger
 from services.common.api_key_auth import (
     APIKeyConfig,
-    build_api_key_mapping,
-    get_api_key_from_request,
-    verify_api_key,
-    get_client_from_api_key,
-    get_permissions_from_api_key,
-    has_permission,
-    validate_service_permissions,
-    make_verify_service_authentication,
     make_service_permission_required,
+    make_verify_service_authentication,
 )
+from services.common.logging_config import get_logger
 
 logger = get_logger(__name__)
 
@@ -68,9 +60,14 @@ SERVICE_PERMISSIONS = {
 }
 
 # FastAPI dependencies
-verify_service_authentication = make_verify_service_authentication(API_KEY_CONFIGS, get_settings)
+verify_service_authentication = make_verify_service_authentication(
+    API_KEY_CONFIGS, get_settings
+)
 
-def service_permission_required(required_permissions: List[str]) -> Callable[[Request], Any]:
+
+def service_permission_required(
+    required_permissions: List[str],
+) -> Callable[[Request], Any]:
     return make_service_permission_required(
         required_permissions,
         API_KEY_CONFIGS,
