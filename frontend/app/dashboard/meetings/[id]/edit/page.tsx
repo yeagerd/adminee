@@ -10,7 +10,9 @@ interface Poll {
     location?: string;
 }
 
-export default function EditMeetingPollPage({ params }: { params: { id: string } }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export default function EditMeetingPollPage(props: any) {
+    const { params } = props;
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);

@@ -40,7 +40,9 @@ function getSlotStats(poll: Poll) {
     return stats;
 }
 
-export default function MeetingPollResultsPage({ params }: { params: { id: string } }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export default function MeetingPollResultsPage(props: any) {
+    const { params } = props;
     const [poll, setPoll] = useState<Poll | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);

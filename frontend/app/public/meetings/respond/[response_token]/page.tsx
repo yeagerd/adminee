@@ -1,17 +1,20 @@
-import { useRouter } from 'next/router';
+"use client";
 import { useEffect, useState } from 'react';
 
-type Poll = { title: string; time_slots?: any[] };
-type Participant = { name?: string; email: string };
+type Poll = { title: string; time_slots?: unknown[] };
 
 type PollResponse = { time_slot_id: string; response: string; comment?: string };
 
 export default function PollResponsePage() {
-    const router = useRouter();
-    const { response_token } = router.query;
+    // next/navigation does not have router.query, so use URLSearchParams or params prop if available
+    // For now, get response_token from window.location as a workaround
+    let response_token: string | undefined = undefined;
+    if (typeof window !== 'undefined') {
+        const match = window.location.pathname.match(/\/respond\/(.+)$/);
+        response_token = match ? match[1] : undefined;
+    }
     const [poll, setPoll] = useState<Poll | null>(null);
-    const [participant, setParticipant] = useState<Participant | null>(null);
-    const [responses, setResponses] = useState<PollResponse[]>([]);
+    const [responses] = useState<PollResponse[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [submitted, setSubmitted] = useState(false);
@@ -22,7 +25,7 @@ export default function PollResponsePage() {
             .then(res => res.json())
             .then(data => {
                 setPoll(data.poll);
-                setParticipant(data.participant);
+                // setParticipant(data.participant); // This line was removed
                 setLoading(false);
             })
             .catch(() => {
