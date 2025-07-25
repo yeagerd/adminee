@@ -16,7 +16,7 @@ _engine = None
 _async_session = None
 
 
-def get_engine():
+def get_engine() -> Any:
     """Get database engine with lazy initialization."""
     global _engine
     if _engine is None:
@@ -26,7 +26,7 @@ def get_engine():
     return _engine
 
 
-def get_async_session_factory():
+def get_async_session_factory() -> Any:
     """Get async session factory with lazy initialization."""
     global _async_session
     if _async_session is None:
