@@ -23,6 +23,21 @@ from services.office.models import Provider
 from services.office.schemas import EmailAddress, EmailMessage, SendEmailRequest
 
 
+@pytest.fixture(autouse=True)
+def patch_settings(monkeypatch):
+    """Patch the _settings global variable to return test settings."""
+    import services.office.core.settings as office_settings
+
+    test_settings = office_settings.Settings(
+        db_url_office="sqlite:///:memory:",
+        api_frontend_office_key="test-frontend-office-key",
+        api_chat_office_key="test-chat-office-key",
+        api_office_user_key="test-office-user-key",
+    )
+
+    monkeypatch.setattr("services.office.core.settings._settings", test_settings)
+
+
 @pytest.fixture
 def client():
     """Create a test client for the FastAPI application."""
@@ -31,8 +46,11 @@ def client():
 
 @pytest.fixture
 def auth_headers():
-    """Create authentication headers with X-User-Id."""
-    return {"X-User-Id": "test_user"}
+    """Create authentication headers with X-User-Id and API key."""
+    return {
+        "X-User-Id": "test_user",
+        "X-API-Key": "test-frontend-office-key"
+    }
 
 
 @pytest.fixture

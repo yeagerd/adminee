@@ -7,17 +7,17 @@ from fastapi import Request
 
 @pytest.fixture(autouse=True)
 def patch_settings(monkeypatch):
-    """Patch the get_settings function to return test settings."""
+    """Patch the _settings global variable to return test settings."""
     import services.office.core.settings as office_settings
 
-    def _test_settings():
-        return office_settings.Settings(
-            db_url_office="sqlite:///:memory:",
-            api_frontend_office_key="test-FRONTEND_OFFICE_KEY",
-            api_chat_office_key="test-CHAT_OFFICE_KEY",
-        )
+    test_settings = office_settings.Settings(
+        db_url_office="sqlite:///:memory:",
+        api_frontend_office_key="test-frontend-office-key",
+        api_chat_office_key="test-chat-office-key",
+        api_office_user_key="test-office-user-key",
+    )
 
-    monkeypatch.setattr("services.office.core.settings.get_settings", _test_settings)
+    monkeypatch.setattr("services.office.core.settings._settings", test_settings)
 
 
 class TestServiceAuth:
@@ -27,18 +27,18 @@ class TestServiceAuth:
         api_keys = get_test_api_keys()
         assert "frontend" in api_keys
         assert "chat" in api_keys
-        assert api_keys["frontend"] == "test-FRONTEND_OFFICE_KEY"
-        assert api_keys["chat"] == "test-CHAT_OFFICE_KEY"
+        assert api_keys["frontend"] == "test-frontend-office-key"
+        assert api_keys["chat"] == "test-chat-office-key"
 
     def test_verify_api_key_for_testing(self):
         from services.office.core.auth import verify_api_key_for_testing
 
         # Test with valid frontend key
-        result = verify_api_key_for_testing("test-FRONTEND_OFFICE_KEY")
+        result = verify_api_key_for_testing("test-frontend-office-key")
         assert result == "office-service-access"
 
         # Test with valid chat key
-        result = verify_api_key_for_testing("test-CHAT_OFFICE_KEY")
+        result = verify_api_key_for_testing("test-chat-office-key")
         assert result == "office-service-access"
 
         # Test with invalid key
@@ -49,7 +49,7 @@ class TestServiceAuth:
         from services.office.core.auth import verify_service_authentication
 
         request = MagicMock(spec=Request)
-        request.headers = {"Authorization": "Bearer test-FRONTEND_OFFICE_KEY"}
+        request.headers = {"Authorization": "Bearer test-frontend-office-key"}
         request.state = Mock()
         service_name = verify_service_authentication(request)
         assert service_name == "office-service-access"
@@ -67,7 +67,7 @@ class TestServiceAuth:
         from services.office.core.auth import service_permission_required
 
         request = MagicMock(spec=Request)
-        request.headers = {"Authorization": "Bearer test-FRONTEND_OFFICE_KEY"}
+        request.headers = {"Authorization": "Bearer test-frontend-office-key"}
         request.state = Mock()
         dep = service_permission_required(["read_emails"])
         service_name = asyncio.run(dep(request))
@@ -77,7 +77,7 @@ class TestServiceAuth:
         from services.office.core.auth import service_permission_required
 
         request = MagicMock(spec=Request)
-        request.headers = {"Authorization": "Bearer test-FRONTEND_OFFICE_KEY"}
+        request.headers = {"Authorization": "Bearer test-frontend-office-key"}
         request.state = Mock()
         dep = service_permission_required(["not_a_permission"])
         with pytest.raises(Exception):
@@ -87,7 +87,7 @@ class TestServiceAuth:
         from services.office.core.auth import optional_service_auth
 
         request = MagicMock(spec=Request)
-        request.headers = {"Authorization": "Bearer test-FRONTEND_OFFICE_KEY"}
+        request.headers = {"Authorization": "Bearer test-frontend-office-key"}
         request.state = Mock()
         service_name = optional_service_auth(request)
         assert service_name == "office-service-access"
