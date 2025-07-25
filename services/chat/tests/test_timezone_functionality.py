@@ -255,8 +255,8 @@ class TestTimezoneIntegration:
             mock_response = MagicMock()
             mock_response.raise_for_status.return_value = None
 
-            if "internal/users" in url and "integrations" in url:
-                # Mock user service response for integrations
+            if "/internal/users/test_user/integrations" in url:
+                # Mock user service response for integrations (exact match)
                 mock_response.status_code = 200
                 mock_response.json.return_value = {
                     "integrations": [
