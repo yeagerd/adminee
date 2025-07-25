@@ -14,7 +14,7 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from services.meetings.models.base import Base
 
@@ -107,7 +107,9 @@ class PollParticipant(Base):
     )
     email = Column(String(255), nullable=False)
     name = Column(String(255))
-    status: Column = Column(Enum(ParticipantStatus), default=ParticipantStatus.pending)
+    status: Mapped[ParticipantStatus] = mapped_column(
+        Enum(ParticipantStatus), default=ParticipantStatus.pending
+    )
     invited_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     responded_at = Column(DateTime(timezone=True))
     reminder_sent_count = Column(Integer, default=0)

@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from services.meetings.main import app
 from services.meetings.models import MeetingPoll, PollParticipant, get_session
 from services.meetings.models.base import Base
+from services.meetings.models.meeting import ParticipantStatus
 
 client = TestClient(app)
 
@@ -96,7 +97,8 @@ def test_process_email_response_success():
         updated = (
             session.query(PollParticipant).filter_by(email="alice@example.com").first()
         )
-        assert updated.status == "responded"
+        assert updated is not None
+        assert updated.status == ParticipantStatus.responded
         # Re-query the slot to ensure it is attached to the session
         from services.meetings.models.meeting import TimeSlot
 
@@ -105,7 +107,7 @@ def test_process_email_response_success():
             .filter_by(poll_id=updated.poll_id, timezone="UTC")
             .first()
         )
-        responses = list(slot_db.responses)
+        responses = list(slot_db.responses)  # type: ignore[reportGeneralTypeIssues]
         assert len(responses) > 0
         assert any(r.response.value == "available" for r in responses)
 
