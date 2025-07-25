@@ -61,7 +61,7 @@ class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
 
         data = response.json()
         assert data["status"] == "ok"
-        assert data["service"] == "Office Service"
+        assert data["service"] == "office-service"
         assert "version" in data
         assert "timestamp" in data
         assert "checks" in data

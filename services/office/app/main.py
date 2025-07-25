@@ -71,7 +71,8 @@ app.include_router(files_router, prefix="/v1")
 async def read_root() -> Dict[str, str]:
     """Hello World root endpoint"""
     logger.info("Root endpoint accessed")
-    return {"message": "Hello World", "service": "Office Service"}
+    settings = get_settings()
+    return {"message": "Hello World", "service": settings.APP_NAME}
 
 
 @app.get("/health")
@@ -121,10 +122,11 @@ async def health_check() -> Dict[str, Any]:
     # Calculate total response time
     total_duration = round((time.time() - start_time) * 1000, 2)
 
+    settings = get_settings()
     return {
         "status": overall_status,
-        "service": "Office Service",
-        "version": "0.1.0",
+        "service": settings.APP_NAME,
+        "version": settings.APP_VERSION,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "checks": {
             "database": {
@@ -143,9 +145,10 @@ async def ready_check() -> Dict[str, str]:
     """
     Simple readiness check.
     """
+    settings = get_settings()
     return {
         "status": "ok",
-        "service": "Office Service",
-        "version": "0.1.0",
+        "service": settings.APP_NAME,
+        "version": settings.APP_VERSION,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
