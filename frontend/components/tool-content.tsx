@@ -32,7 +32,12 @@ export interface MeetingPoll {
 }
 
 export function ToolContent() {
-    const { activeTool } = useToolStateUtils();
+    const {
+        activeTool,
+        setMeetingSubView,
+        getMeetingSubView,
+        getMeetingPollId
+    } = useToolStateUtils();
     const { data: session } = useSession();
     const { effectiveTimezone } = useUserPreferences();
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
@@ -251,7 +256,6 @@ export function ToolContent() {
                     </div>
                 );
             case 'meetings':
-                const { getMeetingSubView, getMeetingPollId, setMeetingSubView } = useToolStateUtils();
                 const meetingSubView = getMeetingSubView();
                 const meetingPollId = getMeetingPollId();
 
