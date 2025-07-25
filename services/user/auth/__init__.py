@@ -17,8 +17,7 @@ from .nextauth import (
 from .service_auth import (
     client_has_permission,
     get_client_permissions,
-    get_current_service,
-    require_service_auth,
+    service_permission_required,
     verify_service_authentication,
 )
 
@@ -33,8 +32,7 @@ __all__ = [
     "require_user_ownership",
     # Service authentication
     "verify_service_authentication",
-    "get_current_service",
-    "require_service_auth",
+    "service_permission_required",
     "get_client_permissions",
     "client_has_permission",
 ]
