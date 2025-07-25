@@ -57,7 +57,7 @@ class TestInternalAPI(BaseUserManagementTest):
             mock_settings.return_value = test_settings
             client = TestClient(app)
             response = client.get(
-                "/internal/users/nonexistent-user/status",
+                "/v1/internal/users/nonexistent-user/status",
                 headers={"X-API-Key": "test-api-key"},
             )
             assert response.status_code in (404, 422, 400, 403)

@@ -134,7 +134,7 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
         return {"user_id": self.test_user_id}
 
     def _setup_mock_token_manager(self):
-        """Set up mock token manager for integration tests."""
+        """Set up mock token manager for testing."""
         mock_token_data = TokenData(
             access_token="mock-token",
             refresh_token="mock-refresh",
@@ -244,7 +244,7 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
             google_patch, microsoft_patch = self._setup_mock_api_clients()
             with google_patch, microsoft_patch:
                 response = self.client.get(
-                    "/email/messages?limit=1&offset=0", headers=self.auth_headers
+                    "/v1/email/messages?limit=1&offset=0", headers=self.auth_headers
                 )
                 assert response.status_code == status.HTTP_200_OK
 
@@ -255,7 +255,7 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
 
     def test_get_email_messages_missing_user_id(self):
         """Test email messages endpoint without user_id parameter."""
-        response = self.client.get("/email/messages")
+        response = self.client.get("/v1/email/messages")
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     def test_get_email_message_by_id_success(self):
@@ -285,7 +285,7 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
                 return_value=mock_message,
             ):
                 response = self.client.get(
-                    f"/email/messages/{message_id}", headers=self.auth_headers
+                    f"/v1/email/messages/{message_id}", headers=self.auth_headers
                 )
                 assert response.status_code == status.HTTP_200_OK
 
@@ -301,7 +301,7 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
 
         # Test with invalid message ID format (should return 422)
         response = self.client.get(
-            "/email/messages/invalid-format", headers=self.auth_headers
+            "/v1/email/messages/invalid-format", headers=self.auth_headers
         )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
@@ -327,7 +327,7 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
                 mock_send.return_value = {"id": "sent-message-123", "status": "sent"}
 
                 response = self.client.post(
-                    "/email/send", json=email_data, headers=self.auth_headers
+                    "/v1/email/send", json=email_data, headers=self.auth_headers
                 )
                 assert response.status_code == status.HTTP_200_OK
 
@@ -342,7 +342,7 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
         }
 
         response = self.client.post(
-            "/email/send", json=incomplete_data, headers=self.auth_headers
+            "/v1/email/send", json=incomplete_data, headers=self.auth_headers
         )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
@@ -386,7 +386,8 @@ class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
                     "summary": "Test Event",
                     "start": {"dateTime": "2023-01-01T10:00:00Z"},
                     "end": {"dateTime": "2023-01-01T11:00:00Z"},
-                    "creator": {"email": "creator@example.com"},
+                    "description": "Test event description",
+                    "location": "Test Location",
                 }
             ]
         }
@@ -397,7 +398,7 @@ class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
                 return_value=mock_events,
             ):
                 response = self.client.get(
-                    "/calendar/events",
+                    "/v1/calendar/events",
                     headers={
                         **self.auth_headers,
                         "X-API-Key": get_test_api_keys()["frontend"],
@@ -407,15 +408,15 @@ class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
 
                 data = response.json()
                 assert data["success"] is True
-                assert isinstance(data["data"], dict)  # API returns object, not list
                 assert "events" in data["data"]
-                assert isinstance(data["data"]["events"], list)
+                assert len(data["data"]["events"]) == 1
+                assert data["data"]["events"][0]["summary"] == "Test Event"
 
     def test_get_calendar_events_with_date_range(self):
-        """Test calendar events endpoint with date range parameters."""
+        """Test calendar events retrieval with date range parameters."""
         # user_id = integration_setup["user_id"]
 
-        mock_events = {"items": []}
+        mock_events = {"items": []}  # Empty events for this test
 
         with self._setup_mock_token_manager():
             with patch(
@@ -423,7 +424,7 @@ class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
                 return_value=mock_events,
             ):
                 response = self.client.get(
-                    "/calendar/events?start_date=2023-01-01&end_date=2023-01-31",
+                    "/v1/calendar/events?start_date=2023-01-01&end_date=2023-01-31",
                     headers={
                         **self.auth_headers,
                         "X-API-Key": get_test_api_keys()["frontend"],
@@ -431,23 +432,26 @@ class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
                 )
                 assert response.status_code == status.HTTP_200_OK
 
+                data = response.json()
+                assert data["success"] is True
+
     def test_create_calendar_event_success(self):
-        """Test successful calendar event creation."""
+        """Test successful creation of calendar event."""
         # user_id = integration_setup["user_id"]
 
         event_data = {
-            "title": "New Test Event",
-            "start_time": "2023-01-01T10:00:00Z",
-            "end_time": "2023-01-01T11:00:00Z",
-            "provider": "google",
+            "summary": "New Test Event",
+            "description": "Test event description",
+            "start": {"dateTime": "2023-01-01T10:00:00Z"},
+            "end": {"dateTime": "2023-01-01T11:00:00Z"},
+            "location": "Test Location",
         }
 
         mock_created_event = {
-            "id": "created-event-123",
+            "id": "new-event-123",
             "summary": "New Test Event",
             "start": {"dateTime": "2023-01-01T10:00:00Z"},
             "end": {"dateTime": "2023-01-01T11:00:00Z"},
-            "creator": {"email": "creator@example.com"},
         }
 
         with self._setup_mock_token_manager():
@@ -456,21 +460,21 @@ class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
                 return_value=mock_created_event,
             ):
                 response = self.client.post(
-                    "/calendar/events",
+                    "/v1/calendar/events",
                     json=event_data,
                     headers={
                         **self.auth_headers,
                         "X-API-Key": get_test_api_keys()["frontend"],
                     },
                 )
-                # The actual API returns 200, not 201
                 assert response.status_code == status.HTTP_200_OK
 
                 data = response.json()
                 assert data["success"] is True
+                assert data["data"]["id"] == "new-event-123"
 
     def test_delete_calendar_event_success(self):
-        """Test successful calendar event deletion."""
+        """Test successful deletion of calendar event."""
         # user_id = integration_setup["user_id"]
         event_id = "google_event-123"
 
@@ -480,7 +484,7 @@ class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
                 return_value=True,
             ):
                 response = self.client.delete(
-                    f"/calendar/events/{event_id}",
+                    f"/v1/calendar/events/{event_id}",
                     headers={
                         **self.auth_headers,
                         "X-API-Key": get_test_api_keys()["frontend"],
@@ -570,7 +574,7 @@ class TestFilesEndpoints(BaseOfficeServiceIntegrationTest):
                 return_value=mock_files,
             ):
                 response = self.client.get(
-                    "/files/search?q=test",  # Use 'q' parameter instead of 'query'
+                    "/v1/files/search?q=test",  # Use 'q' parameter instead of 'query'
                     headers={
                         **self.auth_headers,
                         "X-API-Key": get_test_api_keys()["frontend"],
@@ -601,7 +605,7 @@ class TestFilesEndpoints(BaseOfficeServiceIntegrationTest):
                 return_value=mock_file,
             ):
                 response = self.client.get(
-                    f"/files/{file_id}",
+                    f"/v1/files/{file_id}",
                     headers={
                         **self.auth_headers,
                         "X-API-Key": get_test_api_keys()["frontend"],
@@ -633,7 +637,7 @@ class TestErrorScenarios(BaseOfficeServiceIntegrationTest):
             "services.office.core.token_manager.TokenManager.get_user_token",
             side_effect=failing_http_side_effect,
         ):
-            response = self.client.get("/email/messages", headers=self.auth_headers)
+            response = self.client.get("/v1/email/messages", headers=self.auth_headers)
 
             # The API handles provider failures gracefully and returns partial results
             assert response.status_code == status.HTTP_200_OK
@@ -645,12 +649,12 @@ class TestErrorScenarios(BaseOfficeServiceIntegrationTest):
     def test_authentication_failure(self):
         """Test handling of authentication failures."""
         # Test without API key
-        response = self.client.get("/calendar/events", headers=self.auth_headers)
+        response = self.client.get("/v1/calendar/events", headers=self.auth_headers)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
         # Test with invalid API key
         response = self.client.get(
-            "/calendar/events",
+            "/v1/calendar/events",
             headers={**self.auth_headers, "X-API-Key": "invalid-key"},
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
@@ -669,7 +673,7 @@ class TestCaching(BaseOfficeServiceIntegrationTest):
         return {"user_id": self.test_user_id}
 
     def _setup_mock_token_manager(self):
-        """Set up mock token manager for integration tests."""
+        """Set up mock token manager for testing."""
         mock_token_data = TokenData(
             access_token="mock-token",
             refresh_token="mock-refresh",
@@ -684,84 +688,50 @@ class TestCaching(BaseOfficeServiceIntegrationTest):
         )
 
     def test_cache_hit_behavior(self):
-        """Test cache hit behavior for repeated requests."""
+        """Test that cache hits work correctly."""
         # user_id = integration_setup["user_id"]
 
-        # Mock Google API response
-        mock_messages = {
-            "messages": [
-                {
-                    "id": "msg-1",
-                    "threadId": "thread-1",
-                    "snippet": "Test",
-                    "payload": {
-                        "headers": [
-                            {"name": "Subject", "value": "Test"},
-                            {"name": "From", "value": "sender@example.com"},
-                            {"name": "To", "value": "recipient@example.com"},
-                            {"name": "Date", "value": "Mon, 1 Jan 2023 12:00:00 +0000"},
-                        ]
-                    },
-                    "internalDate": "1672574400000",
-                }
-            ]
-        }
+        mock_events = {"items": [{"id": "cached-event", "summary": "Cached Event"}]}
 
         with self._setup_mock_token_manager():
             with patch(
-                "services.office.core.clients.google.GoogleAPIClient.get_messages",
-                return_value=mock_messages,
+                "services.office.core.clients.google.GoogleAPIClient.get_events",
+                return_value=mock_events,
             ):
-                # First request
-                response1 = self.client.get(
-                    "/email/messages", headers=self.auth_headers
+                # First request - should hit the API
+                response = self.client.get(
+                    "/v1/email/messages", headers=self.auth_headers
                 )
-                assert response1.status_code == status.HTTP_200_OK
+                assert response.status_code == status.HTTP_200_OK
 
-                # Second request (should potentially hit cache)
-                response2 = self.client.get(
-                    "/email/messages", headers=self.auth_headers
+                # Second request - should hit cache
+                response = self.client.get(
+                    "/v1/email/messages", headers=self.auth_headers
                 )
-                assert response2.status_code == status.HTTP_200_OK
+                assert response.status_code == status.HTTP_200_OK
 
     def test_cache_miss_behavior(self):
-        """Test cache miss behavior for different requests."""
+        """Test that cache misses work correctly."""
         # user_id = integration_setup["user_id"]
 
-        mock_messages = {
-            "messages": [
-                {
-                    "id": "msg-1",
-                    "threadId": "thread-1",
-                    "snippet": "Test",
-                    "payload": {
-                        "headers": [
-                            {"name": "Subject", "value": "Test"},
-                            {"name": "From", "value": "sender@example.com"},
-                            {"name": "To", "value": "recipient@example.com"},
-                            {"name": "Date", "value": "Mon, 1 Jan 2023 12:00:00 +0000"},
-                        ]
-                    },
-                    "internalDate": "1672574400000",
-                }
-            ]
-        }
+        mock_events = {"items": [{"id": "new-event", "summary": "New Event"}]}
 
         with self._setup_mock_token_manager():
             with patch(
-                "services.office.core.clients.google.GoogleAPIClient.get_messages",
-                return_value=mock_messages,
+                "services.office.core.clients.google.GoogleAPIClient.get_events",
+                return_value=mock_events,
             ):
-                # Different requests should not hit the same cache
-                response1 = self.client.get(
-                    "/email/messages?limit=10", headers=self.auth_headers
+                # Request with different parameters - should miss cache
+                response = self.client.get(
+                    "/v1/email/messages?limit=10", headers=self.auth_headers
                 )
-                response2 = self.client.get(
-                    "/email/messages?limit=20", headers=self.auth_headers
-                )
+                assert response.status_code == status.HTTP_200_OK
 
-                assert response1.status_code == status.HTTP_200_OK
-                assert response2.status_code == status.HTTP_200_OK
+                # Request with different parameters - should miss cache again
+                response = self.client.get(
+                    "/v1/email/messages?limit=20", headers=self.auth_headers
+                )
+                assert response.status_code == status.HTTP_200_OK
 
 
 class TestHTTPCallDetection(BaseOfficeServiceIntegrationTest):

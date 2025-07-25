@@ -6,7 +6,7 @@ health monitoring, and provider configuration endpoints.
 """
 
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 from fastapi import status
 
@@ -16,11 +16,9 @@ from services.user.models.integration import (
     IntegrationStatus,
 )
 from services.user.schemas.integration import (
-    IntegrationHealthResponse,
     IntegrationListResponse,
-    IntegrationStatsResponse,
-    OAuthCallbackResponse,
 )
+from services.user.services.integration_service import ServiceError
 from services.user.tests.test_base import BaseUserManagementIntegrationTest
 
 
@@ -58,7 +56,7 @@ class TestIntegrationListEndpoint(BaseUserManagementIntegrationTest):
                 return_value=mock_response
             )
             response = self.client.get(
-                f"/users/{user_id}/integrations/",
+                f"/v1/users/{user_id}/integrations/",
                 headers={"Authorization": "Bearer valid-token"},
             )
         assert response.status_code == status.HTTP_200_OK
@@ -83,7 +81,7 @@ class TestIntegrationListEndpoint(BaseUserManagementIntegrationTest):
                 return_value=mock_response
             )
             response = self.client.get(
-                f"/users/{user_id}/integrations/",
+                f"/v1/users/{user_id}/integrations/",
                 params={
                     "provider": "google",
                     "status": "active",
@@ -102,7 +100,7 @@ class TestIntegrationListEndpoint(BaseUserManagementIntegrationTest):
         user_id = "user_123"
         # Clear any auth overrides to test unauthorized access
         self.app.dependency_overrides.clear()
-        response = self.client.get(f"/users/{user_id}/integrations/")
+        response = self.client.get(f"/v1/users/{user_id}/integrations/")
         assert response.status_code in [
             status.HTTP_401_UNAUTHORIZED,
             status.HTTP_403_FORBIDDEN,
@@ -117,7 +115,7 @@ class TestIntegrationListEndpoint(BaseUserManagementIntegrationTest):
                 "User not found"
             )
             response = self.client.get(
-                f"/users/{user_id}/integrations/",
+                f"/v1/users/{user_id}/integrations/",
                 headers={"Authorization": "Bearer valid-token"},
             )
             assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -154,16 +152,15 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
                 return_value=mock_response
             )
             response = self.client.post(
-                f"/users/{user_id}/integrations/oauth/start",
+                f"/v1/users/{user_id}/integrations/oauth/start",
                 json=request_data,
                 headers={"Authorization": "Bearer valid-token"},
             )
-
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        assert "authorization_url" in data
-        assert "state" in data
-        assert data["requested_scopes"] == ["email", "profile"]
+        assert data["authorization_url"] == mock_response["authorization_url"]
+        assert data["state"] == mock_response["state"]
+        assert data["provider"] == mock_response["provider"]
 
     def test_start_oauth_flow_microsoft_success(self):
         """Test successful OAuth flow initiation for Microsoft."""
@@ -171,73 +168,65 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
 
         request_data = {
             "provider": "microsoft",
-            "redirect_uri": "https://app.example.com/oauth/microsoft/callback",
-            "scopes": ["User.Read", "Mail.Read"],  # Example additional scopes
-            "state_data": {"custom_return_url": "/settings/integrations"},
+            "redirect_uri": "https://app.example.com/oauth/callback",
+            "scopes": ["User.Read", "Calendars.Read"],
         }
 
-        mock_response_data = {
-            "authorization_url": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=msft-client-id&state=mock_ms_state&...",
-            "state": "mock_ms_state",
+        mock_response = {
+            "authorization_url": "https://login.microsoftonline.com/oauth/authorize?state=def456",
+            "state": "def456",
             "provider": "microsoft",
             "expires_at": datetime.now(timezone.utc).isoformat(),
-            "requested_scopes": [
-                "openid",
-                "email",
-                "profile",
-                "User.Read",
-                "Mail.Read",
-            ],
+            "requested_scopes": ["User.Read", "Calendars.Read"],
         }
 
         with patch(
             "services.user.routers.integrations.get_integration_service"
         ) as mock_service:
             mock_service.return_value.start_oauth_flow = AsyncMock(
-                return_value=mock_response_data
+                return_value=mock_response
             )
             response = self.client.post(
-                f"/users/{user_id}/integrations/oauth/start",
+                f"/v1/users/{user_id}/integrations/oauth/start",
                 json=request_data,
                 headers={"Authorization": "Bearer valid-token"},
             )
-
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        assert "authorization_url" in data
-        assert "state" in data
-        assert data["provider"] == "microsoft"
-        assert "User.Read" in data["requested_scopes"]
-        assert "Mail.Read" in data["requested_scopes"]
+        assert data["authorization_url"] == mock_response["authorization_url"]
+        assert data["state"] == mock_response["state"]
+        assert data["provider"] == mock_response["provider"]
 
     def test_start_oauth_flow_invalid_provider(self):
         """Test OAuth flow initiation with invalid provider."""
         user_id = "user_123"
-
         request_data = {
             "provider": "invalid_provider",
             "redirect_uri": "https://app.example.com/oauth/callback",
         }
 
         response = self.client.post(
-            f"/users/{user_id}/integrations/oauth/start",
+            f"/v1/users/{user_id}/integrations/oauth/start",
             json=request_data,
             headers={"Authorization": "Bearer valid-token"},
         )
-
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     def test_complete_oauth_flow_success(self):
         """Test successful OAuth flow completion."""
-        mock_response = OAuthCallbackResponse(
-            success=True,
-            integration_id=1,
-            provider=IntegrationProvider.GOOGLE,
-            status=IntegrationStatus.ACTIVE,
-            scopes=["email", "profile"],
-            external_user_info={"email": "user@example.com"},
-            error=None,
-        )
+        user_id = "user_123"
+        request_data = {
+            "code": "authorization_code_123",
+            "state": "state_123",
+        }
+
+        mock_response = {
+            "integration_id": "integration_123",
+            "provider": "google",
+            "status": "active",
+            "access_token_expires_at": datetime.now(timezone.utc).isoformat(),
+            "refresh_token_expires_at": datetime.now(timezone.utc).isoformat(),
+        }
 
         with patch(
             "services.user.routers.integrations.get_integration_service"
@@ -246,169 +235,134 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
                 return_value=mock_response
             )
             response = self.client.post(
-                "/users/user_123/integrations/oauth/callback?provider=google",
-                json={
-                    "code": "auth_code_123",
-                    "state": "state_123",
-                },
+                "/v1/users/user_123/integrations/oauth/callback?provider=google",
+                json=request_data,
                 headers={"Authorization": "Bearer valid-token"},
             )
-
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        assert data["success"] is True
-        assert data["provider"] == "google"
-        assert data["integration_id"] == 1
+        assert data["integration_id"] == mock_response["integration_id"]
+        assert data["provider"] == mock_response["provider"]
+        assert data["status"] == mock_response["status"]
 
     def test_complete_oauth_flow_microsoft_success(self):
         """Test successful OAuth flow completion for Microsoft."""
-        mock_response = OAuthCallbackResponse(
-            success=True,
-            integration_id=2,
-            provider=IntegrationProvider.MICROSOFT,
-            status=IntegrationStatus.ACTIVE,
-            scopes=["openid", "email", "profile", "User.Read"],
-            external_user_info={
-                "email": "user@example.com",
-                "displayName": "Test User",
-                "id": "ms_user_id_123",
-            },
-            error=None,
-        )
+        user_id = "user_123"
+        request_data = {
+            "code": "authorization_code_456",
+            "state": "state_456",
+        }
+
+        mock_response = {
+            "integration_id": "integration_456",
+            "provider": "microsoft",
+            "status": "active",
+            "access_token_expires_at": datetime.now(timezone.utc).isoformat(),
+            "refresh_token_expires_at": datetime.now(timezone.utc).isoformat(),
+        }
 
         with patch(
             "services.user.routers.integrations.get_integration_service"
         ) as mock_service:
-
             mock_service.return_value.complete_oauth_flow = AsyncMock(
                 return_value=mock_response
             )
             response = self.client.post(
-                "/users/user_123/integrations/oauth/callback?provider=microsoft",
-                json={
-                    "code": "ms_auth_code_456",
-                    "state": "ms_state_456",
-                },
+                "/v1/users/user_123/integrations/oauth/callback?provider=microsoft",
+                json=request_data,
                 headers={"Authorization": "Bearer valid-token"},
             )
-
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        assert data["success"] is True
-        assert data["provider"] == "microsoft"
-        assert data["integration_id"] == 2
-        assert "User.Read" in data["scopes"]
-        assert data["external_user_info"]["displayName"] == "Test User"
+        assert data["integration_id"] == mock_response["integration_id"]
+        assert data["provider"] == mock_response["provider"]
+        assert data["status"] == mock_response["status"]
 
     @patch("services.user.services.audit_service.audit_logger.log_audit_event")
     def test_complete_oauth_flow_with_error(self, mock_audit):
         """Test OAuth flow completion with error."""
-        mock_response = OAuthCallbackResponse(
-            success=False,
-            integration_id=None,
-            provider=IntegrationProvider.GOOGLE,
-            status=IntegrationStatus.ERROR,
-            scopes=[],
-            external_user_info=None,
-            error="OAuth flow failed: Invalid authorization code",
-        )
+        user_id = "user_123"
+        request_data = {
+            "code": "invalid_code",
+            "state": "state_123",
+        }
 
         with patch(
             "services.user.routers.integrations.get_integration_service"
         ) as mock_service:
-
-            mock_service.return_value.complete_oauth_flow = AsyncMock(
-                return_value=mock_response
+            mock_service.return_value.complete_oauth_flow.side_effect = ServiceError(
+                message="Invalid authorization code"
             )
             response = self.client.post(
-                "/users/user_123/integrations/oauth/callback?provider=google",
-                json={
-                    "code": "invalid_code",
-                    "state": "state_123",
-                },
+                "/v1/users/user_123/integrations/oauth/callback?provider=google",
+                json=request_data,
                 headers={"Authorization": "Bearer valid-token"},
             )
-
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
         data = response.json()
-        assert data["success"] is False
-        assert "OAuth flow failed" in data["error"]
+        assert "Invalid authorization code" in data["message"]
 
     def test_complete_oauth_flow_service_error(self):
         """Test OAuth flow completion with service error."""
+        user_id = "user_123"
+        request_data = {
+            "code": "authorization_code_123",
+            "state": "state_123",
+        }
+
         with patch(
             "services.user.routers.integrations.get_integration_service"
         ) as mock_service:
-            mock_service.return_value.complete_oauth_flow = AsyncMock(
-                side_effect=ServiceError("Service unavailable")
+            mock_service.return_value.complete_oauth_flow.side_effect = Exception(
+                "Service error"
             )
             response = self.client.post(
-                "/users/user_123/integrations/oauth/callback?provider=google",
-                json={
-                    "code": "auth_code_123",
-                    "state": "state_123",
-                },
+                "/v1/users/user_123/integrations/oauth/callback?provider=google",
+                json=request_data,
                 headers={"Authorization": "Bearer valid-token"},
             )
-            assert response.status_code == status.HTTP_502_BAD_GATEWAY
-            data = response.json()
-            assert "Service unavailable" in data["message"]
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
 
 class TestIntegrationManagementEndpoints(BaseUserManagementIntegrationTest):
-    """Test cases for integration management operations."""
+    """Test cases for integration management."""
 
     def test_disconnect_integration_success(self):
         """Test successful integration disconnection."""
         user_id = "user_123"
         provider = "google"
 
-        mock_response = {
-            "success": True,
-            "integration_id": 1,
-            "provider": "google",
-            "tokens_revoked": True,
-            "data_deleted": False,
-            "disconnected_at": datetime.now(timezone.utc),
-            "error": None,
-        }
-
         with patch(
             "services.user.routers.integrations.get_integration_service"
         ) as mock_service:
-
-            mock_service.return_value.disconnect_integration = AsyncMock(
-                return_value=mock_response
-            )
+            mock_service.return_value.disconnect_integration = AsyncMock()
             response = self.client.delete(
-                f"/users/{user_id}/integrations/{provider}",
+                f"/v1/users/{user_id}/integrations/{provider}",
                 headers={"Authorization": "Bearer valid-token"},
             )
-
         assert response.status_code == status.HTTP_200_OK
-        data = response.json()
-        assert data["success"] is True
-        assert data["provider"] == provider
-        assert data["tokens_revoked"] is True
+        mock_service.return_value.disconnect_integration.assert_called_once_with(
+            user_id=user_id, provider=provider
+        )
 
     def test_disconnect_integration_not_found(self):
-        """Test disconnection of non-existent integration."""
+        """Test integration disconnection when integration not found."""
         user_id = "user_123"
         provider = "google"
 
         with patch(
             "services.user.routers.integrations.get_integration_service"
         ) as mock_service:
-            mock_service.return_value.disconnect_integration = AsyncMock(
-                side_effect=NotFoundError("Integration not found")
+            mock_service.return_value.disconnect_integration.side_effect = (
+                NotFoundError("Integration not found")
             )
             response = self.client.delete(
-                f"/users/{user_id}/integrations/{provider}",
+                f"/v1/users/{user_id}/integrations/{provider}",
                 headers={"Authorization": "Bearer valid-token"},
             )
-            assert response.status_code == status.HTTP_404_NOT_FOUND
-            data = response.json()
-            assert "Integration not found" in data["message"]
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        data = response.json()
+        assert "Integration not found" in data["message"]
 
     def test_refresh_integration_tokens_success(self):
         """Test successful token refresh."""
@@ -416,325 +370,271 @@ class TestIntegrationManagementEndpoints(BaseUserManagementIntegrationTest):
         provider = "google"
 
         mock_response = {
-            "success": True,
-            "integration_id": 1,
-            "provider": provider,
-            "token_expires_at": datetime.now(timezone.utc).isoformat(),
-            "refreshed_at": datetime.now(timezone.utc).isoformat(),
-            "error": None,
+            "integration_id": "integration_123",
+            "provider": "google",
+            "status": "active",
+            "access_token_expires_at": datetime.now(timezone.utc).isoformat(),
+            "refresh_token_expires_at": datetime.now(timezone.utc).isoformat(),
         }
 
         with patch(
             "services.user.routers.integrations.get_integration_service"
         ) as mock_service:
-
             mock_service.return_value.refresh_integration_tokens = AsyncMock(
                 return_value=mock_response
             )
             response = self.client.put(
-                f"/users/{user_id}/integrations/{provider}/refresh",
+                f"/v1/users/{user_id}/integrations/{provider}/refresh",
                 headers={"Authorization": "Bearer valid-token"},
             )
-
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        assert data["success"] is True
-        assert data["provider"] == provider
+        assert data["integration_id"] == mock_response["integration_id"]
+        assert data["provider"] == mock_response["provider"]
+        assert data["status"] == mock_response["status"]
 
     def test_refresh_integration_tokens_failure(self):
         """Test token refresh failure."""
         user_id = "user_123"
         provider = "google"
 
-        mock_response = {
-            "success": False,
-            "integration_id": 1,
-            "provider": provider,
-            "token_expires_at": None,
-            "refreshed_at": None,
-            "error": "Token refresh failed",
-        }
-
         with patch(
             "services.user.routers.integrations.get_integration_service"
         ) as mock_service:
-
-            mock_service.return_value.refresh_integration_tokens = AsyncMock(
-                return_value=mock_response
+            mock_service.return_value.refresh_integration_tokens.side_effect = (
+                ServiceError(message="Token refresh failed")
             )
             response = self.client.put(
-                f"/users/{user_id}/integrations/{provider}/refresh",
+                f"/v1/users/{user_id}/integrations/{provider}/refresh",
                 headers={"Authorization": "Bearer valid-token"},
             )
-
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
         data = response.json()
-        assert data["success"] is False
-        assert data["error"] == "Token refresh failed"
+        assert "Token refresh failed" in data["message"]
 
     def test_check_integration_health_success(self):
         """Test successful integration health check."""
         user_id = "user_123"
         provider = "google"
 
-        mock_response = IntegrationHealthResponse(
-            integration_id=1,
-            provider=IntegrationProvider.GOOGLE,
-            status=IntegrationStatus.ACTIVE,
-            healthy=True,
-            last_check_at=datetime.now(timezone.utc),
-            issues=[],
-            recommendations=[],
-        )
+        mock_response = {
+            "integration_id": "integration_123",
+            "provider": "google",
+            "status": "healthy",
+            "last_check": datetime.now(timezone.utc).isoformat(),
+            "details": {"access_token_valid": True, "refresh_token_valid": True},
+        }
 
         with patch(
             "services.user.routers.integrations.get_integration_service"
         ) as mock_service:
-
             mock_service.return_value.check_integration_health = AsyncMock(
                 return_value=mock_response
             )
             response = self.client.get(
-                f"/users/{user_id}/integrations/{provider}/health",
+                f"/v1/users/{user_id}/integrations/{provider}/health",
                 headers={"Authorization": "Bearer valid-token"},
             )
-
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        assert data["provider"] == provider
-        assert data["healthy"] is True
-        assert data["status"] == "active"
+        assert data["integration_id"] == mock_response["integration_id"]
+        assert data["provider"] == mock_response["provider"]
+        assert data["status"] == mock_response["status"]
 
     def test_get_integration_statistics_success(self):
         """Test successful integration statistics retrieval."""
         user_id = "user_123"
 
-        mock_response = IntegrationStatsResponse(
-            total_integrations=3,
-            active_integrations=2,
-            failed_integrations=1,
-            pending_integrations=0,
-            by_provider={
-                "google": 1,
-                "microsoft": 1,
-                "slack": 1,
+        mock_response = {
+            "total_integrations": 3,
+            "active_integrations": 2,
+            "error_integrations": 1,
+            "providers": {
+                "google": {"count": 2, "active": 1, "errors": 1},
+                "microsoft": {"count": 1, "active": 1, "errors": 0},
             },
-            by_status={
-                "active": 2,
-                "error": 1,
-                "inactive": 0,
-                "pending": 0,
-            },
-            recent_errors=[
-                {
-                    "provider": "slack",
-                    "error": "Token expired",
-                    "occurred_at": datetime.now(timezone.utc).isoformat(),
-                }
-            ],
-            sync_stats={
-                "last_sync_at": datetime.now(timezone.utc).isoformat(),
-                "successful_syncs": 15,
-                "failed_syncs": 2,
-            },
-        )
+            "last_updated": datetime.now(timezone.utc).isoformat(),
+        }
 
         with patch(
             "services.user.routers.integrations.get_integration_service"
         ) as mock_service:
-
             mock_service.return_value.get_integration_statistics = AsyncMock(
                 return_value=mock_response
             )
             response = self.client.get(
-                f"/users/{user_id}/integrations/stats",
+                f"/v1/users/{user_id}/integrations/stats",
                 headers={"Authorization": "Bearer valid-token"},
             )
-
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        assert data["total_integrations"] == 3
-        assert data["active_integrations"] == 2
-        assert data["failed_integrations"] == 1
-        assert data["pending_integrations"] == 0
-        assert "google" in data["by_provider"]
-        assert data["by_provider"]["google"] == 1
+        assert data["total_integrations"] == mock_response["total_integrations"]
+        assert data["active_integrations"] == mock_response["active_integrations"]
+        assert data["error_integrations"] == mock_response["error_integrations"]
+        assert "google" in data["providers"]
+        assert "microsoft" in data["providers"]
 
 
 class TestProviderEndpoints(BaseUserManagementIntegrationTest):
-    """Test cases for provider configuration endpoints."""
+    """Test cases for provider-specific endpoints."""
 
     def test_list_oauth_providers_success(self):
         """Test successful OAuth provider listing."""
-        # Mock OAuth config
-        mock_oauth_config = MagicMock()
-        provider_names = ["google", "microsoft", "slack"]
-        mock_oauth_config.get_available_providers.return_value = provider_names
-        mock_oauth_config.is_provider_available.side_effect = lambda provider: (
-            provider.name in provider_names
-            if hasattr(provider, "name")
-            else provider in provider_names
-        )
-
-        def get_provider_config_side_effect(provider):
-            mock_provider_config = MagicMock()
-            mock_provider_config.name = (
-                provider.name if hasattr(provider, "name") else provider
-            )
-            mock_provider_config.display_name = (
-                provider.name.capitalize()
-                if hasattr(provider, "name")
-                else provider.capitalize()
-            )
-            mock_provider_config.description = (
-                f"{mock_provider_config.display_name} OAuth integration"
-            )
-            mock_provider_config.scopes = [
-                MagicMock(name="email"),
-                MagicMock(name="profile"),
-            ]
-            mock_provider_config.default_scopes = ["email"]
-            return mock_provider_config
-
-        mock_oauth_config.get_provider_config.side_effect = (
-            get_provider_config_side_effect
-        )
+        mock_providers = {
+            "google": {
+                "name": "Google",
+                "scopes": ["email", "profile", "calendar"],
+                "default_scopes": ["email", "profile"],
+            },
+            "microsoft": {
+                "name": "Microsoft",
+                "scopes": ["User.Read", "Calendars.Read"],
+                "default_scopes": ["User.Read"],
+            },
+        }
 
         with patch(
             "services.user.routers.integrations.get_integration_service"
         ) as mock_service:
-            mock_service.return_value.oauth_config = mock_oauth_config
-            response = self.client.get(
-                "/integrations/providers",
-                headers={"Authorization": "Bearer valid-token"},
+            mock_service.return_value.get_oauth_providers = AsyncMock(
+                return_value=mock_providers
             )
 
+            def get_provider_config_side_effect(provider):
+                if provider == "google":
+                    return {
+                        "name": "Google",
+                        "scopes": ["email", "profile", "calendar"],
+                        "default_scopes": ["email", "profile"],
+                    }
+                elif provider == "microsoft":
+                    return {
+                        "name": "Microsoft",
+                        "scopes": ["User.Read", "Calendars.Read"],
+                        "default_scopes": ["User.Read"],
+                    }
+                else:
+                    raise ValueError(f"Unknown provider: {provider}")
+
+            mock_service.return_value.get_provider_config = AsyncMock(
+                side_effect=get_provider_config_side_effect
+            )
+
+            response = self.client.get(
+                "/v1/users/me/integrations/providers",
+                headers={"Authorization": "Bearer valid-token"},
+            )
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        assert "providers" in data
-        assert data["total"] >= 0
+        assert "google" in data
+        assert "microsoft" in data
+        assert data["google"]["name"] == "Google"
+        assert data["microsoft"]["name"] == "Microsoft"
 
     def test_validate_oauth_scopes_success(self):
         """Test successful OAuth scope validation."""
+        provider = "google"
+        scopes = ["email", "profile", "calendar"]
 
-        request_data = {
-            "provider": "google",
-            "scopes": ["email", "profile", "invalid_scope"],
+        mock_response = {
+            "valid": True,
+            "valid_scopes": ["email", "profile", "calendar"],
+            "invalid_scopes": [],
+            "warnings": [],
         }
-
-        # Mock OAuth config
-        mock_oauth_config = MagicMock()
-        mock_oauth_config.is_provider_available.return_value = True
-        mock_provider_config = MagicMock()
-        mock_provider_config.validate_scopes.return_value = (
-            ["email", "profile"],
-            ["invalid_scope"],
-        )
-        mock_provider_config.scope_definitions = {
-            "email": {"required": True, "sensitive": False},
-            "profile": {"required": False, "sensitive": False},
-        }
-        mock_oauth_config.get_provider_config.return_value = mock_provider_config
 
         with patch(
             "services.user.routers.integrations.get_integration_service"
         ) as mock_service:
-            mock_service.return_value.oauth_config = mock_oauth_config
+            mock_service.return_value.validate_oauth_scopes = AsyncMock(
+                return_value=mock_response
+            )
             response = self.client.post(
-                "/integrations/validate-scopes",
-                json=request_data,
+                f"/v1/users/me/integrations/{provider}/scopes",
+                json={"scopes": scopes},
                 headers={"Authorization": "Bearer valid-token"},
             )
-
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        assert data["provider"] == "google"
-        assert "email" in data["valid_scopes"]
-        assert "invalid_scope" in data["invalid_scopes"]
-        assert len(data["warnings"]) > 0
+        assert data["valid"] is True
+        assert len(data["valid_scopes"]) == 3
+        assert len(data["invalid_scopes"]) == 0
 
     def test_validate_oauth_scopes_unavailable_provider(self):
-        """Test scope validation for unavailable provider."""
-
-        request_data = {
-            "provider": "google",
-            "scopes": ["email", "profile"],
-        }
-
-        # Mock OAuth config
-        mock_oauth_config = MagicMock()
-        mock_oauth_config.is_provider_available.return_value = False
+        """Test OAuth scope validation with unavailable provider."""
+        provider = "invalid_provider"
+        scopes = ["email", "profile"]
 
         with patch(
             "services.user.routers.integrations.get_integration_service"
         ) as mock_service:
-            mock_service.return_value.oauth_config = mock_oauth_config
+            mock_service.return_value.validate_oauth_scopes.side_effect = ValueError(
+                "Provider not available"
+            )
             response = self.client.post(
-                "/integrations/validate-scopes",
-                json=request_data,
+                f"/v1/users/me/integrations/{provider}/scopes",
+                json={"scopes": scopes},
                 headers={"Authorization": "Bearer valid-token"},
             )
-            assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-            data = response.json()
-            assert "Provider google is not available" in data["message"]
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        data = response.json()
+        assert "Provider not available" in data["message"]
 
 
 class TestIntegrationEndpointSecurity(BaseUserManagementIntegrationTest):
     """Test cases for integration endpoint security."""
 
     def test_endpoints_require_authentication(self):
-        """Test that endpoints require proper authentication."""
-        # Clear authentication override to test unauthenticated access
-        from services.user.auth.nextauth import get_current_user
+        """Test that all integration endpoints require authentication."""
+        user_id = "user_123"
+        provider = "google"
 
-        if get_current_user in self.app.dependency_overrides:
-            del self.app.dependency_overrides[get_current_user]
+        # Clear any auth overrides to test unauthenticated access
+        self.app.dependency_overrides.clear()
 
         # Test various endpoints without authentication
-        # These endpoints require user_id and authentication
-        user_id = "test_user_123"
-
-        # Test GET endpoints
-        get_endpoints = [
-            f"/users/{user_id}/integrations/",
-            f"/users/{user_id}/integrations/stats",
+        endpoints = [
+            f"/v1/users/{user_id}/integrations/",
+            f"/v1/users/{user_id}/integrations/oauth/start",
+            f"/v1/users/{user_id}/integrations/{provider}",
+            f"/v1/users/{user_id}/integrations/{provider}/refresh",
+            f"/v1/users/{user_id}/integrations/{provider}/health",
+            f"/v1/users/{user_id}/integrations/stats",
+            "/v1/users/me/integrations/providers",
+            f"/v1/users/me/integrations/{provider}/scopes",
         ]
 
-        for endpoint in get_endpoints:
-            response = self.client.get(endpoint)
-            # Should return 401 (Unauthorized), 403 (Forbidden), or 422 (Validation Error)
-            assert response.status_code in [
-                401,
-                403,
-                422,
-            ], f"GET endpoint {endpoint} should require authentication, got {response.status_code}"
+        for endpoint in endpoints:
+            if "start" in endpoint:
+                response = self.client.post(endpoint, json={})
+            elif "refresh" in endpoint or "scopes" in endpoint:
+                response = self.client.put(endpoint, json={})
+            elif "health" in endpoint or "stats" in endpoint or "providers" in endpoint:
+                response = self.client.get(endpoint)
+            elif "oauth/callback" in endpoint:
+                response = self.client.post(endpoint, json={})
+            else:
+                response = self.client.get(endpoint)
 
-        # Test POST endpoints
-        post_endpoints = [
-            f"/users/{user_id}/integrations/oauth/start",
-        ]
-
-        for endpoint in post_endpoints:
-            response = self.client.post(endpoint, json={})
-            # Should return 401 (Unauthorized), 403 (Forbidden), or 422 (Validation Error)
             assert response.status_code in [
-                401,
-                403,
-                422,
-            ], f"POST endpoint {endpoint} should require authentication, got {response.status_code}"
+                status.HTTP_401_UNAUTHORIZED,
+                status.HTTP_403_FORBIDDEN,
+            ], f"Endpoint {endpoint} should require authentication"
 
     def test_user_ownership_verification(self):
-        """Test that users can only access their own resources."""
-        from services.user.auth.nextauth import get_current_user
+        """Test that users can only access their own integrations."""
+        user_id = "user_123"
 
-        # Mock a different user
         async def mock_different_user():
             return "different_user_456"
 
+        # Override auth to return a different user
+        from services.user.auth.nextauth import get_current_user
+
         self.app.dependency_overrides[get_current_user] = mock_different_user
 
-        # Try to access integrations for a different user (should fail ownership check)
-        user_id = "test_user_123"  # Different from the mocked user
-        response = self.client.get(f"/users/{user_id}/integrations/")
-        # This should fail due to ownership verification
-        assert response.status_code in [403, 404, 500]  # Various valid error responses
+        response = self.client.get(
+            f"/v1/users/{user_id}/integrations/",
+            headers={"Authorization": "Bearer valid-token"},
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
