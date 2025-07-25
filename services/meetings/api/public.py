@@ -3,13 +3,13 @@ from uuid import uuid4
 from fastapi import APIRouter, Body, HTTPException, status
 from pydantic import BaseModel
 
-from ..models import MeetingPoll as MeetingPollModel
-from ..models import PollParticipant as PollParticipantModel
-from ..models import PollResponse as PollResponseModel
-from ..models import (
+from services.meetings.models import MeetingPoll as MeetingPollModel
+from services.meetings.models import PollParticipant as PollParticipantModel
+from services.meetings.models import PollResponse as PollResponseModel
+from services.meetings.models import (
     get_session,
 )
-from ..schemas import PollResponseCreate
+from services.meetings.schemas import PollResponseCreate
 
 router = APIRouter()
 

@@ -2,9 +2,9 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, HTTPException
 
-from ..models import TimeSlot as TimeSlotModel
-from ..models import get_session
-from ..schemas import TimeSlot, TimeSlotCreate
+from services.meetings.models import TimeSlot as TimeSlotModel
+from services.meetings.models import get_session
+from services.meetings.schemas import TimeSlot, TimeSlotCreate
 
 router = APIRouter()
 

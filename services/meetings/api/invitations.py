@@ -3,12 +3,10 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request
 
-from ..models import MeetingPoll as MeetingPollModel
-from ..models import PollParticipant as PollParticipantModel
-from ..models import (
-    get_session,
-)
-from ..services import email_integration
+from services.meetings.models import MeetingPoll as MeetingPollModel
+from services.meetings.models import PollParticipant as PollParticipantModel
+from services.meetings.models import get_session
+from services.meetings.services import email_integration
 
 router = APIRouter()
 

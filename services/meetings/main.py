@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from .api import (
+from services.meetings.api import (
     email_router,
     invitations_router,
     polls_router,

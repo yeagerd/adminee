@@ -16,6 +16,7 @@ dev = [
     "isort", 
     "ruff",
     "mypy",
+    "respx",
     "types-requests",
     "types-pytz",
     "nox",

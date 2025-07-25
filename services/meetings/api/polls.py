@@ -5,14 +5,12 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, HTTPException, Request
 
-from ..models import MeetingPoll as MeetingPollModel
-from ..models import PollParticipant as PollParticipantModel
-from ..models import TimeSlot as TimeSlotModel
-from ..models import (
-    get_session,
-)
-from ..schemas import MeetingPoll, MeetingPollCreate
-from ..services import calendar_integration
+from services.meetings.models import MeetingPoll as MeetingPollModel
+from services.meetings.models import PollParticipant as PollParticipantModel
+from services.meetings.models import TimeSlot as TimeSlotModel
+from services.meetings.models import get_session
+from services.meetings.schemas import MeetingPoll, MeetingPollCreate
+from services.meetings.services import calendar_integration
 
 router = APIRouter()
 
