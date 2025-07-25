@@ -41,8 +41,15 @@ export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = fa
                                         </ResizablePanel>
                                     </ResizablePanelGroup>
                                 ) : (
-                                    <div className="h-full overflow-auto">
-                                        {main || <div className="flex-1 flex items-center justify-center text-muted-foreground">Main Pane</div>}
+                                    <div className="h-full flex flex-col">
+                                        <div className="flex-1 overflow-auto">
+                                            {main || <div className="flex-1 flex items-center justify-center text-muted-foreground">Main Pane</div>}
+                                        </div>
+                                        {draftPane && !hasActiveDraft && (
+                                            <div className="h-80 border-t bg-card">
+                                                {draftPane}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </ResizablePanel>
