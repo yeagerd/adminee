@@ -433,6 +433,8 @@ To enhance poll response security and tracking, each poll recipient will receive
 - [ ] **Frontend Update:**
   - [ ] Update the public poll response page to support the new URL structure and API.
   - [ ] Remove the legacy meeting id from the frontend, backend, and DB.
+- [ ] **Secure Email Processing API**
+  - [ ] process_email_response(..) should validate an API key
 - [x] **Testing:**
   - [x] Add unit and integration tests for the new token-based response flow.
 
