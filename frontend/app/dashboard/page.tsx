@@ -75,7 +75,7 @@ function DashboardContent() {
                             <h2 className="text-lg font-semibold">Draft</h2>
                         </div>
                     )}
-                    <div className="flex-1 overflow-hidden">
+                    <div className="flex-1 overflow-auto">
                         <DraftPane
                             draft={draftState.currentDraft}
                             onUpdate={updateDraft}
