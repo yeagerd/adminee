@@ -90,9 +90,7 @@ def test_process_email_response_success():
         headers={"X-API-Key": API_KEY},
     )
     assert resp.status_code == 200, resp.text
-    data = resp.json()
-    assert data["ok"] is True
-    assert data["response"] == "available"
+    assert resp.content == b""  # Empty response body
     # Check DB updated
     with get_session() as session:
         updated = (

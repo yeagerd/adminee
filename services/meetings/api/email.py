@@ -2,7 +2,7 @@ import datetime
 import logging
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel
 
 from services.common.api_key_auth import (
@@ -38,27 +38,33 @@ class EmailResponseRequest(BaseModel):
     sender: str
 
 
-def parse_email_content(content: str) -> tuple[str | None, str | None]:
+# Result object for parsed email content
+class EmailContentParseResult(BaseModel):
+    response: str | None
+    comment: str | None
+
+
+def parse_email_content(content: str) -> EmailContentParseResult:
     """
     Dummy parser: expects content to be of the form:
     RESPONSE: <available|unavailable|maybe> [OPTIONAL_COMMENT]
     """
     lines = content.strip().splitlines()
     if not lines:
-        return None, None
+        return EmailContentParseResult(response=None, comment=None)
     first = lines[0].strip().lower()
     if first.startswith("response:"):
         parts = first[len("response:") :].strip().split(None, 1)
         if not parts:
-            return None, None
+            return EmailContentParseResult(response=None, comment=None)
         response = parts[0]
         comment = parts[1] if len(parts) > 1 else None
-        return response, comment
-    return None, None
+        return EmailContentParseResult(response=response, comment=comment)
+    return EmailContentParseResult(response=None, comment=None)
 
 
 @router.post("/")
-def process_email_response(req: EmailResponseRequest, request: Request) -> dict:
+def process_email_response(req: EmailResponseRequest, request: Request) -> Response:
     api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
     api_key = get_api_key_from_request(request)
     if not api_key or not verify_api_key(api_key, api_key_mapping):
@@ -68,8 +74,8 @@ def process_email_response(req: EmailResponseRequest, request: Request) -> dict:
         )
 
     # Parse email content
-    response_str, comment = parse_email_content(req.content)
-    if response_str not in {"available", "unavailable", "maybe"}:
+    parsed = parse_email_content(req.content)
+    if parsed.response not in {"available", "unavailable", "maybe"}:
         raise HTTPException(
             status_code=400, detail="Could not parse response from email content."
         )
@@ -94,8 +100,8 @@ def process_email_response(req: EmailResponseRequest, request: Request) -> dict:
                 .first()
             )
             if existing:
-                existing.response = ResponseType(response_str).value  # type: ignore[assignment]
-                existing.comment = comment  # type: ignore[assignment]
+                existing.response = ResponseType(parsed.response).value  # type: ignore[assignment]
+                existing.comment = parsed.comment  # type: ignore[assignment]
                 existing.updated_at = datetime.datetime.utcnow()  # type: ignore[assignment]
             else:
                 resp = PollResponse(
@@ -103,19 +109,14 @@ def process_email_response(req: EmailResponseRequest, request: Request) -> dict:
                     poll_id=poll.id,
                     participant_id=participant.id,
                     time_slot_id=slot.id,
-                    response=ResponseType(response_str).value,  # type: ignore[assignment]
-                    comment=comment,  # type: ignore[assignment]
+                    response=ResponseType(parsed.response).value,  # type: ignore[assignment]
+                    comment=parsed.comment,  # type: ignore[assignment]
                 )
                 session.add(resp)
         participant.status = ParticipantStatus.responded.value  # type: ignore[assignment]
         participant.responded_at = datetime.datetime.utcnow()  # type: ignore[assignment]
         session.commit()
         logging.info(
-            f"Processed email response from {req.sender}: {response_str} ({comment})"
+            f"Processed email response from {req.sender}: {parsed.response} ({parsed.comment})"
         )
-        return {
-            "ok": True,
-            "received_from": req.sender,
-            "response": response_str,
-            "comment": comment,
-        }
+        return Response(status_code=200)
