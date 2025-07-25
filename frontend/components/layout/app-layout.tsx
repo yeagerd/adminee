@@ -8,9 +8,10 @@ interface AppLayoutProps {
     main: ReactNode;
     draft?: ReactElement<{ containerRef?: RefObject<HTMLDivElement> }>;
     draftPane?: ReactNode;
+    hasActiveDraft?: boolean;
 }
 
-export function AppLayout({ sidebar, main, draft, draftPane }: AppLayoutProps) {
+export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = false }: AppLayoutProps) {
     const chatPaneRef = useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>;
     return (
         <div className="flex flex-col h-screen w-full bg-background">
@@ -25,7 +26,7 @@ export function AppLayout({ sidebar, main, draft, draftPane }: AppLayoutProps) {
                     {draft ? (
                         <ResizablePanelGroup className="flex-1 flex min-w-0" direction="horizontal">
                             <ResizablePanel minSize={30} defaultSize={60} className="h-full">
-                                {draftPane ? (
+                                {draftPane && hasActiveDraft ? (
                                     <ResizablePanelGroup direction="vertical" className="h-full">
                                         <ResizablePanel minSize={30} defaultSize={70} className="h-full">
                                             <div className="h-full overflow-auto">
@@ -56,7 +57,7 @@ export function AppLayout({ sidebar, main, draft, draftPane }: AppLayoutProps) {
                         </ResizablePanelGroup>
                     ) : (
                         <div className="flex-1 min-w-0 h-full">
-                            {draftPane ? (
+                            {draftPane && hasActiveDraft ? (
                                 <ResizablePanelGroup direction="vertical" className="h-full">
                                     <ResizablePanel minSize={30} defaultSize={70} className="h-full">
                                         <div className="h-full overflow-auto">
@@ -70,6 +71,15 @@ export function AppLayout({ sidebar, main, draft, draftPane }: AppLayoutProps) {
                                         </div>
                                     </ResizablePanel>
                                 </ResizablePanelGroup>
+                            ) : draftPane ? (
+                                <div className="flex h-full">
+                                    <div className="flex-1 overflow-auto">
+                                        {main || <div className="flex-1 flex items-center justify-center text-muted-foreground">Main Pane</div>}
+                                    </div>
+                                    <div className="w-80 border-l bg-card">
+                                        {draftPane}
+                                    </div>
+                                </div>
                             ) : (
                                 <div className="h-full overflow-auto">
                                     {main || <div className="flex-1 flex items-center justify-center text-muted-foreground">Main Pane</div>}

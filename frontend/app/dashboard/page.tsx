@@ -88,6 +88,7 @@ function DashboardContent() {
                     </div>
                 </div>
             }
+            hasActiveDraft={!!draftState.currentDraft}
         />
     );
 }
