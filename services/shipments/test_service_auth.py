@@ -4,21 +4,22 @@ from unittest.mock import MagicMock, Mock
 import pytest
 from fastapi import Request
 
-import services.shipments.settings
+
+@pytest.fixture(autouse=True)
+def patch_settings(monkeypatch):
+    """Patch the get_settings function to return test settings."""
+    import services.shipments.settings as shipments_settings
+
+    def _test_settings():
+        return shipments_settings.Settings(
+            db_url_shipments="sqlite:///:memory:",
+            api_frontend_shipments_key="test-api-key",
+        )
+
+    monkeypatch.setattr("services.shipments.settings.get_settings", _test_settings)
 
 
 class TestServiceAuth:
-    @pytest.fixture(autouse=True)
-    def setup_service_auth(self):
-        """Set up service auth with test API key by setting the settings singleton."""
-        test_settings = services.shipments.settings.Settings(
-            db_url_shipments="sqlite:///:memory:"
-        )
-        test_settings.api_frontend_shipments_key = "test-api-key"
-        services.shipments.settings._settings = test_settings
-        yield
-        services.shipments.settings._settings = None
-
     def test_get_client_permissions(self):
         from services.shipments.service_auth import get_client_permissions
 
