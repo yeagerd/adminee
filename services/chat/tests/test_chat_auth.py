@@ -15,7 +15,7 @@ from services.chat.auth import (
     service_permission_required,
     verify_service_authentication,
 )
-from services.chat.settings import get_settings
+from services.chat.settings import get_settings, Settings
 from services.common.api_key_auth import (
     build_api_key_mapping,
     get_client_from_api_key,
@@ -35,6 +35,16 @@ def set_db_url_chat():
         os.environ["DB_URL_CHAT"] = original_db_url
     elif "DB_URL_CHAT" in os.environ:
         del os.environ["DB_URL_CHAT"]
+
+
+@pytest.fixture(autouse=True)
+def patch_settings(monkeypatch):
+    def _test_settings():
+        return Settings(
+            api_frontend_chat_key="test-FRONTEND_CHAT_KEY",
+            db_url_chat="sqlite+aiosqlite:///file::memory:?cache=shared"
+        )
+    monkeypatch.setattr("services.chat.settings.get_settings", _test_settings)
 
 
 class TestChatServiceAuth:
