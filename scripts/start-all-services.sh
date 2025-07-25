@@ -153,7 +153,8 @@ start_python_service() {
     echo -e "${BLUE}🔄 Starting $service_name on port $port...${NC}"
 
     # Start service in background, only watching the service directory and services/common for reloads
-    uv run python -m uvicorn $module_path --host $host --port $port --reload --reload-dir $reload_dir --reload-dir services/common &
+    # Disable uvicorn access logs since we handle request logging in our middleware
+    uv run python -m uvicorn $module_path --host $host --port $port --reload --reload-dir $reload_dir --reload-dir services/common --no-access-log &
     local pid=$!
     
     # Store PID for cleanup
