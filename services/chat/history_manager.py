@@ -25,14 +25,14 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.orm import registry
 from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, select
 
-import services.chat.settings
+from services.chat.settings import get_settings
 from services.common import get_async_database_url
 
 
 def get_database_url() -> str:
     """Get database URL with lazy initialization and proper error handling."""
     try:
-        settings = services.chat.settings.get_settings()
+        settings = get_settings()
         if not settings.db_url_chat:
             raise ValueError(
                 "Database URL not configured. Please set DB_URL_CHAT environment variable."

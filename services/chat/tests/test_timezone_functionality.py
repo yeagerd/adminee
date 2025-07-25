@@ -8,6 +8,7 @@ This module tests the timezone handling features we implemented:
 - User preference fallback logic
 """
 
+import re
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -16,30 +17,31 @@ from services.chat.models import ChatRequest
 
 
 @pytest.fixture(autouse=True)
-def mock_settings_for_timezone_tests():
-    with patch("services.chat.settings.get_settings") as mock_get_settings:
-        # Create a mock settings object with all required attributes
-        mock_settings_obj = MagicMock()
-        mock_settings_obj.db_url_chat = "sqlite:///test.db"
-        mock_settings_obj.api_chat_user_key = "test-api-key"
-        mock_settings_obj.api_chat_office_key = "test-api-key"
-        mock_settings_obj.api_frontend_chat_key = "test-FRONTEND_CHAT_KEY"
-        mock_settings_obj.user_management_service_url = "http://test-user-server"
-        mock_settings_obj.office_service_url = "http://test-office-server"
-        mock_settings_obj.llm_provider = "fake"
-        mock_settings_obj.llm_model = "fake-model"
-        mock_settings_obj.max_tokens = 2000
-        mock_settings_obj.openai_api_key = None
-        mock_settings_obj.service_name = "chat-service"
-        mock_settings_obj.host = "0.0.0.0"
-        mock_settings_obj.port = 8000
-        mock_settings_obj.debug = False
-        mock_settings_obj.environment = "test"
-        mock_settings_obj.log_level = "INFO"
-        mock_settings_obj.log_format = "json"
+def patch_chat_settings_singleton():
+    import services.chat.settings as chat_settings
+    from services.chat.settings import Settings
 
-        mock_get_settings.return_value = mock_settings_obj
-        yield mock_settings_obj
+    chat_settings._settings = Settings(
+        api_frontend_chat_key="test-FRONTEND_CHAT_KEY",
+        api_chat_office_key="test-api-key",
+        api_chat_user_key="test-api-key",
+        db_url_chat="sqlite:///test.db",
+        user_management_service_url="http://test-user-server",
+        office_service_url="http://test-office-server",
+        llm_provider="fake",
+        llm_model="fake-model",
+        max_tokens=2000,
+        openai_api_key=None,
+        service_name="chat-service",
+        host="0.0.0.0",
+        port=8000,
+        debug=False,
+        environment="test",
+        log_level="INFO",
+        log_format="json",
+    )
+    yield
+    chat_settings._settings = None
 
 
 class TestTimezoneFormatting:
@@ -240,8 +242,8 @@ class TestTimezoneIntegration:
             mock_response = MagicMock()
             mock_response.raise_for_status.return_value = None
 
-            if "internal/users" in url and "integrations" in url:
-                # Mock user service response for integrations
+            # Match any user_id for the integrations endpoint
+            if re.search(r"/internal/users/.+/integrations", url):
                 mock_response.status_code = 200
                 mock_response.json.return_value = {
                     "integrations": [
@@ -257,7 +259,7 @@ class TestTimezoneIntegration:
                     "active_count": 1,
                     "error_count": 0,
                 }
-            else:
+            elif "calendar/events" in url:
                 # Mock office service response
                 mock_response.status_code = 200
                 mock_response.json.return_value = {
@@ -275,6 +277,15 @@ class TestTimezoneIntegration:
                         "provider_errors": {},
                         "providers_used": ["google"],
                     },
+                }
+            else:
+                # Default: return empty integrations
+                mock_response.status_code = 200
+                mock_response.json.return_value = {
+                    "integrations": [],
+                    "total": 0,
+                    "active_count": 0,
+                    "error_count": 0,
                 }
 
             return mock_response
