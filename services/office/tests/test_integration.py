@@ -274,7 +274,9 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
 
     def test_get_email_messages_missing_user_id(self):
         """Test email messages endpoint without user_id parameter."""
-        response = self.client.get("/email/messages")
+        # Include API key but not user ID
+        headers = {"X-API-Key": "test-frontend-office-key"}
+        response = self.client.get("/email/messages", headers=headers)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     def test_get_email_message_by_id_success(self):
@@ -664,13 +666,13 @@ class TestErrorScenarios(BaseOfficeServiceIntegrationTest):
     def test_authentication_failure(self):
         """Test handling of authentication failures."""
         # Test without API key
-        response = self.client.get("/calendar/events", headers=self.auth_headers)
+        response = self.client.get("/calendar/events")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
         # Test with invalid API key
         response = self.client.get(
             "/calendar/events",
-            headers={**self.auth_headers, "X-API-Key": "invalid-key"},
+            headers={"X-API-Key": "invalid-key"},
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 

@@ -133,6 +133,7 @@ class TestAPIKeyFunctions:
             "write_calendar",
             "read_files",
             "write_files",
+            "health",
         ]
         assert permissions == expected
 
@@ -142,7 +143,7 @@ class TestAPIKeyFunctions:
         permissions = get_permissions_from_api_key(
             get_test_api_keys()["chat"], api_key_mapping
         )
-        expected = ["read_emails", "read_calendar", "read_files"]
+        expected = ["read_emails", "read_calendar", "read_files", "health"]
         assert permissions == expected
 
     def test_get_permissions_from_api_key_invalid(self):
@@ -554,6 +555,7 @@ class TestPermissionMatrix:
             "write_calendar",
             "read_files",
             "write_files",
+            "health",
         ]
 
         for permission in expected:

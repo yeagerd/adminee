@@ -47,10 +47,7 @@ def client():
 @pytest.fixture
 def auth_headers():
     """Create authentication headers with X-User-Id and API key."""
-    return {
-        "X-User-Id": "test_user",
-        "X-API-Key": "test-frontend-office-key"
-    }
+    return {"X-User-Id": "test_user", "X-API-Key": "test-frontend-office-key"}
 
 
 @pytest.fixture
@@ -191,7 +188,9 @@ class TestEmailMessagesEndpoint:
     @pytest.mark.asyncio
     async def test_get_email_messages_missing_user_id(self, client):
         """Test email messages without X-User-Id header."""
-        response = client.get("/email/messages")
+        # Include API key but not user ID
+        headers = {"X-API-Key": "test-frontend-office-key"}
+        response = client.get("/email/messages", headers=headers)
 
         assert response.status_code == 422  # Validation error
 
@@ -427,9 +426,12 @@ class TestSendEmailEndpoint:
     @pytest.mark.asyncio
     async def test_send_email_missing_user_id(self, send_email_request, client):
         """Test sending email without X-User-Id header."""
+        # Include API key but not user ID
+        headers = {"X-API-Key": "test-frontend-office-key"}
         response = client.post(
             "/email/send",
             json=send_email_request.model_dump(),
+            headers=headers,
         )
 
         assert response.status_code == 422  # Validation error
