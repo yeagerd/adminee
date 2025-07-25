@@ -41,16 +41,16 @@ class Settings(BaseSettings):
     )
 
     # Security Configuration
-    api_frontend_user_key: Optional[str] = Field(
-        default=None,
+    api_frontend_user_key: str = Field(
+        ...,
         description="Frontend API key to access User Management service",
     )
-    api_chat_user_key: Optional[str] = Field(
-        default=None,
+    api_chat_user_key: str = Field(
+        ...,
         description="Chat service API key to access User Management service",
     )
-    api_office_user_key: Optional[str] = Field(
-        default=None,
+    api_office_user_key: str = Field(
+        ...,
         description="Office service API key to access User Management service",
     )
     token_encryption_salt: Optional[str] = Field(
