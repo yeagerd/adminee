@@ -8,6 +8,8 @@ from sqlalchemy import engine_from_config, pool
 # Add the parent directory to sys.path to import our models
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 
+import services.chat.settings
+
 # Import our models to ensure they're registered with SQLModel metadata
 from services.chat.history_manager import (  # noqa: F401
     Draft,
@@ -15,14 +17,15 @@ from services.chat.history_manager import (  # noqa: F401
     Thread,
     chat_registry,
 )
-from services.chat.settings import get_settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
 # Set the database URL from our settings
-config.set_main_option("sqlalchemy.url", get_settings().db_url_chat)
+config.set_main_option(
+    "sqlalchemy.url", services.chat.settings.get_settings().db_url_chat
+)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

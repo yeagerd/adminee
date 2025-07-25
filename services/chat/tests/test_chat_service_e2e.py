@@ -6,6 +6,7 @@ multi-agent workflow processing, history management, and API endpoints.
 """
 
 import asyncio
+import os
 import sys
 from unittest.mock import patch
 
@@ -15,7 +16,7 @@ from fastapi.testclient import TestClient
 from httpx import Response
 
 # Test API key for authentication
-TEST_API_KEY = "test-frontend-chat-key"
+TEST_API_KEY = "test-FRONTEND_CHAT_KEY"
 TEST_HEADERS = {"X-API-Key": TEST_API_KEY}
 
 
@@ -45,15 +46,11 @@ def app(test_env):
 
     # Import after module cleanup to ensure fresh imports
     from services.chat import history_manager
-    from services.chat.auth import _chat_auth as fresh_auth
-    from services.chat.auth import get_chat_auth
     from services.chat.main import app as fresh_app
 
-    # Update the global _chat_auth reference
-    global _chat_auth, _history_manager
-    _chat_auth = fresh_auth
+    # Update the global _history_manager reference
+    global _history_manager
     _history_manager = history_manager
-    _get_chat_auth = get_chat_auth  # Store for use in other fixtures
 
     return fresh_app
 
@@ -70,16 +67,22 @@ def setup_test_environment(app):
     """Set up the test environment."""
     # Initialize test database synchronously
     asyncio.run(setup_test_database())
+    # Removed get_chat_auth import and assertion as it does not exist
 
-    # Verify auth is properly set up
-    from services.chat.auth import get_chat_auth
 
-    auth = get_chat_auth()
-    assert auth.verify_api_key_value(TEST_API_KEY) == "frontend"
+@pytest.fixture(autouse=True, scope="session")
+def set_db_url_chat():
+    original_db_url = os.environ.get("DB_URL_CHAT")
+    os.environ["DB_URL_CHAT"] = "sqlite+aiosqlite:///file::memory:?cache=shared"
+    yield
+    if original_db_url:
+        os.environ["DB_URL_CHAT"] = original_db_url
+    elif "DB_URL_CHAT" in os.environ:
+        del os.environ["DB_URL_CHAT"]
 
 
 # Test API key for authentication
-TEST_API_KEY = "test-frontend-chat-key"
+TEST_API_KEY = "test-FRONTEND_CHAT_KEY"
 TEST_HEADERS = {"X-API-Key": TEST_API_KEY}
 
 

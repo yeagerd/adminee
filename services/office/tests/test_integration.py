@@ -653,7 +653,7 @@ class TestErrorScenarios(BaseOfficeServiceIntegrationTest):
             "/calendar/events",
             headers={**self.auth_headers, "X-API-Key": "invalid-key"},
         )
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
 class TestCaching(BaseOfficeServiceIntegrationTest):

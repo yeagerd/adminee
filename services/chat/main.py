@@ -5,9 +5,9 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from sqlmodel import select
 
+import services.chat.settings
 from services.chat import history_manager
 from services.chat.api import router
-from services.chat.settings import get_settings
 from services.common.http_errors import register_briefly_exception_handlers
 from services.common.logging_config import (
     create_request_logging_middleware,
@@ -23,7 +23,7 @@ logger = get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Set up centralized logging
-    settings = get_settings()
+    settings = services.chat.settings.get_settings()
     setup_service_logging(
         service_name="chat-service",
         log_level=settings.log_level,
@@ -33,28 +33,34 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     log_service_startup(
         "chat-service",
         api_frontend_chat_key=(
-            "configured" if get_settings().api_frontend_chat_key else "missing"
+            "configured"
+            if services.chat.settings.get_settings().api_frontend_chat_key
+            else "missing"
         ),
         api_chat_user_key=(
-            "configured" if get_settings().api_chat_user_key else "missing"
+            "configured"
+            if services.chat.settings.get_settings().api_chat_user_key
+            else "missing"
         ),
         api_chat_office_key=(
-            "configured" if get_settings().api_chat_office_key else "missing"
+            "configured"
+            if services.chat.settings.get_settings().api_chat_office_key
+            else "missing"
         ),
-        user_management_service_url=get_settings().user_management_service_url,
-        office_service_url=get_settings().office_service_url,
+        user_management_service_url=services.chat.settings.get_settings().user_management_service_url,
+        office_service_url=services.chat.settings.get_settings().office_service_url,
     )
 
     # Validate API keys for incoming and outgoing service calls
-    if not get_settings().api_frontend_chat_key:
+    if not services.chat.settings.get_settings().api_frontend_chat_key:
         logger.warning(
             "API_FRONTEND_CHAT_KEY not configured - frontend authentication will fail"
         )
-    if not get_settings().api_chat_user_key:
+    if not services.chat.settings.get_settings().api_chat_user_key:
         logger.warning(
             "API_CHAT_USER_KEY not configured - user management calls will fail"
         )
-    if not get_settings().api_chat_office_key:
+    if not services.chat.settings.get_settings().api_chat_office_key:
         logger.warning(
             "API_CHAT_OFFICE_KEY not configured - office service calls will fail"
         )
@@ -112,16 +118,22 @@ async def health_check() -> JSONResponse:
         # Check service configuration
         config_status = {
             "api_frontend_chat_key": (
-                "configured" if get_settings().api_frontend_chat_key else "missing"
+                "configured"
+                if services.chat.settings.get_settings().api_frontend_chat_key
+                else "missing"
             ),
             "api_chat_user_key": (
-                "configured" if get_settings().api_chat_user_key else "missing"
+                "configured"
+                if services.chat.settings.get_settings().api_chat_user_key
+                else "missing"
             ),
             "api_chat_office_key": (
-                "configured" if get_settings().api_chat_office_key else "missing"
+                "configured"
+                if services.chat.settings.get_settings().api_chat_office_key
+                else "missing"
             ),
-            "user_management_service_url": get_settings().user_management_service_url,
-            "office_service_url": get_settings().office_service_url,
+            "user_management_service_url": services.chat.settings.get_settings().user_management_service_url,
+            "office_service_url": services.chat.settings.get_settings().office_service_url,
         }
 
         return JSONResponse(
