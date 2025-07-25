@@ -1,6 +1,5 @@
 'use client';
 
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useEditor } from '@/hooks/use-editor';
 import { cn } from '@/lib/utils';
 import { EditorContent } from '@tiptap/react';
@@ -55,19 +54,18 @@ export function CalendarEditor({
             <EditorToolbar editor={editor} />
 
             {/* Editor Content */}
-            <div className="flex-1 min-h-0">
-                <ScrollArea className="h-full">
-                    <div className="p-4">
-                        <EditorContent
-                            editor={editor}
-                            className={cn(
-                                'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl max-w-none',
-                                'focus:outline-none',
-                                disabled && 'opacity-50 pointer-events-none'
-                            )}
-                        />
-                    </div>
-                </ScrollArea>
+            <div className="flex-1 min-h-0 p-4">
+                <EditorContent
+                    editor={editor}
+                    className={cn(
+                        'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl max-w-none',
+                        'focus:outline-none',
+                        'overflow-y-auto',
+                        'h-full',
+                        'max-h-[400px]',
+                        disabled && 'opacity-50 pointer-events-none'
+                    )}
+                />
             </div>
 
             {/* Status Bar */}
