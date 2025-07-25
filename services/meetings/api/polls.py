@@ -14,6 +14,21 @@ from services.meetings.services import calendar_integration
 router = APIRouter()
 
 
+def get_user_id_from_request(request: Request) -> UUID:
+    """
+    Extract user ID from request headers.
+
+    The meetings service expects user identity via X-User-Id header.
+    """
+    user_id_str = request.headers.get("X-User-Id")
+    if not user_id_str:
+        raise HTTPException(status_code=400, detail="Missing X-User-Id header")
+    try:
+        return UUID(user_id_str)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid X-User-Id format")
+
+
 @router.get("/", response_model=List[MeetingPoll])
 def list_polls() -> List[MeetingPoll]:
     with get_session() as session:
@@ -32,10 +47,7 @@ def get_poll(poll_id: UUID) -> MeetingPoll:
 
 @router.post("/", response_model=MeetingPoll)
 def create_poll(poll: MeetingPollCreate, request: Request) -> MeetingPoll:
-    user_id = request.headers.get("X-User-Id")
-    if not user_id:
-        raise HTTPException(status_code=400, detail="Missing X-User-Id header")
-    user_id = UUID(user_id)
+    user_id = get_user_id_from_request(request)
     with get_session() as session:
         poll_token = uuid4().hex
         db_poll = MeetingPollModel(
@@ -66,12 +78,13 @@ def create_poll(poll: MeetingPollCreate, request: Request) -> MeetingPoll:
             session.add(db_slot)
         # Add participants
         for part in poll.participants:
+            response_token = part.response_token or uuid4().hex
             db_part = PollParticipantModel(
                 id=uuid4(),
                 poll_id=db_poll.id,  # type: ignore[assignment]
                 email=part.email,
                 name=part.name,
-                response_token=part.response_token,
+                response_token=response_token,
             )
             session.add(db_part)
         session.commit()
@@ -83,10 +96,7 @@ def create_poll(poll: MeetingPollCreate, request: Request) -> MeetingPoll:
 def update_poll(
     poll_id: UUID, poll: MeetingPollCreate, request: Request
 ) -> MeetingPoll:
-    user_id = request.headers.get("X-User-Id")
-    if not user_id:
-        raise HTTPException(status_code=400, detail="Missing X-User-Id header")
-    user_id = UUID(user_id)
+    user_id = get_user_id_from_request(request)
     with get_session() as session:
         db_poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
         if not db_poll:
@@ -113,9 +123,7 @@ def update_poll(
 
 @router.delete("/{poll_id}")
 def delete_poll(poll_id: UUID, request: Request) -> dict:
-    user_id = request.headers.get("X-User-Id")
-    if not user_id:
-        raise HTTPException(status_code=400, detail="Missing X-User-Id header")
+    user_id = get_user_id_from_request(request)
     with get_session() as session:
         db_poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
         if not db_poll:
@@ -132,9 +140,7 @@ def delete_poll(poll_id: UUID, request: Request) -> dict:
 
 @router.get("/{poll_id}/suggest-slots")
 async def suggest_slots(poll_id: UUID, request: Request) -> dict:
-    user_id = request.headers.get("X-User-Id")
-    if not user_id:
-        raise HTTPException(status_code=400, detail="Missing X-User-Id header")
+    user_id = get_user_id_from_request(request)
     # For demo, use poll duration and a 2-week window
     with get_session() as session:
         poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
@@ -144,22 +150,20 @@ async def suggest_slots(poll_id: UUID, request: Request) -> dict:
     start = datetime.utcnow().isoformat()
     end = (datetime.utcnow() + timedelta(days=14)).isoformat()
     slots = await calendar_integration.get_user_availability(
-        user_id, start, end, duration
+        str(user_id), start, end, duration
     )
     return slots
 
 
 @router.post("/{poll_id}/schedule")
 async def schedule_meeting(poll_id: UUID, request: Request, body: dict) -> dict:
-    user_id = request.headers.get("X-User-Id")
-    if not user_id:
-        raise HTTPException(status_code=400, detail="Missing X-User-Id header")
+    user_id = get_user_id_from_request(request)
     selected_slot_id = body.get("selectedSlotId")
     participants = body.get("participants", [])
     if not selected_slot_id:
         raise HTTPException(status_code=400, detail="Missing selectedSlotId")
     result = await calendar_integration.create_calendar_event(
-        user_id, str(poll_id), selected_slot_id, participants
+        str(user_id), str(poll_id), selected_slot_id, participants
     )
     # Optionally update poll status to scheduled here
     with get_session() as session:
