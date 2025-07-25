@@ -76,6 +76,20 @@ async def read_root() -> Dict[str, str]:
     return {"message": "Hello World", "service": "Office Service"}
 
 
+@app.get("/health")
+async def health_check() -> Dict[str, str]:
+    """
+    Simple health check endpoint for load balancers and monitoring.
+    This endpoint is used by the start-all-services.sh script.
+    """
+    return {
+        "status": "ok",
+        "service": "Office Service",
+        "version": "0.1.0",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
 @app.get("/ready")
 async def ready_check() -> Dict[str, str]:
     """

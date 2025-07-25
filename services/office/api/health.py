@@ -10,11 +10,10 @@ from datetime import datetime, timezone
 from typing import Any, Dict
 
 import httpx
-from fastapi import APIRouter, Depends, Path, Response
+from fastapi import APIRouter, Path, Response
 from fastapi.responses import JSONResponse
 from sqlmodel import select
 
-from services.office.core.auth import service_permission_required
 from services.office.core.cache_manager import cache_manager
 from services.office.core.settings import get_settings
 from services.office.core.token_manager import TokenManager
@@ -30,9 +29,7 @@ token_manager = TokenManager()
 
 
 @router.get("/")
-async def health_check(
-    service_name: str = Depends(service_permission_required(["health"])),
-) -> Response:
+async def health_check() -> Response:
     """
     Comprehensive health check endpoint.
 
@@ -99,7 +96,6 @@ async def health_check(
 @router.get("/integrations/{user_id}")
 async def integration_health_check(
     user_id: str = Path(..., description="ID of the user to check integrations for"),
-    service_name: str = Depends(service_permission_required(["health"])),
 ) -> Response:
     """
     Check the health of external integrations for a specific user.
@@ -294,9 +290,7 @@ async def check_user_integration(user_id: str, provider: str) -> Dict[str, Any]:
 
 
 @router.get("/quick")
-async def quick_health_check(
-    service_name: str = Depends(service_permission_required(["health"])),
-) -> Dict[str, Any]:
+async def quick_health_check() -> Dict[str, Any]:
     """
     Quick health check endpoint for load balancers and basic monitoring.
 

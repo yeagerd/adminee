@@ -54,6 +54,17 @@ def get_test_api_keys():
 class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
     """Test health and diagnostic endpoints."""
 
+    def test_root_health_basic(self):
+        """Test root health check endpoint."""
+        response = self.client.get("/health")
+        assert response.status_code == status.HTTP_200_OK
+
+        data = response.json()
+        assert data["status"] == "ok"
+        assert data["service"] == "Office Service"
+        assert "version" in data
+        assert "timestamp" in data
+
     def test_health_basic(self):
         """Test basic health check endpoint."""
         # Mock the health check methods directly
@@ -69,7 +80,7 @@ class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
                     "services.office.api.health.check_service_connection",
                     return_value=True,
                 ):
-                    response = self.client.get("/v1/health", headers=self.auth_headers)
+                    response = self.client.get("/v1/health")
                     assert response.status_code == status.HTTP_200_OK
 
                     data = response.json()
@@ -97,9 +108,7 @@ class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
             "services.office.core.token_manager.TokenManager.get_user_token",
             return_value=mock_token_data,
         ):
-            response = self.client.get(
-                f"/v1/health/integrations/{user_id}", headers=self.auth_headers
-            )
+            response = self.client.get(f"/v1/health/integrations/{user_id}")
             assert response.status_code == status.HTTP_200_OK
 
             data = response.json()
@@ -132,9 +141,7 @@ class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
             "services.office.core.token_manager.TokenManager.get_user_token",
             side_effect=failing_token_side_effect,
         ):
-            response = self.client.get(
-                f"/v1/health/integrations/{user_id}", headers=self.auth_headers
-            )
+            response = self.client.get(f"/v1/health/integrations/{user_id}")
             assert response.status_code == status.HTTP_200_OK
 
             data = response.json()
