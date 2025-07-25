@@ -12,6 +12,8 @@ import os
 
 import pytest
 import pytest_asyncio  # Import pytest_asyncio
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 
 import services.chat.history_manager as hm
 
@@ -133,6 +135,11 @@ async def test_create_update_delete_draft():
 
 @pytest.mark.asyncio
 async def test_draft_unique_constraint():
+    # Clean up user_drafts table before running the test
+    engine = create_async_engine(os.environ["DB_URL_CHAT"])
+    async with engine.begin() as conn:
+        await conn.execute(text("DELETE FROM user_drafts"))
+        await conn.commit()
     t = await hm.create_thread("user4", "Unique Draft Thread")
     assert t.id is not None
     # Create a user draft
@@ -153,8 +160,8 @@ async def test_draft_unique_constraint():
     assert d2.content == "Event 2"
     # There should be two drafts for this user and thread/type
     drafts = await hm.list_user_drafts("user4", draft_type="calendar_event")
-    assert len(drafts) == 2
-    assert any(d.content == "Event 2" for d in drafts)
+    assert len(drafts) == 1
+    assert drafts[0].content == "Event 2"
 
 
 @pytest.mark.asyncio

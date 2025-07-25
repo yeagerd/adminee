@@ -439,6 +439,21 @@ async def create_user_draft(
     thread_id: Optional[int] = None,
 ) -> UserDraft:
     async with get_async_session_factory()() as session:
+        # Check for existing draft for this user, thread, and type
+        query = select(UserDraft).where(
+            UserDraft.user_id == user_id,
+            UserDraft.type == draft_type,
+            UserDraft.thread_id == thread_id,
+        )
+        result = await session.execute(query)
+        existing_draft = result.scalar_one_or_none()
+        if existing_draft:
+            existing_draft.content = content
+            existing_draft.draft_metadata = metadata
+            existing_draft.updated_at = datetime.datetime.now(datetime.timezone.utc)
+            await session.commit()
+            await session.refresh(existing_draft)
+            return existing_draft
         draft = UserDraft(
             user_id=user_id,
             type=draft_type,
@@ -449,14 +464,11 @@ async def create_user_draft(
         session.add(draft)
         await session.commit()
         await session.refresh(draft)
-
-        # Ensure the ID was properly assigned by the database
         if draft.id is None:
             raise RuntimeError(
                 f"Failed to create user draft for user {user_id}: "
                 "Database did not assign an ID after commit"
             )
-
         return draft
 
 
