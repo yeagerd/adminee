@@ -69,7 +69,7 @@ const MeetingPollResultsPage = () => {
 
     return (
         <div className="max-w-2xl mx-auto p-8">
-            <Link href="/dashboard/meetings" className="text-teal-600 hover:underline mb-4 inline-block">&larr; Back to Meeting Polls</Link>
+            <Link href="/dashboard?tool=meetings" className="text-teal-600 hover:underline mb-4 inline-block">&larr; Back to Meetings Tool</Link>
             <h1 className="text-2xl font-bold mb-6">Meeting Poll Results</h1>
             {loading ? (
                 <div>Loading...</div>

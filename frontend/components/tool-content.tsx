@@ -78,6 +78,50 @@ export function ToolContent() {
     // Use activeProviders to check for active calendar integrations
     const hasActiveCalendarIntegration = activeProviders.length > 0;
 
+    // Meetings dashboard state and logic
+    const [polls, setPolls] = useState<{ id: string; title: string; status: string; created_at: string }[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+
+    const fetchPolls = () => {
+        setLoading(true);
+        gatewayClient.listMeetingPolls()
+            .then((data) => setPolls(data as any[]))
+            .catch((e: unknown) => {
+                if (e && typeof e === 'object' && 'message' in e) {
+                    setError((e as { message?: string }).message || 'Failed to load polls');
+                } else {
+                    setError('Failed to load polls');
+                }
+            })
+            .finally(() => setLoading(false));
+    };
+
+    useEffect(() => {
+        if (activeTool === 'meetings') {
+            fetchPolls();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTool]);
+
+    const handleDelete = async (id: string) => {
+        if (!window.confirm('Are you sure you want to delete this meeting poll?')) return;
+        setDeletingId(id);
+        try {
+            await gatewayClient.deleteMeetingPoll(id);
+            fetchPolls();
+        } catch (e: unknown) {
+            if (e && typeof e === 'object' && 'message' in e) {
+                alert((e as { message?: string }).message || 'Failed to delete poll');
+            } else {
+                alert('Failed to delete poll');
+            }
+        } finally {
+            setDeletingId(null);
+        }
+    };
+
     const renderToolContent = () => {
         switch (activeTool) {
             case 'calendar':
@@ -214,10 +258,57 @@ export function ToolContent() {
                 );
             case 'meetings':
                 return (
-                    <div className="h-full">
-                        {/* Meetings tool main content */}
-                        {/* Use the Next.js dynamic import to render the meetings dashboard page */}
-                        {require('@/app/dashboard/meetings/page').default()}
+                    <div className="p-8">
+                        <div className="flex items-center justify-between mb-6">
+                            <h1 className="text-2xl font-bold">Meeting Polls</h1>
+                            <Link href="/dashboard/meetings/new">
+                                <button className="bg-teal-600 text-white px-4 py-2 rounded shadow hover:bg-teal-700 font-semibold">
+                                    + New Meeting Poll
+                                </button>
+                            </Link>
+                        </div>
+                        {loading ? (
+                            <div>Loading...</div>
+                        ) : error ? (
+                            <div className="text-red-600">{error}</div>
+                        ) : polls.length === 0 ? (
+                            <div className="text-gray-500">No meeting polls found.</div>
+                        ) : (
+                            <table className="min-w-full bg-white border rounded shadow">
+                                <thead>
+                                    <tr>
+                                        <th className="px-4 py-2 border-b">Title</th>
+                                        <th className="px-4 py-2 border-b">Status</th>
+                                        <th className="px-4 py-2 border-b">Created</th>
+                                        <th className="px-4 py-2 border-b">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {polls.map((poll) => (
+                                        <tr key={poll.id} className="hover:bg-gray-50">
+                                            <td className="px-4 py-2 border-b font-medium">{poll.title}</td>
+                                            <td className="px-4 py-2 border-b capitalize">{poll.status}</td>
+                                            <td className="px-4 py-2 border-b">{poll.created_at?.slice(0, 10) || ""}</td>
+                                            <td className="px-4 py-2 border-b space-x-2">
+                                                <Link href={`/dashboard/meetings/${poll.id}`} className="text-teal-600 hover:underline font-semibold">
+                                                    View Results
+                                                </Link>
+                                                <Link href={`/dashboard/meetings/${poll.id}/edit`} className="text-blue-600 hover:underline font-semibold">
+                                                    Edit
+                                                </Link>
+                                                <button
+                                                    className="text-red-600 hover:underline font-semibold disabled:opacity-50"
+                                                    onClick={() => handleDelete(poll.id)}
+                                                    disabled={deletingId === poll.id}
+                                                >
+                                                    {deletingId === poll.id ? "Deleting..." : "Delete"}
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
                     </div>
                 );
             default:

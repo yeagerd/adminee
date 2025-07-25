@@ -89,7 +89,7 @@ export default function NewMeetingPollPage() {
                 participants: participants.map((p) => ({ email: p.email, name: p.name })),
             };
             await gatewayClient.createMeetingPoll(pollData);
-            router.push("/dashboard/meetings");
+            router.push("http://localhost:3000/dashboard?tool=meetings");
         } catch (e: unknown) {
             if (e && typeof e === 'object' && 'message' in e) {
                 setError((e as { message?: string }).message || "Failed to create poll");

@@ -48,7 +48,7 @@ const EditMeetingPollPage = () => {
                 duration_minutes: duration,
                 location,
             });
-            router.push("/dashboard/meetings");
+            router.push("/dashboard?tool=meetings");
         } catch (e: unknown) {
             if (e && typeof e === 'object' && 'message' in e) {
                 setError((e as { message?: string }).message || "Failed to update poll");
