@@ -56,7 +56,6 @@ def _ensure_list(val: object) -> list[str]:
 
 
 def process_email(message: Any) -> None:
-    settings = EmailParserSettings()
     try:
         data = json.loads(message.data.decode("utf-8"))
         email_body = sanitize_email_content(data.get("body", ""))
@@ -126,6 +125,7 @@ def process_email(message: Any) -> None:
 
 def run() -> None:
     from google.cloud import pubsub_v1  # type: ignore[attr-defined]
+
     settings = EmailParserSettings()
     PROJECT_ID = settings.GOOGLE_CLOUD_PROJECT
     PUBSUB_EMULATOR_HOST = settings.PUBSUB_EMULATOR_HOST

@@ -36,8 +36,6 @@ logging.basicConfig(level=logging.INFO)
 
 def process_gmail_notification(message: Any) -> None:
     settings = GmailSyncSettings()
-    PROJECT_ID = settings.GOOGLE_CLOUD_PROJECT
-    GMAIL_SUBSCRIPTION = settings.GMAIL_SUBSCRIPTION
     EMAIL_PROCESSING_TOPIC = "email-processing"
     try:
         data = json.loads(message.data.decode("utf-8"))
@@ -91,6 +89,7 @@ def run() -> None:
     if not PROJECT_ID:
         raise ValueError("GOOGLE_CLOUD_PROJECT environment variable is not set.")
     from google.cloud import pubsub_v1  # type: ignore[attr-defined]
+
     subscriber = pubsub_v1.SubscriberClient()
     subscription_path = subscriber.subscription_path(PROJECT_ID, GMAIL_SUBSCRIPTION)
     backoff = 1

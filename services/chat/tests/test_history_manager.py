@@ -40,7 +40,11 @@ async def setup_test_database():
 async def clear_user4_drafts():
     # Remove all user4 calendar_event drafts before each test to ensure isolation
     async with hm.get_async_session_factory()() as session:
-        await session.execute(sqlalchemy.delete(hm.UserDraft).where(hm.UserDraft.user_id == "user4", hm.UserDraft.type == "calendar_event"))
+        await session.execute(
+            sqlalchemy.delete(hm.UserDraft).where(
+                hm.UserDraft.user_id == "user4", hm.UserDraft.type == "calendar_event"
+            )
+        )
         await session.commit()
 
 
