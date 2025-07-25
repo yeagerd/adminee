@@ -86,6 +86,10 @@ def get_settings() -> Settings:
     """Get the global settings instance, creating it if necessary."""
     global _settings
     if _settings is None:
+        import logging, traceback
+        logger = logging.getLogger("settings.diagnostics")
+        tb = ''.join(traceback.format_stack(limit=10))
+        logger.warning(f"_settings is None, creating new Settings instance. Traceback:\n{tb}")
         # In production, the required fields are set in the environment variables.
         # In unit tests, we patch or mock the settings object.
         _settings = Settings()  # type: ignore[call-arg]
