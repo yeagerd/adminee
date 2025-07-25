@@ -47,6 +47,7 @@ def typecheck(session: nox.Session) -> None:
     session.install("-e", "services/user")
     session.install("-e", "services/chat")
     session.install("-e", "services/office")
+    session.install("-e", "services/shipments")
     session.run("mypy", "services")
     session.run("npx", "pyright", "services/", external=True)
 
@@ -72,6 +73,7 @@ def test(session: nox.Session) -> None:
     session.install("-e", "services/user")
     session.install("-e", "services/chat")
     session.install("-e", "services/office")
+    session.install("-e", "services/shipments")
 
     # Run tests
     session.run("python", "-m", "pytest", "services/", "-v", "-n", "auto")
@@ -87,6 +89,7 @@ def test_fast(session: nox.Session) -> None:
     session.install("-e", "services/user")
     session.install("-e", "services/chat")
     session.install("-e", "services/office")
+    session.install("-e", "services/shipments")
 
     session.run(
         "python", "-m", "pytest", "services/user/tests/", "-v", "-k", "not slow"
@@ -109,6 +112,7 @@ def test_cov(session: nox.Session) -> None:
     session.install("-e", "services/user")
     session.install("-e", "services/chat")
     session.install("-e", "services/office")
+    session.install("-e", "services/shipments")
 
     session.run(
         "python",
@@ -149,6 +153,7 @@ def test_serial(session: nox.Session) -> None:
     session.install("-e", "services/user")
     session.install("-e", "services/chat")
     session.install("-e", "services/office")
+    session.install("-e", "services/shipments")
 
     session.run("python", "-m", "pytest", "services/user/tests/", "-v", "--tb=short")
     session.run("python", "-m", "pytest", "services/chat/tests/", "-v", "--tb=short")
