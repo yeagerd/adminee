@@ -5,13 +5,6 @@ Tests email listing, searching, sending, and management functionality
 for both Google and Microsoft providers with comprehensive error handling.
 """
 
-# Set required environment variables before any imports
-import os
-
-os.environ.setdefault("DB_URL_OFFICE", "sqlite:///test.db")
-os.environ.setdefault("API_OFFICE_USER_KEY", "test-api-key")
-
-
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
@@ -23,6 +16,24 @@ from services.office.models import Provider
 from services.office.schemas import EmailAddress, EmailMessage, SendEmailRequest
 
 
+@pytest.fixture(autouse=True)
+def patch_settings():
+    """Patch the _settings global variable to return test settings."""
+    import services.office.core.settings as office_settings
+
+    test_settings = office_settings.Settings(
+        db_url_office="sqlite:///:memory:",
+        api_frontend_office_key="test-frontend-office-key",
+        api_chat_office_key="test-chat-office-key",
+        api_office_user_key="test-office-user-key",
+    )
+
+    # Directly set the singleton instead of using monkeypatch
+    office_settings._settings = test_settings
+    yield
+    office_settings._settings = None
+
+
 @pytest.fixture
 def client():
     """Create a test client for the FastAPI application."""
@@ -31,8 +42,8 @@ def client():
 
 @pytest.fixture
 def auth_headers():
-    """Create authentication headers with X-User-Id."""
-    return {"X-User-Id": "test_user"}
+    """Create authentication headers with X-User-Id and API key."""
+    return {"X-User-Id": "test_user", "X-API-Key": "test-frontend-office-key"}
 
 
 @pytest.fixture
@@ -173,7 +184,9 @@ class TestEmailMessagesEndpoint:
     @pytest.mark.asyncio
     async def test_get_email_messages_missing_user_id(self, client):
         """Test email messages without X-User-Id header."""
-        response = client.get("/email/messages")
+        # Include API key but not user ID
+        headers = {"X-API-Key": "test-frontend-office-key"}
+        response = client.get("/email/messages", headers=headers)
 
         assert response.status_code == 422  # Validation error
 
@@ -409,9 +422,12 @@ class TestSendEmailEndpoint:
     @pytest.mark.asyncio
     async def test_send_email_missing_user_id(self, send_email_request, client):
         """Test sending email without X-User-Id header."""
+        # Include API key but not user ID
+        headers = {"X-API-Key": "test-frontend-office-key"}
         response = client.post(
             "/email/send",
             json=send_email_request.model_dump(),
+            headers=headers,
         )
 
         assert response.status_code == 422  # Validation error

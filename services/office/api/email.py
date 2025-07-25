@@ -12,10 +12,11 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, cast
 
-from fastapi import APIRouter, Path, Query, Request
+from fastapi import APIRouter, Depends, Path, Query, Request
 
 from services.common.http_errors import NotFoundError, ServiceError, ValidationError
 from services.office.core.api_client_factory import APIClientFactory
+from services.office.core.auth import service_permission_required
 from services.office.core.cache_manager import cache_manager, generate_cache_key
 from services.office.core.clients.google import GoogleAPIClient
 from services.office.core.clients.microsoft import MicrosoftAPIClient
@@ -56,6 +57,7 @@ async def get_user_id_from_gateway(request: Request) -> str:
 @router.get("/messages", response_model=EmailMessageList)
 async def get_email_messages(
     request: Request,
+    service_name: str = Depends(service_permission_required(["read_emails"])),
     providers: Optional[List[str]] = Query(
         None,
         description="Providers to fetch from (google, microsoft). If not specified, fetches from all available providers",
@@ -242,6 +244,7 @@ async def get_email_messages(
 @router.get("/messages/{message_id}", response_model=EmailMessageList)
 async def get_email_message(
     request: Request,
+    service_name: str = Depends(service_permission_required(["read_emails"])),
     message_id: str = Path(..., description="Message ID (format: provider_originalId)"),
     include_body: bool = Query(
         True, description="Whether to include message body content"
@@ -338,6 +341,7 @@ async def get_email_message(
 async def send_email(
     request: Request,
     email_data: SendEmailRequest,
+    service_name: str = Depends(service_permission_required(["send_emails"])),
 ) -> SendEmailResponse:
     """
     Send an email through a specific provider.

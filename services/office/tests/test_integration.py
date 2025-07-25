@@ -23,6 +23,24 @@ from services.office.core.settings import get_settings
 from services.office.core.token_manager import TokenData
 
 
+@pytest.fixture(autouse=True)
+def patch_settings():
+    """Patch the _settings global variable to return test settings."""
+    import services.office.core.settings as office_settings
+
+    test_settings = office_settings.Settings(
+        db_url_office="sqlite:///:memory:",
+        api_frontend_office_key="test-frontend-office-key",
+        api_chat_office_key="test-chat-office-key",
+        api_office_user_key="test-office-user-key",
+    )
+
+    # Directly set the singleton instead of using monkeypatch
+    office_settings._settings = test_settings
+    yield
+    office_settings._settings = None
+
+
 # Helper function to get API key values
 def get_test_api_keys():
     """Get the actual API key values from settings for testing."""
@@ -51,7 +69,7 @@ class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
                     "services.office.api.health.check_service_connection",
                     return_value=True,
                 ):
-                    response = self.client.get("/health")
+                    response = self.client.get("/health", headers=self.auth_headers)
                     assert response.status_code == status.HTTP_200_OK
 
                     data = response.json()
@@ -79,7 +97,9 @@ class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
             "services.office.core.token_manager.TokenManager.get_user_token",
             return_value=mock_token_data,
         ):
-            response = self.client.get(f"/health/integrations/{user_id}")
+            response = self.client.get(
+                f"/health/integrations/{user_id}", headers=self.auth_headers
+            )
             assert response.status_code == status.HTTP_200_OK
 
             data = response.json()
@@ -112,7 +132,9 @@ class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
             "services.office.core.token_manager.TokenManager.get_user_token",
             side_effect=failing_token_side_effect,
         ):
-            response = self.client.get(f"/health/integrations/{user_id}")
+            response = self.client.get(
+                f"/health/integrations/{user_id}", headers=self.auth_headers
+            )
             assert response.status_code == status.HTTP_200_OK
 
             data = response.json()
@@ -255,7 +277,9 @@ class TestEmailEndpoints(BaseOfficeServiceIntegrationTest):
 
     def test_get_email_messages_missing_user_id(self):
         """Test email messages endpoint without user_id parameter."""
-        response = self.client.get("/email/messages")
+        # Include API key but not user ID
+        headers = {"X-API-Key": "test-frontend-office-key"}
+        response = self.client.get("/email/messages", headers=headers)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     def test_get_email_message_by_id_success(self):
@@ -645,13 +669,13 @@ class TestErrorScenarios(BaseOfficeServiceIntegrationTest):
     def test_authentication_failure(self):
         """Test handling of authentication failures."""
         # Test without API key
-        response = self.client.get("/calendar/events", headers=self.auth_headers)
+        response = self.client.get("/calendar/events")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
         # Test with invalid API key
         response = self.client.get(
             "/calendar/events",
-            headers={**self.auth_headers, "X-API-Key": "invalid-key"},
+            headers={"X-API-Key": "invalid-key"},
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 

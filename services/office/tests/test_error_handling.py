@@ -5,13 +5,6 @@ Tests error handling, exception propagation, and error response formatting
 for various failure scenarios in the office service.
 """
 
-# Set required environment variables before any imports
-import os
-
-os.environ.setdefault("DB_URL_OFFICE", "sqlite:///test.db")
-os.environ.setdefault("API_OFFICE_USER_KEY", "test-api-key")
-
-
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -26,6 +19,24 @@ from services.common.http_errors import (
 )
 from services.office.core.clients.google import GoogleAPIClient
 from services.office.models import Provider
+
+
+@pytest.fixture(autouse=True)
+def patch_settings():
+    """Patch the _settings global variable to return test settings."""
+    import services.office.core.settings as office_settings
+
+    test_settings = office_settings.Settings(
+        db_url_office="sqlite:///:memory:",
+        api_frontend_office_key="test-frontend-office-key",
+        api_chat_office_key="test-chat-office-key",
+        api_office_user_key="test-office-user-key",
+    )
+
+    # Directly set the singleton instead of using monkeypatch
+    office_settings._settings = test_settings
+    yield
+    office_settings._settings = None
 
 
 class TestGlobalExceptionHandlers:
