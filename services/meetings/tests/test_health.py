@@ -1,8 +1,21 @@
+import pytest
 from fastapi.testclient import TestClient
 
 from services.meetings.main import app
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def set_db_url_meetings(monkeypatch):
+    monkeypatch.setenv("DB_URL_MEETINGS", "sqlite:///:memory:")
+
+
+@pytest.fixture(autouse=True)
+def reset_settings_cache():
+    import services.meetings.settings
+
+    services.meetings.settings._settings = None
 
 
 def test_health():
