@@ -383,7 +383,6 @@ class TestServiceAuthentication:
         request = MagicMock(spec=Request)
         request.headers = {"Authorization": "Bearer test-frontend-key"}
         request.state = Mock()
-        api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
 
         auth_dep = service_permission_required(allowed_clients=["frontend"])
         client_name = await auth_dep(request)
@@ -395,7 +394,6 @@ class TestServiceAuthentication:
         request = MagicMock(spec=Request)
         request.headers = {"Authorization": "Bearer test-frontend-key"}
         request.state = Mock()
-        api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
 
         # Only allow chat client, but we're authenticating as frontend
         auth_dep = service_permission_required(allowed_clients=["chat"])

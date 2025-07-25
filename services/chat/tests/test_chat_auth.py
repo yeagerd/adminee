@@ -14,8 +14,14 @@ from services.chat.auth import (
     service_permission_required,
     verify_service_authentication,
 )
-from services.common.api_key_auth import build_api_key_mapping, get_client_from_api_key, get_permissions_from_api_key, has_permission, verify_api_key
 from services.chat.settings import get_settings
+from services.common.api_key_auth import (
+    build_api_key_mapping,
+    get_client_from_api_key,
+    get_permissions_from_api_key,
+    has_permission,
+    verify_api_key,
+)
 from services.common.http_errors import AuthError
 
 
