@@ -14,7 +14,6 @@ from fastapi import APIRouter, Query, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
-import services.chat.settings
 from services.chat import history_manager
 from services.chat.agents.workflow_agent import WorkflowAgent
 from services.chat.history_manager import count_user_drafts
@@ -30,6 +29,7 @@ from services.chat.models import (
     UserDraftResponse,
 )
 from services.chat.service_client import ServiceClient
+from services.chat.settings import get_settings
 from services.common.http_errors import NotFoundError, ValidationError
 from services.common.logging_config import get_logger
 
@@ -123,9 +123,9 @@ async def chat_endpoint(
     agent = WorkflowAgent(
         thread_id=int(thread.id),
         user_id=user_id,
-        llm_model=services.chat.settings.get_settings().llm_model,
-        llm_provider=services.chat.settings.get_settings().llm_provider,
-        max_tokens=services.chat.settings.get_settings().max_tokens,
+        llm_model=get_settings().llm_model,
+        llm_provider=get_settings().llm_provider,
+        max_tokens=get_settings().max_tokens,
         user_timezone=user_timezone,  # Pass user timezone to agent
     )
 
@@ -255,9 +255,9 @@ async def chat_stream_endpoint(
             agent = WorkflowAgent(
                 thread_id=int(thread.id),
                 user_id=user_id,
-                llm_model=services.chat.settings.get_settings().llm_model,
-                llm_provider=services.chat.settings.get_settings().llm_provider,
-                max_tokens=services.chat.settings.get_settings().max_tokens,
+                llm_model=get_settings().llm_model,
+                llm_provider=get_settings().llm_provider,
+                max_tokens=get_settings().max_tokens,
                 user_timezone=user_timezone,  # Pass user timezone to agent
             )
 

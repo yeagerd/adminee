@@ -4,7 +4,7 @@ import requests
 from llama_index.core.tools import FunctionTool
 from llama_index.core.tools.types import ToolOutput
 
-import services.chat.settings
+from services.chat.settings import get_settings
 
 
 def format_event_time_for_display(
@@ -75,11 +75,11 @@ def get_calendar_events(
 ) -> Dict[str, Any]:
     # Use service-to-service authentication
     headers = {"Content-Type": "application/json"}
-    if not services.chat.settings.get_settings().api_chat_office_key:
+    if not get_settings().api_chat_office_key:
         return {
             "error": "Could not retrieve calendar events due to an internal server error"
         }
-    headers["X-API-Key"] = services.chat.settings.get_settings().api_chat_office_key  # type: ignore[assignment]
+    headers["X-API-Key"] = get_settings().api_chat_office_key  # type: ignore[assignment]
     headers["X-User-Id"] = user_id  # Add user_id as header, not as query param
 
     params: Dict[str, str | List[str]] = {}
@@ -105,7 +105,7 @@ def get_calendar_events(
         params["providers"] = provider_list
 
     try:
-        office_service_url = services.chat.settings.get_settings().office_service_url
+        office_service_url = get_settings().office_service_url
         response = requests.get(
             f"{office_service_url}/calendar/events",
             headers=headers,
@@ -176,13 +176,11 @@ def get_user_available_providers(user_id: str) -> List[str]:
     try:
         # Use service-to-service authentication to get user integrations
         headers = {"Content-Type": "application/json"}
-        if not services.chat.settings.get_settings().api_chat_user_key:
+        if not get_settings().api_chat_user_key:
             return []
-        headers["X-API-Key"] = services.chat.settings.get_settings().api_chat_user_key  # type: ignore[assignment]
+        headers["X-API-Key"] = get_settings().api_chat_user_key  # type: ignore[assignment]
 
-        user_service_url = (
-            services.chat.settings.get_settings().user_management_service_url
-        )
+        user_service_url = get_settings().user_management_service_url
         response = requests.get(
             f"{user_service_url}/internal/users/{user_id}/integrations",
             headers=headers,
@@ -224,9 +222,9 @@ def get_emails(
 ) -> Dict[str, Any]:
     # Use service-to-service authentication
     headers = {"Content-Type": "application/json"}
-    if not services.chat.settings.get_settings().api_chat_office_key:
+    if not get_settings().api_chat_office_key:
         return {"error": "Could not retrieve emails due to an internal server error"}
-    headers["X-API-Key"] = services.chat.settings.get_settings().api_chat_office_key  # type: ignore[assignment]
+    headers["X-API-Key"] = get_settings().api_chat_office_key  # type: ignore[assignment]
     headers["X-User-Id"] = user_id  # Add user_id as header, not as query param
 
     params: Dict[str, str | List[str]] = {}
@@ -250,7 +248,7 @@ def get_emails(
             params["providers"] = provider_list
 
     try:
-        office_service_url = services.chat.settings.get_settings().office_service_url
+        office_service_url = get_settings().office_service_url
         response = requests.get(
             f"{office_service_url}/email/messages",
             headers=headers,
@@ -299,9 +297,9 @@ def get_notes(
 ) -> Dict[str, Any]:
     # Use service-to-service authentication
     headers = {"Content-Type": "application/json"}
-    if not services.chat.settings.get_settings().api_chat_office_key:
+    if not get_settings().api_chat_office_key:
         return {"error": "Could not retrieve notes due to an internal server error"}
-    headers["X-API-Key"] = services.chat.settings.get_settings().api_chat_office_key  # type: ignore[assignment]
+    headers["X-API-Key"] = get_settings().api_chat_office_key  # type: ignore[assignment]
 
     params = {"user_id": user_id}
     if notebook:
@@ -314,7 +312,7 @@ def get_notes(
         params["max_results"] = str(max_results)
 
     try:
-        office_service_url = services.chat.settings.get_settings().office_service_url
+        office_service_url = get_settings().office_service_url
         response = requests.get(
             f"{office_service_url}/notes",
             headers=headers,
@@ -359,9 +357,9 @@ def get_documents(
 ) -> Dict[str, Any]:
     # Use service-to-service authentication
     headers = {"Content-Type": "application/json"}
-    if not services.chat.settings.get_settings().api_chat_office_key:
+    if not get_settings().api_chat_office_key:
         return {"error": "Could not retrieve documents due to an internal server error"}
-    headers["X-API-Key"] = services.chat.settings.get_settings().api_chat_office_key  # type: ignore[assignment]
+    headers["X-API-Key"] = get_settings().api_chat_office_key  # type: ignore[assignment]
     headers["X-User-Id"] = user_id  # Add user_id as header, not as query param
 
     params = {}
@@ -377,7 +375,7 @@ def get_documents(
         params["max_results"] = str(max_results)
 
     try:
-        office_service_url = services.chat.settings.get_settings().office_service_url
+        office_service_url = get_settings().office_service_url
         response = requests.get(
             f"{office_service_url}/documents",
             headers=headers,

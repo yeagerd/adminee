@@ -3,6 +3,8 @@ from unittest.mock import patch
 import pytest
 import requests
 
+from services.chat.settings import get_settings
+
 
 class MockResponse:
     def __init__(self, json_data, status_code):
@@ -35,9 +37,7 @@ def setup_chat_settings_env(monkeypatch):
     monkeypatch.setenv("LOG_LEVEL", "INFO")
     monkeypatch.setenv("LOG_FORMAT", "json")
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    import services.chat.settings as chat_settings
-
-    chat_settings._settings = None
+    get_settings()._settings = None
 
 
 @pytest.fixture(autouse=True)
