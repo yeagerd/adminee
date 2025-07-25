@@ -11,8 +11,6 @@ from unittest.mock import MagicMock, patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from services.office.core.settings import get_settings
-
 
 class BaseIntegrationTest:
     """Base class for integration tests with HTTP call detection rakes."""
@@ -165,6 +163,9 @@ class BaseOfficeServiceIntegrationTest(BaseIntegrationTest):
         self.client = self.create_test_client(app)
 
         # Set up default auth headers for tests
+        # Import settings here to avoid module-level dependency
+        from services.office.core.settings import get_settings
+
         settings = get_settings()
         self.auth_headers = {
             "X-User-Id": "test-user@example.com",
