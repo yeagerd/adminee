@@ -430,11 +430,12 @@ To enhance poll response security and tracking, each poll recipient will receive
 - [x] **New Public API Endpoint:**
   - [x] Implement `PUT /public/meetings/response/{response_token}` to accept poll responses using only the token.
   - [x] The endpoint should look up the participant by their `response_token`, verify the poll, and accept the response.
-- [ ] **Frontend Update:**
-  - [ ] Update the public poll response page to support the new URL structure and API.
-  - [ ] Remove the legacy meeting id from the frontend, backend, and DB.
-- [ ] **Secure Email Processing API**
-  - [ ] process_email_response(..) should validate an API key
+- [x] **Frontend Update:**
+  - [x] Update the public poll response page to support the new URL structure and API.
+  - [ ] Remove the legacy meeting id from the frontend, backend, and DB.  
+    - Partially complete: The new public poll response page uses only response_token, but dashboard/admin pages and backend models still use meeting id for internal/admin features. Remaining work: Remove or refactor meeting id usage for poll responses if full removal is desired.
+- [x] **Secure Email Processing API**
+  - [x] process_email_response(..) should validate an API key
 - [x] **Testing:**
   - [x] Add unit and integration tests for the new token-based response flow.
 
@@ -444,7 +445,8 @@ To enhance poll response security and tracking, each poll recipient will receive
 ### Backend
 - [x] Implement calendar integration (availability, event creation)
 - [x] Add email invitation and response processing
-- [ ] Add analytics endpoints and real-time updates (WebSocket/SSE)
+- [ ] Add analytics endpoints and real-time updates (WebSocket/SSE)  
+    - Not started: No analytics endpoints or real-time (WebSocket/SSE) features implemented in backend.
 - [x] Add public poll response endpoints and security/rate limiting
 - [x] Expand tests for all workflows (unit/integration)
 
@@ -453,11 +455,15 @@ To enhance poll response security and tracking, each poll recipient will receive
 - [x] Build public poll response page (mobile-friendly)
 - [x] Enhance poll creation wizard (multi-step, validation, time zones)
 - [x] Add response visualization and analytics to results page
-- [ ] Add real-time updates and notifications
-- [ ] Improve error/loading/mobile support
-- [ ] Add automated frontend tests
+- [ ] Add real-time updates and notifications  
+    - Not started: No WebSocket/SSE or notification logic for meetings in frontend. Notification UI is present but marked "coming soon."
+- [ ] Improve error/loading/mobile support  
+    - Partially complete: Error/loading state handling exists in poll response and dashboard pages. Comprehensive mobile/responsive improvements and systematic error handling for all meeting features are not fully implemented.
+- [ ] Add automated frontend tests  
+    - Partially complete: Some test infrastructure exists, but no dedicated automated tests for meeting poll flows.
 
 ### DevOps/Docs
-- [ ] Generate/apply Alembic migrations for meetings
-- [ ] Add MEETINGS_SERVICE_URL to gateway/.env and docs
-- [ ] Expand README/setup documentation for meetings service
+- [x] Generate/apply Alembic migrations for meetings
+- [ ] Add MEETINGS_SERVICE_URL to gateway/.env and docs  
+    - Partially complete: MEETINGS_SERVICE_URL is referenced in gateway code, but not shown in .env or documentation examples. Remaining work: Add explicit mention to .env and docs.
+- [x] Expand README/setup documentation for meetings service
