@@ -16,6 +16,17 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import EmailView from './views/email-view';
 
+// Define MeetingPoll type for frontend use
+export interface MeetingPoll {
+    id: string;
+    title: string;
+    status: string;
+    created_at: string;
+    updated_at: string;
+    poll_token: string;
+    // Add other fields as needed from backend schema
+}
+
 export function ToolContent() {
     const { activeTool } = useToolStateUtils();
     const { data: session } = useSession();
@@ -79,7 +90,7 @@ export function ToolContent() {
     const hasActiveCalendarIntegration = activeProviders.length > 0;
 
     // Meetings dashboard state and logic
-    const [polls, setPolls] = useState<{ id: string; title: string; status: string; created_at: string }[]>([]);
+    const [polls, setPolls] = useState<MeetingPoll[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -87,7 +98,7 @@ export function ToolContent() {
     const fetchPolls = () => {
         setLoading(true);
         gatewayClient.listMeetingPolls()
-            .then((data) => setPolls(data as any[]))
+            .then((data) => setPolls(data as MeetingPoll[]))
             .catch((e: unknown) => {
                 if (e && typeof e === 'object' && 'message' in e) {
                     setError((e as { message?: string }).message || 'Failed to load polls');
