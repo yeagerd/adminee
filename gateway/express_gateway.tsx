@@ -51,10 +51,11 @@ dotenv.config({ path: envPath });
         'CHAT_SERVICE_URL',
         'OFFICE_SERVICE_URL',
         'FRONTEND_URL',
+        'MEETINGS_SERVICE_URL',
+        'SHIPMENTS_SERVICE_URL',
         'API_FRONTEND_USER_KEY',
         'API_FRONTEND_CHAT_KEY',
         'API_FRONTEND_OFFICE_KEY',
-        'SHIPMENTS_SERVICE_URL',
         'API_FRONTEND_SHIPMENTS_KEY',
     ];
     const missing = required.filter((key) => !process.env[key]);
@@ -65,44 +66,6 @@ dotenv.config({ path: envPath });
         process.exit(1);
     }
 })();
-
-// Validate required environment variables
-if (!process.env.NEXTAUTH_SECRET) {
-    logger.error('❌ NEXTAUTH_SECRET is required but not set in .env file');
-    logger.error('   Please add NEXTAUTH_SECRET=your-secret-here to your .env file');
-    process.exit(1);
-}
-
-// Validate API keys for backend services
-if (!process.env.API_FRONTEND_USER_KEY) {
-    logger.error('❌ API_FRONTEND_USER_KEY is required but not set in .env file');
-    logger.error('   Please add API_FRONTEND_USER_KEY=your-frontend-user-api-key to your .env file');
-    process.exit(1);
-}
-
-if (!process.env.API_FRONTEND_CHAT_KEY) {
-    logger.error('❌ API_FRONTEND_CHAT_KEY is required but not set in .env file');
-    logger.error('   Please add API_FRONTEND_CHAT_KEY=your-frontend-chat-api-key to your .env file');
-    process.exit(1);
-}
-
-if (!process.env.API_FRONTEND_OFFICE_KEY) {
-    logger.error('❌ API_FRONTEND_OFFICE_KEY is required but not set in .env file');
-    logger.error('   Please add API_FRONTEND_OFFICE_KEY=your-frontend-office-api-key to your .env file');
-    process.exit(1);
-}
-// Add explicit validation for SHIPMENTS_SERVICE_URL
-if (!process.env.SHIPMENTS_SERVICE_URL) {
-    logger.error('❌ SHIPMENTS_SERVICE_URL is required but not set in .env file');
-    logger.error('   Please add SHIPMENTS_SERVICE_URL=http://localhost:8004 to your .env file');
-    process.exit(1);
-}
-// Add explicit validation for API_FRONTEND_SHIPMENTS_KEY
-if (!process.env.API_FRONTEND_SHIPMENTS_KEY) {
-    logger.error('❌ API_FRONTEND_SHIPMENTS_KEY is required but not set in .env file');
-    logger.error('   Please add API_FRONTEND_SHIPMENTS_KEY=your-frontend-shipments-api-key to your .env file');
-    process.exit(1);
-}
 
 logger.info('✅ Environment loaded successfully');
 
