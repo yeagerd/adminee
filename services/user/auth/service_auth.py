@@ -143,8 +143,8 @@ def require_service_auth(
 ) -> Callable[[Request], Any]:
     """Create a service auth dependency with optional client restrictions."""
 
-    async def dependency(request: Request) -> str:
-        service_name = await verify_service_authentication(request)
+    def dependency(request: Request) -> str:
+        service_name = verify_service_authentication(request)
         if allowed_clients:
             client_name = getattr(request.state, "client_name", None)
             if client_name not in allowed_clients:

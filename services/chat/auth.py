@@ -59,7 +59,6 @@ SERVICE_PERMISSIONS = {
     ],
 }
 
-# FastAPI dependencies
 verify_service_authentication = make_verify_service_authentication(
     API_KEY_CONFIGS, get_settings
 )

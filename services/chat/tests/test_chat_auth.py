@@ -56,38 +56,35 @@ class TestChatServiceAuth:
         client_name = get_client_from_api_key("test-FRONTEND_CHAT_KEY", api_key_mapping)
         assert client_name == "frontend"
 
-    @pytest.mark.asyncio
-    async def test_verify_chat_authentication_success(self):
+    def test_verify_chat_authentication_success(self):
         """Test successful chat authentication."""
         request = MagicMock(spec=Request)
         request.headers = {"Authorization": "Bearer test-FRONTEND_CHAT_KEY"}
         request.state = Mock()
 
-        client_name = await verify_service_authentication(request)
+        client_name = verify_service_authentication(request)
         assert client_name == "chat-service-access"
 
-    @pytest.mark.asyncio
-    async def test_verify_chat_authentication_missing_key(self):
+    def test_verify_chat_authentication_missing_key(self):
         """Test chat authentication with missing API key."""
         request = MagicMock(spec=Request)
         request.headers = {}
         request.state = Mock()
 
         with pytest.raises(AuthError) as exc_info:
-            await verify_service_authentication(request)
+            verify_service_authentication(request)
 
         assert exc_info.value.status_code == 401
         assert "API key required" in str(exc_info.value)
 
-    @pytest.mark.asyncio
-    async def test_verify_chat_authentication_invalid_key(self):
+    def test_verify_chat_authentication_invalid_key(self):
         """Test chat authentication with invalid API key."""
         request = MagicMock(spec=Request)
         request.headers = {"X-API-Key": "invalid-key"}
         request.state = Mock()
 
         with pytest.raises(AuthError) as exc_info:
-            await verify_service_authentication(request)
+            verify_service_authentication(request)
 
         assert exc_info.value.status_code == 401
         assert "Invalid API key" in str(exc_info.value)
@@ -140,19 +137,17 @@ class TestChatServiceAuth:
             is False
         )
 
-    @pytest.mark.asyncio
-    async def test_require_chat_auth_success(self):
+    def test_require_chat_auth_success(self):
         """Test require_chat_auth decorator success."""
         request = MagicMock(spec=Request)
         request.headers = {"Authorization": "Bearer test-FRONTEND_CHAT_KEY"}
         request.state = Mock()
 
         auth_dep = service_permission_required(["read_chats"])
-        client_name = await auth_dep(request)
+        client_name = auth_dep(request)
         assert client_name == "chat-service-access"
 
-    @pytest.mark.asyncio
-    async def test_require_chat_auth_restriction_failure(self):
+    def test_require_chat_auth_restriction_failure(self):
         """Test require_chat_auth decorator with client restriction failure."""
         request = MagicMock(spec=Request)
         request.headers = {"Authorization": "Bearer test-FRONTEND_CHAT_KEY"}
@@ -161,7 +156,7 @@ class TestChatServiceAuth:
         # Require a permission that frontend doesn't have
         auth_dep = service_permission_required(["admin_access"])
         with pytest.raises(AuthError) as exc_info:
-            await auth_dep(request)
+            auth_dep(request)
 
         assert exc_info.value.status_code == 403
         assert "Insufficient permissions" in str(exc_info.value)
@@ -171,8 +166,7 @@ class TestChatServiceAuth:
         decorator = service_permission_required(["read_chats"])
         assert callable(decorator)
 
-    @pytest.mark.asyncio
-    async def test_multiple_auth_header_formats(self):
+    def test_multiple_auth_header_formats(self):
         """Test different authentication header formats."""
         test_cases = [
             {"Authorization": "Bearer test-FRONTEND_CHAT_KEY"},
@@ -185,7 +179,7 @@ class TestChatServiceAuth:
             request.headers = headers
             request.state = Mock()
 
-            client_name = await verify_service_authentication(request)
+            client_name = verify_service_authentication(request)
             assert client_name == "chat-service-access"
 
 

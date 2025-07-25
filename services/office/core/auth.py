@@ -81,10 +81,10 @@ def service_permission_required(
     )
 
 
-async def optional_service_auth(request: Request) -> Optional[str]:
+def optional_service_auth(request: Request) -> Optional[str]:
     """Optional service authentication that returns None if no valid API key is provided."""
     try:
-        return await verify_service_authentication(request)
+        return verify_service_authentication(request)
     except AuthError:
         return None
 

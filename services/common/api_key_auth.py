@@ -134,9 +134,10 @@ def validate_service_permissions(
 # FastAPI dependencies (parameterized)
 def make_verify_service_authentication(
     api_key_configs: Dict[str, APIKeyConfig], get_settings: Callable[[], Any]
-) -> Callable[[Request], Any]:
-    async def verify_service_authentication(request: Request) -> str:
-        api_key = get_api_key_from_request(request)  # FIX: removed await
+) -> Callable[[Request], str]:
+    def verify_service_authentication(request: Request) -> str:
+        """Synchronously verify the API key from the request and return the service name."""
+        api_key = get_api_key_from_request(request)
         api_key_mapping = build_api_key_mapping(api_key_configs, get_settings)
         if not api_key:
             logger.warning("Missing API key in request headers")

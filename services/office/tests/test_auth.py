@@ -301,60 +301,55 @@ class TestAPIKeyExtraction:
 class TestServiceAuthentication:
     """Test service authentication workflow."""
 
-    @pytest.mark.asyncio
-    async def test_verify_service_authentication_success(self):
+    def test_verify_service_authentication_success(self):
         """Test successful service authentication."""
         request = Mock()
         request.headers = {"X-API-Key": get_test_api_keys()["frontend"]}
         request.state = Mock()
 
-        service_name = await verify_service_authentication(request)
+        service_name = verify_service_authentication(request)
         assert service_name == "office-service-access"
         assert request.state.api_key == get_test_api_keys()["frontend"]
         assert request.state.service_name == "office-service-access"
         assert request.state.client_name == "frontend"
 
-    @pytest.mark.asyncio
-    async def test_verify_service_authentication_missing_api_key(self):
+    def test_verify_service_authentication_missing_api_key(self):
         """Test service authentication with missing API key."""
         request = Mock()
         request.headers = {}
 
         with pytest.raises(AuthError) as exc_info:
-            await verify_service_authentication(request)
+            verify_service_authentication(request)
 
         assert exc_info.value.status_code == 401
         assert "API key required" in str(exc_info.value)
 
-    @pytest.mark.asyncio
-    async def test_verify_service_authentication_invalid_api_key(self):
+    def test_verify_service_authentication_invalid_api_key(self):
         """Test service authentication with invalid API key."""
         request = Mock()
         request.headers = {"X-API-Key": "invalid-key"}
 
         with pytest.raises(AuthError) as exc_info:
-            await verify_service_authentication(request)
+            verify_service_authentication(request)
 
         assert exc_info.value.status_code == 401
         assert "Invalid API key" in str(exc_info.value)
 
-    @pytest.mark.asyncio
-    async def test_optional_service_auth_success(self):
+    def test_optional_service_auth_success(self):
         """Test optional service authentication success."""
         request = Mock()
         request.headers = {"X-API-Key": get_test_api_keys()["frontend"]}
         request.state = Mock()
 
-        service_name = await optional_service_auth(request)
+        service_name = optional_service_auth(request)
         assert service_name == "office-service-access"
 
-    @pytest.mark.asyncio
-    async def test_optional_service_auth_failure(self):
+    def test_optional_service_auth_failure(self):
         """Test optional service authentication failure."""
         request = Mock()
         request.headers = {}
 
-        service_name = await optional_service_auth(request)
+        service_name = optional_service_auth(request)
         assert service_name is None
 
 
