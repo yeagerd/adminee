@@ -3,13 +3,11 @@ from contextlib import contextmanager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from services.meetings.models.base import Base
-from services.meetings.models.meeting import (
-    MeetingPoll,
-    PollParticipant,
-    PollResponse,
-    TimeSlot,
-)
+from services.meetings.models.base import Base as Base
+from services.meetings.models.meeting import MeetingPoll as MeetingPoll
+from services.meetings.models.meeting import PollParticipant as PollParticipant
+from services.meetings.models.meeting import PollResponse as PollResponse
+from services.meetings.models.meeting import TimeSlot as TimeSlot
 from services.meetings.settings import get_settings
 
 
