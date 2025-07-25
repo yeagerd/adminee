@@ -133,7 +133,7 @@ This task list outlines the work required to add "v1" versioning to all APIs in 
 ## Remaining Tasks
 
 ### High Priority:
-- [ ] Fix remaining 53 failing tests (mostly integration endpoint tests)
+- [ ] Fix remaining 33 failing tests (mostly integration endpoint tests)
 - [ ] Update API documentation to reflect v1 endpoints
 - [ ] Update any remaining hardcoded API paths in tests
 
@@ -155,6 +155,14 @@ This task list outlines the work required to add "v1" versioning to all APIs in 
 - `frontend/app/public/meetings/respond/[response_token]/page.tsx`
 **Changes**: Updated both fetch calls to use correct `/api/v1/public/polls/response/` endpoint
 **Status**: ✅ Fixed and verified
+
+### Test Fixes (In Progress)
+**Issue**: Tests failing due to API response schema mismatches after v1 migration
+**Files Fixed**:
+- `services/office/tests/test_integration.py` - Updated all API endpoints to use v1 prefixes
+- `services/user/tests/test_integration_endpoints.py` - Fixed OAuth callback response schemas
+**Progress**: Reduced failing tests from 53 to 33 (20 tests fixed)
+**Status**: 🔄 In Progress
 
 ## Migration Strategy ✅ COMPLETED
 

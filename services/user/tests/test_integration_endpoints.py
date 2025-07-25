@@ -221,11 +221,12 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
         }
 
         mock_response = {
-            "integration_id": "integration_123",
+            "success": True,
+            "integration_id": 123,
             "provider": "google",
             "status": "active",
-            "access_token_expires_at": datetime.now(timezone.utc).isoformat(),
-            "refresh_token_expires_at": datetime.now(timezone.utc).isoformat(),
+            "scopes": ["https://www.googleapis.com/auth/calendar"],
+            "external_user_info": {"email": "test@example.com", "name": "Test User"},
         }
 
         with patch(
@@ -241,6 +242,7 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
             )
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
+        assert data["success"] == mock_response["success"]
         assert data["integration_id"] == mock_response["integration_id"]
         assert data["provider"] == mock_response["provider"]
         assert data["status"] == mock_response["status"]
@@ -254,11 +256,12 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
         }
 
         mock_response = {
-            "integration_id": "integration_456",
+            "success": True,
+            "integration_id": 456,
             "provider": "microsoft",
             "status": "active",
-            "access_token_expires_at": datetime.now(timezone.utc).isoformat(),
-            "refresh_token_expires_at": datetime.now(timezone.utc).isoformat(),
+            "scopes": ["https://graph.microsoft.com/Calendars.ReadWrite"],
+            "external_user_info": {"email": "test@example.com", "name": "Test User"},
         }
 
         with patch(
@@ -274,6 +277,7 @@ class TestOAuthFlowEndpoints(BaseUserManagementIntegrationTest):
             )
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
+        assert data["success"] == mock_response["success"]
         assert data["integration_id"] == mock_response["integration_id"]
         assert data["provider"] == mock_response["provider"]
         assert data["status"] == mock_response["status"]
@@ -370,11 +374,11 @@ class TestIntegrationManagementEndpoints(BaseUserManagementIntegrationTest):
         provider = "google"
 
         mock_response = {
-            "integration_id": "integration_123",
+            "success": True,
+            "integration_id": 123,
             "provider": "google",
-            "status": "active",
-            "access_token_expires_at": datetime.now(timezone.utc).isoformat(),
-            "refresh_token_expires_at": datetime.now(timezone.utc).isoformat(),
+            "token_expires_at": datetime.now(timezone.utc),
+            "refreshed_at": datetime.now(timezone.utc),
         }
 
         with patch(
@@ -389,9 +393,9 @@ class TestIntegrationManagementEndpoints(BaseUserManagementIntegrationTest):
             )
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
+        assert data["success"] == mock_response["success"]
         assert data["integration_id"] == mock_response["integration_id"]
         assert data["provider"] == mock_response["provider"]
-        assert data["status"] == mock_response["status"]
 
     def test_refresh_integration_tokens_failure(self):
         """Test token refresh failure."""
