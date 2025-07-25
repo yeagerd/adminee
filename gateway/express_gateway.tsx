@@ -54,6 +54,8 @@ dotenv.config({ path: envPath });
         'API_FRONTEND_USER_KEY',
         'API_FRONTEND_CHAT_KEY',
         'API_FRONTEND_OFFICE_KEY',
+        'SHIPMENTS_SERVICE_URL',
+        'API_FRONTEND_SHIPMENTS_KEY',
     ];
     const missing = required.filter((key) => !process.env[key]);
     if (missing.length > 0) {
@@ -87,6 +89,18 @@ if (!process.env.API_FRONTEND_CHAT_KEY) {
 if (!process.env.API_FRONTEND_OFFICE_KEY) {
     logger.error('❌ API_FRONTEND_OFFICE_KEY is required but not set in .env file');
     logger.error('   Please add API_FRONTEND_OFFICE_KEY=your-frontend-office-api-key to your .env file');
+    process.exit(1);
+}
+// Add explicit validation for SHIPMENTS_SERVICE_URL
+if (!process.env.SHIPMENTS_SERVICE_URL) {
+    logger.error('❌ SHIPMENTS_SERVICE_URL is required but not set in .env file');
+    logger.error('   Please add SHIPMENTS_SERVICE_URL=http://localhost:8004 to your .env file');
+    process.exit(1);
+}
+// Add explicit validation for API_FRONTEND_SHIPMENTS_KEY
+if (!process.env.API_FRONTEND_SHIPMENTS_KEY) {
+    logger.error('❌ API_FRONTEND_SHIPMENTS_KEY is required but not set in .env file');
+    logger.error('   Please add API_FRONTEND_SHIPMENTS_KEY=your-frontend-shipments-api-key to your .env file');
     process.exit(1);
 }
 
@@ -295,6 +309,7 @@ const serviceRoutes = {
     '/api/email': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
     '/api/files': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
     '/api/drafts': process.env.CHAT_SERVICE_URL || 'http://127.0.0.1:8002',
+    '/api/packages': process.env.SHIPMENTS_SERVICE_URL || 'http://127.0.0.1:8004',
 };
 
 // Create proxy middleware factory
@@ -319,6 +334,9 @@ const createServiceProxy = (targetUrl: string, pathRewrite?: Record<string, stri
             } else if (targetUrl.includes('8003')) {
                 // Office service
                 proxyReq.setHeader('X-API-Key', process.env.API_FRONTEND_OFFICE_KEY || '');
+            } else if (targetUrl.includes('8004')) {
+                // Shipments service
+                proxyReq.setHeader('X-API-Key', process.env.API_FRONTEND_SHIPMENTS_KEY || '');
             }
 
             // Forward user identity to backend
@@ -400,6 +418,8 @@ app.use('/api/files', validateAuth, standardLimiter, createServiceProxy(serviceR
 app.use('/api/files/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/files'], { '^/api/files': '/files' }));
 app.use('/api/drafts', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/drafts'], { '^/api/drafts': '/chat/drafts' }));
 app.use('/api/drafts/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/drafts'], { '^/api/drafts': '/chat/drafts' }));
+app.use('/api/packages', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/packages'], { '^/api/packages': '/api/packages' }));
+app.use('/api/packages/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/packages'], { '^/api/packages': '/api/packages' }));
 
 // Fallback for other API routes (default to user service)
 app.use('/api', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/users'], { '^/api': '' }));
@@ -431,6 +451,7 @@ const server = app.listen(PORT, () => {
     logger.info(`  /api/email    → ${serviceRoutes['/api/email']}`);
     logger.info(`  /api/files    → ${serviceRoutes['/api/files']}`);
     logger.info(`  /api/drafts     → ${serviceRoutes['/api/drafts']}`);
+    logger.info(`  /api/packages → ${serviceRoutes['/api/packages']}`);
 });
 
 // Handle WebSocket upgrades
@@ -447,6 +468,8 @@ server.on('upgrade', (request: any, socket: any, head: any) => {
         targetService = serviceRoutes['/api/chat'];
     } else if (path.startsWith('/api/calendar') || path.startsWith('/api/email') || path.startsWith('/api/files')) {
         targetService = serviceRoutes['/api/calendar']; // All office service endpoints
+    } else if (path.startsWith('/api/packages')) {
+        targetService = serviceRoutes['/api/packages']; // Shipments service
     }
 
     // Create proxy for WebSocket
