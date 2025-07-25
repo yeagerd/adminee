@@ -15,7 +15,7 @@ from services.chat.auth import (
     service_permission_required,
     verify_service_authentication,
 )
-from services.chat.settings import get_settings, Settings
+from services.chat.settings import Settings, get_settings
 from services.common.api_key_auth import (
     build_api_key_mapping,
     get_client_from_api_key,
@@ -42,8 +42,9 @@ def patch_settings(monkeypatch):
     def _test_settings():
         return Settings(
             api_frontend_chat_key="test-FRONTEND_CHAT_KEY",
-            db_url_chat="sqlite+aiosqlite:///file::memory:?cache=shared"
+            db_url_chat="sqlite+aiosqlite:///file::memory:?cache=shared",
         )
+
     monkeypatch.setattr("services.chat.settings.get_settings", _test_settings)
 
 
