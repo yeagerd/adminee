@@ -17,7 +17,7 @@ from services.meetings.models import (
     PollResponse,
     get_session,
 )
-from services.meetings.models.meeting import ResponseType
+from services.meetings.models.meeting import ParticipantStatus, ResponseType
 from services.meetings.settings import get_settings
 
 router = APIRouter()
@@ -38,7 +38,7 @@ class EmailResponseRequest(BaseModel):
     sender: str
 
 
-def parse_email_content(content: str):
+def parse_email_content(content: str) -> tuple[str | None, str | None]:
     """
     Dummy parser: expects content to be of the form:
     RESPONSE: <available|unavailable|maybe> [OPTIONAL_COMMENT]
@@ -94,21 +94,21 @@ def process_email_response(req: EmailResponseRequest, request: Request) -> dict:
                 .first()
             )
             if existing:
-                existing.response = ResponseType(response_str)
-                existing.comment = comment
-                existing.updated_at = datetime.datetime.utcnow()
+                existing.response = ResponseType(response_str).value  # type: ignore[assignment]
+                existing.comment = comment  # type: ignore[assignment]
+                existing.updated_at = datetime.datetime.utcnow()  # type: ignore[assignment]
             else:
                 resp = PollResponse(
                     id=uuid4(),
                     poll_id=poll.id,
                     participant_id=participant.id,
                     time_slot_id=slot.id,
-                    response=ResponseType(response_str),
-                    comment=comment,
+                    response=ResponseType(response_str).value,  # type: ignore[assignment]
+                    comment=comment,  # type: ignore[assignment]
                 )
                 session.add(resp)
-        participant.status = "responded"
-        participant.responded_at = datetime.datetime.utcnow()
+        participant.status = ParticipantStatus.responded.value  # type: ignore[assignment]
+        participant.responded_at = datetime.datetime.utcnow()  # type: ignore[assignment]
         session.commit()
         logging.info(
             f"Processed email response from {req.sender}: {response_str} ({comment})"
