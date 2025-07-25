@@ -52,8 +52,12 @@ class MeetingPoll(Base):
     description = Column(Text)
     duration_minutes = Column(Integer, nullable=False)
     location = Column(String(500))
-    meeting_type: Column = Column(Enum(MeetingType), default=MeetingType.tbd)
-    status: Column = Column(Enum(PollStatus), default=PollStatus.draft)
+    meeting_type: Mapped[MeetingType] = mapped_column(
+        Enum(MeetingType), default=MeetingType.tbd
+    )
+    status: Mapped[PollStatus] = mapped_column(
+        Enum(PollStatus), default=PollStatus.draft
+    )
     response_deadline = Column(DateTime(timezone=True))
     min_participants = Column(Integer, default=1)
     max_participants = Column(Integer)
@@ -141,7 +145,7 @@ class PollResponse(Base):
         ForeignKey("time_slots.id", ondelete="CASCADE"),
         nullable=False,
     )
-    response: Column = Column(Enum(ResponseType), nullable=False)
+    response: Mapped[ResponseType] = mapped_column(Enum(ResponseType), nullable=False)
     comment = Column(Text)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(
