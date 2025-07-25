@@ -35,7 +35,8 @@ export function Sidebar() {
     const searchParams = useSearchParams();
 
     const handleToolChange = (tool: Tool) => {
-        if (!isToolEnabled(tool) || !isToolAvailable(tool)) return;
+        const item = navigationItems.find(item => item.id === tool);
+        if (!isToolEnabled(tool) || !isToolAvailable(tool) || !item?.enabled) return;
         const params = new URLSearchParams(searchParams.toString());
         params.set('tool', tool);
         router.replace(`${pathname}?${params.toString()}`, { scroll: false });
@@ -54,7 +55,7 @@ export function Sidebar() {
                     <SidebarGroupContent>
                         <SidebarMenu>
                             {navigationItems.map((item) => {
-                                const isEnabled = isToolEnabled(item.id);
+                                const isEnabled = isToolEnabled(item.id) && item.enabled;
                                 const badge = getToolBadge(item.id);
                                 const isAvailable = isToolAvailable(item.id);
 
