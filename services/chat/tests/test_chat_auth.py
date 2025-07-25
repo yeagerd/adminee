@@ -4,12 +4,12 @@ Tests for Chat Service Authentication.
 Tests the API key authentication system for the chat service.
 """
 
-import os
 from unittest.mock import MagicMock, Mock
 
 import pytest
 from fastapi import Request
 
+import services.chat.settings
 from services.chat.auth import (
     API_KEY_CONFIGS,
     service_permission_required,
@@ -28,13 +28,16 @@ from services.common.http_errors import AuthError
 
 @pytest.fixture(autouse=True, scope="session")
 def set_db_url_chat():
-    original_db_url = os.environ.get("DB_URL_CHAT")
-    os.environ["DB_URL_CHAT"] = "sqlite+aiosqlite:///file::memory:?cache=shared"
+    # Save the original singleton to restore later
+    original_settings = services.chat.settings._settings
+    # Set the singleton to a test instance
+    services.chat.settings._settings = services.chat.settings.Settings(
+        api_frontend_chat_key="test-FRONTEND_CHAT_KEY",
+        db_url_chat="sqlite+aiosqlite:///file::memory:?cache=shared",
+    )
     yield
-    if original_db_url:
-        os.environ["DB_URL_CHAT"] = original_db_url
-    elif "DB_URL_CHAT" in os.environ:
-        del os.environ["DB_URL_CHAT"]
+    # Restore the original singleton after the session
+    services.chat.settings._settings = original_settings
 
 
 @pytest.fixture(autouse=True)
@@ -53,22 +56,30 @@ class TestChatServiceAuth:
 
     def test_chat_service_auth_verify_valid_key(self):
         """Test valid API key verification."""
+        import services.chat.settings
+
+        test_settings = services.chat.settings.Settings(
+            api_frontend_chat_key="test-FRONTEND_CHAT_KEY",
+            db_url_chat="sqlite+aiosqlite:///file::memory:?cache=shared",
+        )
+        services.chat.settings._settings = test_settings
         import logging
 
         logger = logging.getLogger("test.diagnostics")
-        # Log the value from get_settings directly
-        settings = get_settings()
+        settings = services.chat.settings.get_settings()
         logger.warning(
             f"get_settings().api_frontend_chat_key: {getattr(settings, 'api_frontend_chat_key', None)}"
         )
-        # Build and log the API key mapping
-        api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
+        api_key_mapping = build_api_key_mapping(
+            API_KEY_CONFIGS, services.chat.settings.get_settings
+        )
         logger.warning(f"api_key_mapping: {api_key_mapping}")
-        # Log the test key value
         logger.warning("Test key value: 'test-FRONTEND_CHAT_KEY'")
         service_name = verify_api_key("test-FRONTEND_CHAT_KEY", api_key_mapping)
         logger.warning(f"verify_api_key returned: {service_name}")
         assert service_name == "chat-service-access"
+        # Cleanup
+        services.chat.settings._settings = None
 
     def test_chat_service_auth_verify_invalid_key(self):
         """Test invalid API key verification."""
