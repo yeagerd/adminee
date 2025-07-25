@@ -7,7 +7,7 @@ import pytest
 async def test_lifespan_disposes_engine():
     with (
         patch("services.chat.main.history_manager") as mock_history_manager,
-        patch("services.chat.main.get_settings") as mock_get_settings,
+        patch("services.chat.settings.get_settings") as mock_get_settings,
     ):
         # Set up the mock settings to return valid values
         mock_settings = AsyncMock()

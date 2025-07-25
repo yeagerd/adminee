@@ -21,7 +21,7 @@ def setup_chat_settings_env(monkeypatch):
     monkeypatch.setenv("DB_URL_CHAT", "sqlite:///test.db")
     monkeypatch.setenv("API_CHAT_USER_KEY", "test-api-key")
     monkeypatch.setenv("API_CHAT_OFFICE_KEY", "test-api-key")
-    monkeypatch.setenv("API_FRONTEND_CHAT_KEY", "test-api-key")
+    monkeypatch.setenv("API_FRONTEND_CHAT_KEY", "test-FRONTEND_CHAT_KEY")
     monkeypatch.setenv("USER_MANAGEMENT_SERVICE_URL", "http://test-user-server")
     monkeypatch.setenv("OFFICE_SERVICE_URL", "http://test-office-server")
     monkeypatch.setenv("LLM_PROVIDER", "fake")

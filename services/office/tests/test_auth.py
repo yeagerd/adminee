@@ -339,7 +339,7 @@ class TestServiceAuthentication:
         with pytest.raises(AuthError) as exc_info:
             verify_service_authentication(request)
 
-        assert exc_info.value.status_code == 401
+        assert exc_info.value.status_code == 403
         assert "Invalid API key" in str(exc_info.value)
 
     def test_optional_service_auth_success(self):
@@ -418,7 +418,7 @@ class TestServicePermissionRequired:
         with pytest.raises(AuthError) as exc_info:
             await permission_check(request)
 
-        assert exc_info.value.status_code == 401
+        assert exc_info.value.status_code == 403
         assert "Invalid API key" in str(exc_info.value)
 
 
@@ -519,7 +519,7 @@ class TestIntegrationWithFastAPI:
 
         with pytest.raises(AuthError) as exc_info:
             client.get("/protected", headers={"X-API-Key": "invalid-key"})
-        assert exc_info.value.status_code == 401
+        assert exc_info.value.status_code == 403
         assert "invalid api key" in str(exc_info.value).lower()
 
 

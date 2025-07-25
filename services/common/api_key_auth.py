@@ -145,7 +145,7 @@ def make_verify_service_authentication(
         service_name = verify_api_key(api_key, api_key_mapping)
         if not service_name:
             logger.warning(f"Invalid API key: {api_key[:8]}...")
-            raise AuthError(message="Invalid API key", status_code=401)
+            raise AuthError(message="Invalid API key", status_code=403)
         request.state.api_key = api_key
         request.state.service_name = service_name
         request.state.client_name = get_client_from_api_key(api_key, api_key_mapping)
