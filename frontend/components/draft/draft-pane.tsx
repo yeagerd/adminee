@@ -71,26 +71,14 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
     if (!draft) {
         return (
             <div className={cn(
-                'h-full flex flex-col items-center justify-center p-6 text-center',
+                'h-full flex flex-col items-center justify-center p-6',
                 className
             )}>
-                <div className="max-w-sm space-y-4">
-                    <div className="text-muted-foreground">
-                        <h3 className="text-lg font-medium mb-2">No Draft Selected</h3>
-                        <p className="text-sm">
-                            Create a new draft or select an existing one to get started.
-                        </p>
-                    </div>
-
-                    <div className="space-y-2">
-                        <p className="text-xs text-muted-foreground">Choose a draft type:</p>
-                        <DraftTypeSwitcher
-                            currentType="email"
-                            onTypeChange={handleTypeChange}
-                            className="justify-center"
-                        />
-                    </div>
-                </div>
+                <DraftTypeSwitcher
+                    currentType="email"
+                    onTypeChange={handleTypeChange}
+                    className="justify-center"
+                />
             </div>
         );
     }
