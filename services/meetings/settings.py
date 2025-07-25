@@ -19,6 +19,12 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("DB_URL_MEETINGS"),
     )
 
+    api_email_sync_meetings_key: str = Field(
+        default=...,  # required
+        description="API key for syncing email responses to meetings",
+        validation_alias=AliasChoices("API_EMAIL_SYNC_MEETINGS_KEY"),
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
