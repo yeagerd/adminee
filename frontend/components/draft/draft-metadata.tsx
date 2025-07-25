@@ -178,10 +178,7 @@ export function DraftMetadata({ draft, onUpdate, type }: DraftMetadataProps) {
     };
 
     return (
-        <div className="p-4 border-b bg-muted/30">
-            <h3 className="text-sm font-medium text-muted-foreground mb-4">
-                {type.charAt(0).toUpperCase() + type.slice(1)} Details
-            </h3>
+        <div>
             {renderMetadataByType()}
         </div>
     );
