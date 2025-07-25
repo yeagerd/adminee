@@ -213,7 +213,12 @@ class TestReadinessEndpoint(BaseUserManagementIntegrationTest):
     def test_readiness_check_missing_configuration(self, mock_get_settings):
         """Test readiness check with missing configuration."""
         mock_settings = mock_get_settings.return_value
-        mock_settings.api_frontend_user_key = None  # Missing required config
+        # Provide valid API keys since they are now required
+        mock_settings.api_frontend_user_key = "test-frontend-key"
+        mock_settings.api_chat_user_key = "test-chat-key"
+        mock_settings.api_office_user_key = "test-office-key"
+        # Test with other missing configuration
+        mock_settings.db_url_user_management = None
 
         response = self.client.get("/ready")
         # This might still pass if other configs are valid, so just check it doesn't crash
