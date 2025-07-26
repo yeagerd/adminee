@@ -4,8 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToolStateUtils } from '@/hooks/use-tool-state';
 import { gatewayClient } from '@/lib/gateway-client';
+import { CalendarEvent } from '@/types/office-service';
 import { ArrowLeft } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
+import { TimeSlotCalendar } from './time-slot-calendar';
 
 const getTimeZones = () =>
     Intl.supportedValuesOf ? Intl.supportedValuesOf("timeZone") : ["UTC"];
