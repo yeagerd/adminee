@@ -172,7 +172,7 @@ class TestAPIKeyFunctions:
         permissions = get_permissions_from_api_key(
             get_test_api_keys()["meetings"], api_key_mapping
         )
-        expected = ["send_emails", "health"]
+        expected = ["send_emails", "read_calendar", "write_calendar", "health"]
         assert set(permissions) == set(expected)
 
     def test_get_permissions_from_api_key_invalid(self):
@@ -222,6 +222,18 @@ class TestAPIKeyFunctions:
             get_test_api_keys()["meetings"], "read_emails", api_key_mapping
         )
         assert permission_result is False
+
+    def test_has_permission_meetings_service_has_calendar_permissions(self):
+        """Test meetings service has calendar permissions."""
+        api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
+        read_calendar_result = has_permission(
+            get_test_api_keys()["meetings"], "read_calendar", api_key_mapping
+        )
+        write_calendar_result = has_permission(
+            get_test_api_keys()["meetings"], "write_calendar", api_key_mapping
+        )
+        assert read_calendar_result is True
+        assert write_calendar_result is True
 
     def test_has_permission_invalid_key(self):
         """Test that invalid key has no permissions."""

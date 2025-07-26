@@ -24,12 +24,14 @@ async def create_calendar_event(
     settings = get_settings()
     url = f"{settings.office_service_url}/v1/calendar/create-meeting"
     headers = {"X-API-Key": settings.api_meetings_office_key, "X-User-Id": user_id}
-    data = {
-        "pollId": poll_id,
-        "selectedSlotId": selected_slot_id,
+    params = {
+        "poll_id": poll_id,
+        "selected_slot_id": selected_slot_id,
         "participants": participants,
+        "title": f"Meeting from poll {poll_id}",
+        "description": f"Meeting created from poll {poll_id}",
     }
     async with httpx.AsyncClient() as client:
-        resp = await client.post(url, headers=headers, json=data)
+        resp = await client.post(url, headers=headers, params=params)
         resp.raise_for_status()
         return resp.json()

@@ -52,14 +52,16 @@ API_KEY_CONFIGS: Dict[str, APIKeyConfig] = {
         ],  # No write permissions
         settings_key="api_chat_office_key",
     ),
-    # Meetings service key - can send emails for meeting invitations
+    # Meetings service key - can send emails for meeting invitations and manage calendar events
     "api_meetings_office_key": APIKeyConfig(
         client="meetings-service",
         service="office-service-access",
         permissions=[
             "send_emails",
+            "read_calendar",
+            "write_calendar",
             "health",
-        ],  # Only send emails and health check
+        ],  # Send emails, read/write calendar, and health check
         settings_key="api_meetings_office_key",
     ),
 }

@@ -65,6 +65,350 @@ def _get_calendar_scopes(provider: str) -> List[str]:
         return []
 
 
+@router.get("/availability", response_model=ApiResponse)
+async def get_user_availability(
+    request: Request,
+    start: str = Query(
+        ..., description="Start time for availability check (ISO format)"
+    ),
+    end: str = Query(..., description="End time for availability check (ISO format)"),
+    duration: int = Query(..., description="Duration in minutes for the meeting"),
+    providers: Optional[List[str]] = Query(
+        None,
+        description="Providers to check (google, microsoft). If not specified, checks all available providers",
+    ),
+    service_name: str = Depends(service_permission_required(["read_calendar"])),
+) -> ApiResponse:
+    """
+    Get user availability for a given time range.
+
+    Checks the user's calendar across multiple providers to find available time slots
+    for a meeting of the specified duration.
+
+    Args:
+        start: Start time for availability check
+        end: End time for availability check
+        duration: Duration in minutes for the meeting
+        providers: List of providers to check (defaults to all available)
+
+    Returns:
+        ApiResponse with available time slots
+    """
+    user_id = await get_user_id_from_gateway(request)
+    request_id = str(uuid.uuid4())
+    start_time = datetime.now(timezone.utc)
+
+    logger.info(
+        f"[{request_id}] Availability request: user_id={user_id}, start={start}, end={end}, duration={duration}"
+    )
+
+    try:
+        # Parse datetime strings
+        try:
+            start_dt = datetime.fromisoformat(start).replace(tzinfo=timezone.utc)
+            end_dt = datetime.fromisoformat(end).replace(tzinfo=timezone.utc)
+        except ValueError:
+            raise ValidationError(
+                message="Invalid datetime format. Use ISO format (YYYY-MM-DDTHH:MM:SS)",
+                field="start/end",
+            )
+
+        # If no providers specified, get user's preferred provider
+        if not providers:
+            preferred_provider = await api_client_factory.get_user_preferred_provider(
+                user_id
+            )
+            if preferred_provider:
+                providers = [preferred_provider.value]
+            else:
+                # Fallback to all providers if no preferred provider is set
+                providers = ["google", "microsoft"]
+
+        # Validate providers
+        valid_providers = []
+        for provider in providers:
+            if provider.lower() in ["google", "microsoft"]:
+                valid_providers.append(provider.lower())
+            else:
+                logger.warning(
+                    "Invalid provider specified",
+                    request_id=request_id,
+                    provider=provider,
+                )
+
+        if not valid_providers:
+            raise ValidationError(
+                message="No valid providers specified", field="providers"
+            )
+
+        # Build cache key
+        cache_params = {
+            "providers": valid_providers,
+            "start": start,
+            "end": end,
+            "duration": duration,
+        }
+        cache_key = generate_cache_key(user_id, "unified", "availability", cache_params)
+
+        # Check cache first
+        cached_result = await cache_manager.get_from_cache(cache_key)
+        if cached_result:
+            logger.info("Cache hit for availability", request_id=request_id)
+            return ApiResponse(
+                success=True, data=cached_result, cache_hit=True, request_id=request_id
+            )
+
+        # Fetch events from providers in parallel
+        tasks = []
+        for provider in valid_providers:
+            task = fetch_provider_events(
+                request_id,
+                user_id,
+                provider,
+                1000,  # High limit to get all events in range
+                start_dt,
+                end_dt,
+                None,  # No specific calendar IDs
+                None,  # No search query
+                "UTC",
+            )
+            tasks.append(task)
+
+        # Execute parallel requests
+        provider_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Process results and find available slots
+        all_events: List[CalendarEvent] = []
+        provider_errors = {}
+        providers_used = []
+
+        for i, result in enumerate(provider_results):
+            provider = valid_providers[i]
+
+            if isinstance(result, Exception):
+                logger.error(
+                    "Provider failed",
+                    request_id=request_id,
+                    provider=provider,
+                    error=str(result),
+                )
+                provider_errors[provider] = str(result)
+            elif result is not None and not isinstance(result, BaseException):
+                try:
+                    # Type narrowing: result should be tuple[List[CalendarEvent], str]
+                    events, provider_name = result
+                    all_events.extend(events)
+                    providers_used.append(provider_name)
+                    logger.info(
+                        f"[{request_id}] Provider {provider} returned {len(events)} events"
+                    )
+                except (TypeError, ValueError) as e:
+                    logger.error(
+                        f"[{request_id}] Invalid result format from {provider}: {e}"
+                    )
+                    provider_errors[provider] = f"Invalid result format: {e}"
+
+        # Find available time slots
+        available_slots = find_available_slots(start_dt, end_dt, duration, all_events)
+
+        # Build response
+        response_data = {
+            "available_slots": [
+                {
+                    "start": slot["start"].isoformat(),
+                    "end": slot["end"].isoformat(),
+                    "duration_minutes": duration,
+                }
+                for slot in available_slots
+            ],
+            "total_slots": len(available_slots),
+            "time_range": {
+                "start": start_dt.isoformat(),
+                "end": end_dt.isoformat(),
+            },
+            "providers_used": providers_used,
+            "provider_errors": provider_errors if provider_errors else None,
+            "request_metadata": {
+                "user_id": user_id,
+                "providers_requested": valid_providers,
+                "duration_minutes": duration,
+            },
+        }
+
+        # Cache the result for 5 minutes (availability changes frequently)
+        if providers_used:  # Only cache if at least one provider succeeded
+            await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=300)
+        else:
+            logger.info(
+                "Not caching response due to no successful providers",
+                request_id=request_id,
+                providers_used=providers_used,
+            )
+
+        # Calculate response time
+        end_time = datetime.now(timezone.utc)
+        response_time_ms = int((end_time - start_time).total_seconds() * 1000)
+
+        logger.info(
+            "Availability request completed",
+            request_id=request_id,
+            response_time_ms=response_time_ms,
+            providers_used=providers_used,
+            available_slots=len(available_slots),
+        )
+
+        return ApiResponse(
+            success=True,
+            data=response_data,
+            cache_hit=False,
+            provider_used=(
+                Provider(providers_used[0]) if len(providers_used) == 1 else None
+            ),
+            request_id=request_id,
+        )
+
+    except ValidationError:
+        raise
+    except Exception as e:
+        logger.error("Availability request failed", request_id=request_id, error=str(e))
+        raise ServiceError(message=f"Failed to check availability: {str(e)}")
+
+
+@router.post("/create-meeting", response_model=ApiResponse)
+async def create_meeting_event(
+    request: Request,
+    poll_id: str = Query(..., description="Poll ID for the meeting"),
+    selected_slot_id: str = Query(..., description="Selected time slot ID"),
+    participants: List[str] = Query(
+        ..., description="List of participant email addresses"
+    ),
+    title: str = Query(..., description="Meeting title"),
+    description: Optional[str] = Query(None, description="Meeting description"),
+    location: Optional[str] = Query(None, description="Meeting location"),
+    service_name: str = Depends(service_permission_required(["write_calendar"])),
+) -> ApiResponse:
+    """
+    Create a calendar event for a meeting.
+
+    Creates a calendar event with the specified participants and details.
+
+    Args:
+        poll_id: Poll ID for the meeting
+        selected_slot_id: Selected time slot ID
+        participants: List of participant email addresses
+        title: Meeting title
+        description: Meeting description (optional)
+        location: Meeting location (optional)
+
+    Returns:
+        ApiResponse with created event details
+    """
+    user_id = await get_user_id_from_gateway(request)
+    request_id = str(uuid.uuid4())
+    start_time = datetime.now(timezone.utc)
+
+    logger.info(
+        f"[{request_id}] Create meeting request: user_id={user_id}, poll_id={poll_id}, "
+        f"title='{title}', participants={len(participants)}"
+    )
+
+    try:
+        # Get user's preferred provider
+        preferred_provider = await api_client_factory.get_user_preferred_provider(
+            user_id
+        )
+        if not preferred_provider:
+            raise ValidationError(
+                message="No preferred calendar provider configured", field="provider"
+            )
+
+        provider = preferred_provider.value
+
+        # Get API client for provider
+        client = await api_client_factory.create_client(user_id, provider)
+        if client is None:
+            raise AuthError(
+                message=f"Failed to create API client for provider {provider}. User may not have connected this provider."
+            )
+
+        # Convert participants to EmailAddress format
+        from services.office.schemas import EmailAddress
+
+        attendee_list = [
+            EmailAddress(email=email, name=email.split("@")[0])
+            for email in participants
+        ]
+
+        # Create event data
+        event_data = CreateCalendarEventRequest(
+            title=title,
+            description=description or f"Meeting created from poll {poll_id}",
+            start_time=datetime.now(
+                timezone.utc
+            ),  # This should come from the slot data
+            end_time=datetime.now(timezone.utc)
+            + timedelta(hours=1),  # This should come from the slot data
+            attendees=attendee_list,
+            location=location,
+            provider=provider,
+        )
+
+        # Create event based on provider
+        created_event_data = None
+
+        async with client:
+            if provider == "google":
+                google_client = cast(GoogleAPIClient, client)
+                created_event_data = await create_google_event(
+                    request_id, google_client, event_data
+                )
+            elif provider == "microsoft":
+                microsoft_client = cast(MicrosoftAPIClient, client)
+                created_event_data = await create_microsoft_event(
+                    request_id, microsoft_client, event_data
+                )
+
+        # Build response
+        response_data = {
+            "event_id": created_event_data.get("id") if created_event_data else None,
+            "provider": provider,
+            "status": "created",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "poll_id": poll_id,
+            "selected_slot_id": selected_slot_id,
+            "participants": participants,
+            "request_metadata": {
+                "user_id": user_id,
+                "title": title,
+                "provider": provider,
+            },
+        }
+
+        # Calculate response time
+        end_time = datetime.now(timezone.utc)
+        response_time_ms = int((end_time - start_time).total_seconds() * 1000)
+
+        logger.info(
+            f"[{request_id}] Meeting event created successfully in {response_time_ms}ms via {provider}"
+        )
+
+        return ApiResponse(
+            success=True,
+            data=response_data,
+            cache_hit=False,
+            provider_used=(
+                Provider.GOOGLE if provider == "google" else Provider.MICROSOFT
+            ),
+            request_id=request_id,
+        )
+
+    except ValidationError:
+        raise
+    except Exception as e:
+        logger.error(f"[{request_id}] Create meeting request failed: {e}")
+        raise ServiceError(message=f"Failed to create meeting event: {str(e)}")
+
+
 @router.get("/events", response_model=ApiResponse)
 async def get_calendar_events(
     request: Request,
@@ -1368,6 +1712,71 @@ def convert_microsoft_event_to_google_format(
         }
 
     return google_event
+
+
+def find_available_slots(
+    start_dt: datetime,
+    end_dt: datetime,
+    duration_minutes: int,
+    events: List[CalendarEvent],
+) -> List[Dict[str, datetime]]:
+    """
+    Find available time slots within a given range.
+
+    Args:
+        start_dt: Start datetime for the search range
+        end_dt: End datetime for the search range
+        duration_minutes: Duration of the meeting in minutes
+        events: List of existing calendar events
+
+    Returns:
+        List of available time slots as dictionaries with 'start' and 'end' keys
+    """
+    # Sort events by start time
+    sorted_events = sorted(events, key=lambda e: e.start_time)
+
+    # Convert to UTC if needed
+    start_dt = start_dt.replace(tzinfo=timezone.utc)
+    end_dt = end_dt.replace(tzinfo=timezone.utc)
+
+    # Initialize available slots
+    available_slots = []
+    current_time = start_dt
+
+    # Duration as timedelta
+    duration_td = timedelta(minutes=duration_minutes)
+
+    for event in sorted_events:
+        # Skip events outside our range
+        if event.end_time <= start_dt or event.start_time >= end_dt:
+            continue
+
+        # If there's a gap before this event, check if it's long enough
+        if event.start_time > current_time:
+            slot_end = event.start_time
+            if slot_end - current_time >= duration_td:
+                available_slots.append(
+                    {
+                        "start": current_time,
+                        "end": slot_end,
+                    }
+                )
+
+        # Move current_time to the end of this event
+        current_time = max(current_time, event.end_time)
+
+    # Check if there's time after the last event
+    if current_time < end_dt:
+        slot_end = end_dt
+        if slot_end - current_time >= duration_td:
+            available_slots.append(
+                {
+                    "start": current_time,
+                    "end": slot_end,
+                }
+            )
+
+    return available_slots
 
 
 def parse_event_id(event_id: str) -> tuple[str, str]:
