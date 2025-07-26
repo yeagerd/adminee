@@ -10,7 +10,7 @@ API_KEY = os.environ.get("API_FRONTEND_OFFICE_KEY", "test-office-key")
 async def get_user_availability(
     user_id: str, start: str, end: str, duration: int
 ) -> dict:
-    url = f"{OFFICE_SERVICE_URL}/calendar/availability"
+    url = f"{OFFICE_SERVICE_URL}/v1/calendar/availability"
     headers = {"X-API-Key": API_KEY, "X-User-Id": user_id}
     params = {"start": start, "end": end, "duration": str(duration)}
     async with httpx.AsyncClient() as client:
@@ -22,7 +22,7 @@ async def get_user_availability(
 async def create_calendar_event(
     user_id: str, poll_id: str, selected_slot_id: str, participants: List[str]
 ) -> dict:
-    url = f"{OFFICE_SERVICE_URL}/calendar/create-meeting"
+    url = f"{OFFICE_SERVICE_URL}/v1/calendar/create-meeting"
     headers = {"X-API-Key": API_KEY, "X-User-Id": user_id}
     data = {
         "pollId": poll_id,
