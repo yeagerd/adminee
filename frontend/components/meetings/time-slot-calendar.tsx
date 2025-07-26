@@ -403,6 +403,7 @@ export function TimeSlotCalendar({
                                         {slotsByDate[dateKey].map((slot, slotIndex) => (
                                             <button
                                                 key={slotIndex}
+                                                type="button"
                                                 onClick={() => handleSlotClick(slot)}
                                                 disabled={slot.isConflict}
                                                 className={`
