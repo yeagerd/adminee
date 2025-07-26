@@ -7,7 +7,6 @@ Internal/service endpoints, if any, should be under /internal and require API ke
 """
 
 import asyncio
-import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, cast
@@ -20,6 +19,7 @@ from services.common.http_errors import (
     ServiceError,
     ValidationError,
 )
+from services.common.logging_config import get_logger
 from services.office.core.api_client_factory import APIClientFactory
 from services.office.core.auth import service_permission_required
 from services.office.core.cache_manager import cache_manager, generate_cache_key
@@ -33,7 +33,7 @@ from services.office.schemas import (
     CreateCalendarEventRequest,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Create router
 router = APIRouter(prefix="/calendar", tags=["calendar"])
@@ -134,7 +134,11 @@ async def get_calendar_events(
             if provider.lower() in ["google", "microsoft"]:
                 valid_providers.append(provider.lower())
             else:
-                logger.warning(f"[{request_id}] Invalid provider: {provider}")
+                logger.warning(
+                    "Invalid provider specified",
+                    request_id=request_id,
+                    provider=provider,
+                )
 
         if not valid_providers:
             raise ValidationError(
@@ -184,7 +188,7 @@ async def get_calendar_events(
         # Check cache first
         cached_result = await cache_manager.get_from_cache(cache_key)
         if cached_result:
-            logger.info(f"[{request_id}] Cache hit for calendar events")
+            logger.info("Cache hit for calendar events", request_id=request_id)
             return ApiResponse(
                 success=True, data=cached_result, cache_hit=True, request_id=request_id
             )
@@ -217,7 +221,12 @@ async def get_calendar_events(
             provider = valid_providers[i]
 
             if isinstance(result, Exception):
-                logger.error(f"[{request_id}] Provider {provider} failed: {result}")
+                logger.error(
+                    "Provider failed",
+                    request_id=request_id,
+                    provider=provider,
+                    error=str(result),
+                )
                 provider_errors[provider] = str(result)
             elif result is not None and not isinstance(result, BaseException):
                 try:
@@ -266,7 +275,9 @@ async def get_calendar_events(
             await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=600)
         else:
             logger.info(
-                f"[{request_id}] Not caching response due to no successful providers"
+                "Not caching response due to no successful providers",
+                request_id=request_id,
+                providers_used=providers_used,
             )
 
         # Calculate response time
@@ -274,7 +285,10 @@ async def get_calendar_events(
         response_time_ms = int((end_time - start_time).total_seconds() * 1000)
 
         logger.info(
-            f"[{request_id}] Calendar events request completed in {response_time_ms}ms"
+            "Calendar events request completed",
+            request_id=request_id,
+            response_time_ms=response_time_ms,
+            providers_used=providers_used,
         )
 
         return ApiResponse(
@@ -290,7 +304,9 @@ async def get_calendar_events(
     except ValidationError:
         raise
     except Exception as e:
-        logger.error(f"[{request_id}] Calendar events request failed: {e}")
+        logger.error(
+            "Calendar events request failed", request_id=request_id, error=str(e)
+        )
         raise ServiceError(message=f"Failed to fetch calendar events: {str(e)}")
 
 
@@ -317,7 +333,10 @@ async def get_calendar_event(
     start_time = datetime.now(timezone.utc)
 
     logger.info(
-        f"[{request_id}] Calendar event detail request: event_id={event_id}, user_id={user_id}"
+        "Calendar event detail request",
+        request_id=request_id,
+        event_id=event_id,
+        user_id=user_id,
     )
 
     try:
@@ -331,7 +350,7 @@ async def get_calendar_event(
         # Check cache first
         cached_result = await cache_manager.get_from_cache(cache_key)
         if cached_result:
-            logger.info(f"[{request_id}] Cache hit for event detail")
+            logger.info("Cache hit for event detail", request_id=request_id)
             return ApiResponse(
                 success=True, data=cached_result, cache_hit=True, request_id=request_id
             )
@@ -373,7 +392,7 @@ async def get_calendar_event(
     except NotFoundError:
         raise
     except Exception as e:
-        logger.error(f"[{request_id}] Event detail request failed: {e}")
+        logger.error("Event detail request failed", request_id=request_id, error=str(e))
         raise ServiceError(message=f"Failed to fetch event: {str(e)}")
 
 
@@ -1190,7 +1209,12 @@ async def fetch_provider_events(
             return normalized_events, provider
 
     except Exception as e:
-        logger.error(f"[{request_id}] Failed to fetch events from {provider}: {e}")
+        logger.error(
+            "Failed to fetch events from provider",
+            request_id=request_id,
+            provider=provider,
+            error=str(e),
+        )
         raise
 
 
