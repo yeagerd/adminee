@@ -6,15 +6,19 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToolStateUtils } from '@/hooks/use-tool-state';
 import { gatewayClient, MeetingPoll, PollParticipant } from '@/lib/gateway-client';
+import { CalendarEvent } from '@/types/office-service';
 import { ArrowLeft, Link as LinkIcon, Mail } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 import React, { useEffect, useState } from 'react';
 import { useUserPreferences } from '../../contexts/settings-context';
+import { TimeSlotCalendar } from './time-slot-calendar';
 
 const getTimeZones = () =>
     Intl.supportedValuesOf ? Intl.supportedValuesOf("timeZone") : ["UTC"];
 
 export function MeetingPollNew() {
     const { setMeetingSubView } = useToolStateUtils();
+    const { data: session } = useSession();
     const { effectiveTimezone } = useUserPreferences();
     const [step, setStep] = useState(1);
     // Step 1: Basic Info
@@ -22,15 +26,16 @@ export function MeetingPollNew() {
     const [description, setDescription] = useState("");
     const [duration, setDuration] = useState(60);
     const [location, setLocation] = useState("");
-    const [timeZone, setTimeZone] = useState(effectiveTimezone);
+    const [timeZone, setTimeZone] = useState(effectiveTimezone || "UTC");
     // Step 2: Participants
     const [participants, setParticipants] = useState<{ email: string, name: string }[]>([]);
     const [participantEmailInput, setParticipantEmailInput] = useState("");
     const [participantNameInput, setParticipantNameInput] = useState("");
     // Step 3: Time Slots
     const [timeSlots, setTimeSlots] = useState<{ start: string; end: string }[]>([]);
-    const [slotStart, setSlotStart] = useState("");
-    const [slotEnd, setSlotEnd] = useState("");
+    // Calendar events for conflict detection
+    const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+    const [calendarLoading, setCalendarLoading] = useState(false);
     // Step 4: Review & Submit
     const [responseDeadline, setResponseDeadline] = useState("");
     const [sendEmails, setSendEmails] = useState(true);
@@ -65,15 +70,33 @@ export function MeetingPollNew() {
 
     const removeParticipant = (email: string) => setParticipants(participants.filter(p => p.email !== email));
 
-    const addTimeSlot = () => {
-        if (slotStart && slotEnd) {
-            setTimeSlots([...timeSlots, { start: slotStart, end: slotEnd }]);
-            setSlotStart("");
-            setSlotEnd("");
+    // Fetch calendar events for conflict detection
+    useEffect(() => {
+        if (step === 3 && session?.user?.id) {
+            setCalendarLoading(true);
+            gatewayClient.getCalendarEvents(
+                ['google', 'microsoft'], // Try both providers
+                50, // Get more events for better conflict detection
+                new Date().toISOString().split('T')[0],
+                new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 2 weeks
+                undefined,
+                undefined,
+                timeZone
+            )
+                .then((response) => {
+                    if (response.success && response.data) {
+                        setCalendarEvents(response.data.events || []);
+                    }
+                })
+                .catch((err) => {
+                    console.error('Failed to fetch calendar events:', err);
+                    // Don't show error to user, just continue without conflict detection
+                })
+                .finally(() => {
+                    setCalendarLoading(false);
+                });
         }
-    };
-
-    const removeTimeSlot = (idx: number) => setTimeSlots(timeSlots.filter((_, i) => i !== idx));
+    }, [step, session?.user?.id, timeZone]);
 
     // Auto-populate response deadline with the date of the first time slot
     useEffect(() => {
@@ -288,32 +311,18 @@ export function MeetingPollNew() {
                             )}
                             {step === 3 && (
                                 <div className="space-y-4">
-                                    <div>
-                                        <label className="block font-semibold mb-1">Time Slots</label>
-                                        <div className="flex flex-col sm:flex-row gap-2 mb-2">
-                                            <input
-                                                className="flex-1 border rounded px-3 py-2"
-                                                type="datetime-local"
-                                                value={slotStart}
-                                                onChange={e => setSlotStart(e.target.value)}
-                                            />
-                                            <input
-                                                className="flex-1 border rounded px-3 py-2"
-                                                type="datetime-local"
-                                                value={slotEnd}
-                                                onChange={e => setSlotEnd(e.target.value)}
-                                            />
-                                            <button type="button" className="bg-teal-600 text-white px-3 py-2 rounded" onClick={addTimeSlot} disabled={!slotStart || !slotEnd}>Add</button>
+                                    {calendarLoading && (
+                                        <div className="text-center py-4 text-muted-foreground">
+                                            Loading calendar events for conflict detection...
                                         </div>
-                                        <ul className="space-y-1">
-                                            {timeSlots.map((slot, idx) => (
-                                                <li key={idx} className="flex items-center gap-2">
-                                                    <span className="font-mono text-xs">{slot.start.replace("T", " ")} - {slot.end.slice(11, 16)} ({timeZone})</span>
-                                                    <button type="button" className="text-red-600" onClick={() => removeTimeSlot(idx)}>&times;</button>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
+                                    )}
+                                    <TimeSlotCalendar
+                                        duration={duration}
+                                        timeZone={timeZone}
+                                        onTimeSlotsChange={setTimeSlots}
+                                        selectedTimeSlots={timeSlots}
+                                        calendarEvents={calendarEvents}
+                                    />
                                 </div>
                             )}
                             {step === 4 && (
