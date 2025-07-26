@@ -6,7 +6,7 @@ import { useCallback } from 'react';
 export function useSidebarState() {
     const { userPreferences, setUserPreferences } = useUserPreferences();
 
-    const isExpanded = userPreferences?.ui?.sidebar_expanded ?? true;
+    const isExpanded = userPreferences?.ui?.sidebar_expanded ?? false;
 
     const setExpanded = useCallback(async (expanded: boolean) => {
         try {

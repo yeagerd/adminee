@@ -132,7 +132,9 @@ class UIPreferencesSchema(BaseModel):
     compact_mode: bool = Field(default=False, description="Use compact UI layout")
     show_tooltips: bool = Field(default=True, description="Show helpful tooltips")
     animations_enabled: bool = Field(default=True, description="Enable UI animations")
-    sidebar_expanded: bool = Field(default=True, description="Keep sidebar expanded by default")
+    sidebar_expanded: bool = Field(
+        default=False, description="Keep sidebar expanded by default"
+    )
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -144,7 +146,7 @@ class UIPreferencesSchema(BaseModel):
                 "compact_mode": False,
                 "show_tooltips": True,
                 "animations_enabled": True,
-                "sidebar_expanded": True,
+                "sidebar_expanded": False,
             }
         }
     )

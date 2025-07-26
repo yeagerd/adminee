@@ -108,7 +108,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
                 const prefs: UserPreferences = {
                     timezone_mode: (typeof obj.timezone_mode === 'string' && (obj.timezone_mode === 'auto' || obj.timezone_mode === 'manual')) ? obj.timezone_mode : 'auto',
                     manual_timezone: (typeof obj.manual_timezone === 'string') ? obj.manual_timezone : '',
-                    ui: { sidebar_expanded: (obj.ui as any)?.sidebar_expanded ?? true },
+                    ui: { sidebar_expanded: (obj.ui as any)?.sidebar_expanded ?? false },
                     // ...other fields as needed
                 };
                 setUserPreferencesState(prefs);
