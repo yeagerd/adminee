@@ -1,11 +1,13 @@
 'use client';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToolStateUtils } from '@/hooks/use-tool-state';
-import { gatewayClient } from '@/lib/gateway-client';
-import { ArrowLeft } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { gatewayClient, MeetingPoll, PollParticipant } from '@/lib/gateway-client';
+import { ArrowLeft, Link as LinkIcon, Mail } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 
 const getTimeZones = () =>
     Intl.supportedValuesOf ? Intl.supportedValuesOf("timeZone") : ["UTC"];
@@ -27,6 +29,11 @@ export function MeetingPollNew() {
     const [timeSlots, setTimeSlots] = useState<{ start: string; end: string }[]>([]);
     const [slotStart, setSlotStart] = useState("");
     const [slotEnd, setSlotEnd] = useState("");
+    // Step 4: Review & Submit
+    const [responseDeadline, setResponseDeadline] = useState("");
+    const [sendEmails, setSendEmails] = useState(true);
+    const [createdPoll, setCreatedPoll] = useState<MeetingPoll | null>(null);
+    const [showLinks, setShowLinks] = useState(false);
     // General
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -53,9 +60,9 @@ export function MeetingPollNew() {
             setParticipantNameInput("");
         }
     };
+
     const removeParticipant = (email: string) => setParticipants(participants.filter(p => p.email !== email));
 
-    // Add time slot
     const addTimeSlot = () => {
         if (slotStart && slotEnd) {
             setTimeSlots([...timeSlots, { start: slotStart, end: slotEnd }]);
@@ -63,17 +70,15 @@ export function MeetingPollNew() {
             setSlotEnd("");
         }
     };
+
     const removeTimeSlot = (idx: number) => setTimeSlots(timeSlots.filter((_, i) => i !== idx));
 
-    // Step 4: Response Deadline
-    // Compute default response_deadline as the day of the first possible meeting in the range
-    const defaultResponseDeadline = timeSlots.length > 0 ? new Date(timeSlots[0].start).toISOString().slice(0, 10) : "";
-    const [responseDeadline, setResponseDeadline] = useState(defaultResponseDeadline);
-
-    // Update responseDeadline when timeSlots changes
+    // Auto-populate response deadline with the date of the first time slot
     useEffect(() => {
-        if (timeSlots.length > 0 && !responseDeadline) {
-            setResponseDeadline(new Date(timeSlots[0].start).toISOString().slice(0, 10));
+        if (timeSlots.length > 0 && timeSlots[0].start && !responseDeadline) {
+            const firstSlotDate = new Date(timeSlots[0].start);
+            const dateString = firstSlotDate.toISOString().split('T')[0];
+            setResponseDeadline(dateString);
         }
     }, [timeSlots, responseDeadline]);
 
@@ -93,8 +98,17 @@ export function MeetingPollNew() {
                 time_slots: timeSlots.map((s) => ({ start_time: s.start, end_time: s.end, timezone: timeZone })),
                 participants: participants.map((p) => ({ email: p.email, name: p.name })),
             };
-            await gatewayClient.createMeetingPoll(pollData);
-            setMeetingSubView('list');
+            const createdPollData = await gatewayClient.createMeetingPoll(pollData);
+            setCreatedPoll(createdPollData);
+
+            if (sendEmails) {
+                // Send invitations via email
+                await gatewayClient.sendMeetingInvitations(createdPollData.id);
+                setMeetingSubView('list');
+            } else {
+                // Show individual response links
+                setShowLinks(true);
+            }
         } catch (e: unknown) {
             if (e && typeof e === 'object' && 'message' in e) {
                 setError((e as { message?: string }).message || "Failed to create poll");
@@ -108,6 +122,37 @@ export function MeetingPollNew() {
 
     const handleCancel = () => {
         setMeetingSubView('list');
+    };
+
+    const copyToClipboard = async (text: string) => {
+        try {
+            await navigator.clipboard.writeText(text);
+            // You could add a toast notification here for success feedback
+        } catch (error) {
+            console.error('Failed to copy to clipboard:', error);
+            // Fallback for older browsers or non-HTTPS contexts
+            try {
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                textArea.style.top = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                // You could add a toast notification here for success feedback
+            } catch (fallbackError) {
+                console.error('Fallback copy method also failed:', fallbackError);
+                // You could add a toast notification here for error feedback
+            }
+        }
+    };
+
+    const getResponseUrl = (responseToken: string) => {
+        const baseUrl = window.location.origin;
+        return `${baseUrl}/public/meetings/respond/${responseToken}`;
     };
 
     return (
@@ -133,136 +178,202 @@ export function MeetingPollNew() {
                         </div>
                     )}
 
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        {step === 1 && (
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block font-semibold mb-1">Title</label>
-                                    <input className="w-full border rounded px-3 py-2" value={title} onChange={e => setTitle(e.target.value)} required />
-                                </div>
-                                <div>
-                                    <label className="block font-semibold mb-1">Description</label>
-                                    <textarea className="w-full border rounded px-3 py-2" value={description} onChange={e => setDescription(e.target.value)} />
-                                </div>
-                                <div>
-                                    <label className="block font-semibold mb-1">Duration (minutes)</label>
-                                    <input type="number" className="w-full border rounded px-3 py-2" value={duration} onChange={e => setDuration(Number(e.target.value))} min={1} required />
-                                </div>
-                                <div>
-                                    <label className="block font-semibold mb-1">Location</label>
-                                    <input className="w-full border rounded px-3 py-2" value={location} onChange={e => setLocation(e.target.value)} />
-                                </div>
-                                <div>
-                                    <label className="block font-semibold mb-1">Time Zone</label>
-                                    <select className="w-full border rounded px-3 py-2" value={timeZone} onChange={e => setTimeZone(e.target.value)}>
-                                        {getTimeZones().map((tz) => (
-                                            <option key={tz} value={tz}>{tz}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-                        )}
-                        {step === 2 && (
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block font-semibold mb-1">Participants</label>
-                                    <div className="flex gap-2 mb-2">
-                                        <input
-                                            className="border rounded px-3 py-2"
-                                            value={participantNameInput}
-                                            onChange={e => setParticipantNameInput(e.target.value)}
-                                            placeholder="Name"
-                                            type="text"
-                                        />
-                                        <input
-                                            className="border rounded px-3 py-2"
-                                            value={participantEmailInput}
-                                            onChange={e => setParticipantEmailInput(e.target.value)}
-                                            placeholder="Email"
-                                            type="email"
-                                        />
-                                        <button type="button" className="bg-teal-600 text-white px-3 py-2 rounded" onClick={addParticipant} disabled={!(participantNameInput.trim().length > 0 && /.+@.+\..+/.test(participantEmailInput))}>Add</button>
-                                    </div>
-                                    <ul className="flex flex-wrap gap-2">
-                                        {participants.map(p => (
-                                            <li key={p.email} className="bg-gray-100 px-2 py-1 rounded flex items-center">
-                                                <span>{p.name} ({p.email})</span>
-                                                <button type="button" className="ml-2 text-red-600" onClick={() => removeParticipant(p.email)}>&times;</button>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            </div>
-                        )}
-                        {step === 3 && (
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block font-semibold mb-1">Time Slots</label>
-                                    <div className="flex flex-col sm:flex-row gap-2 mb-2">
-                                        <input
-                                            className="flex-1 border rounded px-3 py-2"
-                                            type="datetime-local"
-                                            value={slotStart}
-                                            onChange={e => setSlotStart(e.target.value)}
-                                        />
-                                        <input
-                                            className="flex-1 border rounded px-3 py-2"
-                                            type="datetime-local"
-                                            value={slotEnd}
-                                            onChange={e => setSlotEnd(e.target.value)}
-                                        />
-                                        <button type="button" className="bg-teal-600 text-white px-3 py-2 rounded" onClick={addTimeSlot} disabled={!slotStart || !slotEnd}>Add</button>
-                                    </div>
-                                    <ul className="space-y-1">
-                                        {timeSlots.map((slot, idx) => (
-                                            <li key={idx} className="flex items-center gap-2">
-                                                <span className="font-mono text-xs">{slot.start.replace("T", " ")} - {slot.end.slice(11, 16)} ({timeZone})</span>
-                                                <button type="button" className="text-red-600" onClick={() => removeTimeSlot(idx)}>&times;</button>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            </div>
-                        )}
-                        {step === 4 && (
-                            <div className="space-y-4">
-                                <h2 className="text-lg font-semibold mb-2">Review & Submit</h2>
-                                <div><b>Title:</b> {title}</div>
-                                <div><b>Description:</b> {description}</div>
-                                <div><b>Duration:</b> {duration} min</div>
-                                <div><b>Location:</b> {location}</div>
-                                <div><b>Time Zone:</b> {timeZone}</div>
-                                <div><b>Participants:</b> {participants.map(p => `${p.name} (${p.email})`).join(", ")}</div>
-                                <div><b>Time Slots:</b>
-                                    <ul className="ml-4 list-disc">
-                                        {timeSlots.map((slot, idx) => (
-                                            <li key={idx}>{slot.start.replace("T", " ")} - {slot.end.slice(11, 16)} ({timeZone})</li>
-                                        ))}
-                                    </ul>
-                                </div>
-                                <div>
-                                    <b>Response Deadline:</b>
-                                    <input
-                                        type="date"
-                                        className="ml-2 border rounded px-3 py-1"
-                                        value={responseDeadline}
-                                        onChange={e => setResponseDeadline(e.target.value)}
-                                        required
-                                    />
-                                </div>
-                            </div>
-                        )}
+                    {showLinks && createdPoll ? (
+                        <div className="space-y-6">
+                            <Alert>
+                                <Mail className="h-4 w-4" />
+                                <AlertDescription>
+                                    I'll send the meeting link to the participants myself. Here are the individual response links for each participant:
+                                </AlertDescription>
+                            </Alert>
 
-                        <div className="flex gap-2 justify-between">
-                            {step > 1 && <Button type="button" variant="outline" onClick={prevStep}>Back</Button>}
-                            {step < 4 && <Button type="button" onClick={nextStep} disabled={
-                                (step === 1 && !isStep1Valid) ||
-                                (step === 2 && !isStep2Valid) ||
-                                (step === 3 && !isStep3Valid)
-                            }>Next</Button>}
-                            {step === 4 && <Button type="submit" disabled={loading}>{loading ? "Creating..." : "Create Poll"}</Button>}
+                            <div className="space-y-4">
+                                <h3 className="text-lg font-semibold">Individual Response Links</h3>
+                                {createdPoll.participants.map((participant: PollParticipant) => (
+                                    <div key={participant.id} className="border rounded-lg p-4 space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="font-medium">{participant.name}</p>
+                                                <p className="text-sm text-gray-600">{participant.email}</p>
+                                            </div>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={async () => await copyToClipboard(getResponseUrl(participant.response_token))}
+                                            >
+                                                Copy Link
+                                            </Button>
+                                        </div>
+                                        <div className="bg-gray-50 p-2 rounded text-sm font-mono break-all">
+                                            {getResponseUrl(participant.response_token)}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="flex gap-2">
+                                <Button onClick={() => setMeetingSubView('list')}>
+                                    Back to Polls
+                                </Button>
+                            </div>
                         </div>
-                    </form>
+                    ) : (
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            {step === 1 && (
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block font-semibold mb-1">Title</label>
+                                        <input className="w-full border rounded px-3 py-2" value={title} onChange={e => setTitle(e.target.value)} required />
+                                    </div>
+                                    <div>
+                                        <label className="block font-semibold mb-1">Description</label>
+                                        <textarea className="w-full border rounded px-3 py-2" value={description} onChange={e => setDescription(e.target.value)} />
+                                    </div>
+                                    <div>
+                                        <label className="block font-semibold mb-1">Duration (minutes)</label>
+                                        <input type="number" className="w-full border rounded px-3 py-2" value={duration} onChange={e => setDuration(Number(e.target.value))} min={1} required />
+                                    </div>
+                                    <div>
+                                        <label className="block font-semibold mb-1">Location</label>
+                                        <input className="w-full border rounded px-3 py-2" value={location} onChange={e => setLocation(e.target.value)} />
+                                    </div>
+                                    <div>
+                                        <label className="block font-semibold mb-1">Time Zone</label>
+                                        <select className="w-full border rounded px-3 py-2" value={timeZone} onChange={e => setTimeZone(e.target.value)}>
+                                            {getTimeZones().map(tz => (
+                                                <option key={tz} value={tz}>{tz}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
+                            {step === 2 && (
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block font-semibold mb-1">Participants</label>
+                                        <div className="flex flex-col sm:flex-row gap-2 mb-2">
+                                            <input
+                                                className="border rounded px-3 py-2"
+                                                value={participantNameInput}
+                                                onChange={e => setParticipantNameInput(e.target.value)}
+                                                placeholder="Name"
+                                                type="text"
+                                            />
+                                            <input
+                                                className="border rounded px-3 py-2"
+                                                value={participantEmailInput}
+                                                onChange={e => setParticipantEmailInput(e.target.value)}
+                                                placeholder="Email"
+                                                type="email"
+                                            />
+                                            <button type="button" className="bg-teal-600 text-white px-3 py-2 rounded" onClick={addParticipant} disabled={!(participantNameInput.trim().length > 0 && /.+@.+\..+/.test(participantEmailInput))}>Add</button>
+                                        </div>
+                                        <ul className="flex flex-wrap gap-2">
+                                            {participants.map(p => (
+                                                <li key={p.email} className="bg-gray-100 px-2 py-1 rounded flex items-center">
+                                                    <span>{p.name} ({p.email})</span>
+                                                    <button type="button" className="ml-2 text-red-600" onClick={() => removeParticipant(p.email)}>&times;</button>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </div>
+                            )}
+                            {step === 3 && (
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block font-semibold mb-1">Time Slots</label>
+                                        <div className="flex flex-col sm:flex-row gap-2 mb-2">
+                                            <input
+                                                className="flex-1 border rounded px-3 py-2"
+                                                type="datetime-local"
+                                                value={slotStart}
+                                                onChange={e => setSlotStart(e.target.value)}
+                                            />
+                                            <input
+                                                className="flex-1 border rounded px-3 py-2"
+                                                type="datetime-local"
+                                                value={slotEnd}
+                                                onChange={e => setSlotEnd(e.target.value)}
+                                            />
+                                            <button type="button" className="bg-teal-600 text-white px-3 py-2 rounded" onClick={addTimeSlot} disabled={!slotStart || !slotEnd}>Add</button>
+                                        </div>
+                                        <ul className="space-y-1">
+                                            {timeSlots.map((slot, idx) => (
+                                                <li key={idx} className="flex items-center gap-2">
+                                                    <span className="font-mono text-xs">{slot.start.replace("T", " ")} - {slot.end.slice(11, 16)} ({timeZone})</span>
+                                                    <button type="button" className="text-red-600" onClick={() => removeTimeSlot(idx)}>&times;</button>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </div>
+                            )}
+                            {step === 4 && (
+                                <div className="space-y-4">
+                                    <h2 className="text-lg font-semibold mb-2">Review & Submit</h2>
+                                    <div><b>Title:</b> {title}</div>
+                                    <div><b>Description:</b> {description}</div>
+                                    <div><b>Duration:</b> {duration} min</div>
+                                    <div><b>Location:</b> {location}</div>
+                                    <div><b>Time Zone:</b> {timeZone}</div>
+                                    <div><b>Participants:</b> {participants.map(p => `${p.name} (${p.email})`).join(", ")}</div>
+                                    <div><b>Time Slots:</b>
+                                        <ul className="ml-4 list-disc">
+                                            {timeSlots.map((slot, idx) => (
+                                                <li key={idx}>{slot.start.replace("T", " ")} - {slot.end.slice(11, 16)} ({timeZone})</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <b>Response Deadline:</b>
+                                        <input
+                                            type="date"
+                                            className="ml-2 border rounded px-3 py-1"
+                                            value={responseDeadline}
+                                            onChange={e => setResponseDeadline(e.target.value)}
+                                            required
+                                        />
+                                    </div>
+
+                                    <div className="flex items-center space-x-2 pt-4">
+                                        <Checkbox
+                                            id="send-emails"
+                                            checked={sendEmails}
+                                            onCheckedChange={(checked) => setSendEmails(checked as boolean)}
+                                        />
+                                        <label
+                                            htmlFor="send-emails"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                        >
+                                            Send email survey to invitees
+                                        </label>
+                                    </div>
+
+                                    {!sendEmails && (
+                                        <Alert>
+                                            <LinkIcon className="h-4 w-4" />
+                                            <AlertDescription>
+                                                I'll send the meeting link to the participants myself. You'll get individual response links for each participant.
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+                                </div>
+                            )}
+
+                            <div className="flex gap-2 justify-between">
+                                {step > 1 && <Button type="button" variant="outline" onClick={prevStep}>Back</Button>}
+                                {step < 4 && <Button type="button" onClick={nextStep} disabled={
+                                    (step === 1 && !isStep1Valid) ||
+                                    (step === 2 && !isStep2Valid) ||
+                                    (step === 3 && !isStep3Valid)
+                                }>Next</Button>}
+                                {step === 4 && <Button type="submit" disabled={loading}>
+                                    {loading ? "Creating..." : (sendEmails ? "Create & Send" : "Generate Poll")}
+                                </Button>}
+                            </div>
+                        </form>
+                    )}
                 </CardContent>
             </Card>
         </div>
