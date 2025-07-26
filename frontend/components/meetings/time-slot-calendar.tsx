@@ -180,7 +180,7 @@ export function TimeSlotCalendar({
 
     // Format date for display
     const formatDate = (dateString: string) => {
-        return DateTime.fromISO(dateString).setZone(timeZone).toFormat('EEE, MMM d');
+        return DateTime.fromISO(dateString).setZone(timeZone).toFormat('EEE MMM d');
     };
 
     // Calculate actual number of days in the range
@@ -226,19 +226,21 @@ export function TimeSlotCalendar({
                     <div className="min-w-max">
                         {/* Header */}
                         <div className={`grid gap-1 p-2 bg-muted/50`} style={{
-                            gridTemplateColumns: `100px repeat(${dateChunk.length}, minmax(120px, 1fr))`
+                            gridTemplateColumns: `100px repeat(${dateChunk.length}, minmax(60px, 1fr))`
                         }}>
                             <div className="p-2 text-sm font-medium text-muted-foreground">Time</div>
                             {dateChunk.map(dateKey => (
                                 <div key={dateKey} className="p-2 text-sm font-medium text-center">
-                                    {formatDate(dateKey)}
+                                    <div className="whitespace-normal leading-tight">
+                                        {formatDate(dateKey)}
+                                    </div>
                                 </div>
                             ))}
                         </div>
 
                         {/* Time Slots Grid */}
                         <div className={`grid gap-1 p-2`} style={{
-                            gridTemplateColumns: `100px repeat(${dateChunk.length}, minmax(120px, 1fr))`
+                            gridTemplateColumns: `100px repeat(${dateChunk.length}, minmax(60px, 1fr))`
                         }}>
                             {/* Time labels */}
                             <div className="space-y-1">
