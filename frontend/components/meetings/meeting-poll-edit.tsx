@@ -12,7 +12,7 @@ interface MeetingPollEditProps {
 }
 
 export function MeetingPollEdit({ pollId }: MeetingPollEditProps) {
-    const { setMeetingSubView } = useToolStateUtils();
+    const { goBackToPreviousMeetingView, setMeetingSubView } = useToolStateUtils();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
@@ -48,7 +48,7 @@ export function MeetingPollEdit({ pollId }: MeetingPollEditProps) {
                 location,
             };
             await gatewayClient.updateMeetingPoll(pollId, updateData);
-            setMeetingSubView('view', pollId);
+            goBackToPreviousMeetingView();
         } catch (e: unknown) {
             if (e && typeof e === 'object' && 'message' in e) {
                 setError((e as { message?: string }).message || "Failed to update poll");
@@ -79,7 +79,7 @@ export function MeetingPollEdit({ pollId }: MeetingPollEditProps) {
     };
 
     const handleCancel = () => {
-        setMeetingSubView('view', pollId);
+        goBackToPreviousMeetingView();
     };
 
     if (loading) {
@@ -102,7 +102,7 @@ export function MeetingPollEdit({ pollId }: MeetingPollEditProps) {
                     className="flex items-center gap-2"
                 >
                     <ArrowLeft className="h-4 w-4" />
-                    Back to Results
+                    Back
                 </Button>
                 <h1 className="text-2xl font-bold">Edit Meeting Poll</h1>
             </div>
