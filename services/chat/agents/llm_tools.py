@@ -107,7 +107,7 @@ def get_calendar_events(
     try:
         office_service_url = get_settings().office_service_url
         response = requests.get(
-            f"{office_service_url}/calendar/events",
+            f"{office_service_url}/v1/calendar/events",
             headers=headers,
             params=params,
             timeout=10,
@@ -250,7 +250,7 @@ def get_emails(
     try:
         office_service_url = get_settings().office_service_url
         response = requests.get(
-            f"{office_service_url}/email/messages",
+            f"{office_service_url}/v1/email/messages",
             headers=headers,
             params=params,
             timeout=10,
@@ -314,7 +314,7 @@ def get_notes(
     try:
         office_service_url = get_settings().office_service_url
         response = requests.get(
-            f"{office_service_url}/notes",
+            f"{office_service_url}/v1/notes",
             headers=headers,
             params=params,
             timeout=10,
@@ -377,7 +377,7 @@ def get_documents(
     try:
         office_service_url = get_settings().office_service_url
         response = requests.get(
-            f"{office_service_url}/documents",
+            f"{office_service_url}/v1/files",
             headers=headers,
             params=params,
             timeout=10,
