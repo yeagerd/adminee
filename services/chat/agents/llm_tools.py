@@ -391,14 +391,14 @@ def get_documents(
                 "error": f"Office service error: {data.get('message', 'Unknown error')}"
             }
 
-        # Extract documents from the data field
-        documents_data = data.get("data", {})
-        if "documents" not in documents_data:
+        # Extract files from the data field
+        files_data = data.get("data", {})
+        if "files" not in files_data:
             return {
-                "error": "Malformed response from office-service: missing documents data."
+                "error": "Malformed response from office-service: missing files data."
             }
 
-        return {"documents": documents_data["documents"]}
+        return {"documents": files_data["files"]}
 
     except requests.Timeout:
         return {"error": "Request to office-service timed out."}
