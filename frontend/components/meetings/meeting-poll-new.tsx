@@ -75,12 +75,12 @@ export function MeetingPollNew() {
 
     // Auto-populate response deadline with the date of the first time slot
     useEffect(() => {
-        if (timeSlots.length > 0 && timeSlots[0].start) {
+        if (timeSlots.length > 0 && timeSlots[0].start && !responseDeadline) {
             const firstSlotDate = new Date(timeSlots[0].start);
             const dateString = firstSlotDate.toISOString().split('T')[0];
             setResponseDeadline(dateString);
         }
-    }, [timeSlots]);
+    }, [timeSlots, responseDeadline]);
 
     // Submit
     const handleSubmit = async (e: React.FormEvent) => {
