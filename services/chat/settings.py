@@ -54,7 +54,7 @@ class Settings(BaseSettings):
         description="User management service URL",
     )
     office_service_url: str = Field(
-        default="http://localhost:8003",
+        default=...,
         description="Office service URL",
     )
 
