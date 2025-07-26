@@ -98,43 +98,55 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
 
     return (
         <div className={cn(
-            'h-full flex flex-col bg-background',
+            'h-full flex flex-col bg-background min-h-0',
             className
         )}>
-            {/* Metadata */}
-            <DraftMetadataComponent
-                draft={draft}
-                onUpdate={handleMetadataChange}
-                type={draft.type}
-            />
-
-            {/* Error message */}
-            {error && (
-                <div className="text-sm text-red-500 px-4 py-2">{error}</div>
-            )}
-
-            {/* Content Editor */}
-            <div className="flex-1 overflow-hidden relative">
-                {isLoading && (
-                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
-                    </div>
-                )}
-                <DraftEditor
-                    type={draft.type}
-                    content={draft.content}
-                    onUpdate={handleContentChange}
-                    onAutoSave={handleAutoSave}
-                    disabled={isLoading}
-                    updatedAt={draft.updatedAt}
-                />
+            {/* Fixed Header with Action Buttons */}
+            <div className="border-b bg-muted/30 p-4">
+                <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-medium text-muted-foreground">
+                        {draft.type.charAt(0).toUpperCase() + draft.type.slice(1)} Details
+                    </h3>
+                    <DraftActions
+                        draft={draft}
+                        onActionComplete={handleActionComplete}
+                    />
+                </div>
             </div>
 
-            {/* Actions */}
-            <DraftActions
-                draft={draft}
-                onActionComplete={handleActionComplete}
-            />
+            {/* Scrollable Content Container */}
+            <div className="flex-1 min-h-0 overflow-auto">
+                {/* Metadata */}
+                <div className="p-4 border-b bg-muted/30">
+                    <DraftMetadataComponent
+                        draft={draft}
+                        onUpdate={handleMetadataChange}
+                        type={draft.type}
+                    />
+                </div>
+
+                {/* Error message */}
+                {error && (
+                    <div className="text-sm text-red-500 px-4 py-2">{error}</div>
+                )}
+
+                {/* Content Editor */}
+                <div className="relative">
+                    {isLoading && (
+                        <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
+                        </div>
+                    )}
+                    <DraftEditor
+                        type={draft.type}
+                        content={draft.content}
+                        onUpdate={handleContentChange}
+                        onAutoSave={handleAutoSave}
+                        disabled={isLoading}
+                        updatedAt={draft.updatedAt}
+                    />
+                </div>
+            </div>
         </div>
     );
 }
