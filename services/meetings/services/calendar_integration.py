@@ -42,8 +42,13 @@ async def create_calendar_event(
         start_time=datetime.now(timezone.utc),  # This should come from the slot data
         end_time=datetime.now(timezone.utc)
         + timedelta(hours=1),  # This should come from the slot data
+        all_day=False,
+        location=None,
         attendees=attendee_list,
+        calendar_id=None,
         provider=None,  # Let the office service use the user's preferred provider
+        visibility="default",
+        status="confirmed",
     )
 
     async with httpx.AsyncClient() as client:

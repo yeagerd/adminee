@@ -406,8 +406,14 @@ async def get_calendar_events(
         cached_result = await cache_manager.get_from_cache(cache_key)
         if cached_result:
             logger.info("Cache hit for calendar events", request_id=request_id)
+            # Extract events from cached result
+            events = (
+                cached_result.get("events", [])
+                if isinstance(cached_result, dict)
+                else cached_result
+            )
             return CalendarEventListApiResponse(
-                success=True, data=cached_result, cache_hit=True, request_id=request_id
+                success=True, data=events, cache_hit=True, request_id=request_id
             )
 
         # Fetch from providers in parallel
@@ -510,7 +516,7 @@ async def get_calendar_events(
 
         return CalendarEventListApiResponse(
             success=True,
-            data=response_data,
+            data=aggregated_events,
             cache_hit=False,
             provider_used=(
                 Provider(providers_used[0]) if len(providers_used) == 1 else None

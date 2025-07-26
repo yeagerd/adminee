@@ -1,7 +1,14 @@
 from datetime import datetime
 from typing import Any, Dict, Generic, List, Optional, TypeVar
 
-from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    EmailStr,
+    Field,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
 
 from services.office.models import Provider
 
@@ -15,7 +22,7 @@ class EmailAddress(BaseModel):
 
     @field_validator("name")
     @classmethod
-    def validate_name_not_empty(cls, v):
+    def validate_name_not_empty(cls, v: Optional[str]) -> Optional[str]:
         """Validate that name is not empty if provided."""
         if v is not None and not v.strip():
             return None  # Convert empty string to None
@@ -154,7 +161,9 @@ class CreateCalendarEventRequest(BaseModel):
 
     @field_validator("end_time")
     @classmethod
-    def validate_end_time_after_start_time(cls, v, info):
+    def validate_end_time_after_start_time(
+        cls, v: datetime, info: ValidationInfo
+    ) -> datetime:
         """Validate that end_time is after start_time."""
         if "start_time" in info.data and v <= info.data["start_time"]:
             raise ValueError("end_time must be after start_time")
@@ -162,7 +171,7 @@ class CreateCalendarEventRequest(BaseModel):
 
     @field_validator("title")
     @classmethod
-    def validate_title_not_empty(cls, v):
+    def validate_title_not_empty(cls, v: str) -> str:
         """Validate that title is not empty or only whitespace."""
         if not v or not v.strip():
             raise ValueError("title cannot be empty")
@@ -170,7 +179,7 @@ class CreateCalendarEventRequest(BaseModel):
 
     @field_validator("visibility")
     @classmethod
-    def validate_visibility(cls, v):
+    def validate_visibility(cls, v: str) -> str:
         """Validate visibility value."""
         valid_values = ["default", "public", "private"]
         if v not in valid_values:
@@ -179,7 +188,7 @@ class CreateCalendarEventRequest(BaseModel):
 
     @field_validator("status")
     @classmethod
-    def validate_status(cls, v):
+    def validate_status(cls, v: str) -> str:
         """Validate status value."""
         valid_values = ["confirmed", "tentative", "cancelled"]
         if v not in valid_values:
@@ -188,7 +197,7 @@ class CreateCalendarEventRequest(BaseModel):
 
     @field_validator("provider")
     @classmethod
-    def validate_provider(cls, v):
+    def validate_provider(cls, v: Optional[str]) -> Optional[str]:
         """Validate provider value."""
         if v is not None:
             valid_values = ["google", "microsoft"]
@@ -299,7 +308,7 @@ class AvailabilityRequest(BaseModel):
 
     @field_validator("start", "end")
     @classmethod
-    def validate_datetime_format(cls, v):
+    def validate_datetime_format(cls, v: str) -> str:
         """Validate that datetime strings are in ISO format."""
         try:
             datetime.fromisoformat(v)
@@ -309,7 +318,7 @@ class AvailabilityRequest(BaseModel):
 
     @field_validator("providers")
     @classmethod
-    def validate_providers(cls, v):
+    def validate_providers(cls, v: Optional[List[str]]) -> Optional[List[str]]:
         """Validate provider values."""
         if v is not None:
             valid_providers = ["google", "microsoft"]
@@ -322,7 +331,7 @@ class AvailabilityRequest(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def validate_end_after_start(self):
+    def validate_end_after_start(self) -> "AvailabilityRequest":
         """Validate that end time is after start time."""
         try:
             start_dt = datetime.fromisoformat(self.start)
