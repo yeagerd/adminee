@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
@@ -77,7 +77,7 @@ class MeetingPollBase(BaseModel):
 
     @field_validator("meeting_type", mode="before")
     @classmethod
-    def validate_meeting_type(cls, v):
+    def validate_meeting_type(cls, v: Any) -> MeetingType:
         """Validate and normalize meeting_type values to ensure they're always MeetingType."""
         if isinstance(v, MeetingType):
             return v
@@ -133,7 +133,7 @@ class MeetingPollUpdate(BaseModel):
 
     @field_validator("meeting_type", mode="before")
     @classmethod
-    def validate_meeting_type(cls, v):
+    def validate_meeting_type(cls, v: Any) -> Optional[MeetingType]:
         """Validate and normalize meeting_type values to ensure they're always MeetingType."""
         if v is None:
             return v
