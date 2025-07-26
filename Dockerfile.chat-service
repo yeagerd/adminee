@@ -51,7 +51,7 @@ COPY services/common/ ./services/common/
 COPY services/chat/ /app/services/chat/
 
 # Service URL environment variables (non-sensitive)
-ENV USER_MANAGEMENT_SERVICE_URL="http://user-management:8001"
+ENV USER_SERVICE_URL="http://user-management:8001"
 ENV OFFICE_SERVICE_URL="http://office-service:8003"
 
 # API keys will be provided at runtime via docker-compose environment

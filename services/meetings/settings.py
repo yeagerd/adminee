@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     user_management_service_url: str = Field(
         default="http://localhost:8001",
         description="URL for the user management service",
-        validation_alias=AliasChoices("USER_MANAGEMENT_SERVICE_URL"),
+        validation_alias=AliasChoices("USER_SERVICE_URL"),
     )
 
     # Logging configuration

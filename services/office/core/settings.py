@@ -83,7 +83,11 @@ class Settings(BaseSettings):
 
     # Service URLs
     USER_MANAGEMENT_SERVICE_URL: str = Field(
-        default="http://localhost:8001", description="User management service URL"
+        ...,
+        description="User management service URL",
+        validation_alias=AliasChoices(
+            "USER_SERVICE_URL", "USER_MANAGEMENT_SERVICE_URL"
+        ),
     )
 
 
