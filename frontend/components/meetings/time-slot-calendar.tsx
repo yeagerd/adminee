@@ -66,9 +66,13 @@ export function TimeSlotCalendar({
         if (dateRangeType === 'target') {
             const target = new Date(targetDate);
             const start = new Date(target);
-            start.setDate(start.getDate() - Math.floor(rangeDays / 2));
+            // For even rangeDays, distribute evenly around target
+            // For odd rangeDays, put target in the middle
+            const daysBefore = Math.floor((rangeDays - 1) / 2);
+            const daysAfter = rangeDays - 1 - daysBefore;
+            start.setDate(start.getDate() - daysBefore);
             const end = new Date(target);
-            end.setDate(end.getDate() + Math.floor(rangeDays / 2));
+            end.setDate(end.getDate() + daysAfter);
             return { startDate: start, endDate: end };
         } else {
             return dateRange;
@@ -166,6 +170,15 @@ export function TimeSlotCalendar({
         return DateTime.fromISO(dateString).setZone(timeZone).toFormat('EEE, MMM d');
     };
 
+    // Calculate actual number of days in the range
+    const actualDaysInRange = useMemo(() => {
+        const start = new Date(effectiveDateRange.startDate);
+        const end = new Date(effectiveDateRange.endDate);
+        const diffTime = end.getTime() - start.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 for inclusive range
+        return diffDays;
+    }, [effectiveDateRange]);
+
     // Navigation
     const navigateDateRange = (direction: 'prev' | 'next') => {
         const days = direction === 'next' ? rangeDays : -rangeDays;
@@ -259,7 +272,7 @@ export function TimeSlotCalendar({
                                 className="w-full"
                             />
                             <div className="text-sm text-muted-foreground">
-                                Showing {rangeDays} days total
+                                Showing {actualDaysInRange} days total
                             </div>
                         </div>
                     )}
