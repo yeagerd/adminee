@@ -337,6 +337,12 @@ export class GatewayClient {
             method: 'DELETE',
         });
     }
+
+    async sendMeetingInvitations(pollId: string): Promise<void> {
+        return this.request<void>(`/api/v1/meetings/polls/${pollId}/send-invitations`, {
+            method: 'POST',
+        });
+    }
 }
 
 // Export singleton instance
