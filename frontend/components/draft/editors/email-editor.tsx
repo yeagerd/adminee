@@ -28,12 +28,13 @@ export function EmailEditor({
         content,
         onUpdate,
         onAutoSave,
-        autoSaveDelay: 2000,
+        autoSaveDelay: 3000,
     });
 
     const [hasInteracted, setHasInteracted] = useState(false);
     const [initialMount, setInitialMount] = useState(true);
 
+    // Track user interaction after initial mount
     useEffect(() => {
         if (initialMount) {
             setInitialMount(false);
@@ -45,7 +46,6 @@ export function EmailEditor({
     const errors = validateContent(content);
     const wordCount = getWordCount(content);
     const characterCount = getCharacterCount(content);
-
     const showErrors = hasInteracted && errors.length > 0;
 
     return (
@@ -54,17 +54,16 @@ export function EmailEditor({
             <EditorToolbar editor={editor} />
 
             {/* Editor Content */}
-            <div className="flex-1 overflow-auto">
-                <div className="p-4 h-full">
-                    <EditorContent
-                        editor={editor}
-                        className={cn(
-                            'h-full min-h-[300px] prose prose-sm sm:prose lg:prose-lg xl:prose-2xl max-w-none',
-                            'focus:outline-none',
-                            disabled && 'opacity-50 pointer-events-none'
-                        )}
-                    />
-                </div>
+            <div className="flex-1 min-h-0 p-4">
+                <EditorContent
+                    editor={editor}
+                    className={cn(
+                        'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl max-w-none',
+                        'focus:outline-none',
+                        'min-h-[200px]',
+                        disabled && 'opacity-50 pointer-events-none'
+                    )}
+                />
             </div>
 
             {/* Status Bar */}
