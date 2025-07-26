@@ -494,7 +494,7 @@ def test_get_documents_success(mock_requests, monkeypatch):
                 {
                     "success": True,
                     "data": {
-                        "documents": [{"id": "1", "title": "Doc"}],
+                        "files": [{"id": "1", "title": "Doc"}],
                         "total_count": 1,
                         "providers_used": ["google"],
                         "provider_errors": None,

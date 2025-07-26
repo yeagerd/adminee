@@ -192,6 +192,49 @@ class TestEmailMessagesEndpoint:
 
         assert response.status_code == 422  # Validation error
 
+    @patch("services.office.api.email.fetch_provider_emails")
+    @pytest.mark.asyncio
+    async def test_get_email_messages_no_caching_when_all_providers_fail(
+        self,
+        mock_fetch_provider_emails,
+        mock_cache_manager,
+        mock_api_client_factory,
+        client,
+        auth_headers,
+    ):
+        """Test that email messages are not cached when all providers fail."""
+        # Mock cache miss
+        mock_cache_manager.get_from_cache.return_value = None
+
+        # Mock all providers failing with different error types
+        mock_fetch_provider_emails.side_effect = [
+            Exception("Token expired"),
+            Exception("Authentication failed"),
+        ]
+
+        # Mock API client factory to return None (simulating no valid clients)
+        mock_api_client_factory.create_client.return_value = None
+
+        response = client.get("/v1/email/messages?limit=10", headers=auth_headers)
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Verify response structure
+        assert data["success"] is True
+        assert data["data"]["messages"] == []
+        assert data["data"]["total_count"] == 0
+        assert data["data"]["providers_used"] == []
+        assert data["data"]["provider_errors"] is not None
+        assert len(data["data"]["provider_errors"]) == 2
+
+        # Verify that the response was NOT cached since all providers failed
+        mock_cache_manager.set_to_cache.assert_not_called()
+
+        # Verify that cache was checked but not set
+        mock_cache_manager.get_from_cache.assert_called_once()
+        assert mock_cache_manager.set_to_cache.call_count == 0
+
 
 class TestEmailMessageDetailEndpoint:
     """Tests for the GET /email/messages/{message_id} endpoint."""

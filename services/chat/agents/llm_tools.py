@@ -107,7 +107,7 @@ def get_calendar_events(
     try:
         office_service_url = get_settings().office_service_url
         response = requests.get(
-            f"{office_service_url}/calendar/events",
+            f"{office_service_url}/v1/calendar/events",
             headers=headers,
             params=params,
             timeout=10,
@@ -250,7 +250,7 @@ def get_emails(
     try:
         office_service_url = get_settings().office_service_url
         response = requests.get(
-            f"{office_service_url}/email/messages",
+            f"{office_service_url}/v1/email/messages",
             headers=headers,
             params=params,
             timeout=10,
@@ -314,7 +314,7 @@ def get_notes(
     try:
         office_service_url = get_settings().office_service_url
         response = requests.get(
-            f"{office_service_url}/notes",
+            f"{office_service_url}/v1/notes",
             headers=headers,
             params=params,
             timeout=10,
@@ -377,7 +377,7 @@ def get_documents(
     try:
         office_service_url = get_settings().office_service_url
         response = requests.get(
-            f"{office_service_url}/documents",
+            f"{office_service_url}/v1/files",
             headers=headers,
             params=params,
             timeout=10,
@@ -391,14 +391,14 @@ def get_documents(
                 "error": f"Office service error: {data.get('message', 'Unknown error')}"
             }
 
-        # Extract documents from the data field
-        documents_data = data.get("data", {})
-        if "documents" not in documents_data:
+        # Extract files from the data field
+        files_data = data.get("data", {})
+        if "files" not in files_data:
             return {
-                "error": "Malformed response from office-service: missing documents data."
+                "error": "Malformed response from office-service: missing files data."
             }
 
-        return {"documents": documents_data["documents"]}
+        return {"documents": files_data["files"]}
 
     except requests.Timeout:
         return {"error": "Request to office-service timed out."}

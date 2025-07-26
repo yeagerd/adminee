@@ -306,8 +306,18 @@ async def get_files(
         if response_data.get("providers") is None:
             response_data["providers"] = []
 
-        # Cache the result (5 minutes TTL for files)
-        await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=300)
+        # Only cache if we have successful results from at least one provider
+        if providers_used:  # Only cache if at least one provider succeeded
+            # Cache the result (5 minutes TTL for files)
+            await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=300)
+        else:
+            logger.info(
+                f"[{request_id}] Not caching response due to no successful providers",
+                extra={
+                    "providers_used": providers_used,
+                    "provider_errors": provider_errors,
+                },
+            )
 
         # Calculate response time
         end_time = datetime.now(timezone.utc)
@@ -530,8 +540,18 @@ async def search_files(
             },
         }
 
-        # Cache the search results (5 minutes TTL)
-        await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=300)
+        # Only cache if we have successful results from at least one provider
+        if providers_used:  # Only cache if at least one provider succeeded
+            # Cache the search results (5 minutes TTL)
+            await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=300)
+        else:
+            logger.info(
+                f"[{request_id}] Not caching search response due to no successful providers",
+                extra={
+                    "providers_used": providers_used,
+                    "provider_errors": provider_errors,
+                },
+            )
 
         # Calculate response time
         end_time = datetime.now(timezone.utc)
