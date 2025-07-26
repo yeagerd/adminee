@@ -338,7 +338,7 @@ class UserServiceClient(ServiceClient):
 
                 # Fallback to internal endpoint
                 response = await client.get(
-                    f"{self.base_url}/internal/users/{self.user_id}/integrations",
+                    f"{self.base_url}/v1/internal/users/{self.user_id}/integrations",
                     headers={"X-API-Key": settings.API_FRONTEND_USER_KEY},
                 )
 
@@ -384,7 +384,7 @@ class UserServiceClient(ServiceClient):
                 # Use the preferences endpoint to check if user exists
                 # This endpoint properly checks the database for user existence
                 response = await client.get(
-                    f"{self.base_url}/internal/users/{user_id}/preferences",
+                    f"{self.base_url}/v1/internal/users/{user_id}/preferences",
                     headers={"X-API-Key": settings.API_FRONTEND_USER_KEY},
                 )
                 if response.status_code == 200:
@@ -419,7 +419,7 @@ class UserServiceClient(ServiceClient):
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.get(
-                    f"{self.base_url}/internal/users/{self.user_id}/preferences",
+                    f"{self.base_url}/v1/internal/users/{self.user_id}/preferences",
                     headers={"X-API-Key": settings.API_FRONTEND_USER_KEY},
                 )
 
