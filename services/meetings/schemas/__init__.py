@@ -75,6 +75,17 @@ class MeetingPollCreate(MeetingPollBase):
     participants: List[PollParticipantCreate]
 
 
+class MeetingPollUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    duration_minutes: Optional[int] = None
+    location: Optional[str] = None
+    meeting_type: Optional[str] = None
+    response_deadline: Optional[datetime] = None
+    min_participants: Optional[int] = None
+    max_participants: Optional[int] = None
+
+
 class MeetingPoll(MeetingPollBase):
     id: UUID
     user_id: str

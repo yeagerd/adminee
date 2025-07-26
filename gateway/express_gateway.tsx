@@ -149,6 +149,7 @@ dotenv.config({ path: envPath });
         'API_FRONTEND_CHAT_KEY',
         'API_FRONTEND_OFFICE_KEY',
         'API_FRONTEND_SHIPMENTS_KEY',
+        'API_FRONTEND_MEETINGS_KEY',
     ];
     const missing = required.filter((key) => !process.env[key]);
     if (missing.length > 0) {
@@ -496,6 +497,10 @@ const createServiceProxy = (targetUrl: string, pathRewrite?: Record<string, stri
                 // Shipments service
                 proxyReq.setHeader('X-API-Key', process.env.API_FRONTEND_SHIPMENTS_KEY || '');
                 logger.debug(`Setting API key for shipments service: ${process.env.API_FRONTEND_SHIPMENTS_KEY ? 'present' : 'missing'}`);
+            } else if (targetUrl.includes('8005')) {
+                // Meetings service
+                proxyReq.setHeader('X-API-Key', process.env.API_FRONTEND_MEETINGS_KEY || '');
+                logger.debug(`Setting API key for meetings service: ${process.env.API_FRONTEND_MEETINGS_KEY ? 'present' : 'missing'}`);
             } else {
                 logger.warn(`No API key assigned for target URL: ${targetUrl}`);
             }
