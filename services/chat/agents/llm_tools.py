@@ -182,7 +182,7 @@ def get_user_available_providers(user_id: str) -> List[str]:
 
         user_service_url = get_settings().user_management_service_url
         response = requests.get(
-            f"{user_service_url}/internal/users/{user_id}/integrations",
+            f"{user_service_url}/v1/internal/users/{user_id}/integrations",
             headers=headers,
             timeout=5,
         )
