@@ -213,8 +213,18 @@ async def get_email_messages(
             },
         }
 
-        # Cache the result for 15 minutes
-        await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=900)
+        # Only cache if we have successful results from at least one provider
+        if providers_used:  # Only cache if at least one provider succeeded
+            # Cache the result for 15 minutes
+            await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=900)
+        else:
+            logger.info(
+                f"[{request_id}] Not caching response due to no successful providers",
+                extra={
+                    "providers_used": providers_used,
+                    "provider_errors": provider_errors,
+                },
+            )
 
         # Calculate response time
         end_time = datetime.now(timezone.utc)
