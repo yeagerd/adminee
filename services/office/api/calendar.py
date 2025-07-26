@@ -29,9 +29,12 @@ from services.office.core.normalizer import normalize_google_calendar_event
 from services.office.models import Provider
 from services.office.schemas import (
     ApiResponse,
+    AvailabilityApiResponse,
     AvailabilityResponse,
     AvailableSlot,
     CalendarEvent,
+    CalendarEventApiResponse,
+    CalendarEventListApiResponse,
     CalendarEventResponse,
     CreateCalendarEventRequest,
 )
@@ -68,7 +71,7 @@ def _get_calendar_scopes(provider: str) -> List[str]:
         return []
 
 
-@router.get("/availability", response_model=ApiResponse)
+@router.get("/availability", response_model=AvailabilityApiResponse)
 async def get_user_availability(
     request: Request,
     start: str = Query(
@@ -81,7 +84,7 @@ async def get_user_availability(
         description="Providers to check (google, microsoft). If not specified, checks all available providers",
     ),
     service_name: str = Depends(service_permission_required(["read_calendar"])),
-) -> ApiResponse:
+) -> AvailabilityApiResponse:
     """
     Get user availability for a given time range.
 
@@ -157,7 +160,7 @@ async def get_user_availability(
         cached_result = await cache_manager.get_from_cache(cache_key)
         if cached_result:
             logger.info("Cache hit for availability", request_id=request_id)
-            return ApiResponse(
+            return AvailabilityApiResponse(
                 success=True, data=cached_result, cache_hit=True, request_id=request_id
             )
 
@@ -262,7 +265,7 @@ async def get_user_availability(
             available_slots=len(available_slots),
         )
 
-        return ApiResponse(
+        return AvailabilityApiResponse(
             success=True,
             data=response_data,
             cache_hit=False,
@@ -279,7 +282,7 @@ async def get_user_availability(
         raise ServiceError(message=f"Failed to check availability: {str(e)}")
 
 
-@router.get("/events", response_model=ApiResponse)
+@router.get("/events", response_model=CalendarEventListApiResponse)
 async def get_calendar_events(
     request: Request,
     providers: Optional[List[str]] = Query(
@@ -301,7 +304,7 @@ async def get_calendar_events(
     q: Optional[str] = Query(None, description="Search query to filter events"),
     time_zone: Optional[str] = Query("UTC", description="Time zone for date filtering"),
     service_name: str = Depends(service_permission_required(["read_calendar"])),
-) -> ApiResponse:
+) -> CalendarEventListApiResponse:
     """
     Get unified calendar events from multiple providers.
 
@@ -403,7 +406,7 @@ async def get_calendar_events(
         cached_result = await cache_manager.get_from_cache(cache_key)
         if cached_result:
             logger.info("Cache hit for calendar events", request_id=request_id)
-            return ApiResponse(
+            return CalendarEventListApiResponse(
                 success=True, data=cached_result, cache_hit=True, request_id=request_id
             )
 
@@ -505,7 +508,7 @@ async def get_calendar_events(
             providers_used=providers_used,
         )
 
-        return ApiResponse(
+        return CalendarEventListApiResponse(
             success=True,
             data=response_data,
             cache_hit=False,
@@ -610,12 +613,12 @@ async def get_calendar_event(
         raise ServiceError(message=f"Failed to fetch event: {str(e)}")
 
 
-@router.post("/events", response_model=ApiResponse)
+@router.post("/events", response_model=CalendarEventApiResponse)
 async def create_calendar_event(
     request: Request,
     event_data: CreateCalendarEventRequest,
     service_name: str = Depends(service_permission_required(["write_calendar"])),
-) -> ApiResponse:
+) -> CalendarEventApiResponse:
     """
     Create a calendar event in a specific provider.
 
@@ -695,7 +698,7 @@ async def create_calendar_event(
             f"[{request_id}] Calendar event created successfully in {response_time_ms}ms via {provider}"
         )
 
-        return ApiResponse(
+        return CalendarEventApiResponse(
             success=True,
             data=response_data,
             cache_hit=False,
