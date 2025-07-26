@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from typing import List
 
 import httpx
@@ -22,16 +23,29 @@ async def create_calendar_event(
     user_id: str, poll_id: str, selected_slot_id: str, participants: List[str]
 ) -> dict:
     settings = get_settings()
-    url = f"{settings.office_service_url}/v1/calendar/create-meeting"
+    url = f"{settings.office_service_url}/v1/calendar/events"
     headers = {"X-API-Key": settings.api_meetings_office_key, "X-User-Id": user_id}
-    params = {
-        "poll_id": poll_id,
-        "selected_slot_id": selected_slot_id,
-        "participants": participants,
+
+    # Convert participants to EmailAddress format
+    attendee_list = [
+        {"email": email, "name": email.split("@")[0]} for email in participants
+    ]
+
+    # Create event data using the existing CreateCalendarEventRequest schema
+    event_data = {
         "title": f"Meeting from poll {poll_id}",
         "description": f"Meeting created from poll {poll_id}",
+        "start_time": datetime.now(
+            timezone.utc
+        ).isoformat(),  # This should come from the slot data
+        "end_time": (
+            datetime.now(timezone.utc) + timedelta(hours=1)
+        ).isoformat(),  # This should come from the slot data
+        "attendees": attendee_list,
+        "provider": None,  # Let the office service use the user's preferred provider
     }
+
     async with httpx.AsyncClient() as client:
-        resp = await client.post(url, headers=headers, params=params)
+        resp = await client.post(url, headers=headers, json=event_data)
         resp.raise_for_status()
         return resp.json()
