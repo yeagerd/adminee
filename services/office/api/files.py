@@ -7,7 +7,6 @@ Internal/service endpoints, if any, should be under /internal and require API ke
 """
 
 import asyncio
-import logging
 import uuid
 from datetime import datetime, timezone
 from typing import List, Optional, cast
@@ -18,6 +17,7 @@ from services.common.http_errors import (
     ServiceError,
     ValidationError,
 )
+from services.common.logging_config import get_logger
 from services.office.core.api_client_factory import APIClientFactory
 from services.office.core.auth import service_permission_required
 from services.office.core.cache_manager import cache_manager, generate_cache_key
@@ -30,7 +30,7 @@ from services.office.schemas import (
     ApiResponse,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Create router
 router = APIRouter(prefix="/files", tags=["files"])

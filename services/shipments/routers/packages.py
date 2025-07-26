@@ -1,10 +1,10 @@
-import logging
 from datetime import datetime
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
+from services.common.logging_config import get_logger
 from services.shipments.database import get_async_session_dep
 from services.shipments.models import Package
 from services.shipments.schemas import (
@@ -15,6 +15,8 @@ from services.shipments.schemas import (
 )
 from services.shipments.service_auth import service_permission_required
 
+logger = get_logger(__name__)
+
 router = APIRouter()
 
 
@@ -23,10 +25,10 @@ async def list_packages(
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["read_shipments"])),
 ) -> dict:
-    logging.info("Fetching all packages from DB...")
+    logger.info("Fetching all packages from DB")
     result = await session.execute(select(Package))
     packages = result.scalars().all()
-    logging.info(f"Found {len(packages)} packages")
+    logger.info("Found packages", count=len(packages))
     # Convert to PackageOut (minimal fields for now)
     package_out = [
         PackageOut(
