@@ -7,13 +7,6 @@ import { gatewayClient } from '@/lib/gateway-client';
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-interface Poll {
-    title?: string;
-    description?: string;
-    duration_minutes?: number;
-    location?: string;
-}
-
 interface MeetingPollEditProps {
     pollId: string;
 }
@@ -33,12 +26,11 @@ export function MeetingPollEdit({ pollId }: MeetingPollEditProps) {
         if (!pollId) return;
         setLoading(true);
         gatewayClient.getMeetingPoll(pollId)
-            .then((poll) => {
-                const p = poll as Poll;
-                setTitle(p.title || "");
-                setDescription(p.description || "");
-                setDuration(p.duration_minutes || 60);
-                setLocation(p.location || "");
+            .then((poll: MeetingPoll) => {
+                setTitle(poll.title || "");
+                setDescription(poll.description || "");
+                setDuration(poll.duration_minutes || 60);
+                setLocation(poll.location || "");
             })
             .catch((e) => setError(e.message || "Failed to load poll"))
             .finally(() => setLoading(false));
@@ -49,12 +41,13 @@ export function MeetingPollEdit({ pollId }: MeetingPollEditProps) {
         setSaving(true);
         setError(null);
         try {
-            await gatewayClient.updateMeetingPoll(pollId, {
+            const updateData: MeetingPollUpdate = {
                 title,
                 description,
                 duration_minutes: duration,
                 location,
-            });
+            };
+            await gatewayClient.updateMeetingPoll(pollId, updateData);
             setMeetingSubView('view', pollId);
         } catch (e: unknown) {
             if (e && typeof e === 'object' && 'message' in e) {

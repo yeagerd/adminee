@@ -310,23 +310,23 @@ export class GatewayClient {
     }
 
     // Meetings Service
-    async listMeetingPolls(): Promise<unknown[]> {
-        return this.request<unknown[]>('/api/v1/meetings/polls');
+    async listMeetingPolls(): Promise<MeetingPoll[]> {
+        return this.request<MeetingPoll[]>('/api/v1/meetings/polls');
     }
 
-    async getMeetingPoll(pollId: string): Promise<unknown> {
-        return this.request<unknown>(`/api/v1/meetings/polls/${pollId}`);
+    async getMeetingPoll(pollId: string): Promise<MeetingPoll> {
+        return this.request<MeetingPoll>(`/api/v1/meetings/polls/${pollId}`);
     }
 
-    async createMeetingPoll(pollData: unknown): Promise<unknown> {
-        return this.request<unknown>('/api/v1/meetings/polls', {
+    async createMeetingPoll(pollData: MeetingPollCreate): Promise<MeetingPoll> {
+        return this.request<MeetingPoll>('/api/v1/meetings/polls', {
             method: 'POST',
             body: pollData,
         });
     }
 
-    async updateMeetingPoll(pollId: string, pollData: unknown): Promise<unknown> {
-        return this.request<unknown>(`/api/v1/meetings/polls/${pollId}`, {
+    async updateMeetingPoll(pollId: string, pollData: MeetingPollUpdate): Promise<MeetingPoll> {
+        return this.request<MeetingPoll>(`/api/v1/meetings/polls/${pollId}`, {
             method: 'PUT',
             body: pollData,
         });
@@ -414,6 +414,82 @@ export interface DraftListResponse {
     drafts: DraftApiResponse[];
     total_count: number;
     has_more: boolean;
+}
+
+// Meeting Poll Types
+export interface MeetingPoll {
+    id: string;
+    user_id: string;
+    title: string;
+    description?: string;
+    duration_minutes: number;
+    location?: string;
+    meeting_type: string;
+    response_deadline?: string;
+    min_participants?: number;
+    max_participants?: number;
+    status: string;
+    created_at: string;
+    updated_at: string;
+    poll_token: string;
+    time_slots: TimeSlot[];
+    participants: PollParticipant[];
+}
+
+export interface TimeSlot {
+    id: string;
+    start_time: string;
+    end_time: string;
+    timezone: string;
+    is_available: boolean;
+}
+
+export interface PollParticipant {
+    id: string;
+    email: string;
+    name?: string;
+    status: string;
+    invited_at: string;
+    responded_at?: string;
+    reminder_sent_count: number;
+    response_token: string;
+}
+
+export interface MeetingPollCreate {
+    title: string;
+    description?: string;
+    duration_minutes: number;
+    location?: string;
+    meeting_type: string;
+    response_deadline?: string;
+    min_participants?: number;
+    max_participants?: number;
+    time_slots: TimeSlotCreate[];
+    participants: PollParticipantCreate[];
+}
+
+export interface TimeSlotCreate {
+    start_time: string;
+    end_time: string;
+    timezone: string;
+}
+
+export interface PollParticipantCreate {
+    email: string;
+    name?: string;
+    poll_id?: string;
+    response_token?: string;
+}
+
+export interface MeetingPollUpdate {
+    title?: string;
+    description?: string;
+    duration_minutes?: number;
+    location?: string;
+    meeting_type?: string;
+    response_deadline?: string;
+    min_participants?: number;
+    max_participants?: number;
 }
 
 export default gatewayClient;
