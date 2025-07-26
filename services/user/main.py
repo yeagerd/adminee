@@ -52,14 +52,7 @@ from services.user.services.integration_service import (
 )
 from services.user.settings import Settings, get_settings
 
-# Set up centralized logging
-settings = get_settings()
-setup_service_logging(
-    service_name="user-management-service",
-    log_level=settings.log_level,
-    log_format=settings.log_format,
-)
-
+# Set up centralized logging - will be initialized in lifespan
 logger = get_logger(__name__)
 
 
@@ -73,9 +66,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     settings = get_settings()
 
+    # Set up centralized logging
+    setup_service_logging(
+        service_name="user",
+        log_level=settings.log_level,
+        log_format=settings.log_format,
+    )
+
     # Startup
     log_service_startup(
-        "user-management-service",
+        "user",
         api_frontend_user_key=(
             "configured" if settings.api_frontend_user_key else "missing"
         ),
@@ -119,7 +119,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
     # Shutdown
-    log_service_shutdown("user-management-service")
+    log_service_shutdown("user")
     try:
         await close_db()
         logger.info("Database disconnected successfully")
