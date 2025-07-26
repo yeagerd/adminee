@@ -9,7 +9,7 @@ from services.meetings.models import PollParticipant as PollParticipantModel
 from services.meetings.models import TimeSlot as TimeSlotModel
 from services.meetings.models import get_session
 from services.meetings.models.meeting import PollStatus
-from services.meetings.schemas import MeetingPoll, MeetingPollCreate
+from services.meetings.schemas import MeetingPoll, MeetingPollCreate, MeetingPollUpdate
 from services.meetings.services import calendar_integration
 
 router = APIRouter()
@@ -93,7 +93,7 @@ def create_poll(poll: MeetingPollCreate, request: Request) -> MeetingPoll:
 
 @router.put("/{poll_id}", response_model=MeetingPoll)
 def update_poll(
-    poll_id: UUID, poll: MeetingPollCreate, request: Request
+    poll_id: UUID, poll: MeetingPollUpdate, request: Request
 ) -> MeetingPoll:
     user_id = get_user_id_from_request(request)
     with get_session() as session:
@@ -105,14 +105,25 @@ def update_poll(
             raise HTTPException(
                 status_code=403, detail="Not authorized to update this poll"
             )
-        db_poll.title = poll.title  # type: ignore[assignment]
-        db_poll.description = poll.description  # type: ignore[assignment]
-        db_poll.duration_minutes = poll.duration_minutes  # type: ignore[assignment]
-        db_poll.location = poll.location  # type: ignore[assignment]
-        db_poll.meeting_type = poll.meeting_type  # type: ignore[assignment]
-        db_poll.response_deadline = poll.response_deadline  # type: ignore[assignment]
-        db_poll.min_participants = poll.min_participants or 1  # type: ignore[assignment]
-        db_poll.max_participants = poll.max_participants  # type: ignore[assignment]
+
+        # Update only the fields that are provided
+        if poll.title is not None:
+            db_poll.title = poll.title  # type: ignore[assignment]
+        if poll.description is not None:
+            db_poll.description = poll.description  # type: ignore[assignment]
+        if poll.duration_minutes is not None:
+            db_poll.duration_minutes = poll.duration_minutes  # type: ignore[assignment]
+        if poll.location is not None:
+            db_poll.location = poll.location  # type: ignore[assignment]
+        if poll.meeting_type is not None:
+            db_poll.meeting_type = poll.meeting_type  # type: ignore[assignment]
+        if poll.response_deadline is not None:
+            db_poll.response_deadline = poll.response_deadline  # type: ignore[assignment]
+        if poll.min_participants is not None:
+            db_poll.min_participants = poll.min_participants  # type: ignore[assignment]
+        if poll.max_participants is not None:
+            db_poll.max_participants = poll.max_participants  # type: ignore[assignment]
+
         # TODO: update time slots and participants as needed
         session.commit()
         session.refresh(db_poll)
