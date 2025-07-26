@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToolStateUtils } from '@/hooks/use-tool-state';
 import { gatewayClient, MeetingPoll, PollParticipant } from '@/lib/gateway-client';
 import { ArrowLeft, Link as LinkIcon, Mail } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 const getTimeZones = () =>
     Intl.supportedValuesOf ? Intl.supportedValuesOf("timeZone") : ["UTC"];
@@ -73,6 +73,15 @@ export function MeetingPollNew() {
 
     const removeTimeSlot = (idx: number) => setTimeSlots(timeSlots.filter((_, i) => i !== idx));
 
+    // Auto-populate response deadline with the date of the first time slot
+    useEffect(() => {
+        if (timeSlots.length > 0 && timeSlots[0].start) {
+            const firstSlotDate = new Date(timeSlots[0].start);
+            const dateString = firstSlotDate.toISOString().split('T')[0];
+            setResponseDeadline(dateString);
+        }
+    }, [timeSlots]);
+
     // Submit
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -115,8 +124,30 @@ export function MeetingPollNew() {
         setMeetingSubView('list');
     };
 
-    const copyToClipboard = (text: string) => {
-        navigator.clipboard.writeText(text);
+    const copyToClipboard = async (text: string) => {
+        try {
+            await navigator.clipboard.writeText(text);
+            // You could add a toast notification here for success feedback
+        } catch (error) {
+            console.error('Failed to copy to clipboard:', error);
+            // Fallback for older browsers or non-HTTPS contexts
+            try {
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                textArea.style.top = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                // You could add a toast notification here for success feedback
+            } catch (fallbackError) {
+                console.error('Fallback copy method also failed:', fallbackError);
+                // You could add a toast notification here for error feedback
+            }
+        }
     };
 
     const getResponseUrl = (responseToken: string) => {
@@ -168,7 +199,7 @@ export function MeetingPollNew() {
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                onClick={() => copyToClipboard(getResponseUrl(participant.response_token))}
+                                                onClick={async () => await copyToClipboard(getResponseUrl(participant.response_token))}
                                             >
                                                 Copy Link
                                             </Button>
