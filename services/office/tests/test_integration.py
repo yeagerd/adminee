@@ -32,6 +32,7 @@ def patch_settings():
         db_url_office="sqlite:///:memory:",
         api_frontend_office_key="test-frontend-office-key",
         api_chat_office_key="test-chat-office-key",
+        api_meetings_office_key="test-meetings-office-key",
         api_office_user_key="test-office-user-key",
     )
 
@@ -469,9 +470,9 @@ class TestCalendarEndpoints(BaseOfficeServiceIntegrationTest):
 
                 data = response.json()
                 assert data["success"] is True
-                assert "events" in data["data"]
-                assert len(data["data"]["events"]) == 1
-                assert data["data"]["events"][0]["title"] == "Test Event"
+                assert isinstance(data["data"], list)
+                assert len(data["data"]) == 1
+                assert data["data"][0]["title"] == "Test Event"
 
     def test_get_calendar_events_with_date_range(self):
         """Test calendar events retrieval with date range parameters."""
