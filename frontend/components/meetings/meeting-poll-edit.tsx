@@ -19,7 +19,7 @@ interface MeetingPollEditProps {
 }
 
 export function MeetingPollEdit({ pollId }: MeetingPollEditProps) {
-    const { goBackToPreviousMeetingView } = useToolStateUtils();
+    const { goBackToPreviousMeetingView, setMeetingSubView } = useToolStateUtils();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
@@ -73,7 +73,7 @@ export function MeetingPollEdit({ pollId }: MeetingPollEditProps) {
         setError(null);
         try {
             await gatewayClient.deleteMeetingPoll(pollId);
-            goBackToPreviousMeetingView();
+            setMeetingSubView('list');
         } catch (e: unknown) {
             if (e && typeof e === 'object' && 'message' in e) {
                 setError((e as { message?: string }).message || "Failed to delete poll");
