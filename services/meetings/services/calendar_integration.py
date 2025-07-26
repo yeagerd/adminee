@@ -1,17 +1,16 @@
-import os
 from typing import List
 
 import httpx
 
-OFFICE_SERVICE_URL = os.environ.get("OFFICE_SERVICE_URL", "http://localhost:8003")
-API_KEY = os.environ.get("API_FRONTEND_OFFICE_KEY", "test-office-key")
+from services.meetings.settings import get_settings
 
 
 async def get_user_availability(
     user_id: str, start: str, end: str, duration: int
 ) -> dict:
-    url = f"{OFFICE_SERVICE_URL}/v1/calendar/availability"
-    headers = {"X-API-Key": API_KEY, "X-User-Id": user_id}
+    settings = get_settings()
+    url = f"{settings.office_service_url}/v1/calendar/availability"
+    headers = {"X-API-Key": settings.api_meetings_office_key, "X-User-Id": user_id}
     params = {"start": start, "end": end, "duration": str(duration)}
     async with httpx.AsyncClient() as client:
         resp = await client.get(url, headers=headers, params=params)
@@ -22,8 +21,9 @@ async def get_user_availability(
 async def create_calendar_event(
     user_id: str, poll_id: str, selected_slot_id: str, participants: List[str]
 ) -> dict:
-    url = f"{OFFICE_SERVICE_URL}/v1/calendar/create-meeting"
-    headers = {"X-API-Key": API_KEY, "X-User-Id": user_id}
+    settings = get_settings()
+    url = f"{settings.office_service_url}/v1/calendar/create-meeting"
+    headers = {"X-API-Key": settings.api_meetings_office_key, "X-User-Id": user_id}
     data = {
         "pollId": poll_id,
         "selectedSlotId": selected_slot_id,

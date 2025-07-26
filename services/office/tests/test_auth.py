@@ -39,6 +39,7 @@ def patch_settings():
         db_url_office="sqlite:///:memory:",
         api_frontend_office_key="test-frontend-office-key",
         api_chat_office_key="test-chat-office-key",
+        api_meetings_office_key="test-meetings-office-key",
         api_office_user_key="test-office-user-key",
     )
 
@@ -62,6 +63,7 @@ def get_test_api_keys():
     return {
         "frontend": settings.api_frontend_office_key,
         "chat": settings.api_chat_office_key,
+        "meetings": settings.api_meetings_office_key,
     }
 
 
@@ -78,6 +80,12 @@ class TestAPIKeyFunctions:
         """Test valid chat service API key verification."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
         service_name = verify_api_key(get_test_api_keys()["chat"], api_key_mapping)
+        assert service_name == "office-service-access"
+
+    def test_verify_api_key_valid_meetings_key(self):
+        """Test valid meetings service API key verification."""
+        api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
+        service_name = verify_api_key(get_test_api_keys()["meetings"], api_key_mapping)
         assert service_name == "office-service-access"
 
     def test_verify_api_key_invalid_key(self):
@@ -114,6 +122,15 @@ class TestAPIKeyFunctions:
         client = get_client_from_api_key(api_key, api_key_mapping)
         assert client == "chat-service"
 
+    def test_get_client_from_api_key_meetings_service(self):
+        """Test getting client name from meetings service API key."""
+        api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
+        request = Mock()
+        request.headers = {"X-API-Key": get_test_api_keys()["meetings"]}
+        api_key = get_api_key_from_request(request)
+        client = get_client_from_api_key(api_key, api_key_mapping)
+        assert client == "meetings-service"
+
     def test_get_client_from_api_key_invalid(self):
         """Test getting client name from invalid API key."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
@@ -147,7 +164,16 @@ class TestAPIKeyFunctions:
             get_test_api_keys()["chat"], api_key_mapping
         )
         expected = ["read_emails", "read_calendar", "read_files", "health"]
-        assert permissions == expected
+        assert set(permissions) == set(expected)
+
+    def test_get_permissions_from_api_key_meetings_service(self):
+        """Test getting permissions from meetings service API key."""
+        api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
+        permissions = get_permissions_from_api_key(
+            get_test_api_keys()["meetings"], api_key_mapping
+        )
+        expected = ["send_emails", "health"]
+        assert set(permissions) == set(expected)
 
     def test_get_permissions_from_api_key_invalid(self):
         """Test getting permissions from invalid API key."""
@@ -176,10 +202,26 @@ class TestAPIKeyFunctions:
     def test_has_permission_chat_service_read_emails(self):
         """Test chat service has read_emails permission."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        assert (
-            has_permission(get_test_api_keys()["chat"], "read_emails", api_key_mapping)
-            is True
+        permission_result = has_permission(
+            get_test_api_keys()["chat"], "read_emails", api_key_mapping
         )
+        assert permission_result is True
+
+    def test_has_permission_meetings_service_send_emails(self):
+        """Test meetings service has send_emails permission."""
+        api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
+        permission_result = has_permission(
+            get_test_api_keys()["meetings"], "send_emails", api_key_mapping
+        )
+        assert permission_result is True
+
+    def test_has_permission_meetings_service_no_read_emails(self):
+        """Test meetings service does not have read_emails permission."""
+        api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
+        permission_result = has_permission(
+            get_test_api_keys()["meetings"], "read_emails", api_key_mapping
+        )
+        assert permission_result is False
 
     def test_has_permission_invalid_key(self):
         """Test that invalid key has no permissions."""
