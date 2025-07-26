@@ -14,7 +14,7 @@ import winston from 'winston';
 
 // Enhanced logging configuration for better debugging
 const logger = winston.createLogger({
-    level: 'info',
+    level: process.env.LOG_LEVEL || 'info',
     format: winston.format.combine(
         winston.format.timestamp({
             format: 'YYYY-MM-DDTHH:mm:ss.SSS[Z]'
@@ -381,7 +381,7 @@ app.use((req: any, res: any, next: any) => {
     req.startTime = Date.now();
 
     // Log incoming request
-    logWithContext('info', '→ Incoming request', {
+    logWithContext('debug', '→ Incoming request', {
         method: req.method,
         path: req.path,
         requestId: req.requestId,
@@ -528,7 +528,7 @@ const createServiceProxy = (targetUrl: string, pathRewrite?: Record<string, stri
             }
 
             // Log proxied requests with enhanced context
-            logWithContext('info', 'Proxying request', {
+            logWithContext('debug', 'Proxying request', {
                 method: req.method,
                 path: req.path,
                 targetUrl: `${targetUrl}${proxyReq.path}`,
