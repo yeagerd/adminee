@@ -80,6 +80,9 @@ export function useSettings() {
 export interface UserPreferences {
     timezone_mode: 'auto' | 'manual';
     manual_timezone: string;
+    ui?: {
+        sidebar_expanded?: boolean;
+    };
     // ...other fields as needed
 }
 
@@ -105,6 +108,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
                 const prefs: UserPreferences = {
                     timezone_mode: (typeof obj.timezone_mode === 'string' && (obj.timezone_mode === 'auto' || obj.timezone_mode === 'manual')) ? obj.timezone_mode : 'auto',
                     manual_timezone: (typeof obj.manual_timezone === 'string') ? obj.manual_timezone : '',
+                    ui: { sidebar_expanded: (obj.ui as any)?.sidebar_expanded ?? true },
                     // ...other fields as needed
                 };
                 setUserPreferencesState(prefs);
@@ -124,6 +128,10 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
         const updated: UserPreferences = {
             timezone_mode: prefs.timezone_mode ?? userPreferences?.timezone_mode ?? 'auto',
             manual_timezone: prefs.manual_timezone ?? userPreferences?.manual_timezone ?? '',
+            ui: {
+                ...userPreferences?.ui,
+                ...prefs.ui,
+            },
             // ...other fields as needed
         };
         await gatewayClient.updateUserPreferences(updated as unknown as Record<string, unknown>);
