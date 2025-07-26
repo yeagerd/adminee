@@ -66,6 +66,15 @@ API_KEY_CONFIGS: Dict[str, APIKeyConfig] = {
         ],
         settings_key="api_office_user_key",
     ),
+    "api_meetings_user_key": APIKeyConfig(
+        client="meetings",
+        service="user-management-access",
+        permissions=[
+            "read_users",
+            "read_preferences",
+        ],
+        settings_key="api_meetings_user_key",
+    ),
 }
 
 # Service-level permissions fallback (optional, for legacy support)
@@ -119,6 +128,10 @@ def get_client_permissions(client_name: str) -> list[str]:
                 "read_tokens",
                 "write_tokens",
             ],
+            "meetings": [
+                "read_users",
+                "read_preferences",
+            ],
         },
     )
 
@@ -144,6 +157,10 @@ def client_has_permission(client_name: str, required_permission: str) -> bool:
                 "read_users",
                 "read_tokens",
                 "write_tokens",
+            ],
+            "meetings": [
+                "read_users",
+                "read_preferences",
             ],
         },
     )
