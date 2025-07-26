@@ -27,25 +27,26 @@ async def create_calendar_event(
     headers = {"X-API-Key": settings.api_meetings_office_key, "X-User-Id": user_id}
 
     # Convert participants to EmailAddress format
+    from services.office.schemas import EmailAddress
+
     attendee_list = [
-        {"email": email, "name": email.split("@")[0]} for email in participants
+        EmailAddress(email=email, name=email.split("@")[0]) for email in participants
     ]
 
     # Create event data using the existing CreateCalendarEventRequest schema
-    event_data = {
-        "title": f"Meeting from poll {poll_id}",
-        "description": f"Meeting created from poll {poll_id}",
-        "start_time": datetime.now(
-            timezone.utc
-        ).isoformat(),  # This should come from the slot data
-        "end_time": (
-            datetime.now(timezone.utc) + timedelta(hours=1)
-        ).isoformat(),  # This should come from the slot data
-        "attendees": attendee_list,
-        "provider": None,  # Let the office service use the user's preferred provider
-    }
+    from services.office.schemas import CreateCalendarEventRequest
+
+    event_data = CreateCalendarEventRequest(
+        title=f"Meeting from poll {poll_id}",
+        description=f"Meeting created from poll {poll_id}",
+        start_time=datetime.now(timezone.utc),  # This should come from the slot data
+        end_time=datetime.now(timezone.utc)
+        + timedelta(hours=1),  # This should come from the slot data
+        attendees=attendee_list,
+        provider=None,  # Let the office service use the user's preferred provider
+    )
 
     async with httpx.AsyncClient() as client:
-        resp = await client.post(url, headers=headers, json=event_data)
+        resp = await client.post(url, headers=headers, json=event_data.model_dump())
         resp.raise_for_status()
         return resp.json()

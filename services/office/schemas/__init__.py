@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 from services.office.models import Provider
 
@@ -199,6 +199,54 @@ class ApiResponse(BaseModel):
     cache_hit: bool = False
     provider_used: Optional[Provider] = None
     request_id: str
+
+
+# Availability Models
+class AvailabilityRequest(BaseModel):
+    """Request model for availability checks."""
+
+    start: str = Field(
+        ..., description="Start time for availability check (ISO format)"
+    )
+    end: str = Field(..., description="End time for availability check (ISO format)")
+    duration: int = Field(..., description="Duration in minutes for the meeting", ge=1)
+    providers: Optional[List[str]] = Field(
+        None,
+        description="Providers to check (google, microsoft). If not specified, checks all available providers",
+    )
+
+
+class AvailableSlot(BaseModel):
+    """Model for an available time slot."""
+
+    start: datetime
+    end: datetime
+    duration_minutes: int
+
+
+class AvailabilityResponse(BaseModel):
+    """Response model for availability checks."""
+
+    available_slots: List[AvailableSlot]
+    total_slots: int
+    time_range: Dict[str, str]  # start and end times
+    providers_used: List[str]
+    provider_errors: Optional[Dict[str, str]] = None
+    request_metadata: Dict[str, Any]
+
+
+# Calendar Event Response Models
+class CalendarEventResponse(BaseModel):
+    """Response model for calendar event operations."""
+
+    event_id: Optional[str] = None
+    provider: str
+    status: str  # created, updated, deleted
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    deleted_at: Optional[str] = None
+    event_data: Optional[Dict[str, Any]] = None
+    request_metadata: Dict[str, Any]
 
 
 class PaginatedResponse(BaseModel):

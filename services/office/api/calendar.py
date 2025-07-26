@@ -29,7 +29,10 @@ from services.office.core.normalizer import normalize_google_calendar_event
 from services.office.models import Provider
 from services.office.schemas import (
     ApiResponse,
+    AvailabilityResponse,
+    AvailableSlot,
     CalendarEvent,
+    CalendarEventResponse,
     CreateCalendarEventRequest,
 )
 
@@ -211,29 +214,31 @@ async def get_user_availability(
         # Find available time slots
         available_slots = find_available_slots(start_dt, end_dt, duration, all_events)
 
-        # Build response
-        response_data = {
-            "available_slots": [
-                {
-                    "start": slot["start"].isoformat(),
-                    "end": slot["end"].isoformat(),
-                    "duration_minutes": duration,
-                }
-                for slot in available_slots
-            ],
-            "total_slots": len(available_slots),
-            "time_range": {
+        # Build response using Pydantic models
+        available_slot_models = [
+            AvailableSlot(
+                start=slot["start"],
+                end=slot["end"],
+                duration_minutes=duration,
+            )
+            for slot in available_slots
+        ]
+
+        response_data = AvailabilityResponse(
+            available_slots=available_slot_models,
+            total_slots=len(available_slots),
+            time_range={
                 "start": start_dt.isoformat(),
                 "end": end_dt.isoformat(),
             },
-            "providers_used": providers_used,
-            "provider_errors": provider_errors if provider_errors else None,
-            "request_metadata": {
+            providers_used=providers_used,
+            provider_errors=provider_errors if provider_errors else None,
+            request_metadata={
                 "user_id": user_id,
                 "providers_requested": valid_providers,
                 "duration_minutes": duration,
             },
-        }
+        )
 
         # Cache the result for 5 minutes (availability changes frequently)
         if providers_used:  # Only cache if at least one provider succeeded
@@ -667,20 +672,20 @@ async def create_calendar_event(
                     request_id, microsoft_client, event_data
                 )
 
-        # Build response
-        response_data = {
-            "event_id": created_event_data.get("id") if created_event_data else None,
-            "provider": provider,
-            "status": "created",
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "request_metadata": {
+        # Build response using Pydantic model
+        response_data = CalendarEventResponse(
+            event_id=created_event_data.get("id") if created_event_data else None,
+            provider=provider,
+            status="created",
+            created_at=datetime.now(timezone.utc).isoformat(),
+            request_metadata={
                 "user_id": user_id,
                 "title": event_data.title,
                 "start_time": event_data.start_time.isoformat(),
                 "end_time": event_data.end_time.isoformat(),
                 "provider": provider,
             },
-        }
+        )
 
         # Calculate response time
         end_time = datetime.now(timezone.utc)
