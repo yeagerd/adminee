@@ -160,6 +160,19 @@ export function TimeSlotCalendar({
         return grouped;
     }, [timeSlots]);
 
+    // Chunk dates into groups for multiple grid views
+    const dateChunks = useMemo(() => {
+        const dateKeys = Object.keys(slotsByDate).sort();
+        const maxDatesPerGrid = 4; // Show max 4 dates per grid for better readability
+        const chunks: string[][] = [];
+
+        for (let i = 0; i < dateKeys.length; i += maxDatesPerGrid) {
+            chunks.push(dateKeys.slice(i, i + maxDatesPerGrid));
+        }
+
+        return chunks;
+    }, [slotsByDate]);
+
     // Format time for display
     const formatTime = (isoString: string) => {
         return DateTime.fromISO(isoString).setZone(timeZone).toFormat('h:mm a');
@@ -193,6 +206,88 @@ export function TimeSlotCalendar({
             newEnd.setDate(newEnd.getDate() + days);
             setDateRange({ startDate: newStart, endDate: newEnd });
         }
+    };
+
+    // Render a single grid for a chunk of dates
+    const renderGrid = (dateChunk: string[], chunkIndex: number) => {
+        const timeSlotCount = Math.floor((businessHours.end - businessHours.start) * 60 / parseInt(granularity));
+
+        return (
+            <div key={chunkIndex} className="mb-8">
+                {chunkIndex > 0 && (
+                    <div className="border-t border-gray-200 my-4"></div>
+                )}
+                <div className="mb-2">
+                    <h4 className="text-sm font-medium text-muted-foreground">
+                        {formatDate(dateChunk[0])} - {formatDate(dateChunk[dateChunk.length - 1])}
+                    </h4>
+                </div>
+                <div className="overflow-x-auto">
+                    <div className="min-w-max">
+                        {/* Header */}
+                        <div className={`grid gap-1 p-2 bg-muted/50`} style={{
+                            gridTemplateColumns: `100px repeat(${dateChunk.length}, minmax(120px, 1fr))`
+                        }}>
+                            <div className="p-2 text-sm font-medium text-muted-foreground">Time</div>
+                            {dateChunk.map(dateKey => (
+                                <div key={dateKey} className="p-2 text-sm font-medium text-center">
+                                    {formatDate(dateKey)}
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Time Slots Grid */}
+                        <div className={`grid gap-1 p-2`} style={{
+                            gridTemplateColumns: `100px repeat(${dateChunk.length}, minmax(120px, 1fr))`
+                        }}>
+                            {/* Time labels */}
+                            <div className="space-y-1">
+                                {Array.from({ length: timeSlotCount }, (_, i) => {
+                                    const hour = businessHours.start + Math.floor(i * parseInt(granularity) / 60);
+                                    const minute = (i * parseInt(granularity)) % 60;
+                                    const time = new Date();
+                                    time.setHours(hour, minute, 0, 0);
+                                    return (
+                                        <div key={i} className="h-8 flex items-center text-xs text-muted-foreground">
+                                            {formatTime(time.toISOString())}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Time slot cells */}
+                            {dateChunk.map(dateKey => (
+                                <div key={dateKey} className="space-y-1">
+                                    {slotsByDate[dateKey].map((slot, slotIndex) => (
+                                        <button
+                                            key={slotIndex}
+                                            type="button"
+                                            onClick={() => handleSlotClick(slot)}
+                                            disabled={slot.isConflict}
+                                            className={`
+                                                w-full h-8 rounded border text-xs transition-colors
+                                                ${slot.isConflict
+                                                    ? 'bg-gray-200 border-gray-300 cursor-not-allowed opacity-50'
+                                                    : slot.isSelected
+                                                        ? 'bg-teal-600 border-teal-700 text-white hover:bg-teal-700'
+                                                        : 'bg-white border-gray-300 hover:bg-gray-50 hover:border-gray-400'
+                                                }
+                                            `}
+                                            title={slot.isConflict
+                                                ? `Conflict: ${slot.conflictEvents.map(e => e.title).join(', ')}`
+                                                : `Click to ${slot.isSelected ? 'deselect' : 'select'} this time slot`
+                                            }
+                                        >
+                                            {slot.isConflict && <Clock className="h-3 w-3 mx-auto" />}
+                                        </button>
+                                    ))}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
     };
 
     return (
@@ -367,66 +462,15 @@ export function TimeSlotCalendar({
                         </Button>
                     </div>
 
-                    {/* Calendar Grid */}
-                    <div className="overflow-x-auto">
-                        <div className="min-w-max">
-                            {/* Header */}
-                            <div className="grid grid-cols-[100px_repeat(auto-fit,minmax(120px,1fr))] gap-1 p-2 bg-muted/50">
-                                <div className="p-2 text-sm font-medium text-muted-foreground">Time</div>
-                                {Object.keys(slotsByDate).map(dateKey => (
-                                    <div key={dateKey} className="p-2 text-sm font-medium text-center">
-                                        {formatDate(dateKey)}
-                                    </div>
-                                ))}
+                    {/* Multiple Calendar Grids */}
+                    <div className="space-y-4">
+                        {dateChunks.length > 0 ? (
+                            dateChunks.map((dateChunk, chunkIndex) => renderGrid(dateChunk, chunkIndex))
+                        ) : (
+                            <div className="text-center py-8 text-muted-foreground">
+                                No time slots available for the selected date range.
                             </div>
-
-                            {/* Time Slots Grid */}
-                            <div className="grid grid-cols-[100px_repeat(auto-fit,minmax(120px,1fr))] gap-1 p-2">
-                                {/* Time labels */}
-                                <div className="space-y-1">
-                                    {Array.from({ length: Math.floor((businessHours.end - businessHours.start) * 60 / parseInt(granularity)) }, (_, i) => {
-                                        const hour = businessHours.start + Math.floor(i * parseInt(granularity) / 60);
-                                        const minute = (i * parseInt(granularity)) % 60;
-                                        const time = new Date();
-                                        time.setHours(hour, minute, 0, 0);
-                                        return (
-                                            <div key={i} className="h-8 flex items-center text-xs text-muted-foreground">
-                                                {formatTime(time.toISOString())}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-
-                                {/* Time slot cells */}
-                                {Object.keys(slotsByDate).map(dateKey => (
-                                    <div key={dateKey} className="space-y-1">
-                                        {slotsByDate[dateKey].map((slot, slotIndex) => (
-                                            <button
-                                                key={slotIndex}
-                                                type="button"
-                                                onClick={() => handleSlotClick(slot)}
-                                                disabled={slot.isConflict}
-                                                className={`
-                                                    w-full h-8 rounded border text-xs transition-colors
-                                                    ${slot.isConflict
-                                                        ? 'bg-gray-200 border-gray-300 cursor-not-allowed opacity-50'
-                                                        : slot.isSelected
-                                                            ? 'bg-teal-600 border-teal-700 text-white hover:bg-teal-700'
-                                                            : 'bg-white border-gray-300 hover:bg-gray-50 hover:border-gray-400'
-                                                    }
-                                                `}
-                                                title={slot.isConflict
-                                                    ? `Conflict: ${slot.conflictEvents.map(e => e.title).join(', ')}`
-                                                    : `Click to ${slot.isSelected ? 'deselect' : 'select'} this time slot`
-                                                }
-                                            >
-                                                {slot.isConflict && <Clock className="h-3 w-3 mx-auto" />}
-                                            </button>
-                                        ))}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                        )}
                     </div>
                 </CardContent>
             </Card>
