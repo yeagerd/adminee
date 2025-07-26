@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToolStateUtils } from '@/hooks/use-tool-state';
-import { gatewayClient } from '@/lib/gateway-client';
+import { gatewayClient, MeetingPoll, MeetingPollUpdate } from '@/lib/gateway-client';
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
