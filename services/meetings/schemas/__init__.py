@@ -1,8 +1,14 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
+
+from services.common.logging_config import get_logger
+from services.meetings.models.meeting import MeetingType
+
+# Configure logging
+logger = get_logger(__name__)
 
 
 class TimeSlotBase(BaseModel):
@@ -64,10 +70,50 @@ class MeetingPollBase(BaseModel):
     description: Optional[str]
     duration_minutes: int
     location: Optional[str]
-    meeting_type: str
+    meeting_type: MeetingType
     response_deadline: Optional[datetime]
     min_participants: Optional[int] = None
     max_participants: Optional[int] = None
+
+    @field_validator("meeting_type", mode="before")
+    @classmethod
+    def validate_meeting_type(cls, v: Any) -> MeetingType:
+        """Validate and normalize meeting_type values to ensure they're always MeetingType."""
+        if isinstance(v, MeetingType):
+            return v
+
+        # Handle string values
+        if isinstance(v, str):
+            v_lower = v.lower().strip()
+            # Map common variations to valid enum values
+            if v_lower in ["test", "unknown", ""]:
+                logger.warning(
+                    "Invalid meeting_type value encountered",
+                    original_value=v,
+                    normalized_to="tbd",
+                    reason="invalid_value",
+                )
+                return MeetingType.tbd
+            try:
+                return MeetingType(v_lower)
+            except ValueError:
+                # If it's not a valid enum value, default to tbd
+                logger.warning(
+                    "Invalid meeting_type value encountered",
+                    original_value=v,
+                    normalized_to="tbd",
+                    reason="not_in_enum",
+                )
+                return MeetingType.tbd
+
+        # For any other type, default to tbd
+        logger.warning(
+            "Invalid meeting_type value encountered",
+            original_value=str(v),
+            normalized_to="tbd",
+            reason="wrong_type",
+        )
+        return MeetingType.tbd
 
 
 class MeetingPollCreate(MeetingPollBase):
@@ -80,10 +126,44 @@ class MeetingPollUpdate(BaseModel):
     description: Optional[str] = None
     duration_minutes: Optional[int] = None
     location: Optional[str] = None
-    meeting_type: Optional[str] = None
+    meeting_type: Optional[MeetingType] = None
     response_deadline: Optional[datetime] = None
     min_participants: Optional[int] = None
     max_participants: Optional[int] = None
+
+    @field_validator("meeting_type", mode="before")
+    @classmethod
+    def validate_meeting_type(cls, v: Any) -> Optional[MeetingType]:
+        """Validate and normalize meeting_type values to ensure they're always MeetingType."""
+        if v is None:
+            return v
+
+        if isinstance(v, MeetingType):
+            return v
+
+        # Handle string values
+        if isinstance(v, str):
+            v_lower = v.lower().strip()
+            try:
+                return MeetingType(v_lower)
+            except ValueError:
+                # If it's not a valid enum value, default to tbd
+                logger.warning(
+                    "Invalid meeting_type value encountered in update",
+                    original_value=v,
+                    normalized_to="tbd",
+                    reason="not_in_enum",
+                )
+                return MeetingType.tbd
+
+        # For any other type, default to tbd
+        logger.warning(
+            "Invalid meeting_type value encountered",
+            original_value=str(v),
+            normalized_to="tbd",
+            reason="wrong_type",
+        )
+        return MeetingType.tbd
 
 
 class MeetingPoll(MeetingPollBase):

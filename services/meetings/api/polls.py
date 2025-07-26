@@ -4,6 +4,7 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, HTTPException, Request
 
+from services.common.logging_config import get_logger
 from services.meetings.models import MeetingPoll as MeetingPollModel
 from services.meetings.models import PollParticipant as PollParticipantModel
 from services.meetings.models import TimeSlot as TimeSlotModel
@@ -11,6 +12,9 @@ from services.meetings.models import get_session
 from services.meetings.models.meeting import PollStatus
 from services.meetings.schemas import MeetingPoll, MeetingPollCreate, MeetingPollUpdate
 from services.meetings.services import calendar_integration
+
+# Configure logging
+logger = get_logger(__name__)
 
 router = APIRouter()
 
@@ -32,7 +36,22 @@ def get_user_id_from_request(request: Request) -> str:
 def list_polls() -> List[MeetingPoll]:
     with get_session() as session:
         polls = session.query(MeetingPollModel).all()
-        return [MeetingPoll.model_validate(p) for p in polls]
+        validated_polls = []
+        for p in polls:
+            try:
+                validated_polls.append(MeetingPoll.model_validate(p))
+            except Exception as e:
+                # Log the error but don't fail the entire request
+                logger.warning(
+                    "Failed to validate poll",
+                    poll_id=str(p.id),
+                    error=str(e),
+                    poll_title=getattr(p, "title", "unknown"),
+                    meeting_type=getattr(p, "meeting_type", "unknown"),
+                )
+                # Skip invalid polls for now
+                continue
+        return validated_polls
 
 
 @router.get("/{poll_id}", response_model=MeetingPoll)
@@ -41,7 +60,18 @@ def get_poll(poll_id: UUID) -> MeetingPoll:
         poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
         if not poll:
             raise HTTPException(status_code=404, detail="Poll not found")
-        return MeetingPoll.model_validate(poll)
+        try:
+            return MeetingPoll.model_validate(poll)
+        except Exception as e:
+            # Log the error and return a more user-friendly error
+            logger.error(
+                "Error validating poll",
+                poll_id=str(poll_id),
+                error=str(e),
+                poll_title=getattr(poll, "title", "unknown"),
+                meeting_type=getattr(poll, "meeting_type", "unknown"),
+            )
+            raise HTTPException(status_code=500, detail="Invalid poll data")
 
 
 @router.post("/", response_model=MeetingPoll)
