@@ -2,7 +2,7 @@
 
 import { MeetingSubView, Tool, ToolContextType, ToolSettings, ToolState } from '@/types/navigation';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { createContext, ReactNode, useContext, useEffect, useReducer, useRef } from 'react';
+import { createContext, ReactNode, useContext, useEffect, useMemo, useReducer, useRef } from 'react';
 
 // Initial tool settings
 const defaultToolSettings: Record<Tool, ToolSettings> = {
@@ -174,6 +174,26 @@ export function ToolProvider({ children }: { children: ReactNode }) {
     }, []);
 
     // Save only user-driven state to localStorage (do NOT persist enabled/disabled)
+    const localStorageDependencies = useMemo(() => [
+        state.activeTool,
+        JSON.stringify(state.toolSettings),
+        JSON.stringify(state.lastVisited),
+        JSON.stringify(state.visitTimestamps),
+        state.meetingSubView,
+        state.meetingPollId,
+        state.previousMeetingSubView,
+        state.previousMeetingPollId,
+    ], [
+        state.activeTool,
+        state.toolSettings,
+        state.lastVisited,
+        state.visitTimestamps,
+        state.meetingSubView,
+        state.meetingPollId,
+        state.previousMeetingSubView,
+        state.previousMeetingPollId,
+    ]);
+
     useEffect(() => {
         if (!isInitialized.current) return;
         try {
@@ -198,7 +218,7 @@ export function ToolProvider({ children }: { children: ReactNode }) {
         } catch (error) {
             console.warn('Failed to save tool state to localStorage:', error);
         }
-    }, [state.activeTool, state.toolSettings, state.lastVisited, state.visitTimestamps, state.meetingSubView, state.meetingPollId, state.previousMeetingSubView, state.previousMeetingPollId]);
+    }, localStorageDependencies);
 
     // ---
     // IMPORTANT: Avoiding the double-navigate bug and ensuring visit tracking
