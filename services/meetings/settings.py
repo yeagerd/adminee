@@ -25,6 +25,18 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("API_EMAIL_SYNC_MEETINGS_KEY"),
     )
 
+    api_meetings_office_key: str = Field(
+        default=...,  # required
+        description="API key for meetings service to access office service",
+        validation_alias=AliasChoices("API_MEETINGS_OFFICE_KEY"),
+    )
+
+    office_service_url: str = Field(
+        default="http://localhost:8003",
+        description="URL for the office service",
+        validation_alias=AliasChoices("OFFICE_SERVICE_URL"),
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

@@ -18,17 +18,24 @@ API_KEY = "test-email-sync-key"
 def setup_env_and_tables(monkeypatch):
     import services.meetings.settings
 
-    services.meetings.settings._settings = None
-    db_url = "sqlite:///file::memory:?cache=shared"
-    monkeypatch.setenv("DB_URL_MEETINGS", db_url)
-    monkeypatch.setenv("API_EMAIL_SYNC_MEETINGS_KEY", API_KEY)
+    # Create test settings and override the singleton
+    test_settings = services.meetings.settings.Settings(
+        db_url_meetings="sqlite:///file::memory:?cache=shared",
+        api_email_sync_meetings_key=API_KEY,
+        api_meetings_office_key="test-meetings-office-key",
+    )
+    services.meetings.settings._settings = test_settings
+
     from sqlalchemy import create_engine
 
     from services.meetings import models
 
     if not hasattr(models, "_test_engine"):
         models._test_engine = create_engine(
-            db_url, echo=False, future=True, connect_args={"check_same_thread": False}
+            test_settings.db_url_meetings,
+            echo=False,
+            future=True,
+            connect_args={"check_same_thread": False},
         )
     monkeypatch.setattr(models, "get_engine", lambda: models._test_engine)
     Base.metadata.create_all(models._test_engine)
