@@ -536,7 +536,7 @@ class UserManagementDemo:
 
         try:
             response = await self.client.post(
-                f"{self.base_url}/internal/tokens/get",
+                f"{self.base_url}/v1/internal/tokens/get",
                 json=token_request,
                 headers={
                     "X-API-Key": self.service_api_key,
