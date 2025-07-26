@@ -30,6 +30,7 @@ def patch_settings():
         db_url_office="sqlite:///:memory:",
         api_frontend_office_key="test-frontend-office-key",
         api_chat_office_key="test-chat-office-key",
+        api_meetings_office_key="test-meetings-office-key",
         api_office_user_key="test-office-user-key",
     )
 
