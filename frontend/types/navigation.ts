@@ -26,6 +26,8 @@ export interface ToolState {
     // Sub-views for specific tools
     meetingSubView: MeetingSubView;
     meetingPollId: string | null; // For view/edit specific polls
+    previousMeetingSubView: MeetingSubView | null; // Track previous subview for navigation
+    previousMeetingPollId: string | null; // Track previous poll ID for navigation
 }
 
 export interface ToolContextType {
@@ -40,6 +42,8 @@ export interface ToolContextType {
     setMeetingSubView: (subView: MeetingSubView, pollId?: string) => void;
     getMeetingSubView: () => MeetingSubView;
     getMeetingPollId: () => string | null;
+    // Navigation back to previous meeting subview
+    goBackToPreviousMeetingView: () => void;
 }
 
 export interface NavigationItem {
