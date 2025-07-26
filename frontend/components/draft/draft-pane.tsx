@@ -22,8 +22,8 @@ interface DraftPaneProps {
 export function DraftPane({ className, draft, onUpdate, onMetadataChange, onTypeChange, isLoading = false, error = null, onActionComplete }: DraftPaneProps) {
     const draftTypes: { type: DraftType; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
         { type: 'email', label: 'Email', icon: Mail },
-        { type: 'calendar', label: 'Calendar', icon: Calendar },
-        { type: 'document', label: 'Document', icon: FileText },
+        { type: 'calendar', label: 'Event', icon: Calendar },
+        { type: 'document', label: 'Doc', icon: FileText },
     ];
 
     const handleTypeChange = (type: DraftType) => {
