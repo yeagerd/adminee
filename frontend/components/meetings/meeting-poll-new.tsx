@@ -8,19 +8,21 @@ import { useToolStateUtils } from '@/hooks/use-tool-state';
 import { gatewayClient, MeetingPoll, PollParticipant } from '@/lib/gateway-client';
 import { ArrowLeft, Link as LinkIcon, Mail } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
+import { useUserPreferences } from '../../contexts/settings-context';
 
 const getTimeZones = () =>
     Intl.supportedValuesOf ? Intl.supportedValuesOf("timeZone") : ["UTC"];
 
 export function MeetingPollNew() {
     const { setMeetingSubView } = useToolStateUtils();
+    const { effectiveTimezone } = useUserPreferences();
     const [step, setStep] = useState(1);
     // Step 1: Basic Info
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [duration, setDuration] = useState(60);
     const [location, setLocation] = useState("");
-    const [timeZone, setTimeZone] = useState("UTC");
+    const [timeZone, setTimeZone] = useState(effectiveTimezone);
     // Step 2: Participants
     const [participants, setParticipants] = useState<{ email: string, name: string }[]>([]);
     const [participantEmailInput, setParticipantEmailInput] = useState("");
@@ -81,6 +83,11 @@ export function MeetingPollNew() {
             setResponseDeadline(dateString);
         }
     }, [timeSlots, responseDeadline]);
+
+    // Update timezone when user preferences change
+    useEffect(() => {
+        setTimeZone(effectiveTimezone);
+    }, [effectiveTimezone]);
 
     // Submit
     const handleSubmit = async (e: React.FormEvent) => {
