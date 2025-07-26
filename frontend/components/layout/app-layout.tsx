@@ -28,7 +28,7 @@ export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = fa
                             <ResizablePanel minSize={30} defaultSize={60} className="h-full">
                                 {draftPane && hasActiveDraft ? (
                                     <ResizablePanelGroup direction="vertical" className="h-full">
-                                        <ResizablePanel minSize={30} defaultSize={50} className="h-full">
+                                        <ResizablePanel minSize={10} defaultSize={50} className="h-full">
                                             <div className="h-full overflow-auto">
                                                 {main || <div className="flex-1 flex items-center justify-center text-muted-foreground">Main Pane</div>}
                                             </div>
@@ -66,7 +66,7 @@ export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = fa
                         <div className="flex-1 min-w-0 h-full flex flex-col">
                             {draftPane && hasActiveDraft ? (
                                 <ResizablePanelGroup direction="vertical" className="h-full">
-                                    <ResizablePanel minSize={30} defaultSize={50} className="h-full">
+                                    <ResizablePanel minSize={10} defaultSize={50} className="h-full">
                                         <div className="h-full overflow-auto">
                                             {main || <div className="flex-1 flex items-center justify-center text-muted-foreground">Main Pane</div>}
                                         </div>
