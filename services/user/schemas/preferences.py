@@ -123,7 +123,6 @@ class UIPreferencesSchema(BaseModel):
         default=ThemeMode.SYSTEM, description="Theme mode preference"
     )
     language: Language = Field(default=Language.EN, description="Display language")
-    # timezone: Timezone = Field(default=Timezone.UTC, description="User timezone")  # DEPRECATED: use top-level timezone_mode/manual_timezone
     date_format: DateFormat = Field(
         default=DateFormat.US, description="Date format preference"
     )
@@ -133,18 +132,21 @@ class UIPreferencesSchema(BaseModel):
     compact_mode: bool = Field(default=False, description="Use compact UI layout")
     show_tooltips: bool = Field(default=True, description="Show helpful tooltips")
     animations_enabled: bool = Field(default=True, description="Enable UI animations")
+    sidebar_expanded: bool = Field(
+        default=False, description="Keep sidebar expanded by default"
+    )
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
                 "theme": "dark",
                 "language": "en",
-                # "timezone": "America/New_York",  # DEPRECATED
                 "date_format": "MM/DD/YYYY",
                 "time_format": "12h",
                 "compact_mode": False,
                 "show_tooltips": True,
                 "animations_enabled": True,
+                "sidebar_expanded": False,
             }
         }
     )
