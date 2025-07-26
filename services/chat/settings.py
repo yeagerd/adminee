@@ -36,21 +36,21 @@ class Settings(BaseSettings):
 
     # API Keys for service communication
     api_frontend_chat_key: Optional[str] = Field(
-        default=None,
+        ...,
         description="Frontend API key to access this Chat service",
     )
     api_chat_user_key: Optional[str] = Field(
-        default=None,
+        ...,
         description="Chat service API key to call User Management service",
     )
     api_chat_office_key: Optional[str] = Field(
-        default=None,
+        ...,
         description="Chat service API key to call Office service",
     )
 
     # Service URLs
     user_management_service_url: str = Field(
-        default="http://localhost:8001",
+        ...,
         description="User management service URL",
     )
     office_service_url: str = Field(
