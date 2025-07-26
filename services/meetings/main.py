@@ -19,6 +19,7 @@ from services.meetings.api import (
     public_router,
     slots_router,
 )
+from services.meetings.settings import get_settings
 
 # Set up centralized logging - will be initialized in lifespan
 logger = get_logger(__name__)
@@ -27,21 +28,23 @@ logger = get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Startup event logic
+    settings = get_settings()
+
     # Set up centralized logging
     setup_service_logging(
-        service_name="meetings-service",
-        log_level="INFO",
-        log_format="json",
+        service_name="meetings",
+        log_level=settings.log_level,
+        log_format=settings.log_format,
     )
 
     log_service_startup(
-        "meetings-service",
+        "meetings",
         version="0.1.0",
         environment="development",
     )
     yield
     # Shutdown event logic
-    log_service_shutdown("meetings-service")
+    log_service_shutdown("meetings")
 
 
 app = FastAPI(

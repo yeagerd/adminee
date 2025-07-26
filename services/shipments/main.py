@@ -32,20 +32,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Set up centralized logging
     setup_service_logging(
-        service_name="shipments-service",
+        service_name="shipments",
         log_level=settings.log_level,
         log_format=settings.log_format,
     )
 
     log_service_startup(
-        "shipments-service",
+        "shipments",
         version="0.1.0",
         environment=settings.environment,
         debug=settings.debug,
     )
     yield
     # Shutdown event logic
-    log_service_shutdown("shipments-service")
+    log_service_shutdown("shipments")
 
 
 app = FastAPI(

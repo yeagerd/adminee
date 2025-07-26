@@ -29,13 +29,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
 
     # Set up centralized logging
     setup_service_logging(
-        service_name="office-service",
+        service_name="office",
         log_level=settings.LOG_LEVEL,
         log_format=settings.LOG_FORMAT,
     )
 
     log_service_startup(
-        "office-service",
+        "office",
         app_name=settings.APP_NAME,
         version=settings.APP_VERSION,
         environment=settings.ENVIRONMENT,
@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     )
     yield
     # Shutdown event logic
-    log_service_shutdown("office-service")
+    log_service_shutdown("office")
 
 
 app = FastAPI(

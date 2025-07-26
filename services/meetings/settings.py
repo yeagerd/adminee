@@ -37,6 +37,18 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("OFFICE_SERVICE_URL"),
     )
 
+    # Logging configuration
+    log_level: str = Field(
+        default="INFO",
+        description="Logging level (DEBUG, INFO, WARNING, ERROR)",
+        validation_alias=AliasChoices("LOG_LEVEL"),
+    )
+    log_format: str = Field(
+        default="json",
+        description="Log format (json or text)",
+        validation_alias=AliasChoices("LOG_FORMAT"),
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

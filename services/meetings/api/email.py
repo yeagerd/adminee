@@ -1,5 +1,4 @@
 import datetime
-import logging
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Request, Response, status
@@ -11,6 +10,7 @@ from services.common.api_key_auth import (
     get_api_key_from_request,
     verify_api_key,
 )
+from services.common.logging_config import get_logger
 from services.meetings.models import (
     MeetingPoll,
     PollParticipant,
@@ -19,6 +19,9 @@ from services.meetings.models import (
 )
 from services.meetings.models.meeting import ParticipantStatus, ResponseType
 from services.meetings.settings import get_settings
+
+# Configure logging
+logger = get_logger(__name__)
 
 router = APIRouter()
 
@@ -116,7 +119,12 @@ def process_email_response(req: EmailResponseRequest, request: Request) -> Respo
         participant.status = ParticipantStatus.responded
         participant.responded_at = datetime.datetime.utcnow()  # type: ignore[assignment]
         session.commit()
-        logging.info(
-            f"Processed email response from {req.sender}: {parsed.response} ({parsed.comment})"
+        logger.info(
+            "Processed email response",
+            sender=req.sender,
+            response=parsed.response,
+            comment=parsed.comment,
+            poll_id=str(poll.id),
+            participant_id=str(participant.id),
         )
         return Response(status_code=200)
