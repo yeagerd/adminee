@@ -48,6 +48,8 @@ const initialState: ToolState = {
     },
     meetingSubView: 'list',
     meetingPollId: null,
+    previousMeetingSubView: null,
+    previousMeetingPollId: null,
 };
 
 // Action types
@@ -57,7 +59,8 @@ type ToolAction =
     | { type: 'SET_LAST_VISITED'; payload: { tool: Tool; path: string } }
     | { type: 'SET_VISIT_TIMESTAMP'; payload: { tool: Tool; timestamp: number } }
     | { type: 'LOAD_STATE'; payload: ToolState }
-    | { type: 'SET_MEETING_SUB_VIEW'; payload: { subView: MeetingSubView; pollId?: string } };
+    | { type: 'SET_MEETING_SUB_VIEW'; payload: { subView: MeetingSubView; pollId?: string } }
+    | { type: 'SET_PREVIOUS_MEETING_VIEW'; payload: { subView: MeetingSubView; pollId?: string } };
 
 // Reducer
 function toolReducer(state: ToolState, action: ToolAction): ToolState {
@@ -99,6 +102,12 @@ function toolReducer(state: ToolState, action: ToolAction): ToolState {
                 ...state,
                 meetingSubView: action.payload.subView,
                 meetingPollId: action.payload.pollId || null,
+            };
+        case 'SET_PREVIOUS_MEETING_VIEW':
+            return {
+                ...state,
+                previousMeetingSubView: action.payload.subView,
+                previousMeetingPollId: action.payload.pollId || null,
             };
         case 'LOAD_STATE':
             return action.payload;
@@ -153,6 +162,8 @@ export function ToolProvider({ children }: { children: ReactNode }) {
                     visitTimestamps: parsedState.visitTimestamps || initialState.visitTimestamps,
                     meetingSubView: parsedState.meetingSubView || initialState.meetingSubView,
                     meetingPollId: parsedState.meetingPollId || initialState.meetingPollId,
+                    previousMeetingSubView: parsedState.previousMeetingSubView || initialState.previousMeetingSubView,
+                    previousMeetingPollId: parsedState.previousMeetingPollId || initialState.previousMeetingPollId,
                 };
                 dispatch({ type: 'LOAD_STATE', payload: mergedState });
             }
@@ -180,12 +191,14 @@ export function ToolProvider({ children }: { children: ReactNode }) {
                 visitTimestamps: state.visitTimestamps,
                 meetingSubView: state.meetingSubView,
                 meetingPollId: state.meetingPollId,
+                previousMeetingSubView: state.previousMeetingSubView,
+                previousMeetingPollId: state.previousMeetingPollId,
             };
             localStorage.setItem('briefly-tool-state', JSON.stringify(stateToSave));
         } catch (error) {
             console.warn('Failed to save tool state to localStorage:', error);
         }
-    }, [state.activeTool, state.toolSettings, state.lastVisited, state.visitTimestamps, state.meetingSubView, state.meetingPollId]);
+    }, [state.activeTool, state.toolSettings, state.lastVisited, state.visitTimestamps, state.meetingSubView, state.meetingPollId, state.previousMeetingSubView, state.previousMeetingPollId]);
 
     // ---
     // IMPORTANT: Avoiding the double-navigate bug and ensuring visit tracking
@@ -265,6 +278,16 @@ export function ToolProvider({ children }: { children: ReactNode }) {
     };
 
     const setMeetingSubView = (subView: MeetingSubView, pollId?: string) => {
+        // If we're navigating to edit, store the current view as previous
+        if (subView === 'edit') {
+            dispatch({
+                type: 'SET_PREVIOUS_MEETING_VIEW',
+                payload: {
+                    subView: state.meetingSubView,
+                    pollId: state.meetingPollId || undefined
+                }
+            });
+        }
         dispatch({ type: 'SET_MEETING_SUB_VIEW', payload: { subView, pollId } });
     };
 
@@ -274,6 +297,21 @@ export function ToolProvider({ children }: { children: ReactNode }) {
 
     const getMeetingPollId = (): string | null => {
         return state.meetingPollId;
+    };
+
+    const goBackToPreviousMeetingView = () => {
+        if (state.previousMeetingSubView) {
+            dispatch({
+                type: 'SET_MEETING_SUB_VIEW',
+                payload: {
+                    subView: state.previousMeetingSubView,
+                    pollId: state.previousMeetingPollId || undefined
+                }
+            });
+        } else {
+            // Fallback to list view if no previous view is stored
+            dispatch({ type: 'SET_MEETING_SUB_VIEW', payload: { subView: 'list' } });
+        }
     };
 
     const contextValue: ToolContextType = {
@@ -287,6 +325,7 @@ export function ToolProvider({ children }: { children: ReactNode }) {
         setMeetingSubView,
         getMeetingSubView,
         getMeetingPollId,
+        goBackToPreviousMeetingView,
     };
 
     return <ToolContext.Provider value={contextValue}>{children}</ToolContext.Provider>;
