@@ -80,6 +80,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             "configured" if settings.api_frontend_user_key else "missing"
         ),
         api_office_user_key="configured" if settings.api_office_user_key else "missing",
+        api_meetings_user_key=(
+            "configured" if settings.api_meetings_user_key else "missing"
+        ),
         db_url=settings.db_url_user_management,
         environment=settings.environment,
         debug=settings.debug,
@@ -100,6 +103,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             "Set the API_CHAT_USER_KEY environment variable or configure it in settings"
         )
         raise RuntimeError("API_CHAT_USER_KEY is required but not configured")
+
+    # Validate required configuration
+    if not settings.api_meetings_user_key:
+        logger.error("API_MEETINGS_USER_KEY is required but not configured")
+        logger.error(
+            "Set the API_MEETINGS_USER_KEY environment variable or configure it in settings"
+        )
+        raise RuntimeError("API_MEETINGS_USER_KEY is required but not configured")
 
     # Configure docs URLs
     if settings.debug:

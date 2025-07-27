@@ -53,6 +53,10 @@ class Settings(BaseSettings):
         ...,
         description="Office service API key to access User Management service",
     )
+    api_meetings_user_key: str = Field(
+        ...,
+        description="Meetings service API key to access User Management service",
+    )
     token_encryption_salt: Optional[str] = Field(
         default=None,
         description="Base64-encoded service salt for token encryption key derivation",
