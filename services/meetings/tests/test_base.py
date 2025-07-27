@@ -14,10 +14,10 @@ from services.common.test_utils import BaseSelectiveHTTPIntegrationTest
 class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
     """Base class for all Meetings Service tests with HTTP call prevention."""
 
-    def setup_method(self):
+    def setup_method(self, method):
         """Set up Meetings Service test environment with required variables."""
         # Call parent setup to enable HTTP call detection
-        super().setup_method(None)
+        super().setup_method(method)
 
         # Create temporary database file for tests that need file-based SQLite
         self.db_fd, self.db_path = tempfile.mkstemp(suffix=".db")
@@ -35,10 +35,10 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
         os.environ.setdefault("LOG_LEVEL", "INFO")
         os.environ.setdefault("LOG_FORMAT", "json")
 
-    def teardown_method(self):
+    def teardown_method(self, method):
         """Clean up Meetings Service test environment."""
         # Call parent teardown to clean up HTTP patches
-        super().teardown_method(None)
+        super().teardown_method(method)
 
         # Close and remove temporary database file
         if hasattr(self, "db_fd"):
