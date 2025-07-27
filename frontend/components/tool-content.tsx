@@ -124,6 +124,13 @@ export function ToolContent() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeTool]);
 
+    // Add a separate effect to refresh polls when returning to list view
+    useEffect(() => {
+        if (activeTool === 'meetings' && getMeetingSubView() === 'list') {
+            fetchPolls();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTool, getMeetingSubView()]);
 
 
     const renderToolContent = () => {
