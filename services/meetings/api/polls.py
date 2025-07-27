@@ -184,6 +184,7 @@ def create_poll(
             response_deadline=poll.response_deadline,
             min_participants=poll.min_participants or 1,
             max_participants=poll.max_participants,
+            reveal_participants=poll.reveal_participants or False,
             poll_token=str(poll_token),
         )
         session.add(db_poll)
@@ -294,6 +295,8 @@ def update_poll(
             db_poll.min_participants = poll.min_participants  # type: ignore[assignment]
         if poll.max_participants is not None:
             db_poll.max_participants = poll.max_participants  # type: ignore[assignment]
+        if poll.reveal_participants is not None:
+            db_poll.reveal_participants = poll.reveal_participants  # type: ignore[assignment]
 
         # TODO: update time slots and participants as needed
         session.commit()
