@@ -248,7 +248,7 @@ export function MeetingPollResults({ pollId }: MeetingPollResultsProps) {
         }
     };
 
-    const handleResendEmail = async (participantId: string, email: string) => {
+    const handleResendEmail = async (participantId: string) => {
         if (!pollId) return;
 
         setResendingEmails(prev => new Set(prev).add(participantId));

@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
@@ -48,7 +48,7 @@ class TestResendInvitation:
     ):
         """Test successful resend of invitation email."""
         # Mock the database session
-        mock_session = AsyncMock()
+        mock_session = Mock()
         mock_get_session.return_value.__enter__.return_value = mock_session
 
         # Mock poll query
@@ -92,7 +92,7 @@ class TestResendInvitation:
     def test_resend_invitation_poll_not_found(self, mock_get_session, client):
         """Test resend invitation when poll doesn't exist."""
         # Mock empty poll query
-        mock_session = AsyncMock()
+        mock_session = Mock()
         mock_get_session.return_value.__enter__.return_value = mock_session
         mock_session.query.return_value.filter_by.return_value.first.return_value = None
 
@@ -102,14 +102,14 @@ class TestResendInvitation:
         )
 
         assert response.status_code == 404
-        assert response.json()["detail"] == "Poll not found"
+        assert "Poll not found" in response.json()["message"]
 
     @patch("services.meetings.api.polls.get_session")
     def test_resend_invitation_unauthorized(self, mock_get_session, client, mock_poll):
         """Test resend invitation when user doesn't own the poll."""
         # Mock poll query with different user
         mock_poll_obj = type("MockPoll", (), mock_poll)()
-        mock_session = AsyncMock()
+        mock_session = Mock()
         mock_get_session.return_value.__enter__.return_value = mock_session
         mock_session.query.return_value.filter_by.return_value.first.return_value = (
             mock_poll_obj
@@ -121,7 +121,7 @@ class TestResendInvitation:
         )
 
         assert response.status_code == 403
-        assert "Not authorized" in response.json()["detail"]
+        assert "Not authorized" in response.json()["message"]
 
     @patch("services.meetings.api.polls.get_session")
     def test_resend_invitation_participant_not_found(
@@ -130,7 +130,7 @@ class TestResendInvitation:
         """Test resend invitation when participant doesn't exist."""
         # Mock poll query
         mock_poll_obj = type("MockPoll", (), mock_poll)()
-        mock_session = AsyncMock()
+        mock_session = Mock()
         mock_get_session.return_value.__enter__.return_value = mock_session
         mock_session.query.return_value.filter_by.return_value.first.side_effect = [
             mock_poll_obj,  # First call for poll
@@ -143,7 +143,7 @@ class TestResendInvitation:
         )
 
         assert response.status_code == 404
-        assert response.json()["detail"] == "Participant not found"
+        assert "Participant not found" in response.json()["message"]
 
     @patch("services.meetings.api.polls.email_integration.send_invitation_email")
     @patch("services.meetings.api.polls.get_session")
@@ -152,7 +152,7 @@ class TestResendInvitation:
     ):
         """Test resend invitation when email sending fails."""
         # Mock the database session
-        mock_session = AsyncMock()
+        mock_session = Mock()
         mock_get_session.return_value.__enter__.return_value = mock_session
 
         # Mock poll query
@@ -177,7 +177,7 @@ class TestResendInvitation:
         )
 
         assert response.status_code == 400
-        assert "Failed to resend invitation" in response.json()["detail"]
+        assert "Failed to resend invitation" in response.json()["message"]
 
     def test_resend_invitation_missing_user_id(self, client):
         """Test resend invitation without user ID header."""
@@ -186,4 +186,4 @@ class TestResendInvitation:
         )
 
         assert response.status_code == 400
-        assert "Missing X-User-Id header" in response.json()["detail"]
+        assert "Missing X-User-Id header" in response.json()["message"]

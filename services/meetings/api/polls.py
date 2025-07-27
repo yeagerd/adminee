@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, timedelta
-from typing import List
+from typing import List, Optional
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, HTTPException, Request
@@ -394,7 +394,7 @@ async def resend_invitation(
             )
 
         # Verify participant exists and belongs to this poll
-        participant = (
+        participant: Optional[PollParticipantModel] = (
             session.query(PollParticipantModel)
             .filter_by(id=participant_id, poll_id=poll_id)
             .first()
@@ -412,11 +412,15 @@ async def resend_invitation(
 
         try:
             await email_integration.send_invitation_email(
-                participant.email, subject, body, user_id
+                str(participant.email), subject, body, user_id
             )
 
             # Update participant's reminder count and status
-            participant.reminder_sent_count += 1
+            setattr(
+                participant,
+                "reminder_sent_count",
+                int(participant.reminder_sent_count) + 1,
+            )
             # Keep status as pending since they haven't responded yet
 
             session.commit()
