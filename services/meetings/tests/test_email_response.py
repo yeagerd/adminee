@@ -335,52 +335,6 @@ class TestEmailResponse(BaseMeetingsTest):
                         "I have a conflict" in response.comment
                     ), f"Test case {i+1}: Comment not extracted correctly"
 
-    def test_process_email_response_backward_compatibility(self):
-        """Test that the email processing function can handle both old and new formats."""
-        poll, slot, participant, slot_id, poll_id, participant_id = (
-            self.create_poll_and_participant()
-        )
-
-        # Test old format (backward compatibility)
-        old_format_payload = {
-            "emailId": "irrelevant",
-            "content": "SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available - Old format comment",
-            "sender": "alice@example.com",
-        }
-        resp = client.post(
-            "/api/v1/meetings/process-email-response/",
-            json=old_format_payload,
-            headers={"X-API-Key": API_KEY},
-        )
-        assert resp.status_code == 200, resp.text
-
-        # Test new format
-        new_format_payload = {
-            "emailId": "irrelevant",
-            "content": "I'm AVAILABLE:\nSLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - New format comment",
-            "sender": "alice@example.com",
-        }
-        resp = client.post(
-            "/api/v1/meetings/process-email-response/",
-            json=new_format_payload,
-            headers={"X-API-Key": API_KEY},
-        )
-        assert resp.status_code == 200, resp.text
-
-        # Verify both formats work correctly
-        with get_session() as session:
-            response = (
-                session.query(PollResponse)
-                .filter_by(
-                    participant_id=UUID(participant_id), time_slot_id=UUID(slot_id)
-                )
-                .first()
-            )
-            assert response is not None
-            assert response.response == ResponseType.available
-            # The new format should have overwritten the old format
-            assert "New format comment" in response.comment
-
     def test_process_email_response_invalid_slot_number_handling(self):
         """Test that invalid slot numbers in slot responses are handled gracefully."""
         poll, slot, participant, slot_id, poll_id, participant_id = (

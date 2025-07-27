@@ -65,10 +65,7 @@ class EmailContentParseResult(BaseModel):
 def parse_email_content(content: str) -> EmailContentParseResult:
     """
     Parse email content for slot-specific responses.
-    Supports two formats:
-
-    1. Old format: SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available - I prefer this time slot
-    2. New format: Users move slots under headings like "I'm AVAILABLE:", "I'm UNAVAILABLE:", "I'm MAYBE:"
+    Expects users to move slots under headings like "I'm AVAILABLE:", "I'm UNAVAILABLE:", "I'm MAYBE:"
     """
     slot_responses = {}
     lines = content.strip().splitlines()
@@ -119,7 +116,7 @@ def parse_email_content(content: str) -> EmailContentParseResult:
             response = None
             comment = None
 
-            # Handle new format (slots under headings)
+            # Handle slots under headings format
             if current_section:
                 response = current_section
                 # Extract comment if present (after dash)
@@ -127,41 +124,8 @@ def parse_email_content(content: str) -> EmailContentParseResult:
                     parts = response_part.split(" - ", 1)
                     comment = parts[1].strip() if len(parts) > 1 else None
             else:
-                # Handle old format (response keyword in the line)
-                response_keywords = ["available", "unavailable", "maybe"]
-
-                # Look for the keyword that appears after the timezone part
-                # Format: "Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available - comment"
-                for keyword in response_keywords:
-                    # Use word boundaries to avoid partial matches
-                    import re
-
-                    # Look for the keyword that appears after the timezone pattern
-                    # This ensures we match the keyword in the correct position
-                    pattern = r"\([^)]+\)\s*-\s*\b" + re.escape(keyword.lower()) + r"\b"
-                    match = re.search(pattern, response_part.lower())
-                    if match:
-                        response = keyword.lower()
-                        # Extract comment (everything after the response keyword)
-                        # Find the position of the keyword after the timezone
-                        keyword_pattern = r"\b" + re.escape(keyword.lower()) + r"\b"
-                        # Search for the keyword starting from the match position
-                        keyword_match = re.search(
-                            keyword_pattern, response_part.lower()[match.start() :]
-                        )
-                        if keyword_match:
-                            # Calculate the actual position in the original string
-                            comment_start = match.start() + keyword_match.end()
-                            if comment_start < len(response_part):
-                                comment = response_part[comment_start:].strip()
-                                if comment.startswith("-"):
-                                    comment = comment[1:].strip()
-                                if comment.startswith(" "):
-                                    comment = comment[1:]
-                                # If comment is empty after trimming, set to None
-                                if not comment:
-                                    comment = None
-                        break
+                # Skip slots that aren't under any heading
+                continue
 
             if response:
                 slot_responses[str(slot_number)] = {
