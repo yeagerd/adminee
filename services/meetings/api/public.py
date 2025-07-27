@@ -50,8 +50,17 @@ def get_poll_by_response_token(response_token: str) -> dict:
                 }
             )
 
+        # Create poll data with filtered participants (exclude current participant)
+        poll_data = MeetingPoll.model_validate(poll)
+
+        # Filter out the current participant from the participants list
+        if poll_data.participants:
+            poll_data.participants = [
+                p for p in poll_data.participants if p.id != str(participant.id)
+            ]
+
         return {
-            "poll": MeetingPoll.model_validate(poll),
+            "poll": poll_data,
             "participant": {
                 "id": str(participant.id),
                 "email": participant.email,
