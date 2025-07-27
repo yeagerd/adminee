@@ -14,9 +14,9 @@ client = TestClient(app)
 class TestPollAuthorization(BaseMeetingsTest):
     """Test poll authorization functionality."""
 
-    def setup_method(self):
+    def setup_method(self, method):
         """Set up test environment."""
-        super().setup_method()
+        super().setup_method(method)
 
         # Set up database tables
         from sqlalchemy import create_engine
