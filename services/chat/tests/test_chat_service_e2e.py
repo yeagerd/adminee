@@ -5,15 +5,29 @@ Tests the complete chat service functionality including
 multi-agent workflow processing, history management, and API endpoints.
 """
 
-import os
 import sys
 from unittest.mock import patch
 
 import pytest
-import pytest_asyncio
 import respx
 from fastapi.testclient import TestClient
 from httpx import Response
+
+# Set up test settings before any imports
+import services.chat.settings as chat_settings
+
+# Create test settings instance
+test_settings = chat_settings.Settings(
+    db_url_chat="sqlite+aiosqlite:///file::memory:?cache=shared",
+    api_frontend_chat_key="test-frontend-chat-key",
+    api_chat_user_key="test-chat-user-key",
+    api_chat_office_key="test-chat-office-key",
+    user_management_service_url="http://localhost:8001",
+    office_service_url="http://localhost:8003",
+)
+
+# Set the test settings as the singleton
+chat_settings._settings = test_settings
 
 # Test API key for authentication
 TEST_API_KEY = "test-frontend-chat-key"
@@ -28,9 +42,6 @@ def test_env():
         # Don't set OPENAI_API_KEY so it falls back to FakeLLM
         "LLM_MODEL": "fake-model",
         "LLM_PROVIDER": "fake",
-        "API_FRONTEND_CHAT_KEY": TEST_API_KEY,
-        "USER_MANAGEMENT_SERVICE_URL": "http://localhost:8001",
-        "OFFICE_SERVICE_URL": "http://localhost:8003",
     }
     with patch.dict("os.environ", env_vars):
         yield env_vars
@@ -39,29 +50,17 @@ def test_env():
 @pytest.fixture
 def app(test_env):
     """Fixture to provide the FastAPI app with test environment."""
-    # Force reload the auth module to pick up the new environment variables
+    # Force reload the auth module to pick up the new settings
     for module in list(sys.modules):
         if module.startswith("services.chat"):
             del sys.modules[module]
 
     # Import after module cleanup to ensure fresh imports
+    # Re-set the test settings after module reload
+    import services.chat.settings as chat_settings
     from services.chat import history_manager
     from services.chat.main import app as fresh_app
 
-    # Update the global _history_manager reference
-    global _history_manager
-    _history_manager = history_manager
-
-    return fresh_app
-
-
-@pytest_asyncio.fixture(scope="session", autouse=True)
-async def setup_test_database():
-    """Set up test settings and database for the entire test session."""
-    import services.chat.settings as chat_settings
-    from services.chat import history_manager
-
-    # Create test settings instance
     test_settings = chat_settings.Settings(
         db_url_chat="sqlite+aiosqlite:///file::memory:?cache=shared",
         api_frontend_chat_key="test-frontend-chat-key",
@@ -70,38 +69,24 @@ async def setup_test_database():
         user_management_service_url="http://localhost:8001",
         office_service_url="http://localhost:8003",
     )
-
-    # Save original singleton
-    original_settings = chat_settings._settings
-
-    # Set the test settings as the singleton
     chat_settings._settings = test_settings
 
-    try:
-        # Initialize database tables
-        await history_manager.init_db()
-        yield
-    finally:
-        # Restore original singleton
-        chat_settings._settings = original_settings
+    # Update the global _history_manager reference
+    global _history_manager
+    _history_manager = history_manager
+
+    return fresh_app
 
 
 @pytest.fixture(autouse=True)
 def setup_test_environment(app):
     """Set up the test environment."""
-    # Database is already initialized by the session fixture
-    pass
+    # Initialize test database synchronously
+    import asyncio
 
+    from services.chat import history_manager
 
-@pytest.fixture(autouse=True, scope="session")
-def set_db_url_chat():
-    original_db_url = os.environ.get("DB_URL_CHAT")
-    os.environ["DB_URL_CHAT"] = "sqlite+aiosqlite:///file::memory:?cache=shared"
-    yield
-    if original_db_url:
-        os.environ["DB_URL_CHAT"] = original_db_url
-    elif "DB_URL_CHAT" in os.environ:
-        del os.environ["DB_URL_CHAT"]
+    asyncio.run(history_manager.init_db())
 
 
 def test_end_to_end_chat_flow(app):
