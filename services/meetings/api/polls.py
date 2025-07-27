@@ -503,18 +503,18 @@ async def resend_invitation(
             end_time = slot.end_time.strftime("%I:%M %p")
             timezone = slot.timezone
             body_lines.append(
-                f"SLOT_{i}_{slot.id}: {start_time} - {end_time} ({timezone}) - [available/unavailable/maybe]"
+                f"SLOT_{i}: {start_time} - {end_time} ({timezone}) - [available/unavailable/maybe]"
             )
 
         body_lines.extend(
             [
                 "",
                 "Example:",
-                "SLOT_1_123e4567-e89b-12d3-a456-426614174000: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available",
-                "SLOT_2_987fcdeb-51a2-43d1-b789-426614174001: Tuesday, January 16, 2024 at 10:00 AM - 11:00 AM (UTC) - unavailable",
+                "SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available",
+                "SLOT_2: Tuesday, January 16, 2024 at 10:00 AM - 11:00 AM (UTC) - unavailable",
                 "",
                 "You can also add optional comments after your response:",
-                "SLOT_1_123e4567-e89b-12d3-a456-426614174000: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available - I prefer this time slot",
+                "SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available - I prefer this time slot",
                 "=== END TEMPLATE ===",
             ]
         )

@@ -117,7 +117,7 @@ class TestEmailResponse(BaseMeetingsTest):
         )
         payload = {
             "emailId": "irrelevant",
-            "content": f"SLOT_1_{slot_id}: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available - Looking forward to it!",
+            "content": "SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available - Looking forward to it!",
             "sender": "alice@example.com",
         }
         resp = client.post(
@@ -154,7 +154,7 @@ class TestEmailResponse(BaseMeetingsTest):
         )
         payload = {
             "emailId": "irrelevant",
-            "content": f"SLOT_1_{slot_id}: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available",
+            "content": "SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available",
             "sender": "alice@example.com",
         }
         resp = client.post(
@@ -187,7 +187,7 @@ class TestEmailResponse(BaseMeetingsTest):
         )
         payload = {
             "emailId": "irrelevant",
-            "content": f"SLOT_1_{slot_id}: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available",
+            "content": "SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available",
             "sender": "unknown@example.com",
         }
         resp = client.post(
@@ -218,7 +218,7 @@ class TestEmailResponse(BaseMeetingsTest):
 
         payload = {
             "emailId": "irrelevant",
-            "content": f"SLOT_1_{slot_id}: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available - I prefer this time\nSLOT_2_{slot2_id}: Tuesday, January 16, 2024 at 10:00 AM - 11:00 AM (UTC) - unavailable - I have a conflict",
+            "content": "SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available - I prefer this time\nSLOT_2: Tuesday, January 16, 2024 at 10:00 AM - 11:00 AM (UTC) - unavailable - I have a conflict",
             "sender": "alice@example.com",
         }
         resp = client.post(
@@ -260,3 +260,117 @@ class TestEmailResponse(BaseMeetingsTest):
             assert slot2_responses[0].response == ResponseType.unavailable
             assert "I prefer this time" in slot1_responses[0].comment
             assert "I have a conflict" in slot2_responses[0].comment
+
+    def test_process_email_response_malformed_slot_identifier(self):
+        """Test that malformed slot identifiers don't cause errors."""
+        poll, slot, participant, slot_id, poll_id, participant_id = (
+            self.create_poll_and_participant()
+        )
+
+        # Test with malformed slot identifiers that should be skipped
+        payload = {
+            "emailId": "irrelevant",
+            "content": "SLOT_: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available\nSLOT_abc: Tuesday, January 16, 2024 at 10:00 AM - 11:00 AM (UTC) - unavailable\nSLOT_0: Wednesday, January 17, 2024 at 3:00 PM - 4:00 PM (UTC) - maybe",
+            "sender": "alice@example.com",
+        }
+        resp = client.post(
+            "/api/v1/meetings/process-email-response/",
+            json=payload,
+            headers={"X-API-Key": API_KEY},
+        )
+        assert resp.status_code == 400
+        assert "Could not parse any slot responses" in resp.text
+
+    def test_process_email_response_keyword_position_mismatch(self):
+        """Test that comment extraction works correctly with keyword position matching."""
+        poll, slot, participant, slot_id, poll_id, participant_id = (
+            self.create_poll_and_participant()
+        )
+
+        # Test cases that would cause keyword position mismatch
+        test_cases = [
+            # Case 1: "available" appears in "unavailable" - should extract comment correctly
+            "SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available - I prefer this time",
+            # Case 2: Multiple occurrences of keyword - should use the first word boundary match
+            "SLOT_1: Tuesday, January 16, 2024 at 10:00 AM - 11:00 AM (UTC) - maybe - I'm available for this time",
+            # Case 3: Keyword with punctuation - should handle correctly
+            "SLOT_1: Wednesday, January 17, 2024 at 3:00 PM - 4:00 PM (UTC) - unavailable! - I have a conflict",
+        ]
+
+        for i, content in enumerate(test_cases):
+            payload = {
+                "emailId": "irrelevant",
+                "content": content,
+                "sender": "alice@example.com",
+            }
+            resp = client.post(
+                "/api/v1/meetings/process-email-response/",
+                json=payload,
+                headers={"X-API-Key": API_KEY},
+            )
+            assert resp.status_code == 200, f"Test case {i+1} failed: {resp.text}"
+
+            # Check that the response was saved correctly
+            with get_session() as session:
+                response = (
+                    session.query(PollResponse)
+                    .filter_by(
+                        participant_id=UUID(participant_id), time_slot_id=UUID(slot_id)
+                    )
+                    .first()
+                )
+                assert response is not None, f"Test case {i+1}: No response found"
+
+                # Verify the comment was extracted correctly
+                if i == 0:
+                    assert (
+                        "I prefer this time" in response.comment
+                    ), f"Test case {i+1}: Comment not extracted correctly"
+                elif i == 1:
+                    assert (
+                        "I'm available for this time" in response.comment
+                    ), f"Test case {i+1}: Comment not extracted correctly"
+                elif i == 2:
+                    assert (
+                        "I have a conflict" in response.comment
+                    ), f"Test case {i+1}: Comment not extracted correctly"
+
+    def test_process_email_response_invalid_slot_number_handling(self):
+        """Test that invalid slot numbers in slot responses are handled gracefully."""
+        poll, slot, participant, slot_id, poll_id, participant_id = (
+            self.create_poll_and_participant()
+        )
+
+        # Test with a valid slot response and an invalid slot number response
+        payload = {
+            "emailId": "irrelevant",
+            "content": "SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available - Valid response\nSLOT_99: Tuesday, January 16, 2024 at 10:00 AM - 11:00 AM (UTC) - unavailable - Invalid slot number response",
+            "sender": "alice@example.com",
+        }
+        resp = client.post(
+            "/api/v1/meetings/process-email-response/",
+            json=payload,
+            headers={"X-API-Key": API_KEY},
+        )
+        assert resp.status_code == 200, resp.text
+
+        # Check that only the valid response was processed
+        with get_session() as session:
+            response = (
+                session.query(PollResponse)
+                .filter_by(
+                    participant_id=UUID(participant_id), time_slot_id=UUID(slot_id)
+                )
+                .first()
+            )
+            assert response is not None, "Valid response should be processed"
+            assert response.response == ResponseType.available
+            assert "Valid response" in response.comment
+
+            # Verify participant status was updated
+            updated_participant = (
+                session.query(PollParticipant)
+                .filter_by(email="alice@example.com")
+                .first()
+            )
+            assert updated_participant.status == ParticipantStatus.responded

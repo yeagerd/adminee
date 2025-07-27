@@ -54,6 +54,8 @@ class TestResendInvitation(BaseMeetingsTest):
 
         # Mock poll query
         mock_poll_obj = type("MockPoll", (), mock_poll)()
+        # Add time_slots attribute to the mock poll
+        mock_poll_obj.time_slots = []
         mock_session.query.return_value.filter_by.return_value.first.return_value = (
             mock_poll_obj
         )
@@ -116,6 +118,8 @@ class TestResendInvitation(BaseMeetingsTest):
         """Test resend invitation when user doesn't own the poll."""
         # Mock poll query with different user
         mock_poll_obj = type("MockPoll", (), mock_poll)()
+        # Add time_slots attribute to the mock poll
+        mock_poll_obj.time_slots = []
         mock_session = Mock()
         mock_get_session.return_value.__enter__.return_value = mock_session
         mock_session.query.return_value.filter_by.return_value.first.return_value = (
@@ -140,6 +144,8 @@ class TestResendInvitation(BaseMeetingsTest):
         """Test resend invitation when participant doesn't exist."""
         # Mock poll query
         mock_poll_obj = type("MockPoll", (), mock_poll)()
+        # Add time_slots attribute to the mock poll
+        mock_poll_obj.time_slots = []
         mock_session = Mock()
         mock_get_session.return_value.__enter__.return_value = mock_session
         mock_session.query.return_value.filter_by.return_value.first.side_effect = [
@@ -170,6 +176,8 @@ class TestResendInvitation(BaseMeetingsTest):
 
         # Mock poll query
         mock_poll_obj = type("MockPoll", (), mock_poll)()
+        # Add time_slots attribute to the mock poll
+        mock_poll_obj.time_slots = []
         mock_session.query.return_value.filter_by.return_value.first.return_value = (
             mock_poll_obj
         )
