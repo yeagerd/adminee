@@ -647,7 +647,8 @@ class TestAPIClientFactory:
         assert "https://www.googleapis.com/auth/calendar" in google_scopes
 
         microsoft_scopes = factory._get_default_scopes(Provider.MICROSOFT)
-        assert "https://graph.microsoft.com/Mail.Read" in microsoft_scopes
+        assert "https://graph.microsoft.com/Mail.ReadWrite" in microsoft_scopes
+        assert "https://graph.microsoft.com/Mail.Send" in microsoft_scopes
         assert "https://graph.microsoft.com/Calendars.ReadWrite" in microsoft_scopes
 
     @pytest.mark.asyncio
