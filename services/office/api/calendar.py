@@ -7,6 +7,7 @@ Internal/service endpoints, if any, should be under /internal and require API ke
 """
 
 import asyncio
+import json
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, cast
@@ -402,37 +403,68 @@ async def get_calendar_events(
         }
         cache_key = generate_cache_key(user_id, "unified", "events", cache_params)
         logger.debug(f"[{request_id}] Generated cache key: {cache_key}")
+        logger.debug(f"[{request_id}] Cache params: {cache_params}")
 
         # Check cache first
         cached_result = await cache_manager.get_from_cache(cache_key)
         if cached_result:
             logger.info("Cache hit for calendar events", request_id=request_id)
-            # Extract events from cached result
-            if isinstance(cached_result, dict) and "events" in cached_result:
-                events = cached_result["events"]
-                logger.debug(
-                    f"Retrieved {len(events)} events from cache (dict format)",
-                    request_id=request_id,
-                )
-            else:
-                # Fallback for old cache format
-                events = cached_result if isinstance(cached_result, list) else []
-                logger.debug(
-                    f"Retrieved {len(events)} events from cache (list format)",
-                    request_id=request_id,
-                )
+            logger.debug(
+                f"Cache result type: {type(cached_result)}, content: {cached_result}",
+                request_id=request_id,
+            )
 
-            # If we have an empty cache entry, clear it and proceed with fresh fetch
-            if len(events) == 0:
-                logger.warning(
-                    "Found empty cache entry, clearing and fetching fresh data",
-                    request_id=request_id,
-                )
-                await cache_manager.delete_from_cache(cache_key)
-            else:
-                return CalendarEventListApiResponse(
-                    success=True, data=events, cache_hit=True, request_id=request_id
-                )
+            # Verify cache is for the correct user and parameters
+            if isinstance(cached_result, dict) and "request_metadata" in cached_result:
+                cached_user_id = cached_result["request_metadata"].get("user_id")
+                if cached_user_id != user_id:
+                    logger.warning(
+                        f"Cache hit for wrong user! Expected: {user_id}, Got: {cached_user_id}",
+                        request_id=request_id,
+                        cache_key=cache_key,
+                    )
+                    # Clear the wrong cache entry and proceed with fresh fetch
+                    await cache_manager.delete_from_cache(cache_key)
+                    cached_result = None
+                else:
+                    logger.debug(
+                        f"Cache hit verified for correct user: {user_id}",
+                        request_id=request_id,
+                    )
+
+            if cached_result:
+                # Extract events from cached result
+                if isinstance(cached_result, dict) and "events" in cached_result:
+                    events = cached_result["events"]
+                    logger.debug(
+                        f"Retrieved {len(events)} events from cache (dict format)",
+                        request_id=request_id,
+                    )
+                else:
+                    # Fallback for old cache format
+                    events = cached_result if isinstance(cached_result, list) else []
+                    logger.debug(
+                        f"Retrieved {len(events)} events from cache (list format)",
+                        request_id=request_id,
+                    )
+
+                # If we have an empty cache entry, clear it and proceed with fresh fetch
+                if len(events) == 0:
+                    logger.warning(
+                        "Found empty cache entry, clearing and fetching fresh data",
+                        request_id=request_id,
+                        cache_key=cache_key,
+                        cached_result_type=type(cached_result),
+                    )
+                    await cache_manager.delete_from_cache(cache_key)
+                else:
+                    logger.info(
+                        f"Returning {len(events)} events from cache",
+                        request_id=request_id,
+                    )
+                    return CalendarEventListApiResponse(
+                        success=True, data=events, cache_hit=True, request_id=request_id
+                    )
 
         # Fetch from providers in parallel
         tasks = []
@@ -458,6 +490,13 @@ async def get_calendar_events(
         provider_errors = {}
         providers_used = []
 
+        logger.debug(
+            f"[{request_id}] Processing {len(provider_results)} provider results",
+            request_id=request_id,
+            provider_results_count=len(provider_results),
+            valid_providers=valid_providers,
+        )
+
         for i, result in enumerate(provider_results):
             provider = valid_providers[i]
 
@@ -478,11 +517,40 @@ async def get_calendar_events(
                     logger.info(
                         f"[{request_id}] Provider {provider} returned {len(events)} events"
                     )
+                    logger.debug(
+                        f"[{request_id}] Provider {provider} result details:",
+                        request_id=request_id,
+                        provider=provider,
+                        result_type=type(result),
+                        events_count=len(events),
+                        provider_name=provider_name,
+                    )
                 except (TypeError, ValueError) as e:
                     logger.error(
-                        f"[{request_id}] Invalid result format from {provider}: {e}"
+                        f"[{request_id}] Invalid result format from {provider}: {e}",
+                        request_id=request_id,
+                        provider=provider,
+                        result_type=type(result),
+                        result_value=result,
+                        error=str(e),
                     )
                     provider_errors[provider] = f"Invalid result format: {e}"
+            else:
+                logger.warning(
+                    f"[{request_id}] Unexpected result type from {provider}: {type(result)}",
+                    request_id=request_id,
+                    provider=provider,
+                    result_type=type(result),
+                    result_value=result,
+                )
+
+        logger.info(
+            f"[{request_id}] Aggregated {len(aggregated_events)} total events from {len(providers_used)} providers",
+            request_id=request_id,
+            total_events=len(aggregated_events),
+            providers_used=providers_used,
+            provider_errors=provider_errors,
+        )
 
         # Sort events by start time
         aggregated_events.sort(key=lambda event: event.start_time)
@@ -516,10 +584,12 @@ async def get_calendar_events(
         ):  # Only cache if at least one provider succeeded and we have events
             # Cache the result for 10 minutes (calendar data changes more frequently)
             await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=600)
-            logger.debug(
+            logger.info(
                 f"Cached {len(aggregated_events)} events for user {user_id}",
                 request_id=request_id,
                 providers_used=providers_used,
+                cache_key=cache_key,
+                response_data_keys=list(response_data.keys()),
             )
         else:
             logger.info(
@@ -528,6 +598,7 @@ async def get_calendar_events(
                 providers_used=providers_used,
                 provider_errors=provider_errors,
                 event_count=len(aggregated_events),
+                cache_key=cache_key,
             )
 
         # Calculate response time
@@ -1469,6 +1540,15 @@ async def fetch_provider_events(
             logger.info(
                 f"[{request_id}] Successfully fetched {len(normalized_events)} events from {provider}"
             )
+            logger.debug(
+                f"[{request_id}] Provider {provider} events details:",
+                request_id=request_id,
+                provider=provider,
+                event_count=len(normalized_events),
+                start_dt=start_dt.isoformat(),
+                end_dt=end_dt.isoformat(),
+                limit=limit,
+            )
             return normalized_events, provider
 
     except Exception as e:
@@ -1477,6 +1557,9 @@ async def fetch_provider_events(
             request_id=request_id,
             provider=provider,
             error=str(e),
+            start_dt=start_dt.isoformat(),
+            end_dt=end_dt.isoformat(),
+            limit=limit,
         )
         raise
 
@@ -1735,3 +1818,120 @@ def parse_event_id(event_id: str) -> tuple[str, str]:
             message=f"Invalid event ID format: {event_id}. Expected format: 'provider_originalId'",
             field="event_id",
         )
+
+
+@router.get("/debug/cache/{user_id}")
+async def debug_cache(
+    request: Request,
+    user_id: str = Path(..., description="User ID to inspect cache for"),
+    service_name: str = Depends(service_permission_required(["read_calendar"])),
+) -> Dict[str, Any]:
+    """
+    Debug endpoint to inspect cache contents for a user.
+    """
+    request_id = str(uuid.uuid4())
+
+    try:
+        # Generate cache pattern for user
+        cache_pattern = f"office_service:{user_id}:*"
+
+        # Get Redis client
+        redis_client = await cache_manager._get_redis()
+        keys = await redis_client.keys(cache_pattern)
+
+        cache_contents = {}
+        for key in keys:
+            try:
+                cached_data = await redis_client.get(key)
+                if cached_data:
+                    data = json.loads(cached_data)
+                    ttl = await redis_client.ttl(key)
+                    cache_contents[key] = {
+                        "data_type": type(data).__name__,
+                        "ttl": ttl,
+                        "data_keys": (
+                            list(data.keys()) if isinstance(data, dict) else None
+                        ),
+                        "data_length": (
+                            len(data) if isinstance(data, (list, dict)) else None
+                        ),
+                    }
+                    if isinstance(data, dict) and "events" in data:
+                        cache_contents[key]["events_count"] = len(data["events"])
+            except Exception as e:
+                cache_contents[key] = {"error": str(e)}
+
+        return {
+            "user_id": user_id,
+            "cache_pattern": cache_pattern,
+            "keys_found": len(keys),
+            "cache_contents": cache_contents,
+            "request_id": request_id,
+        }
+
+    except Exception as e:
+        logger.error(f"Cache debug failed: {e}", request_id=request_id)
+        return {"error": str(e), "request_id": request_id}
+
+
+@router.delete("/debug/cache/{user_id}")
+async def clear_user_cache(
+    request: Request,
+    user_id: str = Path(..., description="User ID to clear cache for"),
+    service_name: str = Depends(service_permission_required(["read_calendar"])),
+) -> Dict[str, Any]:
+    """
+    Debug endpoint to clear cache for a user.
+    """
+    request_id = str(uuid.uuid4())
+
+    try:
+        # Generate cache pattern for user
+        cache_pattern = f"office_service:{user_id}:*"
+
+        # Delete all keys matching pattern
+        deleted_count = await cache_manager.delete_pattern(cache_pattern)
+
+        return {
+            "user_id": user_id,
+            "cache_pattern": cache_pattern,
+            "deleted_keys": deleted_count,
+            "request_id": request_id,
+        }
+
+    except Exception as e:
+        logger.error(f"Cache clear failed: {e}", request_id=request_id)
+        return {"error": str(e), "request_id": request_id}
+
+
+@router.delete("/debug/cache/clear/all")
+async def clear_all_cache(
+    request: Request,
+    service_name: str = Depends(service_permission_required(["read_calendar"])),
+) -> Dict[str, Any]:
+    """
+    Debug endpoint to clear all office service cache.
+    """
+    request_id = str(uuid.uuid4())
+
+    try:
+        # Get Redis client
+        redis_client = await cache_manager._get_redis()
+
+        # Get all keys matching office service pattern
+        keys = await redis_client.keys("office_service:*")
+
+        if keys:
+            deleted_count = await redis_client.delete(*keys)
+        else:
+            deleted_count = 0
+
+        return {
+            "keys_found": len(keys),
+            "deleted_keys": deleted_count,
+            "request_id": request_id,
+        }
+
+    except Exception as e:
+        logger.error(f"Clear all cache failed: {e}", request_id=request_id)
+        return {"error": str(e), "request_id": request_id}

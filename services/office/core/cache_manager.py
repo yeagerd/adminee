@@ -71,7 +71,13 @@ class CacheManager:
 
             # Deserialize JSON data
             data = json.loads(cached_data)
-            logger.debug(f"Cache hit for key: {key}")
+            logger.debug(f"Cache hit for key: {key}, data type: {type(data)}")
+            if isinstance(data, dict):
+                logger.debug(f"Cache data keys: {list(data.keys())}")
+                if "events" in data:
+                    logger.debug(f"Cache events count: {len(data['events'])}")
+            elif isinstance(data, list):
+                logger.debug(f"Cache list length: {len(data)}")
             return data
 
         except Exception as e:
@@ -106,6 +112,12 @@ class CacheManager:
             await redis_client.setex(key, ttl_seconds, serialized_data)
 
             logger.debug(f"Cached data for key: {key} (TTL: {ttl_seconds}s)")
+            if isinstance(data, dict):
+                logger.debug(f"Cached data keys: {list(data.keys())}")
+                if "events" in data:
+                    logger.debug(f"Cached events count: {len(data['events'])}")
+            elif isinstance(data, list):
+                logger.debug(f"Cached list length: {len(data)}")
             return True
 
         except Exception as e:
