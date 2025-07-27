@@ -592,16 +592,12 @@ class TokenService:
         Check if granted scopes include all required scopes.
 
         Handles Microsoft's hierarchical scopes where broader scopes include narrower ones:
-        - Mail.ReadWrite includes Mail.Read and Mail.Send
         - Calendars.ReadWrite includes Calendars.Read
         - Files.ReadWrite includes Files.Read
+        - Mail.ReadWrite and Mail.Send are separate permissions
         """
         # Create a mapping of broader scopes to their included narrower scopes
         microsoft_scope_hierarchy = {
-            "https://graph.microsoft.com/Mail.ReadWrite": [
-                "https://graph.microsoft.com/Mail.Read",
-                "https://graph.microsoft.com/Mail.Send",
-            ],
             "https://graph.microsoft.com/Calendars.ReadWrite": [
                 "https://graph.microsoft.com/Calendars.Read",
             ],

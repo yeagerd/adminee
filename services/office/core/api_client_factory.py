@@ -140,7 +140,7 @@ class APIClientFactory:
             ]
         elif provider == Provider.MICROSOFT:
             return [
-                "https://graph.microsoft.com/Mail.Read",
+                "https://graph.microsoft.com/Mail.ReadWrite",
                 "https://graph.microsoft.com/Mail.Send",
                 "https://graph.microsoft.com/Calendars.ReadWrite",
                 "https://graph.microsoft.com/Files.Read",
