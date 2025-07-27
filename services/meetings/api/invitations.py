@@ -136,7 +136,7 @@ async def send_invitations(
             body = "\n".join(body_lines)
 
             # Add participant list if reveal_participants is enabled
-            if poll.reveal_participants or False:
+            if poll.reveal_participants:
                 body += "\n\nOther participants:\n"
                 for other_participant in participants:
                     if (
