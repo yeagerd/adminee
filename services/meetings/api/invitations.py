@@ -80,9 +80,7 @@ async def send_invitations(
             body = f"You have been invited to respond to a meeting poll: {poll.title}\n\n{description}\n\nRespond here: {response_url}"
 
             # Add participant list if reveal_participants is enabled
-            if hasattr(poll, "reveal_participants") and getattr(
-                poll, "reveal_participants", False
-            ):
+            if bool(poll.reveal_participants):  # type: ignore[arg-type]
                 body += "\n\nOther participants:\n"
                 for other_participant in participants:
                     if (
