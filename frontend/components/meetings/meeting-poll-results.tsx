@@ -2,9 +2,11 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToolStateUtils } from '@/hooks/use-tool-state';
 import { gatewayClient, PollResponse } from '@/lib/gateway-client';
-import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Mail, Users } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Mail, Plus, Users } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 
 interface Participant {
@@ -27,6 +29,7 @@ interface Poll {
     status: string;
     created_at: string;
     location?: string;
+    duration_minutes?: number;
     participants: Participant[];
     time_slots: TimeSlot[];
     responses?: PollResponse[];
@@ -108,27 +111,21 @@ const getResponseLabel = (response: string) => {
 // Header Component
 interface PollHeaderProps {
     onBack: () => void;
-    onEdit: () => void;
 }
 
-function PollHeader({ onBack, onEdit }: PollHeaderProps) {
+function PollHeader({ onBack }: PollHeaderProps) {
     return (
-        <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={onBack}
-                    className="flex items-center gap-2"
-                >
-                    <ArrowLeft className="h-4 w-4" />
-                    Back to List
-                </Button>
-                <h1 className="text-2xl font-bold">Meeting Poll Results</h1>
-            </div>
-            <Button onClick={onEdit} variant="outline">
-                Edit Poll
+        <div className="flex items-center gap-4 mb-6">
+            <Button
+                variant="ghost"
+                size="sm"
+                onClick={onBack}
+                className="flex items-center gap-2"
+            >
+                <ArrowLeft className="h-4 w-4" />
+                Back to List
             </Button>
+            <h1 className="text-2xl font-bold">Meeting Poll Results</h1>
         </div>
     );
 }
@@ -136,15 +133,21 @@ function PollHeader({ onBack, onEdit }: PollHeaderProps) {
 // Poll Info Component
 interface PollInfoProps {
     poll: Poll;
+    onEdit: () => void;
 }
 
-function PollInfo({ poll }: PollInfoProps) {
+function PollInfo({ poll, onEdit }: PollInfoProps) {
     const totalParticipants = poll?.participants?.length || 0;
     const responded = poll?.participants?.filter((p) => p.status === "responded").length || 0;
 
     return (
         <div>
-            <h2 className="text-xl font-semibold mb-2">{poll.title}</h2>
+            <div className="flex items-center justify-between mb-2">
+                <h2 className="text-xl font-semibold">{poll.title}</h2>
+                <Button onClick={onEdit} variant="outline" size="sm">
+                    Edit Poll
+                </Button>
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
                 <div>Status: <span className="capitalize font-medium">{poll.status}</span></div>
                 <div>Created: {poll.created_at?.slice(0, 10) || ""}</div>
@@ -218,27 +221,39 @@ interface ParticipantSectionProps {
     poll: Poll;
     onResendEmail: (participantId: string) => void;
     resendingEmails: Set<string>;
+    onAddParticipant: () => void;
 }
 
-function ParticipantSection({ poll, onResendEmail, resendingEmails }: ParticipantSectionProps) {
+function ParticipantSection({ poll, onResendEmail, resendingEmails, onAddParticipant }: ParticipantSectionProps) {
     const [showParticipantDetails, setShowParticipantDetails] = useState(false);
 
     return (
         <div>
-            <div className="flex items-center gap-2 mb-2">
-                <h3 className="font-semibold">Participant Responses:</h3>
+            <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                    <h3 className="font-semibold">Participant Responses:</h3>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowParticipantDetails(!showParticipantDetails)}
+                        className="flex items-center gap-1"
+                    >
+                        {showParticipantDetails ? (
+                            <ChevronDown className="h-4 w-4" />
+                        ) : (
+                            <ChevronRight className="h-4 w-4" />
+                        )}
+                        <Users className="h-4 w-4" />
+                    </Button>
+                </div>
                 <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    onClick={() => setShowParticipantDetails(!showParticipantDetails)}
+                    onClick={onAddParticipant}
                     className="flex items-center gap-1"
                 >
-                    {showParticipantDetails ? (
-                        <ChevronDown className="h-4 w-4" />
-                    ) : (
-                        <ChevronRight className="h-4 w-4" />
-                    )}
-                    <Users className="h-4 w-4" />
+                    <Plus className="h-4 w-4" />
+                    Add Participant
                 </Button>
             </div>
 
@@ -405,9 +420,10 @@ interface TimeSlotsTableProps {
     expandedRows: Set<string>;
     onSort: (column: SortColumn) => void;
     onToggleExpansion: (slotId: string) => void;
+    onAddTime: () => void;
 }
 
-function TimeSlotsTable({ poll, slotStats, sortColumn, sortDirection, expandedRows, onSort, onToggleExpansion }: TimeSlotsTableProps) {
+function TimeSlotsTable({ poll, slotStats, sortColumn, sortDirection, expandedRows, onSort, onToggleExpansion, onAddTime }: TimeSlotsTableProps) {
     const sortTimeSlotsByColumn = (timeSlots: TimeSlot[], slotStats: Record<string, { available: number; maybe: number; unavailable: number }>) => {
         if (!sortColumn) {
             return timeSlots;
@@ -482,7 +498,18 @@ function TimeSlotsTable({ poll, slotStats, sortColumn, sortDirection, expandedRo
 
     return (
         <div>
-            <h3 className="font-semibold mb-2">Time Slots:</h3>
+            <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold">Time Slots:</h3>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onAddTime}
+                    className="flex items-center gap-1"
+                >
+                    <Plus className="h-4 w-4" />
+                    Add Time
+                </Button>
+            </div>
             <p className="text-sm text-gray-600 mb-3">
                 Click on any row to see detailed participant responses for that time slot.
             </p>
@@ -550,6 +577,232 @@ function TimeSlotsTable({ poll, slotStats, sortColumn, sortDirection, expandedRo
     );
 }
 
+// Add Participant Modal Component
+interface AddParticipantModalProps {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onAdd: (email: string, name: string) => Promise<void>;
+    loading: boolean;
+}
+
+function AddParticipantModal({ open, onOpenChange, onAdd, loading }: AddParticipantModalProps) {
+    const [email, setEmail] = useState('');
+    const [name, setName] = useState('');
+    const [error, setError] = useState<string | null>(null);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError(null);
+
+        if (!email || !name.trim()) {
+            setError('Please fill in all fields');
+            return;
+        }
+
+        if (!/.+@.+\..+/.test(email)) {
+            setError('Please enter a valid email address');
+            return;
+        }
+
+        try {
+            await onAdd(email, name.trim());
+            setEmail('');
+            setName('');
+            onOpenChange(false);
+        } catch (err) {
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError('Failed to add participant');
+            }
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Add Participant</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Name</label>
+                        <input
+                            type="text"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            className="w-full border rounded px-3 py-2"
+                            placeholder="Enter participant name"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Email</label>
+                        <input
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="w-full border rounded px-3 py-2"
+                            placeholder="Enter participant email"
+                            required
+                        />
+                    </div>
+                    {error && (
+                        <div className="text-red-600 text-sm">{error}</div>
+                    )}
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => onOpenChange(false)}
+                            disabled={loading}
+                        >
+                            Cancel
+                        </Button>
+                        <Button type="submit" disabled={loading}>
+                            {loading ? 'Adding...' : 'Add Participant'}
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+// Add Time Slot Modal Component
+interface AddTimeSlotModalProps {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onAdd: (startTime: string, endTime: string, timezone: string, resendInvitations: boolean) => Promise<void>;
+    loading: boolean;
+    pollDuration?: number;
+    pollTimezone?: string;
+}
+
+function AddTimeSlotModal({ open, onOpenChange, onAdd, loading, pollDuration = 60, pollTimezone = 'UTC' }: AddTimeSlotModalProps) {
+    const [date, setDate] = useState('');
+    const [startTime, setStartTime] = useState('');
+    const [endTime, setEndTime] = useState('');
+    const [resendInvitations, setResendInvitations] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    // Auto-calculate end time based on start time and poll duration
+    useEffect(() => {
+        if (date && startTime) {
+            const startDateTime = new Date(`${date}T${startTime}`);
+            const endDateTime = new Date(startDateTime.getTime() + pollDuration * 60 * 1000);
+            const endTimeString = endDateTime.toTimeString().slice(0, 5);
+            setEndTime(endTimeString);
+        }
+    }, [date, startTime, pollDuration]);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError(null);
+
+        if (!date || !startTime || !endTime) {
+            setError('Please fill in all fields');
+            return;
+        }
+
+        const startDateTime = new Date(`${date}T${startTime}`);
+        const endDateTime = new Date(`${date}T${endTime}`);
+
+        if (startDateTime >= endDateTime) {
+            setError('End time must be after start time');
+            return;
+        }
+
+        try {
+            await onAdd(
+                startDateTime.toISOString(),
+                endDateTime.toISOString(),
+                pollTimezone,
+                resendInvitations
+            );
+            setDate('');
+            setStartTime('');
+            setEndTime('');
+            setResendInvitations(false);
+            onOpenChange(false);
+        } catch (err) {
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError('Failed to add time slot');
+            }
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Add Time Slot</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Date</label>
+                        <input
+                            type="date"
+                            value={date}
+                            onChange={(e) => setDate(e.target.value)}
+                            className="w-full border rounded px-3 py-2"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Start Time</label>
+                        <input
+                            type="time"
+                            value={startTime}
+                            onChange={(e) => setStartTime(e.target.value)}
+                            className="w-full border rounded px-3 py-2"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">End Time</label>
+                        <input
+                            type="time"
+                            value={endTime}
+                            onChange={(e) => setEndTime(e.target.value)}
+                            className="w-full border rounded px-3 py-2"
+                            required
+                        />
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Checkbox
+                            id="resend-invitations"
+                            checked={resendInvitations}
+                            onCheckedChange={(checked) => setResendInvitations(checked as boolean)}
+                        />
+                        <label htmlFor="resend-invitations" className="text-sm">
+                            Resend invitations to all participants
+                        </label>
+                    </div>
+                    {error && (
+                        <div className="text-red-600 text-sm">{error}</div>
+                    )}
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => onOpenChange(false)}
+                            disabled={loading}
+                        >
+                            Cancel
+                        </Button>
+                        <Button type="submit" disabled={loading}>
+                            {loading ? 'Adding...' : 'Add Time Slot'}
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 // Main Component
 interface MeetingPollResultsProps {
     pollId: string;
@@ -564,6 +817,11 @@ export function MeetingPollResults({ pollId }: MeetingPollResultsProps) {
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const [resendingEmails, setResendingEmails] = useState<Set<string>>(new Set());
+
+    // Modal states
+    const [addParticipantOpen, setAddParticipantOpen] = useState(false);
+    const [addTimeSlotOpen, setAddTimeSlotOpen] = useState(false);
+    const [modalLoading, setModalLoading] = useState(false);
 
     useEffect(() => {
         if (!pollId) return;
@@ -627,6 +885,56 @@ export function MeetingPollResults({ pollId }: MeetingPollResultsProps) {
         }
     };
 
+    const handleAddParticipant = async (email: string, name: string) => {
+        if (!pollId) return;
+
+        setModalLoading(true);
+        try {
+            // Add the participant to the poll
+            await gatewayClient.addMeetingParticipant(pollId, email, name);
+
+            // Refresh the poll data
+            const refreshedPoll = await gatewayClient.getMeetingPoll(pollId);
+            setPoll(refreshedPoll as Poll);
+        } catch (err) {
+            console.error('Failed to add participant:', err);
+            throw err;
+        } finally {
+            setModalLoading(false);
+        }
+    };
+
+    const handleAddTimeSlot = async (startTime: string, endTime: string, timezone: string, resendInvitations: boolean) => {
+        if (!pollId) return;
+
+        setModalLoading(true);
+        try {
+            // Add the time slot
+            await gatewayClient.request(`/api/v1/meetings/polls/${pollId}/slots`, {
+                method: 'POST',
+                body: {
+                    start_time: startTime,
+                    end_time: endTime,
+                    timezone: timezone
+                }
+            });
+
+            // If requested, resend invitations
+            if (resendInvitations) {
+                await gatewayClient.sendMeetingInvitations(pollId);
+            }
+
+            // Refresh the poll data
+            const refreshedPoll = await gatewayClient.getMeetingPoll(pollId);
+            setPoll(refreshedPoll as Poll);
+        } catch (err) {
+            console.error('Failed to add time slot:', err);
+            throw err;
+        } finally {
+            setModalLoading(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="p-8">
@@ -657,16 +965,17 @@ export function MeetingPollResults({ pollId }: MeetingPollResultsProps) {
 
     return (
         <div className="p-8">
-            <PollHeader onBack={handleBackToList} onEdit={handleEdit} />
+            <PollHeader onBack={handleBackToList} />
 
             <Card>
                 <CardContent className="pt-6">
                     <div className="space-y-4">
-                        <PollInfo poll={poll} />
+                        <PollInfo poll={poll} onEdit={handleEdit} />
                         <ParticipantSection
                             poll={poll}
                             onResendEmail={handleResendEmail}
                             resendingEmails={resendingEmails}
+                            onAddParticipant={() => setAddParticipantOpen(true)}
                         />
                         <TimeSlotsTable
                             poll={poll}
@@ -676,10 +985,27 @@ export function MeetingPollResults({ pollId }: MeetingPollResultsProps) {
                             expandedRows={expandedRows}
                             onSort={handleSort}
                             onToggleExpansion={toggleRowExpansion}
+                            onAddTime={() => setAddTimeSlotOpen(true)}
                         />
                     </div>
                 </CardContent>
             </Card>
+
+            <AddParticipantModal
+                open={addParticipantOpen}
+                onOpenChange={setAddParticipantOpen}
+                onAdd={handleAddParticipant}
+                loading={modalLoading}
+            />
+
+            <AddTimeSlotModal
+                open={addTimeSlotOpen}
+                onOpenChange={setAddTimeSlotOpen}
+                onAdd={handleAddTimeSlot}
+                loading={modalLoading}
+                pollDuration={poll?.duration_minutes}
+                pollTimezone={poll?.time_slots?.[0]?.timezone || 'UTC'}
+            />
         </div>
     );
 } 

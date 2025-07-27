@@ -17,7 +17,13 @@ from services.meetings.models import PollParticipant as PollParticipantModel
 from services.meetings.models import TimeSlot as TimeSlotModel
 from services.meetings.models import get_session
 from services.meetings.models.meeting import PollStatus
-from services.meetings.schemas import MeetingPoll, MeetingPollCreate, MeetingPollUpdate
+from services.meetings.schemas import (
+    MeetingPoll,
+    MeetingPollCreate,
+    MeetingPollUpdate,
+    PollParticipant,
+    PollParticipantCreate,
+)
 from services.meetings.services import calendar_integration, email_integration
 from services.meetings.settings import get_settings
 
@@ -505,3 +511,62 @@ async def resend_invitation(
                 status_code=400,
                 detail=f"Failed to resend invitation: {str(e)}",
             )
+
+
+@router.post("/{poll_id}/participants", response_model=PollParticipant)
+async def add_participant(
+    poll_id: UUID,
+    participant_data: PollParticipantCreate,
+    request: Request,
+    service_name: str = Depends(verify_api_key_auth),
+) -> PollParticipant:
+    """
+    Add a new participant to an existing poll.
+    """
+    user_id = get_user_id_from_request(request)
+
+    with get_session() as session:
+        # Verify poll exists and user owns it
+        poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
+        if not poll:
+            raise HTTPException(status_code=404, detail="Poll not found")
+
+        if str(poll.user_id) != str(user_id):
+            raise HTTPException(
+                status_code=403,
+                detail="Not authorized to modify this poll",
+            )
+
+        # Check if participant with this email already exists for this poll
+        existing_participant = (
+            session.query(PollParticipantModel)
+            .filter_by(poll_id=poll_id, email=participant_data.email)
+            .first()
+        )
+        if existing_participant:
+            raise HTTPException(
+                status_code=409,
+                detail="A participant with this email already exists for this poll",
+            )
+
+        # Create new participant
+        response_token = uuid4().hex
+        db_participant = PollParticipantModel(
+            id=uuid4(),
+            poll_id=poll_id,
+            email=participant_data.email,
+            name=participant_data.name,
+            response_token=response_token,
+        )
+        session.add(db_participant)
+        session.commit()
+        session.refresh(db_participant)
+
+        logger.info(
+            "Successfully added participant to poll",
+            poll_id=str(poll_id),
+            participant_email=participant_data.email,
+            participant_name=participant_data.name,
+        )
+
+        return PollParticipant.model_validate(db_participant)
