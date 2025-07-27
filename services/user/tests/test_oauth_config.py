@@ -468,6 +468,7 @@ class TestOAuthConfig:
             "https://graph.microsoft.com/User.Read",
             "https://graph.microsoft.com/Calendars.ReadWrite",
             "https://graph.microsoft.com/Mail.ReadWrite",
+            "https://graph.microsoft.com/Mail.Send",
             "https://graph.microsoft.com/Files.ReadWrite",
             "https://graph.microsoft.com/Contacts.ReadWrite",
         }
@@ -1026,6 +1027,7 @@ class TestOAuthConfig:
             "https://graph.microsoft.com/User.Read",
             "https://graph.microsoft.com/Calendars.ReadWrite",
             "https://graph.microsoft.com/Mail.ReadWrite",
+            "https://graph.microsoft.com/Mail.Send",
             "https://graph.microsoft.com/Files.ReadWrite",
             "https://graph.microsoft.com/Contacts.ReadWrite",
         }
