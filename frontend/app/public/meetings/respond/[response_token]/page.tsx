@@ -113,6 +113,67 @@ export default function PollResponsePage() {
         });
     };
 
+    const formatDateTimeWithRange = (startTime: string, endTime: string) => {
+        const start = new Date(startTime);
+        const end = new Date(endTime);
+
+        // Format the date part
+        const dateFormatted = start.toLocaleString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+
+        // Format the time range
+        const startFormatted = start.toLocaleString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
+
+        const endFormatted = end.toLocaleString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
+
+        // Get timezone abbreviation
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const timezoneAbbr = new Intl.DateTimeFormat('en-US', {
+            timeZone: timezone,
+            timeZoneName: 'short'
+        }).formatToParts(new Date()).find(part => part.type === 'timeZoneName')?.value || '';
+
+        return `${dateFormatted}, ${startFormatted} - ${endFormatted} ${timezoneAbbr}`;
+    };
+
+    const formatTimeRange = (startTime: string, endTime: string) => {
+        const start = new Date(startTime);
+        const end = new Date(endTime);
+
+        const startFormatted = start.toLocaleString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
+
+        const endFormatted = end.toLocaleString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
+
+        // Get timezone abbreviation - more reliable method
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const timezoneAbbr = new Intl.DateTimeFormat('en-US', {
+            timeZone: timezone,
+            timeZoneName: 'short'
+        }).formatToParts(new Date()).find(part => part.type === 'timeZoneName')?.value || '';
+
+        return `${startFormatted} - ${endFormatted} ${timezoneAbbr}`;
+    };
+
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
@@ -197,11 +258,8 @@ export default function PollResponsePage() {
                                         <div key={slot.id} className="border border-gray-200 rounded-lg p-6">
                                             <div className="mb-4">
                                                 <h4 className="text-lg font-medium text-gray-900">
-                                                    {formatDateTime(slot.start_time)}
+                                                    {formatDateTimeWithRange(slot.start_time, slot.end_time)}
                                                 </h4>
-                                                <p className="text-sm text-gray-500">
-                                                    Duration: {poll.duration_minutes} minutes
-                                                </p>
                                             </div>
 
                                             <div className="space-y-4">
@@ -210,8 +268,8 @@ export default function PollResponsePage() {
                                                         type="button"
                                                         onClick={() => handleResponseChange(slot.id, 'available')}
                                                         className={`flex items-center gap-3 px-6 py-4 rounded-lg border-2 transition-all duration-200 font-medium ${currentResponse === 'available'
-                                                                ? 'border-green-500 bg-green-50 text-green-700 shadow-md'
-                                                                : 'border-gray-300 bg-white text-gray-700 hover:border-green-300 hover:bg-green-25'
+                                                            ? 'border-green-500 bg-green-50 text-green-700 shadow-md'
+                                                            : 'border-gray-300 bg-white text-gray-700 hover:border-green-300 hover:bg-green-25'
                                                             }`}
                                                     >
                                                         <Check className={`h-5 w-5 ${currentResponse === 'available' ? 'text-green-600' : 'text-gray-400'}`} />
@@ -222,8 +280,8 @@ export default function PollResponsePage() {
                                                         type="button"
                                                         onClick={() => handleResponseChange(slot.id, 'maybe')}
                                                         className={`flex items-center gap-3 px-6 py-4 rounded-lg border-2 transition-all duration-200 font-medium ${currentResponse === 'maybe'
-                                                                ? 'border-yellow-500 bg-yellow-50 text-yellow-700 shadow-md'
-                                                                : 'border-gray-300 bg-white text-gray-700 hover:border-yellow-300 hover:bg-yellow-25'
+                                                            ? 'border-yellow-500 bg-yellow-50 text-yellow-700 shadow-md'
+                                                            : 'border-gray-300 bg-white text-gray-700 hover:border-yellow-300 hover:bg-yellow-25'
                                                             }`}
                                                     >
                                                         <HelpCircle className={`h-5 w-5 ${currentResponse === 'maybe' ? 'text-yellow-600' : 'text-gray-400'}`} />
@@ -234,8 +292,8 @@ export default function PollResponsePage() {
                                                         type="button"
                                                         onClick={() => handleResponseChange(slot.id, 'unavailable')}
                                                         className={`flex items-center gap-3 px-6 py-4 rounded-lg border-2 transition-all duration-200 font-medium ${currentResponse === 'unavailable'
-                                                                ? 'border-red-500 bg-red-50 text-red-700 shadow-md'
-                                                                : 'border-gray-300 bg-white text-gray-700 hover:border-red-300 hover:bg-red-25'
+                                                            ? 'border-red-500 bg-red-50 text-red-700 shadow-md'
+                                                            : 'border-gray-300 bg-white text-gray-700 hover:border-red-300 hover:bg-red-25'
                                                             }`}
                                                     >
                                                         <X className={`h-5 w-5 ${currentResponse === 'unavailable' ? 'text-red-600' : 'text-gray-400'}`} />
