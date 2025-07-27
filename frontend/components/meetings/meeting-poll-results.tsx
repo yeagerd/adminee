@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToolStateUtils } from '@/hooks/use-tool-state';
 import { gatewayClient } from '@/lib/gateway-client';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface Participant {
@@ -86,15 +86,37 @@ const formatTimeSlot = (startTime: string, endTime: string, timezone: string) =>
     return `${dateFormatted}, ${startFormatted} - ${endFormatted} ${timezoneAbbr}`;
 };
 
+const sortTimeSlotsByAvailability = (timeSlots: TimeSlot[], slotStats: Record<string, { available: number; maybe: number; unavailable: number }>) => {
+    return [...timeSlots].sort((a, b) => {
+        const statsA = slotStats[a.id] || { available: 0, maybe: 0, unavailable: 0 };
+        const statsB = slotStats[b.id] || { available: 0, maybe: 0, unavailable: 0 };
+
+        // Primary sort: most available people
+        if (statsA.available !== statsB.available) {
+            return statsB.available - statsA.available; // Descending order
+        }
+
+        // Secondary sort: most-available plus maybes
+        const totalAvailableA = statsA.available + statsA.maybe;
+        const totalAvailableB = statsB.available + statsB.maybe;
+        return totalAvailableB - totalAvailableA; // Descending order
+    });
+};
+
 interface MeetingPollResultsProps {
     pollId: string;
 }
+
+type SortColumn = 'time_slot' | 'available' | 'maybe' | 'unavailable' | null;
+type SortDirection = 'asc' | 'desc';
 
 export function MeetingPollResults({ pollId }: MeetingPollResultsProps) {
     const { setMeetingSubView } = useToolStateUtils();
     const [poll, setPoll] = useState<Poll | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [sortColumn, setSortColumn] = useState<SortColumn>(null);
+    const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
     useEffect(() => {
         if (!pollId) return;
@@ -121,6 +143,79 @@ export function MeetingPollResults({ pollId }: MeetingPollResultsProps) {
 
     const handleEdit = () => {
         setMeetingSubView('edit', pollId);
+    };
+
+    const handleSort = (column: SortColumn) => {
+        if (sortColumn === column) {
+            // Reverse direction if clicking the same column
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+            // Set new column and default to desc
+            setSortColumn(column);
+            setSortDirection('desc');
+        }
+    };
+
+    const getSortIcon = (column: SortColumn) => {
+        if (sortColumn !== column) {
+            return <ArrowUpDown className="h-4 w-4" />;
+        }
+        return sortDirection === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />;
+    };
+
+    const sortTimeSlotsByColumn = (timeSlots: TimeSlot[], slotStats: Record<string, { available: number; maybe: number; unavailable: number }>) => {
+        if (!sortColumn) {
+            return timeSlots;
+        }
+
+        return [...timeSlots].sort((a, b) => {
+            const statsA = slotStats[a.id] || { available: 0, maybe: 0, unavailable: 0 };
+            const statsB = slotStats[b.id] || { available: 0, maybe: 0, unavailable: 0 };
+
+            let primaryA: number;
+            let primaryB: number;
+            let secondaryA: number;
+            let secondaryB: number;
+
+            switch (sortColumn) {
+                case 'time_slot':
+                    // Sort by start time chronologically
+                    const startTimeA = new Date(a.start_time).getTime();
+                    const startTimeB = new Date(b.start_time).getTime();
+                    const result = startTimeA - startTimeB; // Ascending by default (earliest first)
+                    return sortDirection === 'asc' ? result : -result;
+                case 'available':
+                    primaryA = statsA.available;
+                    primaryB = statsB.available;
+                    secondaryA = statsA.maybe;
+                    secondaryB = statsB.maybe;
+                    break;
+                case 'maybe':
+                    primaryA = statsA.maybe;
+                    primaryB = statsB.maybe;
+                    secondaryA = statsA.available;
+                    secondaryB = statsB.available;
+                    break;
+                case 'unavailable':
+                    primaryA = statsA.unavailable;
+                    primaryB = statsB.unavailable;
+                    secondaryA = -statsA.maybe; // Negative of maybe as secondary
+                    secondaryB = -statsB.maybe;
+                    break;
+                default:
+                    return 0;
+            }
+
+            // Primary sort
+            if (primaryA !== primaryB) {
+                const result = primaryB - primaryA; // Descending by default
+                return sortDirection === 'asc' ? -result : result;
+            }
+
+            // Secondary sort
+            const result = secondaryB - secondaryA; // Descending by default
+            return sortDirection === 'asc' ? -result : result;
+        });
     };
 
     if (loading) {
@@ -199,14 +294,46 @@ export function MeetingPollResults({ pollId }: MeetingPollResultsProps) {
                                 <table className="min-w-full text-sm border">
                                     <thead>
                                         <tr className="bg-gray-50">
-                                            <th className="px-3 py-2 border text-left">Time Slot</th>
-                                            <th className="px-3 py-2 border text-center">Available</th>
-                                            <th className="px-3 py-2 border text-center">Maybe</th>
-                                            <th className="px-3 py-2 border text-center">Unavailable</th>
+                                            <th
+                                                className="px-3 py-2 border text-left cursor-pointer hover:bg-gray-100 select-none"
+                                                onClick={() => handleSort('time_slot')}
+                                            >
+                                                <div className="flex items-center gap-1">
+                                                    Time Slot
+                                                    {getSortIcon('time_slot')}
+                                                </div>
+                                            </th>
+                                            <th
+                                                className="px-3 py-2 border text-center cursor-pointer hover:bg-gray-100 select-none"
+                                                onClick={() => handleSort('available')}
+                                            >
+                                                <div className="flex items-center justify-center gap-1">
+                                                    Available
+                                                    {getSortIcon('available')}
+                                                </div>
+                                            </th>
+                                            <th
+                                                className="px-3 py-2 border text-center cursor-pointer hover:bg-gray-100 select-none"
+                                                onClick={() => handleSort('maybe')}
+                                            >
+                                                <div className="flex items-center justify-center gap-1">
+                                                    Maybe
+                                                    {getSortIcon('maybe')}
+                                                </div>
+                                            </th>
+                                            <th
+                                                className="px-3 py-2 border text-center cursor-pointer hover:bg-gray-100 select-none"
+                                                onClick={() => handleSort('unavailable')}
+                                            >
+                                                <div className="flex items-center justify-center gap-1">
+                                                    Unavailable
+                                                    {getSortIcon('unavailable')}
+                                                </div>
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {(poll?.time_slots || []).map((slot) => (
+                                        {sortTimeSlotsByColumn(poll?.time_slots || [], slotStats).map((slot) => (
                                             <tr key={slot.id} className="hover:bg-gray-50">
                                                 <td className="px-3 py-2 border">
                                                     {formatTimeSlot(slot.start_time, slot.end_time, slot.timezone)}
