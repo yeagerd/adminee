@@ -14,9 +14,9 @@ client = TestClient(app)
 class TestSecurityFixes(BaseMeetingsTest):
     """Test security fixes for slots and invitations routers."""
 
-    def setup_method(self):
+    def setup_method(self, method):
         """Set up test environment."""
-        super().setup_method()
+        super().setup_method(method)
 
         # Set up database tables
         from sqlalchemy import create_engine
