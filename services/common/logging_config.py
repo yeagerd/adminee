@@ -162,11 +162,6 @@ class EnhancedTextRenderer:
         else:
             request_id_suffix = ""
 
-        # Get file and line info
-        file_info = ""
-        if "file" in event_dict and "line" in event_dict:
-            file_info = f" {event_dict['file']}:{event_dict['line']}"
-
         # Get user ID if present
         user_info = ""
         user_id = event_dict.get("user_id", "")
@@ -179,7 +174,7 @@ class EnhancedTextRenderer:
             f"[{service}]",
             f"[{level}]",
             request_id_suffix,
-            f"{logger_name}{file_info}",
+            f"{logger_name}",
             f"- {message}{user_info}",
         ]
 
@@ -194,8 +189,6 @@ class EnhancedTextRenderer:
                 "service",
                 "request_id",
                 "user_id",
-                "file",
-                "line",
             ]:
                 if isinstance(value, (str, int, float, bool)):
                     extra_context.append(f"{key}={value}")
@@ -232,7 +225,6 @@ def setup_service_logging(
         structlog.stdlib.PositionalArgumentsFormatter(),
         add_request_context,  # Add our custom context processor
         add_service_context,  # Add service context
-        add_file_line_context,  # Add file/line context
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
@@ -332,7 +324,6 @@ def create_request_logging_middleware() -> Callable:
             f"→ {request.method} {request.url.path}",
             extra={
                 "method": request.method,
-                "path": request.url.path,
                 "query_params": (
                     str(request.query_params) if request.query_params else None
                 ),
@@ -363,7 +354,6 @@ def create_request_logging_middleware() -> Callable:
                 "status_code": response.status_code,
                 "process_time": process_time,
                 "method": request.method,
-                "path": request.url.path,
             },
         )
 
