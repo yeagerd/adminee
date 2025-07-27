@@ -2,10 +2,8 @@
 Base classes for Chat Service tests.
 
 Provides common setup and teardown for all chat service tests,
-including required environment variables and HTTP call prevention.
+including required settings and HTTP call prevention.
 """
-
-import os
 
 from services.common.test_utils import BaseSelectiveHTTPIntegrationTest
 
@@ -13,22 +11,40 @@ from services.common.test_utils import BaseSelectiveHTTPIntegrationTest
 class BaseChatTest(BaseSelectiveHTTPIntegrationTest):
     """Base class for all Chat Service tests with HTTP call prevention."""
 
-    def setup_method(self):
-        """Set up Chat Service test environment with required variables."""
+    def setup_method(self, method: object) -> None:
+        """Set up Chat Service test environment with required settings."""
         # Call parent setup to enable HTTP call detection
-        super().setup_method(None)
+        super().setup_method(method)
 
-        # Set required environment variables for Chat Service
-        os.environ["DB_URL_CHAT"] = "sqlite:///:memory:"
-        os.environ["API_FRONTEND_CHAT_KEY"] = "test-frontend-chat-key"
-        os.environ["API_CHAT_USER_KEY"] = "test-chat-user-key"
-        os.environ["API_CHAT_OFFICE_KEY"] = "test-chat-office-key"
+        # Import chat settings module
+        import services.chat.settings as chat_settings
 
-        # Optional environment variables with test defaults
-        os.environ.setdefault("LOG_LEVEL", "INFO")
-        os.environ.setdefault("LOG_FORMAT", "json")
+        # Store original settings singleton for cleanup
+        self._original_settings = chat_settings._settings
 
-    def teardown_method(self):
+        # Create test settings instance
+        from services.chat.settings import Settings
+
+        test_settings = Settings(
+            db_url_chat="sqlite:///:memory:",
+            api_frontend_chat_key="test-frontend-chat-key",
+            api_chat_user_key="test-chat-user-key",
+            api_chat_office_key="test-chat-office-key",
+            user_service_url="http://localhost:8001",
+            office_service_url="http://localhost:8003",
+            log_level="INFO",
+            log_format="json",
+        )
+
+        # Set the test settings as the singleton
+        chat_settings._settings = test_settings
+
+    def teardown_method(self, method: object) -> None:
         """Clean up Chat Service test environment."""
         # Call parent teardown to clean up HTTP patches
-        super().teardown_method(None)
+        super().teardown_method(method)
+
+        # Restore original settings singleton
+        import services.chat.settings as chat_settings
+
+        chat_settings._settings = self._original_settings
