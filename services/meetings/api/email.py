@@ -221,7 +221,7 @@ def process_email_response(
             if existing:
                 existing.response = ResponseType(response_value)
                 existing.comment = comment  # type: ignore[assignment]
-                existing.updated_at = datetime.datetime.utcnow()  # type: ignore[assignment]
+                existing.updated_at = datetime.datetime.now(datetime.timezone.utc)  # type: ignore[assignment]
             else:
                 resp = PollResponse(
                     id=uuid4(),
@@ -237,7 +237,7 @@ def process_email_response(
         # Update participant status if we processed any responses
         if processed_slots > 0:
             participant.status = ParticipantStatus.responded
-            participant.responded_at = datetime.datetime.utcnow()  # type: ignore[assignment]
+            participant.responded_at = datetime.datetime.now(datetime.timezone.utc)  # type: ignore[assignment]
 
         session.commit()
         logger.info(
