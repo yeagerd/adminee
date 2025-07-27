@@ -27,6 +27,7 @@ from services.user.auth.service_auth import (
     service_permission_required,
     verify_service_authentication,
 )
+from services.user.tests.test_base import BaseUserManagementTest
 
 
 @pytest.fixture(autouse=True)
@@ -39,6 +40,7 @@ def patch_settings(monkeypatch):
         api_frontend_user_key="test-frontend-key",
         api_chat_user_key="test-chat-key",
         api_office_user_key="test-office-key",
+        api_meetings_user_key="test-meetings-key",
         token_encryption_salt="dGVzdC1zYWx0LTE2Ynl0ZQ==",
         nextauth_jwt_key="test-nextauth-secret",
         oauth_redirect_uri="https://example.com/oauth/callback",
@@ -51,7 +53,7 @@ def patch_settings(monkeypatch):
     monkeypatch.setattr("services.user.settings._settings", test_settings)
 
 
-class TestNextAuthAuthentication:
+class TestNextAuthAuthentication(BaseUserManagementTest):
     """Test cases for NextAuth JWT authentication."""
 
     def create_test_token(self, claims: Optional[dict] = None, expired: bool = False):
@@ -251,7 +253,7 @@ class TestNextAuthAuthentication:
             assert exc_info.value.status_code == 403
 
 
-class TestServiceAuthentication:
+class TestServiceAuthentication(BaseUserManagementTest):
     """Test cases for service-to-service authentication."""
 
     def test_user_management_api_key_auth_verify_valid_key(self):
@@ -417,7 +419,7 @@ class TestServiceAuthentication:
         assert callable(decorator)
 
 
-class TestAuthenticationIntegration:
+class TestAuthenticationIntegration(BaseUserManagementTest):
     """Integration tests for authentication components."""
 
     @pytest.mark.asyncio
@@ -451,7 +453,7 @@ class TestAuthenticationIntegration:
             assert service_name == "user-management-access"
 
 
-class TestNextAuthSecurity:
+class TestNextAuthSecurity(BaseUserManagementTest):
     """Test NextAuth security features."""
 
     @pytest.mark.asyncio
