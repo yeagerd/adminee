@@ -1,45 +1,40 @@
 from datetime import datetime, timedelta
 from uuid import uuid4
 
-import pytest
 from fastapi.testclient import TestClient
 
 from services.meetings.main import app
 from services.meetings.models import MeetingPoll, PollParticipant, get_session
 from services.meetings.models.base import Base
 from services.meetings.models.meeting import ParticipantStatus, ResponseType
+from services.meetings.tests.test_base import BaseMeetingsTest
 
 client = TestClient(app)
 
 API_KEY = "test-email-sync-key"
 
 
-@pytest.fixture(autouse=True)
-def setup_env_and_tables(monkeypatch):
-    import services.meetings.settings
+class TestEmailResponse(BaseMeetingsTest):
+    """Test email response functionality."""
 
-    # Create test settings and override the singleton
-    test_settings = services.meetings.settings.Settings(
-        db_url_meetings="sqlite:///file::memory:?cache=shared",
-        api_email_sync_meetings_key=API_KEY,
-        api_meetings_office_key="test-meetings-office-key",
-        office_service_url="http://localhost:8003",
-    )
-    services.meetings.settings._settings = test_settings
+    def setup_method(self):
+        """Set up test environment."""
+        super().setup_method()
 
-    from sqlalchemy import create_engine
+        # Set up database tables
+        from sqlalchemy import create_engine
 
-    from services.meetings import models
+        from services.meetings import models
 
-    if not hasattr(models, "_test_engine"):
-        models._test_engine = create_engine(
-            test_settings.db_url_meetings,
-            echo=False,
-            future=True,
-            connect_args={"check_same_thread": False},
-        )
-    monkeypatch.setattr(models, "get_engine", lambda: models._test_engine)
-    Base.metadata.create_all(models._test_engine)
+        if not hasattr(models, "_test_engine"):
+            models._test_engine = create_engine(
+                "sqlite:///file::memory:?cache=shared",
+                echo=False,
+                future=True,
+                connect_args={"check_same_thread": False},
+            )
+        models.get_engine = lambda: models._test_engine
+        Base.metadata.create_all(models._test_engine)
 
 
 def create_poll_and_participant():
@@ -85,83 +80,81 @@ def create_poll_and_participant():
         session.commit()
         return poll, slot, participant
 
-
-def test_process_email_response_success():
-    poll, slot, participant = create_poll_and_participant()
-    payload = {
-        "emailId": "irrelevant",
-        "content": "RESPONSE: available Looking forward to it!",
-        "sender": "alice@example.com",
-    }
-    resp = client.post(
-        "/api/v1/meetings/process-email-response/",
-        json=payload,
-        headers={"X-API-Key": API_KEY},
-    )
-    assert resp.status_code == 200, resp.text
-    assert resp.content == b""  # Empty response body
-    # Check DB updated
-    with get_session() as session:
-        updated = (
-            session.query(PollParticipant).filter_by(email="alice@example.com").first()
+    def test_process_email_response_success(self):
+        poll, slot, participant = create_poll_and_participant()
+        payload = {
+            "emailId": "irrelevant",
+            "content": "RESPONSE: available Looking forward to it!",
+            "sender": "alice@example.com",
+        }
+        resp = client.post(
+            "/api/v1/meetings/process-email-response/",
+            json=payload,
+            headers={"X-API-Key": API_KEY},
         )
-        assert updated is not None
-        assert updated.status == ParticipantStatus.responded
-        # Re-query the slot to ensure it is attached to the session
-        from services.meetings.models.meeting import TimeSlot
+        assert resp.status_code == 200, resp.text
+        assert resp.content == b""  # Empty response body
+        # Check DB updated
+        with get_session() as session:
+            updated = (
+                session.query(PollParticipant)
+                .filter_by(email="alice@example.com")
+                .first()
+            )
+            assert updated is not None
+            assert updated.status == ParticipantStatus.responded
+            # Re-query the slot to ensure it is attached to the session
+            from services.meetings.models.meeting import TimeSlot
 
-        slot_db = (
-            session.query(TimeSlot)
-            .filter_by(poll_id=updated.poll_id, timezone="UTC")
-            .first()
+            slot_db = (
+                session.query(TimeSlot)
+                .filter_by(poll_id=updated.poll_id, timezone="UTC")
+                .first()
+            )
+            responses = list(slot_db.responses)  # type: ignore[reportGeneralTypeIssues]
+            assert len(responses) > 0
+            assert any(r.response == ResponseType.available for r in responses)
+
+    def test_process_email_response_invalid_key(self):
+        poll, slot, participant = create_poll_and_participant()
+        payload = {
+            "emailId": "irrelevant",
+            "content": "RESPONSE: available",
+            "sender": "alice@example.com",
+        }
+        resp = client.post(
+            "/api/v1/meetings/process-email-response/",
+            json=payload,
+            headers={"X-API-Key": "wrong-key"},
         )
-        responses = list(slot_db.responses)  # type: ignore[reportGeneralTypeIssues]
-        assert len(responses) > 0
-        assert any(r.response == ResponseType.available for r in responses)
+        assert resp.status_code == 401
 
+    def test_process_email_response_unparseable_content(self):
+        poll, slot, participant = create_poll_and_participant()
+        payload = {
+            "emailId": "irrelevant",
+            "content": "I am not following the format",
+            "sender": "alice@example.com",
+        }
+        resp = client.post(
+            "/api/v1/meetings/process-email-response/",
+            json=payload,
+            headers={"X-API-Key": API_KEY},
+        )
+        assert resp.status_code == 400
+        assert "Could not parse response" in resp.text
 
-def test_process_email_response_invalid_key():
-    poll, slot, participant = create_poll_and_participant()
-    payload = {
-        "emailId": "irrelevant",
-        "content": "RESPONSE: available",
-        "sender": "alice@example.com",
-    }
-    resp = client.post(
-        "/api/v1/meetings/process-email-response/",
-        json=payload,
-        headers={"X-API-Key": "wrong-key"},
-    )
-    assert resp.status_code == 401
-
-
-def test_process_email_response_unparseable_content():
-    poll, slot, participant = create_poll_and_participant()
-    payload = {
-        "emailId": "irrelevant",
-        "content": "I am not following the format",
-        "sender": "alice@example.com",
-    }
-    resp = client.post(
-        "/api/v1/meetings/process-email-response/",
-        json=payload,
-        headers={"X-API-Key": API_KEY},
-    )
-    assert resp.status_code == 400
-    assert "Could not parse response" in resp.text
-
-
-def test_process_email_response_unknown_sender():
-    poll, slot, participant = create_poll_and_participant()
-    payload = {
-        "emailId": "irrelevant",
-        "content": "RESPONSE: available",
-        "sender": "unknown@example.com",
-    }
-    resp = client.post(
-        "/api/v1/meetings/process-email-response/",
-        json=payload,
-        headers={"X-API-Key": API_KEY},
-    )
-    assert resp.status_code == 404
-    assert "Participant not found" in resp.text
+    def test_process_email_response_unknown_sender(self):
+        poll, slot, participant = create_poll_and_participant()
+        payload = {
+            "emailId": "irrelevant",
+            "content": "RESPONSE: available",
+            "sender": "unknown@example.com",
+        }
+        resp = client.post(
+            "/api/v1/meetings/process-email-response/",
+            json=payload,
+            headers={"X-API-Key": API_KEY},
+        )
+        assert resp.status_code == 404
+        assert "Participant not found" in resp.text
