@@ -27,15 +27,15 @@ export function MeetingPollNew() {
     const [duration, setDuration] = useState(60);
     const [location, setLocation] = useState("");
     const [timeZone, setTimeZone] = useState(effectiveTimezone || "UTC");
-    // Step 2: Participants
-    const [participants, setParticipants] = useState<{ email: string, name: string }[]>([]);
-    const [participantEmailInput, setParticipantEmailInput] = useState("");
-    const [participantNameInput, setParticipantNameInput] = useState("");
-    // Step 3: Time Slots
+    // Step 2: Time Slots
     const [timeSlots, setTimeSlots] = useState<{ start: string; end: string }[]>([]);
     // Calendar events for conflict detection
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
     const [calendarLoading, setCalendarLoading] = useState(false);
+    // Step 3: Participants
+    const [participants, setParticipants] = useState<{ email: string, name: string }[]>([]);
+    const [participantEmailInput, setParticipantEmailInput] = useState("");
+    const [participantNameInput, setParticipantNameInput] = useState("");
     // Step 4: Review & Submit
     const [responseDeadline, setResponseDeadline] = useState("");
     const [sendEmails, setSendEmails] = useState(true);
@@ -47,8 +47,8 @@ export function MeetingPollNew() {
 
     // Validation helpers
     const isStep1Valid = title && duration > 0 && timeZone;
-    const isStep2Valid = participants.length > 0 && participants.every(p => /.+@.+\..+/.test(p.email) && p.name.trim().length > 0);
-    const isStep3Valid = timeSlots.length > 0 && timeSlots.every(s => s.start && s.end);
+    const isStep2Valid = timeSlots.length > 0 && timeSlots.every(s => s.start && s.end);
+    const isStep3Valid = participants.length > 0 && participants.every(p => /.+@.+\..+/.test(p.email) && p.name.trim().length > 0);
 
     // Step navigation
     const nextStep = () => setStep((s) => s + 1);
@@ -72,7 +72,7 @@ export function MeetingPollNew() {
 
     // Fetch calendar events for conflict detection
     useEffect(() => {
-        if (step === 3 && session?.user?.id) {
+        if (step === 2 && session?.user?.id) {
             setCalendarLoading(true);
             gatewayClient.getCalendarEvents(
                 ['google', 'microsoft'], // Try both providers
@@ -279,6 +279,22 @@ export function MeetingPollNew() {
                             )}
                             {step === 2 && (
                                 <div className="space-y-4">
+                                    {calendarLoading && (
+                                        <div className="text-center py-4 text-muted-foreground">
+                                            Loading calendar events for conflict detection...
+                                        </div>
+                                    )}
+                                    <TimeSlotCalendar
+                                        duration={duration}
+                                        timeZone={timeZone}
+                                        onTimeSlotsChange={setTimeSlots}
+                                        selectedTimeSlots={timeSlots}
+                                        calendarEvents={calendarEvents}
+                                    />
+                                </div>
+                            )}
+                            {step === 3 && (
+                                <div className="space-y-4">
                                     <div>
                                         <label className="block font-semibold mb-1">Participants</label>
                                         <div className="flex flex-col sm:flex-row gap-2 mb-2">
@@ -307,22 +323,6 @@ export function MeetingPollNew() {
                                             ))}
                                         </ul>
                                     </div>
-                                </div>
-                            )}
-                            {step === 3 && (
-                                <div className="space-y-4">
-                                    {calendarLoading && (
-                                        <div className="text-center py-4 text-muted-foreground">
-                                            Loading calendar events for conflict detection...
-                                        </div>
-                                    )}
-                                    <TimeSlotCalendar
-                                        duration={duration}
-                                        timeZone={timeZone}
-                                        onTimeSlotsChange={setTimeSlots}
-                                        selectedTimeSlots={timeSlots}
-                                        calendarEvents={calendarEvents}
-                                    />
                                 </div>
                             )}
                             {step === 4 && (
