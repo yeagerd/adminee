@@ -195,10 +195,9 @@ POST /api/meetings/polls/:pollId/send-invitations
 #### Poll Response Collection
 ```typescript
 // Public poll response page (no auth required)
-GET /api/public/polls/:token
-POST /api/public/polls/:token/respond
+GET /api/public/polls/response/:response_token
+PUT /api/public/polls/response/:response_token
 {
-  participantEmail: string;
   responses: Array<{
     timeSlotId: string;
     response: 'available' | 'unavailable' | 'maybe';

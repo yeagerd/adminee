@@ -15,15 +15,6 @@ from services.meetings.schemas import MeetingPoll, PollResponseCreate
 router = APIRouter()
 
 
-@router.get("/{token}")
-def get_public_poll(token: str) -> MeetingPoll:
-    with get_session() as session:
-        poll = session.query(MeetingPollModel).filter_by(poll_token=token).first()
-        if not poll:
-            raise HTTPException(status_code=404, detail="Poll not found")
-        return MeetingPoll.model_validate(poll)
-
-
 @router.get("/response/{response_token}")
 def get_poll_by_response_token(response_token: str) -> dict:
     """Get poll data for a specific response token."""
