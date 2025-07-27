@@ -7,16 +7,15 @@ from fastapi import Request
 
 @pytest.fixture(autouse=True)
 def patch_settings(monkeypatch):
-    """Patch the get_settings function to return test settings."""
+    """Patch the _settings global to return test settings."""
     import services.shipments.settings as shipments_settings
 
-    def _test_settings():
-        return shipments_settings.Settings(
-            db_url_shipments="sqlite:///:memory:",
-            api_frontend_shipments_key="test-api-key",
-        )
-
-    monkeypatch.setattr("services.shipments.settings.get_settings", _test_settings)
+    test_settings = shipments_settings.Settings(
+        db_url_shipments="sqlite:///:memory:",
+        api_frontend_shipments_key="test-api-key",
+    )
+    
+    monkeypatch.setattr("services.shipments.settings._settings", test_settings)
 
 
 class TestServiceAuth:

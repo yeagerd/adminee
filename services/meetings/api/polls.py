@@ -442,7 +442,8 @@ async def resend_invitation(
             f"{frontend_url}/public/meetings/respond/{participant.response_token}"
         )
         subject = f"You're invited: {poll.title}"
-        body = f"You have been invited to respond to a meeting poll: {poll.title}\n\n{poll.description or ''}\n\nRespond here: {response_url}"
+        description = getattr(poll, "description", "") or ""
+        body = f"You have been invited to respond to a meeting poll: {poll.title}\n\n{description}\n\nRespond here: {response_url}"
 
         try:
             await email_integration.send_invitation_email(
