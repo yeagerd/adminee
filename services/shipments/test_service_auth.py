@@ -4,21 +4,10 @@ from unittest.mock import MagicMock, Mock
 import pytest
 from fastapi import Request
 
-
-@pytest.fixture(autouse=True)
-def patch_settings(monkeypatch):
-    """Patch the _settings global to return test settings."""
-    import services.shipments.settings as shipments_settings
-
-    test_settings = shipments_settings.Settings(
-        db_url_shipments="sqlite:///:memory:",
-        api_frontend_shipments_key="test-api-key",
-    )
-
-    monkeypatch.setattr("services.shipments.settings._settings", test_settings)
+from services.shipments.test_base import BaseShipmentsTest
 
 
-class TestServiceAuth:
+class TestServiceAuth(BaseShipmentsTest):
     def test_get_client_permissions(self):
         from services.shipments.service_auth import get_client_permissions
 
