@@ -24,11 +24,38 @@ def get_public_poll(token: str) -> MeetingPoll:
         return MeetingPoll.model_validate(poll)
 
 
+@router.get("/response/{response_token}")
+def get_poll_by_response_token(response_token: str) -> dict:
+    """Get poll data for a specific response token."""
+    with get_session() as session:
+        participant = (
+            session.query(PollParticipantModel)
+            .filter_by(response_token=response_token)
+            .first()
+        )
+        if not participant:
+            raise HTTPException(status_code=404, detail="Participant not found")
+
+        poll = session.query(MeetingPollModel).filter_by(id=participant.poll_id).first()
+        if not poll:
+            raise HTTPException(status_code=404, detail="Poll not found")
+
+        return {
+            "poll": MeetingPoll.model_validate(poll),
+            "participant": {
+                "id": str(participant.id),
+                "email": participant.email,
+                "name": participant.name,
+                "status": participant.status.value,
+            },
+        }
+
+
 class PollResponseTokenRequest(BaseModel):
     responses: list[PollResponseCreate]
 
 
-@router.put("/meetings/response/{response_token}", status_code=status.HTTP_200_OK)
+@router.put("/response/{response_token}", status_code=status.HTTP_200_OK)
 def respond_with_token(
     response_token: str, req: PollResponseTokenRequest = Body(...)
 ) -> dict:
@@ -43,6 +70,13 @@ def respond_with_token(
         poll = session.query(MeetingPollModel).filter_by(id=participant.poll_id).first()
         if not poll:
             raise HTTPException(status_code=404, detail="Poll not found")
+
+        # Clear existing responses for this participant
+        session.query(PollResponseModel).filter_by(
+            participant_id=participant.id
+        ).delete()
+
+        # Add new responses
         for resp in req.responses:
             db_resp = PollResponseModel(
                 id=uuid4(),
@@ -53,6 +87,7 @@ def respond_with_token(
                 comment=resp.comment,
             )
             session.add(db_resp)
+
         participant.status = ParticipantStatus.responded
         session.commit()
         return {"ok": True}

@@ -96,7 +96,7 @@ class TestPollCreation(BaseMeetingsTest):
             ]
         }
         resp2 = client.put(
-            f"/api/v1/public/polls/meetings/response/{response_token}",
+            f"/api/v1/public/polls/response/{response_token}",
             json=response_payload,
         )
         assert resp2.status_code == 200, resp2.text

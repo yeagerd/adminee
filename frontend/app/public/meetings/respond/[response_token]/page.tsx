@@ -22,13 +22,19 @@ export default function PollResponsePage() {
     useEffect(() => {
         if (!response_token) return;
         fetch(`/api/v1/public/polls/response/${response_token}`)
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                }
+                return res.json();
+            })
             .then(data => {
                 setPoll(data.poll);
                 // setParticipant(data.participant); // This line was removed
                 setLoading(false);
             })
-            .catch(() => {
+            .catch((error) => {
+                console.error('Error fetching poll:', error);
                 setError('Invalid or expired link.');
                 setLoading(false);
             });
