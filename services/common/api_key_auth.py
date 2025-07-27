@@ -149,14 +149,19 @@ def make_verify_service_authentication(
         """Synchronously verify the API key from the request and return the service name."""
         api_key = get_api_key_from_request(request)
         api_key_mapping = build_api_key_mapping(api_key_configs, get_settings)
-        if not api_key:
-            logger.warning("Missing API key in request headers")
-            raise AuthError(message="API key required", status_code=401)
 
         # Log available API keys for debugging (only first 8 chars for security)
+        # This is computed once and reused for both missing and invalid key scenarios
         available_keys = list(api_key_mapping.keys())
         available_key_prefixes = [key[:8] + "..." for key in available_keys]
-        logger.debug(f"Available API keys: {available_key_prefixes}")
+
+        if not api_key:
+            logger.warning(
+                f"Missing API key in request headers | "
+                f"Available keys: {available_key_prefixes} | "
+                f"Request path: {request.url.path}"
+            )
+            raise AuthError(message="API key required", status_code=401)
 
         service_name = verify_api_key(api_key, api_key_mapping)
         if not service_name:
