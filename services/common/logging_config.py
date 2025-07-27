@@ -203,7 +203,7 @@ class EnhancedTextRenderer:
                     extra_context.append(f"{key}={str(value)[:50]}...")
 
         if extra_context:
-            parts.append(f" | {' '.join(extra_context)}")
+            parts.append(f" | {', '.join(extra_context)}")
 
         return " ".join(filter(None, parts))
 
