@@ -3,6 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request
 
+from services.meetings.api.polls import get_user_id_from_request
 from services.meetings.models import MeetingPoll as MeetingPollModel
 from services.meetings.models import PollParticipant as PollParticipantModel
 from services.meetings.models import get_session
@@ -14,14 +15,23 @@ router = APIRouter()
 
 @router.post("/")
 async def send_invitations(poll_id: UUID, request: Request) -> dict:
+    user_id = get_user_id_from_request(request)
+
     with get_session() as session:
         poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
         if not poll:
             raise HTTPException(status_code=404, detail="Poll not found")
+
+        # Check that the user owns the poll
+        if str(poll.user_id) != str(user_id):
+            raise HTTPException(
+                status_code=403,
+                detail="Not authorized to send invitations for this poll",
+            )
+
         participants = (
             session.query(PollParticipantModel).filter_by(poll_id=poll_id).all()
         )
-        user_id = request.headers.get("X-User-Id") or str(poll.user_id)
         frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
 
         # Send emails and track results

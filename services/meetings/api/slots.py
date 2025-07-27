@@ -1,7 +1,9 @@
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
+from services.meetings.api.polls import get_user_id_from_request
+from services.meetings.models import MeetingPoll as MeetingPollModel
 from services.meetings.models import TimeSlot as TimeSlotModel
 from services.meetings.models import get_session
 from services.meetings.schemas import TimeSlot, TimeSlotCreate
@@ -10,8 +12,20 @@ router = APIRouter()
 
 
 @router.post("/", response_model=TimeSlot)
-def add_slot(poll_id: UUID, slot: TimeSlotCreate) -> TimeSlot:
+def add_slot(poll_id: UUID, slot: TimeSlotCreate, request: Request) -> TimeSlot:
+    user_id = get_user_id_from_request(request)
+
     with get_session() as session:
+        # Check that the poll exists and user owns it
+        poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
+        if not poll:
+            raise HTTPException(status_code=404, detail="Poll not found")
+
+        if str(poll.user_id) != str(user_id):
+            raise HTTPException(
+                status_code=403, detail="Not authorized to modify this poll"
+            )
+
         db_slot = TimeSlotModel(
             id=uuid4(),
             poll_id=poll_id,
@@ -26,8 +40,22 @@ def add_slot(poll_id: UUID, slot: TimeSlotCreate) -> TimeSlot:
 
 
 @router.put("/{slot_id}", response_model=TimeSlot)
-def update_slot(poll_id: UUID, slot_id: UUID, slot: TimeSlotCreate) -> TimeSlot:
+def update_slot(
+    poll_id: UUID, slot_id: UUID, slot: TimeSlotCreate, request: Request
+) -> TimeSlot:
+    user_id = get_user_id_from_request(request)
+
     with get_session() as session:
+        # Check that the poll exists and user owns it
+        poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
+        if not poll:
+            raise HTTPException(status_code=404, detail="Poll not found")
+
+        if str(poll.user_id) != str(user_id):
+            raise HTTPException(
+                status_code=403, detail="Not authorized to modify this poll"
+            )
+
         db_slot = (
             session.query(TimeSlotModel).filter_by(id=slot_id, poll_id=poll_id).first()
         )
@@ -42,8 +70,20 @@ def update_slot(poll_id: UUID, slot_id: UUID, slot: TimeSlotCreate) -> TimeSlot:
 
 
 @router.delete("/{slot_id}")
-def delete_slot(poll_id: UUID, slot_id: UUID) -> dict:
+def delete_slot(poll_id: UUID, slot_id: UUID, request: Request) -> dict:
+    user_id = get_user_id_from_request(request)
+
     with get_session() as session:
+        # Check that the poll exists and user owns it
+        poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
+        if not poll:
+            raise HTTPException(status_code=404, detail="Poll not found")
+
+        if str(poll.user_id) != str(user_id):
+            raise HTTPException(
+                status_code=403, detail="Not authorized to modify this poll"
+            )
+
         db_slot = (
             session.query(TimeSlotModel).filter_by(id=slot_id, poll_id=poll_id).first()
         )
