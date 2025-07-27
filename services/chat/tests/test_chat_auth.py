@@ -15,6 +15,7 @@ from services.chat.auth import (
     verify_service_authentication,
 )
 from services.chat.settings import get_settings
+from services.chat.tests.test_base import BaseChatTest
 from services.common.api_key_auth import (
     build_api_key_mapping,
     get_client_from_api_key,
@@ -25,34 +26,7 @@ from services.common.api_key_auth import (
 from services.common.http_errors import AuthError
 
 
-@pytest.fixture(autouse=True)
-def patch_settings():
-    """Set up test settings by directly setting the singleton."""
-    import services.chat.settings as chat_settings
-
-    # Create test settings instance
-    test_settings = chat_settings.Settings(
-        db_url_chat="sqlite+aiosqlite:///file::memory:?cache=shared",
-        api_frontend_chat_key="test-frontend-chat-key",
-        api_chat_user_key="test-chat-user-key",
-        api_chat_office_key="test-chat-office-key",
-        user_service_url="http://localhost:8001",
-        office_service_url="http://localhost:8003",
-    )
-
-    # Save original singleton
-    original_settings = chat_settings._settings
-
-    # Set the test settings as the singleton
-    chat_settings._settings = test_settings
-
-    yield
-
-    # Restore original singleton
-    chat_settings._settings = original_settings
-
-
-class TestChatServiceAuth:
+class TestChatServiceAuth(BaseChatTest):
     """Test cases for ChatServiceAuth class."""
 
     def test_chat_service_auth_verify_valid_key(self):
@@ -201,7 +175,7 @@ class TestChatServiceAuth:
             assert client_name == "chat-service-access"
 
 
-class TestChatAuthIntegration:
+class TestChatAuthIntegration(BaseChatTest):
     """Integration tests for chat authentication."""
 
     def test_chat_auth_singleton(self):
