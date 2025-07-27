@@ -31,12 +31,22 @@ def build_api_key_mapping(
     """
     settings = get_settings()
     api_key_mapping = {}
+    loaded_keys = []
+    missing_keys = []
+
     for config_name, config in api_key_configs.items():
         actual_key_value = getattr(settings, config.settings_key, None)
         if actual_key_value:
             api_key_mapping[actual_key_value] = config
+            loaded_keys.append(f"{config.settings_key}: {actual_key_value[:8]}...")
         else:
+            missing_keys.append(config.settings_key)
             logger.warning(f"API key not found in settings: {config.settings_key}")
+
+    logger.debug(f"Loaded API keys: {loaded_keys}")
+    if missing_keys:
+        logger.warning(f"Missing API keys: {missing_keys}")
+
     return api_key_mapping
 
 
@@ -142,9 +152,19 @@ def make_verify_service_authentication(
         if not api_key:
             logger.warning("Missing API key in request headers")
             raise AuthError(message="API key required", status_code=401)
+
+        # Log available API keys for debugging (only first 8 chars for security)
+        available_keys = list(api_key_mapping.keys())
+        available_key_prefixes = [key[:8] + "..." for key in available_keys]
+        logger.debug(f"Available API keys: {available_key_prefixes}")
+
         service_name = verify_api_key(api_key, api_key_mapping)
         if not service_name:
-            logger.warning(f"Invalid API key: {api_key[:8]}...")
+            logger.warning(
+                f"Invalid API key: {api_key[:8]}... | "
+                f"Available keys: {available_key_prefixes} | "
+                f"Request path: {request.url.path}"
+            )
             raise AuthError(message="Invalid API key", status_code=403)
         request.state.api_key = api_key
         request.state.service_name = service_name
@@ -182,12 +202,23 @@ def make_service_permission_required(
             service_permissions,
         ):
             client_name = getattr(request.state, "client_name", "unknown")
+
+            # Get the actual permissions for this API key for better debugging
+            key_permissions = (
+                get_permissions_from_api_key(api_key, api_key_mapping)
+                if api_key
+                else []
+            )
+
             logger.warning(
-                f"Permission denied: {client_name} lacks permissions {required_permissions}",
+                f"Permission denied: {client_name} lacks permissions {required_permissions} | "
+                f"API key has permissions: {key_permissions} | "
+                f"Request path: {request.url.path}",
                 extra={
                     "service": service_name,
                     "client": client_name,
                     "required_permissions": required_permissions,
+                    "key_permissions": key_permissions,
                     "api_key_prefix": api_key[:8] if api_key else None,
                 },
             )
