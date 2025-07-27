@@ -23,14 +23,20 @@ class TestSecurityFixes(BaseMeetingsTest):
 
         from services.meetings import models
 
-        if not hasattr(models, "_test_engine"):
-            models._test_engine = create_engine(
-                "sqlite:///file::memory:?cache=shared",
-                echo=False,
-                future=True,
-                connect_args={"check_same_thread": False},
-            )
+        # Clear any existing test engine to ensure fresh tables
+        if hasattr(models, "_test_engine"):
+            delattr(models, "_test_engine")
+
+        models._test_engine = create_engine(
+            "sqlite:///file::memory:?cache=shared",
+            echo=False,
+            future=True,
+            connect_args={"check_same_thread": False},
+        )
         models.get_engine = lambda: models._test_engine
+
+        # Drop all tables and recreate them to ensure latest schema
+        Base.metadata.drop_all(models._test_engine)
         Base.metadata.create_all(models._test_engine)
 
     @pytest.fixture
@@ -45,6 +51,7 @@ class TestSecurityFixes(BaseMeetingsTest):
             "response_deadline": (now + timedelta(days=2)).isoformat() + "Z",
             "min_participants": 1,
             "max_participants": 5,
+            "reveal_participants": False,
             "time_slots": [
                 {
                     "start_time": (now + timedelta(days=3)).isoformat() + "Z",
