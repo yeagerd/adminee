@@ -44,7 +44,7 @@ export function ToolContent() {
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
     const [calendarLoading, setCalendarLoading] = useState(false);
     const [calendarError, setCalendarError] = useState<string | null>(null);
-    const { loading: integrationsLoading, activeProviders, triggerAutoRefreshIfNeeded } = useIntegrations();
+    const { loading: integrationsLoading, activeProviders, triggerAutoRefreshIfNeeded, integrations } = useIntegrations();
 
     // Call auto-refresh logic on every tool change
     useEffect(() => {
@@ -55,11 +55,23 @@ export function ToolContent() {
     const toolDataLoading = integrationsLoading || !session?.user?.id;
 
     const fetchCalendarEvents = useCallback(async () => {
+        console.log('fetchCalendarEvents called with:', {
+            sessionUserId: session?.user?.id,
+            activeProviders,
+            effectiveTimezone,
+            integrations: integrations.map(i => ({
+                provider: i.provider,
+                status: i.status,
+                token_expires_at: i.token_expires_at
+            }))
+        });
+
         if (!session?.user?.id) {
             setCalendarError('No user session');
             return;
         }
         if (!activeProviders || activeProviders.length === 0) {
+            console.log('No active providers found. All integrations:', integrations);
             setCalendarError('No active calendar integrations found');
             setCalendarEvents([]);
             return;
@@ -76,9 +88,13 @@ export function ToolContent() {
                 undefined,
                 effectiveTimezone // Pass the effective timezone
             );
+            console.log('Calendar API response:', response);
             if (response.success && response.data) {
+                console.log('Calendar events data:', response.data);
+                console.log('Events array:', response.data.events);
                 setCalendarEvents(response.data.events || []);
             } else {
+                console.error('Calendar API failed:', response);
                 setCalendarError('Failed to fetch calendar events');
             }
         } catch (err) {
