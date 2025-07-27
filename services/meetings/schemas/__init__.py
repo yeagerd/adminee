@@ -175,6 +175,7 @@ class MeetingPoll(MeetingPollBase):
     poll_token: str
     time_slots: List[TimeSlot]
     participants: List[PollParticipant]
+    responses: Optional[List[PollResponse]] = None
     model_config = ConfigDict(from_attributes=True)
 
 
