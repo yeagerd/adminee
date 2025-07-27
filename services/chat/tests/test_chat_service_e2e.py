@@ -5,8 +5,6 @@ Tests the complete chat service functionality including
 multi-agent workflow processing, history management, and API endpoints.
 """
 
-import asyncio
-import os
 import sys
 from unittest.mock import patch
 
@@ -15,8 +13,24 @@ import respx
 from fastapi.testclient import TestClient
 from httpx import Response
 
+# Set up test settings before any imports
+import services.chat.settings as chat_settings
+
+# Create test settings instance
+test_settings = chat_settings.Settings(
+    db_url_chat="sqlite+aiosqlite:///file::memory:?cache=shared",
+    api_frontend_chat_key="test-frontend-chat-key",
+    api_chat_user_key="test-chat-user-key",
+    api_chat_office_key="test-chat-office-key",
+    user_management_service_url="http://localhost:8001",
+    office_service_url="http://localhost:8003",
+)
+
+# Set the test settings as the singleton
+chat_settings._settings = test_settings
+
 # Test API key for authentication
-TEST_API_KEY = "test-FRONTEND_CHAT_KEY"
+TEST_API_KEY = "test-frontend-chat-key"
 TEST_HEADERS = {"X-API-Key": TEST_API_KEY}
 
 
@@ -28,9 +42,6 @@ def test_env():
         # Don't set OPENAI_API_KEY so it falls back to FakeLLM
         "LLM_MODEL": "fake-model",
         "LLM_PROVIDER": "fake",
-        "API_FRONTEND_CHAT_KEY": TEST_API_KEY,
-        "USER_MANAGEMENT_SERVICE_URL": "http://localhost:8001",
-        "OFFICE_SERVICE_URL": "http://localhost:8003",
     }
     with patch.dict("os.environ", env_vars):
         yield env_vars
@@ -39,14 +50,26 @@ def test_env():
 @pytest.fixture
 def app(test_env):
     """Fixture to provide the FastAPI app with test environment."""
-    # Force reload the auth module to pick up the new environment variables
+    # Force reload the auth module to pick up the new settings
     for module in list(sys.modules):
         if module.startswith("services.chat"):
             del sys.modules[module]
 
     # Import after module cleanup to ensure fresh imports
+    # Re-set the test settings after module reload
+    import services.chat.settings as chat_settings
     from services.chat import history_manager
     from services.chat.main import app as fresh_app
+
+    test_settings = chat_settings.Settings(
+        db_url_chat="sqlite+aiosqlite:///file::memory:?cache=shared",
+        api_frontend_chat_key="test-frontend-chat-key",
+        api_chat_user_key="test-chat-user-key",
+        api_chat_office_key="test-chat-office-key",
+        user_management_service_url="http://localhost:8001",
+        office_service_url="http://localhost:8003",
+    )
+    chat_settings._settings = test_settings
 
     # Update the global _history_manager reference
     global _history_manager
@@ -55,35 +78,15 @@ def app(test_env):
     return fresh_app
 
 
-async def setup_test_database():
-    """Initialize the test database with tables."""
-    from services.chat import history_manager
-
-    await history_manager.init_db()
-
-
 @pytest.fixture(autouse=True)
 def setup_test_environment(app):
     """Set up the test environment."""
     # Initialize test database synchronously
-    asyncio.run(setup_test_database())
-    # Removed get_chat_auth import and assertion as it does not exist
+    import asyncio
 
+    from services.chat import history_manager
 
-@pytest.fixture(autouse=True, scope="session")
-def set_db_url_chat():
-    original_db_url = os.environ.get("DB_URL_CHAT")
-    os.environ["DB_URL_CHAT"] = "sqlite+aiosqlite:///file::memory:?cache=shared"
-    yield
-    if original_db_url:
-        os.environ["DB_URL_CHAT"] = original_db_url
-    elif "DB_URL_CHAT" in os.environ:
-        del os.environ["DB_URL_CHAT"]
-
-
-# Test API key for authentication
-TEST_API_KEY = "test-FRONTEND_CHAT_KEY"
-TEST_HEADERS = {"X-API-Key": TEST_API_KEY}
+    asyncio.run(history_manager.init_db())
 
 
 def test_end_to_end_chat_flow(app):

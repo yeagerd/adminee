@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     )
 
     office_service_url: str = Field(
-        default="http://localhost:8003",
+        default=...,
         description="URL for the office service",
         validation_alias=AliasChoices("OFFICE_SERVICE_URL"),
     )

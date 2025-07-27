@@ -22,9 +22,9 @@ def patch_chat_settings_singleton():
     from services.chat.settings import Settings
 
     chat_settings._settings = Settings(
-        api_frontend_chat_key="test-FRONTEND_CHAT_KEY",
-        api_chat_office_key="test-api-key",
-        api_chat_user_key="test-api-key",
+        api_frontend_chat_key="test-frontend-chat-key",
+        api_chat_office_key="test-chat-office-key",
+        api_chat_user_key="test-chat-user-key",
         db_url_chat="sqlite:///test.db",
         user_management_service_url="http://test-user-server",
         office_service_url="http://test-office-server",
