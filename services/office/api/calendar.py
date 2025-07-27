@@ -401,20 +401,38 @@ async def get_calendar_events(
             "time_zone": time_zone,
         }
         cache_key = generate_cache_key(user_id, "unified", "events", cache_params)
+        logger.debug(f"[{request_id}] Generated cache key: {cache_key}")
 
         # Check cache first
         cached_result = await cache_manager.get_from_cache(cache_key)
         if cached_result:
             logger.info("Cache hit for calendar events", request_id=request_id)
             # Extract events from cached result
-            events = (
-                cached_result.get("events", [])
-                if isinstance(cached_result, dict)
-                else cached_result
-            )
-            return CalendarEventListApiResponse(
-                success=True, data=events, cache_hit=True, request_id=request_id
-            )
+            if isinstance(cached_result, dict) and "events" in cached_result:
+                events = cached_result["events"]
+                logger.debug(
+                    f"Retrieved {len(events)} events from cache (dict format)",
+                    request_id=request_id,
+                )
+            else:
+                # Fallback for old cache format
+                events = cached_result if isinstance(cached_result, list) else []
+                logger.debug(
+                    f"Retrieved {len(events)} events from cache (list format)",
+                    request_id=request_id,
+                )
+
+            # If we have an empty cache entry, clear it and proceed with fresh fetch
+            if len(events) == 0:
+                logger.warning(
+                    "Found empty cache entry, clearing and fetching fresh data",
+                    request_id=request_id,
+                )
+                await cache_manager.delete_from_cache(cache_key)
+            else:
+                return CalendarEventListApiResponse(
+                    success=True, data=events, cache_hit=True, request_id=request_id
+                )
 
         # Fetch from providers in parallel
         tasks = []
@@ -493,14 +511,23 @@ async def get_calendar_events(
         }
 
         # Only cache if we have successful results from at least one provider
-        if providers_used:  # Only cache if at least one provider succeeded
+        if (
+            providers_used and len(aggregated_events) > 0
+        ):  # Only cache if at least one provider succeeded and we have events
             # Cache the result for 10 minutes (calendar data changes more frequently)
             await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=600)
-        else:
-            logger.info(
-                "Not caching response due to no successful providers",
+            logger.debug(
+                f"Cached {len(aggregated_events)} events for user {user_id}",
                 request_id=request_id,
                 providers_used=providers_used,
+            )
+        else:
+            logger.info(
+                "Not caching response due to no successful providers or empty events",
+                request_id=request_id,
+                providers_used=providers_used,
+                provider_errors=provider_errors,
+                event_count=len(aggregated_events),
             )
 
         # Calculate response time
@@ -1324,11 +1351,18 @@ async def fetch_provider_events(
     try:
         # Get API client for provider with calendar-specific scopes
         calendar_scopes = _get_calendar_scopes(provider)
+        logger.debug(
+            f"[{request_id}] Creating {provider} client with scopes: {calendar_scopes}"
+        )
         client = await api_client_factory.create_client(
             user_id, provider, calendar_scopes
         )
         if client is None:
+            logger.error(
+                f"[{request_id}] Failed to create API client for provider {provider}"
+            )
             raise ValueError(f"Failed to create API client for provider {provider}")
+        logger.debug(f"[{request_id}] Successfully created {provider} client")
 
         # Use client as async context manager
         async with client:
@@ -1385,6 +1419,9 @@ async def fetch_provider_events(
                 microsoft_client = cast(MicrosoftAPIClient, client)
 
                 # Fetch events from Outlook
+                logger.debug(
+                    f"[{request_id}] Fetching Microsoft events with start_time={start_dt.isoformat()}, end_time={end_dt.isoformat()}"
+                )
                 events_response = await microsoft_client.get_events(
                     calendar_id=None,  # Use primary calendar
                     start_time=start_dt.isoformat(),
@@ -1394,6 +1431,9 @@ async def fetch_provider_events(
                     order_by="start/dateTime asc",
                 )
                 events = events_response.get("value", [])
+                logger.debug(
+                    f"[{request_id}] Microsoft API returned {len(events)} events"
+                )
 
                 # Normalize events
                 normalized_events = []
