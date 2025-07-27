@@ -2,7 +2,7 @@
 Tests for email integration functionality in meetings service.
 """
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -35,8 +35,8 @@ class TestEmailIntegration(BaseMeetingsTest):
         # Mock the httpx.AsyncClient context manager
         mock_client = AsyncMock()
         mock_response_obj = AsyncMock()
-        mock_response_obj.raise_for_status = AsyncMock()
-        mock_response_obj.json = AsyncMock(return_value=mock_response)
+        mock_response_obj.raise_for_status = Mock()  # Not async
+        mock_response_obj.json = Mock(return_value=mock_response)  # Not async
         mock_client.get = AsyncMock(return_value=mock_response_obj)
 
         # Create a context manager that returns the mock client
@@ -69,8 +69,8 @@ class TestEmailIntegration(BaseMeetingsTest):
         # Mock the httpx.AsyncClient context manager
         mock_client = AsyncMock()
         mock_response_obj = AsyncMock()
-        mock_response_obj.raise_for_status = AsyncMock()
-        mock_response_obj.json = AsyncMock(return_value=mock_response)
+        mock_response_obj.raise_for_status = Mock()  # Not async
+        mock_response_obj.json = Mock(return_value=mock_response)  # Not async
         mock_client.get = AsyncMock(return_value=mock_response_obj)
 
         with patch(
@@ -92,8 +92,8 @@ class TestEmailIntegration(BaseMeetingsTest):
         # Mock the httpx.AsyncClient context manager
         mock_client = AsyncMock()
         mock_response_obj = AsyncMock()
-        mock_response_obj.raise_for_status = AsyncMock()
-        mock_response_obj.json = AsyncMock(return_value=mock_response)
+        mock_response_obj.raise_for_status = Mock()  # Not async
+        mock_response_obj.json = Mock(return_value=mock_response)  # Not async
         mock_client.get = AsyncMock(return_value=mock_response_obj)
 
         with patch(
@@ -115,8 +115,8 @@ class TestEmailIntegration(BaseMeetingsTest):
         # Mock the httpx.AsyncClient context manager
         mock_client = AsyncMock()
         mock_response_obj = AsyncMock()
-        mock_response_obj.raise_for_status = AsyncMock()
-        mock_response_obj.json = AsyncMock(return_value=mock_response)
+        mock_response_obj.raise_for_status = Mock()  # Not async
+        mock_response_obj.json = Mock(return_value=mock_response)  # Not async
         mock_client.post = AsyncMock(return_value=mock_response_obj)
 
         with patch(
@@ -139,40 +139,28 @@ class TestEmailIntegration(BaseMeetingsTest):
     @pytest.mark.asyncio
     async def test_send_invitation_email_auto_detect_microsoft(self):
         """Test sending email with automatic Microsoft provider detection."""
-        mock_integrations_response = {
-            "integrations": [
-                {
-                    "provider": "microsoft",
-                    "status": "active",
-                }
-            ]
-        }
         mock_send_response = {"success": True, "message_id": "test-123"}
 
         # Mock the httpx.AsyncClient context manager
         mock_client = AsyncMock()
+        mock_response_obj = AsyncMock()
+        mock_response_obj.raise_for_status = Mock()  # Not async
+        mock_response_obj.json = Mock(return_value=mock_send_response)  # Not async
+        mock_client.post = AsyncMock(return_value=mock_response_obj)
 
-        # Set up different responses for get and post calls
-        mock_integrations_response_obj = AsyncMock()
-        mock_integrations_response_obj.raise_for_status = AsyncMock()
-        mock_integrations_response_obj.json = AsyncMock(
-            return_value=mock_integrations_response
-        )
-
-        mock_send_response_obj = AsyncMock()
-        mock_send_response_obj.raise_for_status = AsyncMock()
-        mock_send_response_obj.json = AsyncMock(return_value=mock_send_response)
-
-        mock_client.get = AsyncMock(return_value=mock_integrations_response_obj)
-        mock_client.post = AsyncMock(return_value=mock_send_response_obj)
-
-        with patch(
-            "services.meetings.services.email_integration.httpx.AsyncClient"
-        ) as mock_async_client:
+        with (
+            patch(
+                "services.meetings.services.email_integration.httpx.AsyncClient"
+            ) as mock_async_client,
+            patch(
+                "services.meetings.services.email_integration.get_user_email_providers"
+            ) as mock_get_providers,
+        ):
             mock_async_client.return_value.__aenter__ = AsyncMock(
                 return_value=mock_client
             )
             mock_async_client.return_value.__aexit__ = AsyncMock(return_value=None)
+            mock_get_providers.return_value = ["microsoft"]
 
             result = await send_invitation_email(
                 "test@example.com", "Test Subject", "Test Body", "test-user-id"
@@ -182,40 +170,28 @@ class TestEmailIntegration(BaseMeetingsTest):
     @pytest.mark.asyncio
     async def test_send_invitation_email_auto_detect_google(self):
         """Test sending email with automatic Google provider detection."""
-        mock_integrations_response = {
-            "integrations": [
-                {
-                    "provider": "google",
-                    "status": "active",
-                }
-            ]
-        }
         mock_send_response = {"success": True, "message_id": "test-123"}
 
         # Mock the httpx.AsyncClient context manager
         mock_client = AsyncMock()
+        mock_response_obj = AsyncMock()
+        mock_response_obj.raise_for_status = Mock()  # Not async
+        mock_response_obj.json = Mock(return_value=mock_send_response)  # Not async
+        mock_client.post = AsyncMock(return_value=mock_response_obj)
 
-        # Set up different responses for get and post calls
-        mock_integrations_response_obj = AsyncMock()
-        mock_integrations_response_obj.raise_for_status = AsyncMock()
-        mock_integrations_response_obj.json = AsyncMock(
-            return_value=mock_integrations_response
-        )
-
-        mock_send_response_obj = AsyncMock()
-        mock_send_response_obj.raise_for_status = AsyncMock()
-        mock_send_response_obj.json = AsyncMock(return_value=mock_send_response)
-
-        mock_client.get = AsyncMock(return_value=mock_integrations_response_obj)
-        mock_client.post = AsyncMock(return_value=mock_send_response_obj)
-
-        with patch(
-            "services.meetings.services.email_integration.httpx.AsyncClient"
-        ) as mock_async_client:
+        with (
+            patch(
+                "services.meetings.services.email_integration.httpx.AsyncClient"
+            ) as mock_async_client,
+            patch(
+                "services.meetings.services.email_integration.get_user_email_providers"
+            ) as mock_get_providers,
+        ):
             mock_async_client.return_value.__aenter__ = AsyncMock(
                 return_value=mock_client
             )
             mock_async_client.return_value.__aexit__ = AsyncMock(return_value=None)
+            mock_get_providers.return_value = ["google"]
 
             result = await send_invitation_email(
                 "test@example.com", "Test Subject", "Test Body", "test-user-id"
@@ -225,22 +201,10 @@ class TestEmailIntegration(BaseMeetingsTest):
     @pytest.mark.asyncio
     async def test_send_invitation_email_no_providers(self):
         """Test sending email when user has no email providers."""
-        mock_integrations_response = {"integrations": []}
-
-        # Mock the httpx.AsyncClient context manager
-        mock_client = AsyncMock()
-        mock_response_obj = AsyncMock()
-        mock_response_obj.raise_for_status = AsyncMock()
-        mock_response_obj.json = AsyncMock(return_value=mock_integrations_response)
-        mock_client.get = AsyncMock(return_value=mock_response_obj)
-
         with patch(
-            "services.meetings.services.email_integration.httpx.AsyncClient"
-        ) as mock_async_client:
-            mock_async_client.return_value.__aenter__ = AsyncMock(
-                return_value=mock_client
-            )
-            mock_async_client.return_value.__aexit__ = AsyncMock(return_value=None)
+            "services.meetings.services.email_integration.get_user_email_providers"
+        ) as mock_get_providers:
+            mock_get_providers.return_value = []
 
             with pytest.raises(ValueError) as exc_info:
                 await send_invitation_email(
@@ -251,44 +215,28 @@ class TestEmailIntegration(BaseMeetingsTest):
     @pytest.mark.asyncio
     async def test_send_invitation_email_prefer_microsoft(self):
         """Test that Microsoft is preferred when both providers are available."""
-        mock_integrations_response = {
-            "integrations": [
-                {
-                    "provider": "google",
-                    "status": "active",
-                },
-                {
-                    "provider": "microsoft",
-                    "status": "active",
-                },
-            ]
-        }
         mock_send_response = {"success": True, "message_id": "test-123"}
 
         # Mock the httpx.AsyncClient context manager
         mock_client = AsyncMock()
+        mock_response_obj = AsyncMock()
+        mock_response_obj.raise_for_status = Mock()  # Not async
+        mock_response_obj.json = Mock(return_value=mock_send_response)  # Not async
+        mock_client.post = AsyncMock(return_value=mock_response_obj)
 
-        # Set up different responses for get and post calls
-        mock_integrations_response_obj = AsyncMock()
-        mock_integrations_response_obj.raise_for_status = AsyncMock()
-        mock_integrations_response_obj.json = AsyncMock(
-            return_value=mock_integrations_response
-        )
-
-        mock_send_response_obj = AsyncMock()
-        mock_send_response_obj.raise_for_status = AsyncMock()
-        mock_send_response_obj.json = AsyncMock(return_value=mock_send_response)
-
-        mock_client.get = AsyncMock(return_value=mock_integrations_response_obj)
-        mock_client.post = AsyncMock(return_value=mock_send_response_obj)
-
-        with patch(
-            "services.meetings.services.email_integration.httpx.AsyncClient"
-        ) as mock_async_client:
+        with (
+            patch(
+                "services.meetings.services.email_integration.httpx.AsyncClient"
+            ) as mock_async_client,
+            patch(
+                "services.meetings.services.email_integration.get_user_email_providers"
+            ) as mock_get_providers,
+        ):
             mock_async_client.return_value.__aenter__ = AsyncMock(
                 return_value=mock_client
             )
             mock_async_client.return_value.__aexit__ = AsyncMock(return_value=None)
+            mock_get_providers.return_value = ["google", "microsoft"]
 
             result = await send_invitation_email(
                 "test@example.com", "Test Subject", "Test Body", "test-user-id"
