@@ -119,10 +119,23 @@ def parse_email_content(content: str) -> EmailContentParseResult:
             # Handle slots under headings format
             if current_section:
                 response = current_section
-                # Extract comment if present (after dash)
-                if " - " in response_part:
-                    parts = response_part.split(" - ", 1)
-                    comment = parts[1].strip() if len(parts) > 1 else None
+                # Extract comment if present (after timezone)
+                # Look for dash after timezone pattern like "(UTC)" or "(EST)"
+                import re
+
+                timezone_pattern = r"\([^)]+\)\s*-\s*"
+                match = re.search(timezone_pattern, response_part)
+                if match:
+                    # Extract comment after the timezone and dash
+                    comment_start = match.end()
+                    if comment_start < len(response_part):
+                        comment = response_part[comment_start:].strip()
+                        if (
+                            not comment
+                        ):  # If comment is empty after trimming, set to None
+                            comment = None
+                else:
+                    comment = None
             else:
                 # Skip slots that aren't under any heading
                 continue

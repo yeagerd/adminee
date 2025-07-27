@@ -499,6 +499,8 @@ async def resend_invitation(
                 "",
                 "I'm MAYBE:",
                 "",
+                "",
+                "Proposed Meeting Times:",
             ]
         )
 

@@ -106,6 +106,8 @@ async def send_invitations(
                     "",
                     "I'm MAYBE:",
                     "",
+                    "",
+                    "Proposed Meeting Times:",
                 ]
             )
 
