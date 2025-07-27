@@ -75,7 +75,22 @@ async def send_invitations(
             response_url = f"{frontend_url}/public/meetings/respond/{getattr(participant, 'response_token')}"
             subject = f"You're invited: {poll.title}"
             description = getattr(poll, "description", "") or ""
+
+            # Build email body
             body = f"You have been invited to respond to a meeting poll: {poll.title}\n\n{description}\n\nRespond here: {response_url}"
+
+            # Add participant list if reveal_participants is enabled
+            if hasattr(poll, "reveal_participants") and getattr(
+                poll, "reveal_participants", False
+            ):
+                body += "\n\nOther participants:\n"
+                for other_participant in participants:
+                    if (
+                        other_participant.id != participant.id
+                    ):  # Don't include the current participant
+                        name = getattr(other_participant, "name", None) or "Unknown"
+                        email = getattr(other_participant, "email", "")
+                        body += f"- {name} ({email})\n"
 
             try:
                 await email_integration.send_invitation_email(

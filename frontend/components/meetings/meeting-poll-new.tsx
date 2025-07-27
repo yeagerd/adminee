@@ -39,6 +39,7 @@ export function MeetingPollNew() {
     // Step 4: Review & Submit
     const [responseDeadline, setResponseDeadline] = useState("");
     const [sendEmails, setSendEmails] = useState(true);
+    const [revealParticipants, setRevealParticipants] = useState(false);
     const [createdPoll, setCreatedPoll] = useState<MeetingPoll | null>(null);
     const [showLinks, setShowLinks] = useState(false);
     // General
@@ -127,6 +128,7 @@ export function MeetingPollNew() {
                 response_deadline: responseDeadline ? new Date(responseDeadline).toISOString() : undefined,
                 time_slots: timeSlots.map((s) => ({ start_time: s.start, end_time: s.end, timezone: timeZone })),
                 participants: participants.map((p) => ({ email: p.email, name: p.name })),
+                reveal_participants: revealParticipants,
             };
             const createdPollData = await gatewayClient.createMeetingPoll(pollData);
             setCreatedPoll(createdPollData);
@@ -365,6 +367,22 @@ export function MeetingPollNew() {
                                             Send email survey to invitees
                                         </label>
                                     </div>
+
+                                    {sendEmails && (
+                                        <div className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id="reveal-participants"
+                                                checked={revealParticipants}
+                                                onCheckedChange={(checked) => setRevealParticipants(checked as boolean)}
+                                            />
+                                            <label
+                                                htmlFor="reveal-participants"
+                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                            >
+                                                Include other participants' names and emails in invitations
+                                            </label>
+                                        </div>
+                                    )}
 
                                     {!sendEmails && (
                                         <Alert>

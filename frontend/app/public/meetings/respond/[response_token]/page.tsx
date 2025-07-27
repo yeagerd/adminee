@@ -11,13 +11,26 @@ type TimeSlot = {
     is_available: boolean;
 };
 
+type Participant = {
+    id: string;
+    email: string;
+    name?: string;
+    status: string;
+    invited_at: string;
+    responded_at?: string;
+    reminder_sent_count: number;
+    response_token: string;
+};
+
 type Poll = {
     title: string;
     description?: string;
     duration_minutes: number;
     location?: string;
     meeting_type: string;
+    reveal_participants?: boolean;
     time_slots: TimeSlot[];
+    participants?: Participant[];
 };
 
 type PollResponse = {
@@ -229,6 +242,28 @@ export default function PollResponsePage() {
                             <p><strong>Type:</strong> {poll?.meeting_type.replace('_', ' ')}</p>
                         </div>
                     </div>
+
+                    {poll?.reveal_participants && poll?.participants && poll.participants.length > 0 && (
+                        <div className="mb-6 p-4 bg-green-50 rounded-lg">
+                            <div className="flex items-center text-green-800">
+                                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z" />
+                                </svg>
+                                <span className="font-medium">Other Participants</span>
+                            </div>
+                            <div className="mt-2 text-sm text-green-700">
+                                <ul className="space-y-1">
+                                    {poll.participants.map((participant) => (
+                                        <li key={participant.id} className="flex items-center">
+                                            <span className="font-medium">{participant.name || 'Unknown'}</span>
+                                            <span className="mx-2">•</span>
+                                            <span className="text-green-600">{participant.email}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
+                    )}
 
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div>
