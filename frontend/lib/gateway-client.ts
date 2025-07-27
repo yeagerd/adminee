@@ -440,6 +440,17 @@ export interface MeetingPoll {
     poll_token: string;
     time_slots: TimeSlot[];
     participants: PollParticipant[];
+    responses?: PollResponse[];
+}
+
+export interface PollResponse {
+    id: string;
+    participant_id: string;
+    time_slot_id: string;
+    response: string;
+    comment?: string;
+    created_at: string;
+    updated_at: string;
 }
 
 export interface TimeSlot {
