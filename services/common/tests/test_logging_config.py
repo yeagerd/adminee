@@ -161,7 +161,7 @@ class TestEnhancedLoggingConfiguration:
         assert "| User: demo@example.com" in result
 
     def test_enhanced_text_renderer_with_file_line(self):
-        """Test text rendering with file and line information."""
+        """Test text rendering with file and line information (now shown as extra context)."""
         renderer = EnhancedTextRenderer("test-service")
 
         event_dict = {
@@ -176,8 +176,9 @@ class TestEnhancedLoggingConfiguration:
 
         result = renderer(MagicMock(), "info", event_dict)
 
-        # Should show file and line information
-        assert "api.py:42" in result
+        # File and line information should be shown as extra context, not inline
+        assert "file=api.py" in result
+        assert "line=42" in result
 
     def test_enhanced_text_renderer_complex(self):
         """Test text rendering with all features combined."""
@@ -206,12 +207,14 @@ class TestEnhancedLoggingConfiguration:
         assert "[ERROR]" in result
         assert "[1235]" in result  # Request ID suffix
         assert "services.office.api.health" in result
-        assert "health.py:123" in result
         assert "Failed to process request" in result
         assert "| User: demo@example.com" in result
         assert "error_code=500" in result
         assert "method=GET" in result
         assert "path=/v1/health" in result
+        # File and line information should be shown as extra context
+        assert "file=health.py" in result
+        assert "line=123" in result
 
     def test_enhanced_text_renderer_long_values(self):
         """Test that long values are handled appropriately."""
