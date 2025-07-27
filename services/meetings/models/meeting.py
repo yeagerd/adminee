@@ -46,7 +46,9 @@ class ResponseType(str, enum.Enum):
 
 class MeetingPoll(Base):
     __tablename__ = "meeting_polls"
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     user_id = Column(String(255), nullable=False)
     title = Column(String(255), nullable=False)
     description = Column(Text)
@@ -61,6 +63,7 @@ class MeetingPoll(Base):
     response_deadline = Column(DateTime(timezone=True))
     min_participants = Column(Integer, default=1)
     max_participants = Column(Integer)
+    reveal_participants: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(
         DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
@@ -81,7 +84,9 @@ class MeetingPoll(Base):
 
 class TimeSlot(Base):
     __tablename__ = "time_slots"
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     poll_id = Column(
         UUID(as_uuid=True),
         ForeignKey("meeting_polls.id", ondelete="CASCADE"),
@@ -103,7 +108,9 @@ class TimeSlot(Base):
 
 class PollParticipant(Base):
     __tablename__ = "poll_participants"
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     poll_id = Column(
         UUID(as_uuid=True),
         ForeignKey("meeting_polls.id", ondelete="CASCADE"),
@@ -129,7 +136,9 @@ class PollParticipant(Base):
 
 class PollResponse(Base):
     __tablename__ = "poll_responses"
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     poll_id = Column(
         UUID(as_uuid=True),
         ForeignKey("meeting_polls.id", ondelete="CASCADE"),
@@ -162,7 +171,9 @@ class PollResponse(Base):
 
 class ChatMeeting(Base):
     __tablename__ = "chat_meetings"
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     user_id = Column(String(255), nullable=False)
     chat_message = Column(Text, nullable=False)
     extracted_intent = Column(Text)  # Store as JSON string

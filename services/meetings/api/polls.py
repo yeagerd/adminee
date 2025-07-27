@@ -184,6 +184,7 @@ def create_poll(
             response_deadline=poll.response_deadline,
             min_participants=poll.min_participants or 1,
             max_participants=poll.max_participants,
+            reveal_participants=poll.reveal_participants or False,
             poll_token=str(poll_token),
         )
         session.add(db_poll)
@@ -294,6 +295,8 @@ def update_poll(
             db_poll.min_participants = poll.min_participants  # type: ignore[assignment]
         if poll.max_participants is not None:
             db_poll.max_participants = poll.max_participants  # type: ignore[assignment]
+        if poll.reveal_participants is not None:
+            db_poll.reveal_participants = poll.reveal_participants  # type: ignore[assignment]
 
         # TODO: update time slots and participants as needed
         session.commit()
@@ -482,45 +485,49 @@ async def resend_invitation(
         if location:
             body_lines.extend([f"Location: {location}", ""])
 
-        # Add time slots with response options
-        body_lines.append("Available time slots:")
-        for i, slot in enumerate(poll.time_slots, 1):
-            start_time = slot.start_time.strftime("%A, %B %d, %Y at %I:%M %p")
-            end_time = slot.end_time.strftime("%I:%M %p")
-            timezone = slot.timezone
-            body_lines.append(f"{i}. {start_time} - {end_time} ({timezone})")
-
         body_lines.extend(
             [
                 "",
                 "To respond via web:",
                 f"{response_url}",
                 "",
-                "To respond via email, reply to this message with your availability for each time slot:",
+                "To respond via email, reply to this message by moving the time slots under the appropriate headings:",
                 "",
                 "=== EMAIL RESPONSE TEMPLATE ===",
-                "Copy and paste the headings below, then add your response (available/unavailable/maybe) after each:",
+                "Copy the headings below and move the time slots under the appropriate category:",
+                "",
+                "I'm AVAILABLE:",
+                "",
+                "I'm UNAVAILABLE:",
+                "",
+                "I'm MAYBE:",
+                "",
             ]
         )
 
-        # Add response template for each slot
+        # Add time slots for users to move under headings
         for i, slot in enumerate(poll.time_slots, 1):
             start_time = slot.start_time.strftime("%A, %B %d, %Y at %I:%M %p")
             end_time = slot.end_time.strftime("%I:%M %p")
             timezone = slot.timezone
-            body_lines.append(
-                f"SLOT_{i}: {start_time} - {end_time} ({timezone}) - [available/unavailable/maybe]"
-            )
+            body_lines.append(f"SLOT_{i}: {start_time} - {end_time} ({timezone})")
 
         body_lines.extend(
             [
                 "",
                 "Example:",
-                "SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available",
-                "SLOT_2: Tuesday, January 16, 2024 at 10:00 AM - 11:00 AM (UTC) - unavailable",
+                "I'm AVAILABLE:",
+                "SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC)",
+                "SLOT_3: Wednesday, January 17, 2024 at 1:00 PM - 2:00 PM (UTC) - I prefer this time slot",
                 "",
-                "You can also add optional comments after your response:",
-                "SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available - I prefer this time slot",
+                "I'm UNAVAILABLE:",
+                "SLOT_2: Tuesday, January 16, 2024 at 10:00 AM - 11:00 AM (UTC)",
+                "",
+                "I'm MAYBE:",
+                "SLOT_4: Thursday, January 18, 2024 at 3:00 PM - 4:00 PM (UTC) - I'll try to make this work",
+                "",
+                "You can add optional comments after any time slot using a dash:",
+                "SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - I prefer this time slot",
                 "=== END TEMPLATE ===",
             ]
         )

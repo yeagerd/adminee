@@ -23,14 +23,20 @@ class TestPollCreation(BaseMeetingsTest):
 
         from services.meetings import models
 
-        if not hasattr(models, "_test_engine"):
-            models._test_engine = create_engine(
-                "sqlite:///file::memory:?cache=shared",
-                echo=False,
-                future=True,
-                connect_args={"check_same_thread": False},
-            )
+        # Clear any existing test engine to ensure fresh tables
+        if hasattr(models, "_test_engine"):
+            delattr(models, "_test_engine")
+
+        models._test_engine = create_engine(
+            "sqlite:///file::memory:?cache=shared",
+            echo=False,
+            future=True,
+            connect_args={"check_same_thread": False},
+        )
         models.get_engine = lambda: models._test_engine
+
+        # Drop all tables and recreate them to ensure latest schema
+        Base.metadata.drop_all(models._test_engine)
         Base.metadata.create_all(models._test_engine)
 
     @pytest.fixture
@@ -45,6 +51,7 @@ class TestPollCreation(BaseMeetingsTest):
             "response_deadline": (now + timedelta(days=2)).isoformat() + "Z",
             "min_participants": 1,
             "max_participants": 5,
+            "reveal_participants": False,
             "time_slots": [
                 {
                     "start_time": (now + timedelta(days=3)).isoformat() + "Z",
@@ -158,3 +165,37 @@ class TestPollCreation(BaseMeetingsTest):
         assert "participant_id" in response
         assert "created_at" in response
         assert "updated_at" in response
+
+    def test_create_poll_with_reveal_participants(self, poll_payload):
+        user_id = str(uuid4())
+        # Set reveal_participants to True
+        poll_payload["reveal_participants"] = True
+
+        resp = client.post(
+            "/api/v1/meetings/polls/",
+            json=poll_payload,
+            headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["user_id"] == user_id
+        assert data["title"] == poll_payload["title"]
+        assert data["reveal_participants"] is True
+        assert data["participants"][0]["email"] == "alice@example.com"
+
+    def test_create_poll_without_reveal_participants(self, poll_payload):
+        user_id = str(uuid4())
+        # Set reveal_participants to False
+        poll_payload["reveal_participants"] = False
+
+        resp = client.post(
+            "/api/v1/meetings/polls/",
+            json=poll_payload,
+            headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["user_id"] == user_id
+        assert data["title"] == poll_payload["title"]
+        assert data["reveal_participants"] is False
+        assert data["participants"][0]["email"] == "alice@example.com"
