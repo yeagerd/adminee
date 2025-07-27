@@ -55,7 +55,7 @@ export default function PollResponsePage() {
                 // Initialize responses for all time slots
                 const initialResponses = data.poll.time_slots.map((slot: TimeSlot) => {
                     // Check if there's an existing response for this time slot
-                    const existingResponse = data.responses?.find((r: any) => r.time_slot_id === slot.id);
+                    const existingResponse = data.responses?.find((r: { time_slot_id: string; response: string; comment?: string }) => r.time_slot_id === slot.id);
 
                     if (existingResponse) {
                         // Use existing response
