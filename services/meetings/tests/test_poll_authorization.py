@@ -64,7 +64,9 @@ class TestPollAuthorization(BaseMeetingsTest):
 
         # Create poll
         resp = client.post(
-            "/api/v1/meetings/polls/", json=poll_payload, headers={"X-User-Id": user_id}
+            "/api/v1/meetings/polls/",
+            json=poll_payload,
+            headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
@@ -72,7 +74,8 @@ class TestPollAuthorization(BaseMeetingsTest):
 
         # Delete poll with same user
         resp = client.delete(
-            f"/api/v1/meetings/polls/{poll_id}", headers={"X-User-Id": user_id}
+            f"/api/v1/meetings/polls/{poll_id}",
+            headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 200, resp.text
         assert resp.json() == {"ok": True}
@@ -86,7 +89,7 @@ class TestPollAuthorization(BaseMeetingsTest):
         resp = client.post(
             "/api/v1/meetings/polls/",
             json=poll_payload,
-            headers={"X-User-Id": user_id_1},
+            headers={"X-User-Id": user_id_1, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
@@ -94,7 +97,8 @@ class TestPollAuthorization(BaseMeetingsTest):
 
         # Try to delete poll with user 2
         resp = client.delete(
-            f"/api/v1/meetings/polls/{poll_id}", headers={"X-User-Id": user_id_2}
+            f"/api/v1/meetings/polls/{poll_id}",
+            headers={"X-User-Id": user_id_2, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 403, resp.text
         assert "Not authorized to delete this poll" in resp.text
@@ -105,7 +109,9 @@ class TestPollAuthorization(BaseMeetingsTest):
 
         # Create poll
         resp = client.post(
-            "/api/v1/meetings/polls/", json=poll_payload, headers={"X-User-Id": user_id}
+            "/api/v1/meetings/polls/",
+            json=poll_payload,
+            headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
@@ -116,7 +122,7 @@ class TestPollAuthorization(BaseMeetingsTest):
         resp = client.put(
             f"/api/v1/meetings/polls/{poll_id}",
             json=update_payload,
-            headers={"X-User-Id": user_id},
+            headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 200, resp.text
         updated_data = resp.json()
@@ -131,7 +137,7 @@ class TestPollAuthorization(BaseMeetingsTest):
         resp = client.post(
             "/api/v1/meetings/polls/",
             json=poll_payload,
-            headers={"X-User-Id": user_id_1},
+            headers={"X-User-Id": user_id_1, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
@@ -142,7 +148,7 @@ class TestPollAuthorization(BaseMeetingsTest):
         resp = client.put(
             f"/api/v1/meetings/polls/{poll_id}",
             json=update_payload,
-            headers={"X-User-Id": user_id_2},
+            headers={"X-User-Id": user_id_2, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 403, resp.text
         assert "Not authorized to update this poll" in resp.text
@@ -153,14 +159,19 @@ class TestPollAuthorization(BaseMeetingsTest):
 
         # Create poll
         resp = client.post(
-            "/api/v1/meetings/polls/", json=poll_payload, headers={"X-User-Id": user_id}
+            "/api/v1/meetings/polls/",
+            json=poll_payload,
+            headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
         poll_id = data["id"]
 
         # Try to delete poll without user ID header
-        resp = client.delete(f"/api/v1/meetings/polls/{poll_id}")
+        resp = client.delete(
+            f"/api/v1/meetings/polls/{poll_id}",
+            headers={"X-API-Key": "test-frontend-meetings-key"},
+        )
         assert resp.status_code == 400, resp.text
         assert "Missing X-User-Id header" in resp.text
 
@@ -170,7 +181,8 @@ class TestPollAuthorization(BaseMeetingsTest):
         fake_poll_id = str(uuid4())
 
         resp = client.delete(
-            f"/api/v1/meetings/polls/{fake_poll_id}", headers={"X-User-Id": user_id}
+            f"/api/v1/meetings/polls/{fake_poll_id}",
+            headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 404, resp.text
         assert "Poll not found" in resp.text
@@ -182,7 +194,9 @@ class TestPollAuthorization(BaseMeetingsTest):
 
         # Create poll
         resp = client.post(
-            "/api/v1/meetings/polls/", json=poll_payload, headers={"X-User-Id": user_id}
+            "/api/v1/meetings/polls/",
+            json=poll_payload,
+            headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
@@ -193,7 +207,8 @@ class TestPollAuthorization(BaseMeetingsTest):
 
         # Delete poll with same user ID
         resp = client.delete(
-            f"/api/v1/meetings/polls/{poll_id}", headers={"X-User-Id": user_id}
+            f"/api/v1/meetings/polls/{poll_id}",
+            headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 200, resp.text
         assert resp.json() == {"ok": True}
@@ -204,7 +219,9 @@ class TestPollAuthorization(BaseMeetingsTest):
 
         # Create poll
         resp = client.post(
-            "/api/v1/meetings/polls/", json=poll_payload, headers={"X-User-Id": user_id}
+            "/api/v1/meetings/polls/",
+            json=poll_payload,
+            headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
@@ -214,7 +231,10 @@ class TestPollAuthorization(BaseMeetingsTest):
         different_user_id = "AAAAAAAAAAAAAAAAAAAAAG_WiRzTkk4vuAr97CA2Dc5"
         resp = client.delete(
             f"/api/v1/meetings/polls/{poll_id}",
-            headers={"X-User-Id": different_user_id},
+            headers={
+                "X-User-Id": different_user_id,
+                "X-API-Key": "test-frontend-meetings-key",
+            },
         )
         assert resp.status_code == 403, resp.text
         assert "Not authorized to delete this poll" in resp.text

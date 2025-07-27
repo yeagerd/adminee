@@ -74,7 +74,7 @@ def get_user_id_from_request(request: Request) -> str:
 
 @router.get("/", response_model=List[MeetingPoll])
 @router.get("", response_model=List[MeetingPoll])
-def list_polls() -> List[MeetingPoll]:
+def list_polls(service_name: str = Depends(verify_api_key_auth)) -> List[MeetingPoll]:
     with get_session() as session:
         polls = session.query(MeetingPollModel).all()
         logger.info(
@@ -103,7 +103,9 @@ def list_polls() -> List[MeetingPoll]:
 
 
 @router.get("/{poll_id}", response_model=MeetingPoll)
-def get_poll(poll_id: UUID) -> MeetingPoll:
+def get_poll(
+    poll_id: UUID, service_name: str = Depends(verify_api_key_auth)
+) -> MeetingPoll:
     with get_session() as session:
         poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
         if not poll:
@@ -150,7 +152,11 @@ def get_poll(poll_id: UUID) -> MeetingPoll:
 
 @router.post("/", response_model=MeetingPoll)
 @router.post("", response_model=MeetingPoll)
-def create_poll(poll: MeetingPollCreate, request: Request) -> MeetingPoll:
+def create_poll(
+    poll: MeetingPollCreate,
+    request: Request,
+    service_name: str = Depends(verify_api_key_auth),
+) -> MeetingPoll:
     user_id = get_user_id_from_request(request)
     logger.info(
         "Creating new poll",
@@ -213,7 +219,10 @@ def create_poll(poll: MeetingPollCreate, request: Request) -> MeetingPoll:
 
 @router.put("/{poll_id}", response_model=MeetingPoll)
 def update_poll(
-    poll_id: UUID, poll: MeetingPollUpdate, request: Request
+    poll_id: UUID,
+    poll: MeetingPollUpdate,
+    request: Request,
+    service_name: str = Depends(verify_api_key_auth),
 ) -> MeetingPoll:
     user_id = get_user_id_from_request(request)
     logger.info(
@@ -287,7 +296,9 @@ def update_poll(
 
 
 @router.delete("/{poll_id}")
-def delete_poll(poll_id: UUID, request: Request) -> dict:
+def delete_poll(
+    poll_id: UUID, request: Request, service_name: str = Depends(verify_api_key_auth)
+) -> dict:
     user_id = get_user_id_from_request(request)
     logger.info(
         "Delete poll request",
@@ -348,7 +359,7 @@ def delete_poll(poll_id: UUID, request: Request) -> dict:
 
 
 @router.get("/{poll_id}/debug")
-def debug_poll(poll_id: UUID) -> dict:
+def debug_poll(poll_id: UUID, service_name: str = Depends(verify_api_key_auth)) -> dict:
     """Debug endpoint to inspect poll details without authorization."""
     with get_session() as session:
         db_poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
@@ -368,7 +379,9 @@ def debug_poll(poll_id: UUID) -> dict:
 
 
 @router.get("/{poll_id}/suggest-slots")
-async def suggest_slots(poll_id: UUID, request: Request) -> dict:
+async def suggest_slots(
+    poll_id: UUID, request: Request, service_name: str = Depends(verify_api_key_auth)
+) -> dict:
     user_id = get_user_id_from_request(request)
     # For demo, use poll duration and a 2-week window
     with get_session() as session:
@@ -385,7 +398,12 @@ async def suggest_slots(poll_id: UUID, request: Request) -> dict:
 
 
 @router.post("/{poll_id}/schedule")
-async def schedule_meeting(poll_id: UUID, request: Request, body: dict) -> dict:
+async def schedule_meeting(
+    poll_id: UUID,
+    request: Request,
+    body: dict,
+    service_name: str = Depends(verify_api_key_auth),
+) -> dict:
     user_id = get_user_id_from_request(request)
     selected_slot_id = body.get("selectedSlotId")
     participants = body.get("participants", [])
@@ -442,7 +460,8 @@ async def resend_invitation(
             f"{frontend_url}/public/meetings/respond/{participant.response_token}"
         )
         subject = f"You're invited: {poll.title}"
-        body = f"You have been invited to respond to a meeting poll: {poll.title}\n\n{poll.description or ''}\n\nRespond here: {response_url}"
+        description = getattr(poll, "description", "") or ""
+        body = f"You have been invited to respond to a meeting poll: {poll.title}\n\n{description}\n\nRespond here: {response_url}"
 
         try:
             await email_integration.send_invitation_email(

@@ -1,18 +1,54 @@
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
+from services.common.api_key_auth import (
+    APIKeyConfig,
+    build_api_key_mapping,
+    get_api_key_from_request,
+    verify_api_key,
+)
 from services.meetings.api.polls import get_user_id_from_request
 from services.meetings.models import MeetingPoll as MeetingPollModel
 from services.meetings.models import TimeSlot as TimeSlotModel
 from services.meetings.models import get_session
 from services.meetings.schemas import TimeSlot, TimeSlotCreate
+from services.meetings.settings import get_settings
 
 router = APIRouter()
 
+# API Key configurations
+API_KEY_CONFIGS = {
+    "frontend": APIKeyConfig(
+        client="frontend",
+        service="meetings",
+        permissions=["meetings:read", "meetings:write"],
+        settings_key="api_frontend_meetings_key",
+    ),
+}
+
+
+def verify_api_key_auth(request: Request) -> str:
+    """
+    Verify API key authentication and return the service name.
+    """
+    api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
+    api_key = get_api_key_from_request(request)
+    if not api_key or not verify_api_key(api_key, api_key_mapping):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or missing API key",
+        )
+    return "frontend"
+
 
 @router.post("/", response_model=TimeSlot)
-def add_slot(poll_id: UUID, slot: TimeSlotCreate, request: Request) -> TimeSlot:
+def add_slot(
+    poll_id: UUID,
+    slot: TimeSlotCreate,
+    request: Request,
+    service_name: str = Depends(verify_api_key_auth),
+) -> TimeSlot:
     user_id = get_user_id_from_request(request)
 
     with get_session() as session:
@@ -41,7 +77,11 @@ def add_slot(poll_id: UUID, slot: TimeSlotCreate, request: Request) -> TimeSlot:
 
 @router.put("/{slot_id}", response_model=TimeSlot)
 def update_slot(
-    poll_id: UUID, slot_id: UUID, slot: TimeSlotCreate, request: Request
+    poll_id: UUID,
+    slot_id: UUID,
+    slot: TimeSlotCreate,
+    request: Request,
+    service_name: str = Depends(verify_api_key_auth),
 ) -> TimeSlot:
     user_id = get_user_id_from_request(request)
 
@@ -70,7 +110,12 @@ def update_slot(
 
 
 @router.delete("/{slot_id}")
-def delete_slot(poll_id: UUID, slot_id: UUID, request: Request) -> dict:
+def delete_slot(
+    poll_id: UUID,
+    slot_id: UUID,
+    request: Request,
+    service_name: str = Depends(verify_api_key_auth),
+) -> dict:
     user_id = get_user_id_from_request(request)
 
     with get_session() as session:
