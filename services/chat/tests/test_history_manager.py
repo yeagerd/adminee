@@ -19,7 +19,7 @@ import services.chat.history_manager as hm
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def setup_test_database():
-    """Set up test database with proper tables for all tests."""
+    """Set up test settings and database for the entire test session."""
     import services.chat.settings as chat_settings
 
     # Create test settings instance

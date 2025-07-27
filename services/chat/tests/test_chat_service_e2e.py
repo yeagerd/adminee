@@ -5,12 +5,12 @@ Tests the complete chat service functionality including
 multi-agent workflow processing, history management, and API endpoints.
 """
 
-import asyncio
 import os
 import sys
 from unittest.mock import patch
 
 import pytest
+import pytest_asyncio
 import respx
 from fastapi.testclient import TestClient
 from httpx import Response
@@ -55,8 +55,9 @@ def app(test_env):
     return fresh_app
 
 
+@pytest_asyncio.fixture(scope="session", autouse=True)
 async def setup_test_database():
-    """Initialize the test database with tables."""
+    """Set up test settings and database for the entire test session."""
     import services.chat.settings as chat_settings
     from services.chat import history_manager
 
@@ -77,7 +78,9 @@ async def setup_test_database():
     chat_settings._settings = test_settings
 
     try:
+        # Initialize database tables
         await history_manager.init_db()
+        yield
     finally:
         # Restore original singleton
         chat_settings._settings = original_settings
@@ -86,9 +89,8 @@ async def setup_test_database():
 @pytest.fixture(autouse=True)
 def setup_test_environment(app):
     """Set up the test environment."""
-    # Initialize test database synchronously
-    asyncio.run(setup_test_database())
-    # Removed get_chat_auth import and assertion as it does not exist
+    # Database is already initialized by the session fixture
+    pass
 
 
 @pytest.fixture(autouse=True, scope="session")
