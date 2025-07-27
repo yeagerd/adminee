@@ -150,10 +150,11 @@ This task list outlines the work required to add "v1" versioning to all APIs in 
 ## Recent Fixes ✅
 
 ### Poll API Endpoint Mismatch (Fixed)
-**Issue**: Frontend was using `/api/v1/public/meetings/response/` but backend expected `/api/v1/public/polls/response/`
+**Issue**: Frontend was using `/api/v1/public/polls/response/` but backend expected `/api/v1/public/polls/meetings/response/`
 **Files Fixed**: 
-- `frontend/app/public/meetings/respond/[response_token]/page.tsx`
-**Changes**: Updated both fetch calls to use correct `/api/v1/public/polls/response/` endpoint
+- `services/meetings/api/public.py` - Updated PUT endpoint path from `/meetings/response/{response_token}` to `/response/{response_token}`
+- `services/meetings/tests/test_poll_creation.py` - Updated test to use correct endpoint path
+**Changes**: Updated backend endpoint to match frontend expectations and added missing GET endpoint for fetching poll data
 **Status**: ✅ Fixed and verified
 
 ### Test Fixes (In Progress)
