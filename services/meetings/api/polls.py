@@ -90,7 +90,7 @@ def get_poll(poll_id: UUID) -> MeetingPoll:
             poll_user_id_repr=repr(poll.user_id),
             poll_user_id_length=len(str(poll.user_id)),
         )
-        
+
         # Fetch responses for this poll
         from services.meetings.models import PollResponse as PollResponseModel
         from services.meetings.schemas import PollResponse as PollResponseSchema
