@@ -57,27 +57,103 @@ class EmailResponseRequest(BaseModel):
 
 # Result object for parsed email content
 class EmailContentParseResult(BaseModel):
-    response: str | None
-    comment: str | None
+    slot_responses: dict[
+        str, dict[str, str | None]
+    ]  # slot_id -> {"response": str, "comment": str | None}
 
 
 def parse_email_content(content: str) -> EmailContentParseResult:
     """
-    Dummy parser: expects content to be of the form:
-    RESPONSE: <available|unavailable|maybe> [OPTIONAL_COMMENT]
+    Parse email content for slot-specific responses.
+    Expects content to contain lines like:
+    SLOT_1_123e4567-e89b-12d3-a456-426614174000: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available - I prefer this time slot
     """
+    slot_responses = {}
     lines = content.strip().splitlines()
-    if not lines:
-        return EmailContentParseResult(response=None, comment=None)
-    first = lines[0].strip().lower()
-    if first.startswith("response:"):
-        parts = first[len("response:") :].strip().split(None, 1)
-        if not parts:
-            return EmailContentParseResult(response=None, comment=None)
-        response = parts[0]
-        comment = parts[1] if len(parts) > 1 else None
-        return EmailContentParseResult(response=response, comment=comment)
-    return EmailContentParseResult(response=None, comment=None)
+
+    for line in lines:
+        line = line.strip()
+        if not line or not line.startswith("SLOT_"):
+            continue
+
+        # Parse slot response line
+        # Format: SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available - I prefer this time slot
+        try:
+            # Split on first colon to separate slot identifier from response
+            parts = line.split(":", 1)
+            if len(parts) != 2:
+                continue
+
+            slot_identifier = parts[0].strip()
+            response_part = parts[1].strip()
+
+            # Extract slot number from identifier (SLOT_1)
+            if not slot_identifier.startswith("SLOT_"):
+                continue
+
+            slot_number_str = slot_identifier[5:]  # Remove "SLOT_" prefix
+            if not slot_number_str:
+                continue
+
+            try:
+                slot_number = int(slot_number_str)
+                if slot_number < 1:
+                    continue
+            except ValueError:
+                # Skip invalid slot numbers
+                continue
+
+            # Parse response and comment
+            # Check if any response keyword is in the response part
+            response_keywords = ["available", "unavailable", "maybe"]
+            response = None
+            comment = None
+
+            # Look for the keyword that appears after the timezone part
+            # Format: "Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available - comment"
+            for keyword in response_keywords:
+                # Use word boundaries to avoid partial matches
+                import re
+
+                # Look for the keyword that appears after the timezone pattern
+                # This ensures we match the keyword in the correct position
+                pattern = r"\([^)]+\)\s*-\s*\b" + re.escape(keyword.lower()) + r"\b"
+                match = re.search(pattern, response_part.lower())
+                if match:
+                    response = keyword.lower()
+                    # Extract comment (everything after the response keyword)
+                    # Find the position of the keyword after the timezone
+                    keyword_pattern = r"\b" + re.escape(keyword.lower()) + r"\b"
+                    # Search for the keyword starting from the match position
+                    keyword_match = re.search(
+                        keyword_pattern, response_part.lower()[match.start() :]
+                    )
+                    if keyword_match:
+                        # Calculate the actual position in the original string
+                        comment_start = match.start() + keyword_match.end()
+                        if comment_start < len(response_part):
+                            comment = response_part[comment_start:].strip()
+                            if comment.startswith("-"):
+                                comment = comment[1:].strip()
+                            if comment.startswith(" "):
+                                comment = comment[1:]
+                            # If comment is empty after trimming, set to None
+                            if not comment:
+                                comment = None
+                    break
+
+            if response:
+                slot_responses[str(slot_number)] = {
+                    "response": response,
+                    "comment": comment,
+                }
+
+        except Exception as e:
+            # Log parsing errors but continue processing other lines
+            logger.warning(f"Failed to parse line: {line}", error=str(e))
+            continue
+
+    return EmailContentParseResult(slot_responses=slot_responses)
 
 
 @router.post("/")
@@ -89,9 +165,10 @@ def process_email_response(
 
     # Parse email content
     parsed = parse_email_content(req.content)
-    if parsed.response not in {"available", "unavailable", "maybe"}:
+    if not parsed.slot_responses:
         raise HTTPException(
-            status_code=400, detail="Could not parse response from email content."
+            status_code=400,
+            detail="Could not parse any slot responses from email content.",
         )
 
     # Find participant by sender email
@@ -106,16 +183,46 @@ def process_email_response(
             raise HTTPException(
                 status_code=404, detail="Poll not found for participant."
             )
-        # For each time slot, create/update a response (for demo, mark all slots with the same response)
-        for slot in poll.time_slots:
+
+        # Process each slot response
+        processed_slots = 0
+        for slot_number_str, response_data in parsed.slot_responses.items():
+            response_value = response_data.get("response")
+            comment = response_data.get("comment")
+
+            if response_value not in {"available", "unavailable", "maybe"}:
+                logger.warning(
+                    f"Invalid response value: {response_value} for slot {slot_number_str}"
+                )
+                continue
+
+            # Convert slot number to integer
+            try:
+                slot_number = int(slot_number_str)
+                if slot_number < 1 or slot_number > len(poll.time_slots):
+                    logger.warning(
+                        f"Invalid slot number: {slot_number} (valid range: 1-{len(poll.time_slots)})"
+                    )
+                    continue
+            except ValueError:
+                logger.warning(f"Invalid slot number format: {slot_number_str}")
+                continue
+
+            # Get the time slot by its position (1-indexed)
+            slot = poll.time_slots[slot_number - 1]  # Convert to 0-indexed
+            if not slot:
+                logger.warning(f"Time slot {slot_number} not found for poll {poll.id}")
+                continue
+
+            # Create or update response for this slot
             existing = (
                 session.query(PollResponse)
                 .filter_by(participant_id=participant.id, time_slot_id=slot.id)
                 .first()
             )
             if existing:
-                existing.response = ResponseType(parsed.response)
-                existing.comment = parsed.comment  # type: ignore[assignment]
+                existing.response = ResponseType(response_value)
+                existing.comment = comment  # type: ignore[assignment]
                 existing.updated_at = datetime.datetime.utcnow()  # type: ignore[assignment]
             else:
                 resp = PollResponse(
@@ -123,18 +230,23 @@ def process_email_response(
                     poll_id=poll.id,
                     participant_id=participant.id,
                     time_slot_id=slot.id,
-                    response=ResponseType(parsed.response),
-                    comment=parsed.comment,  # type: ignore[assignment]
+                    response=ResponseType(response_value),
+                    comment=comment,  # type: ignore[assignment]
                 )
                 session.add(resp)
-        participant.status = ParticipantStatus.responded
-        participant.responded_at = datetime.datetime.utcnow()  # type: ignore[assignment]
+            processed_slots += 1
+
+        # Update participant status if we processed any responses
+        if processed_slots > 0:
+            participant.status = ParticipantStatus.responded
+            participant.responded_at = datetime.datetime.utcnow()  # type: ignore[assignment]
+
         session.commit()
         logger.info(
             "Processed email response",
             sender=req.sender,
-            response=parsed.response,
-            comment=parsed.comment,
+            processed_slots=processed_slots,
+            total_slots=len(parsed.slot_responses),
             poll_id=str(poll.id),
             participant_id=str(participant.id),
         )
