@@ -86,22 +86,7 @@ const formatTimeSlot = (startTime: string, endTime: string, timezone: string) =>
     return `${dateFormatted}, ${startFormatted} - ${endFormatted} ${timezoneAbbr}`;
 };
 
-const sortTimeSlotsByAvailability = (timeSlots: TimeSlot[], slotStats: Record<string, { available: number; maybe: number; unavailable: number }>) => {
-    return [...timeSlots].sort((a, b) => {
-        const statsA = slotStats[a.id] || { available: 0, maybe: 0, unavailable: 0 };
-        const statsB = slotStats[b.id] || { available: 0, maybe: 0, unavailable: 0 };
 
-        // Primary sort: most available people
-        if (statsA.available !== statsB.available) {
-            return statsB.available - statsA.available; // Descending order
-        }
-
-        // Secondary sort: most-available plus maybes
-        const totalAvailableA = statsA.available + statsA.maybe;
-        const totalAvailableB = statsB.available + statsB.maybe;
-        return totalAvailableB - totalAvailableA; // Descending order
-    });
-};
 
 interface MeetingPollResultsProps {
     pollId: string;
