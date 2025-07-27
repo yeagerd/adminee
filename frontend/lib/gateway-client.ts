@@ -343,6 +343,12 @@ export class GatewayClient {
             method: 'POST',
         });
     }
+
+    async resendMeetingInvitation(pollId: string, participantId: string): Promise<void> {
+        return this.request<void>(`/api/v1/meetings/polls/${pollId}/participants/${participantId}/resend-invitation`, {
+            method: 'POST',
+        });
+    }
 }
 
 // Export singleton instance
