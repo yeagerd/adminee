@@ -1,9 +1,16 @@
+import os
 from datetime import datetime, timedelta
-from typing import List
+from typing import List, Optional
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
+from services.common.api_key_auth import (
+    APIKeyConfig,
+    build_api_key_mapping,
+    get_api_key_from_request,
+    verify_api_key,
+)
 from services.common.logging_config import get_logger
 from services.meetings.models import MeetingPoll as MeetingPollModel
 from services.meetings.models import PollParticipant as PollParticipantModel
@@ -11,12 +18,37 @@ from services.meetings.models import TimeSlot as TimeSlotModel
 from services.meetings.models import get_session
 from services.meetings.models.meeting import PollStatus
 from services.meetings.schemas import MeetingPoll, MeetingPollCreate, MeetingPollUpdate
-from services.meetings.services import calendar_integration
+from services.meetings.services import calendar_integration, email_integration
+from services.meetings.settings import get_settings
 
 # Configure logging
 logger = get_logger(__name__)
 
 router = APIRouter()
+
+# API Key configurations
+API_KEY_CONFIGS = {
+    "frontend": APIKeyConfig(
+        client="frontend",
+        service="meetings",
+        permissions=["meetings:read", "meetings:write", "meetings:resend_invitation"],
+        settings_key="api_frontend_meetings_key",
+    ),
+}
+
+
+def verify_api_key_auth(request: Request) -> str:
+    """
+    Verify API key authentication and return the service name.
+    """
+    api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
+    api_key = get_api_key_from_request(request)
+    if not api_key or not verify_api_key(api_key, api_key_mapping):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or missing API key",
+        )
+    return "frontend"
 
 
 def get_user_id_from_request(request: Request) -> str:
@@ -369,3 +401,88 @@ async def schedule_meeting(poll_id: UUID, request: Request, body: dict) -> dict:
             poll.status = PollStatus.scheduled
             session.commit()
     return result
+
+
+@router.post("/{poll_id}/participants/{participant_id}/resend-invitation")
+async def resend_invitation(
+    poll_id: UUID,
+    participant_id: UUID,
+    request: Request,
+    service_name: str = Depends(verify_api_key_auth),
+) -> dict:
+    """
+    Resend invitation email to a specific participant.
+    """
+    user_id = get_user_id_from_request(request)
+
+    with get_session() as session:
+        # Verify poll exists and user owns it
+        poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
+        if not poll:
+            raise HTTPException(status_code=404, detail="Poll not found")
+
+        if str(poll.user_id) != str(user_id):
+            raise HTTPException(
+                status_code=403,
+                detail="Not authorized to resend invitations for this poll",
+            )
+
+        # Verify participant exists and belongs to this poll
+        participant: Optional[PollParticipantModel] = (
+            session.query(PollParticipantModel)
+            .filter_by(id=participant_id, poll_id=poll_id)
+            .first()
+        )
+        if not participant:
+            raise HTTPException(status_code=404, detail="Participant not found")
+
+        # Send the invitation email
+        frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+        response_url = (
+            f"{frontend_url}/public/meetings/respond/{participant.response_token}"
+        )
+        subject = f"You're invited: {poll.title}"
+        body = f"You have been invited to respond to a meeting poll: {poll.title}\n\n{poll.description or ''}\n\nRespond here: {response_url}"
+
+        try:
+            await email_integration.send_invitation_email(
+                str(participant.email), subject, body, user_id
+            )
+
+            # Update participant's reminder count and status
+            setattr(
+                participant,
+                "reminder_sent_count",
+                int(participant.reminder_sent_count) + 1,
+            )
+            # Keep status as pending since they haven't responded yet
+
+            session.commit()
+
+            logger.info(
+                "Successfully resent invitation",
+                poll_id=str(poll_id),
+                participant_id=str(participant_id),
+                participant_email=participant.email,
+                reminder_count=participant.reminder_sent_count,
+            )
+
+            return {
+                "ok": True,
+                "message": "Invitation resent successfully",
+                "participant_email": participant.email,
+                "reminder_count": participant.reminder_sent_count,
+            }
+
+        except ValueError as e:
+            logger.error(
+                "Failed to resend invitation",
+                poll_id=str(poll_id),
+                participant_id=str(participant_id),
+                participant_email=participant.email,
+                error=str(e),
+            )
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to resend invitation: {str(e)}",
+            )

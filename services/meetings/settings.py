@@ -37,6 +37,12 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("API_MEETINGS_USER_KEY"),
     )
 
+    api_frontend_meetings_key: str = Field(
+        default=...,  # required
+        description="Frontend API key to access meetings service",
+        validation_alias=AliasChoices("API_FRONTEND_MEETINGS_KEY"),
+    )
+
     office_service_url: str = Field(
         default=...,
         description="URL for the office service",
