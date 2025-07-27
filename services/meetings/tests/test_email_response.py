@@ -21,20 +21,38 @@ class TestEmailResponse(BaseMeetingsTest):
         """Set up test environment."""
         super().setup_method(method)
 
-        # Set up database tables
+        # Set up database tables using the same engine as the service
         from sqlalchemy import create_engine
 
         from services.meetings import models
 
+        # Use the same database URL as configured in the test base
+        db_url = f"sqlite:///{self.db_path}"
+
+        # Create engine and override the get_engine function
         if not hasattr(models, "_test_engine"):
             models._test_engine = create_engine(
-                "sqlite:///file::memory:?cache=shared",
+                db_url,
                 echo=False,
                 future=True,
                 connect_args={"check_same_thread": False},
             )
+
+        # Override the get_engine function to use our test engine
         models.get_engine = lambda: models._test_engine
         Base.metadata.create_all(models._test_engine)
+
+    def teardown_method(self, method):
+        """Clean up test environment."""
+        # Clean up the engine before calling parent teardown
+        from services.meetings import models
+
+        if hasattr(models, "_test_engine"):
+            models._test_engine.dispose()
+            delattr(models, "_test_engine")
+
+        # Call parent teardown to clean up the database file
+        super().teardown_method(method)
 
     def create_poll_and_participant(self):
         now = datetime.utcnow()
