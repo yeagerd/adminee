@@ -22,6 +22,7 @@ class BaseMeetingsTest:
         os.environ["API_EMAIL_SYNC_MEETINGS_KEY"] = "test-email-sync-key"
         os.environ["API_MEETINGS_OFFICE_KEY"] = "test-meetings-office-key"
         os.environ["API_MEETINGS_USER_KEY"] = "test-meetings-user-key"
+        os.environ["API_FRONTEND_MEETINGS_KEY"] = "test-frontend-meetings-key"
 
         # Optional environment variables with test defaults
         os.environ.setdefault("OFFICE_SERVICE_URL", "http://localhost:8003")

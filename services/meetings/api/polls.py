@@ -3,8 +3,14 @@ from datetime import datetime, timedelta
 from typing import List, Optional
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
+from services.common.api_key_auth import (
+    APIKeyConfig,
+    build_api_key_mapping,
+    get_api_key_from_request,
+    verify_api_key,
+)
 from services.common.logging_config import get_logger
 from services.meetings.models import MeetingPoll as MeetingPollModel
 from services.meetings.models import PollParticipant as PollParticipantModel
@@ -13,11 +19,36 @@ from services.meetings.models import get_session
 from services.meetings.models.meeting import PollStatus
 from services.meetings.schemas import MeetingPoll, MeetingPollCreate, MeetingPollUpdate
 from services.meetings.services import calendar_integration, email_integration
+from services.meetings.settings import get_settings
 
 # Configure logging
 logger = get_logger(__name__)
 
 router = APIRouter()
+
+# API Key configurations
+API_KEY_CONFIGS = {
+    "frontend": APIKeyConfig(
+        client="frontend",
+        service="meetings",
+        permissions=["meetings:read", "meetings:write", "meetings:resend_invitation"],
+        settings_key="api_frontend_meetings_key",
+    ),
+}
+
+
+def verify_api_key_auth(request: Request) -> str:
+    """
+    Verify API key authentication and return the service name.
+    """
+    api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
+    api_key = get_api_key_from_request(request)
+    if not api_key or not verify_api_key(api_key, api_key_mapping):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or missing API key",
+        )
+    return "frontend"
 
 
 def get_user_id_from_request(request: Request) -> str:
@@ -374,7 +405,10 @@ async def schedule_meeting(poll_id: UUID, request: Request, body: dict) -> dict:
 
 @router.post("/{poll_id}/participants/{participant_id}/resend-invitation")
 async def resend_invitation(
-    poll_id: UUID, participant_id: UUID, request: Request
+    poll_id: UUID,
+    participant_id: UUID,
+    request: Request,
+    service_name: str = Depends(verify_api_key_auth),
 ) -> dict:
     """
     Resend invitation email to a specific participant.

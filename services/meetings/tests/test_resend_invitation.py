@@ -5,6 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from services.meetings.main import app
+from services.meetings.tests.test_base import BaseMeetingsTest
 
 
 @pytest.fixture
@@ -38,7 +39,7 @@ def mock_participant():
     }
 
 
-class TestResendInvitation:
+class TestResendInvitation(BaseMeetingsTest):
     """Test cases for the resend invitation endpoint."""
 
     @patch("services.meetings.api.polls.email_integration.send_invitation_email")
@@ -70,7 +71,10 @@ class TestResendInvitation:
         # Make the request
         response = client.post(
             f"/api/v1/meetings/polls/{mock_poll['id']}/participants/{mock_participant['id']}/resend-invitation",
-            headers={"X-User-Id": mock_poll["user_id"]},
+            headers={
+                "X-User-Id": mock_poll["user_id"],
+                "X-API-Key": "test-frontend-meetings-key",
+            },
         )
 
         # Verify response
@@ -98,7 +102,10 @@ class TestResendInvitation:
 
         response = client.post(
             f"/api/v1/meetings/polls/{uuid4()}/participants/{uuid4()}/resend-invitation",
-            headers={"X-User-Id": "test-user"},
+            headers={
+                "X-User-Id": "test-user",
+                "X-API-Key": "test-frontend-meetings-key",
+            },
         )
 
         assert response.status_code == 404
@@ -117,7 +124,10 @@ class TestResendInvitation:
 
         response = client.post(
             f"/api/v1/meetings/polls/{mock_poll['id']}/participants/{uuid4()}/resend-invitation",
-            headers={"X-User-Id": "different-user"},
+            headers={
+                "X-User-Id": "different-user",
+                "X-API-Key": "test-frontend-meetings-key",
+            },
         )
 
         assert response.status_code == 403
@@ -139,7 +149,10 @@ class TestResendInvitation:
 
         response = client.post(
             f"/api/v1/meetings/polls/{mock_poll['id']}/participants/{mock_participant['id']}/resend-invitation",
-            headers={"X-User-Id": mock_poll["user_id"]},
+            headers={
+                "X-User-Id": mock_poll["user_id"],
+                "X-API-Key": "test-frontend-meetings-key",
+            },
         )
 
         assert response.status_code == 404
@@ -173,16 +186,32 @@ class TestResendInvitation:
 
         response = client.post(
             f"/api/v1/meetings/polls/{mock_poll['id']}/participants/{mock_participant['id']}/resend-invitation",
-            headers={"X-User-Id": mock_poll["user_id"]},
+            headers={
+                "X-User-Id": mock_poll["user_id"],
+                "X-API-Key": "test-frontend-meetings-key",
+            },
         )
 
         assert response.status_code == 400
         assert "Failed to resend invitation" in response.json()["message"]
 
+    def test_resend_invitation_missing_api_key(
+        self, client, mock_poll, mock_participant
+    ):
+        """Test resend invitation without API key."""
+        response = client.post(
+            f"/api/v1/meetings/polls/{mock_poll['id']}/participants/{mock_participant['id']}/resend-invitation",
+            headers={"X-User-Id": mock_poll["user_id"]},
+        )
+
+        assert response.status_code == 401
+        assert "Invalid or missing API key" in response.json()["message"]
+
     def test_resend_invitation_missing_user_id(self, client):
         """Test resend invitation without user ID header."""
         response = client.post(
             f"/api/v1/meetings/polls/{uuid4()}/participants/{uuid4()}/resend-invitation",
+            headers={"X-API-Key": "test-frontend-meetings-key"},
         )
 
         assert response.status_code == 400
