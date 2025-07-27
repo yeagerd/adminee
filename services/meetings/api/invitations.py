@@ -78,12 +78,14 @@ async def send_invitations(
 
             # Build email body with location and time slots
             body_lines = [
-                f"You have been invited to respond to a meeting poll: {poll.title}",
+                "You have been invited to respond to a meeting poll!",
+                "",
+                f"Event: {poll.title}",
                 "",
             ]
 
             if description:
-                body_lines.extend([description, ""])
+                body_lines.extend([f"Description: {description}", ""])
 
             # Add location if available
             location = getattr(poll, "location", "") or ""
@@ -98,7 +100,7 @@ async def send_invitations(
                     "",
                     "To respond via email, reply to this message by moving the time slots under the appropriate headings:",
                     "",
-                    "=== EMAIL RESPONSE TEMPLATE ===",
+                    "=== EMAIL RESPONSE ===",
                     "",
                     "I'm AVAILABLE:",
                     "",
@@ -121,7 +123,9 @@ async def send_invitations(
             body_lines.extend(
                 [
                     "",
-                    "Need help?  Here's an example:",
+                    "=== END RESPONSE ===",
+                    "",
+                    "Need help? Here's an example:",
                     "I'm AVAILABLE:",
                     "SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC)",
                     "SLOT_3: Wednesday, January 17, 2024 at 1:00 PM - 2:00 PM (UTC) - I prefer this time slot",
@@ -134,7 +138,6 @@ async def send_invitations(
                     "",
                     "You can add optional comments after any time slot using a dash:",
                     "SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - I prefer this time slot",
-                    "=== END TEMPLATE ===",
                 ]
             )
 
