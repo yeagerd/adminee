@@ -15,6 +15,7 @@ from services.chat.auth import (
     verify_service_authentication,
 )
 from services.chat.settings import get_settings
+from services.chat.tests.test_base import BaseChatTest
 from services.common.api_key_auth import (
     build_api_key_mapping,
     get_client_from_api_key,
@@ -52,7 +53,7 @@ def patch_settings():
     chat_settings._settings = original_settings
 
 
-class TestChatServiceAuth:
+class TestChatServiceAuth(BaseChatTest):
     """Test cases for ChatServiceAuth class."""
 
     def test_chat_service_auth_verify_valid_key(self):
@@ -201,7 +202,7 @@ class TestChatServiceAuth:
             assert client_name == "chat-service-access"
 
 
-class TestChatAuthIntegration:
+class TestChatAuthIntegration(BaseChatTest):
     """Integration tests for chat authentication."""
 
     def test_chat_auth_singleton(self):
