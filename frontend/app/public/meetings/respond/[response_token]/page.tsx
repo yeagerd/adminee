@@ -1,5 +1,6 @@
 "use client";
 import { env } from '@/lib/env';
+import { Check, HelpCircle, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 type TimeSlot = {
@@ -173,72 +174,76 @@ export default function PollResponsePage() {
                         <div>
                             <h3 className="text-lg font-semibold text-gray-900 mb-4">Select your availability for each time slot:</h3>
 
-                            <div className="space-y-4">
-                                {poll?.time_slots.map((slot) => (
-                                    <div key={slot.id} className="border border-gray-200 rounded-lg p-4">
-                                        <div className="mb-3">
-                                            <h4 className="font-medium text-gray-900">
-                                                {formatDateTime(slot.start_time)}
-                                            </h4>
-                                            <p className="text-sm text-gray-500">
-                                                Duration: {poll.duration_minutes} minutes
-                                            </p>
-                                        </div>
+                            <div className="space-y-6">
+                                {poll?.time_slots.map((slot) => {
+                                    const currentResponse = responses.find(r => r.time_slot_id === slot.id)?.response || 'unavailable';
 
-                                        <div className="space-y-3">
-                                            <div className="flex space-x-4">
-                                                <label className="flex items-center">
-                                                    <input
-                                                        type="radio"
-                                                        name={`response-${slot.id}`}
-                                                        value="available"
-                                                        checked={responses.find(r => r.time_slot_id === slot.id)?.response === 'available'}
-                                                        onChange={() => handleResponseChange(slot.id, 'available')}
-                                                        className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 focus:ring-green-500"
-                                                    />
-                                                    <span className="ml-2 text-sm font-medium text-green-700">Available</span>
-                                                </label>
-
-                                                <label className="flex items-center">
-                                                    <input
-                                                        type="radio"
-                                                        name={`response-${slot.id}`}
-                                                        value="maybe"
-                                                        checked={responses.find(r => r.time_slot_id === slot.id)?.response === 'maybe'}
-                                                        onChange={() => handleResponseChange(slot.id, 'maybe')}
-                                                        className="w-4 h-4 text-yellow-600 bg-gray-100 border-gray-300 focus:ring-yellow-500"
-                                                    />
-                                                    <span className="ml-2 text-sm font-medium text-yellow-700">Maybe</span>
-                                                </label>
-
-                                                <label className="flex items-center">
-                                                    <input
-                                                        type="radio"
-                                                        name={`response-${slot.id}`}
-                                                        value="unavailable"
-                                                        checked={responses.find(r => r.time_slot_id === slot.id)?.response === 'unavailable'}
-                                                        onChange={() => handleResponseChange(slot.id, 'unavailable')}
-                                                        className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 focus:ring-red-500"
-                                                    />
-                                                    <span className="ml-2 text-sm font-medium text-red-700">Unavailable</span>
-                                                </label>
+                                    return (
+                                        <div key={slot.id} className="border border-gray-200 rounded-lg p-6">
+                                            <div className="mb-4">
+                                                <h4 className="text-lg font-medium text-gray-900">
+                                                    {formatDateTime(slot.start_time)}
+                                                </h4>
+                                                <p className="text-sm text-gray-500">
+                                                    Duration: {poll.duration_minutes} minutes
+                                                </p>
                                             </div>
 
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                    Comments (optional):
-                                                </label>
-                                                <textarea
-                                                    value={responses.find(r => r.time_slot_id === slot.id)?.comment || ''}
-                                                    onChange={(e) => handleCommentChange(slot.id, e.target.value)}
-                                                    placeholder="Add any comments about this time slot..."
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                    rows={2}
-                                                />
+                                            <div className="space-y-4">
+                                                <div className="flex flex-wrap gap-3">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleResponseChange(slot.id, 'available')}
+                                                        className={`flex items-center gap-3 px-6 py-4 rounded-lg border-2 transition-all duration-200 font-medium ${currentResponse === 'available'
+                                                                ? 'border-green-500 bg-green-50 text-green-700 shadow-md'
+                                                                : 'border-gray-300 bg-white text-gray-700 hover:border-green-300 hover:bg-green-25'
+                                                            }`}
+                                                    >
+                                                        <Check className={`h-5 w-5 ${currentResponse === 'available' ? 'text-green-600' : 'text-gray-400'}`} />
+                                                        <span>Available</span>
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleResponseChange(slot.id, 'maybe')}
+                                                        className={`flex items-center gap-3 px-6 py-4 rounded-lg border-2 transition-all duration-200 font-medium ${currentResponse === 'maybe'
+                                                                ? 'border-yellow-500 bg-yellow-50 text-yellow-700 shadow-md'
+                                                                : 'border-gray-300 bg-white text-gray-700 hover:border-yellow-300 hover:bg-yellow-25'
+                                                            }`}
+                                                    >
+                                                        <HelpCircle className={`h-5 w-5 ${currentResponse === 'maybe' ? 'text-yellow-600' : 'text-gray-400'}`} />
+                                                        <span>Maybe</span>
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleResponseChange(slot.id, 'unavailable')}
+                                                        className={`flex items-center gap-3 px-6 py-4 rounded-lg border-2 transition-all duration-200 font-medium ${currentResponse === 'unavailable'
+                                                                ? 'border-red-500 bg-red-50 text-red-700 shadow-md'
+                                                                : 'border-gray-300 bg-white text-gray-700 hover:border-red-300 hover:bg-red-25'
+                                                            }`}
+                                                    >
+                                                        <X className={`h-5 w-5 ${currentResponse === 'unavailable' ? 'text-red-600' : 'text-gray-400'}`} />
+                                                        <span>Unavailable</span>
+                                                    </button>
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                        Comments (optional):
+                                                    </label>
+                                                    <textarea
+                                                        value={responses.find(r => r.time_slot_id === slot.id)?.comment || ''}
+                                                        onChange={(e) => handleCommentChange(slot.id, e.target.value)}
+                                                        placeholder="Add any comments about this time slot..."
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                        rows={2}
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
 
@@ -246,7 +251,7 @@ export default function PollResponsePage() {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="px-6 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-6 py-3 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                             >
                                 {loading ? 'Submitting...' : 'Submit Response'}
                             </button>
