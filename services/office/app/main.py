@@ -40,7 +40,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
         version=settings.APP_VERSION,
         environment=settings.ENVIRONMENT,
         debug=settings.DEBUG,
-        user_management_service_url=settings.USER_MANAGEMENT_SERVICE_URL,
+        user_service_url=settings.USER_SERVICE_URL,
     )
     yield
     # Shutdown event logic
@@ -111,8 +111,8 @@ async def health_check() -> Dict[str, Any]:
         config_issues.append("API_FRONTEND_OFFICE_KEY not configured")
     if not get_settings().api_chat_office_key:
         config_issues.append("API_CHAT_OFFICE_KEY not configured")
-    if not get_settings().USER_MANAGEMENT_SERVICE_URL:
-        config_issues.append("USER_MANAGEMENT_SERVICE_URL not configured")
+    if not get_settings().USER_SERVICE_URL:
+        config_issues.append("USER_SERVICE_URL not configured")
 
     config_status = "ok" if not config_issues else "error"
 

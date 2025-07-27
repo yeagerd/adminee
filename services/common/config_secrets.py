@@ -148,12 +148,12 @@ def clear_cache() -> None:
 
 
 # Common secret getters - these can be used by any service
-def get_database_url(service_name: str = "user_management") -> str:
+def get_database_url(service_name: str = "user") -> str:
     """
     Get the database URL for a specific service.
 
     Args:
-        service_name: The service name (e.g., 'user_management', 'chat_service')
+        service_name: The service name (e.g., 'user', 'chat_service')
     """
     secret_key = f"DB_URL_{service_name.upper()}"
     return get_secret(secret_key)

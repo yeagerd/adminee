@@ -173,13 +173,13 @@ class TestEmailNormalization:
 @pytest_asyncio.fixture(scope="function")
 async def db_setup(monkeypatch):
     db_fd, db_path = tempfile.mkstemp(suffix=".db")
-    os.environ["DB_URL_USER_MANAGEMENT"] = f"sqlite+aiosqlite:///{db_path}"
+    os.environ["DB_URL_USER"] = f"sqlite+aiosqlite:///{db_path}"
 
     # Patch the global _settings variable to include required API keys
     import services.user.settings as user_settings
 
     test_settings = user_settings.Settings(
-        db_url_user_management=f"sqlite+aiosqlite:///{db_path}",
+        db_url_user=f"sqlite+aiosqlite:///{db_path}",
         api_frontend_user_key="test-frontend-key",
         api_chat_user_key="test-chat-key",
         api_office_user_key="test-office-key",

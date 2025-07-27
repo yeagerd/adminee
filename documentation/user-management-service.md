@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `user-management-service` is a core backend microservice responsible for managing user profiles, preferences, OAuth integrations, and token storage for the Briefly application. It serves as the central authority for user data and provides secure token management for all external API integrations (Google, Microsoft). The service is built using Python, FastAPI, and Pydantic, following the same patterns as other services in the architecture.
+The `user-service` is a core backend microservice responsible for managing user profiles, preferences, OAuth integrations, and token storage for the Briefly application. It serves as the central authority for user data and provides secure token management for all external API integrations (Google, Microsoft). The service is built using Python, FastAPI, and Pydantic, following the same patterns as other services in the architecture.
 
 ---
 
@@ -119,7 +119,7 @@ The `user-management-service` is a core backend microservice responsible for man
 # Example: Office Service requesting user tokens
 async def get_user_token(user_id: str, provider: str, scopes: List[str]):
     response = await httpx.post(
-        f"{USER_MANAGEMENT_URL}/internal/tokens/get",
+        f"{USER_URL}/internal/tokens/get",
         json={
             "user_id": user_id,
             "provider": provider,
@@ -625,7 +625,7 @@ async def complete_oauth_flow(
 from celery import Celery
 from datetime import datetime, timedelta
 
-celery_app = Celery('user-management')
+celery_app = Celery('user')
 
 @celery_app.task
 async def refresh_expiring_tokens():

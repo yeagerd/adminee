@@ -124,7 +124,7 @@ def test_cov(session: nox.Session) -> None:
         "pytest",
         "services/user/tests/",
         "--cov=services/user",
-        "--cov-report=xml:coverage-user-management.xml",
+        "--cov-report=xml:coverage-user.xml",
         "-v",
     )
     session.run(

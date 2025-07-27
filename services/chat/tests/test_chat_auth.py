@@ -36,7 +36,7 @@ def patch_settings():
         api_frontend_chat_key="test-frontend-chat-key",
         api_chat_user_key="test-chat-user-key",
         api_chat_office_key="test-chat-office-key",
-        user_management_service_url="http://localhost:8001",
+        user_service_url="http://localhost:8001",
         office_service_url="http://localhost:8003",
     )
 

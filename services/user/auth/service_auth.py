@@ -7,7 +7,7 @@ Validates service API keys and manages service-level access control.
 **Terminology Clarification:**
 - api_key_name: The identifier/name for an API key (e.g., "api-frontend-user-key")
 - api_key_value: The actual secret value stored in environment variables (e.g., "test-FRONTEND-123...")
-- service_name: The service identifier (e.g., "user-management-access")
+- service_name: The service identifier (e.g., "user-access")
 """
 
 from typing import Any, Callable, Dict, List
@@ -36,7 +36,7 @@ logger = get_logger(__name__)
 API_KEY_CONFIGS: Dict[str, APIKeyConfig] = {
     "api_frontend_user_key": APIKeyConfig(
         client="frontend",
-        service="user-management-access",
+        service="user-access",
         permissions=[
             "read_users",
             "write_users",
@@ -49,7 +49,7 @@ API_KEY_CONFIGS: Dict[str, APIKeyConfig] = {
     ),
     "api_chat_user_key": APIKeyConfig(
         client="chat",
-        service="user-management-access",
+        service="user-access",
         permissions=[
             "read_users",
             "read_preferences",
@@ -58,7 +58,7 @@ API_KEY_CONFIGS: Dict[str, APIKeyConfig] = {
     ),
     "api_office_user_key": APIKeyConfig(
         client="office",
-        service="user-management-access",
+        service="user-access",
         permissions=[
             "read_users",
             "read_tokens",
@@ -68,7 +68,7 @@ API_KEY_CONFIGS: Dict[str, APIKeyConfig] = {
     ),
     "api_meetings_user_key": APIKeyConfig(
         client="meetings",
-        service="user-management-access",
+        service="user-access",
         permissions=[
             "read_users",
             "read_preferences",
@@ -79,7 +79,7 @@ API_KEY_CONFIGS: Dict[str, APIKeyConfig] = {
 
 # Service-level permissions fallback (optional, for legacy support)
 SERVICE_PERMISSIONS = {
-    "user-management-access": [
+    "user-access": [
         "read_users",
         "write_users",
         "read_tokens",

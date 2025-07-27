@@ -50,7 +50,7 @@ class TestInternalAPI(BaseUserManagementTest):
         with patch("services.user.settings.get_settings") as mock_settings:
             from services.user.settings import Settings
 
-            test_settings = Settings(db_url_user_management="sqlite:///:memory:")
+            test_settings = Settings(db_url_user="sqlite:///:memory:")
             test_settings.api_frontend_user_key = "test-frontend-key"
             test_settings.api_chat_user_key = "test-chat-key"
             test_settings.api_office_user_key = "test-office-key"

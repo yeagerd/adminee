@@ -25,7 +25,7 @@ class BaseMeetingsTest:
 
         # Optional environment variables with test defaults
         os.environ.setdefault("OFFICE_SERVICE_URL", "http://localhost:8003")
-        os.environ.setdefault("USER_MANAGEMENT_SERVICE_URL", "http://localhost:8001")
+        os.environ.setdefault("USER_SERVICE_URL", "http://localhost:8001")
         os.environ.setdefault("LOG_LEVEL", "INFO")
         os.environ.setdefault("LOG_FORMAT", "json")
 

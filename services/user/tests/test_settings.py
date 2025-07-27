@@ -34,7 +34,7 @@ class TestSettings:
         with patch.dict(
             os.environ,
             {
-                "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
+                "DB_URL_USER": "postgresql://postgres:postgres@localhost:5432/briefly",
                 "API_FRONTEND_USER_KEY": "test-frontend-key",
                 "API_CHAT_USER_KEY": "test-chat-key",
                 "API_OFFICE_USER_KEY": "test-office-key",
@@ -45,14 +45,14 @@ class TestSettings:
             settings = _TestableSettings()
 
             # Test default values
-            assert settings.service_name == "user-management"
+            assert settings.service_name == "user"
             assert settings.host == "0.0.0.0"
             assert settings.port == 8001
             assert settings.debug is False
             assert settings.log_level == "INFO"
             assert settings.log_format == "json"
             assert (
-                settings.db_url_user_management
+                settings.db_url_user
                 == "postgresql://postgres:postgres@localhost:5432/briefly"
             )
             assert settings.redis_url == "redis://localhost:6379"
@@ -71,7 +71,7 @@ class TestSettings:
                 "PORT": "9000",
                 "DEBUG": "true",
                 "LOG_LEVEL": "DEBUG",
-                "DB_URL_USER_MANAGEMENT": "postgresql://test:test@testhost:5432/testdb",
+                "DB_URL_USER": "postgresql://test:test@testhost:5432/testdb",
                 "API_FRONTEND_USER_KEY": "test-frontend-key",
                 "API_CHAT_USER_KEY": "test-chat-key",
                 "API_OFFICE_USER_KEY": "test-office-key",
@@ -87,7 +87,7 @@ class TestSettings:
             assert settings.debug is True
             assert settings.log_level == "DEBUG"
             assert (
-                settings.db_url_user_management
+                settings.db_url_user
                 == "postgresql://test:test@testhost:5432/testdb"
             )
             assert settings.api_frontend_user_key == "test-frontend-key"
@@ -100,7 +100,7 @@ class TestSettings:
         with patch.dict(
             os.environ,
             {
-                "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
+                "DB_URL_USER": "postgresql://postgres:postgres@localhost:5432/briefly",
                 "API_FRONTEND_USER_KEY": "test-frontend-key",
                 "API_CHAT_USER_KEY": "test-chat-key",
                 "API_OFFICE_USER_KEY": "test-office-key",
@@ -122,7 +122,7 @@ class TestSettings:
         with patch.dict(
             os.environ,
             {
-                "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
+                "DB_URL_USER": "postgresql://postgres:postgres@localhost:5432/briefly",
                 "API_FRONTEND_USER_KEY": "test-frontend-key",
                 "API_CHAT_USER_KEY": "test-chat-key",
                 "API_OFFICE_USER_KEY": "test-office-key",
@@ -146,7 +146,7 @@ class TestSettings:
         with patch.dict(
             os.environ,
             {
-                "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
+                "DB_URL_USER": "postgresql://postgres:postgres@localhost:5432/briefly",
                 "API_FRONTEND_USER_KEY": "test-frontend-key",
                 "API_CHAT_USER_KEY": "test-chat-key",
                 "API_OFFICE_USER_KEY": "test-office-key",
@@ -169,7 +169,7 @@ class TestSettings:
         with patch.dict(
             os.environ,
             {
-                "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly"
+                "DB_URL_USER": "postgresql://postgres:postgres@localhost:5432/briefly"
             },
             clear=True,
         ):
@@ -181,7 +181,7 @@ class TestSettings:
         with patch.dict(
             os.environ,
             {
-                "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
+                "DB_URL_USER": "postgresql://postgres:postgres@localhost:5432/briefly",
                 "API_FRONTEND_USER_KEY": "test-frontend-key",
                 "API_CHAT_USER_KEY": "test-chat-key",
                 "API_OFFICE_USER_KEY": "test-office-key",
@@ -202,7 +202,7 @@ class TestSettings:
         with patch.dict(
             os.environ,
             {
-                "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
+                "DB_URL_USER": "postgresql://postgres:postgres@localhost:5432/briefly",
                 "API_FRONTEND_USER_KEY": "test-frontend-key",
                 "API_CHAT_USER_KEY": "test-chat-key",
                 "API_OFFICE_USER_KEY": "test-office-key",
@@ -223,7 +223,7 @@ class TestSettings:
         with patch.dict(
             os.environ,
             {
-                "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
+                "DB_URL_USER": "postgresql://postgres:postgres@localhost:5432/briefly",
                 "API_FRONTEND_USER_KEY": "test-frontend-key",
                 "API_CHAT_USER_KEY": "test-chat-key",
                 "API_OFFICE_USER_KEY": "test-office-key",
@@ -256,7 +256,7 @@ class TestSettings:
             with patch.dict(
                 os.environ,
                 {
-                    "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
+                    "DB_URL_USER": "postgresql://postgres:postgres@localhost:5432/briefly",
                     "API_FRONTEND_USER_KEY": "test-frontend-key",
                     "API_CHAT_USER_KEY": "test-chat-key",
                     "API_OFFICE_USER_KEY": "test-office-key",
@@ -273,7 +273,7 @@ class TestSettings:
         with patch.dict(
             os.environ,
             {
-                "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
+                "DB_URL_USER": "postgresql://postgres:postgres@localhost:5432/briefly",
                 "API_FRONTEND_USER_KEY": "test-frontend-key",
                 "API_CHAT_USER_KEY": "test-chat-key",
                 "API_OFFICE_USER_KEY": "test-office-key",
@@ -291,7 +291,7 @@ class TestSettings:
         with patch.dict(
             os.environ,
             {
-                "DB_URL_USER_MANAGEMENT": "postgresql://postgres:postgres@localhost:5432/briefly",
+                "DB_URL_USER": "postgresql://postgres:postgres@localhost:5432/briefly",
                 "API_FRONTEND_USER_KEY": "test-frontend-key",
                 "API_CHAT_USER_KEY": "test-chat-key",
                 "API_OFFICE_USER_KEY": "test-office-key",
