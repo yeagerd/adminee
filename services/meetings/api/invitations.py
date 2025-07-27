@@ -139,6 +139,17 @@ async def send_invitations(
             )
 
             body = "\n".join(body_lines)
+
+            # Add participant list if reveal_participants is enabled
+            if poll.reveal_participants:
+                body += "\n\nOther participants:\n"
+                for other_participant in participants:
+                    if (
+                        other_participant.id != participant.id
+                    ):  # Don't include the current participant
+                        name = getattr(other_participant, "name", None) or "Unknown"
+                        email = getattr(other_participant, "email", "")
+                        body += f"- {name} ({email})\n"
             try:
                 await email_integration.send_invitation_email(
                     getattr(participant, "email"), subject, body, user_id  # type: ignore[arg-type]
