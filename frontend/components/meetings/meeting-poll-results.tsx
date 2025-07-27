@@ -380,7 +380,7 @@ export function MeetingPollResults({ pollId }: MeetingPollResultsProps) {
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
-                                                                onClick={() => handleResendEmail(participant.id, participant.email)}
+                                                                onClick={() => handleResendEmail(participant.id)}
                                                                 disabled={resendingEmails.has(participant.id)}
                                                                 className="flex items-center gap-1"
                                                             >
