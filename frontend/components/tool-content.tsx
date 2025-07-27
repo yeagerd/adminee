@@ -91,8 +91,10 @@ export function ToolContent() {
             console.log('Calendar API response:', response);
             if (response.success && response.data) {
                 console.log('Calendar events data:', response.data);
-                console.log('Events array:', response.data.events);
-                setCalendarEvents(response.data.events || []);
+                // The backend returns events array directly in data, not nested under data.events
+                const events = Array.isArray(response.data) ? response.data : [];
+                console.log('Events array:', events);
+                setCalendarEvents(events);
             } else {
                 console.error('Calendar API failed:', response);
                 setCalendarError('Failed to fetch calendar events');
