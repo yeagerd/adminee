@@ -77,7 +77,9 @@ export function ToolContent() {
                 effectiveTimezone // Pass the effective timezone
             );
             if (response.success && response.data) {
-                setCalendarEvents(response.data.events || []);
+                // The backend returns events array directly in data, not nested under data.events
+                const events = Array.isArray(response.data) ? response.data : [];
+                setCalendarEvents(events);
             } else {
                 setCalendarError('Failed to fetch calendar events');
             }
