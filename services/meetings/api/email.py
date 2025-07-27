@@ -1,7 +1,7 @@
 import datetime
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel
 
 from services.common.api_key_auth import (
@@ -33,6 +33,20 @@ API_KEY_CONFIGS = {
         settings_key="api_email_sync_meetings_key",
     ),
 }
+
+
+def verify_api_key_auth(request: Request) -> str:
+    """
+    Verify API key authentication and return the service name.
+    """
+    api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
+    api_key = get_api_key_from_request(request)
+    if not api_key or not verify_api_key(api_key, api_key_mapping):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing API key",
+        )
+    return "email_sync"
 
 
 class EmailResponseRequest(BaseModel):
@@ -67,14 +81,11 @@ def parse_email_content(content: str) -> EmailContentParseResult:
 
 
 @router.post("/")
-def process_email_response(req: EmailResponseRequest, request: Request) -> Response:
-    api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-    api_key = get_api_key_from_request(request)
-    if not api_key or not verify_api_key(api_key, api_key_mapping):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or missing API key",
-        )
+def process_email_response(
+    req: EmailResponseRequest,
+    request: Request,
+    service_name: str = Depends(verify_api_key_auth),
+) -> Response:
 
     # Parse email content
     parsed = parse_email_content(req.content)

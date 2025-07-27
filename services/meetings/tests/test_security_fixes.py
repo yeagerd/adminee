@@ -64,7 +64,9 @@ class TestSecurityFixes(BaseMeetingsTest):
 
         # Create poll
         resp = client.post(
-            "/api/v1/meetings/polls/", json=poll_payload, headers={"X-User-Id": user_id}
+            "/api/v1/meetings/polls/",
+            json=poll_payload,
+            headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
@@ -80,7 +82,7 @@ class TestSecurityFixes(BaseMeetingsTest):
         resp = client.post(
             f"/api/v1/meetings/polls/{poll_id}/slots/",
             json=slot_payload,
-            headers={"X-User-Id": user_id},
+            headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 200, resp.text
 
@@ -93,7 +95,7 @@ class TestSecurityFixes(BaseMeetingsTest):
         resp = client.post(
             "/api/v1/meetings/polls/",
             json=poll_payload,
-            headers={"X-User-Id": user_id_1},
+            headers={"X-User-Id": user_id_1, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
@@ -109,7 +111,7 @@ class TestSecurityFixes(BaseMeetingsTest):
         resp = client.post(
             f"/api/v1/meetings/polls/{poll_id}/slots/",
             json=slot_payload,
-            headers={"X-User-Id": user_id_2},
+            headers={"X-User-Id": user_id_2, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 403, resp.text
         assert "Not authorized to modify this poll" in resp.text
@@ -120,7 +122,9 @@ class TestSecurityFixes(BaseMeetingsTest):
 
         # Create poll
         resp = client.post(
-            "/api/v1/meetings/polls/", json=poll_payload, headers={"X-User-Id": user_id}
+            "/api/v1/meetings/polls/",
+            json=poll_payload,
+            headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
@@ -137,7 +141,7 @@ class TestSecurityFixes(BaseMeetingsTest):
         resp = client.put(
             f"/api/v1/meetings/polls/{poll_id}/slots/{slot_id}",
             json=slot_payload,
-            headers={"X-User-Id": user_id},
+            headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 200, resp.text
 
@@ -150,7 +154,7 @@ class TestSecurityFixes(BaseMeetingsTest):
         resp = client.post(
             "/api/v1/meetings/polls/",
             json=poll_payload,
-            headers={"X-User-Id": user_id_1},
+            headers={"X-User-Id": user_id_1, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
@@ -167,7 +171,7 @@ class TestSecurityFixes(BaseMeetingsTest):
         resp = client.put(
             f"/api/v1/meetings/polls/{poll_id}/slots/{slot_id}",
             json=slot_payload,
-            headers={"X-User-Id": user_id_2},
+            headers={"X-User-Id": user_id_2, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 403, resp.text
         assert "Not authorized to modify this poll" in resp.text
@@ -178,7 +182,9 @@ class TestSecurityFixes(BaseMeetingsTest):
 
         # Create poll
         resp = client.post(
-            "/api/v1/meetings/polls/", json=poll_payload, headers={"X-User-Id": user_id}
+            "/api/v1/meetings/polls/",
+            json=poll_payload,
+            headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
@@ -188,7 +194,7 @@ class TestSecurityFixes(BaseMeetingsTest):
         # Delete time slot
         resp = client.delete(
             f"/api/v1/meetings/polls/{poll_id}/slots/{slot_id}",
-            headers={"X-User-Id": user_id},
+            headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 200, resp.text
 
@@ -201,7 +207,7 @@ class TestSecurityFixes(BaseMeetingsTest):
         resp = client.post(
             "/api/v1/meetings/polls/",
             json=poll_payload,
-            headers={"X-User-Id": user_id_1},
+            headers={"X-User-Id": user_id_1, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
@@ -211,7 +217,7 @@ class TestSecurityFixes(BaseMeetingsTest):
         # Try to delete time slot with user 2
         resp = client.delete(
             f"/api/v1/meetings/polls/{poll_id}/slots/{slot_id}",
-            headers={"X-User-Id": user_id_2},
+            headers={"X-User-Id": user_id_2, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 403, resp.text
         assert "Not authorized to modify this poll" in resp.text
@@ -222,7 +228,9 @@ class TestSecurityFixes(BaseMeetingsTest):
 
         # Create poll
         resp = client.post(
-            "/api/v1/meetings/polls/", json=poll_payload, headers={"X-User-Id": user_id}
+            "/api/v1/meetings/polls/",
+            json=poll_payload,
+            headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
@@ -231,7 +239,7 @@ class TestSecurityFixes(BaseMeetingsTest):
         # Send invitations
         resp = client.post(
             f"/api/v1/meetings/polls/{poll_id}/send-invitations/",
-            headers={"X-User-Id": user_id},
+            headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
         )
         # Should succeed (though email sending might fail in test environment)
         assert resp.status_code in [200, 400], resp.text
@@ -245,7 +253,7 @@ class TestSecurityFixes(BaseMeetingsTest):
         resp = client.post(
             "/api/v1/meetings/polls/",
             json=poll_payload,
-            headers={"X-User-Id": user_id_1},
+            headers={"X-User-Id": user_id_1, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
@@ -254,7 +262,7 @@ class TestSecurityFixes(BaseMeetingsTest):
         # Try to send invitations with user 2
         resp = client.post(
             f"/api/v1/meetings/polls/{poll_id}/send-invitations/",
-            headers={"X-User-Id": user_id_2},
+            headers={"X-User-Id": user_id_2, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 403, resp.text
         assert "Not authorized to send invitations for this poll" in resp.text
@@ -265,7 +273,9 @@ class TestSecurityFixes(BaseMeetingsTest):
 
         # Create poll
         resp = client.post(
-            "/api/v1/meetings/polls/", json=poll_payload, headers={"X-User-Id": user_id}
+            "/api/v1/meetings/polls/",
+            json=poll_payload,
+            headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
@@ -281,6 +291,7 @@ class TestSecurityFixes(BaseMeetingsTest):
         resp = client.post(
             f"/api/v1/meetings/polls/{poll_id}/slots/",
             json=slot_payload,
+            headers={"X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 400, resp.text
         assert "Missing X-User-Id header" in resp.text
@@ -291,13 +302,18 @@ class TestSecurityFixes(BaseMeetingsTest):
 
         # Create poll
         resp = client.post(
-            "/api/v1/meetings/polls/", json=poll_payload, headers={"X-User-Id": user_id}
+            "/api/v1/meetings/polls/",
+            json=poll_payload,
+            headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
         poll_id = data["id"]
 
         # Try to send invitations without user ID header
-        resp = client.post(f"/api/v1/meetings/polls/{poll_id}/send-invitations/")
+        resp = client.post(
+            f"/api/v1/meetings/polls/{poll_id}/send-invitations/",
+            headers={"X-API-Key": "test-frontend-meetings-key"},
+        )
         assert resp.status_code == 400, resp.text
         assert "Missing X-User-Id header" in resp.text
