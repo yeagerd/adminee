@@ -38,14 +38,17 @@ class Settings(BaseSettings):
     api_frontend_chat_key: Optional[str] = Field(
         ...,
         description="Frontend API key to access this Chat service",
+        validation_alias=AliasChoices("API_FRONTEND_CHAT_KEY"),
     )
     api_chat_user_key: Optional[str] = Field(
         ...,
         description="Chat service API key to call User Management service",
+        validation_alias=AliasChoices("API_CHAT_USER_KEY"),
     )
     api_chat_office_key: Optional[str] = Field(
         ...,
         description="Chat service API key to call Office service",
+        validation_alias=AliasChoices("API_CHAT_OFFICE_KEY"),
     )
 
     # Service URLs
