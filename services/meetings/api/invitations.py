@@ -75,6 +75,7 @@ async def send_invitations(
             response_url = f"{frontend_url}/public/meetings/respond/{getattr(participant, 'response_token')}"
             subject = f"You're invited: {poll.title}"
             description = getattr(poll, "description", "") or ""
+            location = getattr(poll, "location", "") or ""
 
             # Build email body with location and time slots
             body_lines = [
@@ -83,20 +84,11 @@ async def send_invitations(
             ]
 
             if description:
-                body_lines.extend([description, ""])
+                body_lines.extend([f"description: {description}", ""])
 
             # Add location if available
-            location = getattr(poll, "location", "") or ""
             if location:
                 body_lines.extend([f"Location: {location}", ""])
-
-            # Add time slots with response options
-            body_lines.append("Available time slots:")
-            for i, slot in enumerate(poll.time_slots, 1):
-                start_time = slot.start_time.strftime("%A, %B %d, %Y at %I:%M %p")
-                end_time = slot.end_time.strftime("%I:%M %p")
-                timezone = slot.timezone
-                body_lines.append(f"{i}. {start_time} - {end_time} ({timezone})")
 
             body_lines.extend(
                 [
@@ -104,36 +96,58 @@ async def send_invitations(
                     "To respond via web:",
                     f"{response_url}",
                     "",
-                    "To respond via email, reply to this message with your availability for each time slot:",
+                    "To respond via email, reply to this message by moving the time slots under the appropriate headings:",
                     "",
                     "=== EMAIL RESPONSE TEMPLATE ===",
-                    "Copy and paste the headings below, then add your response (available/unavailable/maybe) after each:",
+                    "",
+                    "I'm AVAILABLE:",
+                    "",
+                    "I'm UNAVAILABLE:",
+                    "",
+                    "I'm MAYBE:",
+                    "",
                 ]
             )
 
-            # Add response template for each slot
+            # Add time slots for users to move under headings
             for i, slot in enumerate(poll.time_slots, 1):
                 start_time = slot.start_time.strftime("%A, %B %d, %Y at %I:%M %p")
                 end_time = slot.end_time.strftime("%I:%M %p")
                 timezone = slot.timezone
-                body_lines.append(
-                    f"SLOT_{i}: {start_time} - {end_time} ({timezone}) - [available/unavailable/maybe]"
-                )
+                body_lines.append(f"SLOT_{i}: {start_time} - {end_time} ({timezone})")
 
             body_lines.extend(
                 [
                     "",
-                    "Example:",
-                    "SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available",
-                    "SLOT_2: Tuesday, January 16, 2024 at 10:00 AM - 11:00 AM (UTC) - unavailable",
+                    "Need help?  Here's an example:",
+                    "I'm AVAILABLE:",
+                    "SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC)",
+                    "SLOT_3: Wednesday, January 17, 2024 at 1:00 PM - 2:00 PM (UTC) - I prefer this time slot",
                     "",
-                    "You can also add optional comments after your response:",
-                    "SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available - I prefer this time slot",
+                    "I'm UNAVAILABLE:",
+                    "SLOT_2: Tuesday, January 16, 2024 at 10:00 AM - 11:00 AM (UTC)",
+                    "",
+                    "I'm MAYBE:",
+                    "SLOT_4: Thursday, January 18, 2024 at 3:00 PM - 4:00 PM (UTC) - I'll try to make this work",
+                    "",
+                    "You can add optional comments after any time slot using a dash:",
+                    "SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - I prefer this time slot",
                     "=== END TEMPLATE ===",
                 ]
             )
 
             body = "\n".join(body_lines)
+
+            # Add participant list if reveal_participants is enabled
+            if poll.reveal_participants:
+                body += "\n\nOther participants:\n"
+                for other_participant in participants:
+                    if (
+                        other_participant.id != participant.id
+                    ):  # Don't include the current participant
+                        name = getattr(other_participant, "name", None) or "Unknown"
+                        email = getattr(other_participant, "email", "")
+                        body += f"- {name} ({email})\n"
 
             try:
                 await email_integration.send_invitation_email(

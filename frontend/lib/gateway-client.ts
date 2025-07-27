@@ -447,6 +447,7 @@ export interface MeetingPoll {
     response_deadline?: string;
     min_participants?: number;
     max_participants?: number;
+    reveal_participants?: boolean;
     status: string;
     created_at: string;
     updated_at: string;
@@ -494,6 +495,7 @@ export interface MeetingPollCreate {
     response_deadline?: string;
     min_participants?: number;
     max_participants?: number;
+    reveal_participants?: boolean;
     time_slots: TimeSlotCreate[];
     participants: PollParticipantCreate[];
 }
