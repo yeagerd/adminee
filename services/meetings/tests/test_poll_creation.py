@@ -61,7 +61,9 @@ class TestPollCreation(BaseMeetingsTest):
     def test_create_poll_sets_user_id(self, poll_payload):
         user_id = str(uuid4())
         resp = client.post(
-            "/api/v1/meetings/polls/", json=poll_payload, headers={"X-User-Id": user_id}
+            "/api/v1/meetings/polls/",
+            json=poll_payload,
+            headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
@@ -70,7 +72,11 @@ class TestPollCreation(BaseMeetingsTest):
         assert data["participants"][0]["email"] == "alice@example.com"
 
     def test_create_poll_missing_user_id_returns_400(self, poll_payload):
-        resp = client.post("/api/v1/meetings/polls/", json=poll_payload)
+        resp = client.post(
+            "/api/v1/meetings/polls/",
+            json=poll_payload,
+            headers={"X-API-Key": "test-frontend-meetings-key"},
+        )
         assert resp.status_code == 400
         assert "Missing X-User-Id header" in resp.text
 
@@ -78,7 +84,9 @@ class TestPollCreation(BaseMeetingsTest):
         user_id = str(uuid4())
         # Create poll
         resp = client.post(
-            "/api/v1/meetings/polls/", json=poll_payload, headers={"X-User-Id": user_id}
+            "/api/v1/meetings/polls/",
+            json=poll_payload,
+            headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
@@ -106,7 +114,9 @@ class TestPollCreation(BaseMeetingsTest):
         user_id = str(uuid4())
         # Create poll
         resp = client.post(
-            "/api/v1/meetings/polls/", json=poll_payload, headers={"X-User-Id": user_id}
+            "/api/v1/meetings/polls/",
+            json=poll_payload,
+            headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp.status_code == 200, resp.text
         data = resp.json()
@@ -132,7 +142,8 @@ class TestPollCreation(BaseMeetingsTest):
 
         # Get the poll and verify responses are included
         resp3 = client.get(
-            f"/api/v1/meetings/polls/{poll_id}", headers={"X-User-Id": user_id}
+            f"/api/v1/meetings/polls/{poll_id}",
+            headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
         )
         assert resp3.status_code == 200, resp3.text
         poll_data = resp3.json()

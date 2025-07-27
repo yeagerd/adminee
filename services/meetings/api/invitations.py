@@ -1,20 +1,53 @@
 import os
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
+from services.common.api_key_auth import (
+    APIKeyConfig,
+    build_api_key_mapping,
+    get_api_key_from_request,
+    verify_api_key,
+)
 from services.meetings.api.polls import get_user_id_from_request
 from services.meetings.models import MeetingPoll as MeetingPollModel
 from services.meetings.models import PollParticipant as PollParticipantModel
 from services.meetings.models import get_session
 from services.meetings.models.meeting import ParticipantStatus
 from services.meetings.services import email_integration
+from services.meetings.settings import get_settings
 
 router = APIRouter()
 
+# API Key configurations
+API_KEY_CONFIGS = {
+    "frontend": APIKeyConfig(
+        client="frontend",
+        service="meetings",
+        permissions=["meetings:read", "meetings:write", "meetings:send_invitations"],
+        settings_key="api_frontend_meetings_key",
+    ),
+}
+
+
+def verify_api_key_auth(request: Request) -> str:
+    """
+    Verify API key authentication and return the service name.
+    """
+    api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
+    api_key = get_api_key_from_request(request)
+    if not api_key or not verify_api_key(api_key, api_key_mapping):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or missing API key",
+        )
+    return "frontend"
+
 
 @router.post("/")
-async def send_invitations(poll_id: UUID, request: Request) -> dict:
+async def send_invitations(
+    poll_id: UUID, request: Request, service_name: str = Depends(verify_api_key_auth)
+) -> dict:
     user_id = get_user_id_from_request(request)
 
     with get_session() as session:
@@ -41,7 +74,8 @@ async def send_invitations(poll_id: UUID, request: Request) -> dict:
         for participant in participants:
             response_url = f"{frontend_url}/public/meetings/respond/{getattr(participant, 'response_token')}"
             subject = f"You're invited: {poll.title}"
-            body = f"You have been invited to respond to a meeting poll: {poll.title}\n\n{poll.description or ''}\n\nRespond here: {response_url}"
+            description = getattr(poll, "description", "") or ""
+            body = f"You have been invited to respond to a meeting poll: {poll.title}\n\n{description}\n\nRespond here: {response_url}"
 
             try:
                 await email_integration.send_invitation_email(
