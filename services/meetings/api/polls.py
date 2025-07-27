@@ -26,7 +26,16 @@ def get_user_id_from_request(request: Request) -> str:
     The meetings service expects user identity via X-User-Id header.
     """
     user_id_str = request.headers.get("X-User-Id")
+    logger.info(
+        "Extracting user ID from request headers",
+        x_user_id_header=user_id_str,
+        all_headers=dict(request.headers),
+    )
     if not user_id_str:
+        logger.error(
+            "Missing X-User-Id header in request",
+            available_headers=list(request.headers.keys()),
+        )
         raise HTTPException(status_code=400, detail="Missing X-User-Id header")
     return user_id_str
 
@@ -36,6 +45,13 @@ def get_user_id_from_request(request: Request) -> str:
 def list_polls() -> List[MeetingPoll]:
     with get_session() as session:
         polls = session.query(MeetingPollModel).all()
+        logger.info(
+            "Listing all polls",
+            total_polls=len(polls),
+            poll_ids=[str(p.id) for p in polls],
+            poll_titles=[getattr(p, "title", "unknown") for p in polls],
+            poll_user_ids=[str(p.user_id) for p in polls],
+        )
         validated_polls = []
         for p in polls:
             try:
@@ -59,7 +75,22 @@ def get_poll(poll_id: UUID) -> MeetingPoll:
     with get_session() as session:
         poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
         if not poll:
+            logger.warning(
+                "Poll not found for retrieval",
+                poll_id=str(poll_id),
+            )
             raise HTTPException(status_code=404, detail="Poll not found")
+
+        logger.info(
+            "Retrieved poll",
+            poll_id=str(poll_id),
+            poll_title=getattr(poll, "title", "unknown"),
+            poll_user_id=str(poll.user_id),
+            poll_user_id_type=type(poll.user_id).__name__,
+            poll_user_id_repr=repr(poll.user_id),
+            poll_user_id_length=len(str(poll.user_id)),
+        )
+
         try:
             return MeetingPoll.model_validate(poll)
         except Exception as e:
@@ -78,6 +109,13 @@ def get_poll(poll_id: UUID) -> MeetingPoll:
 @router.post("", response_model=MeetingPoll)
 def create_poll(poll: MeetingPollCreate, request: Request) -> MeetingPoll:
     user_id = get_user_id_from_request(request)
+    logger.info(
+        "Creating new poll",
+        request_user_id=user_id,
+        request_user_id_type=type(user_id).__name__,
+        poll_title=poll.title,
+    )
+
     with get_session() as session:
         poll_token = uuid4().hex
         db_poll = MeetingPollModel(
@@ -118,6 +156,15 @@ def create_poll(poll: MeetingPollCreate, request: Request) -> MeetingPoll:
             session.add(db_part)
         session.commit()
         session.refresh(db_poll)
+
+        logger.info(
+            "Poll created successfully",
+            poll_id=str(db_poll.id),
+            stored_user_id=str(db_poll.user_id),
+            stored_user_id_type=type(db_poll.user_id).__name__,
+            poll_title=db_poll.title,
+        )
+
         return MeetingPoll.model_validate(db_poll)
 
 
@@ -126,12 +173,48 @@ def update_poll(
     poll_id: UUID, poll: MeetingPollUpdate, request: Request
 ) -> MeetingPoll:
     user_id = get_user_id_from_request(request)
+    logger.info(
+        "Update poll request",
+        poll_id=str(poll_id),
+        request_user_id=user_id,
+        request_user_id_type=type(user_id).__name__,
+    )
+
     with get_session() as session:
         db_poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
         if not db_poll:
+            logger.warning(
+                "Poll not found for update",
+                poll_id=str(poll_id),
+                request_user_id=user_id,
+            )
             raise HTTPException(status_code=404, detail="Poll not found")
+
+        # Log poll ownership details for debugging
+        logger.info(
+            "Poll ownership check for update",
+            poll_id=str(poll_id),
+            poll_user_id=str(db_poll.user_id),
+            poll_user_id_type=type(db_poll.user_id).__name__,
+            poll_user_id_repr=repr(db_poll.user_id),
+            poll_user_id_length=len(str(db_poll.user_id)),
+            request_user_id=user_id,
+            request_user_id_type=type(user_id).__name__,
+            request_user_id_repr=repr(user_id),
+            request_user_id_length=len(str(user_id)),
+            user_ids_equal=str(db_poll.user_id) == str(user_id),
+            poll_title=getattr(db_poll, "title", "unknown"),
+        )
+
         # Ownership check: only the poll creator can update
         if str(db_poll.user_id) != str(user_id):
+            logger.warning(
+                "Authorization failed for poll update",
+                poll_id=str(poll_id),
+                poll_user_id=str(db_poll.user_id),
+                request_user_id=user_id,
+                poll_title=getattr(db_poll, "title", "unknown"),
+            )
             raise HTTPException(
                 status_code=403, detail="Not authorized to update this poll"
             )
@@ -163,18 +246,82 @@ def update_poll(
 @router.delete("/{poll_id}")
 def delete_poll(poll_id: UUID, request: Request) -> dict:
     user_id = get_user_id_from_request(request)
+    logger.info(
+        "Delete poll request",
+        poll_id=str(poll_id),
+        request_user_id=user_id,
+        request_user_id_type=type(user_id).__name__,
+    )
+
+    with get_session() as session:
+        db_poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
+        if not db_poll:
+            logger.warning(
+                "Poll not found for deletion",
+                poll_id=str(poll_id),
+                request_user_id=user_id,
+            )
+            raise HTTPException(status_code=404, detail="Poll not found")
+
+        # Log poll ownership details for debugging
+        logger.info(
+            "Poll ownership check",
+            poll_id=str(poll_id),
+            poll_user_id=str(db_poll.user_id),
+            poll_user_id_type=type(db_poll.user_id).__name__,
+            poll_user_id_repr=repr(db_poll.user_id),
+            poll_user_id_length=len(str(db_poll.user_id)),
+            request_user_id=user_id,
+            request_user_id_type=type(user_id).__name__,
+            request_user_id_repr=repr(user_id),
+            request_user_id_length=len(str(user_id)),
+            user_ids_equal=str(db_poll.user_id) == str(user_id),
+            poll_title=getattr(db_poll, "title", "unknown"),
+        )
+
+        # Ownership check: only the poll creator can delete
+        if str(db_poll.user_id) != str(user_id):
+            logger.warning(
+                "Authorization failed for poll deletion",
+                poll_id=str(poll_id),
+                poll_user_id=str(db_poll.user_id),
+                request_user_id=user_id,
+                poll_title=getattr(db_poll, "title", "unknown"),
+            )
+            raise HTTPException(
+                status_code=403, detail="Not authorized to delete this poll"
+            )
+
+        logger.info(
+            "Poll deletion authorized, proceeding",
+            poll_id=str(poll_id),
+            poll_title=getattr(db_poll, "title", "unknown"),
+            user_id=user_id,
+        )
+
+        session.delete(db_poll)
+        session.commit()
+        return {"ok": True}
+
+
+@router.get("/{poll_id}/debug")
+def debug_poll(poll_id: UUID) -> dict:
+    """Debug endpoint to inspect poll details without authorization."""
     with get_session() as session:
         db_poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
         if not db_poll:
             raise HTTPException(status_code=404, detail="Poll not found")
-        # Ownership check: only the poll creator can delete
-        if str(db_poll.user_id) != str(user_id):
-            raise HTTPException(
-                status_code=403, detail="Not authorized to delete this poll"
-            )
-        session.delete(db_poll)
-        session.commit()
-        return {"ok": True}
+
+        return {
+            "poll_id": str(db_poll.id),
+            "user_id": str(db_poll.user_id),
+            "user_id_type": type(db_poll.user_id).__name__,
+            "user_id_repr": repr(db_poll.user_id),
+            "user_id_length": len(str(db_poll.user_id)),
+            "title": getattr(db_poll, "title", "unknown"),
+            "created_at": str(getattr(db_poll, "created_at", "unknown")),
+            "updated_at": str(getattr(db_poll, "updated_at", "unknown")),
+        }
 
 
 @router.get("/{poll_id}/suggest-slots")
