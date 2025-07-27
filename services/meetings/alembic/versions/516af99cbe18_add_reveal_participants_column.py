@@ -16,7 +16,7 @@ branch_labels = None
 depends_on = None
 
 
-def upgrade():
+def upgrade() -> None:
     # Add reveal_participants column to meeting_polls table
     op.add_column(
         "meeting_polls",
@@ -26,6 +26,6 @@ def upgrade():
     )
 
 
-def downgrade():
+def downgrade() -> None:
     # Remove reveal_participants column from meeting_polls table
     op.drop_column("meeting_polls", "reveal_participants")
