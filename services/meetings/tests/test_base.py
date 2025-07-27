@@ -9,7 +9,6 @@ import os
 import tempfile
 
 
-
 class BaseMeetingsTest:
     """Base class for all Meetings Service tests."""
 
