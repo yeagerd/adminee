@@ -41,9 +41,7 @@ def get_poll_by_response_token(response_token: str) -> dict:
         # Convert to the format expected by frontend
         responses = []
         for resp in existing_responses:
-            comment_value = ""
-            if resp.comment is not None:
-                comment_value = resp.comment
+            comment_value = str(resp.comment) if resp.comment is not None else ""
             responses.append(
                 {
                     "time_slot_id": str(resp.time_slot_id),
