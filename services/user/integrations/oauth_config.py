@@ -310,6 +310,11 @@ class OAuthConfig:
                 sensitive=True,
             ),
             OAuthScope(
+                name="https://graph.microsoft.com/Mail.Send",
+                description="Send email messages",
+                sensitive=True,
+            ),
+            OAuthScope(
                 name="https://graph.microsoft.com/Calendars.ReadWrite",
                 description="Read and create calendar events",
                 sensitive=True,
@@ -347,6 +352,7 @@ class OAuthConfig:
                 "https://graph.microsoft.com/User.Read",
                 "https://graph.microsoft.com/Calendars.ReadWrite",
                 "https://graph.microsoft.com/Mail.ReadWrite",
+                "https://graph.microsoft.com/Mail.Send",
                 "https://graph.microsoft.com/Files.ReadWrite",
                 "https://graph.microsoft.com/Contacts.ReadWrite",
             ],
