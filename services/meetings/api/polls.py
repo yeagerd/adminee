@@ -96,7 +96,6 @@ def get_poll(poll_id: UUID) -> MeetingPoll:
         from services.meetings.schemas import PollResponse as PollResponseSchema
 
         responses = session.query(PollResponseModel).filter_by(poll_id=poll_id).all()
-
         try:
             # Create a poll object with responses included
             poll_data = MeetingPoll.model_validate(poll)
