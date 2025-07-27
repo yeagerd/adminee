@@ -100,19 +100,6 @@ export default function PollResponsePage() {
         });
     };
 
-    const formatDateTime = (dateTimeStr: string) => {
-        const date = new Date(dateTimeStr);
-        return date.toLocaleString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            timeZoneName: 'short'
-        });
-    };
-
     const formatDateTimeWithRange = (startTime: string, endTime: string) => {
         const start = new Date(startTime);
         const end = new Date(endTime);
@@ -146,32 +133,6 @@ export default function PollResponsePage() {
         }).formatToParts(new Date()).find(part => part.type === 'timeZoneName')?.value || '';
 
         return `${dateFormatted}, ${startFormatted} - ${endFormatted} ${timezoneAbbr}`;
-    };
-
-    const formatTimeRange = (startTime: string, endTime: string) => {
-        const start = new Date(startTime);
-        const end = new Date(endTime);
-
-        const startFormatted = start.toLocaleString('en-US', {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
-        });
-
-        const endFormatted = end.toLocaleString('en-US', {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
-        });
-
-        // Get timezone abbreviation - more reliable method
-        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        const timezoneAbbr = new Intl.DateTimeFormat('en-US', {
-            timeZone: timezone,
-            timeZoneName: 'short'
-        }).formatToParts(new Date()).find(part => part.type === 'timeZoneName')?.value || '';
-
-        return `${startFormatted} - ${endFormatted} ${timezoneAbbr}`;
     };
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
