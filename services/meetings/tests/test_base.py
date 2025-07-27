@@ -8,12 +8,17 @@ including required environment variables and database setup.
 import os
 import tempfile
 
+from services.common.test_utils import BaseSelectiveHTTPIntegrationTest
 
-class BaseMeetingsTest:
-    """Base class for all Meetings Service tests."""
+
+class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
+    """Base class for all Meetings Service tests with HTTP call prevention."""
 
     def setup_method(self):
         """Set up Meetings Service test environment with required variables."""
+        # Call parent setup to enable HTTP call detection
+        super().setup_method(None)
+
         # Create temporary database file for tests that need file-based SQLite
         self.db_fd, self.db_path = tempfile.mkstemp(suffix=".db")
 
@@ -32,6 +37,9 @@ class BaseMeetingsTest:
 
     def teardown_method(self):
         """Clean up Meetings Service test environment."""
+        # Call parent teardown to clean up HTTP patches
+        super().teardown_method(None)
+
         # Close and remove temporary database file
         if hasattr(self, "db_fd"):
             os.close(self.db_fd)
