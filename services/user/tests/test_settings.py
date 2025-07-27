@@ -86,10 +86,7 @@ class TestSettings:
             assert settings.port == 9000
             assert settings.debug is True
             assert settings.log_level == "DEBUG"
-            assert (
-                settings.db_url_user
-                == "postgresql://test:test@testhost:5432/testdb"
-            )
+            assert settings.db_url_user == "postgresql://test:test@testhost:5432/testdb"
             assert settings.api_frontend_user_key == "test-frontend-key"
             assert settings.api_chat_user_key == "test-chat-key"
             assert settings.api_office_user_key == "test-office-key"
@@ -168,9 +165,7 @@ class TestSettings:
         # Test that settings fail to load without required API keys
         with patch.dict(
             os.environ,
-            {
-                "DB_URL_USER": "postgresql://postgres:postgres@localhost:5432/briefly"
-            },
+            {"DB_URL_USER": "postgresql://postgres:postgres@localhost:5432/briefly"},
             clear=True,
         ):
             with pytest.raises(ValueError):

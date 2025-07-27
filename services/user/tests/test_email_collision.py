@@ -183,6 +183,7 @@ async def db_setup(monkeypatch):
         api_frontend_user_key="test-frontend-key",
         api_chat_user_key="test-chat-key",
         api_office_user_key="test-office-key",
+        api_meetings_user_key="test-meetings-key",
         token_encryption_salt="dGVzdC1zYWx0LTE2Ynl0ZQ==",
     )
     monkeypatch.setattr("services.user.settings._settings", test_settings)
