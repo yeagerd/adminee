@@ -86,8 +86,6 @@ const formatTimeSlot = (startTime: string, endTime: string, timezone: string) =>
     return `${dateFormatted}, ${startFormatted} - ${endFormatted} ${timezoneAbbr}`;
 };
 
-
-
 interface MeetingPollResultsProps {
     pollId: string;
 }
