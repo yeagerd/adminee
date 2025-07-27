@@ -349,6 +349,13 @@ export class GatewayClient {
             method: 'POST',
         });
     }
+
+    async addMeetingParticipant(pollId: string, email: string, name: string): Promise<PollParticipant> {
+        return this.request<PollParticipant>(`/api/v1/meetings/polls/${pollId}/participants`, {
+            method: 'POST',
+            body: { email, name },
+        });
+    }
 }
 
 // Export singleton instance
@@ -504,6 +511,17 @@ export interface PollParticipantCreate {
     name?: string;
     poll_id?: string;
     response_token?: string;
+}
+
+export interface PollParticipant {
+    id: string;
+    email: string;
+    name?: string;
+    status: string;
+    invited_at: string;
+    responded_at?: string;
+    reminder_sent_count: number;
+    response_token: string;
 }
 
 export interface MeetingPollUpdate {
