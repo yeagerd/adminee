@@ -56,7 +56,7 @@ def get_poll_by_response_token(response_token: str) -> dict:
         # Filter out the current participant from the participants list
         if poll_data.participants:
             poll_data.participants = [
-                p for p in poll_data.participants if p.id != str(participant.id)
+                p for p in poll_data.participants if str(p.id) != str(participant.id)
             ]
 
         return {
