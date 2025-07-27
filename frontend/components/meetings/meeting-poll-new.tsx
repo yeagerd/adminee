@@ -368,19 +368,29 @@ export function MeetingPollNew() {
                                         </label>
                                     </div>
 
-                                    {sendEmails && (
-                                        <div className="flex items-center space-x-2">
-                                            <Checkbox
-                                                id="reveal-participants"
-                                                checked={revealParticipants}
-                                                onCheckedChange={(checked) => setRevealParticipants(checked as boolean)}
-                                            />
-                                            <label
-                                                htmlFor="reveal-participants"
-                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                            >
-                                                Include other participants' names and emails in invitations
-                                            </label>
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="reveal-participants"
+                                            checked={revealParticipants}
+                                            onCheckedChange={(checked) => setRevealParticipants(checked as boolean)}
+                                        />
+                                        <label
+                                            htmlFor="reveal-participants"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                        >
+                                            Show participant names and emails to invitees
+                                        </label>
+                                    </div>
+
+                                    {sendEmails && revealParticipants && (
+                                        <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
+                                            <p>✓ Participant names and emails will be included in invitation emails</p>
+                                        </div>
+                                    )}
+
+                                    {!sendEmails && revealParticipants && (
+                                        <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
+                                            <p>✓ Participant names and emails will be visible on the response page</p>
                                         </div>
                                     )}
 
