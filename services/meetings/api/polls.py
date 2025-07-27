@@ -60,8 +60,21 @@ def get_poll(poll_id: UUID) -> MeetingPoll:
         poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
         if not poll:
             raise HTTPException(status_code=404, detail="Poll not found")
+
+        # Fetch responses for this poll
+        from services.meetings.models import PollResponse as PollResponseModel
+        from services.meetings.schemas import PollResponse as PollResponseSchema
+
+        responses = session.query(PollResponseModel).filter_by(poll_id=poll_id).all()
+
         try:
-            return MeetingPoll.model_validate(poll)
+            # Create a poll object with responses included
+            poll_data = MeetingPoll.model_validate(poll)
+            # Convert database response objects to schema objects
+            poll_data.responses = [
+                PollResponseSchema.model_validate(resp) for resp in responses
+            ]
+            return poll_data
         except Exception as e:
             # Log the error and return a more user-friendly error
             logger.error(
