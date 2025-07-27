@@ -3,13 +3,14 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToolStateUtils } from '@/hooks/use-tool-state';
-import { gatewayClient } from '@/lib/gateway-client';
-import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { gatewayClient, PollResponse } from '@/lib/gateway-client';
+import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight } from 'lucide-react';
+import React, { useEffect, useState } from 'react'; // Added missing import for React
 
 interface Participant {
     id: string;
     email: string;
+    name?: string;
     status: string;
 }
 
@@ -28,15 +29,7 @@ interface Poll {
     location?: string;
     participants: Participant[];
     time_slots: TimeSlot[];
-    responses?: Array<{
-        id: string;
-        participant_id: string;
-        time_slot_id: string;
-        response: string;
-        comment?: string;
-        created_at: string;
-        updated_at: string;
-    }>;
+    responses?: PollResponse[];
 }
 
 function getSlotStats(poll: Poll) {
@@ -86,8 +79,6 @@ const formatTimeSlot = (startTime: string, endTime: string, timezone: string) =>
     return `${dateFormatted}, ${startFormatted} - ${endFormatted} ${timezoneAbbr}`;
 };
 
-
-
 interface MeetingPollResultsProps {
     pollId: string;
 }
@@ -102,6 +93,7 @@ export function MeetingPollResults({ pollId }: MeetingPollResultsProps) {
     const [error, setError] = useState<string | null>(null);
     const [sortColumn, setSortColumn] = useState<SortColumn>(null);
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+    const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         if (!pollId) return;
@@ -203,6 +195,57 @@ export function MeetingPollResults({ pollId }: MeetingPollResultsProps) {
         });
     };
 
+    const getParticipantResponsesForSlot = (slotId: string) => {
+        if (!poll?.responses || !poll?.participants) return [];
+
+        const slotResponses = poll.responses.filter(r => r.time_slot_id === slotId);
+        return slotResponses.map(response => {
+            const participant = poll.participants.find(p => p.id === response.participant_id);
+            return {
+                participant,
+                response: response.response,
+                comment: response.comment,
+                respondedAt: response.updated_at
+            };
+        }).filter(item => item.participant); // Only include responses with valid participants
+    };
+
+    const toggleRowExpansion = (slotId: string) => {
+        const newExpandedRows = new Set(expandedRows);
+        if (newExpandedRows.has(slotId)) {
+            newExpandedRows.delete(slotId);
+        } else {
+            newExpandedRows.add(slotId);
+        }
+        setExpandedRows(newExpandedRows);
+    };
+
+    const getResponseColor = (response: string) => {
+        switch (response) {
+            case 'available':
+                return 'text-green-600 bg-green-50';
+            case 'maybe':
+                return 'text-yellow-600 bg-yellow-50';
+            case 'unavailable':
+                return 'text-red-600 bg-red-50';
+            default:
+                return 'text-gray-600 bg-gray-50';
+        }
+    };
+
+    const getResponseLabel = (response: string) => {
+        switch (response) {
+            case 'available':
+                return 'Available';
+            case 'maybe':
+                return 'Maybe';
+            case 'unavailable':
+                return 'Unavailable';
+            default:
+                return response;
+        }
+    };
+
     if (loading) {
         return (
             <div className="p-8">
@@ -275,6 +318,9 @@ export function MeetingPollResults({ pollId }: MeetingPollResultsProps) {
 
                         <div>
                             <h3 className="font-semibold mb-2">Time Slot Popularity:</h3>
+                            <p className="text-sm text-gray-600 mb-3">
+                                Click on any row to see detailed participant responses for that time slot.
+                            </p>
                             <div className="overflow-x-auto">
                                 <table className="min-w-full text-sm border">
                                     <thead>
@@ -318,22 +364,81 @@ export function MeetingPollResults({ pollId }: MeetingPollResultsProps) {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {sortTimeSlotsByColumn(poll?.time_slots || [], slotStats).map((slot) => (
-                                            <tr key={slot.id} className="hover:bg-gray-50">
-                                                <td className="px-3 py-2 border">
-                                                    {formatTimeSlot(slot.start_time, slot.end_time, slot.timezone)}
-                                                </td>
-                                                <td className="px-3 py-2 border text-center">
-                                                    {slotStats[slot.id]?.available || 0}
-                                                </td>
-                                                <td className="px-3 py-2 border text-center">
-                                                    {slotStats[slot.id]?.maybe || 0}
-                                                </td>
-                                                <td className="px-3 py-2 border text-center">
-                                                    {slotStats[slot.id]?.unavailable || 0}
-                                                </td>
-                                            </tr>
-                                        ))}
+                                        {sortTimeSlotsByColumn(poll?.time_slots || [], slotStats).map((slot) => {
+                                            const participantResponses = getParticipantResponsesForSlot(slot.id);
+                                            const isExpanded = expandedRows.has(slot.id);
+
+                                            return (
+                                                <React.Fragment key={slot.id}>
+                                                    <tr
+                                                        className="hover:bg-gray-50 cursor-pointer"
+                                                        onClick={() => toggleRowExpansion(slot.id)}
+                                                    >
+                                                        <td className="px-3 py-2 border">
+                                                            <div className="flex items-center gap-2">
+                                                                {isExpanded ? (
+                                                                    <ChevronDown className="h-4 w-4 text-gray-500" />
+                                                                ) : (
+                                                                    <ChevronRight className="h-4 w-4 text-gray-500" />
+                                                                )}
+                                                                {formatTimeSlot(slot.start_time, slot.end_time, slot.timezone)}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-3 py-2 border text-center">
+                                                            {slotStats[slot.id]?.available || 0}
+                                                        </td>
+                                                        <td className="px-3 py-2 border text-center">
+                                                            {slotStats[slot.id]?.maybe || 0}
+                                                        </td>
+                                                        <td className="px-3 py-2 border text-center">
+                                                            {slotStats[slot.id]?.unavailable || 0}
+                                                        </td>
+                                                    </tr>
+                                                    {isExpanded && (
+                                                        <tr>
+                                                            <td colSpan={4} className="px-3 py-2 border bg-gray-50">
+                                                                <div className="space-y-3">
+                                                                    {participantResponses.length > 0 ? (
+                                                                        <div className="space-y-2">
+                                                                            {participantResponses.map((item, index) => (
+                                                                                <div key={index} className="flex items-start justify-between p-3 bg-white rounded-lg border">
+                                                                                    <div className="flex-1">
+                                                                                        <div className="flex items-center gap-2 mb-1">
+                                                                                            <span className="font-medium text-gray-900">
+                                                                                                {item.participant?.name || item.participant?.email}
+                                                                                            </span>
+                                                                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getResponseColor(item.response)}`}>
+                                                                                                {getResponseLabel(item.response)}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                        {item.comment && (
+                                                                                            <p className="text-sm text-gray-600 mt-1">
+                                                                                                "{item.comment}"
+                                                                                            </p>
+                                                                                        )}
+                                                                                    </div>
+                                                                                    <div className="text-xs text-gray-500 ml-4">
+                                                                                        {new Date(item.respondedAt).toLocaleDateString('en-US', {
+                                                                                            month: 'short',
+                                                                                            day: 'numeric',
+                                                                                            hour: 'numeric',
+                                                                                            minute: '2-digit',
+                                                                                            hour12: true
+                                                                                        })}
+                                                                                    </div>
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    ) : (
+                                                                        <p className="text-gray-500 text-sm">No responses yet for this time slot.</p>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </React.Fragment>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
