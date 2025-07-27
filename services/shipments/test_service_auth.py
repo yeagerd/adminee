@@ -14,7 +14,7 @@ def patch_settings(monkeypatch):
         db_url_shipments="sqlite:///:memory:",
         api_frontend_shipments_key="test-api-key",
     )
-    
+
     monkeypatch.setattr("services.shipments.settings._settings", test_settings)
 
 
