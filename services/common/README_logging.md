@@ -249,7 +249,7 @@ setup_logging()
 
 # New  
 from services.common.logging_config import setup_service_logging
-setup_service_logging(service_name="user-management-service")
+setup_service_logging(service_name="user-service")
 ```
 
 ## Best Practices

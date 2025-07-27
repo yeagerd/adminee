@@ -103,7 +103,7 @@ def get_secret(secret_id: str) -> str:
     return response.payload.data.decode("UTF-8")
 
 # Usage in settings
-DB_URL_USER_MANAGEMENT = get_secret("db-url-user-management")
+DB_URL_USER = get_secret("db-url-user")
 NEXTAUTH_SECRET_KEY = get_secret("nextauth-secret-key")
 ```
 
@@ -117,9 +117,9 @@ spec:
       annotations:
         run.googleapis.com/secrets: |
           {
-            "db-url-user-management": {
-              "name": "db-url-user-management",
-              "items": [{"key": "latest", "path": "DB_URL_USER_MANAGEMENT"}]
+            "db-url-user": {
+              "name": "db-url-user",
+              "items": [{"key": "latest", "path": "DB_URL_USER"}]
             },
             "clerk-secret-key": {
               "name": "clerk-secret-key", 
@@ -135,7 +135,7 @@ spec:
 # Create secrets in Secret Manager
 gcloud secrets create nextauth-publishable-key --data-file=-
 gcloud secrets create nextauth-secret-key --data-file=-
-gcloud secrets create db-url-user-management --data-file=-
+gcloud secrets create db-url-user --data-file=-
 gcloud secrets create redis-url --data-file=-
 
 # Grant access to Cloud Build and Cloud Run
@@ -205,7 +205,7 @@ gcloud run deploy briefly-frontend \
 
 gcloud run deploy briefly-user-service \
   --image=gcr.io/$PROJECT_ID/user-service \
-  --update-secrets=DB_URL_USER_MANAGEMENT=db-url-user-management:latest \
+  --update-secrets=DB_URL_USER=db-url-user:latest \
   --service-account=briefly-backend@${PROJECT_ID}.iam.gserviceaccount.com
 ```
 
@@ -233,10 +233,10 @@ class Settings:
         
         # Use Secret Manager in production, env vars locally
         if self.environment == 'production':
-            self.db_url = get_secret('db-url-user-management')
+            self.db_url = get_secret('db-url-user')
             self.nextauth_secret = get_secret('nextauth-secret-key')
         else:
-            self.db_url = os.getenv('DB_URL_USER_MANAGEMENT')
+            self.db_url = os.getenv('DB_URL_USER')
             self.nextauth_secret = os.getenv('NEXTAUTH_SECRET_KEY')
 ```
 

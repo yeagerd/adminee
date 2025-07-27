@@ -105,7 +105,7 @@ class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
         mock_settings = MagicMock()
         mock_settings.api_frontend_office_key = None
         mock_settings.api_chat_office_key = None
-        mock_settings.USER_MANAGEMENT_SERVICE_URL = None
+        mock_settings.USER_SERVICE_URL = None
         mock_settings.DEBUG = True
 
         # Patch the get_settings function to return our mock
@@ -127,7 +127,7 @@ class TestHealthEndpoints(BaseOfficeServiceIntegrationTest):
                 in data["checks"]["configuration"]["issues"]
             )
             assert (
-                "USER_MANAGEMENT_SERVICE_URL not configured"
+                "USER_SERVICE_URL not configured"
                 in data["checks"]["configuration"]["issues"]
             )
 

@@ -180,7 +180,7 @@ All service URLs can be customized via command line arguments:
 
 This demo complements the existing service-specific demos:
 - Uses patterns from `chat.py`
-- Incorporates OAuth flows from `user_management_demo.py`
+- Incorporates OAuth flows from `user_demo.py`
 - Integrates email functionality from `office_full.py`
 
 ## Development

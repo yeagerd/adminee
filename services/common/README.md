@@ -72,7 +72,7 @@ from services.common import (
 )
 
 # Database URL for a specific service
-user_db = get_database_url('user_management')  # Gets DB_URL_USER_MANAGEMENT
+user_db = get_database_url('user')  # Gets DB_URL_USER
 chat_db = get_database_url('chat_service')     # Gets DB_URL_CHAT_SERVICE
 
 # Authentication secrets
@@ -98,7 +98,7 @@ clear_cache()
 Set environment variables in your `.env` file or shell:
 ```bash
 export CLERK_SECRET_KEY="sk_test_..."
-export DB_URL_USER_MANAGEMENT="postgresql://..."
+export DB_URL_USER="postgresql://..."
 export OPENAI_API_KEY="sk-..."
 ```
 
@@ -116,10 +116,10 @@ Provides OpenTelemetry configuration for distributed tracing across services.
 from services.common import setup_telemetry, get_tracer
 
 # Initialize telemetry for your service
-setup_telemetry("user-management-service")
+setup_telemetry("user-service")
 
 # Get tracer for your service
-tracer = get_tracer("user-management")
+tracer = get_tracer("user")
 ```
 
 ## Dependencies

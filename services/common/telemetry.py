@@ -35,7 +35,7 @@ def setup_telemetry(service_name: str, service_version: str = "1.0.0") -> None:
     Set up OpenTelemetry for a service.
 
     Args:
-        service_name: Name of the service (e.g., "user-management", "chat-service")
+        service_name: Name of the service (e.g., "user", "chat-service")
         service_version: Version of the service
     """
     # Only set up telemetry if not already configured

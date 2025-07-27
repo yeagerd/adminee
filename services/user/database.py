@@ -28,7 +28,7 @@ from services.user.settings import get_settings
 def get_engine() -> AsyncEngine:
     settings = get_settings()
     return create_async_engine(
-        get_async_database_url(settings.db_url_user_management),
+        get_async_database_url(settings.db_url_user),
         echo=settings.debug,
     )
 

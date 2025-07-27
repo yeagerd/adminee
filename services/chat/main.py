@@ -41,7 +41,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         api_chat_office_key=(
             "configured" if get_settings().api_chat_office_key else "missing"
         ),
-        user_management_service_url=get_settings().user_management_service_url,
+        user_service_url=get_settings().user_service_url,
         office_service_url=get_settings().office_service_url,
     )
 
@@ -120,7 +120,7 @@ async def health_check() -> JSONResponse:
             "api_chat_office_key": (
                 "configured" if get_settings().api_chat_office_key else "missing"
             ),
-            "user_management_service_url": get_settings().user_management_service_url,
+            "user_service_url": get_settings().user_service_url,
             "office_service_url": get_settings().office_service_url,
         }
 

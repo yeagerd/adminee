@@ -486,7 +486,7 @@ export LOG_LEVEL=INFO
   "level": "INFO", 
   "logger": "services.user.security.encryption",
   "message": "Token decrypted successfully",
-  "service": "user-management-service",
+  "service": "user-service",
   "user_id": "demo_user"
 }
 ```
@@ -534,7 +534,7 @@ For additional custom tracing, use the shared telemetry module:
 from services.common import setup_telemetry, get_tracer, add_span_attributes
 
 # Set up telemetry (optional - already done by opentelemetry-instrument)
-setup_telemetry("user-management", "1.0.0")
+setup_telemetry("user", "1.0.0")
 
 # Get a tracer for custom spans
 tracer = get_tracer(__name__)

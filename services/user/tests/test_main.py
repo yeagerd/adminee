@@ -93,7 +93,7 @@ class TestHealthEndpoint(BaseUserManagementIntegrationTest):
         response = self.client.get("/health")
         assert response.status_code == 200
         data = response.json()
-        assert data["service"] == "user-management"
+        assert data["service"] == "user"
         assert data["version"] == "0.1.0"
         assert "status" in data
         assert "checks" in data
@@ -172,7 +172,7 @@ class TestReadinessEndpoint(BaseUserManagementIntegrationTest):
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "ready"
-        assert data["service"] == "user-management"
+        assert data["service"] == "user"
         assert data["version"] == "0.1.0"
         assert "timestamp" in data
         assert "checks" in data
@@ -218,7 +218,7 @@ class TestReadinessEndpoint(BaseUserManagementIntegrationTest):
         mock_settings.api_chat_user_key = "test-chat-key"
         mock_settings.api_office_user_key = "test-office-key"
         # Test with other missing configuration
-        mock_settings.db_url_user_management = None
+        mock_settings.db_url_user = None
 
         response = self.client.get("/ready")
         # This might still pass if other configs are valid, so just check it doesn't crash
