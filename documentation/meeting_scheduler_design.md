@@ -195,10 +195,9 @@ POST /api/meetings/polls/:pollId/send-invitations
 #### Poll Response Collection
 ```typescript
 // Public poll response page (no auth required)
-GET /api/public/polls/:token
-POST /api/public/polls/:token/respond
+GET /api/public/polls/response/:response_token
+PUT /api/public/polls/response/:response_token
 {
-  participantEmail: string;
   responses: Array<{
     timeSlotId: string;
     response: 'available' | 'unavailable' | 'maybe';
@@ -428,7 +427,7 @@ To enhance poll response security and tracking, each poll recipient will receive
 - [x] **Invitation Email Update:**
   - [x] Send invitation emails with URLs like `/public/meetings/respond/{response_token}` for each participant.
 - [x] **New Public API Endpoint:**
-  - [x] Implement `PUT /public/meetings/response/{response_token}` to accept poll responses using only the token.
+  - [x] Implement `PUT /api/v1/public/polls/response/{response_token}` to accept poll responses using only the token.
   - [x] The endpoint should look up the participant by their `response_token`, verify the poll, and accept the response.
 - [x] **Frontend Update:**
   - [x] Update the public poll response page to support the new URL structure and API.

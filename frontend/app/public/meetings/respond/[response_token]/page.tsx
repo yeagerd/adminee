@@ -1,4 +1,5 @@
 "use client";
+import { env } from '@/lib/env';
 import { useEffect, useState } from 'react';
 
 type Poll = { title: string; time_slots?: unknown[] };
@@ -21,14 +22,20 @@ export default function PollResponsePage() {
 
     useEffect(() => {
         if (!response_token) return;
-        fetch(`/api/v1/public/polls/response/${response_token}`)
-            .then(res => res.json())
+        fetch(`${env.GATEWAY_URL}/api/v1/public/polls/response/${response_token}`)
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                }
+                return res.json();
+            })
             .then(data => {
                 setPoll(data.poll);
                 // setParticipant(data.participant); // This line was removed
                 setLoading(false);
             })
-            .catch(() => {
+            .catch((error) => {
+                console.error('Error fetching poll:', error);
                 setError('Invalid or expired link.');
                 setLoading(false);
             });
@@ -37,7 +44,7 @@ export default function PollResponsePage() {
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
-        const res = await fetch(`/api/v1/public/polls/response/${response_token}`, {
+        const res = await fetch(`${env.GATEWAY_URL}/api/v1/public/polls/response/${response_token}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ responses }),
