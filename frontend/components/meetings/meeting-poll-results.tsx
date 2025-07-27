@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToolStateUtils } from '@/hooks/use-tool-state';
 import { gatewayClient, PollResponse } from '@/lib/gateway-client';
-import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, ChevronDown, ChevronRight, Mail, Users } from 'lucide-react';
 import React, { useEffect, useState } from 'react'; // Added missing import for React
 
 interface Participant {
@@ -94,6 +94,8 @@ export function MeetingPollResults({ pollId }: MeetingPollResultsProps) {
     const [sortColumn, setSortColumn] = useState<SortColumn>(null);
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+    const [showParticipantDetails, setShowParticipantDetails] = useState(false);
+    const [resendingEmails, setResendingEmails] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         if (!pollId) return;
@@ -246,6 +248,28 @@ export function MeetingPollResults({ pollId }: MeetingPollResultsProps) {
         }
     };
 
+    const handleResendEmail = async (participantId: string, email: string) => {
+        if (!pollId) return;
+
+        setResendingEmails(prev => new Set(prev).add(participantId));
+
+        try {
+            await gatewayClient.resendMeetingInvitation(pollId, participantId);
+            // Optionally refresh the poll data to update participant status
+            const updatedPoll = await gatewayClient.getMeetingPoll(pollId);
+            setPoll(updatedPoll as Poll);
+        } catch (error) {
+            console.error('Failed to resend invitation:', error);
+            // You could add a toast notification here
+        } finally {
+            setResendingEmails(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(participantId);
+                return newSet;
+            });
+        }
+    };
+
     if (loading) {
         return (
             <div className="p-8">
@@ -301,23 +325,80 @@ export function MeetingPollResults({ pollId }: MeetingPollResultsProps) {
                                 <div>Status: <span className="capitalize font-medium">{poll.status}</span></div>
                                 <div>Created: {poll.created_at?.slice(0, 10) || ""}</div>
                                 <div>Location: {poll.location || "-"}</div>
-                                <div>Participants: {totalParticipants} (Responded: {responded})</div>
+                                <div>Responses: {responded} of {totalParticipants}</div>
                             </div>
                         </div>
 
                         <div>
-                            <h3 className="font-semibold mb-2">Participant Status:</h3>
-                            <ul className="space-y-1">
-                                {(poll?.participants || []).map((p) => (
-                                    <li key={p.id} className="text-sm">
-                                        {p.email} <span className="text-xs text-gray-500">({p.status})</span>
-                                    </li>
-                                ))}
-                            </ul>
+                            <div className="flex items-center gap-2 mb-2">
+                                <h3 className="font-semibold">Participant Responses:</h3>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setShowParticipantDetails(!showParticipantDetails)}
+                                    className="flex items-center gap-1"
+                                >
+                                    {showParticipantDetails ? (
+                                        <ChevronDown className="h-4 w-4" />
+                                    ) : (
+                                        <ChevronRight className="h-4 w-4" />
+                                    )}
+                                    <Users className="h-4 w-4" />
+                                </Button>
+                            </div>
+
+                            {showParticipantDetails && (
+                                <div className="overflow-x-auto mb-4">
+                                    <table className="min-w-full text-sm border">
+                                        <thead>
+                                            <tr className="bg-gray-50">
+                                                <th className="px-3 py-2 border text-left">Name</th>
+                                                <th className="px-3 py-2 border text-left">Email</th>
+                                                <th className="px-3 py-2 border text-center">Status</th>
+                                                <th className="px-3 py-2 border text-center">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {(poll?.participants || []).map((participant) => (
+                                                <tr key={participant.id} className="hover:bg-gray-50">
+                                                    <td className="px-3 py-2 border">
+                                                        {participant.name || 'No name'}
+                                                    </td>
+                                                    <td className="px-3 py-2 border">
+                                                        {participant.email}
+                                                    </td>
+                                                    <td className="px-3 py-2 border text-center">
+                                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${participant.status === 'responded'
+                                                            ? 'text-green-600 bg-green-50'
+                                                            : 'text-red-600 bg-red-50'
+                                                            }`}>
+                                                            {participant.status === 'responded' ? 'Responded' : 'Not Responded'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-3 py-2 border text-center">
+                                                        {participant.status !== 'responded' && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => handleResendEmail(participant.id, participant.email)}
+                                                                disabled={resendingEmails.has(participant.id)}
+                                                                className="flex items-center gap-1"
+                                                            >
+                                                                <Mail className="h-3 w-3" />
+                                                                {resendingEmails.has(participant.id) ? 'Sending...' : 'Resend'}
+                                                            </Button>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
                         </div>
 
                         <div>
-                            <h3 className="font-semibold mb-2">Time Slot Popularity:</h3>
+                            <h3 className="font-semibold mb-2">Time Slots:</h3>
                             <p className="text-sm text-gray-600 mb-3">
                                 Click on any row to see detailed participant responses for that time slot.
                             </p>
@@ -405,11 +486,14 @@ export function MeetingPollResults({ pollId }: MeetingPollResultsProps) {
                                                                                     <div className="flex-1">
                                                                                         <div className="flex items-center gap-2 mb-1">
                                                                                             <span className="font-medium text-gray-900">
-                                                                                                {item.participant?.name || item.participant?.email}
+                                                                                                {item.participant?.name || 'No name'}
                                                                                             </span>
                                                                                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getResponseColor(item.response)}`}>
                                                                                                 {getResponseLabel(item.response)}
                                                                                             </span>
+                                                                                        </div>
+                                                                                        <div className="text-sm text-gray-600">
+                                                                                            {item.participant?.email}
                                                                                         </div>
                                                                                         {item.comment && (
                                                                                             <p className="text-sm text-gray-600 mt-1">

@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta
 from typing import List
 from uuid import UUID, uuid4
@@ -11,7 +12,7 @@ from services.meetings.models import TimeSlot as TimeSlotModel
 from services.meetings.models import get_session
 from services.meetings.models.meeting import PollStatus
 from services.meetings.schemas import MeetingPoll, MeetingPollCreate, MeetingPollUpdate
-from services.meetings.services import calendar_integration
+from services.meetings.services import calendar_integration, email_integration
 
 # Configure logging
 logger = get_logger(__name__)
@@ -369,3 +370,81 @@ async def schedule_meeting(poll_id: UUID, request: Request, body: dict) -> dict:
             poll.status = PollStatus.scheduled
             session.commit()
     return result
+
+
+@router.post("/{poll_id}/participants/{participant_id}/resend-invitation")
+async def resend_invitation(
+    poll_id: UUID, participant_id: UUID, request: Request
+) -> dict:
+    """
+    Resend invitation email to a specific participant.
+    """
+    user_id = get_user_id_from_request(request)
+
+    with get_session() as session:
+        # Verify poll exists and user owns it
+        poll = session.query(MeetingPollModel).filter_by(id=poll_id).first()
+        if not poll:
+            raise HTTPException(status_code=404, detail="Poll not found")
+
+        if str(poll.user_id) != str(user_id):
+            raise HTTPException(
+                status_code=403,
+                detail="Not authorized to resend invitations for this poll",
+            )
+
+        # Verify participant exists and belongs to this poll
+        participant = (
+            session.query(PollParticipantModel)
+            .filter_by(id=participant_id, poll_id=poll_id)
+            .first()
+        )
+        if not participant:
+            raise HTTPException(status_code=404, detail="Participant not found")
+
+        # Send the invitation email
+        frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+        response_url = (
+            f"{frontend_url}/public/meetings/respond/{participant.response_token}"
+        )
+        subject = f"You're invited: {poll.title}"
+        body = f"You have been invited to respond to a meeting poll: {poll.title}\n\n{poll.description or ''}\n\nRespond here: {response_url}"
+
+        try:
+            await email_integration.send_invitation_email(
+                participant.email, subject, body, user_id
+            )
+
+            # Update participant's reminder count and status
+            participant.reminder_sent_count += 1
+            # Keep status as pending since they haven't responded yet
+
+            session.commit()
+
+            logger.info(
+                "Successfully resent invitation",
+                poll_id=str(poll_id),
+                participant_id=str(participant_id),
+                participant_email=participant.email,
+                reminder_count=participant.reminder_sent_count,
+            )
+
+            return {
+                "ok": True,
+                "message": "Invitation resent successfully",
+                "participant_email": participant.email,
+                "reminder_count": participant.reminder_sent_count,
+            }
+
+        except ValueError as e:
+            logger.error(
+                "Failed to resend invitation",
+                poll_id=str(poll_id),
+                participant_id=str(participant_id),
+                participant_email=participant.email,
+                error=str(e),
+            )
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to resend invitation: {str(e)}",
+            )
