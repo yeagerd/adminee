@@ -65,32 +65,19 @@ class EmailContentParseResult(BaseModel):
 def parse_email_content(content: str) -> EmailContentParseResult:
     """
     Parse email content for slot-specific responses.
-    Supports two formats:
-
-    1. Old format: SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available - I prefer this time slot
-    2. New format: Users move slots under headings like "I'm AVAILABLE:", "I'm UNAVAILABLE:", "I'm MAYBE:"
+    Expects content to contain lines like:
+    SLOT_1_123e4567-e89b-12d3-a456-426614174000: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available - I prefer this time slot
     """
     slot_responses = {}
     lines = content.strip().splitlines()
 
-    # Track current section for new format
-    current_section = None
-
     for line in lines:
         line = line.strip()
-        if not line:
-            continue
-
-        # Check for section headers in new format
-        if line.upper() in ["I'M AVAILABLE:", "I'M UNAVAILABLE:", "I'M MAYBE:"]:
-            current_section = line.upper().replace("I'M ", "").replace(":", "").lower()
-            continue
-
-        # Skip lines that don't start with SLOT_
-        if not line.startswith("SLOT_"):
+        if not line or not line.startswith("SLOT_"):
             continue
 
         # Parse slot response line
+        # Format: SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available - I prefer this time slot
         try:
             # Split on first colon to separate slot identifier from response
             parts = line.split(":", 1)
@@ -116,52 +103,44 @@ def parse_email_content(content: str) -> EmailContentParseResult:
                 # Skip invalid slot numbers
                 continue
 
+            # Parse response and comment
+            # Check if any response keyword is in the response part
+            response_keywords = ["available", "unavailable", "maybe"]
             response = None
             comment = None
 
-            # Handle new format (slots under headings)
-            if current_section:
-                response = current_section
-                # Extract comment if present (after dash)
-                if " - " in response_part:
-                    parts = response_part.split(" - ", 1)
-                    comment = parts[1].strip() if len(parts) > 1 else None
-            else:
-                # Handle old format (response keyword in the line)
-                response_keywords = ["available", "unavailable", "maybe"]
+            # Look for the keyword that appears after the timezone part
+            # Format: "Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available - comment"
+            for keyword in response_keywords:
+                # Use word boundaries to avoid partial matches
+                import re
 
-                # Look for the keyword that appears after the timezone part
-                # Format: "Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available - comment"
-                for keyword in response_keywords:
-                    # Use word boundaries to avoid partial matches
-                    import re
-
-                    # Look for the keyword that appears after the timezone pattern
-                    # This ensures we match the keyword in the correct position
-                    pattern = r"\([^)]+\)\s*-\s*\b" + re.escape(keyword.lower()) + r"\b"
-                    match = re.search(pattern, response_part.lower())
-                    if match:
-                        response = keyword.lower()
-                        # Extract comment (everything after the response keyword)
-                        # Find the position of the keyword after the timezone
-                        keyword_pattern = r"\b" + re.escape(keyword.lower()) + r"\b"
-                        # Search for the keyword starting from the match position
-                        keyword_match = re.search(
-                            keyword_pattern, response_part.lower()[match.start() :]
-                        )
-                        if keyword_match:
-                            # Calculate the actual position in the original string
-                            comment_start = match.start() + keyword_match.end()
-                            if comment_start < len(response_part):
-                                comment = response_part[comment_start:].strip()
-                                if comment.startswith("-"):
-                                    comment = comment[1:].strip()
-                                if comment.startswith(" "):
-                                    comment = comment[1:]
-                                # If comment is empty after trimming, set to None
-                                if not comment:
-                                    comment = None
-                        break
+                # Look for the keyword that appears after the timezone pattern
+                # This ensures we match the keyword in the correct position
+                pattern = r"\([^)]+\)\s*-\s*\b" + re.escape(keyword.lower()) + r"\b"
+                match = re.search(pattern, response_part.lower())
+                if match:
+                    response = keyword.lower()
+                    # Extract comment (everything after the response keyword)
+                    # Find the position of the keyword after the timezone
+                    keyword_pattern = r"\b" + re.escape(keyword.lower()) + r"\b"
+                    # Search for the keyword starting from the match position
+                    keyword_match = re.search(
+                        keyword_pattern, response_part.lower()[match.start() :]
+                    )
+                    if keyword_match:
+                        # Calculate the actual position in the original string
+                        comment_start = match.start() + keyword_match.end()
+                        if comment_start < len(response_part):
+                            comment = response_part[comment_start:].strip()
+                            if comment.startswith("-"):
+                                comment = comment[1:].strip()
+                            if comment.startswith(" "):
+                                comment = comment[1:]
+                            # If comment is empty after trimming, set to None
+                            if not comment:
+                                comment = None
+                    break
 
             if response:
                 slot_responses[str(slot_number)] = {

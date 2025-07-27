@@ -74,7 +74,6 @@ class MeetingPollBase(BaseModel):
     response_deadline: Optional[datetime]
     min_participants: Optional[int] = None
     max_participants: Optional[int] = None
-    reveal_participants: Optional[bool] = False
 
     @field_validator("meeting_type", mode="before")
     @classmethod
@@ -131,7 +130,6 @@ class MeetingPollUpdate(BaseModel):
     response_deadline: Optional[datetime] = None
     min_participants: Optional[int] = None
     max_participants: Optional[int] = None
-    reveal_participants: Optional[bool] = None
 
     @field_validator("meeting_type", mode="before")
     @classmethod
