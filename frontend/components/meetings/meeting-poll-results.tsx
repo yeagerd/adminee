@@ -17,6 +17,7 @@ interface TimeSlot {
     id: string;
     start_time: string;
     end_time: string;
+    timezone: string;
 }
 
 interface Poll {
@@ -51,6 +52,39 @@ function getSlotStats(poll: Poll) {
     });
     return stats;
 }
+
+const formatTimeSlot = (startTime: string, endTime: string, timezone: string) => {
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+
+    // Format the date part
+    const dateFormatted = start.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+
+    // Format the time range
+    const startFormatted = start.toLocaleString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    });
+
+    const endFormatted = end.toLocaleString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    });
+
+    // Get timezone abbreviation
+    const timezoneAbbr = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        timeZoneName: 'short'
+    }).formatToParts(new Date()).find(part => part.type === 'timeZoneName')?.value || timezone;
+
+    return `${dateFormatted}, ${startFormatted} - ${endFormatted} ${timezoneAbbr}`;
+};
 
 interface MeetingPollResultsProps {
     pollId: string;
@@ -175,7 +209,7 @@ export function MeetingPollResults({ pollId }: MeetingPollResultsProps) {
                                         {(poll?.time_slots || []).map((slot) => (
                                             <tr key={slot.id} className="hover:bg-gray-50">
                                                 <td className="px-3 py-2 border">
-                                                    {slot.start_time} - {slot.end_time}
+                                                    {formatTimeSlot(slot.start_time, slot.end_time, slot.timezone)}
                                                 </td>
                                                 <td className="px-3 py-2 border text-center">
                                                     {slotStats[slot.id]?.available || 0}
