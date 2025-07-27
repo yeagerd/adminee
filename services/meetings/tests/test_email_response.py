@@ -1,10 +1,16 @@
 from datetime import datetime, timedelta
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi.testclient import TestClient
 
 from services.meetings.main import app
-from services.meetings.models import MeetingPoll, PollParticipant, get_session
+from services.meetings.models import (
+    MeetingPoll,
+    PollParticipant,
+    PollResponse,
+    TimeSlot,
+    get_session,
+)
 from services.meetings.models.base import Base
 from services.meetings.models.meeting import ParticipantStatus, ResponseType
 from services.meetings.tests.test_base import BaseMeetingsTest
@@ -95,13 +101,23 @@ class TestEmailResponse(BaseMeetingsTest):
             )
             session.add(participant)
             session.commit()
-            return poll, slot, participant
+            # Return IDs as strings to avoid detached instance issues
+            return (
+                poll,
+                slot,
+                participant,
+                str(slot.id),
+                str(poll.id),
+                str(participant.id),
+            )
 
     def test_process_email_response_success(self):
-        poll, slot, participant = self.create_poll_and_participant()
+        poll, slot, participant, slot_id, poll_id, participant_id = (
+            self.create_poll_and_participant()
+        )
         payload = {
             "emailId": "irrelevant",
-            "content": "RESPONSE: available Looking forward to it!",
+            "content": f"SLOT_1_{slot_id}: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available - Looking forward to it!",
             "sender": "alice@example.com",
         }
         resp = client.post(
@@ -133,10 +149,12 @@ class TestEmailResponse(BaseMeetingsTest):
             assert any(r.response == ResponseType.available for r in responses)
 
     def test_process_email_response_invalid_key(self):
-        poll, slot, participant = self.create_poll_and_participant()
+        poll, slot, participant, slot_id, poll_id, participant_id = (
+            self.create_poll_and_participant()
+        )
         payload = {
             "emailId": "irrelevant",
-            "content": "RESPONSE: available",
+            "content": f"SLOT_1_{slot_id}: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available",
             "sender": "alice@example.com",
         }
         resp = client.post(
@@ -147,7 +165,9 @@ class TestEmailResponse(BaseMeetingsTest):
         assert resp.status_code == 401
 
     def test_process_email_response_unparseable_content(self):
-        poll, slot, participant = self.create_poll_and_participant()
+        poll, slot, participant, slot_id, poll_id, participant_id = (
+            self.create_poll_and_participant()
+        )
         payload = {
             "emailId": "irrelevant",
             "content": "I am not following the format",
@@ -159,13 +179,15 @@ class TestEmailResponse(BaseMeetingsTest):
             headers={"X-API-Key": API_KEY},
         )
         assert resp.status_code == 400
-        assert "Could not parse response" in resp.text
+        assert "Could not parse any slot responses" in resp.text
 
     def test_process_email_response_unknown_sender(self):
-        poll, slot, participant = self.create_poll_and_participant()
+        poll, slot, participant, slot_id, poll_id, participant_id = (
+            self.create_poll_and_participant()
+        )
         payload = {
             "emailId": "irrelevant",
-            "content": "RESPONSE: available",
+            "content": f"SLOT_1_{slot_id}: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available",
             "sender": "unknown@example.com",
         }
         resp = client.post(
@@ -175,3 +197,66 @@ class TestEmailResponse(BaseMeetingsTest):
         )
         assert resp.status_code == 404
         assert "Participant not found" in resp.text
+
+    def test_process_email_response_multiple_slots(self):
+        poll, slot, participant, slot_id, poll_id, participant_id = (
+            self.create_poll_and_participant()
+        )
+
+        # Create a second time slot
+        with get_session() as session:
+            slot2 = TimeSlot(
+                id=uuid4(),
+                poll_id=UUID(poll_id),  # Convert string back to UUID
+                start_time=datetime.utcnow() + timedelta(days=4),
+                end_time=datetime.utcnow() + timedelta(days=4, minutes=30),
+                timezone="UTC",
+            )
+            session.add(slot2)
+            session.commit()
+            slot2_id = str(slot2.id)  # Get the ID as string before session closes
+
+        payload = {
+            "emailId": "irrelevant",
+            "content": f"SLOT_1_{slot_id}: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available - I prefer this time\nSLOT_2_{slot2_id}: Tuesday, January 16, 2024 at 10:00 AM - 11:00 AM (UTC) - unavailable - I have a conflict",
+            "sender": "alice@example.com",
+        }
+        resp = client.post(
+            "/api/v1/meetings/process-email-response/",
+            json=payload,
+            headers={"X-API-Key": API_KEY},
+        )
+        assert resp.status_code == 200, resp.text
+
+        # Check DB updated
+        with get_session() as session:
+            updated = (
+                session.query(PollParticipant)
+                .filter_by(email="alice@example.com")
+                .first()
+            )
+            assert updated is not None
+            assert updated.status == ParticipantStatus.responded
+
+            # Check responses for both slots
+            slot1_responses = (
+                session.query(PollResponse)
+                .filter_by(
+                    participant_id=UUID(participant_id), time_slot_id=UUID(slot_id)
+                )
+                .all()
+            )
+            slot2_responses = (
+                session.query(PollResponse)
+                .filter_by(
+                    participant_id=UUID(participant_id), time_slot_id=UUID(slot2_id)
+                )
+                .all()
+            )
+
+            assert len(slot1_responses) == 1
+            assert len(slot2_responses) == 1
+            assert slot1_responses[0].response == ResponseType.available
+            assert slot2_responses[0].response == ResponseType.unavailable
+            assert "I prefer this time" in slot1_responses[0].comment
+            assert "I have a conflict" in slot2_responses[0].comment
