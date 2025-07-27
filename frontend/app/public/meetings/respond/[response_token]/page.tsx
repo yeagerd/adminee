@@ -1,6 +1,6 @@
 "use client";
 import { env } from '@/lib/env';
-import { Check, HelpCircle, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, HelpCircle, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 type TimeSlot = {
@@ -39,6 +39,7 @@ export default function PollResponsePage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [submitted, setSubmitted] = useState(false);
+    const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         if (!response_token) return;
@@ -85,6 +86,18 @@ export default function PollResponsePage() {
                     : r
             )
         );
+    };
+
+    const toggleCommentSection = (timeSlotId: string) => {
+        setExpandedComments(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(timeSlotId)) {
+                newSet.delete(timeSlotId);
+            } else {
+                newSet.add(timeSlotId);
+            }
+            return newSet;
+        });
     };
 
     const formatDateTime = (dateTimeStr: string) => {
@@ -177,6 +190,8 @@ export default function PollResponsePage() {
                             <div className="space-y-6">
                                 {poll?.time_slots.map((slot) => {
                                     const currentResponse = responses.find(r => r.time_slot_id === slot.id)?.response || 'unavailable';
+                                    const isCommentExpanded = expandedComments.has(slot.id);
+                                    const hasComment = responses.find(r => r.time_slot_id === slot.id)?.comment;
 
                                     return (
                                         <div key={slot.id} className="border border-gray-200 rounded-lg p-6">
@@ -228,17 +243,33 @@ export default function PollResponsePage() {
                                                     </button>
                                                 </div>
 
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                        Comments (optional):
-                                                    </label>
-                                                    <textarea
-                                                        value={responses.find(r => r.time_slot_id === slot.id)?.comment || ''}
-                                                        onChange={(e) => handleCommentChange(slot.id, e.target.value)}
-                                                        placeholder="Add any comments about this time slot..."
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                        rows={2}
-                                                    />
+                                                <div className="border-t pt-4">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => toggleCommentSection(slot.id)}
+                                                        className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 transition-colors"
+                                                    >
+                                                        {isCommentExpanded ? (
+                                                            <ChevronUp className="h-4 w-4" />
+                                                        ) : (
+                                                            <ChevronDown className="h-4 w-4" />
+                                                        )}
+                                                        <span>
+                                                            Comments {hasComment && !isCommentExpanded && '(has content)'} (optional)
+                                                        </span>
+                                                    </button>
+
+                                                    {isCommentExpanded && (
+                                                        <div className="mt-3">
+                                                            <textarea
+                                                                value={responses.find(r => r.time_slot_id === slot.id)?.comment || ''}
+                                                                onChange={(e) => handleCommentChange(slot.id, e.target.value)}
+                                                                placeholder="Add any comments about this time slot..."
+                                                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                                rows={2}
+                                                            />
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
