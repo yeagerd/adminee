@@ -37,7 +37,7 @@ def patch_settings(monkeypatch):
     import services.user.settings as user_settings
 
     test_settings = user_settings.Settings(
-        db_url_user_management="sqlite:///:memory:",
+        db_url_user="sqlite:///:memory:",
         api_frontend_user_key="test-frontend-key",
         api_chat_user_key="test-chat-key",
         api_office_user_key="test-office-key",
@@ -395,7 +395,7 @@ class TestOAuthConfig:
         try:
             # Create settings with missing OAuth credentials
             settings_no_creds = Settings(
-                db_url_user_management=f"sqlite:///{temp_db.name}",
+                db_url_user=f"sqlite:///{temp_db.name}",
                 api_frontend_user_key="test-frontend-key",
                 api_chat_user_key="test-chat-key",
                 api_office_user_key="test-office-key",
@@ -1063,7 +1063,7 @@ class TestGlobalOAuthConfig:
     def test_get_oauth_config_with_settings(self):
         """Test get_oauth_config with custom settings."""
         custom_settings = Settings(
-            db_url_user_management=f"sqlite:///{self.temp_db.name}",
+            db_url_user=f"sqlite:///{self.temp_db.name}",
             api_frontend_user_key="test-frontend-key",
             api_chat_user_key="test-chat-key",
             api_office_user_key="test-office-key",

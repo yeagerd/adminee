@@ -26,7 +26,7 @@ def patch_chat_settings_singleton():
         api_chat_office_key="test-chat-office-key",
         api_chat_user_key="test-chat-user-key",
         db_url_chat="sqlite:///test.db",
-        user_management_service_url="http://test-user-server",
+        user_service_url="http://test-user-server",
         office_service_url="http://test-office-server",
         llm_provider="fake",
         llm_model="fake-model",

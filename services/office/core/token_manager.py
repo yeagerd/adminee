@@ -164,7 +164,7 @@ class TokenManager:
             logger.info(f"Requesting token for user {user_id}, provider {provider}")
 
             response = await self.http_client.post(
-                f"{get_settings().USER_MANAGEMENT_SERVICE_URL}/v1/internal/tokens/get",
+                f"{get_settings().USER_SERVICE_URL}/v1/internal/tokens/get",
                 json={
                     "user_id": user_id,
                     "provider": provider,

@@ -47,7 +47,7 @@ class ServiceClient:
         if request_id and request_id != "uninitialized":
             headers["X-Request-Id"] = request_id
 
-        if service_name == "user-management" and get_settings().api_chat_user_key:
+        if service_name == "user" and get_settings().api_chat_user_key:
             headers["X-API-Key"] = get_settings().api_chat_user_key  # type: ignore[assignment]
         elif service_name == "office" and get_settings().api_chat_office_key:
             headers["X-API-Key"] = get_settings().api_chat_office_key  # type: ignore[assignment]
@@ -57,9 +57,9 @@ class ServiceClient:
     async def get_user_info(self, user_id: str) -> Optional[Dict[str, Any]]:
         """Get user information from User Management Service."""
         try:
-            headers = self._get_headers_for_service("user-management")
+            headers = self._get_headers_for_service("user")
 
-            url = get_settings().user_management_service_url or ""  # type: ignore[assignment]
+            url = get_settings().user_service_url or ""  # type: ignore[assignment]
             response = await self.http_client.get(
                 f"{url}/v1/users/{user_id}",
                 headers=headers,
@@ -83,9 +83,9 @@ class ServiceClient:
     async def get_user_preferences(self, user_id: str) -> Optional[Dict[str, Any]]:
         """Get user preferences from User Management Service using internal endpoint."""
         try:
-            headers = self._get_headers_for_service("user-management")
+            headers = self._get_headers_for_service("user")
 
-            url = get_settings().user_management_service_url or ""  # type: ignore[assignment]
+            url = get_settings().user_service_url or ""  # type: ignore[assignment]
             response = await self.http_client.get(
                 f"{url}/v1/internal/users/{user_id}/preferences",
                 headers=headers,

@@ -83,7 +83,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         api_meetings_user_key=(
             "configured" if settings.api_meetings_user_key else "missing"
         ),
-        db_url=settings.db_url_user_management,
+        db_url=settings.db_url_user,
         environment=settings.environment,
         debug=settings.debug,
     )
@@ -329,7 +329,7 @@ async def oauth_callback_redirect(
                 "application/json": {
                     "example": {
                         "status": "healthy",
-                        "service": "user-management",
+                        "service": "user",
                         "version": "0.1.0",
                         "timestamp": "2024-01-01T00:00:00Z",
                         "environment": "production",
@@ -359,7 +359,7 @@ async def oauth_callback_redirect(
                 "application/json": {
                     "example": {
                         "status": "unhealthy",
-                        "service": "user-management",
+                        "service": "user",
                         "version": "0.1.0",
                         "timestamp": "2024-01-01T00:00:00Z",
                         "environment": "production",
@@ -371,7 +371,7 @@ async def oauth_callback_redirect(
                             },
                             "configuration": {
                                 "status": "unhealthy",
-                                "issues": ["DB_URL_USER_MANAGEMENT not configured"],
+                                "issues": ["DB_URL_USER not configured"],
                             },
                             "dependencies": {
                                 "status": "unhealthy",
@@ -418,9 +418,9 @@ async def health_check() -> Any:
     # Configuration check
     config_issues = []
     current_settings = Settings()
-    db_url = getattr(current_settings, "db_url_user_management", None)
+    db_url = getattr(current_settings, "db_url_user", None)
     if not db_url:
-        config_issues.append("DB_URL_USER_MANAGEMENT not configured")
+        config_issues.append("DB_URL_USER not configured")
     config_status = "healthy" if not config_issues else "unhealthy"
 
     # Dependencies (for now, always healthy)
@@ -443,7 +443,7 @@ async def health_check() -> Any:
     # Compose the response using the Pydantic model
     response_data = ReadinessStatus(
         status=overall_status,
-        service="user-management",
+        service="user",
         version="0.1.0",
         timestamp=datetime.now(timezone.utc).isoformat(),
         environment=str(getattr(get_settings(), "environment", "unknown")),
@@ -489,7 +489,7 @@ async def health_check() -> Any:
                 "application/json": {
                     "example": {
                         "status": "ready",
-                        "service": "user-management",
+                        "service": "user",
                         "version": "0.1.0",
                         "timestamp": "2024-01-01T00:00:00Z",
                         "environment": "production",
@@ -519,7 +519,7 @@ async def health_check() -> Any:
                 "application/json": {
                     "example": {
                         "status": "not_ready",
-                        "service": "user-management",
+                        "service": "user",
                         "version": "0.1.0",
                         "timestamp": "2024-01-01T00:00:00Z",
                         "environment": "production",
@@ -531,7 +531,7 @@ async def health_check() -> Any:
                             },
                             "configuration": {
                                 "status": "not_ready",
-                                "issues": ["DB_URL_USER_MANAGEMENT not configured"],
+                                "issues": ["DB_URL_USER not configured"],
                             },
                             "dependencies": {
                                 "status": "not_ready",
@@ -598,9 +598,9 @@ async def readiness_check() -> Any:
     # Configuration check
     config_issues = []
     current_settings = Settings()
-    db_url = getattr(current_settings, "db_url_user_management", None)
+    db_url = getattr(current_settings, "db_url_user", None)
     if not db_url:
-        config_issues.append("DB_URL_USER_MANAGEMENT not configured")
+        config_issues.append("DB_URL_USER not configured")
     is_test_env = (
         getattr(current_settings, "environment", "").lower() in ["test", "testing"]
         or os.environ.get("PYTEST_CURRENT_TEST") is not None
@@ -633,7 +633,7 @@ async def readiness_check() -> Any:
     # Compose the response using the Pydantic model
     response_data = ReadinessStatus(
         status=overall_status,
-        service="user-management",
+        service="user",
         version="0.1.0",
         timestamp=datetime.now(timezone.utc).isoformat(),
         environment=str(getattr(get_settings(), "environment", "unknown")),

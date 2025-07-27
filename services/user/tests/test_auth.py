@@ -36,7 +36,7 @@ def patch_settings(monkeypatch):
     import services.user.settings as user_settings
 
     test_settings = user_settings.Settings(
-        db_url_user_management="sqlite:///:memory:",
+        db_url_user="sqlite:///:memory:",
         api_frontend_user_key="test-frontend-key",
         api_chat_user_key="test-chat-key",
         api_office_user_key="test-office-key",
@@ -256,7 +256,7 @@ class TestNextAuthAuthentication(BaseUserManagementTest):
 class TestServiceAuthentication(BaseUserManagementTest):
     """Test cases for service-to-service authentication."""
 
-    def test_user_management_api_key_auth_verify_valid_key(self):
+    def test_user_api_key_auth_verify_valid_key(self):
         """Test valid API key verification."""
         perms = get_client_permissions("frontend")
         expected = [
@@ -269,12 +269,12 @@ class TestServiceAuthentication(BaseUserManagementTest):
         ]
         assert perms == expected
 
-    def test_user_management_api_key_auth_verify_invalid_key(self):
+    def test_user_api_key_auth_verify_invalid_key(self):
         """Test invalid API key verification."""
         perms = get_client_permissions("invalid-client")
         assert perms == []
 
-    def test_user_management_api_key_auth_is_valid_client(self):
+    def test_user_api_key_auth_is_valid_client(self):
         """Test client name validation."""
         assert client_has_permission("frontend", "read_users") is True
         assert client_has_permission("invalid-client", "read_users") is False
@@ -287,7 +287,7 @@ class TestServiceAuthentication(BaseUserManagementTest):
         request.state = Mock()
 
         service_name = verify_service_authentication(request)
-        assert service_name == "user-management-access"
+        assert service_name == "user-access"
 
     @pytest.mark.asyncio
     async def test_verify_service_authentication_missing_key(self):
@@ -319,7 +319,7 @@ class TestServiceAuthentication(BaseUserManagementTest):
         request.state = Mock()
 
         service_name = verify_service_authentication(request)
-        assert service_name == "user-management-access"
+        assert service_name == "user-access"
 
     @pytest.mark.asyncio
     async def test_get_current_service_auth_failure(self):
@@ -383,7 +383,7 @@ class TestServiceAuthentication(BaseUserManagementTest):
 
         auth_dep = service_permission_required(["read_users"])
         service_name = await auth_dep(request)
-        assert service_name == "user-management-access"
+        assert service_name == "user-access"
 
     @pytest.mark.asyncio
     async def test_require_service_auth_restriction_failure(self):
@@ -395,7 +395,7 @@ class TestServiceAuthentication(BaseUserManagementTest):
         service_auth.API_KEY_CONFIGS["api_frontend_user_key"] = (
             service_auth.APIKeyConfig(
                 client="frontend",
-                service="user-management-access",
+                service="user-access",
                 permissions=["read_users"],  # Only read_users, not write_tokens
                 settings_key="api_frontend_user_key",
             )
@@ -450,7 +450,7 @@ class TestAuthenticationIntegration(BaseUserManagementTest):
             request.headers = headers
             request.state = Mock()
             service_name = verify_service_authentication(request)
-            assert service_name == "user-management-access"
+            assert service_name == "user-access"
 
 
 class TestNextAuthSecurity(BaseUserManagementTest):

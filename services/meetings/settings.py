@@ -43,10 +43,10 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("OFFICE_SERVICE_URL"),
     )
 
-    user_management_service_url: str = Field(
+    user_service_url: str = Field(
         default="http://localhost:8001",
         description="URL for the user management service",
-        validation_alias=AliasChoices("USER_MANAGEMENT_SERVICE_URL"),
+        validation_alias=AliasChoices("USER_SERVICE_URL"),
     )
 
     # Logging configuration

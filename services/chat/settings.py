@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     )
 
     # Service URLs
-    user_management_service_url: str = Field(
+    user_service_url: str = Field(
         ...,
         description="User management service URL",
         validation_alias=AliasChoices(

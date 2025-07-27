@@ -179,7 +179,7 @@ class TokenManager:
         """Retrieve valid token from User Management Service"""
         try:
             response = await self.http_client.post(
-                f"{USER_MANAGEMENT_URL}/internal/tokens/get",
+                f"{USER_URL}/internal/tokens/get",
                 json={
                     "user_id": user_id,
                     "provider": provider,
@@ -530,7 +530,7 @@ DB_URL_OFFICE = "postgresql://user:password@host:5432/briefly"
 REDIS_URL = "redis://redis:6379/0"
 
 # Service Dependencies
-USER_MANAGEMENT_SERVICE_URL = "http://user-management-service:8000"
+USER_SERVICE_URL = "http://user-service:8000"
 SERVICE_API_KEY = "secure-service-key"
 
 # External APIs
@@ -556,7 +556,7 @@ async def health_check():
     checks = {
         "database": await check_database_connection(),
         "redis": await check_redis_connection(),
-        "user_management_service": await check_service_connection(USER_MANAGEMENT_SERVICE_URL),
+        "user_service": await check_service_connection(USER_SERVICE_URL),
         "google_api": await check_google_api_status(),
         "microsoft_api": await check_microsoft_api_status()
     }

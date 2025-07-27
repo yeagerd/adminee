@@ -10,11 +10,11 @@ services:
       - "3000:3000" # For Next.js frontend
       - "8000:8000" # For Python/FastAPI backend (Note: Original 'app' service. If chat-service is also FastAPI on 8000, ports need adjustment)
     depends_on:
-      - user-management
+      - user-service
       - chat-service
       - office-service
 
-  user-management:
+  user-service:
     build:
       context: .
       dockerfile: Dockerfile.user-service
@@ -27,7 +27,7 @@ services:
       - redis
     environment:
       - ENVIRONMENT=${ENVIRONMENT}  # Required: local|staging|production|ci
-      - DB_URL_USER_MANAGEMENT=${DB_URL_USER_MANAGEMENT}
+      - DB_URL_USER=${DB_URL_USER}
       - REDIS_URL=redis://redis:6379
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
@@ -53,12 +53,12 @@ services:
     depends_on:
       - db
       - redis
-      - user-management
+      - user-service
     environment:
       - ENVIRONMENT=${ENVIRONMENT}  # Required: local|staging|production|ci
       - DB_URL_OFFICE=${DB_URL_OFFICE}
       - REDIS_URL=redis://redis:6379
-      - USER_MANAGEMENT_SERVICE_URL=http://user-management:8001
+      - USER_SERVICE_URL=http://user-service:8001
       - API_FRONTEND_OFFICE_KEY=${API_FRONTEND_OFFICE_KEY}
       - API_OFFICE_USER_KEY=${API_OFFICE_USER_KEY}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
@@ -75,12 +75,12 @@ services:
       - "8002:8002" # Chat service on port 8002
     depends_on:
       - db # Assuming it might use the main db or its own
-      - user-management # If it needs to authenticate/call user-management
+      - user-service # If it needs to authenticate/call user-service
       - office-service # If it needs to call office-service
     environment:
       - ENVIRONMENT=${ENVIRONMENT}  # Required: local|staging|production|ci
       - DB_URL_CHAT=${DB_URL_CHAT}
-      - USER_MANAGEMENT_SERVICE_URL=http://user-management:8001
+      - USER_SERVICE_URL=http://user-service:8001
       - OFFICE_SERVICE_URL=http://office-service:8003
       - API_FRONTEND_CHAT_KEY=${API_FRONTEND_CHAT_KEY}
       - API_CHAT_USER_KEY=${API_CHAT_USER_KEY}

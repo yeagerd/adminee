@@ -180,7 +180,7 @@ def get_user_available_providers(user_id: str) -> List[str]:
             return []
         headers["X-API-Key"] = get_settings().api_chat_user_key  # type: ignore[assignment]
 
-        user_service_url = get_settings().user_management_service_url
+        user_service_url = get_settings().user_service_url
         response = requests.get(
             f"{user_service_url}/v1/internal/users/{user_id}/integrations",
             headers=headers,

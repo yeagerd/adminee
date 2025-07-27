@@ -15,26 +15,26 @@ The demo supports two modes:
 ### Interactive Mode (Default)
 Full demo with OAuth menu and browser-based flows:
 ```bash
-python user_management_demo.py
+python user_demo.py
 ```
 
 ### Simple Mode
 Non-interactive demo that tests all core functionality without OAuth completion:
 ```bash
-python user_management_demo.py --simple
+python user_demo.py --simple
 ```
 
 ### Custom Service URL
 Point to a different service instance:
 ```bash
-python user_management_demo.py --base-url http://your-service.com:8080
-python user_management_demo.py --simple --base-url http://your-service.com:8080
+python user_demo.py --base-url http://your-service.com:8080
+python user_demo.py --simple --base-url http://your-service.com:8080
 ```
 
 ### Help
 View all available options:
 ```bash
-python user_management_demo.py --help
+python user_demo.py --help
 ```
 
 ## Quick Start
@@ -64,14 +64,14 @@ Choose your preferred mode:
 ```bash
 # Terminal 2: Run simple demo
 cd services/demos
-python user_management_demo.py --simple
+python user_demo.py --simple
 ```
 
 **Full Interactive Demo:**
 ```bash
 # Terminal 2: Run interactive demo
 cd services/demos
-python user_management_demo.py
+python user_demo.py
 ```
 
 ## Demo Modes
@@ -114,7 +114,7 @@ This simple demo showcases core user management functionality:
    Health check
    Response: {
      "status": "healthy",
-     "service": "user-management"
+     "service": "user"
    }
 
 ✅ Demo completed successfully!
@@ -332,8 +332,8 @@ async with UserManagementDemo() as demo:
 
 ## Related Documentation
 
-- [User Management Service Documentation](../../documentation/user-management-service.md)
-- [OAuth Integration Guide](../user_management/integrations/README.md)
+- [User Management Service Documentation](../../documentation/user-service.md)
+- [OAuth Integration Guide](../user/integrations/README.md)
 - [API Reference](http://localhost:8001/docs) (when service is running)
 
 ## Support

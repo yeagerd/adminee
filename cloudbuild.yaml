@@ -121,7 +121,7 @@ steps:
       - '--service-account'
       - 'briefly-backend@$PROJECT_ID.iam.gserviceaccount.com'
       - '--update-secrets'
-      - 'DB_URL_USER_MANAGEMENT=db-url-user-management:latest'
+      - 'DB_URL_USER=db-url-user:latest'
       - '--update-secrets'
       - 'CLERK_SECRET_KEY=clerk-secret-key:latest'
       - '--update-secrets'

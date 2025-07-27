@@ -15,8 +15,8 @@ Requirements:
 - Web browser available for OAuth flows
 
 Usage:
-- python user_management_demo.py              # Interactive demo with OAuth menu
-- python user_management_demo.py --simple     # Simple non-interactive demo
+- python user_demo.py              # Interactive demo with OAuth menu
+- python user_demo.py --simple     # Simple non-interactive demo
 """
 
 import argparse
@@ -69,7 +69,7 @@ class UserManagementDemo:
     def __init__(
         self,
         base_url: str = "http://localhost:8001",
-        user_management_api_key: Optional[str] = None,
+        user_api_key: Optional[str] = None,
     ):
         self.base_url = base_url
         self.client = httpx.AsyncClient()
@@ -77,8 +77,8 @@ class UserManagementDemo:
         self.demo_database_user_id = None  # This will be set after user creation
 
         # Set service API key with precedence: arg > env var > default
-        if user_management_api_key:
-            self.service_api_key = user_management_api_key
+        if user_api_key:
+            self.service_api_key = user_api_key
             self.api_key_source = "command line argument"
         elif os.getenv("API_FRONTEND_USER_KEY"):
             self.service_api_key = os.getenv("API_FRONTEND_USER_KEY") or ""
@@ -898,8 +898,8 @@ async def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python user_management_demo.py              # Interactive demo with OAuth menu
-  python user_management_demo.py --simple     # Simple non-interactive demo
+  python user_demo.py              # Interactive demo with OAuth menu
+  python user_demo.py --simple     # Simple non-interactive demo
   
 Environment Variables:
   API_FRONTEND_USER_KEY          Service-to-service API key for internal API testing
@@ -943,7 +943,7 @@ Environment Variables:
 
     async with UserManagementDemo(
         base_url=args.base_url,
-        user_management_api_key=getattr(args, "service_api_key", None),
+        user_api_key=getattr(args, "service_api_key", None),
     ) as demo:
         if args.simple:
             success = await demo.run_simple_demo()

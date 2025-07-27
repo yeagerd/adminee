@@ -92,7 +92,7 @@ create_secrets() {
         "azure-ad-client-id"
         "azure-ad-client-secret"
         "azure-ad-tenant-id"
-        "db-url-user-management"
+        "db-url-user"
         "db-url-office"
         "db-url-chat"
         "redis-url"
@@ -146,7 +146,7 @@ setup_cloudrun_permissions() {
     
     # Runtime secrets for backend services
     declare -a runtime_secrets=(
-        "db-url-user-management"
+        "db-url-user"
         "db-url-office"
         "db-url-chat"
         "redis-url"
@@ -183,7 +183,7 @@ AZURE_AD_CLIENT_SECRET=your_azure_client_secret
 AZURE_AD_TENANT_ID=your_azure_tenant_id
 
 # Database URLs
-DB_URL_USER_MANAGEMENT=postgresql://user:pass@host:port/db_user
+DB_URL_USER=postgresql://user:pass@host:port/db_user
 DB_URL_OFFICE=postgresql://user:pass@host:port/db_office
 DB_URL_CHAT=postgresql://user:pass@host:port/db_chat
 

@@ -16,7 +16,7 @@ async def get_user_email_providers(user_id: str) -> list[str]:
         List of available provider names (e.g., ['google', 'microsoft'])
     """
     settings = get_settings()
-    url = f"{settings.user_management_service_url}/v1/internal/users/{user_id}/integrations"
+    url = f"{settings.user_service_url}/v1/internal/users/{user_id}/integrations"
     headers = {"X-API-Key": settings.api_meetings_user_key}
 
     try:
