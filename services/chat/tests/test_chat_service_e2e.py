@@ -5,18 +5,18 @@ Tests the complete chat service functionality including
 multi-agent workflow processing, history management, and API endpoints.
 """
 
-import asyncio
 import os
 import sys
 from unittest.mock import patch
 
 import pytest
+import pytest_asyncio
 import respx
 from fastapi.testclient import TestClient
 from httpx import Response
 
 # Test API key for authentication
-TEST_API_KEY = "test-FRONTEND_CHAT_KEY"
+TEST_API_KEY = "test-frontend-chat-key"
 TEST_HEADERS = {"X-API-Key": TEST_API_KEY}
 
 
@@ -55,19 +55,42 @@ def app(test_env):
     return fresh_app
 
 
+@pytest_asyncio.fixture(scope="session", autouse=True)
 async def setup_test_database():
-    """Initialize the test database with tables."""
+    """Set up test settings and database for the entire test session."""
+    import services.chat.settings as chat_settings
     from services.chat import history_manager
 
-    await history_manager.init_db()
+    # Create test settings instance
+    test_settings = chat_settings.Settings(
+        db_url_chat="sqlite+aiosqlite:///file::memory:?cache=shared",
+        api_frontend_chat_key="test-frontend-chat-key",
+        api_chat_user_key="test-chat-user-key",
+        api_chat_office_key="test-chat-office-key",
+        user_management_service_url="http://localhost:8001",
+        office_service_url="http://localhost:8003",
+    )
+
+    # Save original singleton
+    original_settings = chat_settings._settings
+
+    # Set the test settings as the singleton
+    chat_settings._settings = test_settings
+
+    try:
+        # Initialize database tables
+        await history_manager.init_db()
+        yield
+    finally:
+        # Restore original singleton
+        chat_settings._settings = original_settings
 
 
 @pytest.fixture(autouse=True)
 def setup_test_environment(app):
     """Set up the test environment."""
-    # Initialize test database synchronously
-    asyncio.run(setup_test_database())
-    # Removed get_chat_auth import and assertion as it does not exist
+    # Database is already initialized by the session fixture
+    pass
 
 
 @pytest.fixture(autouse=True, scope="session")
@@ -79,11 +102,6 @@ def set_db_url_chat():
         os.environ["DB_URL_CHAT"] = original_db_url
     elif "DB_URL_CHAT" in os.environ:
         del os.environ["DB_URL_CHAT"]
-
-
-# Test API key for authentication
-TEST_API_KEY = "test-FRONTEND_CHAT_KEY"
-TEST_HEADERS = {"X-API-Key": TEST_API_KEY}
 
 
 def test_end_to_end_chat_flow(app):

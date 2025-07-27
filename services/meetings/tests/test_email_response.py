@@ -23,6 +23,7 @@ def setup_env_and_tables(monkeypatch):
         db_url_meetings="sqlite:///file::memory:?cache=shared",
         api_email_sync_meetings_key=API_KEY,
         api_meetings_office_key="test-meetings-office-key",
+        office_service_url="http://localhost:8003",
     )
     services.meetings.settings._settings = test_settings
 

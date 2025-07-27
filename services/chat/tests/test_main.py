@@ -11,9 +11,9 @@ async def test_lifespan_disposes_engine():
     with patch("services.chat.main.history_manager") as mock_history_manager:
         # Set up the settings singleton to return valid values
         chat_settings._settings = Settings(
-            api_frontend_chat_key="test_key",
-            api_chat_user_key="test_key",
-            api_chat_office_key="test_key",
+            api_frontend_chat_key="test-frontend-chat-key",
+            api_chat_user_key="test-chat-user-key",
+            api_chat_office_key="test-chat-office-key",
             user_management_service_url="http://localhost:8001",
             office_service_url="http://localhost:8003",
             log_level="INFO",

@@ -26,32 +26,30 @@ from services.common.http_errors import AuthError
 
 
 @pytest.fixture(autouse=True)
-def set_db_url_chat(monkeypatch):
+def patch_settings():
+    """Set up test settings by directly setting the singleton."""
     import services.chat.settings as chat_settings
 
-    # Save the original singleton to restore later
-    original_settings = chat_settings._settings
-    # Set the singleton to a test instance
-    chat_settings._settings = chat_settings.Settings(
-        api_frontend_chat_key="test-FRONTEND_CHAT_KEY",
+    # Create test settings instance
+    test_settings = chat_settings.Settings(
         db_url_chat="sqlite+aiosqlite:///file::memory:?cache=shared",
+        api_frontend_chat_key="test-frontend-chat-key",
+        api_chat_user_key="test-chat-user-key",
+        api_chat_office_key="test-chat-office-key",
+        user_management_service_url="http://localhost:8001",
+        office_service_url="http://localhost:8003",
     )
+
+    # Save original singleton
+    original_settings = chat_settings._settings
+
+    # Set the test settings as the singleton
+    chat_settings._settings = test_settings
+
     yield
-    # Restore the original singleton after the session
+
+    # Restore original singleton
     chat_settings._settings = original_settings
-
-
-@pytest.fixture(autouse=True)
-def patch_settings(monkeypatch):
-    import services.chat.settings as chat_settings
-
-    def _test_settings():
-        return chat_settings.Settings(
-            api_frontend_chat_key="test-FRONTEND_CHAT_KEY",
-            db_url_chat="sqlite+aiosqlite:///file::memory:?cache=shared",
-        )
-
-    monkeypatch.setattr("services.chat.settings.get_settings", _test_settings)
 
 
 class TestChatServiceAuth:
@@ -59,18 +57,9 @@ class TestChatServiceAuth:
 
     def test_chat_service_auth_verify_valid_key(self):
         """Test valid API key verification."""
-        import services.chat.settings as chat_settings
-
-        test_settings = chat_settings.Settings(
-            api_frontend_chat_key="test-FRONTEND_CHAT_KEY",
-            db_url_chat="sqlite+aiosqlite:///file::memory:?cache=shared",
-        )
-        chat_settings._settings = test_settings
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        service_name = verify_api_key("test-FRONTEND_CHAT_KEY", api_key_mapping)
+        service_name = verify_api_key("test-frontend-chat-key", api_key_mapping)
         assert service_name == "chat-service-access"
-        # Cleanup
-        chat_settings._settings = None
 
     def test_chat_service_auth_verify_invalid_key(self):
         """Test invalid API key verification."""
@@ -81,13 +70,13 @@ class TestChatServiceAuth:
     def test_chat_service_auth_is_valid_client(self):
         """Test client name validation."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        client_name = get_client_from_api_key("test-FRONTEND_CHAT_KEY", api_key_mapping)
+        client_name = get_client_from_api_key("test-frontend-chat-key", api_key_mapping)
         assert client_name == "frontend"
 
     def test_verify_chat_authentication_success(self):
         """Test successful chat authentication."""
         request = MagicMock(spec=Request)
-        request.headers = {"Authorization": "Bearer test-FRONTEND_CHAT_KEY"}
+        request.headers = {"Authorization": "Bearer test-frontend-chat-key"}
         request.state = Mock()
 
         client_name = verify_service_authentication(request)
@@ -121,7 +110,7 @@ class TestChatServiceAuth:
         """Test getting permissions for frontend client."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
         permissions = get_permissions_from_api_key(
-            "test-FRONTEND_CHAT_KEY", api_key_mapping
+            "test-frontend-chat-key", api_key_mapping
         )
         expected = [
             "read_chats",
@@ -152,7 +141,7 @@ class TestChatServiceAuth:
         """Test successful client permission check."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
         assert (
-            has_permission("test-FRONTEND_CHAT_KEY", "read_chats", api_key_mapping)
+            has_permission("test-frontend-chat-key", "read_chats", api_key_mapping)
             is True
         )
 
@@ -169,7 +158,7 @@ class TestChatServiceAuth:
     async def test_require_chat_auth_success(self):
         """Test require_chat_auth decorator success."""
         request = MagicMock(spec=Request)
-        request.headers = {"Authorization": "Bearer test-FRONTEND_CHAT_KEY"}
+        request.headers = {"Authorization": "Bearer test-frontend-chat-key"}
         request.state = Mock()
 
         auth_dep = service_permission_required(["read_chats"])
@@ -180,7 +169,7 @@ class TestChatServiceAuth:
     async def test_require_chat_auth_restriction_failure(self):
         """Test require_chat_auth decorator with client restriction failure."""
         request = MagicMock(spec=Request)
-        request.headers = {"Authorization": "Bearer test-FRONTEND_CHAT_KEY"}
+        request.headers = {"Authorization": "Bearer test-frontend-chat-key"}
         request.state = Mock()
 
         # Require a permission that frontend doesn't have
@@ -198,9 +187,9 @@ class TestChatServiceAuth:
     def test_multiple_auth_header_formats(self):
         """Test different authentication header formats."""
         test_cases = [
-            {"Authorization": "Bearer test-FRONTEND_CHAT_KEY"},
-            {"X-API-Key": "test-FRONTEND_CHAT_KEY"},
-            {"X-Service-Key": "test-FRONTEND_CHAT_KEY"},
+            {"Authorization": "Bearer test-frontend-chat-key"},
+            {"X-API-Key": "test-frontend-chat-key"},
+            {"X-Service-Key": "test-frontend-chat-key"},
         ]
 
         for headers in test_cases:
@@ -218,15 +207,15 @@ class TestChatAuthIntegration:
     def test_chat_auth_singleton(self):
         """Test that chat auth instance is a singleton."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
-        auth1 = get_permissions_from_api_key("test-FRONTEND_CHAT_KEY", api_key_mapping)
-        auth2 = get_permissions_from_api_key("test-FRONTEND_CHAT_KEY", api_key_mapping)
+        auth1 = get_permissions_from_api_key("test-frontend-chat-key", api_key_mapping)
+        auth2 = get_permissions_from_api_key("test-frontend-chat-key", api_key_mapping)
         assert auth1 == auth2
 
     def test_permission_matrix(self):
         """Test the complete permission matrix for frontend client."""
         api_key_mapping = build_api_key_mapping(API_KEY_CONFIGS, get_settings)
         permissions = get_permissions_from_api_key(
-            "test-FRONTEND_CHAT_KEY", api_key_mapping
+            "test-frontend-chat-key", api_key_mapping
         )
 
         # Verify all expected permissions exist
@@ -242,7 +231,7 @@ class TestChatAuthIntegration:
         for permission in expected_permissions:
             assert permission in permissions
             assert (
-                has_permission("test-FRONTEND_CHAT_KEY", permission, api_key_mapping)
+                has_permission("test-frontend-chat-key", permission, api_key_mapping)
                 is True
             )
 
