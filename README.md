@@ -397,7 +397,7 @@ docker run -p 8001:8000 briefly-chat
     ```bash
     # Office Service Testing:
     cd services/office
-    # Virtual environment is already activated by setup-dev.sh
+    # Virtual environment is already activated by install.sh
     pytest                    # Run all tests
     pytest tests/test_integration.py  # Run integration tests only
     

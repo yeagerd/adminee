@@ -21,7 +21,7 @@
 ## General instructions for working in Python in this repo
 
 ### Setup
-* Set up the unified development environment: `./setup-dev.sh`
+* Set up the unified development environment: `./install.sh`
 * The virtual environment will be automatically activated
 * Run all Python commands from the repository root.
 

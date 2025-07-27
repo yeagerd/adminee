@@ -15,7 +15,7 @@ The setup provides:
 Run the installation setup script from the repository root:
 
 ```bash
-./setup-dev.sh
+./install.sh
 ```
 
 This script will:
@@ -70,7 +70,7 @@ If you need to install manually for a specific service:
 
 ```bash
 # The unified setup script handles this automatically
-./setup-dev.sh
+./install.sh
 ```
 
 For manual installation (if needed):
@@ -115,7 +115,7 @@ To verify the setup works:
 - `services/office/.vscode/settings.json` (updated)
 - `services/chat/.vscode/settings.json` (updated)
 - `services/user/.vscode/settings.json` (updated)
-- `setup-dev.sh` (updated - now includes shared package installation)
+- `install.sh` (updated - now includes shared package installation)
 - `briefly.code-workspace` (updated - removed vector-db folder, added root)
 
 ## Technical Details
