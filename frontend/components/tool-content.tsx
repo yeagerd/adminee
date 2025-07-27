@@ -13,6 +13,7 @@ import { useIntegrations } from '@/contexts/integrations-context';
 import { useUserPreferences } from '@/contexts/settings-context';
 import { useToolStateUtils } from '@/hooks/use-tool-state';
 import { gatewayClient } from '@/lib/gateway-client';
+import { MeetingSubView } from '@/types/navigation';
 import { CalendarEvent } from '@/types/office-service';
 import { AlertCircle, ExternalLink } from 'lucide-react';
 import { useSession } from 'next-auth/react';
@@ -117,20 +118,20 @@ export function ToolContent() {
             .finally(() => setLoading(false));
     };
 
+    // Track meeting sub-view state to avoid duplicate API calls
+    const [localMeetingSubView, setLocalMeetingSubView] = useState<MeetingSubView>('list');
+
+    useEffect(() => {
+        // Update local state when meeting sub-view changes
+        setLocalMeetingSubView(getMeetingSubView());
+    }, [getMeetingSubView]);
+
     useEffect(() => {
         if (activeTool === 'meetings') {
             fetchPolls();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeTool]);
-
-    // Add a separate effect to refresh polls when returning to list view
-    useEffect(() => {
-        if (activeTool === 'meetings' && getMeetingSubView() === 'list') {
-            fetchPolls();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeTool, getMeetingSubView()]);
+    }, [activeTool, localMeetingSubView]);
 
 
     const renderToolContent = () => {
