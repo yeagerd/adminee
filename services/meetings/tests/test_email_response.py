@@ -117,7 +117,7 @@ class TestEmailResponse(BaseMeetingsTest):
         )
         payload = {
             "emailId": "irrelevant",
-            "content": "SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available - Looking forward to it!",
+            "content": "I'm AVAILABLE:\nSLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - Looking forward to it!",
             "sender": "alice@example.com",
         }
         resp = client.post(
@@ -154,7 +154,7 @@ class TestEmailResponse(BaseMeetingsTest):
         )
         payload = {
             "emailId": "irrelevant",
-            "content": "SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available",
+            "content": "I'm AVAILABLE:\nSLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC)",
             "sender": "alice@example.com",
         }
         resp = client.post(
@@ -187,7 +187,7 @@ class TestEmailResponse(BaseMeetingsTest):
         )
         payload = {
             "emailId": "irrelevant",
-            "content": "SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available",
+            "content": "I'm AVAILABLE:\nSLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC)",
             "sender": "unknown@example.com",
         }
         resp = client.post(
@@ -218,7 +218,7 @@ class TestEmailResponse(BaseMeetingsTest):
 
         payload = {
             "emailId": "irrelevant",
-            "content": "SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available - I prefer this time\nSLOT_2: Tuesday, January 16, 2024 at 10:00 AM - 11:00 AM (UTC) - unavailable - I have a conflict",
+            "content": "I'm AVAILABLE:\nSLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - I prefer this time\n\nI'm UNAVAILABLE:\nSLOT_2: Tuesday, January 16, 2024 at 10:00 AM - 11:00 AM (UTC) - I have a conflict",
             "sender": "alice@example.com",
         }
         resp = client.post(
@@ -270,7 +270,7 @@ class TestEmailResponse(BaseMeetingsTest):
         # Test with malformed slot identifiers that should be skipped
         payload = {
             "emailId": "irrelevant",
-            "content": "SLOT_: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available\nSLOT_abc: Tuesday, January 16, 2024 at 10:00 AM - 11:00 AM (UTC) - unavailable\nSLOT_0: Wednesday, January 17, 2024 at 3:00 PM - 4:00 PM (UTC) - maybe",
+            "content": "I'm AVAILABLE:\nSLOT_: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC)\nSLOT_abc: Tuesday, January 16, 2024 at 10:00 AM - 11:00 AM (UTC)\nSLOT_0: Wednesday, January 17, 2024 at 3:00 PM - 4:00 PM (UTC)",
             "sender": "alice@example.com",
         }
         resp = client.post(
@@ -290,11 +290,11 @@ class TestEmailResponse(BaseMeetingsTest):
         # Test cases that would cause keyword position mismatch
         test_cases = [
             # Case 1: "available" appears in "unavailable" - should extract comment correctly
-            "SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available - I prefer this time",
+            "I'm AVAILABLE:\nSLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - I prefer this time",
             # Case 2: Multiple occurrences of keyword - should use the first word boundary match
-            "SLOT_1: Tuesday, January 16, 2024 at 10:00 AM - 11:00 AM (UTC) - maybe - I'm available for this time",
+            "I'm MAYBE:\nSLOT_1: Tuesday, January 16, 2024 at 10:00 AM - 11:00 AM (UTC) - I'm available for this time",
             # Case 3: Keyword with punctuation - should handle correctly
-            "SLOT_1: Wednesday, January 17, 2024 at 3:00 PM - 4:00 PM (UTC) - unavailable! - I have a conflict",
+            "I'm UNAVAILABLE:\nSLOT_1: Wednesday, January 17, 2024 at 3:00 PM - 4:00 PM (UTC) - I have a conflict",
         ]
 
         for i, content in enumerate(test_cases):
@@ -344,7 +344,7 @@ class TestEmailResponse(BaseMeetingsTest):
         # Test with a valid slot response and an invalid slot number response
         payload = {
             "emailId": "irrelevant",
-            "content": "SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available - Valid response\nSLOT_99: Tuesday, January 16, 2024 at 10:00 AM - 11:00 AM (UTC) - unavailable - Invalid slot number response",
+            "content": "I'm AVAILABLE:\nSLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - Valid response\n\nI'm UNAVAILABLE:\nSLOT_99: Tuesday, January 16, 2024 at 10:00 AM - 11:00 AM (UTC) - Invalid slot number response",
             "sender": "alice@example.com",
         }
         resp = client.post(
@@ -374,3 +374,71 @@ class TestEmailResponse(BaseMeetingsTest):
                 .first()
             )
             assert updated_participant.status == ParticipantStatus.responded
+
+    def test_process_email_response_comment_extraction_fix(self):
+        """Test that comment extraction correctly handles timezone patterns and doesn't split on time range dashes."""
+        poll, slot, participant, slot_id, poll_id, participant_id = (
+            self.create_poll_and_participant()
+        )
+
+        # Test cases that would have failed with the old split logic
+        test_cases = [
+            # Case 1: Comment after timezone - should extract only the comment
+            {
+                "content": "I'm AVAILABLE:\nSLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - I prefer this time slot",
+                "expected_comment": "I prefer this time slot",
+            },
+            # Case 2: Comment with dash in time range - should not split on time range dash
+            {
+                "content": "I'm UNAVAILABLE:\nSLOT_1: Tuesday, January 16, 2024 at 10:00 AM - 11:00 AM (EST) - I have a conflict",
+                "expected_comment": "I have a conflict",
+            },
+            # Case 3: Comment with multiple dashes - should only extract after timezone
+            {
+                "content": "I'm MAYBE:\nSLOT_1: Wednesday, January 17, 2024 at 3:00 PM - 4:00 PM (PST) - I'll try to make this work - but no guarantees",
+                "expected_comment": "I'll try to make this work - but no guarantees",
+            },
+            # Case 4: No comment - should be None
+            {
+                "content": "I'm AVAILABLE:\nSLOT_1: Thursday, January 18, 2024 at 1:00 PM - 2:00 PM (UTC)",
+                "expected_comment": None,
+            },
+            # Case 5: Different timezone format - should still work
+            {
+                "content": "I'm AVAILABLE:\nSLOT_1: Friday, January 19, 2024 at 9:00 AM - 10:00 AM (America/New_York) - This works for me",
+                "expected_comment": "This works for me",
+            },
+        ]
+
+        for i, test_case in enumerate(test_cases):
+            payload = {
+                "emailId": "irrelevant",
+                "content": test_case["content"],
+                "sender": "alice@example.com",
+            }
+            resp = client.post(
+                "/api/v1/meetings/process-email-response/",
+                json=payload,
+                headers={"X-API-Key": API_KEY},
+            )
+            assert resp.status_code == 200, f"Test case {i+1} failed: {resp.text}"
+
+            # Check that the comment was extracted correctly
+            with get_session() as session:
+                response = (
+                    session.query(PollResponse)
+                    .filter_by(
+                        participant_id=UUID(participant_id), time_slot_id=UUID(slot_id)
+                    )
+                    .first()
+                )
+                assert response is not None, f"Test case {i+1}: No response found"
+
+                if test_case["expected_comment"] is None:
+                    assert (
+                        response.comment is None
+                    ), f"Test case {i+1}: Expected no comment but got '{response.comment}'"
+                else:
+                    assert (
+                        response.comment == test_case["expected_comment"]
+                    ), f"Test case {i+1}: Expected '{test_case['expected_comment']}' but got '{response.comment}'"
