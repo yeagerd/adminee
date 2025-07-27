@@ -470,7 +470,65 @@ async def resend_invitation(
         )
         subject = f"You're invited: {poll.title}"
         description = getattr(poll, "description", "") or ""
-        body = f"You have been invited to respond to a meeting poll: {poll.title}\n\n{description}\n\nRespond here: {response_url}"
+
+        # Build email body with location and time slots
+        body_lines = [
+            f"You have been invited to respond to a meeting poll: {poll.title}",
+            "",
+        ]
+
+        if description:
+            body_lines.extend([description, ""])
+
+        # Add location if available
+        location = getattr(poll, "location", "") or ""
+        if location:
+            body_lines.extend([f"Location: {location}", ""])
+
+        # Add time slots with response options
+        body_lines.append("Available time slots:")
+        for i, slot in enumerate(poll.time_slots, 1):
+            start_time = slot.start_time.strftime("%A, %B %d, %Y at %I:%M %p")
+            end_time = slot.end_time.strftime("%I:%M %p")
+            timezone = slot.timezone
+            body_lines.append(f"{i}. {start_time} - {end_time} ({timezone})")
+
+        body_lines.extend(
+            [
+                "",
+                "To respond via web:",
+                f"{response_url}",
+                "",
+                "To respond via email, reply to this message with your availability for each time slot:",
+                "",
+                "=== EMAIL RESPONSE TEMPLATE ===",
+                "Copy and paste the headings below, then add your response (available/unavailable/maybe) after each:",
+            ]
+        )
+
+        # Add response template for each slot
+        for i, slot in enumerate(poll.time_slots, 1):
+            start_time = slot.start_time.strftime("%A, %B %d, %Y at %I:%M %p")
+            end_time = slot.end_time.strftime("%I:%M %p")
+            timezone = slot.timezone
+            body_lines.append(
+                f"SLOT_{i}: {start_time} - {end_time} ({timezone}) - [available/unavailable/maybe]"
+            )
+
+        body_lines.extend(
+            [
+                "",
+                "Example:",
+                "SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available",
+                "SLOT_2: Tuesday, January 16, 2024 at 10:00 AM - 11:00 AM (UTC) - unavailable",
+                "",
+                "You can also add optional comments after your response:",
+                "SLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - available - I prefer this time slot",
+                "=== END TEMPLATE ===",
+            ]
+        )
+
+        body = "\n".join(body_lines)
 
         try:
             await email_integration.send_invitation_email(
