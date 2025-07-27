@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     user_service_url: str = Field(
         ...,
         description="User management service URL",
+        validation_alias=AliasChoices(
+            "USER_SERVICE_URL", "USER_MANAGEMENT_SERVICE_URL"
+        ),
     )
     office_service_url: str = Field(
         default=...,
