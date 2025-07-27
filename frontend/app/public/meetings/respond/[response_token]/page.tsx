@@ -53,12 +53,37 @@ export default function PollResponsePage() {
             .then(data => {
                 setPoll(data.poll);
                 // Initialize responses for all time slots
-                const initialResponses = data.poll.time_slots.map((slot: TimeSlot) => ({
-                    time_slot_id: slot.id,
-                    response: 'unavailable' as const,
-                    comment: ''
-                }));
+                const initialResponses = data.poll.time_slots.map((slot: TimeSlot) => {
+                    // Check if there's an existing response for this time slot
+                    const existingResponse = data.responses?.find((r: any) => r.time_slot_id === slot.id);
+
+                    if (existingResponse) {
+                        // Use existing response
+                        return {
+                            time_slot_id: slot.id,
+                            response: existingResponse.response as 'available' | 'unavailable' | 'maybe',
+                            comment: existingResponse.comment || ''
+                        };
+                    } else {
+                        // Default to unavailable
+                        return {
+                            time_slot_id: slot.id,
+                            response: 'unavailable' as const,
+                            comment: ''
+                        };
+                    }
+                });
                 setResponses(initialResponses);
+
+                // Auto-expand comment sections that have content
+                const commentSectionsToExpand = new Set<string>();
+                initialResponses.forEach((response: PollResponse) => {
+                    if (response.comment && response.comment.trim()) {
+                        commentSectionsToExpand.add(response.time_slot_id);
+                    }
+                });
+                setExpandedComments(commentSectionsToExpand);
+
                 setLoading(false);
             })
             .catch((error) => {

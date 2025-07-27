@@ -31,6 +31,27 @@ def get_poll_by_response_token(response_token: str) -> dict:
         if not poll:
             raise HTTPException(status_code=404, detail="Poll not found")
 
+        # Get existing responses for this participant
+        existing_responses = (
+            session.query(PollResponseModel)
+            .filter_by(participant_id=participant.id)
+            .all()
+        )
+
+        # Convert to the format expected by frontend
+        responses = []
+        for resp in existing_responses:
+            comment_value = ""
+            if resp.comment is not None:
+                comment_value = resp.comment
+            responses.append(
+                {
+                    "time_slot_id": str(resp.time_slot_id),
+                    "response": resp.response.value,
+                    "comment": comment_value,
+                }
+            )
+
         return {
             "poll": MeetingPoll.model_validate(poll),
             "participant": {
@@ -39,6 +60,7 @@ def get_poll_by_response_token(response_token: str) -> dict:
                 "name": participant.name,
                 "status": participant.status.value,
             },
+            "responses": responses,
         }
 
 
