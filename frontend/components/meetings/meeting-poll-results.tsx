@@ -27,7 +27,15 @@ interface Poll {
     location?: string;
     participants: Participant[];
     time_slots: TimeSlot[];
-    responses?: Array<{ time_slot_id: string; response: string }>;
+    responses?: Array<{
+        id: string;
+        participant_id: string;
+        time_slot_id: string;
+        response: string;
+        comment?: string;
+        created_at: string;
+        updated_at: string;
+    }>;
 }
 
 function getSlotStats(poll: Poll) {
