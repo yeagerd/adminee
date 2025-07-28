@@ -48,18 +48,6 @@ async def setup_test_database():
         chat_settings._settings = original_settings
 
 
-@pytest_asyncio.fixture(autouse=True)
-async def clear_user4_drafts():
-    # Remove all user4 calendar_event drafts before each test to ensure isolation
-    async with hm.get_async_session_factory()() as session:
-        await session.execute(
-            sqlalchemy.delete(hm.UserDraft).where(
-                hm.UserDraft.user_id == "user4", hm.UserDraft.type == "calendar_event"
-            )
-        )
-        await session.commit()
-
-
 @pytest.mark.asyncio
 async def test_create_and_list_threads():
     t1 = await hm.create_thread("user1", "Thread 1")
