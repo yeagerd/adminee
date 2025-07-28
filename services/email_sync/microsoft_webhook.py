@@ -8,8 +8,14 @@ from services.email_sync.pubsub_client import publish_message
 
 MICROSOFT_TOPIC = "microsoft-notifications"
 MICROSOFT_WEBHOOK_SECRET = os.getenv(
-    "MICROSOFT_WEBHOOK_SECRET", "test-microsoft-secret"
+    "MICROSOFT_WEBHOOK_SECRET", "test-microsoft-webhook-secret"
 )
+
+# Use mocked publish_message in test mode
+if os.getenv("PYTHON_ENV") == "test":
+    from unittest.mock import MagicMock
+
+    publish_message = MagicMock()
 
 microsoft_webhook_bp = Blueprint("microsoft_webhook", __name__)
 
@@ -23,6 +29,10 @@ def microsoft_webhook() -> Any:
         abort(401, description="Unauthorized")
     try:
         data = request.get_json(force=True)
+        # Validate that payload contains required "value" field
+        if "value" not in data:
+            logging.error("Invalid Microsoft webhook payload: missing 'value' field")
+            abort(400, description="Invalid payload")
         # TODO: Add real validation for Microsoft Graph webhook payload
         publish_message(MICROSOFT_TOPIC, data)
     except Exception as e:

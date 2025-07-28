@@ -11,7 +11,6 @@ and cleanup operations.
 
 import pytest
 import pytest_asyncio  # Import pytest_asyncio
-import sqlalchemy
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 

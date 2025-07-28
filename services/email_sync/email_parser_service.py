@@ -25,10 +25,12 @@ class EmailParserSettings(BaseSettings):
 logging.basicConfig(level=logging.INFO)
 
 # Regex patterns
-UPS_REGEX = re.compile(r"1Z[0-9A-Z]{15,18}")
+UPS_REGEX = re.compile(r"\b1Z[0-9A-Z]{15,18}\b")
 FEDEX_REGEX = re.compile(r"\b(\d{15}|\d{4}\s?\d{4}\s?\d{4}|\d{12}(?!\d))\b")
 USPS_REGEX = re.compile(r"\d{20,22}")
-SURVEY_URL_REGEX = re.compile(r"https://survey\.ourapp\.com/response/[a-zA-Z0-9]+")
+SURVEY_URL_REGEX = re.compile(
+    r"https://survey\.ourapp\.com/response/[a-zA-Z0-9]+(?:\b|$)"
+)
 AMAZON_STATUS_REGEX = re.compile(
     r"(shipped|expected delivery|delayed|delivered)", re.IGNORECASE
 )

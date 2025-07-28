@@ -35,6 +35,8 @@ class TestSecurityFixes(BaseMeetingsTest):
         )
         models.get_engine = lambda: models._test_engine
 
+        # Import all models to ensure they are registered with Base
+
         # Drop all tables and recreate them to ensure latest schema
         Base.metadata.drop_all(models._test_engine)
         Base.metadata.create_all(models._test_engine)

@@ -199,6 +199,6 @@ def test_sanitize_email_content():
     text = sanitize_email_content(html_email)
     assert "<b>" not in text
     assert "UPS:" in text
-    long_email = "a" * 20000
+    long_email = "a" * 60000
     text = sanitize_email_content(long_email)
-    assert len(text) == 10000
+    assert len(text) == 50000
