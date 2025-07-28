@@ -11,6 +11,8 @@ and cleanup operations.
 
 import pytest
 import pytest_asyncio  # Import pytest_asyncio
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 
 import services.chat.history_manager as hm
 

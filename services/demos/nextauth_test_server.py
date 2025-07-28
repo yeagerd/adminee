@@ -310,19 +310,26 @@ async def oauth_callback(
         <body>
             <h1>✅ Authentication Successful!</h1>
             <p><strong>Provider:</strong> {provider.title()}</p>
-            <p><strong>Email:</strong> {user_info['email']}</p>
-            <p><strong>Name:</strong> {user_info.get('name', 'N/A')}</p>
+            <p><strong>Email:</strong> {user_info["email"]}</p>
+            <p><strong>Name:</strong> {user_info.get("name", "N/A")}</p>
             
             <h2>NextAuth JWT Token:</h2>
-            <textarea style="width: 100%; height: 150px; font-family: monospace; font-size: 12px;">{jwt_token}</textarea>
+            <textarea style="width: 100%; height: 150px; font-family: monospace; font-size: 12px;">{
+                jwt_token
+            }</textarea>
             
             <h2>Session Info:</h2>
-            <pre>{json.dumps({
-                'user_id': user_id,
-                'session_id': session_id,
-                'provider': provider,
-                'email': user_info['email']
-            }, indent=2)}</pre>
+            <pre>{
+                json.dumps(
+                    {
+                        "user_id": user_id,
+                        "session_id": session_id,
+                        "provider": provider,
+                        "email": user_info["email"],
+                    },
+                    indent=2,
+                )
+            }</pre>
             
             <p><em>You can now use this JWT token to authenticate with Briefly services.</em></p>
             <p><a href="/">← Back to NextAuth Test Server</a></p>
