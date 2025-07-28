@@ -56,15 +56,16 @@ class TestEmailResponse(BaseMeetingsTest):
                 response_token=str(uuid4()),
             )
             session.add(participant)
-        return poll, slot, participant, str(slot_id), str(poll_id), str(participant_id)
+            session.commit()
+
+        # Return only the IDs to avoid detached object issues
+        return str(poll_id), str(slot_id), str(participant_id)
 
     def test_process_email_response_success(self):
 
         from services.meetings.models import PollParticipant, PollResponse, get_session
 
-        poll, slot, participant, slot_id, poll_id, participant_id = (
-            self.create_poll_and_participant()
-        )
+        poll_id, slot_id, participant_id = self.create_poll_and_participant()
         payload = {
             "emailId": "irrelevant",
             "content": "I'm AVAILABLE:\nSLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC) - I prefer this time",
@@ -100,9 +101,7 @@ class TestEmailResponse(BaseMeetingsTest):
             assert "I prefer this time" in response.comment
 
     def test_process_email_response_invalid_key(self):
-        poll, slot, participant, slot_id, poll_id, participant_id = (
-            self.create_poll_and_participant()
-        )
+        poll_id, slot_id, participant_id = self.create_poll_and_participant()
         payload = {
             "emailId": "irrelevant",
             "content": "I'm AVAILABLE:\nSLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC)",
@@ -116,9 +115,7 @@ class TestEmailResponse(BaseMeetingsTest):
         assert resp.status_code == 401
 
     def test_process_email_response_unparseable_content(self):
-        poll, slot, participant, slot_id, poll_id, participant_id = (
-            self.create_poll_and_participant()
-        )
+        poll_id, slot_id, participant_id = self.create_poll_and_participant()
         payload = {
             "emailId": "irrelevant",
             "content": "I am not following the format",
@@ -133,9 +130,7 @@ class TestEmailResponse(BaseMeetingsTest):
         assert "Could not parse any slot responses" in resp.text
 
     def test_process_email_response_unknown_sender(self):
-        poll, slot, participant, slot_id, poll_id, participant_id = (
-            self.create_poll_and_participant()
-        )
+        poll_id, slot_id, participant_id = self.create_poll_and_participant()
         payload = {
             "emailId": "irrelevant",
             "content": "I'm AVAILABLE:\nSLOT_1: Monday, January 15, 2024 at 2:00 PM - 3:00 PM (UTC)",
@@ -159,9 +154,7 @@ class TestEmailResponse(BaseMeetingsTest):
             get_session,
         )
 
-        poll, slot, participant, slot_id, poll_id, participant_id = (
-            self.create_poll_and_participant()
-        )
+        poll_id, slot_id, participant_id = self.create_poll_and_participant()
 
         # Create a second time slot
         with get_session() as session:
@@ -223,9 +216,7 @@ class TestEmailResponse(BaseMeetingsTest):
     def test_process_email_response_malformed_slot_identifier(self):
         """Test that malformed slot identifiers don't cause errors."""
 
-        poll, slot, participant, slot_id, poll_id, participant_id = (
-            self.create_poll_and_participant()
-        )
+        poll_id, slot_id, participant_id = self.create_poll_and_participant()
 
         # Test with malformed slot identifiers that should be skipped
         payload = {
@@ -246,9 +237,7 @@ class TestEmailResponse(BaseMeetingsTest):
 
         from services.meetings.models import PollResponse, get_session
 
-        poll, slot, participant, slot_id, poll_id, participant_id = (
-            self.create_poll_and_participant()
-        )
+        poll_id, slot_id, participant_id = self.create_poll_and_participant()
 
         # Test cases that would cause keyword position mismatch
         test_cases = [
@@ -303,9 +292,7 @@ class TestEmailResponse(BaseMeetingsTest):
 
         from services.meetings.models import PollParticipant, PollResponse, get_session
 
-        poll, slot, participant, slot_id, poll_id, participant_id = (
-            self.create_poll_and_participant()
-        )
+        poll_id, slot_id, participant_id = self.create_poll_and_participant()
 
         # Test with a valid slot response and an invalid slot number response
         payload = {
@@ -346,9 +333,7 @@ class TestEmailResponse(BaseMeetingsTest):
 
         from services.meetings.models import PollResponse, get_session
 
-        poll, slot, participant, slot_id, poll_id, participant_id = (
-            self.create_poll_and_participant()
-        )
+        poll_id, slot_id, participant_id = self.create_poll_and_participant()
 
         # Test cases that would have failed with the old split logic
         test_cases = [
