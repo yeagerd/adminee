@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from uuid import uuid4
 
 import pytest
@@ -18,30 +18,44 @@ class TestSecurityFixes(BaseMeetingsTest):
         """Set up test environment."""
         super().setup_method(method)
 
-        # Set up database tables using the engine from the base class
+        # Set up database tables
+        from sqlalchemy import create_engine
+
         from services.meetings import models
 
-        # Ensure all tables exist with the latest schema
-        engine = models.get_engine()
-        Base.metadata.create_all(engine)
+        # Clear any existing test engine to ensure fresh tables
+        if hasattr(models, "_test_engine"):
+            delattr(models, "_test_engine")
+
+        models._test_engine = create_engine(
+            "sqlite:///file::memory:?cache=shared",
+            echo=False,
+            future=True,
+            connect_args={"check_same_thread": False},
+        )
+        models.get_engine = lambda: models._test_engine
+
+        # Drop all tables and recreate them to ensure latest schema
+        Base.metadata.drop_all(models._test_engine)
+        Base.metadata.create_all(models._test_engine)
 
     @pytest.fixture
     def poll_payload(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         return {
             "title": "Test Poll",
             "description": "A test poll.",
             "duration_minutes": 30,
             "location": "Test Room",
             "meeting_type": "virtual",
-            "response_deadline": (now + timedelta(days=2)).isoformat(),
+            "response_deadline": (now + timedelta(days=2)).isoformat() + "Z",
             "min_participants": 1,
             "max_participants": 5,
             "reveal_participants": False,
             "time_slots": [
                 {
-                    "start_time": (now + timedelta(days=3)).isoformat(),
-                    "end_time": (now + timedelta(days=3, minutes=30)).isoformat(),
+                    "start_time": (now + timedelta(days=3)).isoformat() + "Z",
+                    "end_time": (now + timedelta(days=3, minutes=30)).isoformat() + "Z",
                     "timezone": "UTC",
                 }
             ],
@@ -67,10 +81,9 @@ class TestSecurityFixes(BaseMeetingsTest):
 
         # Add time slot
         slot_payload = {
-            "start_time": (datetime.now(timezone.utc) + timedelta(days=4)).isoformat(),
-            "end_time": (
-                datetime.now(timezone.utc) + timedelta(days=4, minutes=30)
-            ).isoformat(),
+            "start_time": (datetime.utcnow() + timedelta(days=4)).isoformat() + "Z",
+            "end_time": (datetime.utcnow() + timedelta(days=4, minutes=30)).isoformat()
+            + "Z",
             "timezone": "UTC",
         }
         resp = client.post(
@@ -97,10 +110,9 @@ class TestSecurityFixes(BaseMeetingsTest):
 
         # Try to add time slot with user 2
         slot_payload = {
-            "start_time": (datetime.now(timezone.utc) + timedelta(days=4)).isoformat(),
-            "end_time": (
-                datetime.now(timezone.utc) + timedelta(days=4, minutes=30)
-            ).isoformat(),
+            "start_time": (datetime.utcnow() + timedelta(days=4)).isoformat() + "Z",
+            "end_time": (datetime.utcnow() + timedelta(days=4, minutes=30)).isoformat()
+            + "Z",
             "timezone": "UTC",
         }
         resp = client.post(
@@ -128,10 +140,9 @@ class TestSecurityFixes(BaseMeetingsTest):
 
         # Update time slot
         slot_payload = {
-            "start_time": (datetime.now(timezone.utc) + timedelta(days=5)).isoformat(),
-            "end_time": (
-                datetime.now(timezone.utc) + timedelta(days=5, minutes=30)
-            ).isoformat(),
+            "start_time": (datetime.utcnow() + timedelta(days=5)).isoformat() + "Z",
+            "end_time": (datetime.utcnow() + timedelta(days=5, minutes=30)).isoformat()
+            + "Z",
             "timezone": "UTC",
         }
         resp = client.put(
@@ -159,10 +170,9 @@ class TestSecurityFixes(BaseMeetingsTest):
 
         # Try to update time slot with user 2
         slot_payload = {
-            "start_time": (datetime.now(timezone.utc) + timedelta(days=5)).isoformat(),
-            "end_time": (
-                datetime.now(timezone.utc) + timedelta(days=5, minutes=30)
-            ).isoformat(),
+            "start_time": (datetime.utcnow() + timedelta(days=5)).isoformat() + "Z",
+            "end_time": (datetime.utcnow() + timedelta(days=5, minutes=30)).isoformat()
+            + "Z",
             "timezone": "UTC",
         }
         resp = client.put(
@@ -280,10 +290,9 @@ class TestSecurityFixes(BaseMeetingsTest):
 
         # Try to add slot without user ID header
         slot_payload = {
-            "start_time": (datetime.now(timezone.utc) + timedelta(days=4)).isoformat(),
-            "end_time": (
-                datetime.now(timezone.utc) + timedelta(days=4, minutes=30)
-            ).isoformat(),
+            "start_time": (datetime.utcnow() + timedelta(days=4)).isoformat() + "Z",
+            "end_time": (datetime.utcnow() + timedelta(days=4, minutes=30)).isoformat()
+            + "Z",
             "timezone": "UTC",
         }
         resp = client.post(

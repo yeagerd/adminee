@@ -157,6 +157,7 @@ class WorkflowAgent:
     async def _load_chat_history_from_db(self) -> List:
         """Load chat history from database for workflow context."""
         try:
+
             from services.chat import history_manager
 
             # Get messages from database

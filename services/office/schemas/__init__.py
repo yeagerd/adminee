@@ -183,7 +183,7 @@ class CreateCalendarEventRequest(BaseModel):
         """Validate visibility value."""
         valid_values = ["default", "public", "private"]
         if v not in valid_values:
-            raise ValueError(f"visibility must be one of: {', '.join(valid_values)}")
+            raise ValueError(f'visibility must be one of: {", ".join(valid_values)}')
         return v
 
     @field_validator("status")
@@ -192,7 +192,7 @@ class CreateCalendarEventRequest(BaseModel):
         """Validate status value."""
         valid_values = ["confirmed", "tentative", "cancelled"]
         if v not in valid_values:
-            raise ValueError(f"status must be one of: {', '.join(valid_values)}")
+            raise ValueError(f'status must be one of: {", ".join(valid_values)}')
         return v
 
     @field_validator("provider")
@@ -202,7 +202,7 @@ class CreateCalendarEventRequest(BaseModel):
         if v is not None:
             valid_values = ["google", "microsoft"]
             if v.lower() not in valid_values:
-                raise ValueError(f"provider must be one of: {', '.join(valid_values)}")
+                raise ValueError(f'provider must be one of: {", ".join(valid_values)}')
             return v.lower()
         return v
 
@@ -325,7 +325,7 @@ class AvailabilityRequest(BaseModel):
             for provider in v:
                 if provider.lower() not in valid_providers:
                     raise ValueError(
-                        f"provider must be one of: {', '.join(valid_providers)}"
+                        f'provider must be one of: {", ".join(valid_providers)}'
                     )
             return [p.lower() for p in v]
         return v

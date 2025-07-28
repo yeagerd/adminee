@@ -18,13 +18,26 @@ class TestPollCreation(BaseMeetingsTest):
         """Set up test environment."""
         super().setup_method(method)
 
-        # Set up database tables using the engine from the base class
+        # Set up database tables
+        from sqlalchemy import create_engine
+
         from services.meetings import models
 
+        # Clear any existing test engine to ensure fresh tables
+        if hasattr(models, "_test_engine"):
+            delattr(models, "_test_engine")
+
+        models._test_engine = create_engine(
+            "sqlite:///file::memory:?cache=shared",
+            echo=False,
+            future=True,
+            connect_args={"check_same_thread": False},
+        )
+        models.get_engine = lambda: models._test_engine
+
         # Drop all tables and recreate them to ensure latest schema
-        engine = models.get_engine()
-        Base.metadata.drop_all(engine)
-        Base.metadata.create_all(engine)
+        Base.metadata.drop_all(models._test_engine)
+        Base.metadata.create_all(models._test_engine)
 
     @pytest.fixture
     def poll_payload(self):

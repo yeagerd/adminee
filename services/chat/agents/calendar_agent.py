@@ -67,6 +67,7 @@ class CalendarAgent(FunctionAgent):
         llm_provider: str = "openai",
         **llm_kwargs: Any,
     ):
+
         # Get LLM instance
         llm = get_llm_manager().get_llm(
             model=llm_model, provider=llm_provider, **llm_kwargs

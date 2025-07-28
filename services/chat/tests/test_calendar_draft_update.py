@@ -49,8 +49,7 @@ class TestCalendarDraftUpdate:
 
         # Step 2: Update the start time to 9am (this should update the existing draft)
         result2 = create_draft_calendar_event(
-            thread_id=thread_id,
-            start_time="2023-10-05T09:00:00",  # Change to 9am
+            thread_id=thread_id, start_time="2023-10-05T09:00:00"  # Change to 9am
         )
 
         assert result2["success"] is True

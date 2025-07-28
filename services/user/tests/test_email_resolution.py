@@ -108,6 +108,7 @@ class TestEmailResolutionService:
                 return_value=sample_user,
             ),
         ):
+
             result = await email_resolution_service.resolve_email_to_user_id(request)
 
             assert isinstance(result, EmailResolutionResponse)
@@ -135,6 +136,7 @@ class TestEmailResolutionService:
                 return_value=gmail_user,
             ),
         ):
+
             result = await email_resolution_service.resolve_email_to_user_id(request)
 
             assert result.external_auth_id == "user_gmail456"
@@ -161,6 +163,7 @@ class TestEmailResolutionService:
                 return_value=outlook_user,
             ),
         ):
+
             result = await email_resolution_service.resolve_email_to_user_id(request)
 
             assert result.external_auth_id == "user_outlook789"
@@ -193,6 +196,7 @@ class TestEmailResolutionService:
                 return_value=yahoo_user,
             ),
         ):
+
             result = await email_resolution_service.resolve_email_to_user_id(request)
 
             assert result.external_auth_id == "user_yahoo999"
@@ -223,6 +227,7 @@ class TestEmailResolutionService:
                 return_value=gmail_user,
             ),
         ):
+
             result = await email_resolution_service.resolve_email_to_user_id(request)
 
             assert result.external_auth_id == "user_gmail456"
@@ -250,6 +255,7 @@ class TestEmailResolutionService:
                 return_value=outlook_user,
             ),
         ):
+
             result = await email_resolution_service.resolve_email_to_user_id(request)
 
             assert result.external_auth_id == "user_outlook789"
@@ -273,6 +279,7 @@ class TestEmailResolutionService:
                 return_value=None,
             ),
         ):
+
             with pytest.raises(NotFoundError) as exc_info:
                 await email_resolution_service.resolve_email_to_user_id(request)
 
@@ -288,6 +295,7 @@ class TestEmailResolutionService:
             "_simple_email_normalize",
             side_effect=Exception("Normalization failed"),
         ):
+
             with pytest.raises(ValidationError) as exc_info:
                 await email_resolution_service.resolve_email_to_user_id(request)
 

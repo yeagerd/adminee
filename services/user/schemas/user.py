@@ -294,7 +294,7 @@ class UserOnboardingUpdate(BaseModel):
             ]
             if v not in valid_steps:
                 raise ValueError(
-                    f"Invalid onboarding step. Must be one of: {', '.join(valid_steps)}"
+                    f'Invalid onboarding step. Must be one of: {", ".join(valid_steps)}'
                 )
 
         return v
