@@ -1,7 +1,7 @@
 import os
 
 os.environ["PYTHON_ENV"] = "test"
-os.environ["GMAIL_WEBHOOK_SECRET"] = "your-gmail-webhook-secret"
+os.environ["GMAIL_WEBHOOK_SECRET"] = "test-gmail-webhook-secret"
 
 from services.email_sync.app import app
 
@@ -15,7 +15,7 @@ def test_gmail_webhook_success():
         resp = client.post(
             "/gmail/webhook",
             json=valid_payload(),
-            headers={"X-Gmail-Webhook-Secret": "your-gmail-webhook-secret"},
+            headers={"X-Gmail-Webhook-Secret": "test-gmail-webhook-secret"},
         )
         assert resp.status_code == 200
         assert resp.json["status"] == "ok"
@@ -36,7 +36,7 @@ def test_gmail_webhook_invalid_payload():
         resp = client.post(
             "/gmail/webhook",
             json={"bad": "data"},
-            headers={"X-Gmail-Webhook-Secret": "your-gmail-webhook-secret"},
+            headers={"X-Gmail-Webhook-Secret": "test-gmail-webhook-secret"},
         )
         assert resp.status_code == 400
 
@@ -45,11 +45,12 @@ def test_gmail_webhook_pubsub_failure(monkeypatch):
     def fail_publish(*args, **kwargs):
         raise Exception("pubsub error")
 
-    app.publish_message = fail_publish
+    # Use monkeypatch to temporarily replace the function
+    monkeypatch.setattr(app, "publish_message", fail_publish)
     with app.test_client() as client:
         resp = client.post(
             "/gmail/webhook",
             json=valid_payload(),
-            headers={"X-Gmail-Webhook-Secret": "your-gmail-webhook-secret"},
+            headers={"X-Gmail-Webhook-Secret": "test-gmail-webhook-secret"},
         )
         assert resp.status_code == 503

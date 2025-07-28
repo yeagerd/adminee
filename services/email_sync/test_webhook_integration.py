@@ -7,13 +7,25 @@ to pubsub topics.
 """
 
 import os
+from unittest.mock import patch
 
+from services.common.test_utils import BaseSelectiveHTTPIntegrationTest
 from services.email_sync.test_data import (
     gmail_webhook_payload,
     gmail_webhook_payload_with_multiple_emails,
     microsoft_webhook_payload,
     microsoft_webhook_payload_multiple_changes,
 )
+
+
+class BaseEmailSyncIntegrationTest(BaseSelectiveHTTPIntegrationTest):
+    """Base class for email sync integration tests with proper environment setup."""
+
+    def setup_method(self, method: object) -> None:
+        """Set up test environment with email sync specific configuration."""
+        # Call parent setup to enable HTTP call prevention
+        super().setup_method(method)
+
 
 # Set up test environment
 os.environ["PYTHON_ENV"] = "test"
@@ -23,12 +35,15 @@ os.environ["MICROSOFT_WEBHOOK_SECRET"] = "test-microsoft-webhook-secret"
 from services.email_sync.app import app
 
 
-class TestGmailWebhookIntegration:
+class TestGmailWebhookIntegration(BaseEmailSyncIntegrationTest):
     """Integration tests for Gmail webhook endpoint."""
 
     def setup_method(self, method):
-        """Reset the mock before each test."""
-        app.publish_message.reset_mock()
+        """Set up test environment and reset mocks."""
+        super().setup_method(method)
+        # Reset the mock to clear calls from previous tests
+        if hasattr(app.publish_message, "reset_mock"):
+            app.publish_message.reset_mock()
 
     def test_gmail_webhook_with_realistic_payload(self):
         """Test Gmail webhook with realistic payload."""
@@ -137,11 +152,12 @@ class TestGmailWebhookIntegration:
             app.publish_message.assert_called_once()
 
 
-class TestMicrosoftWebhookIntegration:
+class TestMicrosoftWebhookIntegration(BaseEmailSyncIntegrationTest):
     """Integration tests for Microsoft webhook endpoint."""
 
     def setup_method(self, method):
-        """Reset the mock before each test."""
+        """Set up test environment and reset mocks."""
+        super().setup_method(method)
         from services.email_sync.microsoft_webhook import publish_message
 
         publish_message.reset_mock()
@@ -267,14 +283,11 @@ class TestMicrosoftWebhookIntegration:
             publish_message.assert_called_once()
 
 
-class TestWebhookEndToEnd:
+class TestWebhookEndToEnd(BaseEmailSyncIntegrationTest):
     """End-to-end tests for webhook processing pipeline."""
 
-    def setup_method(self, method):
-        """Reset the mock before each test."""
-        app.publish_message.reset_mock()
-
-    def test_gmail_webhook_to_email_processing_pipeline(self):
+    @patch("services.email_sync.app.app.publish_message")
+    def test_gmail_webhook_to_email_processing_pipeline(self, mock_publish):
         """Test complete Gmail webhook to email processing pipeline."""
         with app.test_client() as client:
             # Send Gmail webhook
@@ -288,8 +301,8 @@ class TestWebhookEndToEnd:
             assert response.status_code == 200
 
             # Verify message was published to gmail-notifications topic
-            app.publish_message.assert_called_once()
-            call_args = app.publish_message.call_args
+            mock_publish.assert_called_once()
+            call_args = mock_publish.call_args
             assert call_args[0][0] == "gmail-notifications"
 
             # The gmail-notifications message should contain the webhook data
@@ -297,7 +310,8 @@ class TestWebhookEndToEnd:
             assert published_data["history_id"] == "12345"
             assert published_data["email_address"] == "user@example.com"
 
-    def test_microsoft_webhook_to_email_processing_pipeline(self):
+    @patch("services.email_sync.microsoft_webhook.publish_message")
+    def test_microsoft_webhook_to_email_processing_pipeline(self, mock_publish):
         """Test complete Microsoft webhook to email processing pipeline."""
         with app.test_client() as client:
             # Send Microsoft webhook
@@ -311,10 +325,8 @@ class TestWebhookEndToEnd:
             assert response.status_code == 200
 
             # Verify message was published to microsoft-notifications topic
-            from services.email_sync.microsoft_webhook import publish_message
-
-            publish_message.assert_called_once()
-            call_args = publish_message.call_args
+            mock_publish.assert_called_once()
+            call_args = mock_publish.call_args
             assert call_args[0][0] == "microsoft-notifications"
 
             # The microsoft-notifications message should contain the webhook data
@@ -323,7 +335,8 @@ class TestWebhookEndToEnd:
             assert len(published_data["value"]) == 1
             assert published_data["value"][0]["changeType"] == "created"
 
-    def test_webhook_rate_limiting_simulation(self):
+    @patch("services.email_sync.app.app.publish_message")
+    def test_webhook_rate_limiting_simulation(self, mock_publish):
         """Test webhook handling under simulated load."""
         with app.test_client() as client:
             # Send multiple Gmail webhooks rapidly
@@ -340,17 +353,18 @@ class TestWebhookEndToEnd:
                 assert response.status_code == 200
 
             # Verify all messages were published
-            assert app.publish_message.call_count == 5
+            assert mock_publish.call_count == 5
 
             # Verify each call was to the correct topic
-            for call in app.publish_message.call_args_list:
+            for call in mock_publish.call_args_list:
                 assert call[0][0] == "gmail-notifications"
 
-    def test_webhook_error_recovery(self):
+    @patch("services.email_sync.app.app.publish_message")
+    def test_webhook_error_recovery(self, mock_publish):
         """Test webhook error recovery scenarios."""
         with app.test_client() as client:
             # Set up the mock to fail first, then succeed
-            app.publish_message.side_effect = [Exception("pubsub error"), None]
+            mock_publish.side_effect = [Exception("pubsub error"), None]
 
             payload = gmail_webhook_payload()
 
@@ -371,14 +385,11 @@ class TestWebhookEndToEnd:
             assert response2.status_code == 200
 
 
-class TestWebhookDataValidation:
+class TestWebhookDataValidation(BaseEmailSyncIntegrationTest):
     """Tests for webhook data validation and sanitization."""
 
-    def setup_method(self, method):
-        """Reset the mock before each test."""
-        app.publish_message.reset_mock()
-
-    def test_gmail_webhook_data_sanitization(self):
+    @patch("services.email_sync.app.app.publish_message")
+    def test_gmail_webhook_data_sanitization(self, mock_publish):
         """Test that Gmail webhook data is properly sanitized."""
         with app.test_client() as client:
             # Test with various data types and edge cases
@@ -398,12 +409,13 @@ class TestWebhookDataValidation:
                 assert response.status_code == 200
 
                 # Verify published data matches input
-                call_args = app.publish_message.call_args
+                call_args = mock_publish.call_args
                 published_data = call_args[0][1]
                 assert published_data["history_id"] == payload["history_id"]
                 assert published_data["email_address"] == payload["email_address"]
 
-    def test_microsoft_webhook_data_sanitization(self):
+    @patch("services.email_sync.microsoft_webhook.publish_message")
+    def test_microsoft_webhook_data_sanitization(self, mock_publish):
         """Test that Microsoft webhook data is properly sanitized."""
         with app.test_client() as client:
             # Test with various change types and resource formats
@@ -423,9 +435,7 @@ class TestWebhookDataValidation:
                 assert response.status_code == 200
 
                 # Verify published data matches input
-                from services.email_sync.microsoft_webhook import publish_message
-
-                call_args = publish_message.call_args
+                call_args = mock_publish.call_args
                 published_data = call_args[0][1]
                 assert (
                     published_data["value"][0]["changeType"]
@@ -436,7 +446,8 @@ class TestWebhookDataValidation:
                     == payload["value"][0]["resource"]
                 )
 
-    def test_webhook_malicious_payload_handling(self):
+    @patch("services.email_sync.app.app.publish_message")
+    def test_webhook_malicious_payload_handling(self, mock_publish):
         """Test handling of potentially malicious webhook payloads."""
         with app.test_client() as client:
             # Test with oversized payload
@@ -454,10 +465,10 @@ class TestWebhookDataValidation:
 
             # Should still process valid payloads even with extra data
             assert response.status_code == 200
-            app.publish_message.assert_called_once()
+            mock_publish.assert_called_once()
 
             # Verify only expected fields are published
-            call_args = app.publish_message.call_args
+            call_args = mock_publish.call_args
             published_data = call_args[0][1]
             assert "history_id" in published_data
             assert "email_address" in published_data

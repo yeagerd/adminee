@@ -1,9 +1,12 @@
 import os
 from unittest.mock import patch
 
-from app import app
+# Set environment variables before importing app
+os.environ["MICROSOFT_WEBHOOK_SECRET"] = "test-microsoft-webhook-secret"
+os.environ["GMAIL_WEBHOOK_SECRET"] = "test-gmail-webhook-secret"
+os.environ["PYTHON_ENV"] = "test"
 
-os.environ["MICROSOFT_WEBHOOK_SECRET"] = "test-microsoft-secret"
+from services.email_sync.app import app
 
 
 def valid_payload():
@@ -16,7 +19,7 @@ def test_microsoft_webhook_success():
             resp = client.post(
                 "/microsoft/webhook",
                 json=valid_payload(),
-                headers={"X-Microsoft-Signature": "test-microsoft-secret"},
+                headers={"X-Microsoft-Signature": "test-microsoft-webhook-secret"},
             )
             assert resp.status_code == 200
             assert resp.json["status"] == "published"
@@ -41,7 +44,7 @@ def test_microsoft_webhook_invalid_payload():
             resp = client.post(
                 "/microsoft/webhook",
                 data="not a json",
-                headers={"X-Microsoft-Signature": "test-microsoft-secret"},
+                headers={"X-Microsoft-Signature": "test-microsoft-webhook-secret"},
                 content_type="application/json",
             )
             assert resp.status_code == 400
@@ -57,7 +60,7 @@ def test_microsoft_webhook_pubsub_failure():
             resp = client.post(
                 "/microsoft/webhook",
                 json=valid_payload(),
-                headers={"X-Microsoft-Signature": "test-microsoft-secret"},
+                headers={"X-Microsoft-Signature": "test-microsoft-webhook-secret"},
             )
             assert resp.status_code == 400
             mock_publish.assert_called_once()

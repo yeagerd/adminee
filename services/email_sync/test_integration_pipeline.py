@@ -8,6 +8,18 @@ using realistic test data and mocked external services.
 import os
 from unittest.mock import MagicMock, patch
 
+from services.common.test_utils import BaseSelectiveHTTPIntegrationTest
+
+
+class BaseEmailSyncIntegrationTest(BaseSelectiveHTTPIntegrationTest):
+    """Base class for email sync integration tests with proper environment setup."""
+
+    def setup_method(self, method: object) -> None:
+        """Set up test environment with email sync specific configuration."""
+        # Call parent setup to enable HTTP call prevention
+        super().setup_method(method)
+
+
 from services.email_sync.test_data import (
     amazon_shipped_email,
     create_mock_message,
@@ -21,18 +33,24 @@ from services.email_sync.test_data import (
 os.environ["PYTHON_ENV"] = "test"
 os.environ["GMAIL_WEBHOOK_SECRET"] = "test-gmail-webhook-secret"
 os.environ["MICROSOFT_WEBHOOK_SECRET"] = "test-microsoft-webhook-secret"
+os.environ["GOOGLE_CLOUD_PROJECT"] = "test-project"
 
 from services.email_sync.app import app
 from services.email_sync.email_parser_service import process_email
 
 
-class TestGmailPipelineIntegration:
+class TestGmailPipelineIntegration(BaseEmailSyncIntegrationTest):
     """End-to-end tests for Gmail processing pipeline."""
 
-    @patch("services.email_sync.app.publish_message")
+    def setup_method(self, method):
+        """Set up test environment."""
+        super().setup_method(method)
+
+    @patch("services.email_sync.app.app.publish_message")
+    @patch("services.email_sync.gmail_sync_service.publish_message")
     @patch("services.email_sync.gmail_sync_service.GmailAPIClient")
     def test_gmail_webhook_to_email_processing_pipeline(
-        self, mock_gmail_client, mock_publish
+        self, mock_gmail_client, mock_sync_publish, mock_publish
     ):
         """Test complete Gmail webhook to email processing pipeline."""
         # Mock Gmail API client
@@ -116,7 +134,7 @@ class TestGmailPipelineIntegration:
                         assert call_args[0][0] == "amazon-events"
                         assert call_args[0][1]["status"] == "shipped"
 
-    @patch("services.email_sync.app.publish_message")
+    @patch("services.email_sync.app.app.publish_message")
     def test_gmail_webhook_error_handling(self, mock_publish):
         """Test Gmail webhook error handling scenarios."""
         with app.test_client() as client:
@@ -146,13 +164,18 @@ class TestGmailPipelineIntegration:
             assert response.status_code == 503
 
 
-class TestMicrosoftPipelineIntegration:
+class TestMicrosoftPipelineIntegration(BaseEmailSyncIntegrationTest):
     """End-to-end tests for Microsoft processing pipeline."""
+
+    def setup_method(self, method):
+        """Set up test environment."""
+        super().setup_method(method)
 
     @patch("services.email_sync.microsoft_webhook.publish_message")
     @patch("services.email_sync.microsoft_sync_service.MicrosoftGraphClient")
+    @patch("services.email_sync.microsoft_sync_service.publish_message")
     def test_microsoft_webhook_to_email_processing_pipeline(
-        self, mock_graph_client, mock_publish
+        self, mock_sync_publish, mock_graph_client, mock_publish
     ):
         """Test complete Microsoft webhook to email processing pipeline."""
         # Mock Microsoft Graph client
@@ -253,8 +276,12 @@ class TestMicrosoftPipelineIntegration:
             assert response.status_code == 400
 
 
-class TestEmailParserIntegration:
+class TestEmailParserIntegration(BaseEmailSyncIntegrationTest):
     """Integration tests for email parser service."""
+
+    def setup_method(self, method):
+        """Set up test environment."""
+        super().setup_method(method)
 
     def test_tracking_number_extraction_pipeline(self):
         """Test complete tracking number extraction pipeline."""
@@ -264,7 +291,7 @@ class TestEmailParserIntegration:
             # Test UPS tracking email
             email_data = {
                 "from": "UPS <noreply@ups.com>",
-                "body": "Your package has been shipped and is on its way!<br><br>Tracking Number: 1Z999AA1234567890E<br>Estimated Delivery: January 17, 2024",
+                "body": "Your package has been shipped and is on its way!<br><br>Tracking Number: 1Z999AA1234567890E <br>Estimated Delivery: January 17, 2024",
             }
             mock_msg = create_mock_message(email_data)
 
@@ -314,7 +341,7 @@ class TestEmailParserIntegration:
             # Test survey email
             email_data = {
                 "from": "Survey Team <surveys@example.com>",
-                "body": "Thank you for your recent purchase!<br><br>We'd love to hear your feedback. Please complete our survey:<br><br>https://survey.ourapp.com/response/abc123<br><br>Your feedback helps us improve our service.",
+                "body": "Thank you for your recent purchase!<br><br>We'd love to hear your feedback. Please complete our survey:<br><br>https://survey.ourapp.com/response/abc123 <br><br>Your feedback helps us improve our service.",
             }
             mock_msg = create_mock_message(email_data)
 
@@ -334,8 +361,12 @@ class TestEmailParserIntegration:
             )
 
 
-class TestPipelineErrorHandling:
+class TestPipelineErrorHandling(BaseEmailSyncIntegrationTest):
     """Tests for pipeline error handling and recovery."""
+
+    def setup_method(self, method):
+        """Set up test environment."""
+        super().setup_method(method)
 
     def test_email_parser_malformed_data_handling(self):
         """Test email parser handling of malformed data."""
@@ -394,8 +425,12 @@ class TestPipelineErrorHandling:
             mock_publish.assert_called_once()
 
 
-class TestPipelinePerformance:
+class TestPipelinePerformance(BaseEmailSyncIntegrationTest):
     """Tests for pipeline performance and scalability."""
+
+    def setup_method(self, method):
+        """Set up test environment."""
+        super().setup_method(method)
 
     def test_bulk_email_processing(self):
         """Test processing of multiple emails in sequence."""
@@ -440,7 +475,7 @@ class TestPipelinePerformance:
             # Test with HTML and special characters
             email_data = {
                 "from": "UPS <noreply@ups.com>",
-                "body": "<html><body><p>Your package has been shipped!</p><br><br>Tracking Number: <strong>1Z999AA1234567890</strong><br>Estimated Delivery: January 17, 2024<br><br><a href='https://www.ups.com/track?tracknum=1Z999AA1234567890'>Track your package</a></body></html>",
+                "body": "<html><body><p>Your package has been shipped!</p><br><br>Tracking Number: <strong>1Z999AA1234567890E</strong> <br>Estimated Delivery: January 17, 2024<br><br><a href='https://www.ups.com/track?tracknum=1Z999AA1234567890E'>Track your package</a></body></html>",
             }
             mock_msg = create_mock_message(email_data)
 

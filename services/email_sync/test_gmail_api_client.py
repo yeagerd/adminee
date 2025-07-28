@@ -126,13 +126,22 @@ class TestGmailAPIClientIntegration(BaseSelectiveHTTPIntegrationTest):
 
         # Verify the result
         assert len(result) == 3  # 3 unique message IDs
-        assert result[0]["id"] == "msg1"
-        assert result[0]["from"] == "sender1@example.com"
-        assert result[0]["subject"] == "Test Subject 1"
-        assert result[0]["body"] == "Test body 1"
-        assert result[0]["provider"] == "gmail"
 
-    def test_gmail_api_rate_limit_handling_mocked(self, gmail_client):
+        # Find the message with id "msg1" (order is not guaranteed due to set processing)
+        msg1_result = None
+        for email in result:
+            if email["id"] == "msg1":
+                msg1_result = email
+                break
+
+        assert msg1_result is not None, "msg1 not found in result"
+        assert msg1_result["from"] == "sender1@example.com"
+        assert msg1_result["subject"] == "Test Subject 1"
+        assert msg1_result["body"] == "Test body 1"
+        assert msg1_result["provider"] == "gmail"
+
+    @patch("time.sleep")
+    def test_gmail_api_rate_limit_handling_mocked(self, mock_sleep, gmail_client):
         """Test handling of Gmail API rate limits with mocked service."""
         from googleapiclient.errors import HttpError
 
