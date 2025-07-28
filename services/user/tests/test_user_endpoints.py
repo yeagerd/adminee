@@ -77,7 +77,6 @@ class TestUserProfileEndpoints:
         with patch.object(
             get_user_service(), "search_users", return_value=mock_search_results
         ):
-
             from services.user.routers.users import search_users
 
             result = await search_users(
@@ -97,7 +96,6 @@ class TestUserProfileEndpoints:
     async def test_search_users_with_filters(self):
         """Test user search with filters."""
         with patch.object(get_user_service(), "search_users") as mock_search:
-
             from services.user.routers.users import search_users
 
             await search_users(
@@ -130,7 +128,6 @@ class TestUserProfileEndpoints:
             ),
             patch("services.user.schemas.user.UserResponse.from_orm") as mock_from_orm,
         ):
-
             mock_response = UserResponse(
                 id=1,
                 external_auth_id="user_123",
@@ -248,7 +245,6 @@ class TestUserServiceIntegration:
 
         # Test validation error for duplicate user creation
         with patch.object(get_user_service(), "create_user") as mock_create:
-
             mock_create.side_effect = HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Validation error",

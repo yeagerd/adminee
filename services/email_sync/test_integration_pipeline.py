@@ -8,18 +8,15 @@ using realistic test data and mocked external services.
 import os
 from unittest.mock import MagicMock, patch
 
+# Set up test environment before importing modules that depend on these variables
+os.environ["PYTHON_ENV"] = "test"
+os.environ["GMAIL_WEBHOOK_SECRET"] = "test-gmail-webhook-secret"
+os.environ["MICROSOFT_WEBHOOK_SECRET"] = "test-microsoft-webhook-secret"
+os.environ["GOOGLE_CLOUD_PROJECT"] = "test-project"
+
 from services.common.test_utils import BaseSelectiveHTTPIntegrationTest
-
-
-class BaseEmailSyncIntegrationTest(BaseSelectiveHTTPIntegrationTest):
-    """Base class for email sync integration tests with proper environment setup."""
-
-    def setup_method(self, method: object) -> None:
-        """Set up test environment with email sync specific configuration."""
-        # Call parent setup to enable HTTP call prevention
-        super().setup_method(method)
-
-
+from services.email_sync.app import app
+from services.email_sync.email_parser_service import process_email
 from services.email_sync.test_data import (
     amazon_shipped_email,
     create_mock_message,
@@ -29,14 +26,14 @@ from services.email_sync.test_data import (
     ups_tracking_email,
 )
 
-# Set up test environment
-os.environ["PYTHON_ENV"] = "test"
-os.environ["GMAIL_WEBHOOK_SECRET"] = "test-gmail-webhook-secret"
-os.environ["MICROSOFT_WEBHOOK_SECRET"] = "test-microsoft-webhook-secret"
-os.environ["GOOGLE_CLOUD_PROJECT"] = "test-project"
 
-from services.email_sync.app import app
-from services.email_sync.email_parser_service import process_email
+class BaseEmailSyncIntegrationTest(BaseSelectiveHTTPIntegrationTest):
+    """Base class for email sync integration tests with proper environment setup."""
+
+    def setup_method(self, method: object) -> None:
+        """Set up test environment with email sync specific configuration."""
+        # Call parent setup to enable HTTP call prevention
+        super().setup_method(method)
 
 
 class TestGmailPipelineIntegration(BaseEmailSyncIntegrationTest):

@@ -155,7 +155,10 @@ async def send_invitations(
                         body += f"- {name} ({email})\n"
             try:
                 await email_integration.send_invitation_email(
-                    getattr(participant, "email"), subject, body, user_id  # type: ignore[arg-type]
+                    getattr(participant, "email"),
+                    subject,
+                    body,
+                    user_id,  # type: ignore[arg-type]
                 )
                 setattr(participant, "status", ParticipantStatus.pending)
                 sent_emails.append(getattr(participant, "email"))

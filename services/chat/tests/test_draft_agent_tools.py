@@ -175,7 +175,9 @@ class TestDraftAgentTools:
 
         # Test 5.1: Test error handling for missing event_id
         result = create_draft_calendar_change(
-            thread_id=thread_id, event_id="", new_title="Test Title"  # Empty event_id
+            thread_id=thread_id,
+            event_id="",
+            new_title="Test Title",  # Empty event_id
         )
 
         assert result["success"] is False

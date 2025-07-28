@@ -160,7 +160,6 @@ def process_email_response(
     request: Request,
     service_name: str = Depends(verify_api_key_auth),
 ) -> Response:
-
     # Parse email content
     parsed = parse_email_content(req.content)
     if not parsed.slot_responses:

@@ -68,7 +68,13 @@ def test(session: nox.Session) -> None:
     """Run tests for all services."""
     # Install common dependencies
     session.install(
-        "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio", "pytest-xdist", "respx"
+        "pytest",
+        "pytest-cov",
+        "pytest-timeout",
+        "pytest-mock",
+        "pytest-asyncio",
+        "pytest-xdist",
+        "respx",
     )
 
     # Install services
@@ -88,7 +94,12 @@ def test(session: nox.Session) -> None:
 def test_fast(session: nox.Session) -> None:
     """Run fast tests only."""
     session.install(
-        "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio", "respx"
+        "pytest",
+        "pytest-cov",
+        "pytest-timeout",
+        "pytest-mock",
+        "pytest-asyncio",
+        "respx",
     )
     session.install("-e", "services/common")
     session.install("-e", "services/user")
@@ -116,7 +127,12 @@ def test_fast(session: nox.Session) -> None:
 def test_cov(session: nox.Session) -> None:
     """Run tests with coverage."""
     session.install(
-        "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio", "respx"
+        "pytest",
+        "pytest-cov",
+        "pytest-timeout",
+        "pytest-mock",
+        "pytest-asyncio",
+        "respx",
     )
     session.install("-e", "services/common")
     session.install("-e", "services/user")
@@ -168,7 +184,12 @@ def test_cov(session: nox.Session) -> None:
 def test_serial(session: nox.Session) -> None:
     """Run tests serially (not in parallel)."""
     session.install(
-        "pytest", "pytest-cov", "pytest-timeout", "pytest-mock", "pytest-asyncio", "respx"
+        "pytest",
+        "pytest-cov",
+        "pytest-timeout",
+        "pytest-mock",
+        "pytest-asyncio",
+        "respx",
     )
     session.install("-e", "services/common")
     session.install("-e", "services/user")

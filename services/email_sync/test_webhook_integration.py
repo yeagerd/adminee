@@ -9,7 +9,13 @@ to pubsub topics.
 import os
 from unittest.mock import patch
 
+# Set up test environment before importing modules that depend on these variables
+os.environ["PYTHON_ENV"] = "test"
+os.environ["GMAIL_WEBHOOK_SECRET"] = "test-gmail-webhook-secret"
+os.environ["MICROSOFT_WEBHOOK_SECRET"] = "test-microsoft-webhook-secret"
+
 from services.common.test_utils import BaseSelectiveHTTPIntegrationTest
+from services.email_sync.app import app
 from services.email_sync.test_data import (
     gmail_webhook_payload,
     gmail_webhook_payload_with_multiple_emails,
@@ -25,14 +31,6 @@ class BaseEmailSyncIntegrationTest(BaseSelectiveHTTPIntegrationTest):
         """Set up test environment with email sync specific configuration."""
         # Call parent setup to enable HTTP call prevention
         super().setup_method(method)
-
-
-# Set up test environment
-os.environ["PYTHON_ENV"] = "test"
-os.environ["GMAIL_WEBHOOK_SECRET"] = "test-gmail-webhook-secret"
-os.environ["MICROSOFT_WEBHOOK_SECRET"] = "test-microsoft-webhook-secret"
-
-from services.email_sync.app import app
 
 
 class TestGmailWebhookIntegration(BaseEmailSyncIntegrationTest):

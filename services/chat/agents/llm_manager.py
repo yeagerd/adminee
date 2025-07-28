@@ -57,7 +57,7 @@ class LoggingLiteLLM(LlamaLiteLLM):
                     role = "UNKNOWN"
                     content = str(msg)
 
-                self._prompt_logger.info(f"Message {i+1} [{role}]: {content}")
+                self._prompt_logger.info(f"Message {i + 1} [{role}]: {content}")
 
         self._prompt_logger.info("=== END LLM CALL ===")
 

@@ -8,7 +8,7 @@ from services.email_sync.microsoft_subscription_manager import (
 
 def test_refresh_microsoft_subscription():
     # For now, just check the stub returns True
-    assert refresh_microsoft_subscription("user@example.com") == True
+    assert refresh_microsoft_subscription("user@example.com")
 
 
 class TestMicrosoftSubscriptionManagerIntegration:
@@ -20,7 +20,7 @@ class TestMicrosoftSubscriptionManagerIntegration:
         result = refresh_microsoft_subscription("test@example.com")
 
         # Verify the stubbed method returns True
-        assert result == True
+        assert result
 
         # TODO: When real implementation is added, this test should:
         # 1. Mock successful PATCH response
@@ -33,7 +33,7 @@ class TestMicrosoftSubscriptionManagerIntegration:
         result = refresh_microsoft_subscription("test@example.com")
 
         # Verify the stubbed method returns True
-        assert result == True
+        assert result
 
         # TODO: When real implementation is added, this test should:
         # 1. Mock authentication error response
@@ -46,7 +46,7 @@ class TestMicrosoftSubscriptionManagerIntegration:
         result = refresh_microsoft_subscription("test@example.com")
 
         # Verify the stubbed method returns True
-        assert result == True
+        assert result
 
         # TODO: When real implementation is added, this test should:
         # 1. Mock rate limit response
@@ -59,7 +59,7 @@ class TestMicrosoftSubscriptionManagerIntegration:
         result = refresh_microsoft_subscription("test@example.com")
 
         # Verify the stubbed method returns True
-        assert result == True
+        assert result
 
         # TODO: When real implementation is added, this test should:
         # 1. Mock quota exceeded response
@@ -72,7 +72,7 @@ class TestMicrosoftSubscriptionManagerIntegration:
         result = refresh_microsoft_subscription("test@example.com")
 
         # Verify the stubbed method returns True
-        assert result == True
+        assert result
 
         # TODO: When real implementation is added, this test should:
         # 1. Mock network error
@@ -85,7 +85,7 @@ class TestMicrosoftSubscriptionManagerIntegration:
         result = refresh_microsoft_subscription("user@example.com")
 
         # Verify the stubbed method returns True
-        assert result == True
+        assert result
 
         # TODO: When real implementation is added, this test should:
         # 1. Verify the API was called
@@ -98,7 +98,7 @@ class TestMicrosoftSubscriptionManagerIntegration:
         result = refresh_microsoft_subscription("user@example.com")
 
         # Verify the stubbed method returns True
-        assert result == True
+        assert result
 
         # TODO: When real implementation is added, this test should:
         # 1. Verify the API was called
@@ -114,7 +114,7 @@ class TestMicrosoftSubscriptionManagerIntegration:
             result = refresh_microsoft_subscription(user)
 
             # Verify each user gets their subscription refreshed
-            assert result == True
+            assert result
 
         # TODO: When real implementation is added, this test should:
         # 1. Verify API was called for each user
@@ -127,7 +127,7 @@ class TestMicrosoftSubscriptionManagerIntegration:
         result = refresh_microsoft_subscription("invalid-email")
 
         # Verify the stubbed method returns True
-        assert result == True
+        assert result
 
         # TODO: When real implementation is added, this test should:
         # 1. Mock error response for invalid email
@@ -140,7 +140,7 @@ class TestMicrosoftSubscriptionManagerIntegration:
         result = refresh_microsoft_subscription("user@example.com")
 
         # Verify the stubbed method returns True
-        assert result == True
+        assert result
 
         # TODO: When real implementation is added, this test should:
         # 1. Mock subscription not found error
@@ -153,7 +153,7 @@ class TestMicrosoftSubscriptionManagerIntegration:
         result = refresh_microsoft_subscription("user@example.com")
 
         # Verify the stubbed method returns True
-        assert result == True
+        assert result
 
         # TODO: When real implementation is added, this test should:
         # 1. Mock server error response
@@ -166,7 +166,7 @@ class TestMicrosoftSubscriptionManagerIntegration:
         result = refresh_microsoft_subscription("user@example.com")
 
         # Verify the stubbed method returns True
-        assert result == True
+        assert result
 
         # TODO: When real implementation is added, this test should:
         # 1. Mock timeout error
@@ -179,7 +179,7 @@ class TestMicrosoftSubscriptionManagerIntegration:
         result = refresh_microsoft_subscription("user@example.com")
 
         # Verify the stubbed method returns True
-        assert result == True
+        assert result
 
         # TODO: When real implementation is added, this test should:
         # 1. Mock connection error
@@ -253,9 +253,9 @@ class TestMicrosoftSubscriptionManagerIntegration:
         result3 = refresh_microsoft_subscription("admin@company.com")
 
         # All should return True (stubbed)
-        assert result1 == True
-        assert result2 == True
-        assert result3 == True
+        assert result1
+        assert result2
+        assert result3
 
         # TODO: When real implementation is added, this test should:
         # 1. Verify different user IDs are handled correctly

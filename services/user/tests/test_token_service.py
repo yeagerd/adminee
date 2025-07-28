@@ -69,7 +69,6 @@ class TestTokenService(BaseUserManagementTest):
             patch.object(self.token_service, "_store_token_record") as mock_store,
             patch("services.user.services.token_service.audit_logger.log_user_action"),
         ):
-
             await self.token_service.store_tokens(
                 user_id="test_user_123",
                 provider=IntegrationProvider.GOOGLE,

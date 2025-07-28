@@ -308,7 +308,7 @@ class TestEmailResponse(BaseMeetingsTest):
                 json=payload,
                 headers={"X-API-Key": API_KEY},
             )
-            assert resp.status_code == 200, f"Test case {i+1} failed: {resp.text}"
+            assert resp.status_code == 200, f"Test case {i + 1} failed: {resp.text}"
 
             # Check that the response was saved correctly
             with get_session() as session:
@@ -319,21 +319,21 @@ class TestEmailResponse(BaseMeetingsTest):
                     )
                     .first()
                 )
-                assert response is not None, f"Test case {i+1}: No response found"
+                assert response is not None, f"Test case {i + 1}: No response found"
 
                 # Verify the comment was extracted correctly
                 if i == 0:
                     assert (
                         "I prefer this time" in response.comment
-                    ), f"Test case {i+1}: Comment not extracted correctly"
+                    ), f"Test case {i + 1}: Comment not extracted correctly"
                 elif i == 1:
                     assert (
                         "I'm available for this time" in response.comment
-                    ), f"Test case {i+1}: Comment not extracted correctly"
+                    ), f"Test case {i + 1}: Comment not extracted correctly"
                 elif i == 2:
                     assert (
                         "I have a conflict" in response.comment
-                    ), f"Test case {i+1}: Comment not extracted correctly"
+                    ), f"Test case {i + 1}: Comment not extracted correctly"
 
     def test_process_email_response_invalid_slot_number_handling(self):
         """Test that invalid slot numbers in slot responses are handled gracefully."""
@@ -421,7 +421,7 @@ class TestEmailResponse(BaseMeetingsTest):
                 json=payload,
                 headers={"X-API-Key": API_KEY},
             )
-            assert resp.status_code == 200, f"Test case {i+1} failed: {resp.text}"
+            assert resp.status_code == 200, f"Test case {i + 1} failed: {resp.text}"
 
             # Check that the comment was extracted correctly
             with get_session() as session:
@@ -432,13 +432,13 @@ class TestEmailResponse(BaseMeetingsTest):
                     )
                     .first()
                 )
-                assert response is not None, f"Test case {i+1}: No response found"
+                assert response is not None, f"Test case {i + 1}: No response found"
 
                 if test_case["expected_comment"] is None:
                     assert (
                         response.comment is None
-                    ), f"Test case {i+1}: Expected no comment but got '{response.comment}'"
+                    ), f"Test case {i + 1}: Expected no comment but got '{response.comment}'"
                 else:
                     assert (
                         response.comment == test_case["expected_comment"]
-                    ), f"Test case {i+1}: Expected '{test_case['expected_comment']}' but got '{response.comment}'"
+                    ), f"Test case {i + 1}: Expected '{test_case['expected_comment']}' but got '{response.comment}'"
