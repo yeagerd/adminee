@@ -3,6 +3,7 @@ from typing import List
 
 import httpx
 
+from services.common.logging_config import request_id_var
 from services.meetings.settings import get_settings
 
 
@@ -12,6 +13,12 @@ async def get_user_availability(
     settings = get_settings()
     url = f"{settings.office_service_url}/v1/calendar/availability"
     headers = {"X-API-Key": settings.api_meetings_office_key, "X-User-Id": user_id}
+
+    # Propagate request ID for distributed tracing
+    request_id = request_id_var.get()
+    if request_id and request_id != "uninitialized":
+        headers["X-Request-Id"] = request_id
+
     params = {"start": start, "end": end, "duration": str(duration)}
     async with httpx.AsyncClient() as client:
         resp = await client.get(url, headers=headers, params=params)
@@ -25,6 +32,11 @@ async def create_calendar_event(
     settings = get_settings()
     url = f"{settings.office_service_url}/v1/calendar/events"
     headers = {"X-API-Key": settings.api_meetings_office_key, "X-User-Id": user_id}
+
+    # Propagate request ID for distributed tracing
+    request_id = request_id_var.get()
+    if request_id and request_id != "uninitialized":
+        headers["X-Request-Id"] = request_id
 
     # Convert participants to EmailAddress format
     from services.office.schemas import EmailAddress
