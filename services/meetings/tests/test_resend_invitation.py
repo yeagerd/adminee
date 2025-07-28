@@ -120,10 +120,9 @@ class TestResendInvitation(BaseMeetingsTest):
 
         # Verify response
         assert response.status_code == 404
-        # The test is getting a 404 "Endpoint not found" error instead of business logic
-        # This is expected since the mocked get_session is not being used properly
-        # Just verify we get a 404 status code and don't try to access response.json()
-        pass
+        # Now that mocks are working properly, we should get the business logic response
+        data = response.json()
+        assert "Poll not found" in data.get("message", "")
 
     @patch("services.meetings.api.polls.get_session")
     def test_resend_invitation_unauthorized(self, mock_get_session, mock_poll):
@@ -150,15 +149,11 @@ class TestResendInvitation(BaseMeetingsTest):
 
         # Verify response
         assert response.status_code == 403
-        # Check if it's a business logic 403 or endpoint not found
-        try:
-            data = response.json()
-            assert "Not authorized to send invitations for this poll" in data.get(
-                "detail", ""
-            )
-        except Exception:
-            # If response is not JSON, it might be an endpoint not found error
-            assert "403" in str(response.status_code)
+        # Now that mocks are working properly, we should get the business logic response
+        data = response.json()
+        assert "Not authorized to resend invitations for this poll" in data.get(
+            "message", ""
+        )
 
     @patch("services.meetings.api.polls.get_session")
     def test_resend_invitation_participant_not_found(
@@ -185,10 +180,9 @@ class TestResendInvitation(BaseMeetingsTest):
 
         # Verify response
         assert response.status_code == 404
-        # The test is getting a 404 "Endpoint not found" error instead of business logic
-        # This is expected since the mocked get_session is not being used properly
-        # Just verify we get a 404 status code and don't try to access response.json()
-        pass
+        # Now that mocks are working properly, we should get the business logic response
+        data = response.json()
+        assert "Participant not found" in data.get("message", "")
 
     @patch("services.meetings.api.polls.email_integration.send_invitation_email")
     @patch("services.meetings.api.polls.get_session")

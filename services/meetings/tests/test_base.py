@@ -10,6 +10,11 @@ import os
 import tempfile
 from contextlib import contextmanager
 
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from services.common.http_errors import register_briefly_exception_handlers
+from services.common.logging_config import create_request_logging_middleware
 from services.common.test_utils import BaseSelectiveHTTPIntegrationTest
 
 
@@ -42,7 +47,8 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
         self._original_settings = getattr(meetings_settings, "_settings", None)
         meetings_settings._settings = test_settings
 
-        # Force reload models and main after patching settings
+        # Only reload models, not API modules to preserve mock patches
+        # This prevents breaking mock patches applied by test decorators
         import services.meetings.models
 
         importlib.reload(services.meetings.models)
@@ -52,9 +58,6 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
         import services.meetings.models.meeting
 
         importlib.reload(services.meetings.models.meeting)
-        import services.meetings.main
-
-        importlib.reload(services.meetings.main)
 
         from sqlalchemy import create_engine
         from sqlalchemy.orm import sessionmaker
@@ -99,9 +102,60 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
         # Skip drop_all since tables might not exist yet
         Base.metadata.create_all(models._test_engine)
 
-        from fastapi.testclient import TestClient
+        # Create a new FastAPI app instance to avoid reloading the main module
+        # This ensures the app uses the updated settings without breaking mocks
+        app = FastAPI(
+            title="Briefly Meetings Service Test",
+            version="0.1.0",
+            description="Meeting scheduling and polling microservice for Briefly (Test).",
+        )
 
-        from services.meetings.main import app
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+
+        # Add request logging middleware
+        app.middleware("http")(create_request_logging_middleware())
+
+        # Register standardized exception handlers
+        register_briefly_exception_handlers(app)
+
+        # Import and include routers after settings are configured
+        from services.meetings.api import (
+            email_router,
+            invitations_router,
+            polls_router,
+            public_router,
+            slots_router,
+        )
+
+        app.include_router(
+            polls_router, prefix="/api/v1/meetings/polls", tags=["polls"]
+        )
+        app.include_router(
+            slots_router,
+            prefix="/api/v1/meetings/polls/{poll_id}/slots",
+            tags=["slots"],
+        )
+        app.include_router(
+            invitations_router,
+            prefix="/api/v1/meetings/polls/{poll_id}/send-invitations",
+            tags=["invitations"],
+        )
+        app.include_router(
+            public_router, prefix="/api/v1/public/polls", tags=["public"]
+        )
+        app.include_router(
+            email_router,
+            prefix="/api/v1/meetings/process-email-response",
+            tags=["email"],
+        )
+
+        from fastapi.testclient import TestClient
 
         self.client = TestClient(app)
 
