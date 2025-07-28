@@ -2,7 +2,6 @@ from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
-from fastapi.testclient import TestClient
 
 from services.meetings.tests.test_base import BaseMeetingsTest
 
@@ -39,11 +38,6 @@ class TestResendInvitation(BaseMeetingsTest):
     def setup_method(self, method):
         """Set up test environment."""
         super().setup_method(method)
-
-        # Import app after settings are configured
-        from services.meetings.main import app
-
-        self.client = TestClient(app)
 
     @patch("services.meetings.api.polls.email_integration.send_invitation_email")
     @patch("services.meetings.api.polls.get_session")
