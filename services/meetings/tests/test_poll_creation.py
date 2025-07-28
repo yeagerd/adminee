@@ -18,6 +18,30 @@ class TestPollCreation(BaseMeetingsTest):
         """Set up test environment."""
         super().setup_method(method)
 
+        # Import meetings settings module
+        import services.meetings.settings as meetings_settings
+
+        # Store original settings singleton for cleanup
+        self._original_settings = meetings_settings._settings
+
+        # Create test settings instance that doesn't load from .env file
+        from services.meetings.settings import Settings
+
+        test_settings = Settings(
+            db_url_meetings="sqlite:///file::memory:?cache=shared",
+            api_email_sync_meetings_key="test-email-sync-key",
+            api_meetings_office_key="test-meetings-office-key",
+            api_meetings_user_key="test-meetings-user-key",
+            api_frontend_meetings_key="test-frontend-meetings-key",
+            office_service_url="http://localhost:8003",
+            user_service_url="http://localhost:8001",
+            log_level="INFO",
+            log_format="json",
+        )
+
+        # Set the test settings as the singleton
+        meetings_settings._settings = test_settings
+
         # Set up database tables
         from sqlalchemy import create_engine
 
@@ -38,6 +62,16 @@ class TestPollCreation(BaseMeetingsTest):
         # Drop all tables and recreate them to ensure latest schema
         Base.metadata.drop_all(models._test_engine)
         Base.metadata.create_all(models._test_engine)
+
+    def teardown_method(self, method):
+        """Clean up test environment."""
+        # Restore original settings singleton
+        import services.meetings.settings as meetings_settings
+
+        meetings_settings._settings = self._original_settings
+
+        # Call parent teardown
+        super().teardown_method(method)
 
     @pytest.fixture
     def poll_payload(self):
