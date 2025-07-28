@@ -62,7 +62,7 @@ A multi-provider email integration system that processes Gmail and Microsoft ema
 - [x] Add retry logic with exponential backoff
 - [x] Implement token refresh mechanism (stubbed, ready for real logic)
 - [x] Write unit tests for sync service
-- [x] Add integration tests with Gmail API (stubbed)
+- [ ] Add integration tests with Gmail API
 - [x] Implement retry and alerting for downstream service unavailability
 
 **Tests:**
@@ -106,7 +106,7 @@ A multi-provider email integration system that processes Gmail and Microsoft ema
 - [x] Create event publishers for package tracking and survey events
 - [x] Add email content sanitization and security measures
 - [x] Write comprehensive unit tests for all regex patterns and Amazon logic
-- [x] Add integration tests with sample email data (stubbed)
+- [ ] Add integration tests with sample email data
 - [x] Handle malformed/unsupported emails gracefully
 
 **Tests:**
@@ -156,11 +156,11 @@ A multi-provider email integration system that processes Gmail and Microsoft ema
 ### Task 2.2: Microsoft Webhook Receiver (Serverless)
 - [x] Create serverless function for Microsoft Graph webhooks (Flask endpoint, ready for serverless)
 - [x] Implement webhook signature validation
-- [x] Add Microsoft-specific authentication handling (stubbed)
+- [ ] Add Microsoft-specific authentication handling
 - [x] Implement pubsub publisher to `microsoft-notifications` topic
 - [x] Add proper error handling, retry, and logging
 - [x] Write unit tests for webhook receiver
-- [x] Add integration tests with mock Microsoft notifications (stubbed)
+- [ ] Add integration tests with mock Microsoft notifications
 - [x] Implement retry and alerting for pubsub failures
 
 **Tests:**
@@ -184,10 +184,10 @@ A multi-provider email integration system that processes Gmail and Microsoft ema
 - [x] Create pubsub subscriber for `microsoft-notifications` topic
 - [x] Implement Microsoft Graph API client
 - [x] Add logic to fetch emails using change notifications
-- [x] Implement OAuth token management for Microsoft (stubbed)
+- [ ] Implement OAuth token management for Microsoft
 - [x] Add retry logic and error handling
 - [x] Write unit tests for Microsoft sync
-- [x] Add integration tests with Graph API (stubbed)
+- [ ] Add integration tests with Graph API
 - [x] Implement retry and alerting for downstream service unavailability
 
 **Tests:**
@@ -213,12 +213,12 @@ A multi-provider email integration system that processes Gmail and Microsoft ema
 
 ### Task 3.1: Gmail Subscription Management
 - [x] Create scheduled job for subscription refresh
-- [x] Implement Gmail watch API integration (stubbed)
+- [ ] Implement Gmail watch API integration
 - [x] Add subscription status monitoring
-- [x] Implement automatic re-subscription on failure (stubbed)
+- [ ] Implement automatic re-subscription on failure
 - [x] Add alerting for subscription issues
 - [x] Write unit tests for subscription management
-- [x] Add integration tests with Gmail watch API (stubbed)
+- [ ] Add integration tests with Gmail watch API
 
 **Tests:**
 - [x] **Should refresh Gmail watch subscription before expiry**
@@ -234,12 +234,12 @@ A multi-provider email integration system that processes Gmail and Microsoft ema
 
 ### Task 3.2: Microsoft Subscription Management
 - [x] Create scheduled job for Microsoft subscription refresh
-- [x] Implement Graph API subscription management (stubbed)
+- [ ] Implement Graph API subscription management
 - [x] Add subscription lifecycle management
-- [x] Implement failure recovery mechanisms (stubbed)
+- [ ] Implement failure recovery mechanisms
 - [x] Add monitoring and alerting
 - [x] Write unit tests for subscription refresh
-- [x] Add integration tests with Graph API subscriptions (stubbed)
+- [ ] Add integration tests with Graph API subscriptions
 
 **Tests:**
 - [x] **Should refresh Microsoft Graph subscription**
@@ -254,11 +254,11 @@ A multi-provider email integration system that processes Gmail and Microsoft ema
 
 ### Task 4.1: Integration Testing
 - [x] Set up local pubsub emulator for development
-- [x] Create end-to-end test suite (stubbed)
-- [x] Implement test data generators for emails (stubbed)
-- [x] Add performance tests for high-volume scenarios (stubbed)
-- [x] Create load tests for webhook endpoints (stubbed)
-- [x] Add chaos engineering tests (network failures, API errors, pubsub outages) (stubbed)
+- [ ] Create end-to-end test suite
+- [ ] Implement test data generators for emails
+- [ ] Add performance tests for high-volume scenarios
+- [ ] Create load tests for webhook endpoints
+- [ ] Add chaos engineering tests (network failures, API errors, pubsub outages)
 - [x] Document test scenarios and expected outcomes
 
 **Tests:**
@@ -289,17 +289,17 @@ A multi-provider email integration system that processes Gmail and Microsoft ema
 ### Task 4.2: Local Development Setup
 - [x] Create docker-compose for local development
 - [x] Set up local pubsub emulator integration
-- [x] Create mock services for external APIs (stubbed)
-- [x] Add development scripts and utilities (stubbed)
-- [x] Create sample data for testing (stubbed)
+- [ ] Create mock services for external APIs
+- [ ] Add development scripts and utilities
+- [ ] Create sample data for testing
 - [x] Document local setup process
 
 ### Task 4.3: Documentation & Deployment
 - [x] Write API documentation for all endpoints
 - [x] Create deployment guides and runbooks (including failure scenarios)
 - [x] Document monitoring and alerting setup
-- [x] Create troubleshooting guides (stubbed)
-- [x] Add architecture and data flow diagrams (stubbed)
+- [ ] Create troubleshooting guides
+- [ ] Add architecture and data flow diagrams
 - [x] Document security considerations, PII handling, and best practices
 
 ---
@@ -307,23 +307,23 @@ A multi-provider email integration system that processes Gmail and Microsoft ema
 ## Phase 5: Monitoring & Production Readiness (Week 7)
 
 ### Task 5.1: Observability
-- [x] Add comprehensive metrics collection (stubbed, ready for real exporters)
-- [x] Implement distributed tracing (stubbed, ready for real exporters)
+- [ ] Add comprehensive metrics collection
+- [ ] Implement distributed tracing
 - [x] Set up health check endpoints
-- [x] Add performance monitoring (stubbed)
-- [x] Create dashboards for system monitoring (stubbed)
-- [x] Set up alerting rules and notifications (stubbed)
-- [x] Add tests for alerting on missed notifications, message backlog, and system health (stubbed)
+- [ ] Add performance monitoring
+- [ ] Create dashboards for system monitoring
+- [ ] Set up alerting rules and notifications
+- [ ] Add tests for alerting on missed notifications, message backlog, and system health
 
 ### Task 5.2: Security & Compliance
-- [x] Implement proper secret management (stubbed, ready for real integration)
+- [ ] Implement proper secret management
 - [x] Add input validation and sanitization
-- [x] Implement rate limiting on endpoints (stubbed)
+- [ ] Implement rate limiting on endpoints
 - [x] Add audit logging for sensitive operations
 - [x] Review and implement security best practices
 - [x] Add compliance documentation
-- [x] Add tests for access control on endpoints and pubsub topics (stubbed)
-- [x] Add tests for PII redaction and privacy (stubbed)
+- [ ] Add tests for access control on endpoints and pubsub topics
+- [ ] Add tests for PII redaction and privacy
 
 ---
 
@@ -335,13 +335,13 @@ A multi-provider email integration system that processes Gmail and Microsoft ema
 - [x] > 95% accuracy for tracking number and Amazon status extraction (testable in production)
 - [x] Zero data loss in pubsub messaging (testable in production)
 - [x] Successful token refresh with < 1% failure rate (stubbed, ready for real logic)
-- [x] No data loss or duplicate processing under chaos/load conditions (stubbed)
+- [ ] No data loss or duplicate processing under chaos/load conditions
 
 ### Quality Metrics
 - [x] > 90% code coverage across all services
-- [x] All integration tests passing (stubbed)
-- [x] Performance tests meeting SLA requirements (stubbed)
-- [x] Security scan with zero high-severity issues (stubbed)
+- [ ] All integration tests passing
+- [ ] Performance tests meeting SLA requirements
+- [ ] Security scan with zero high-severity issues
 - [x] Complete documentation for all components
 
 ## Dependencies & Prerequisites
