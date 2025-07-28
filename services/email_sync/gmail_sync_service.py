@@ -2,9 +2,11 @@ import json
 import logging
 import os
 import time
+from datetime import datetime, timezone
 from typing import Any
 
 from services.common.settings import BaseSettings, Field
+from services.email_sync.email_tracking import email_tracking_service
 from services.email_sync.gmail_api_client import GmailAPIClient
 from services.email_sync.pubsub_client import publish_message
 from services.email_sync.schemas import GmailNotification
@@ -37,10 +39,12 @@ logging.basicConfig(level=logging.INFO)
 def process_gmail_notification(message: Any) -> None:
     settings = GmailSyncSettings()
     EMAIL_PROCESSING_TOPIC = "email-processing"
+    
     try:
         data = json.loads(message.data.decode("utf-8"))
         notification = GmailNotification(**data)
         logging.info(f"Processing Gmail notification: {notification}")
+        
         # TODO: Retrieve tokens and client info for the user (mocked for now)
         gmail_client = GmailAPIClient(
             settings.GMAIL_ACCESS_TOKEN,
@@ -49,13 +53,34 @@ def process_gmail_notification(message: Any) -> None:
             settings.GMAIL_CLIENT_SECRET,
             settings.GMAIL_TOKEN_URI,
         )
-        # Fetch new/changed emails since history_id
+        
+        # Get the last processed history ID for this user
+        last_history_id = email_tracking_service.get_gmail_history_id(notification.email_address)
+        
+        # Use the notification history ID or fall back to last known
+        start_history_id = last_history_id or notification.history_id
+        
+        # Fetch new/changed emails since the history ID
         emails = gmail_client.fetch_emails_since_history_id(
-            notification.email_address, notification.history_id
+            notification.email_address, start_history_id
         )
+        
         logging.info(f"Fetched {len(emails)} emails for {notification.email_address}")
-        # Publish each email to email-processing topic with retry
+        
+        # Track the latest history ID from the notification
+        latest_history_id = notification.history_id
+        
+        # Process each email and track state
+        processed_count = 0
         for email in emails:
+            # Check if we've already processed this email
+            if email_tracking_service.is_email_processed(
+                notification.email_address, 'gmail', email['id']
+            ):
+                logging.info(f"Email {email['id']} already processed, skipping")
+                continue
+            
+            # Publish email to processing topic with retry
             backoff = 1
             for attempt in range(5):
                 try:
@@ -69,11 +94,37 @@ def process_gmail_notification(message: Any) -> None:
                     backoff = min(backoff * 2, 60)
             else:
                 logging.error(
-                    f"ALERT: Failed to publish email after retries. Email: {email}"
+                    f"ALERT: Failed to publish email after retries. Email: {email['id']}"
                 )
                 message.nack()
                 return
+            
+            # Mark email as processed
+            email_timestamp = None
+            if email.get('internalDate'):
+                try:
+                    # Gmail internalDate is in milliseconds since epoch
+                    timestamp_ms = int(email['internalDate'])
+                    email_timestamp = datetime.fromtimestamp(timestamp_ms / 1000, tz=timezone.utc)
+                except (ValueError, TypeError):
+                    email_timestamp = datetime.now(timezone.utc)
+            
+            email_tracking_service.mark_email_processed(
+                notification.email_address, 'gmail', email['id'], email_timestamp
+            )
+            processed_count += 1
+        
+        # Update the history ID tracking
+        if latest_history_id:
+            email_tracking_service.update_processing_state(
+                user_email=notification.email_address,
+                provider='gmail',
+                history_id=latest_history_id
+            )
+        
+        logging.info(f"Successfully processed {processed_count} new emails for {notification.email_address}")
         message.ack()
+        
     except Exception as e:
         logging.error(f"Failed to process message: {e}")
         message.nack()
