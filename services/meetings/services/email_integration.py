@@ -2,6 +2,7 @@ from typing import Optional
 
 import httpx
 
+from services.common.logging_config import request_id_var
 from services.meetings.settings import get_settings
 
 
@@ -18,6 +19,11 @@ async def get_user_email_providers(user_id: str) -> list[str]:
     settings = get_settings()
     url = f"{settings.user_service_url}/v1/internal/users/{user_id}/integrations"
     headers = {"X-API-Key": settings.api_meetings_user_key}
+
+    # Propagate request ID for distributed tracing
+    request_id = request_id_var.get()
+    if request_id and request_id != "uninitialized":
+        headers["X-Request-Id"] = request_id
 
     try:
         async with httpx.AsyncClient() as client:
@@ -47,6 +53,11 @@ async def send_invitation_email(
     settings = get_settings()
     url = f"{settings.office_service_url}/v1/email/send"
     headers = {"X-API-Key": settings.api_meetings_office_key, "X-User-Id": user_id}
+
+    # Propagate request ID for distributed tracing
+    request_id = request_id_var.get()
+    if request_id and request_id != "uninitialized":
+        headers["X-Request-Id"] = request_id
 
     # If no provider specified, try to find an available one
     if not provider:
