@@ -9,7 +9,7 @@ General instructions for working in Python in this repo:
 * Do not load or create globals on module load
 
 Setup:
-* Set up the unified development environment: `./setup-dev.sh`
+* Set up the unified development environment: `./install.sh`
 * Run all Python commands from the repository root.
 
 Before committing:

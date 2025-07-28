@@ -52,14 +52,7 @@ from services.user.services.integration_service import (
 )
 from services.user.settings import Settings, get_settings
 
-# Set up centralized logging
-settings = get_settings()
-setup_service_logging(
-    service_name="user-management-service",
-    log_level=settings.log_level,
-    log_format=settings.log_format,
-)
-
+# Set up centralized logging - will be initialized in lifespan
 logger = get_logger(__name__)
 
 
@@ -73,14 +66,24 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     settings = get_settings()
 
+    # Set up centralized logging
+    setup_service_logging(
+        service_name="user",
+        log_level=settings.log_level,
+        log_format=settings.log_format,
+    )
+
     # Startup
     log_service_startup(
-        "user-management-service",
+        "user",
         api_frontend_user_key=(
             "configured" if settings.api_frontend_user_key else "missing"
         ),
         api_office_user_key="configured" if settings.api_office_user_key else "missing",
-        db_url=settings.db_url_user_management,
+        api_meetings_user_key=(
+            "configured" if settings.api_meetings_user_key else "missing"
+        ),
+        db_url=settings.db_url_user,
         environment=settings.environment,
         debug=settings.debug,
     )
@@ -101,6 +104,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         )
         raise RuntimeError("API_CHAT_USER_KEY is required but not configured")
 
+    # Validate required configuration
+    if not settings.api_meetings_user_key:
+        logger.error("API_MEETINGS_USER_KEY is required but not configured")
+        logger.error(
+            "Set the API_MEETINGS_USER_KEY environment variable or configure it in settings"
+        )
+        raise RuntimeError("API_MEETINGS_USER_KEY is required but not configured")
+
     # Configure docs URLs
     if settings.debug:
         app.docs_url = "/docs"
@@ -119,7 +130,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
     # Shutdown
-    log_service_shutdown("user-management-service")
+    log_service_shutdown("user")
     try:
         await close_db()
         logger.info("Database disconnected successfully")
@@ -178,12 +189,12 @@ def create_app() -> FastAPI:
     # Register exception handlers
     register_briefly_exception_handlers(app)
 
-    # Register API routers
-    app.include_router(users_router)
-    app.include_router(preferences_router)
-    app.include_router(integrations_router)
-    app.include_router(provider_router)
-    app.include_router(internal_router)
+    # Register API routers with v1 prefix
+    app.include_router(users_router, prefix="/v1")
+    app.include_router(preferences_router, prefix="/v1")
+    app.include_router(integrations_router, prefix="/v1")
+    app.include_router(provider_router, prefix="/v1")
+    app.include_router(internal_router, prefix="/v1")
 
     return app
 
@@ -318,7 +329,7 @@ async def oauth_callback_redirect(
                 "application/json": {
                     "example": {
                         "status": "healthy",
-                        "service": "user-management",
+                        "service": "user",
                         "version": "0.1.0",
                         "timestamp": "2024-01-01T00:00:00Z",
                         "environment": "production",
@@ -348,7 +359,7 @@ async def oauth_callback_redirect(
                 "application/json": {
                     "example": {
                         "status": "unhealthy",
-                        "service": "user-management",
+                        "service": "user",
                         "version": "0.1.0",
                         "timestamp": "2024-01-01T00:00:00Z",
                         "environment": "production",
@@ -360,7 +371,7 @@ async def oauth_callback_redirect(
                             },
                             "configuration": {
                                 "status": "unhealthy",
-                                "issues": ["DB_URL_USER_MANAGEMENT not configured"],
+                                "issues": ["DB_URL_USER not configured"],
                             },
                             "dependencies": {
                                 "status": "unhealthy",
@@ -407,9 +418,9 @@ async def health_check() -> Any:
     # Configuration check
     config_issues = []
     current_settings = Settings()
-    db_url = getattr(current_settings, "db_url_user_management", None)
+    db_url = getattr(current_settings, "db_url_user", None)
     if not db_url:
-        config_issues.append("DB_URL_USER_MANAGEMENT not configured")
+        config_issues.append("DB_URL_USER not configured")
     config_status = "healthy" if not config_issues else "unhealthy"
 
     # Dependencies (for now, always healthy)
@@ -432,7 +443,7 @@ async def health_check() -> Any:
     # Compose the response using the Pydantic model
     response_data = ReadinessStatus(
         status=overall_status,
-        service="user-management",
+        service="user",
         version="0.1.0",
         timestamp=datetime.now(timezone.utc).isoformat(),
         environment=str(getattr(get_settings(), "environment", "unknown")),
@@ -478,7 +489,7 @@ async def health_check() -> Any:
                 "application/json": {
                     "example": {
                         "status": "ready",
-                        "service": "user-management",
+                        "service": "user",
                         "version": "0.1.0",
                         "timestamp": "2024-01-01T00:00:00Z",
                         "environment": "production",
@@ -508,7 +519,7 @@ async def health_check() -> Any:
                 "application/json": {
                     "example": {
                         "status": "not_ready",
-                        "service": "user-management",
+                        "service": "user",
                         "version": "0.1.0",
                         "timestamp": "2024-01-01T00:00:00Z",
                         "environment": "production",
@@ -520,7 +531,7 @@ async def health_check() -> Any:
                             },
                             "configuration": {
                                 "status": "not_ready",
-                                "issues": ["DB_URL_USER_MANAGEMENT not configured"],
+                                "issues": ["DB_URL_USER not configured"],
                             },
                             "dependencies": {
                                 "status": "not_ready",
@@ -587,9 +598,9 @@ async def readiness_check() -> Any:
     # Configuration check
     config_issues = []
     current_settings = Settings()
-    db_url = getattr(current_settings, "db_url_user_management", None)
+    db_url = getattr(current_settings, "db_url_user", None)
     if not db_url:
-        config_issues.append("DB_URL_USER_MANAGEMENT not configured")
+        config_issues.append("DB_URL_USER not configured")
     is_test_env = (
         getattr(current_settings, "environment", "").lower() in ["test", "testing"]
         or os.environ.get("PYTEST_CURRENT_TEST") is not None
@@ -622,7 +633,7 @@ async def readiness_check() -> Any:
     # Compose the response using the Pydantic model
     response_data = ReadinessStatus(
         status=overall_status,
-        service="user-management",
+        service="user",
         version="0.1.0",
         timestamp=datetime.now(timezone.utc).isoformat(),
         environment=str(getattr(get_settings(), "environment", "unknown")),
@@ -664,4 +675,5 @@ if __name__ == "__main__":
         port=8001,
         reload=get_settings().debug,
         log_level="info" if not get_settings().debug else "debug",
+        access_log=False,  # Disable uvicorn access logs, we handle request logging in middleware
     )

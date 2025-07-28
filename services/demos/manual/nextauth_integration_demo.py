@@ -76,7 +76,7 @@ async def test_internal_service() -> bool:
 
         # Test internal preferences
         response = await client.get(
-            "http://localhost:8001/internal/users/google_108234567890123456789/preferences",
+            "http://localhost:8001/v1/internal/users/google_108234567890123456789/preferences",
             headers=headers,
         )
         if response.status_code == 200:

@@ -163,7 +163,14 @@ class BaseOfficeServiceIntegrationTest(BaseIntegrationTest):
         self.client = self.create_test_client(app)
 
         # Set up default auth headers for tests
-        self.auth_headers = {"X-User-Id": "test-user@example.com"}
+        # Import settings here to avoid module-level dependency
+        from services.office.core.settings import get_settings
+
+        settings = get_settings()
+        self.auth_headers = {
+            "X-User-Id": "test-user@example.com",
+            "Authorization": f"Bearer {settings.api_frontend_office_key}",
+        }
 
     def teardown_method(self, method: object) -> None:
         """Clean up Office Service specific patches."""

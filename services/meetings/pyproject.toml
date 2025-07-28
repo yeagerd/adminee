@@ -1,0 +1,18 @@
+[project]
+name = "briefly-meetings"
+version = "0.1.0"
+description = "Meeting Scheduler Service for Briefly"
+requires-python = ">=3.12"
+
+[tool.poetry.dependencies]
+fastapi = "^0.110.0"
+uvicorn = "^0.29.0"
+sqlalchemy = "^2.0.0"
+alembic = "^1.13.0"
+pydantic = "^2.6.0"
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+email-validator = "^2.1.0.post1"
+aiohttp = "^3.9.0"
+
+[tool.setuptools]
+packages = ["api", "app", "models", "schemas"]

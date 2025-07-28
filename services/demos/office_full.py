@@ -254,7 +254,7 @@ class FullOfficeDemo:
                 print(f"   Database: {'✅' if checks.get('database') else '❌'}")
                 print(f"   Redis: {'✅' if checks.get('redis') else '❌'}")
                 print(
-                    f"   User Management: {'✅' if checks.get('user_management_service') else '❌'}"
+                    f"   User Management: {'✅' if checks.get('user_service') else '❌'}"
                 )
 
         except httpx.ConnectError:

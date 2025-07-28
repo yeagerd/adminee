@@ -81,7 +81,7 @@ export class GatewayClient {
 
     // Chat Service
     async chat(message: string, threadId?: string, userContext?: Record<string, unknown>) {
-        return this.request('/api/chat/completions', {
+        return this.request('/api/v1/chat/completions', {
             method: 'POST',
             body: {
                 message,
@@ -101,7 +101,7 @@ export class GatewayClient {
             headers['Authorization'] = `Bearer ${session.accessToken}`;
         }
 
-        const response = await fetch(`${env.GATEWAY_URL}/api/chat/completions/stream`, {
+        const response = await fetch(`${env.GATEWAY_URL}/api/v1/chat/completions/stream`, {
             method: 'POST',
             headers,
             body: JSON.stringify({
@@ -121,32 +121,32 @@ export class GatewayClient {
     }
 
     async getChatHistory(threadId: string) {
-        return this.request(`/api/chat/threads/${threadId}/history`);
+        return this.request(`/api/v1/chat/threads/${threadId}/history`);
     }
 
     async getChatThreads(limit = 20, offset = 0) {
         const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
-        return this.request(`/api/chat/threads?${params.toString()}`);
+        return this.request(`/api/v1/chat/threads?${params.toString()}`);
     }
 
     // User Service
     async getCurrentUser() {
-        return this.request('/api/users/me');
+        return this.request('/api/v1/users/me');
     }
 
     async updateUser(userData: Record<string, unknown>) {
-        return this.request('/api/users/me', {
+        return this.request('/api/v1/users/me', {
             method: 'PUT',
             body: userData,
         });
     }
 
     async getUserPreferences() {
-        return this.request('/api/users/me/preferences');
+        return this.request('/api/v1/users/me/preferences');
     }
 
     async updateUserPreferences(preferences: Record<string, unknown>) {
-        return this.request('/api/users/me/preferences', {
+        return this.request('/api/v1/users/me/preferences', {
             method: 'PUT',
             body: preferences,
         });
@@ -154,14 +154,14 @@ export class GatewayClient {
 
     // Integration Management
     async getIntegrations(): Promise<IntegrationListResponse> {
-        return this.request<IntegrationListResponse>('/api/users/me/integrations');
+        return this.request<IntegrationListResponse>('/api/v1/users/me/integrations');
     }
 
     async startOAuthFlow(provider: string, scopes: string[]) {
         // Use a dedicated integration callback URL to avoid conflicts with NextAuth
         const redirectUri = `${window.location.origin}/integrations/callback`;
 
-        return this.request('/api/users/me/integrations/oauth/start', {
+        return this.request('/api/v1/users/me/integrations/oauth/start', {
             method: 'POST',
             body: {
                 provider,
@@ -172,20 +172,20 @@ export class GatewayClient {
     }
 
     async completeOAuthFlow(provider: string, code: string, state: string): Promise<OAuthCallbackResponse> {
-        return this.request<OAuthCallbackResponse>(`/api/users/me/integrations/oauth/callback?provider=${provider}`, {
+        return this.request<OAuthCallbackResponse>(`/api/v1/users/me/integrations/oauth/callback?provider=${provider}`, {
             method: 'POST',
             body: { code, state },
         });
     }
 
     async disconnectIntegration(provider: string) {
-        return this.request(`/api/users/me/integrations/${provider}`, {
+        return this.request(`/api/v1/users/me/integrations/${provider}`, {
             method: 'DELETE',
         });
     }
 
     async refreshIntegrationTokens(provider: string) {
-        return this.request(`/api/users/me/integrations/${provider}/refresh`, {
+        return this.request(`/api/v1/users/me/integrations/${provider}/refresh`, {
             method: 'PUT',
         });
     }
@@ -200,7 +200,7 @@ export class GatewayClient {
                 sensitive: boolean;
             }>;
             default_scopes: string[];
-        }>(`/api/users/me/integrations/${provider}/scopes`);
+        }>(`/api/v1/users/me/integrations/${provider}/scopes`);
     }
 
     // Office Service
@@ -226,7 +226,7 @@ export class GatewayClient {
         if (q) params.append('q', q);
         params.append('time_zone', time_zone);
 
-        return this.request<ApiResponse<CalendarEventsResponse>>(`/api/calendar/events?${params.toString()}`);
+        return this.request<ApiResponse<CalendarEventsResponse>>(`/api/v1/calendar/events?${params.toString()}`);
     }
 
     async getEmails(
@@ -243,14 +243,14 @@ export class GatewayClient {
             params.append('providers', provider);
         });
 
-        return this.request<ApiResponse<GetEmailsResponse>>(`/api/email/messages?${params.toString()}`);
+        return this.request<ApiResponse<GetEmailsResponse>>(`/api/v1/email/messages?${params.toString()}`);
     }
 
     async getFiles(provider: string, path?: string) {
         const params = new URLSearchParams();
         if (path) params.append('path', path);
 
-        return this.request(`/api/files?provider=${provider}&${params.toString()}`);
+        return this.request(`/api/v1/files?provider=${provider}&${params.toString()}`);
     }
 
     // Draft Management
@@ -271,31 +271,31 @@ export class GatewayClient {
             }
         }
         if (filters?.search) params.append('search', filters.search);
-        return this.request<DraftListResponse>(`/api/drafts?${params.toString()}`);
+        return this.request<DraftListResponse>(`/api/v1/drafts?${params.toString()}`);
     }
 
     async createDraft(draftData: { type: string; content: string; metadata?: Record<string, unknown>; threadId?: string; }): Promise<DraftApiResponse> {
-        return this.request<DraftApiResponse>('/api/drafts', {
+        return this.request<DraftApiResponse>('/api/v1/drafts', {
             method: 'POST',
             body: draftData,
         });
     }
 
     async updateDraft(draftId: string, draftData: { content?: string; metadata?: Record<string, unknown>; status?: string; }): Promise<DraftApiResponse> {
-        return this.request<DraftApiResponse>(`/api/drafts/${draftId}`, {
+        return this.request<DraftApiResponse>(`/api/v1/drafts/${draftId}`, {
             method: 'PUT',
             body: draftData,
         });
     }
 
     async deleteDraft(draftId: string): Promise<void> {
-        return this.request<void>(`/api/drafts/${draftId}`, {
+        return this.request<void>(`/api/v1/drafts/${draftId}`, {
             method: 'DELETE',
         });
     }
 
     async getDraft(draftId: string): Promise<DraftApiResponse> {
-        return this.request<DraftApiResponse>(`/api/drafts/${draftId}`);
+        return this.request<DraftApiResponse>(`/api/v1/drafts/${draftId}`);
     }
 
     // Health Check
@@ -307,6 +307,54 @@ export class GatewayClient {
     createWebSocketConnection(endpoint: string): WebSocket {
         const wsUrl = env.GATEWAY_URL.replace('http', 'ws');
         return new WebSocket(`${wsUrl}${endpoint}`);
+    }
+
+    // Meetings Service
+    async listMeetingPolls(): Promise<MeetingPoll[]> {
+        return this.request<MeetingPoll[]>('/api/v1/meetings/polls');
+    }
+
+    async getMeetingPoll(pollId: string): Promise<MeetingPoll> {
+        return this.request<MeetingPoll>(`/api/v1/meetings/polls/${pollId}`);
+    }
+
+    async createMeetingPoll(pollData: MeetingPollCreate): Promise<MeetingPoll> {
+        return this.request<MeetingPoll>('/api/v1/meetings/polls', {
+            method: 'POST',
+            body: pollData,
+        });
+    }
+
+    async updateMeetingPoll(pollId: string, pollData: MeetingPollUpdate): Promise<MeetingPoll> {
+        return this.request<MeetingPoll>(`/api/v1/meetings/polls/${pollId}`, {
+            method: 'PUT',
+            body: pollData,
+        });
+    }
+
+    async deleteMeetingPoll(pollId: string): Promise<void> {
+        return this.request<void>(`/api/v1/meetings/polls/${pollId}`, {
+            method: 'DELETE',
+        });
+    }
+
+    async sendMeetingInvitations(pollId: string): Promise<void> {
+        return this.request<void>(`/api/v1/meetings/polls/${pollId}/send-invitations`, {
+            method: 'POST',
+        });
+    }
+
+    async resendMeetingInvitation(pollId: string, participantId: string): Promise<void> {
+        return this.request<void>(`/api/v1/meetings/polls/${pollId}/participants/${participantId}/resend-invitation`, {
+            method: 'POST',
+        });
+    }
+
+    async addMeetingParticipant(pollId: string, email: string, name: string): Promise<PollParticipant> {
+        return this.request<PollParticipant>(`/api/v1/meetings/polls/${pollId}/participants`, {
+            method: 'POST',
+            body: { email, name },
+        });
     }
 }
 
@@ -385,6 +433,106 @@ export interface DraftListResponse {
     drafts: DraftApiResponse[];
     total_count: number;
     has_more: boolean;
+}
+
+// Meeting Poll Types
+export interface MeetingPoll {
+    id: string;
+    user_id: string;
+    title: string;
+    description?: string;
+    duration_minutes: number;
+    location?: string;
+    meeting_type: string;
+    response_deadline?: string;
+    min_participants?: number;
+    max_participants?: number;
+    reveal_participants?: boolean;
+    status: string;
+    created_at: string;
+    updated_at: string;
+    poll_token: string;
+    time_slots: TimeSlot[];
+    participants: PollParticipant[];
+    responses?: PollResponse[];
+}
+
+export interface PollResponse {
+    id: string;
+    participant_id: string;
+    time_slot_id: string;
+    response: string;
+    comment?: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface TimeSlot {
+    id: string;
+    start_time: string;
+    end_time: string;
+    timezone: string;
+    is_available: boolean;
+}
+
+export interface PollParticipant {
+    id: string;
+    email: string;
+    name?: string;
+    status: string;
+    invited_at: string;
+    responded_at?: string;
+    reminder_sent_count: number;
+    response_token: string;
+}
+
+export interface MeetingPollCreate {
+    title: string;
+    description?: string;
+    duration_minutes: number;
+    location?: string;
+    meeting_type: string;
+    response_deadline?: string;
+    min_participants?: number;
+    max_participants?: number;
+    reveal_participants?: boolean;
+    time_slots: TimeSlotCreate[];
+    participants: PollParticipantCreate[];
+}
+
+export interface TimeSlotCreate {
+    start_time: string;
+    end_time: string;
+    timezone: string;
+}
+
+export interface PollParticipantCreate {
+    email: string;
+    name?: string;
+    poll_id?: string;
+    response_token?: string;
+}
+
+export interface PollParticipant {
+    id: string;
+    email: string;
+    name?: string;
+    status: string;
+    invited_at: string;
+    responded_at?: string;
+    reminder_sent_count: number;
+    response_token: string;
+}
+
+export interface MeetingPollUpdate {
+    title?: string;
+    description?: string;
+    duration_minutes?: number;
+    location?: string;
+    meeting_type?: string;
+    response_deadline?: string;
+    min_participants?: number;
+    max_participants?: number;
 }
 
 export default gatewayClient;

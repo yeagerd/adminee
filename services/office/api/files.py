@@ -7,7 +7,6 @@ Internal/service endpoints, if any, should be under /internal and require API ke
 """
 
 import asyncio
-import logging
 import uuid
 from datetime import datetime, timezone
 from typing import List, Optional, cast
@@ -18,8 +17,9 @@ from services.common.http_errors import (
     ServiceError,
     ValidationError,
 )
+from services.common.logging_config import get_logger
 from services.office.core.api_client_factory import APIClientFactory
-from services.office.core.auth import ServicePermissionRequired
+from services.office.core.auth import service_permission_required
 from services.office.core.cache_manager import cache_manager, generate_cache_key
 from services.office.core.normalizer import (
     normalize_google_drive_file,
@@ -30,7 +30,7 @@ from services.office.schemas import (
     ApiResponse,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Create router
 router = APIRouter(prefix="/files", tags=["files"])
@@ -75,7 +75,7 @@ async def get_files(
     include_folders: bool = Query(
         True, description="Whether to include folders in results"
     ),
-    service_name: str = Depends(ServicePermissionRequired(["read_files"])),
+    service_name: str = Depends(service_permission_required(["read_files"])),
 ) -> ApiResponse:
     """
     Get unified files from multiple providers.
@@ -306,8 +306,18 @@ async def get_files(
         if response_data.get("providers") is None:
             response_data["providers"] = []
 
-        # Cache the result (5 minutes TTL for files)
-        await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=300)
+        # Only cache if we have successful results from at least one provider
+        if providers_used:  # Only cache if at least one provider succeeded
+            # Cache the result (5 minutes TTL for files)
+            await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=300)
+        else:
+            logger.info(
+                f"[{request_id}] Not caching response due to no successful providers",
+                extra={
+                    "providers_used": providers_used,
+                    "provider_errors": provider_errors,
+                },
+            )
 
         # Calculate response time
         end_time = datetime.now(timezone.utc)
@@ -345,7 +355,7 @@ async def search_files(
     file_types: Optional[List[str]] = Query(
         None, description="Filter by file types/mime types"
     ),
-    service_name: str = Depends(ServicePermissionRequired(["read_files"])),
+    service_name: str = Depends(service_permission_required(["read_files"])),
 ) -> ApiResponse:
     """
     Search files across multiple providers.
@@ -530,8 +540,18 @@ async def search_files(
             },
         }
 
-        # Cache the search results (5 minutes TTL)
-        await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=300)
+        # Only cache if we have successful results from at least one provider
+        if providers_used:  # Only cache if at least one provider succeeded
+            # Cache the search results (5 minutes TTL)
+            await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=300)
+        else:
+            logger.info(
+                f"[{request_id}] Not caching search response due to no successful providers",
+                extra={
+                    "providers_used": providers_used,
+                    "provider_errors": provider_errors,
+                },
+            )
 
         # Calculate response time
         end_time = datetime.now(timezone.utc)
@@ -559,7 +579,7 @@ async def get_file(
     include_download_url: bool = Query(
         False, description="Whether to include download URL"
     ),
-    service_name: str = Depends(ServicePermissionRequired(["read_files"])),
+    service_name: str = Depends(service_permission_required(["read_files"])),
 ) -> ApiResponse:
     """
     Get a specific file by ID.

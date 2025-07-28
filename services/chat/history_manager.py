@@ -26,6 +26,7 @@ from sqlalchemy.orm import registry
 from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, select
 
 from services.chat.settings import get_settings
+from services.common import get_async_database_url
 
 
 def get_database_url() -> str:
@@ -42,16 +43,6 @@ def get_database_url() -> str:
             f"Failed to get database configuration: {e}. "
             "Ensure DB_URL_CHAT environment variable is properly set."
         ) from e
-
-
-def get_async_database_url(url: str) -> str:
-    """Convert database URL to async format."""
-    if url.startswith("postgresql://"):
-        return url.replace("postgresql://", "postgresql+asyncpg://")
-    elif url.startswith("sqlite://"):
-        return url.replace("sqlite://", "sqlite+aiosqlite://")
-    else:
-        return url
 
 
 # Create a separate registry for chat service models to avoid conflicts with other services
@@ -439,24 +430,36 @@ async def create_user_draft(
     thread_id: Optional[int] = None,
 ) -> UserDraft:
     async with get_async_session_factory()() as session:
-        draft = UserDraft(
-            user_id=user_id,
-            type=draft_type,
-            content=content,
-            draft_metadata=metadata,
-            thread_id=thread_id,
+        result = await session.execute(
+            select(UserDraft).where(
+                UserDraft.user_id == user_id,
+                UserDraft.type == draft_type,
+                UserDraft.thread_id == thread_id,
+            )
         )
-        session.add(draft)
-        await session.commit()
-        await session.refresh(draft)
-
-        # Ensure the ID was properly assigned by the database
+        draft = result.scalar_one_or_none()
+        if draft:
+            draft.content = content
+            draft.draft_metadata = metadata
+            draft.updated_at = datetime.datetime.now(datetime.timezone.utc)
+            await session.commit()
+            await session.refresh(draft)
+        else:
+            draft = UserDraft(
+                user_id=user_id,
+                type=draft_type,
+                content=content,
+                draft_metadata=metadata,
+                thread_id=thread_id,
+            )
+            session.add(draft)
+            await session.commit()
+            await session.refresh(draft)
         if draft.id is None:
             raise RuntimeError(
                 f"Failed to create user draft for user {user_id}: "
                 "Database did not assign an ID after commit"
             )
-
         return draft
 
 

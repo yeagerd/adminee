@@ -1,7 +1,7 @@
 # User Service Task List
 
 ## References
-* Design doc: `documentation/user-management-service.md`
+* Design doc: `documentation/user-service.md`
 * Backend architecture: `/documentation/backend-architecture.md`
 
 ## Task Management Protocol
@@ -21,7 +21,7 @@
 ## General instructions for working in Python in this repo
 
 ### Setup
-* Set up the unified development environment: `./setup-dev.sh`
+* Set up the unified development environment: `./install.sh`
 * The virtual environment will be automatically activated
 * Run all Python commands from the repository root.
 
@@ -45,7 +45,7 @@
 - `services/user/alembic/` - Alembic migration configuration
 - `services/user/logging_config.py` - Structlog configuration for structured logging
 - `Dockerfile.user-service` - Python/FastAPI Docker configuration
-- `docker-compose.yml` - Updated with user-management service and Redis
+- `docker-compose.yml` - Updated with user service and Redis
 - `services/user/tests/test_settings.py` - Unit tests for settings configuration
 
 ### Phase 2: Database Models & Schema
@@ -129,10 +129,10 @@
 - `services/user/tests/test_validation_security.py` - Comprehensive unit tests for validation utilities and security features including edge cases, malicious input attempts, and performance testing
 
 ### Demo & Testing
-- `services/demos/user_management_demo.py` - Comprehensive interactive demo showcasing all user management features including OAuth flows, profile management, preferences, and service APIs with real browser-based OAuth authorization
-- `services/demos/user_management_simple.py` - Lightweight demo script for quick testing of core user management functionality without OAuth dependencies
+- `services/demos/user_demo.py` - Comprehensive interactive demo showcasing all user management features including OAuth flows, profile management, preferences, and service APIs with real browser-based OAuth authorization
+- `services/demos/user_simple.py` - Lightweight demo script for quick testing of core user management functionality without OAuth dependencies
 - `services/demos/oauth_callback_handler.py` - OAuth callback handler server for capturing real OAuth authorization codes during demo flows
-- `services/demos/README_user_management.md` - Comprehensive documentation for user management demos including setup instructions, OAuth configuration, and troubleshooting guide
+- `services/demos/README_user.md` - Comprehensive documentation for user management demos including setup instructions, OAuth configuration, and troubleshooting guide
 
 ### Phase 1: Project Setup & Foundation
 

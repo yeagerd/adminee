@@ -24,14 +24,36 @@ from services.user.auth.nextauth import (
 from services.user.auth.service_auth import (
     client_has_permission,
     get_client_permissions,
-    get_current_service,
-    get_service_auth,
-    require_service_auth,
+    service_permission_required,
     verify_service_authentication,
 )
+from services.user.tests.test_base import BaseUserManagementTest
 
 
-class TestNextAuthAuthentication:
+@pytest.fixture(autouse=True)
+def patch_settings(monkeypatch):
+    """Patch the _settings global variable to return test settings."""
+    import services.user.settings as user_settings
+
+    test_settings = user_settings.Settings(
+        db_url_user="sqlite:///:memory:",
+        api_frontend_user_key="test-frontend-key",
+        api_chat_user_key="test-chat-key",
+        api_office_user_key="test-office-key",
+        api_meetings_user_key="test-meetings-key",
+        token_encryption_salt="dGVzdC1zYWx0LTE2Ynl0ZQ==",
+        nextauth_jwt_key="test-nextauth-secret",
+        oauth_redirect_uri="https://example.com/oauth/callback",
+        google_client_id="test-google-client-id",
+        google_client_secret="test-google-client-secret",
+        azure_ad_client_id="test-microsoft-client-id",
+        azure_ad_client_secret="test-microsoft-client-secret",
+    )
+
+    monkeypatch.setattr("services.user.settings._settings", test_settings)
+
+
+class TestNextAuthAuthentication(BaseUserManagementTest):
     """Test cases for NextAuth JWT authentication."""
 
     def create_test_token(self, claims: Optional[dict] = None, expired: bool = False):
@@ -231,37 +253,31 @@ class TestNextAuthAuthentication:
             assert exc_info.value.status_code == 403
 
 
-class TestServiceAuthentication:
+class TestServiceAuthentication(BaseUserManagementTest):
     """Test cases for service-to-service authentication."""
 
-    @pytest.fixture(autouse=True)
-    def setup_service_auth(self):
-        """Set up service auth with test API key."""
-        with patch("services.user.auth.service_auth.get_settings") as mock_settings:
-            mock_settings.return_value.api_frontend_user_key = "test-frontend-key"
-            mock_settings.return_value.api_chat_user_key = "test-chat-key"
-            mock_settings.return_value.api_office_user_key = "test-office-key"
-
-            # Reset the global service auth instance
-            import services.user.auth.service_auth as auth_module
-
-            auth_module._service_auth = None
-            yield
-
-    def test_user_management_api_key_auth_verify_valid_key(self):
+    def test_user_api_key_auth_verify_valid_key(self):
         """Test valid API key verification."""
-        client_name = get_service_auth().verify_api_key_value("test-frontend-key")
-        assert client_name == "frontend"
+        perms = get_client_permissions("frontend")
+        expected = [
+            "read_users",
+            "write_users",
+            "read_tokens",
+            "write_tokens",
+            "read_preferences",
+            "write_preferences",
+        ]
+        assert perms == expected
 
-    def test_user_management_api_key_auth_verify_invalid_key(self):
+    def test_user_api_key_auth_verify_invalid_key(self):
         """Test invalid API key verification."""
-        client_name = get_service_auth().verify_api_key_value("invalid-key")
-        assert client_name is None
+        perms = get_client_permissions("invalid-client")
+        assert perms == []
 
-    def test_user_management_api_key_auth_is_valid_client(self):
+    def test_user_api_key_auth_is_valid_client(self):
         """Test client name validation."""
-        assert get_service_auth().is_valid_client("frontend") is True
-        assert get_service_auth().is_valid_client("invalid-client") is False
+        assert client_has_permission("frontend", "read_users") is True
+        assert client_has_permission("invalid-client", "read_users") is False
 
     @pytest.mark.asyncio
     async def test_verify_service_authentication_success(self):
@@ -270,8 +286,8 @@ class TestServiceAuthentication:
         request.headers = {"Authorization": "Bearer test-frontend-key"}
         request.state = Mock()
 
-        client_name = await verify_service_authentication(request)
-        assert client_name == "frontend"
+        service_name = verify_service_authentication(request)
+        assert service_name == "user-access"
 
     @pytest.mark.asyncio
     async def test_verify_service_authentication_missing_key(self):
@@ -281,8 +297,7 @@ class TestServiceAuthentication:
         request.state = Mock()
 
         with pytest.raises(AuthError) as exc_info:
-            await verify_service_authentication(request)
-
+            verify_service_authentication(request)
         assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
@@ -293,9 +308,8 @@ class TestServiceAuthentication:
         request.state = Mock()
 
         with pytest.raises(AuthError) as exc_info:
-            await verify_service_authentication(request)
-
-        assert exc_info.value.status_code == 401
+            verify_service_authentication(request)
+        assert exc_info.value.status_code == 403
 
     @pytest.mark.asyncio
     async def test_get_current_service_success(self):
@@ -304,8 +318,8 @@ class TestServiceAuthentication:
         request.headers = {"X-Service-Key": "test-frontend-key"}
         request.state = Mock()
 
-        client_name = await get_current_service(request)
-        assert client_name == "frontend"
+        service_name = verify_service_authentication(request)
+        assert service_name == "user-access"
 
     @pytest.mark.asyncio
     async def test_get_current_service_auth_failure(self):
@@ -315,7 +329,7 @@ class TestServiceAuthentication:
         request.state = Mock()
 
         with pytest.raises(AuthError) as exc_info:
-            await get_current_service(request)
+            verify_service_authentication(request)
         assert exc_info.value.status_code == 401
 
     def test_get_client_permissions_frontend(self):
@@ -367,46 +381,46 @@ class TestServiceAuthentication:
         request.headers = {"Authorization": "Bearer test-frontend-key"}
         request.state = Mock()
 
-        auth_dep = require_service_auth(allowed_clients=["frontend"])
-        client_name = await auth_dep(request)
-        assert client_name == "frontend"
+        auth_dep = service_permission_required(["read_users"])
+        service_name = await auth_dep(request)
+        assert service_name == "user-access"
 
     @pytest.mark.asyncio
     async def test_require_service_auth_restriction_failure(self):
         """Test require_service_auth decorator with client restriction failure."""
-        request = MagicMock(spec=Request)
-        request.headers = {"Authorization": "Bearer test-frontend-key"}
-        request.state = Mock()
+        from services.user.auth import service_auth
 
-        # Only allow chat client, but we're authenticating as frontend
-        auth_dep = require_service_auth(allowed_clients=["chat"])
+        # Temporarily modify the API key config to restrict permissions
+        original_config = service_auth.API_KEY_CONFIGS["api_frontend_user_key"]
+        service_auth.API_KEY_CONFIGS["api_frontend_user_key"] = (
+            service_auth.APIKeyConfig(
+                client="frontend",
+                service="user-access",
+                permissions=["read_users"],  # Only read_users, not write_tokens
+                settings_key="api_frontend_user_key",
+            )
+        )
 
-        with pytest.raises(AuthError) as exc_info:
-            await auth_dep(request)
-        assert exc_info.value.status_code == 401
+        try:
+            request = MagicMock(spec=Request)
+            request.headers = {"Authorization": "Bearer test-frontend-key"}
+            request.state = Mock()
+            auth_dep = service_permission_required(["write_tokens"])
+            with pytest.raises(AuthError) as exc_info:
+                await auth_dep(request)
+            assert exc_info.value.status_code == 403
+        finally:
+            # Restore original config
+            service_auth.API_KEY_CONFIGS["api_frontend_user_key"] = original_config
 
     def test_require_service_auth_decorator_factory(self):
         """Test require_service_auth decorator factory."""
-        decorator = require_service_auth(allowed_clients=["frontend"])
+        decorator = service_permission_required(["read_users"])
         assert callable(decorator)
 
 
-class TestAuthenticationIntegration:
+class TestAuthenticationIntegration(BaseUserManagementTest):
     """Integration tests for authentication components."""
-
-    @pytest.fixture(autouse=True)
-    def setup_service_auth(self):
-        """Set up service auth with test API key."""
-        with patch("services.user.auth.service_auth.get_settings") as mock_settings:
-            mock_settings.return_value.api_frontend_user_key = "test-frontend-key"
-            mock_settings.return_value.api_chat_user_key = "test-chat-key"
-            mock_settings.return_value.api_office_user_key = "test-office-key"
-
-            # Reset the global service auth instance
-            import services.user.auth.service_auth as auth_module
-
-            auth_module._service_auth = None
-            yield
 
     @pytest.mark.asyncio
     async def test_user_and_service_auth_combined(self):
@@ -431,17 +445,15 @@ class TestAuthenticationIntegration:
             {"X-API-Key": "test-frontend-key"},
             {"X-Service-Key": "test-frontend-key"},
         ]
-
         for headers in test_cases:
             request = MagicMock(spec=Request)
             request.headers = headers
             request.state = Mock()
+            service_name = verify_service_authentication(request)
+            assert service_name == "user-access"
 
-            client_name = await verify_service_authentication(request)
-            assert client_name == "frontend"
 
-
-class TestNextAuthSecurity:
+class TestNextAuthSecurity(BaseUserManagementTest):
     """Test NextAuth security features."""
 
     @pytest.mark.asyncio

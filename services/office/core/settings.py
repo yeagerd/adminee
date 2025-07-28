@@ -33,12 +33,16 @@ class Settings(BaseSettings):
 
     # API Keys for service communication
     api_frontend_office_key: str = Field(
-        default="default-office-key",
+        ...,  # Required field - no default to prevent production mistakes
         description="Frontend API key to access this Office service",
     )
     api_chat_office_key: str = Field(
-        default="default-chat-office-key",
+        ...,  # Required field - no default to prevent production mistakes
         description="Chat service API key to access this Office service",
+    )
+    api_meetings_office_key: str = Field(
+        ...,  # Required field - no default to prevent production mistakes
+        description="Meetings service API key to access this Office service",
     )
     api_office_user_key: Optional[str] = Field(
         default=None,
@@ -78,7 +82,7 @@ class Settings(BaseSettings):
     DEMO_MODE: bool = Field(default=False, description="Enable demo mode")
 
     # Service URLs
-    USER_MANAGEMENT_SERVICE_URL: str = Field(
+    USER_SERVICE_URL: str = Field(
         default="http://localhost:8001", description="User management service URL"
     )
 

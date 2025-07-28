@@ -1,12 +1,12 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Draft, DraftMetadata, DraftType } from '@/types/draft';
-import { AIIndicator } from './ai-indicator';
+import { Calendar, FileText, Mail } from 'lucide-react';
 import { DraftActions } from './draft-actions';
 import { DraftEditor } from './draft-editor';
 import { DraftMetadata as DraftMetadataComponent } from './draft-metadata';
-import { DraftTypeSwitcher } from './draft-type-switcher';
 
 interface DraftPaneProps {
     className?: string;
@@ -20,6 +20,12 @@ interface DraftPaneProps {
 }
 
 export function DraftPane({ className, draft, onUpdate, onMetadataChange, onTypeChange, isLoading = false, error = null, onActionComplete }: DraftPaneProps) {
+    const draftTypes: { type: DraftType; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+        { type: 'email', label: 'Email', icon: Mail },
+        { type: 'calendar', label: 'Event', icon: Calendar },
+        { type: 'document', label: 'Doc', icon: FileText },
+    ];
+
     const handleTypeChange = (type: DraftType) => {
         if (draft && draft.type !== type) {
             // If there's unsaved content, ask for confirmation
@@ -71,25 +77,20 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
     if (!draft) {
         return (
             <div className={cn(
-                'h-full flex flex-col items-center justify-center p-6 text-center',
+                'flex flex-col items-center justify-center p-4',
                 className
             )}>
-                <div className="max-w-sm space-y-4">
-                    <div className="text-muted-foreground">
-                        <h3 className="text-lg font-medium mb-2">No Draft Selected</h3>
-                        <p className="text-sm">
-                            Create a new draft or select an existing one to get started.
-                        </p>
-                    </div>
-
-                    <div className="space-y-2">
-                        <p className="text-xs text-muted-foreground">Choose a draft type:</p>
-                        <DraftTypeSwitcher
-                            currentType="email"
-                            onTypeChange={handleTypeChange}
-                            className="justify-center"
-                        />
-                    </div>
+                <div className="flex flex-wrap gap-2 justify-center">
+                    {draftTypes.map(({ type, label, icon: Icon }) => (
+                        <Button
+                            key={type}
+                            onClick={() => handleTypeChange(type)}
+                            className="flex items-center gap-2 px-4 py-2"
+                        >
+                            <Icon className="h-4 w-4" />
+                            {label}
+                        </Button>
+                    ))}
                 </div>
             </div>
         );
@@ -97,63 +98,55 @@ export function DraftPane({ className, draft, onUpdate, onMetadataChange, onType
 
     return (
         <div className={cn(
-            'h-full flex flex-col bg-background',
+            'h-full flex flex-col bg-background min-h-0',
             className
         )}>
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b">
-                <div className="flex items-center gap-3">
-                    <DraftTypeSwitcher
-                        currentType={draft.type}
-                        onTypeChange={handleTypeChange}
+            {/* Fixed Header with Action Buttons */}
+            <div className="border-b bg-muted/30 p-4">
+                <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-medium text-muted-foreground">
+                        {draft.type.charAt(0).toUpperCase() + draft.type.slice(1)} Details
+                    </h3>
+                    <DraftActions
+                        draft={draft}
+                        onActionComplete={handleActionComplete}
                     />
-                    {draft.isAIGenerated && (
-                        <AIIndicator isAIGenerated={true} size="sm" />
-                    )}
-                </div>
-
-                <div className="text-xs text-muted-foreground">
-                    {draft.updatedAt && (
-                        <span>
-                            Last updated: {new Date(draft.updatedAt).toLocaleTimeString()}
-                        </span>
-                    )}
                 </div>
             </div>
 
-            {/* Metadata */}
-            <DraftMetadataComponent
-                draft={draft}
-                onUpdate={handleMetadataChange}
-                type={draft.type}
-            />
+            {/* Scrollable Content Container */}
+            <div className="flex-1 min-h-0 overflow-auto">
+                {/* Metadata */}
+                <div className="p-4 border-b bg-muted/30">
+                    <DraftMetadataComponent
+                        draft={draft}
+                        onUpdate={handleMetadataChange}
+                        type={draft.type}
+                    />
+                </div>
 
-            {/* Error message */}
-            {error && (
-                <div className="text-sm text-red-500 px-4 py-2">{error}</div>
-            )}
-
-            {/* Content Editor */}
-            <div className="flex-1 overflow-hidden relative">
-                {isLoading && (
-                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
-                    </div>
+                {/* Error message */}
+                {error && (
+                    <div className="text-sm text-red-500 px-4 py-2">{error}</div>
                 )}
-                <DraftEditor
-                    type={draft.type}
-                    content={draft.content}
-                    onUpdate={handleContentChange}
-                    onAutoSave={handleAutoSave}
-                    disabled={isLoading}
-                />
-            </div>
 
-            {/* Actions */}
-            <DraftActions
-                draft={draft}
-                onActionComplete={handleActionComplete}
-            />
+                {/* Content Editor */}
+                <div className="relative">
+                    {isLoading && (
+                        <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
+                        </div>
+                    )}
+                    <DraftEditor
+                        type={draft.type}
+                        content={draft.content}
+                        onUpdate={handleContentChange}
+                        onAutoSave={handleAutoSave}
+                        disabled={isLoading}
+                        updatedAt={draft.updatedAt}
+                    />
+                </div>
+            </div>
         </div>
     );
 }

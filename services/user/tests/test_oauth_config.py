@@ -31,6 +31,29 @@ from services.user.models.integration import IntegrationProvider
 from services.user.settings import Settings
 
 
+@pytest.fixture(autouse=True)
+def patch_settings(monkeypatch):
+    """Patch the _settings global variable to return test settings."""
+    import services.user.settings as user_settings
+
+    test_settings = user_settings.Settings(
+        db_url_user="sqlite:///:memory:",
+        api_frontend_user_key="test-frontend-key",
+        api_chat_user_key="test-chat-key",
+        api_office_user_key="test-office-key",
+        api_meetings_user_key="test-meetings-key",
+        token_encryption_salt="dGVzdC1zYWx0LTE2Ynl0ZQ==",
+        nextauth_jwt_key="test-nextauth-secret",
+        oauth_redirect_uri="https://example.com/oauth/callback",
+        google_client_id="test-google-client-id",
+        google_client_secret="test-google-client-secret",
+        azure_ad_client_id="test-microsoft-client-id",
+        azure_ad_client_secret="test-microsoft-client-secret",
+    )
+
+    monkeypatch.setattr("services.user.settings._settings", test_settings)
+
+
 class TestPKCEChallenge:
     """Test PKCE challenge generation and validation."""
 
@@ -339,35 +362,14 @@ class TestOAuthConfig:
         self.temp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
         self.temp_db.close()
 
-        # Mock environment variables instead of modifying os.environ directly
-        # This prevents race conditions in parallel execution
-        self.env_patch = patch.dict(
-            os.environ,
-            {
-                "DB_URL_USER_MANAGEMENT": f"sqlite:///{self.temp_db.name}",
-                "TOKEN_ENCRYPTION_SALT": "dGVzdC1zYWx0LTE2Ynl0ZQ==",
-                "API_FRONTEND_USER_KEY": "test-api-key",
-                "NEXTAUTH_SECRET": "test-nextauth-secret",
-                "GOOGLE_CLIENT_ID": "test-google-client-id",
-                "GOOGLE_CLIENT_SECRET": "test-google-client-secret",
-                "AZURE_AD_CLIENT_ID": "test-microsoft-client-id",
-                "AZURE_AD_CLIENT_SECRET": "test-microsoft-client-secret",
-                "OAUTH_REDIRECT_URI": "https://example.com/oauth/callback",
-            },
-            clear=False,
-        )
-        self.env_patch.start()
+        # Create test settings and OAuth config using patched settings
+        from services.user.settings import _settings
 
-        # Create test settings and OAuth config
-        self.settings = Settings()
+        self.settings = _settings
         self.oauth_config = OAuthConfig(self.settings)
 
     def teardown_method(self):
         """Clean up test environment."""
-        # Stop environment patch
-        if hasattr(self, "env_patch"):
-            self.env_patch.stop()
-
         # Clean up temporary database file
         if hasattr(self, "temp_db") and os.path.exists(self.temp_db.name):
             os.unlink(self.temp_db.name)
@@ -391,29 +393,26 @@ class TestOAuthConfig:
         temp_db.close()
 
         try:
-            # Create environment patch with missing OAuth credentials
-            # Explicitly set all OAuth credentials to empty/None to ensure no providers are available
-            with patch.dict(
-                os.environ,
-                {
-                    "DB_URL_USER_MANAGEMENT": f"sqlite:///{temp_db.name}",
-                    "TOKEN_ENCRYPTION_SALT": "dGVzdC1zYWx0LTE2Ynl0ZQ==",
-                    "API_FRONTEND_USER_KEY": "test-api-key",
-                    "NEXTAUTH_SECRET": "test-nextauth-secret",
-                    "OAUTH_REDIRECT_URI": "https://example.com/oauth/callback",
-                    # Explicitly clear all OAuth credentials
-                    "GOOGLE_CLIENT_ID": "",
-                    "GOOGLE_CLIENT_SECRET": "",
-                    "AZURE_AD_CLIENT_ID": "",
-                    "AZURE_AD_CLIENT_SECRET": "",
-                },
-                clear=True,
-            ):  # clear=True ensures only our test values are present
-                settings_no_creds = Settings()
-                config = OAuthConfig(settings_no_creds)
+            # Create settings with missing OAuth credentials
+            settings_no_creds = Settings(
+                db_url_user=f"sqlite:///{temp_db.name}",
+                api_frontend_user_key="test-frontend-key",
+                api_chat_user_key="test-chat-key",
+                api_office_user_key="test-office-key",
+                api_meetings_user_key="test-meetings-key",
+                token_encryption_salt="dGVzdC1zYWx0LTE2Ynl0ZQ==",
+                nextauth_jwt_key="test-nextauth-secret",
+                oauth_redirect_uri="https://example.com/oauth/callback",
+                # Explicitly set OAuth credentials to empty to ensure no providers are available
+                google_client_id="",
+                google_client_secret="",
+                azure_ad_client_id="",
+                azure_ad_client_secret="",
+            )
+            config = OAuthConfig(settings_no_creds)
 
-                # Should have no providers available
-                assert len(config.get_available_providers()) == 0
+            # Should have no providers available
+            assert len(config.get_available_providers()) == 0
         finally:
             # Clean up temporary database
             if os.path.exists(temp_db.name):
@@ -469,6 +468,7 @@ class TestOAuthConfig:
             "https://graph.microsoft.com/User.Read",
             "https://graph.microsoft.com/Calendars.ReadWrite",
             "https://graph.microsoft.com/Mail.ReadWrite",
+            "https://graph.microsoft.com/Mail.Send",
             "https://graph.microsoft.com/Files.ReadWrite",
             "https://graph.microsoft.com/Contacts.ReadWrite",
         }
@@ -1027,6 +1027,7 @@ class TestOAuthConfig:
             "https://graph.microsoft.com/User.Read",
             "https://graph.microsoft.com/Calendars.ReadWrite",
             "https://graph.microsoft.com/Mail.ReadWrite",
+            "https://graph.microsoft.com/Mail.Send",
             "https://graph.microsoft.com/Files.ReadWrite",
             "https://graph.microsoft.com/Contacts.ReadWrite",
         }
@@ -1056,41 +1057,24 @@ class TestGlobalOAuthConfig:
 
     def test_get_oauth_config_singleton(self):
         """Test that get_oauth_config returns singleton instance."""
-        # Set up environment for global config creation
-        with patch.dict(
-            os.environ,
-            {
-                "DB_URL_USER_MANAGEMENT": f"sqlite:///{self.temp_db.name}",
-                "TOKEN_ENCRYPTION_SALT": "dGVzdC1zYWx0LTE2Ynl0ZQ==",
-                "API_FRONTEND_USER_KEY": "test-api-key",
-                "NEXTAUTH_SECRET": "test-nextauth-secret",
-                "GOOGLE_CLIENT_ID": "test-google-client-id",
-                "GOOGLE_CLIENT_SECRET": "test-google-client-secret",
-                "OAUTH_REDIRECT_URI": "https://example.com/oauth/callback",
-            },
-            clear=False,
-        ):
-            config1 = get_oauth_config()
-            config2 = get_oauth_config()
+        config1 = get_oauth_config()
+        config2 = get_oauth_config()
 
-            assert config1 is config2
+        assert config1 is config2
 
     def test_get_oauth_config_with_settings(self):
         """Test get_oauth_config with custom settings."""
-        # Create environment patch with custom credentials
-        with patch.dict(
-            os.environ,
-            {
-                "DB_URL_USER_MANAGEMENT": f"sqlite:///{self.temp_db.name}",
-                "TOKEN_ENCRYPTION_SALT": "dGVzdC1zYWx0LTE2Ynl0ZQ==",
-                "API_FRONTEND_USER_KEY": "test-api-key",
-                "NEXTAUTH_SECRET": "test-nextauth-secret",
-                "GOOGLE_CLIENT_ID": "custom-google-id",
-                "GOOGLE_CLIENT_SECRET": "custom-google-secret",
-                "OAUTH_REDIRECT_URI": "https://example.com/oauth/callback",
-            },
-            clear=False,
-        ):
-            custom_settings = Settings()
-            config = get_oauth_config(custom_settings)
-            assert config is not None
+        custom_settings = Settings(
+            db_url_user=f"sqlite:///{self.temp_db.name}",
+            api_frontend_user_key="test-frontend-key",
+            api_chat_user_key="test-chat-key",
+            api_office_user_key="test-office-key",
+            api_meetings_user_key="test-meetings-key",
+            token_encryption_salt="dGVzdC1zYWx0LTE2Ynl0ZQ==",
+            nextauth_jwt_key="test-nextauth-secret",
+            oauth_redirect_uri="https://example.com/oauth/callback",
+            google_client_id="custom-google-id",
+            google_client_secret="custom-google-secret",
+        )
+        config = get_oauth_config(custom_settings)
+        assert config is not None

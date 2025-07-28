@@ -37,13 +37,13 @@ class TestApplicationStartup(BaseUserManagementIntegrationTest):
 
     def test_routers_registered(self):
         # First test: With mocked authentication (should succeed)
-        response = self.client.get("/users/search")
+        response = self.client.get("/v1/users/search")
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert "users" in data or "total" in data  # Check for valid response structure
 
-        # Test: /users/me with mocked authentication (should succeed)
-        response = self.client.get("/users/me")
+        # Test: /v1/users/me with mocked authentication (should succeed)
+        response = self.client.get("/v1/users/me")
         # This might return 404 if the mocked user doesn't exist in the test DB, which is fine
         assert response.status_code in [
             status.HTTP_200_OK,
@@ -57,8 +57,8 @@ class TestApplicationStartup(BaseUserManagementIntegrationTest):
         if get_current_user in self.app.dependency_overrides:
             del self.app.dependency_overrides[get_current_user]
 
-        # Now /users/search should return 401 when unauthenticated
-        response = self.client.get("/users/search")
+        # Now /v1/users/search should return 401 when unauthenticated
+        response = self.client.get("/v1/users/search")
         assert response.status_code in [
             status.HTTP_401_UNAUTHORIZED,
             status.HTTP_403_FORBIDDEN,
@@ -93,7 +93,7 @@ class TestHealthEndpoint(BaseUserManagementIntegrationTest):
         response = self.client.get("/health")
         assert response.status_code == 200
         data = response.json()
-        assert data["service"] == "user-management"
+        assert data["service"] == "user"
         assert data["version"] == "0.1.0"
         assert "status" in data
         assert "checks" in data
@@ -172,7 +172,7 @@ class TestReadinessEndpoint(BaseUserManagementIntegrationTest):
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "ready"
-        assert data["service"] == "user-management"
+        assert data["service"] == "user"
         assert data["version"] == "0.1.0"
         assert "timestamp" in data
         assert "checks" in data
@@ -213,7 +213,12 @@ class TestReadinessEndpoint(BaseUserManagementIntegrationTest):
     def test_readiness_check_missing_configuration(self, mock_get_settings):
         """Test readiness check with missing configuration."""
         mock_settings = mock_get_settings.return_value
-        mock_settings.api_frontend_user_key = None  # Missing required config
+        # Provide valid API keys since they are now required
+        mock_settings.api_frontend_user_key = "test-frontend-key"
+        mock_settings.api_chat_user_key = "test-chat-key"
+        mock_settings.api_office_user_key = "test-office-key"
+        # Test with other missing configuration
+        mock_settings.db_url_user = None
 
         response = self.client.get("/ready")
         # This might still pass if other configs are valid, so just check it doesn't crash

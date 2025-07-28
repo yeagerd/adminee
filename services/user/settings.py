@@ -18,14 +18,14 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # Database Configuration
-    db_url_user_management: str = Field(
+    db_url_user: str = Field(
         default=...,
         description="PostgreSQL database connection string",
-        validation_alias=AliasChoices("DB_URL_USER_MANAGEMENT"),
+        validation_alias=AliasChoices("DB_URL_USER"),
     )
 
     # Service Configuration
-    service_name: str = Field(default="user-management", description="Service name")
+    service_name: str = Field(default="user", description="Service name")
     host: str = Field(default="0.0.0.0", description="Host to bind to")
     port: int = Field(default=8001, description="Port to bind to")
     debug: bool = Field(default=False, description="Debug mode")
@@ -41,17 +41,21 @@ class Settings(BaseSettings):
     )
 
     # Security Configuration
-    api_frontend_user_key: Optional[str] = Field(
-        default=None,
+    api_frontend_user_key: str = Field(
+        ...,
         description="Frontend API key to access User Management service",
     )
-    api_chat_user_key: Optional[str] = Field(
-        default=None,
+    api_chat_user_key: str = Field(
+        ...,
         description="Chat service API key to access User Management service",
     )
-    api_office_user_key: Optional[str] = Field(
-        default=None,
+    api_office_user_key: str = Field(
+        ...,
         description="Office service API key to access User Management service",
+    )
+    api_meetings_user_key: str = Field(
+        ...,
+        description="Meetings service API key to access User Management service",
     )
     token_encryption_salt: Optional[str] = Field(
         default=None,

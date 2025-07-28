@@ -13,6 +13,7 @@ interface DocumentEditorProps {
     placeholder?: string;
     className?: string;
     disabled?: boolean;
+    updatedAt?: string;
 }
 
 export function DocumentEditor({
@@ -20,7 +21,8 @@ export function DocumentEditor({
     onUpdate,
     onAutoSave,
     className,
-    disabled = false
+    disabled = false,
+    updatedAt
 }: DocumentEditorProps) {
     const { editor, validateContent, getWordCount, getCharacterCount } = useEditor({
         content,
@@ -52,17 +54,16 @@ export function DocumentEditor({
             <EditorToolbar editor={editor} />
 
             {/* Editor Content */}
-            <div className="flex-1 overflow-auto">
-                <div className="p-4 h-full">
-                    <EditorContent
-                        editor={editor}
-                        className={cn(
-                            'h-full min-h-[300px] prose prose-sm sm:prose lg:prose-lg xl:prose-2xl max-w-none',
-                            'focus:outline-none',
-                            disabled && 'opacity-50 pointer-events-none'
-                        )}
-                    />
-                </div>
+            <div className="flex-1 min-h-0 p-4">
+                <EditorContent
+                    editor={editor}
+                    className={cn(
+                        'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl max-w-none',
+                        'focus:outline-none',
+                        'min-h-[200px]',
+                        disabled && 'opacity-50 pointer-events-none'
+                    )}
+                />
             </div>
 
             {/* Status Bar */}
@@ -77,11 +78,18 @@ export function DocumentEditor({
                     )}
                 </div>
 
-                {onAutoSave && (
-                    <span className="text-green-600">
-                        Auto-save enabled
-                    </span>
-                )}
+                <div className="flex items-center gap-4">
+                    {updatedAt && (
+                        <span>
+                            Last updated: {new Date(updatedAt).toLocaleTimeString()}
+                        </span>
+                    )}
+                    {onAutoSave && (
+                        <span className="text-green-600">
+                            Auto-save enabled
+                        </span>
+                    )}
+                </div>
             </div>
 
             {/* Error Display */}

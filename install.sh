@@ -31,12 +31,15 @@ source .venv/bin/activate
 # Install all workspace and dev dependencies
 echo "📥 Installing all workspace and development dependencies..."
 uv sync --all-packages --all-extras --active
+uv pip install -e services/meetings
 
 # Run database migrations from repository root
 echo "🗄️ Setting up databases..."
 alembic -c services/user/alembic.ini upgrade head
 alembic -c services/chat/alembic.ini upgrade head
 alembic -c services/office/alembic.ini upgrade head
+alembic -c services/meetings/alembic.ini upgrade head
+alembic -c services/shipments/alembic.ini upgrade head
 
 echo "✅ Development environment setup complete!"
 echo ""

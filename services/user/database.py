@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlmodel import SQLModel
 
+from services.common import get_async_database_url
 from services.user.models.audit import AuditLog  # noqa: F401
 from services.user.models.integration import Integration  # noqa: F401
 from services.user.models.preferences import UserPreferences  # noqa: F401
@@ -24,21 +25,10 @@ from services.user.models.user import User  # noqa: F401
 from services.user.settings import get_settings
 
 
-# Create async engine for database operations
-def get_async_database_url(url: str) -> str:
-    """Convert database URL to async format."""
-    if url.startswith("postgresql://"):
-        return url.replace("postgresql://", "postgresql+asyncpg://")
-    elif url.startswith("sqlite://"):
-        return url.replace("sqlite://", "sqlite+aiosqlite://")
-    else:
-        return url
-
-
 def get_engine() -> AsyncEngine:
     settings = get_settings()
     return create_async_engine(
-        get_async_database_url(settings.db_url_user_management),
+        get_async_database_url(settings.db_url_user),
         echo=settings.debug,
     )
 

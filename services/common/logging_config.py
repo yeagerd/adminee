@@ -62,6 +62,145 @@ def add_request_context(
     return event_dict
 
 
+def add_service_context(
+    logger: structlog.types.WrappedLogger,
+    method_name: str,
+    event_dict: structlog.types.EventDict,
+) -> structlog.types.EventDict:
+    """Add service name to all log entries."""
+    # Get service name from the logger name or context
+    logger_name = event_dict.get("logger", "")
+    if logger_name.startswith("services."):
+        # Extract service name from logger path like "services.chat.api"
+        service_parts = logger_name.split(".")
+        if len(service_parts) >= 2:
+            event_dict["service"] = service_parts[1]  # e.g., "chat", "user", "office"
+    return event_dict
+
+
+def add_file_line_context(
+    logger: structlog.types.WrappedLogger,
+    method_name: str,
+    event_dict: structlog.types.EventDict,
+) -> structlog.types.EventDict:
+    """Add file and line number context to log entries."""
+    import inspect
+
+    # Get the caller's frame (skip this function and the structlog wrapper)
+    frame = inspect.currentframe()
+    try:
+        # Go up the call stack to find the actual caller
+        # We need to skip more frames to get past the logging system
+        for _ in range(8):  # Skip more frames to get to the actual caller
+            if frame:
+                frame = frame.f_back
+            if not frame:
+                break
+
+        if frame:
+            filename = frame.f_code.co_filename
+            lineno = frame.f_lineno
+
+            # Skip if we're still in the logging system
+            if "logging" in filename or "structlog" in filename:
+                # Go up a few more frames
+                for _ in range(3):
+                    if frame:
+                        frame = frame.f_back
+                    if not frame:
+                        break
+                if frame:
+                    filename = frame.f_code.co_filename
+                    lineno = frame.f_lineno
+
+            # Extract just the filename without path for cleaner output
+            if "/" in filename:
+                filename = filename.split("/")[-1]
+            elif "\\" in filename:
+                filename = filename.split("\\")[-1]
+
+            event_dict["file"] = filename
+            event_dict["line"] = lineno
+    except Exception:
+        # If we can't get the frame info, just continue
+        pass
+    finally:
+        # Clean up the frame reference
+        del frame
+
+    return event_dict
+
+
+class EnhancedTextRenderer:
+    """Custom text renderer for better debugging during development."""
+
+    def __init__(self, service_name: str):
+        self.service_name = service_name
+
+    def __call__(
+        self,
+        logger: structlog.types.WrappedLogger,
+        method_name: str,
+        event_dict: structlog.types.EventDict,
+    ) -> str:
+        """Render log entry as enhanced text format."""
+        # Extract key fields
+        timestamp = event_dict.get("timestamp", "")
+        level = event_dict.get("level", "INFO").upper()
+        logger_name = event_dict.get("logger", "")
+        message = event_dict.get("event", "")
+
+        # Get service name (prefer explicit service, fallback to extracted)
+        service = event_dict.get("service", self.service_name)
+
+        # Get request ID and truncate to last 4 chars for readability
+        request_id = event_dict.get("request_id", "")
+        if request_id and request_id != "uninitialized" and len(request_id) > 0:
+            request_id_suffix = (
+                f"[{request_id[-4:]}]" if len(request_id) >= 4 else f"[{request_id}]"
+            )
+        else:
+            request_id_suffix = ""
+
+        # Get user ID if present
+        user_info = ""
+        user_id = event_dict.get("user_id", "")
+        if user_id and user_id != "anonymous":
+            user_info = f" | User: {user_id}"
+
+        # Build the enhanced log line
+        parts = [
+            timestamp,
+            f"[{service}]",
+            f"[{level}]",
+            request_id_suffix,
+            f"{logger_name}",
+            f"- {message}{user_info}",
+        ]
+
+        # Add extra context as key=value pairs
+        extra_context = []
+        for key, value in event_dict.items():
+            if key not in [
+                "timestamp",
+                "level",
+                "logger",
+                "event",
+                "service",
+                "request_id",
+                "user_id",
+            ]:
+                if isinstance(value, (str, int, float, bool)):
+                    extra_context.append(f"{key}={value}")
+                else:
+                    extra_context.append(f"{key}={str(value)[:50]}...")
+
+        if extra_context:
+            parts.append(f" | {', '.join(extra_context)}")
+
+        return " ".join(filter(None, parts))
+
+
 def setup_service_logging(
     service_name: str,
     log_level: str = "INFO",
@@ -79,23 +218,28 @@ def setup_service_logging(
     """
 
     # Configure structlog for consistent structured logging
+    processors: list = [
+        structlog.stdlib.filter_by_level,
+        structlog.stdlib.add_logger_name,
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        add_request_context,  # Add our custom context processor
+        add_service_context,  # Add service context
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.UnicodeDecoder(),
+    ]
+
+    # Add the appropriate renderer
+    if log_format == "json":
+        processors.append(structlog.processors.JSONRenderer())
+    else:
+        # Use our custom text renderer for better debugging
+        processors.append(EnhancedTextRenderer(service_name))
+
     structlog.configure(
-        processors=[
-            structlog.stdlib.filter_by_level,
-            structlog.stdlib.add_logger_name,
-            structlog.stdlib.add_log_level,
-            structlog.stdlib.PositionalArgumentsFormatter(),
-            add_request_context,  # Add our custom context processor
-            structlog.processors.TimeStamper(fmt="iso"),
-            structlog.processors.StackInfoRenderer(),
-            structlog.processors.format_exc_info,
-            structlog.processors.UnicodeDecoder(),
-            (
-                structlog.processors.JSONRenderer()
-                if log_format == "json"
-                else structlog.dev.ConsoleRenderer()
-            ),
-        ],
+        processors=processors,
         context_class=dict,
         logger_factory=structlog.stdlib.LoggerFactory(),
         wrapper_class=structlog.stdlib.BoundLogger,
@@ -180,7 +324,6 @@ def create_request_logging_middleware() -> Callable:
             f"→ {request.method} {request.url.path}",
             extra={
                 "method": request.method,
-                "path": request.url.path,
                 "query_params": (
                     str(request.query_params) if request.query_params else None
                 ),
@@ -211,7 +354,6 @@ def create_request_logging_middleware() -> Callable:
                 "status_code": response.status_code,
                 "process_time": process_time,
                 "method": request.method,
-                "path": request.url.path,
             },
         )
 

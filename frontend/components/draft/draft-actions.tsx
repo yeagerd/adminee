@@ -82,10 +82,6 @@ export function DraftActions({ draft, onActionComplete }: DraftActionsProps) {
             )}
 
             <div className="flex gap-2">
-                {draft.type === 'email' && getActionButton('send')}
-                {draft.type === 'document' && getActionButton('save')}
-                {draft.type === 'calendar' && getActionButton('save')}
-
                 <AlertDialog open={showDiscardDialog} onOpenChange={setShowDiscardDialog}>
                     <AlertDialogTrigger asChild>
                         <Button variant="destructive" className="flex items-center gap-2">
@@ -108,6 +104,10 @@ export function DraftActions({ draft, onActionComplete }: DraftActionsProps) {
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
+
+                {draft.type === 'email' && getActionButton('send')}
+                {draft.type === 'document' && getActionButton('save')}
+                {draft.type === 'calendar' && getActionButton('save')}
             </div>
         </div>
     );

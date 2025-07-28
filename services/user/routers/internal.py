@@ -18,7 +18,7 @@ from services.common.http_errors import (
     ValidationError,
 )
 from services.common.logging_config import get_logger
-from services.user.auth.service_auth import get_current_service
+from services.user.auth.service_auth import service_permission_required
 from services.user.schemas.integration import (
     InternalTokenRefreshRequest,
     InternalTokenRequest,
@@ -59,7 +59,7 @@ router = APIRouter(
 @router.post("/tokens/get", response_model=InternalTokenResponse)
 async def get_user_tokens(
     request: InternalTokenRequest,
-    current_service: str = Depends(get_current_service),
+    service_name: str = Depends(service_permission_required(["read_tokens"])),
 ) -> InternalTokenResponse:
     """
     Get user tokens for other services.
@@ -117,7 +117,7 @@ async def get_user_tokens(
 @router.post("/tokens/refresh", response_model=InternalTokenResponse)
 async def refresh_user_tokens(
     request: InternalTokenRefreshRequest,
-    current_service: str = Depends(get_current_service),
+    service_name: str = Depends(service_permission_required(["write_tokens"])),
 ) -> InternalTokenResponse:
     """
     Refresh user tokens for other services.
@@ -172,7 +172,7 @@ async def refresh_user_tokens(
 @router.get("/users/{user_id}/status", response_model=InternalUserStatusResponse)
 async def get_user_status(
     user_id: str,
-    current_service: str = Depends(get_current_service),
+    service_name: str = Depends(service_permission_required(["read_users"])),
 ) -> InternalUserStatusResponse:
     """
     Get user integration status for other services.
@@ -215,7 +215,7 @@ async def get_user_by_email_internal(
     provider: Optional[str] = Query(
         None, description="OAuth provider (google, microsoft, etc.)"
     ),
-    current_service: str = Depends(get_current_service),
+    service_name: str = Depends(service_permission_required(["read_users"])),
 ) -> UserResponse:
     """
     Get user by exact email lookup (internal service endpoint).
@@ -276,7 +276,7 @@ async def get_user_by_email_internal(
 @router.post("/users/", response_model=UserCreateResponse)
 async def create_or_upsert_user_internal(
     user_data: UserCreate,
-    current_service: str = Depends(get_current_service),
+    service_name: str = Depends(service_permission_required(["write_users"])),
 ) -> UserCreateResponse:
     """
     Create a new user or return existing user by external_auth_id and auth_provider (internal service endpoint).
@@ -298,7 +298,7 @@ async def create_or_upsert_user_internal(
     - 500 (Internal Server Error): Unexpected error
     """
     # Add detailed logging for debugging
-    logger.info(f"User creation request from service: {current_service}")
+    logger.info(f"User creation request from service: {service_name}")
     logger.info(
         f"User data received: external_auth_id={user_data.external_auth_id}, "
         f"auth_provider={user_data.auth_provider}, email={user_data.email}, "
@@ -374,7 +374,7 @@ async def create_or_upsert_user_internal(
 async def update_user_preferences_internal(
     user_id: str,
     preferences_update: UserPreferencesUpdate,
-    current_service: str = Depends(get_current_service),
+    service_name: str = Depends(service_permission_required(["write_preferences"])),
 ) -> UserPreferencesResponse:
     """
     Internal service endpoint to update user preferences by user_id.
@@ -389,7 +389,7 @@ async def update_user_preferences_internal(
 async def reset_user_preferences_internal(
     user_id: str,
     reset_request: PreferencesResetRequest,
-    current_service: str = Depends(get_current_service),
+    service_name: str = Depends(service_permission_required(["write_preferences"])),
 ) -> UserPreferencesResponse:
     """
     Internal service endpoint to reset user preferences by user_id.
@@ -406,7 +406,7 @@ async def reset_user_preferences_internal(
 @router.get("/users/{user_id}/preferences")
 async def get_user_preferences_internal(
     user_id: str,
-    current_service: str = Depends(get_current_service),
+    service_name: str = Depends(service_permission_required(["read_preferences"])),
 ) -> Any:
     """
     Get user preferences for other services.
@@ -443,7 +443,7 @@ async def get_user_preferences_internal(
 @router.get("/users/{user_id}/integrations")
 async def get_user_integrations_internal(
     user_id: str,
-    current_service: str = Depends(get_current_service),
+    service_name: str = Depends(service_permission_required(["read_users"])),
 ) -> Dict[str, Any]:
     """
     Get user integrations for other services.

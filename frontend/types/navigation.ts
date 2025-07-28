@@ -3,11 +3,14 @@ export type Tool =
     | 'email'
     | 'documents'
     | 'tasks'
+    | 'drafts'
     | 'packages'
     | 'research'
     | 'pulse'
     | 'insights'
-    | 'drafts';
+    | 'meetings';
+
+export type MeetingSubView = 'list' | 'view' | 'edit' | 'new';
 
 export interface ToolSettings {
     id: Tool;
@@ -20,6 +23,11 @@ export interface ToolState {
     toolSettings: Record<Tool, ToolSettings>;
     lastVisited: Record<Tool, string>; // URL paths
     visitTimestamps: Record<Tool, number>; // Timestamps for recency sorting
+    // Sub-views for specific tools
+    meetingSubView: MeetingSubView;
+    meetingPollId: string | null; // For view/edit specific polls
+    previousMeetingSubView: MeetingSubView | null; // Track previous subview for navigation
+    previousMeetingPollId: string | null; // Track previous poll ID for navigation
 }
 
 export interface ToolContextType {
@@ -30,6 +38,12 @@ export interface ToolContextType {
     isToolEnabled: (tool: Tool) => boolean;
     getLastVisited: (tool: Tool) => string | null;
     setLastVisited: (tool: Tool, path: string) => void;
+    // Meeting-specific actions
+    setMeetingSubView: (subView: MeetingSubView, pollId?: string) => void;
+    getMeetingSubView: () => MeetingSubView;
+    getMeetingPollId: () => string | null;
+    // Navigation back to previous meeting subview
+    goBackToPreviousMeetingView: () => void;
 }
 
 export interface NavigationItem {

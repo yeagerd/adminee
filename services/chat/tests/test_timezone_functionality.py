@@ -8,39 +8,40 @@ This module tests the timezone handling features we implemented:
 - User preference fallback logic
 """
 
+import re
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from services.chat.agents.llm_tools import format_event_time_for_display
 from services.chat.models import ChatRequest
 
 
 @pytest.fixture(autouse=True)
-def mock_settings_for_timezone_tests():
-    with patch("services.chat.agents.llm_tools.get_settings") as mock_get_settings:
-        # Create a mock settings object with all required attributes
-        mock_settings_obj = MagicMock()
-        mock_settings_obj.db_url_chat = "sqlite:///test.db"
-        mock_settings_obj.api_chat_user_key = "test-api-key"
-        mock_settings_obj.api_chat_office_key = "test-api-key"
-        mock_settings_obj.api_frontend_chat_key = "test-api-key"
-        mock_settings_obj.user_management_service_url = "http://test-user-server"
-        mock_settings_obj.office_service_url = "http://test-office-server"
-        mock_settings_obj.llm_provider = "fake"
-        mock_settings_obj.llm_model = "fake-model"
-        mock_settings_obj.max_tokens = 2000
-        mock_settings_obj.openai_api_key = None
-        mock_settings_obj.service_name = "chat-service"
-        mock_settings_obj.host = "0.0.0.0"
-        mock_settings_obj.port = 8000
-        mock_settings_obj.debug = False
-        mock_settings_obj.environment = "test"
-        mock_settings_obj.log_level = "INFO"
-        mock_settings_obj.log_format = "json"
+def patch_chat_settings_singleton():
+    import services.chat.settings as chat_settings
+    from services.chat.settings import Settings
 
-        mock_get_settings.return_value = mock_settings_obj
-        yield mock_settings_obj
+    chat_settings._settings = Settings(
+        api_frontend_chat_key="test-frontend-chat-key",
+        api_chat_office_key="test-chat-office-key",
+        api_chat_user_key="test-chat-user-key",
+        db_url_chat="sqlite:///test.db",
+        user_service_url="http://test-user-server",
+        office_service_url="http://test-office-server",
+        llm_provider="fake",
+        llm_model="fake-model",
+        max_tokens=2000,
+        openai_api_key=None,
+        service_name="chat-service",
+        host="0.0.0.0",
+        port=8000,
+        debug=False,
+        environment="test",
+        log_level="INFO",
+        log_format="json",
+    )
+    yield
+    chat_settings._settings = None
 
 
 class TestTimezoneFormatting:
@@ -48,6 +49,8 @@ class TestTimezoneFormatting:
 
     def test_format_utc_to_eastern_time(self):
         """Test converting UTC times to Eastern Time."""
+        from services.chat.agents.llm_tools import format_event_time_for_display
+
         start_utc = "2025-06-20T17:00:00Z"  # 5:00 PM UTC
         end_utc = "2025-06-20T17:30:00Z"  # 5:30 PM UTC
         timezone_str = "America/New_York"
@@ -62,6 +65,8 @@ class TestTimezoneFormatting:
 
     def test_format_utc_to_pacific_time(self):
         """Test converting UTC times to Pacific Time."""
+        from services.chat.agents.llm_tools import format_event_time_for_display
+
         start_utc = "2025-06-20T22:00:00Z"  # 10:00 PM UTC
         end_utc = "2025-06-20T23:00:00Z"  # 11:00 PM UTC
         timezone_str = "America/Los_Angeles"
@@ -74,6 +79,8 @@ class TestTimezoneFormatting:
 
     def test_format_overnight_event(self):
         """Test formatting events that span midnight."""
+        from services.chat.agents.llm_tools import format_event_time_for_display
+
         start_utc = "2025-06-20T23:00:00Z"  # 11:00 PM UTC
         end_utc = "2025-06-21T01:00:00Z"  # 1:00 AM UTC next day
         timezone_str = "America/New_York"
@@ -88,6 +95,8 @@ class TestTimezoneFormatting:
 
     def test_format_with_invalid_timezone(self):
         """Test handling of invalid timezone strings."""
+        from services.chat.agents.llm_tools import format_event_time_for_display
+
         start_utc = "2025-06-20T17:00:00Z"
         end_utc = "2025-06-20T17:30:00Z"
         invalid_timezone = "Invalid/Timezone"
@@ -100,6 +109,8 @@ class TestTimezoneFormatting:
 
     def test_format_without_timezone(self):
         """Test formatting without specifying timezone (should use system timezone)."""
+        from services.chat.agents.llm_tools import format_event_time_for_display
+
         start_utc = "2025-06-20T17:00:00Z"
         end_utc = "2025-06-20T17:30:00Z"
 
@@ -111,6 +122,8 @@ class TestTimezoneFormatting:
 
     def test_format_with_malformed_datetime(self):
         """Test handling of malformed datetime strings."""
+        from services.chat.agents.llm_tools import format_event_time_for_display
+
         start_utc = "invalid-datetime"
         end_utc = "2025-06-20T17:30:00Z"
         timezone_str = "America/New_York"
@@ -123,6 +136,8 @@ class TestTimezoneFormatting:
 
     def test_format_with_different_datetime_formats(self):
         """Test handling different ISO datetime formats."""
+        from services.chat.agents.llm_tools import format_event_time_for_display
+
         # Test with different timezone formats
         test_cases = [
             ("2025-06-20T17:00:00Z", "2025-06-20T17:30:00Z"),
@@ -227,8 +242,8 @@ class TestTimezoneIntegration:
             mock_response = MagicMock()
             mock_response.raise_for_status.return_value = None
 
-            if "internal/users" in url and "integrations" in url:
-                # Mock user service response for integrations
+            # Match any user_id for the integrations endpoint
+            if re.search(r"/internal/users/.+/integrations", url):
                 mock_response.status_code = 200
                 mock_response.json.return_value = {
                     "integrations": [
@@ -244,7 +259,7 @@ class TestTimezoneIntegration:
                     "active_count": 1,
                     "error_count": 0,
                 }
-            else:
+            elif "calendar/events" in url:
                 # Mock office service response
                 mock_response.status_code = 200
                 mock_response.json.return_value = {
@@ -262,6 +277,15 @@ class TestTimezoneIntegration:
                         "provider_errors": {},
                         "providers_used": ["google"],
                     },
+                }
+            else:
+                # Default: return empty integrations
+                mock_response.status_code = 200
+                mock_response.json.return_value = {
+                    "integrations": [],
+                    "total": 0,
+                    "active_count": 0,
+                    "error_count": 0,
                 }
 
             return mock_response
@@ -299,6 +323,8 @@ class TestTimezoneErrorHandling:
 
     def test_format_event_time_with_none_values(self):
         """Test format_event_time_for_display with None values."""
+        from services.chat.agents.llm_tools import format_event_time_for_display
+
         result = format_event_time_for_display(None, None, "America/New_York")
 
         # Should handle None gracefully and return fallback
@@ -307,6 +333,8 @@ class TestTimezoneErrorHandling:
 
     def test_format_event_time_with_empty_strings(self):
         """Test format_event_time_for_display with empty strings."""
+        from services.chat.agents.llm_tools import format_event_time_for_display
+
         result = format_event_time_for_display("", "", "America/New_York")
 
         # Should handle empty strings gracefully
@@ -315,6 +343,8 @@ class TestTimezoneErrorHandling:
 
     def test_format_event_time_with_pytz_exception(self):
         """Test format_event_time_for_display when pytz raises an exception."""
+        from services.chat.agents.llm_tools import format_event_time_for_display
+
         with patch("pytz.timezone") as mock_timezone:
             mock_timezone.side_effect = Exception("Timezone error")
 

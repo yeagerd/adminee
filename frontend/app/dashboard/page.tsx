@@ -65,26 +65,25 @@ function DashboardContent() {
                     <div className="flex-1 overflow-auto">
                         <ToolContent />
                     </div>
-                    {/* Draft Pane - Bottom portion */}
-                    <div className="h-80 border-t bg-card">
-                        <div className="flex items-center justify-between p-4 border-b">
-                            <h2 className="text-lg font-semibold">Draft</h2>
-                        </div>
-                        <div className="flex-1 overflow-hidden">
-                            <DraftPane
-                                draft={draftState.currentDraft}
-                                onUpdate={updateDraft}
-                                onMetadataChange={updateDraftMetadata}
-                                onTypeChange={handleTypeChange}
-                                isLoading={draftState.isLoading}
-                                error={draftState.error}
-                                onActionComplete={handleDraftActionComplete}
-                            />
-                        </div>
-                    </div>
                 </div>
             }
             draft={<ChatInterface onDraftReceived={handleDraftReceived} />}
+            draftPane={
+                <div className="h-full flex flex-col bg-card border-l">
+                    <div className="flex-1 overflow-auto">
+                        <DraftPane
+                            draft={draftState.currentDraft}
+                            onUpdate={updateDraft}
+                            onMetadataChange={updateDraftMetadata}
+                            onTypeChange={handleTypeChange}
+                            isLoading={draftState.isLoading}
+                            error={draftState.error}
+                            onActionComplete={handleDraftActionComplete}
+                        />
+                    </div>
+                </div>
+            }
+            hasActiveDraft={!!draftState.currentDraft}
         />
     );
 }

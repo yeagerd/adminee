@@ -17,10 +17,9 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { useSidebarState } from "@/hooks/use-sidebar-state"
 import { cn } from "@/lib/utils"
 
-const SIDEBAR_COOKIE_NAME = "sidebar:state"
-const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
@@ -67,11 +66,12 @@ const SidebarProvider = React.forwardRef<
     ) => {
         const isMobile = useIsMobile()
         const [openMobile, setOpenMobile] = React.useState(false)
+        const { isExpanded, setExpanded, isLoaded } = useSidebarState()
 
         // This is the internal state of the sidebar.
         // We use openProp and setOpenProp for control from outside the component.
         const [_open, _setOpen] = React.useState(defaultOpen)
-        const open = openProp ?? _open
+        const open = openProp ?? (isLoaded ? isExpanded : _open)
         const setOpen = React.useCallback(
             (value: boolean | ((value: boolean) => boolean)) => {
                 const openState = typeof value === "function" ? value(open) : value
@@ -81,10 +81,12 @@ const SidebarProvider = React.forwardRef<
                     _setOpen(openState)
                 }
 
-                // This sets the cookie to keep the sidebar state.
-                document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+                // Update the persistent state (fire and forget)
+                setExpanded(openState).catch(error => {
+                    console.warn('Failed to persist sidebar state:', error);
+                });
             },
-            [setOpenProp, open]
+            [setOpenProp, open, setExpanded]
         )
 
         // Helper to toggle the sidebar.
@@ -207,26 +209,27 @@ const Sidebar = React.forwardRef<
         return (
             <div
                 ref={ref}
-                className="group peer hidden md:block text-sidebar-foreground"
+                className={cn(
+                    "h-full flex flex-col group peer text-sidebar-foreground",
+                    className
+                )}
                 data-state={state}
-                data-collapsible={state === "collapsed" ? collapsible : ""}
+                data-collapsible={state === "collapsed" ? collapsible : "none"}
                 data-variant={variant}
                 data-side={side}
+                {...props}
             >
                 <div
                     className={cn(
-                        // REMOVED: z-10
-                        "duration-200 relative hidden h-full w-auto min-w-[3rem] max-w-[20rem] transition-[left,right,width] ease-linear md:flex",
+                        "h-full flex flex-col duration-200 relative w-auto min-w-[3rem] max-w-[20rem] transition-[left,right,width] ease-linear",
                         side === "left"
                             ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
                             : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
-                        // Adjust the padding for floating and inset variants.
                         variant === "floating" || variant === "inset"
                             ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]"
                             : "group-data-[collapsible=icon]:w-[--sidebar-width-icon] group-data-[side=left]:border-r group-data-[side=right]:border-l",
                         className
                     )}
-                    {...props}
                 >
                     <div
                         data-sidebar="sidebar"

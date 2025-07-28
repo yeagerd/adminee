@@ -1,20 +1,21 @@
 'use client';
 
-import { Tool, ToolContextType, ToolSettings, ToolState } from '@/types/navigation';
+import { MeetingSubView, Tool, ToolContextType, ToolSettings, ToolState } from '@/types/navigation';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { createContext, ReactNode, useContext, useEffect, useReducer, useRef } from 'react';
+import { createContext, ReactNode, useContext, useEffect, useMemo, useReducer, useRef } from 'react';
 
 // Initial tool settings
 const defaultToolSettings: Record<Tool, ToolSettings> = {
     calendar: { id: 'calendar', enabled: true, preferences: { view: 'month', showWeekends: true } },
     email: { id: 'email', enabled: true, preferences: { view: 'inbox', sortBy: 'date' } },
-    documents: { id: 'documents', enabled: true, preferences: { view: 'list' } },
-    tasks: { id: 'tasks', enabled: true, preferences: { view: 'list' } },
+    documents: { id: 'documents', enabled: false, preferences: { view: 'list' } },
+    tasks: { id: 'tasks', enabled: false, preferences: { view: 'list' } },
     packages: { id: 'packages', enabled: true, preferences: {} },
-    research: { id: 'research', enabled: true, preferences: {} },
-    pulse: { id: 'pulse', enabled: true, preferences: {} },
+    research: { id: 'research', enabled: false, preferences: {} },
+    pulse: { id: 'pulse', enabled: false, preferences: {} },
     insights: { id: 'insights', enabled: false, preferences: {} },
     drafts: { id: 'drafts', enabled: true, preferences: {} },
+    meetings: { id: 'meetings', enabled: true, preferences: {} },
 };
 
 // Initial state
@@ -31,6 +32,7 @@ const initialState: ToolState = {
         pulse: '/dashboard?tool=pulse',
         insights: '/dashboard?tool=insights',
         drafts: '/dashboard?tool=drafts',
+        meetings: '/dashboard?tool=meetings',
     },
     visitTimestamps: {
         calendar: 0,
@@ -42,7 +44,12 @@ const initialState: ToolState = {
         pulse: 0,
         insights: 0,
         drafts: 0,
+        meetings: 0,
     },
+    meetingSubView: 'list',
+    meetingPollId: null,
+    previousMeetingSubView: null,
+    previousMeetingPollId: null,
 };
 
 // Action types
@@ -51,7 +58,9 @@ type ToolAction =
     | { type: 'UPDATE_TOOL_SETTINGS'; payload: { tool: Tool; settings: Partial<ToolSettings> } }
     | { type: 'SET_LAST_VISITED'; payload: { tool: Tool; path: string } }
     | { type: 'SET_VISIT_TIMESTAMP'; payload: { tool: Tool; timestamp: number } }
-    | { type: 'LOAD_STATE'; payload: ToolState };
+    | { type: 'LOAD_STATE'; payload: ToolState }
+    | { type: 'SET_MEETING_SUB_VIEW'; payload: { subView: MeetingSubView; pollId?: string } }
+    | { type: 'SET_PREVIOUS_MEETING_VIEW'; payload: { subView: MeetingSubView; pollId?: string } };
 
 // Reducer
 function toolReducer(state: ToolState, action: ToolAction): ToolState {
@@ -87,6 +96,18 @@ function toolReducer(state: ToolState, action: ToolAction): ToolState {
                     ...state.visitTimestamps,
                     [action.payload.tool]: action.payload.timestamp,
                 },
+            };
+        case 'SET_MEETING_SUB_VIEW':
+            return {
+                ...state,
+                meetingSubView: action.payload.subView,
+                meetingPollId: action.payload.pollId || null,
+            };
+        case 'SET_PREVIOUS_MEETING_VIEW':
+            return {
+                ...state,
+                previousMeetingSubView: action.payload.subView,
+                previousMeetingPollId: action.payload.pollId || null,
             };
         case 'LOAD_STATE':
             return action.payload;
@@ -139,6 +160,10 @@ export function ToolProvider({ children }: { children: ReactNode }) {
                     toolSettings: mergedToolSettings,
                     lastVisited: parsedState.lastVisited || initialState.lastVisited,
                     visitTimestamps: parsedState.visitTimestamps || initialState.visitTimestamps,
+                    meetingSubView: parsedState.meetingSubView || initialState.meetingSubView,
+                    meetingPollId: parsedState.meetingPollId || initialState.meetingPollId,
+                    previousMeetingSubView: parsedState.previousMeetingSubView || initialState.previousMeetingSubView,
+                    previousMeetingPollId: parsedState.previousMeetingPollId || initialState.previousMeetingPollId,
                 };
                 dispatch({ type: 'LOAD_STATE', payload: mergedState });
             }
@@ -149,6 +174,26 @@ export function ToolProvider({ children }: { children: ReactNode }) {
     }, []);
 
     // Save only user-driven state to localStorage (do NOT persist enabled/disabled)
+    const localStorageDependencies = useMemo(() => [
+        state.activeTool,
+        JSON.stringify(state.toolSettings),
+        JSON.stringify(state.lastVisited),
+        JSON.stringify(state.visitTimestamps),
+        state.meetingSubView,
+        state.meetingPollId,
+        state.previousMeetingSubView,
+        state.previousMeetingPollId,
+    ], [
+        state.activeTool,
+        state.toolSettings,
+        state.lastVisited,
+        state.visitTimestamps,
+        state.meetingSubView,
+        state.meetingPollId,
+        state.previousMeetingSubView,
+        state.previousMeetingPollId,
+    ]);
+
     useEffect(() => {
         if (!isInitialized.current) return;
         try {
@@ -164,12 +209,16 @@ export function ToolProvider({ children }: { children: ReactNode }) {
                 toolSettings: toolSettingsToSave,
                 lastVisited: state.lastVisited,
                 visitTimestamps: state.visitTimestamps,
+                meetingSubView: state.meetingSubView,
+                meetingPollId: state.meetingPollId,
+                previousMeetingSubView: state.previousMeetingSubView,
+                previousMeetingPollId: state.previousMeetingPollId,
             };
             localStorage.setItem('briefly-tool-state', JSON.stringify(stateToSave));
         } catch (error) {
             console.warn('Failed to save tool state to localStorage:', error);
         }
-    }, [state.activeTool, state.toolSettings, state.lastVisited, state.visitTimestamps]);
+    }, localStorageDependencies);
 
     // ---
     // IMPORTANT: Avoiding the double-navigate bug and ensuring visit tracking
@@ -189,6 +238,23 @@ export function ToolProvider({ children }: { children: ReactNode }) {
         ) {
             dispatch({ type: 'SET_ACTIVE_TOOL', payload: toolFromUrl });
             dispatch({ type: 'SET_VISIT_TIMESTAMP', payload: { tool: toolFromUrl, timestamp: Date.now() } });
+
+            // Handle meeting-specific URL parameters
+            if (toolFromUrl === 'meetings') {
+                const view = searchParams.get('view');
+                const id = searchParams.get('id');
+
+                if (view === 'new') {
+                    dispatch({ type: 'SET_MEETING_SUB_VIEW', payload: { subView: 'new' } });
+                } else if (view === 'edit' && id) {
+                    dispatch({ type: 'SET_MEETING_SUB_VIEW', payload: { subView: 'edit', pollId: id } });
+                } else if (view === 'poll' && id) {
+                    dispatch({ type: 'SET_MEETING_SUB_VIEW', payload: { subView: 'view', pollId: id } });
+                } else {
+                    // Default to list view
+                    dispatch({ type: 'SET_MEETING_SUB_VIEW', payload: { subView: 'list' } });
+                }
+            }
         }
     }, [searchParams]);
 
@@ -231,6 +297,43 @@ export function ToolProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'SET_LAST_VISITED', payload: { tool, path } });
     };
 
+    const setMeetingSubView = (subView: MeetingSubView, pollId?: string) => {
+        // If we're navigating to edit, store the current view as previous
+        if (subView === 'edit') {
+            dispatch({
+                type: 'SET_PREVIOUS_MEETING_VIEW',
+                payload: {
+                    subView: state.meetingSubView,
+                    pollId: state.meetingPollId || undefined
+                }
+            });
+        }
+        dispatch({ type: 'SET_MEETING_SUB_VIEW', payload: { subView, pollId } });
+    };
+
+    const getMeetingSubView = (): MeetingSubView => {
+        return state.meetingSubView;
+    };
+
+    const getMeetingPollId = (): string | null => {
+        return state.meetingPollId;
+    };
+
+    const goBackToPreviousMeetingView = () => {
+        if (state.previousMeetingSubView) {
+            dispatch({
+                type: 'SET_MEETING_SUB_VIEW',
+                payload: {
+                    subView: state.previousMeetingSubView,
+                    pollId: state.previousMeetingPollId || undefined
+                }
+            });
+        } else {
+            // Fallback to list view if no previous view is stored
+            dispatch({ type: 'SET_MEETING_SUB_VIEW', payload: { subView: 'list' } });
+        }
+    };
+
     const contextValue: ToolContextType = {
         state,
         setActiveTool,
@@ -239,6 +342,10 @@ export function ToolProvider({ children }: { children: ReactNode }) {
         isToolEnabled,
         getLastVisited,
         setLastVisited,
+        setMeetingSubView,
+        getMeetingSubView,
+        getMeetingPollId,
+        goBackToPreviousMeetingView,
     };
 
     return <ToolContext.Provider value={contextValue}>{children}</ToolContext.Provider>;

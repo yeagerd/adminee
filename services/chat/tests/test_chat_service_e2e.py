@@ -5,7 +5,6 @@ Tests the complete chat service functionality including
 multi-agent workflow processing, history management, and API endpoints.
 """
 
-import asyncio
 import sys
 from unittest.mock import patch
 
@@ -13,6 +12,22 @@ import pytest
 import respx
 from fastapi.testclient import TestClient
 from httpx import Response
+
+# Set up test settings before any imports
+import services.chat.settings as chat_settings
+
+# Create test settings instance
+test_settings = chat_settings.Settings(
+    db_url_chat="sqlite+aiosqlite:///file::memory:?cache=shared",
+    api_frontend_chat_key="test-frontend-chat-key",
+    api_chat_user_key="test-chat-user-key",
+    api_chat_office_key="test-chat-office-key",
+    user_service_url="http://localhost:8001",
+    office_service_url="http://localhost:8003",
+)
+
+# Set the test settings as the singleton
+chat_settings._settings = test_settings
 
 # Test API key for authentication
 TEST_API_KEY = "test-frontend-chat-key"
@@ -27,9 +42,6 @@ def test_env():
         # Don't set OPENAI_API_KEY so it falls back to FakeLLM
         "LLM_MODEL": "fake-model",
         "LLM_PROVIDER": "fake",
-        "API_FRONTEND_CHAT_KEY": TEST_API_KEY,
-        "USER_MANAGEMENT_SERVICE_URL": "http://localhost:8001",
-        "OFFICE_SERVICE_URL": "http://localhost:8003",
     }
     with patch.dict("os.environ", env_vars):
         yield env_vars
@@ -38,49 +50,43 @@ def test_env():
 @pytest.fixture
 def app(test_env):
     """Fixture to provide the FastAPI app with test environment."""
-    # Force reload the auth module to pick up the new environment variables
+    # Force reload the auth module to pick up the new settings
     for module in list(sys.modules):
         if module.startswith("services.chat"):
             del sys.modules[module]
 
     # Import after module cleanup to ensure fresh imports
+    # Re-set the test settings after module reload
+    import services.chat.settings as chat_settings
     from services.chat import history_manager
-    from services.chat.auth import _chat_auth as fresh_auth
-    from services.chat.auth import get_chat_auth
     from services.chat.main import app as fresh_app
 
-    # Update the global _chat_auth reference
-    global _chat_auth, _history_manager
-    _chat_auth = fresh_auth
+    test_settings = chat_settings.Settings(
+        db_url_chat="sqlite+aiosqlite:///file::memory:?cache=shared",
+        api_frontend_chat_key="test-frontend-chat-key",
+        api_chat_user_key="test-chat-user-key",
+        api_chat_office_key="test-chat-office-key",
+        user_service_url="http://localhost:8001",
+        office_service_url="http://localhost:8003",
+    )
+    chat_settings._settings = test_settings
+
+    # Update the global _history_manager reference
+    global _history_manager
     _history_manager = history_manager
-    _get_chat_auth = get_chat_auth  # Store for use in other fixtures
 
     return fresh_app
-
-
-async def setup_test_database():
-    """Initialize the test database with tables."""
-    from services.chat import history_manager
-
-    await history_manager.init_db()
 
 
 @pytest.fixture(autouse=True)
 def setup_test_environment(app):
     """Set up the test environment."""
     # Initialize test database synchronously
-    asyncio.run(setup_test_database())
+    import asyncio
 
-    # Verify auth is properly set up
-    from services.chat.auth import get_chat_auth
+    from services.chat import history_manager
 
-    auth = get_chat_auth()
-    assert auth.verify_api_key_value(TEST_API_KEY) == "frontend"
-
-
-# Test API key for authentication
-TEST_API_KEY = "test-frontend-chat-key"
-TEST_HEADERS = {"X-API-Key": TEST_API_KEY}
+    asyncio.run(history_manager.init_db())
 
 
 def test_end_to_end_chat_flow(app):
@@ -89,13 +95,13 @@ def test_end_to_end_chat_flow(app):
     headers_with_user = {**TEST_HEADERS, "X-User-Id": user_id}
 
     # List threads (record initial count)
-    resp = client.get("/chat/threads", headers=headers_with_user)
+    resp = client.get("/v1/chat/threads", headers=headers_with_user)
     assert resp.status_code == 200
 
     # Start a chat (should create a new thread and return response)
     msg = "Hello, world!"
     resp = client.post(
-        "/chat/completions", json={"message": msg}, headers=headers_with_user
+        "/v1/chat/completions", json={"message": msg}, headers=headers_with_user
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -111,7 +117,7 @@ def test_end_to_end_chat_flow(app):
     # Send another message in the same thread
     msg2 = "How are you?"
     resp = client.post(
-        "/chat/completions",
+        "/v1/chat/completions",
         json={"thread_id": thread_id, "message": msg2},
         headers=headers_with_user,
     )
@@ -123,14 +129,14 @@ def test_end_to_end_chat_flow(app):
     assert len(data2["messages"][-1]["content"]) > 0
 
     # List threads (should contain the thread we just used)
-    resp = client.get("/chat/threads", headers=headers_with_user)
+    resp = client.get("/v1/chat/threads", headers=headers_with_user)
     assert resp.status_code == 200
     threads_resp = resp.json()
     threads = threads_resp["threads"]
     assert any(t["thread_id"] == thread_id for t in threads)
 
     # Get thread history
-    resp = client.get(f"/chat/threads/{thread_id}/history", headers=TEST_HEADERS)
+    resp = client.get(f"/v1/chat/threads/{thread_id}/history", headers=TEST_HEADERS)
     assert resp.status_code == 200
     history = resp.json()
     assert history["thread_id"] == thread_id
@@ -139,7 +145,7 @@ def test_end_to_end_chat_flow(app):
     # Feedback endpoint
     last_msg = history["messages"][-1]
     resp = client.post(
-        "/chat/feedback",
+        "/v1/chat/feedback",
         json={
             "thread_id": thread_id,
             "message_id": last_msg["message_id"],
@@ -158,7 +164,7 @@ def test_multiple_blank_thread_creates_distinct_threads(app):
 
     # Send first message with blank thread_id
     resp1 = client.post(
-        "/chat/completions",
+        "/v1/chat/completions",
         json={"message": "First message"},
         headers=headers_with_user,
     )
@@ -168,7 +174,7 @@ def test_multiple_blank_thread_creates_distinct_threads(app):
 
     # Send second message with blank thread_id
     resp2 = client.post(
-        "/chat/completions",
+        "/v1/chat/completions",
         json={"message": "Second message"},
         headers=headers_with_user,
     )
@@ -180,7 +186,7 @@ def test_multiple_blank_thread_creates_distinct_threads(app):
     assert thread_id1 != thread_id2
 
     # List threads and verify both thread IDs are present
-    resp = client.get("/chat/threads", headers=headers_with_user)
+    resp = client.get("/v1/chat/threads", headers=headers_with_user)
     assert resp.status_code == 200
     threads_resp = resp.json()
     threads = threads_resp["threads"]
@@ -205,7 +211,7 @@ def test_request_id_propagation(app):
 
     # Mock the get_user_preferences call
     preferences_route = respx.get(
-        f"{user_service_url}/internal/users/{user_id}/preferences"
+        f"{user_service_url}/v1/internal/users/{user_id}/preferences"
     ).mock(return_value=Response(200, json={"timezone": "UTC"}))
 
     # Act
@@ -214,9 +220,9 @@ def test_request_id_propagation(app):
         "X-Request-Id": test_request_id,
         "X-User-Id": user_id,
     }
-    # The /chat/completions endpoint triggers a call to get_user_preferences
+    # The /v1/chat/completions endpoint triggers a call to get_user_preferences
     response = client.post(
-        "/chat/completions", headers=headers, json={"message": "Hello"}
+        "/v1/chat/completions", headers=headers, json={"message": "Hello"}
     )
 
     # Assert

@@ -12,18 +12,19 @@ import {
 import { useToolStateUtils } from "@/hooks/use-tool-state";
 import { getToolBadge, isToolAvailable } from "@/lib/tool-routing";
 import { NavigationItem, Tool } from "@/types/navigation";
-import { BarChart3, BookOpen, Calendar, Copy, FileText, ListChecks, Mail, Package, TrendingUp } from "lucide-react";
+import { BarChart3, BookOpen, Calendar, Copy, FileText, ListChecks, Mail, Package, TrendingUp, Users } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 const navigationItems: NavigationItem[] = [
     { id: "calendar", title: "Calendar", icon: Calendar, path: "/dashboard?tool=calendar", enabled: true },
     { id: "email", title: "Email", icon: Mail, path: "/dashboard?tool=email", enabled: true },
-    { id: "documents", title: "Documents", icon: FileText, path: "/dashboard?tool=documents", enabled: true },
-    { id: "tasks", title: "Tasks", icon: ListChecks, path: "/dashboard?tool=tasks", enabled: true },
+    { id: "documents", title: "Documents", icon: FileText, path: "/dashboard?tool=documents", enabled: false },
+    { id: "tasks", title: "Tasks", icon: ListChecks, path: "/dashboard?tool=tasks", enabled: false },
     { id: "drafts", title: "Drafts", icon: Copy, path: "/dashboard?tool=drafts", enabled: true },
+    { id: "meetings", title: "Meeting Polls", icon: Users, path: "/dashboard?tool=meetings", enabled: true },
     { id: "packages", title: "Package Tracker", icon: Package, path: "/dashboard?tool=packages", enabled: true },
-    { id: "research", title: "Research", icon: BookOpen, path: "/dashboard?tool=research", enabled: true },
-    { id: "pulse", title: "Pulse", icon: TrendingUp, path: "/dashboard?tool=pulse", enabled: true },
+    { id: "research", title: "Research", icon: BookOpen, path: "/dashboard?tool=research", enabled: false },
+    { id: "pulse", title: "Pulse", icon: TrendingUp, path: "/dashboard?tool=pulse", enabled: false },
     { id: "insights", title: "Insights", icon: BarChart3, path: "/dashboard?tool=insights", enabled: false },
 ];
 
@@ -34,7 +35,8 @@ export function Sidebar() {
     const searchParams = useSearchParams();
 
     const handleToolChange = (tool: Tool) => {
-        if (!isToolEnabled(tool) || !isToolAvailable(tool)) return;
+        const item = navigationItems.find(item => item.id === tool);
+        if (!isToolEnabled(tool) || !isToolAvailable(tool) || !item?.enabled) return;
         const params = new URLSearchParams(searchParams.toString());
         params.set('tool', tool);
         router.replace(`${pathname}?${params.toString()}`, { scroll: false });
@@ -53,7 +55,7 @@ export function Sidebar() {
                     <SidebarGroupContent>
                         <SidebarMenu>
                             {navigationItems.map((item) => {
-                                const isEnabled = isToolEnabled(item.id);
+                                const isEnabled = isToolEnabled(item.id) && item.enabled;
                                 const badge = getToolBadge(item.id);
                                 const isAvailable = isToolAvailable(item.id);
 
@@ -61,7 +63,7 @@ export function Sidebar() {
                                     <SidebarMenuItem key={item.id}>
                                         <SidebarMenuButton
                                             isActive={isActiveTool(item.id)}
-                                            onClick={() => handleToolChange(item.id)}
+                                            onClick={() => handleToolChange(item.id as Tool)}
                                             disabled={!isEnabled || !isAvailable}
                                             tooltip={item.title}
                                         >
