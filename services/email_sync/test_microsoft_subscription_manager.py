@@ -6,108 +6,217 @@ from services.email_sync.microsoft_subscription_manager import (
 )
 
 
-def test_refresh_microsoft_subscription():
-    # For now, just check the stub returns True
-    assert refresh_microsoft_subscription("user@example.com")
+@patch("services.email_sync.microsoft_subscription_manager.get_microsoft_access_token")
+@patch(
+    "services.email_sync.microsoft_subscription_manager.get_subscription_id_for_user"
+)
+@patch("services.email_sync.microsoft_subscription_manager.requests.patch")
+def test_refresh_microsoft_subscription(
+    mock_patch, mock_get_subscription_id, mock_get_token
+):
+    # Mock the dependencies
+    mock_get_token.return_value = "mock_access_token"
+    mock_get_subscription_id.return_value = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+
+    # Mock successful response based on Microsoft Graph API documentation
+    mock_response = mock_patch.return_value
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "resource": "/me/messages",
+        "changeType": "created,updated",
+        "expirationDateTime": "2024-01-01T00:00:00.0000000Z",
+        "clientState": "secretClientState",
+        "notificationUrl": "https://webhook.contoso.com/send/iNotifyUrl",
+        "lifecycleNotificationUrl": "https://webhook.contoso.com/send/lifecycleNotifications",
+        "includeResourceData": False,
+        "encryptionCertificate": None,
+        "encryptionCertificateId": None,
+    }
+
+    # Test the function
+    result = refresh_microsoft_subscription("user@example.com")
+
+    # Verify the result
+    assert result
+
+    # Verify the dependencies were called correctly
+    mock_get_token.assert_called_once_with("user@example.com")
+    mock_get_subscription_id.assert_called_once_with("user@example.com")
+    mock_patch.assert_called_once()
 
 
+@patch("services.email_sync.microsoft_subscription_manager.get_microsoft_access_token")
+@patch(
+    "services.email_sync.microsoft_subscription_manager.get_subscription_id_for_user"
+)
+@patch("services.email_sync.microsoft_subscription_manager.requests.patch")
 class TestMicrosoftSubscriptionManagerIntegration:
     """Integration tests for Microsoft subscription manager with real Graph API calls."""
 
-    def test_real_microsoft_graph_subscription_integration_stubbed(self):
+    def test_real_microsoft_graph_subscription_integration_stubbed(
+        self, mock_patch, mock_get_subscription_id, mock_get_token
+    ):
         """Test integration with real Microsoft Graph API for subscription management (currently stubbed)."""
-        # Currently the method is stubbed and returns True
+        # Mock the dependencies
+        mock_get_token.return_value = "mock_access_token"
+        mock_get_subscription_id.return_value = "subscription-id-123"
+
+        # Mock successful response
+        mock_response = mock_patch.return_value
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"expirationDateTime": "2024-01-01T00:00:00Z"}
+
         result = refresh_microsoft_subscription("test@example.com")
 
-        # Verify the stubbed method returns True
+        # Verify the result
         assert result
 
-        # TODO: When real implementation is added, this test should:
-        # 1. Mock successful PATCH response
-        # 2. Verify the Graph API was called correctly
-        # 3. Verify the response was processed correctly
+        # Verify the dependencies were called correctly
+        mock_get_token.assert_called_once_with("test@example.com")
+        mock_get_subscription_id.assert_called_once_with("test@example.com")
+        mock_patch.assert_called_once()
 
-    def test_microsoft_graph_subscription_authentication_error_stubbed(self):
+    def test_microsoft_graph_subscription_authentication_error_stubbed(
+        self, mock_patch, mock_get_subscription_id, mock_get_token
+    ):
         """Test handling of authentication errors during subscription refresh (currently stubbed)."""
-        # Currently the method is stubbed and doesn't raise exceptions
+        # Mock the dependencies
+        mock_get_token.return_value = "mock_access_token"
+        mock_get_subscription_id.return_value = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+
+        # Mock authentication error response
+        mock_response = mock_patch.return_value
+        mock_response.status_code = 401
+        mock_response.text = "Unauthorized"
+
         result = refresh_microsoft_subscription("test@example.com")
 
-        # Verify the stubbed method returns True
-        assert result
+        # Verify error is handled gracefully
+        assert not result
 
-        # TODO: When real implementation is added, this test should:
-        # 1. Mock authentication error response
-        # 2. Verify error is handled gracefully
-        # 3. Verify appropriate logging/alerting
-
-    def test_microsoft_graph_subscription_rate_limit_handling_stubbed(self):
+    def test_microsoft_graph_subscription_rate_limit_handling_stubbed(
+        self, mock_patch, mock_get_subscription_id, mock_get_token
+    ):
         """Test handling of rate limits during subscription refresh (currently stubbed)."""
-        # Currently the method is stubbed and doesn't raise exceptions
+        # Mock the dependencies
+        mock_get_token.return_value = "mock_access_token"
+        mock_get_subscription_id.return_value = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+
+        # Mock rate limit response
+        mock_response = mock_patch.return_value
+        mock_response.status_code = 429
+        mock_response.text = "Too Many Requests"
+
         result = refresh_microsoft_subscription("test@example.com")
 
-        # Verify the stubbed method returns True
-        assert result
+        # Verify error is handled gracefully
+        assert not result
 
-        # TODO: When real implementation is added, this test should:
-        # 1. Mock rate limit response
-        # 2. Verify retry logic works correctly
-        # 3. Verify exponential backoff is applied
-
-    def test_microsoft_graph_subscription_quota_exceeded_stubbed(self):
+    def test_microsoft_graph_subscription_quota_exceeded_stubbed(
+        self, mock_patch, mock_get_subscription_id, mock_get_token
+    ):
         """Test handling of quota exceeded errors (currently stubbed)."""
-        # Currently the method is stubbed and doesn't raise exceptions
+        # Mock the dependencies
+        mock_get_token.return_value = "mock_access_token"
+        mock_get_subscription_id.return_value = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+
+        # Mock quota exceeded response
+        mock_response = mock_patch.return_value
+        mock_response.status_code = 403
+        mock_response.text = "Forbidden"
+
         result = refresh_microsoft_subscription("test@example.com")
 
-        # Verify the stubbed method returns True
-        assert result
+        # Verify error is handled gracefully
+        assert not result
 
-        # TODO: When real implementation is added, this test should:
-        # 1. Mock quota exceeded response
-        # 2. Verify error is handled gracefully
-        # 3. Verify appropriate alerting
-
-    def test_microsoft_graph_subscription_network_error_stubbed(self):
+    def test_microsoft_graph_subscription_network_error_stubbed(
+        self, mock_patch, mock_get_subscription_id, mock_get_token
+    ):
         """Test handling of network errors during subscription refresh (currently stubbed)."""
-        # Currently the method is stubbed and doesn't raise exceptions
+        # Mock the dependencies
+        mock_get_token.return_value = "mock_access_token"
+        mock_get_subscription_id.return_value = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+
+        # Mock network error
+        mock_patch.side_effect = Exception("Network error")
+
         result = refresh_microsoft_subscription("test@example.com")
 
-        # Verify the stubbed method returns True
-        assert result
+        # Verify error is handled gracefully
+        assert not result
 
-        # TODO: When real implementation is added, this test should:
-        # 1. Mock network error
-        # 2. Verify error is handled gracefully
-        # 3. Verify retry logic works correctly
-
-    def test_microsoft_graph_subscription_successful_refresh_stubbed(self):
+    def test_microsoft_graph_subscription_successful_refresh_stubbed(
+        self, mock_patch, mock_get_subscription_id, mock_get_token
+    ):
         """Test successful subscription refresh with proper response handling (currently stubbed)."""
-        # Currently the method is stubbed and returns True
+        # Mock the dependencies
+        mock_get_token.return_value = "mock_access_token"
+        mock_get_subscription_id.return_value = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+
+        # Mock successful response based on Microsoft Graph API documentation
+        mock_response = mock_patch.return_value
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "resource": "/me/messages",
+            "changeType": "created,updated",
+            "expirationDateTime": "2024-01-01T00:00:00.0000000Z",
+            "clientState": "secretClientState",
+            "notificationUrl": "https://webhook.contoso.com/send/iNotifyUrl",
+            "lifecycleNotificationUrl": "https://webhook.contoso.com/send/lifecycleNotifications",
+            "includeResourceData": False,
+            "encryptionCertificate": None,
+            "encryptionCertificateId": None,
+        }
+
         result = refresh_microsoft_subscription("user@example.com")
 
-        # Verify the stubbed method returns True
+        # Verify the result
         assert result
 
-        # TODO: When real implementation is added, this test should:
-        # 1. Verify the API was called
-        # 2. Verify response is processed correctly
-        # 3. Verify subscription is updated
+        # Verify the API was called correctly
+        mock_get_token.assert_called_once_with("user@example.com")
+        mock_get_subscription_id.assert_called_once_with("user@example.com")
+        mock_patch.assert_called_once()
 
-    def test_microsoft_graph_subscription_expiry_handling_stubbed(self):
+    def test_microsoft_graph_subscription_expiry_handling_stubbed(
+        self, mock_patch, mock_get_subscription_id, mock_get_token
+    ):
         """Test handling of subscription expiry and renewal (currently stubbed)."""
-        # Currently the method is stubbed and returns True
+        # Mock the dependencies
+        mock_get_token.return_value = "mock_access_token"
+        mock_get_subscription_id.return_value = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+
+        # Mock successful renewal
+        mock_response = mock_patch.return_value
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"expirationDateTime": "2024-01-01T00:00:00Z"}
+
         result = refresh_microsoft_subscription("user@example.com")
 
-        # Verify the stubbed method returns True
+        # Verify the result
         assert result
 
-        # TODO: When real implementation is added, this test should:
-        # 1. Verify the API was called
-        # 2. Verify expiry is handled correctly
-        # 3. Verify renewal works properly
+        # Verify the API was called correctly
+        mock_get_token.assert_called_once_with("user@example.com")
+        mock_get_subscription_id.assert_called_once_with("user@example.com")
+        mock_patch.assert_called_once()
 
-    def test_microsoft_graph_subscription_multiple_users_stubbed(self):
+    def test_microsoft_graph_subscription_multiple_users_stubbed(
+        self, mock_patch, mock_get_subscription_id, mock_get_token
+    ):
         """Test handling multiple user subscriptions (currently stubbed)."""
-        # Currently the method is stubbed and returns True
+        # Mock the dependencies
+        mock_get_token.return_value = "mock_access_token"
+        mock_get_subscription_id.return_value = "subscription-id-123"
+
+        # Mock successful responses for all users
+        mock_response = mock_patch.return_value
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"expirationDateTime": "2024-01-01T00:00:00Z"}
+
         users = ["user1@example.com", "user2@example.com", "user3@example.com"]
 
         for user in users:
@@ -116,148 +225,205 @@ class TestMicrosoftSubscriptionManagerIntegration:
             # Verify each user gets their subscription refreshed
             assert result
 
-        # TODO: When real implementation is added, this test should:
-        # 1. Verify API was called for each user
-        # 2. Verify each user gets their own subscription
-        # 3. Verify proper error handling for individual users
+        # Verify API was called for each user
+        assert mock_get_token.call_count == 3
+        assert mock_get_subscription_id.call_count == 3
+        assert mock_patch.call_count == 3
 
-    def test_microsoft_graph_subscription_invalid_user_email_stubbed(self):
+    def test_microsoft_graph_subscription_invalid_user_email_stubbed(
+        self, mock_patch, mock_get_subscription_id, mock_get_token
+    ):
         """Test handling of invalid user email addresses (currently stubbed)."""
-        # Currently the method is stubbed and returns True
+        # Mock the dependencies
+        mock_get_token.return_value = "mock_access_token"
+        mock_get_subscription_id.return_value = "subscription-id-123"
+
+        # Mock error response for invalid email
+        mock_response = mock_patch.return_value
+        mock_response.status_code = 400
+        mock_response.text = "Bad Request"
+
         result = refresh_microsoft_subscription("invalid-email")
 
-        # Verify the stubbed method returns True
-        assert result
+        # Verify error is handled gracefully
+        assert not result
 
-        # TODO: When real implementation is added, this test should:
-        # 1. Mock error response for invalid email
-        # 2. Verify error is handled gracefully
-        # 3. Verify appropriate logging
-
-    def test_microsoft_graph_subscription_not_found_stubbed(self):
+    def test_microsoft_graph_subscription_not_found_stubbed(
+        self, mock_patch, mock_get_subscription_id, mock_get_token
+    ):
         """Test handling of subscription not found errors (currently stubbed)."""
-        # Currently the method is stubbed and returns True
+        # Mock the dependencies
+        mock_get_token.return_value = "mock_access_token"
+        mock_get_subscription_id.return_value = "subscription-id-123"
+
+        # Mock subscription not found error
+        mock_response = mock_patch.return_value
+        mock_response.status_code = 404
+        mock_response.text = "Not Found"
+
         result = refresh_microsoft_subscription("user@example.com")
 
-        # Verify the stubbed method returns True
-        assert result
+        # Verify error is handled gracefully
+        assert not result
 
-        # TODO: When real implementation is added, this test should:
-        # 1. Mock subscription not found error
-        # 2. Verify error is handled gracefully
-        # 3. Verify appropriate alerting
-
-    def test_microsoft_graph_subscription_server_error_stubbed(self):
+    def test_microsoft_graph_subscription_server_error_stubbed(
+        self, mock_patch, mock_get_subscription_id, mock_get_token
+    ):
         """Test handling of server errors (currently stubbed)."""
-        # Currently the method is stubbed and returns True
+        # Mock the dependencies
+        mock_get_token.return_value = "mock_access_token"
+        mock_get_subscription_id.return_value = "subscription-id-123"
+
+        # Mock server error response
+        mock_response = mock_patch.return_value
+        mock_response.status_code = 500
+        mock_response.text = "Internal Server Error"
+
         result = refresh_microsoft_subscription("user@example.com")
 
-        # Verify the stubbed method returns True
-        assert result
+        # Verify error is handled gracefully
+        assert not result
 
-        # TODO: When real implementation is added, this test should:
-        # 1. Mock server error response
-        # 2. Verify error is handled gracefully
-        # 3. Verify appropriate alerting
-
-    def test_microsoft_graph_subscription_timeout_handling_stubbed(self):
+    def test_microsoft_graph_subscription_timeout_handling_stubbed(
+        self, mock_patch, mock_get_subscription_id, mock_get_token
+    ):
         """Test handling of timeout errors (currently stubbed)."""
-        # Currently the method is stubbed and doesn't raise exceptions
+        # Mock the dependencies
+        mock_get_token.return_value = "mock_access_token"
+        mock_get_subscription_id.return_value = "subscription-id-123"
+
+        # Mock timeout error
+        import requests
+
+        mock_patch.side_effect = requests.exceptions.Timeout("Request timeout")
+
         result = refresh_microsoft_subscription("user@example.com")
 
-        # Verify the stubbed method returns True
-        assert result
+        # Verify error is handled gracefully
+        assert not result
 
-        # TODO: When real implementation is added, this test should:
-        # 1. Mock timeout error
-        # 2. Verify timeout error is handled correctly
-        # 3. Verify retry logic works with timeouts
-
-    def test_microsoft_graph_subscription_connection_error_stubbed(self):
+    def test_microsoft_graph_subscription_connection_error_stubbed(
+        self, mock_patch, mock_get_subscription_id, mock_get_token
+    ):
         """Test handling of connection errors (currently stubbed)."""
-        # Currently the method is stubbed and doesn't raise exceptions
+        # Mock the dependencies
+        mock_get_token.return_value = "mock_access_token"
+        mock_get_subscription_id.return_value = "subscription-id-123"
+
+        # Mock connection error
+        import requests
+
+        mock_patch.side_effect = requests.exceptions.ConnectionError(
+            "Connection failed"
+        )
+
         result = refresh_microsoft_subscription("user@example.com")
 
-        # Verify the stubbed method returns True
-        assert result
+        # Verify error is handled gracefully
+        assert not result
 
-        # TODO: When real implementation is added, this test should:
-        # 1. Mock connection error
-        # 2. Verify connection error is handled correctly
-        # 3. Verify retry logic works with connection errors
-
-    def test_scheduled_refresh_job_stubbed(self):
+    def test_scheduled_refresh_job_stubbed(
+        self, mock_patch, mock_get_subscription_id, mock_get_token
+    ):
         """Test scheduled refresh job (currently stubbed)."""
-        # Currently the job is stubbed and processes test users
-        with patch(
-            "services.email_sync.microsoft_subscription_manager.refresh_microsoft_subscription"
-        ) as mock_refresh:
-            mock_refresh.return_value = True
+        # Mock the dependencies
+        mock_get_token.return_value = "mock_access_token"
+        mock_get_subscription_id.return_value = "subscription-id-123"
 
-            # Run the scheduled job
-            scheduled_refresh_job()
+        # Mock successful responses
+        mock_response = mock_patch.return_value
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"expirationDateTime": "2024-01-01T00:00:00Z"}
 
-            # Verify refresh was called for test users
-            assert mock_refresh.call_count == 2
-            mock_refresh.assert_any_call("user1@example.com")
-            mock_refresh.assert_any_call("user2@example.com")
+        # Run the scheduled job
+        scheduled_refresh_job()
 
-        # TODO: When real implementation is added, this test should:
-        # 1. Verify real users are processed
-        # 2. Verify error handling for individual users
-        # 3. Verify proper logging and alerting
+        # Verify refresh was called for test users
+        assert mock_get_token.call_count == 2
+        assert mock_get_subscription_id.call_count == 2
+        assert mock_patch.call_count == 2
 
-    def test_scheduled_refresh_job_with_failures_stubbed(self):
+    def test_scheduled_refresh_job_with_failures_stubbed(
+        self, mock_patch, mock_get_subscription_id, mock_get_token
+    ):
         """Test scheduled refresh job with failures (currently stubbed)."""
-        with patch(
-            "services.email_sync.microsoft_subscription_manager.refresh_microsoft_subscription"
-        ) as mock_refresh:
-            # Mock one success, one failure
-            mock_refresh.side_effect = [True, False]
+        # Mock the dependencies with mixed results
+        mock_get_token.return_value = "mock_access_token"
+        mock_get_subscription_id.return_value = "subscription-id-123"
 
-            # Run the scheduled job
-            scheduled_refresh_job()
+        # Mock mixed responses (success, failure)
+        mock_response1 = type(
+            "obj",
+            (object,),
+            {
+                "status_code": 200,
+                "json": lambda: {"expirationDateTime": "2024-01-01T00:00:00Z"},
+            },
+        )()
+        mock_response2 = type(
+            "obj", (object,), {"status_code": 500, "text": "Internal Server Error"}
+        )()
+        mock_patch.side_effect = [mock_response1, mock_response2]
 
-            # Verify refresh was called for both users
-            assert mock_refresh.call_count == 2
+        # Run the scheduled job
+        scheduled_refresh_job()
 
-        # TODO: When real implementation is added, this test should:
-        # 1. Verify error logging for failed refreshes
-        # 2. Verify alerting for failures
-        # 3. Verify job continues processing other users
+        # Verify refresh was called for both users
+        assert mock_get_token.call_count == 2
+        assert mock_get_subscription_id.call_count == 2
+        assert mock_patch.call_count == 2
 
-    def test_scheduled_refresh_job_with_exceptions_stubbed(self):
+    def test_scheduled_refresh_job_with_exceptions_stubbed(
+        self, mock_patch, mock_get_subscription_id, mock_get_token
+    ):
         """Test scheduled refresh job with exceptions (currently stubbed)."""
-        with patch(
-            "services.email_sync.microsoft_subscription_manager.refresh_microsoft_subscription"
-        ) as mock_refresh:
-            # Mock exception for one user
-            mock_refresh.side_effect = [True, Exception("API Error")]
+        # Mock the dependencies with mixed results
+        mock_get_token.return_value = "mock_access_token"
+        mock_get_subscription_id.return_value = "subscription-id-123"
 
-            # Run the scheduled job
-            scheduled_refresh_job()
+        # Mock mixed responses (success, exception)
+        mock_response1 = type(
+            "obj",
+            (object,),
+            {
+                "status_code": 200,
+                "json": lambda: {"expirationDateTime": "2024-01-01T00:00:00Z"},
+            },
+        )()
+        mock_patch.side_effect = [mock_response1, Exception("API Error")]
 
-            # Verify refresh was called for both users
-            assert mock_refresh.call_count == 2
+        # Run the scheduled job
+        scheduled_refresh_job()
 
-        # TODO: When real implementation is added, this test should:
-        # 1. Verify exception logging
-        # 2. Verify alerting for exceptions
-        # 3. Verify job continues processing other users
+        # Verify refresh was called for both users
+        assert mock_get_token.call_count == 2
+        assert mock_get_subscription_id.call_count == 2
+        assert mock_patch.call_count == 2
 
-    def test_refresh_microsoft_subscription_with_different_user_ids(self):
+    def test_refresh_microsoft_subscription_with_different_user_ids(
+        self, mock_patch, mock_get_subscription_id, mock_get_token
+    ):
         """Test refresh with different user IDs."""
+        # Mock the dependencies
+        mock_get_token.return_value = "mock_access_token"
+        mock_get_subscription_id.return_value = "subscription-id-123"
+
+        # Mock successful responses
+        mock_response = mock_patch.return_value
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"expirationDateTime": "2024-01-01T00:00:00Z"}
+
         # Test with different user IDs
         result1 = refresh_microsoft_subscription("user1@example.com")
         result2 = refresh_microsoft_subscription("user2@example.com")
         result3 = refresh_microsoft_subscription("admin@company.com")
 
-        # All should return True (stubbed)
+        # All should return True
         assert result1
         assert result2
         assert result3
 
-        # TODO: When real implementation is added, this test should:
-        # 1. Verify different user IDs are handled correctly
-        # 2. Verify the correct user ID is passed to the API
-        # 3. Verify proper authentication for each user
+        # Verify different user IDs are handled correctly
+        assert mock_get_token.call_count == 3
+        assert mock_get_subscription_id.call_count == 3
+        assert mock_patch.call_count == 3
