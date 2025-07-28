@@ -12,7 +12,7 @@ import httpx
 from sqlmodel import select
 
 from services.common.http_errors import NotFoundError, ServiceError
-from services.common.logging_config import get_logger
+from services.common.logging_config import get_logger, request_id_var
 from services.user.database import get_async_session
 from services.user.models.integration import (
     Integration,
@@ -1009,11 +1009,18 @@ class TokenService:
     async def _revoke_google_token(self, token: str) -> Dict:
         """Revoke Google OAuth token."""
         try:
+            headers = {"Content-Type": "application/x-www-form-urlencoded"}
+
+            # Propagate request ID for distributed tracing
+            request_id = request_id_var.get()
+            if request_id and request_id != "uninitialized":
+                headers["X-Request-Id"] = request_id
+
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     "https://oauth2.googleapis.com/revoke",
                     data={"token": token},
-                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                    headers=headers,
                     timeout=10.0,
                 )
 
@@ -1042,12 +1049,19 @@ class TokenService:
     async def _revoke_microsoft_token(self, token: str) -> Dict:
         """Revoke Microsoft OAuth token."""
         try:
+            headers = {"Content-Type": "application/x-www-form-urlencoded"}
+
+            # Propagate request ID for distributed tracing
+            request_id = request_id_var.get()
+            if request_id and request_id != "uninitialized":
+                headers["X-Request-Id"] = request_id
+
             # Microsoft uses logout endpoint for token revocation
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     "https://login.microsoftonline.com/common/oauth2/v2.0/logout",
                     data={"token": token},
-                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                    headers=headers,
                     timeout=10.0,
                 )
 

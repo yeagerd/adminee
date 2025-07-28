@@ -17,7 +17,7 @@ import httpx
 from pydantic import BaseModel, Field, field_validator
 
 from services.common.http_errors import ValidationError
-from services.common.logging_config import get_logger
+from services.common.logging_config import get_logger, request_id_var
 from services.user.models.integration import IntegrationProvider
 from services.user.settings import Settings, get_settings
 
@@ -638,11 +638,18 @@ class OAuthConfig:
         token_params.update(provider_config.extra_token_params)
 
         try:
+            headers = {"Content-Type": "application/x-www-form-urlencoded"}
+
+            # Propagate request ID for distributed tracing
+            request_id = request_id_var.get()
+            if request_id and request_id != "uninitialized":
+                headers["X-Request-Id"] = request_id
+
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     provider_config.token_url,
                     data=token_params,
-                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                    headers=headers,
                     timeout=30.0,
                 )
                 response.raise_for_status()
@@ -696,11 +703,18 @@ class OAuthConfig:
         refresh_params.update(provider_config.extra_token_params)
 
         try:
+            headers = {"Content-Type": "application/x-www-form-urlencoded"}
+
+            # Propagate request ID for distributed tracing
+            request_id = request_id_var.get()
+            if request_id and request_id != "uninitialized":
+                headers["X-Request-Id"] = request_id
+
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     provider_config.token_url,
                     data=refresh_params,
-                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                    headers=headers,
                     timeout=30.0,
                 )
                 response.raise_for_status()
@@ -741,10 +755,17 @@ class OAuthConfig:
             )
 
         try:
+            headers = {"Authorization": f"Bearer {access_token}"}
+
+            # Propagate request ID for distributed tracing
+            request_id = request_id_var.get()
+            if request_id and request_id != "uninitialized":
+                headers["X-Request-Id"] = request_id
+
             async with httpx.AsyncClient() as client:
                 response = await client.get(
                     provider_config.userinfo_url,
-                    headers={"Authorization": f"Bearer {access_token}"},
+                    headers=headers,
                     timeout=30.0,
                 )
                 response.raise_for_status()
@@ -792,11 +813,18 @@ class OAuthConfig:
         }
 
         try:
+            headers = {"Content-Type": "application/x-www-form-urlencoded"}
+
+            # Propagate request ID for distributed tracing
+            request_id = request_id_var.get()
+            if request_id and request_id != "uninitialized":
+                headers["X-Request-Id"] = request_id
+
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     provider_config.revoke_url,
                     data=revoke_params,
-                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                    headers=headers,
                     timeout=30.0,
                 )
                 # Note: Some providers return 200, others 204
