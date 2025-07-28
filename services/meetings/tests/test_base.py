@@ -8,6 +8,7 @@ including required environment variables and database setup.
 import importlib
 import os
 import tempfile
+from contextlib import contextmanager
 
 from services.common.test_utils import BaseSelectiveHTTPIntegrationTest
 
@@ -78,6 +79,7 @@ class BaseMeetingsTest(BaseSelectiveHTTPIntegrationTest):
 
         models.get_engine = lambda: models._test_engine
 
+        @contextmanager
         def test_get_session():
             session = self._test_sessionmaker()
             try:

@@ -20,8 +20,7 @@ class TestEmailResponse(BaseMeetingsTest):
         slot_id = uuid4()
         participant_id = uuid4()
 
-        session = next(get_session())
-        try:
+        with get_session() as session:
             # Add a poll
             poll = MeetingPoll(
                 id=poll_id,
@@ -57,9 +56,6 @@ class TestEmailResponse(BaseMeetingsTest):
                 response_token=str(uuid4()),
             )
             session.add(participant)
-            session.commit()
-        finally:
-            session.close()
         return poll, slot, participant, str(slot_id), str(poll_id), str(participant_id)
 
     def test_process_email_response_success(self):
@@ -82,8 +78,7 @@ class TestEmailResponse(BaseMeetingsTest):
         assert resp.status_code == 200, resp.text
 
         # Check DB updated
-        session = next(get_session())
-        try:
+        with get_session() as session:
             updated = (
                 session.query(PollParticipant)
                 .filter_by(email="alice@example.com")
@@ -103,8 +98,6 @@ class TestEmailResponse(BaseMeetingsTest):
             assert response is not None
             assert response.response == ResponseType.available
             assert "I prefer this time" in response.comment
-        finally:
-            session.close()
 
     def test_process_email_response_invalid_key(self):
         poll, slot, participant, slot_id, poll_id, participant_id = (
@@ -171,8 +164,7 @@ class TestEmailResponse(BaseMeetingsTest):
         )
 
         # Create a second time slot
-        session = next(get_session())
-        try:
+        with get_session() as session:
             slot2 = TimeSlot(
                 id=uuid4(),
                 poll_id=UUID(poll_id),  # Convert string back to UUID
@@ -181,10 +173,7 @@ class TestEmailResponse(BaseMeetingsTest):
                 timezone="UTC",
             )
             session.add(slot2)
-            session.commit()
             slot2_id = str(slot2.id)  # Get the ID as string before session closes
-        finally:
-            session.close()
 
         payload = {
             "emailId": "irrelevant",
@@ -199,8 +188,7 @@ class TestEmailResponse(BaseMeetingsTest):
         assert resp.status_code == 200, resp.text
 
         # Check DB updated
-        session = next(get_session())
-        try:
+        with get_session() as session:
             updated = (
                 session.query(PollParticipant)
                 .filter_by(email="alice@example.com")
@@ -231,8 +219,6 @@ class TestEmailResponse(BaseMeetingsTest):
             assert slot2_responses[0].response == ResponseType.unavailable
             assert "I prefer this time" in slot1_responses[0].comment
             assert "I have a conflict" in slot2_responses[0].comment
-        finally:
-            session.close()
 
     def test_process_email_response_malformed_slot_identifier(self):
         """Test that malformed slot identifiers don't cause errors."""
@@ -288,8 +274,7 @@ class TestEmailResponse(BaseMeetingsTest):
             assert resp.status_code == 200, f"Test case {i+1} failed: {resp.text}"
 
             # Check that the response was saved correctly
-            session = next(get_session())
-            try:
+            with get_session() as session:
                 response = (
                     session.query(PollResponse)
                     .filter_by(
@@ -312,8 +297,6 @@ class TestEmailResponse(BaseMeetingsTest):
                     assert (
                         "I have a conflict" in response.comment
                     ), f"Test case {i+1}: Comment not extracted correctly"
-            finally:
-                session.close()
 
     def test_process_email_response_invalid_slot_number_handling(self):
         """Test that invalid slot numbers in slot responses are handled gracefully."""
@@ -338,8 +321,7 @@ class TestEmailResponse(BaseMeetingsTest):
         assert resp.status_code == 200, resp.text
 
         # Check that only the valid response was processed
-        session = next(get_session())
-        try:
+        with get_session() as session:
             response = (
                 session.query(PollResponse)
                 .filter_by(
@@ -358,8 +340,6 @@ class TestEmailResponse(BaseMeetingsTest):
                 .first()
             )
             assert updated_participant.status == ParticipantStatus.responded
-        finally:
-            session.close()
 
     def test_process_email_response_comment_extraction_fix(self):
         """Test that comment extraction correctly handles timezone patterns and doesn't split on time range dashes."""
@@ -413,8 +393,7 @@ class TestEmailResponse(BaseMeetingsTest):
             assert resp.status_code == 200, f"Test case {i+1} failed: {resp.text}"
 
             # Check that the comment was extracted correctly
-            session = next(get_session())
-            try:
+            with get_session() as session:
                 response = (
                     session.query(PollResponse)
                     .filter_by(
@@ -432,5 +411,3 @@ class TestEmailResponse(BaseMeetingsTest):
                     assert (
                         response.comment == test_case["expected_comment"]
                     ), f"Test case {i+1}: Expected '{test_case['expected_comment']}' but got '{response.comment}'"
-            finally:
-                session.close()
