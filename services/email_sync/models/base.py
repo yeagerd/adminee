@@ -1,2 +1,1 @@
-
-# SQLModel provides the base class for all models 
+# SQLModel provides the base class for all models

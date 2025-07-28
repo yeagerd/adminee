@@ -22,8 +22,8 @@ class EmailTrackingSettings(BaseSettings):
 
     db_url_email_sync: str = Field(
         default="sqlite:///email_tracking.db",
-        description="Database URL for tracking", 
-        validation_alias="DB_URL_EMAIL_SYNC"
+        description="Database URL for tracking",
+        validation_alias="DB_URL_EMAIL_SYNC",
     )
     GOOGLE_CLOUD_PROJECT: str = Field("test-project", description="GCP project ID")
 
@@ -50,7 +50,7 @@ class EmailTrackingService:
         with self._get_session() as session:
             statement = select(EmailProcessingState).where(
                 EmailProcessingState.user_email == user_email,
-                EmailProcessingState.provider == provider
+                EmailProcessingState.provider == provider,
             )
             return session.exec(statement).first()
 
@@ -67,15 +67,12 @@ class EmailTrackingService:
         with self._get_session() as session:
             statement = select(EmailProcessingState).where(
                 EmailProcessingState.user_email == user_email,
-                EmailProcessingState.provider == provider
+                EmailProcessingState.provider == provider,
             )
             state = session.exec(statement).first()
 
             if not state:
-                state = EmailProcessingState(
-                    user_email=user_email,
-                    provider=provider
-                )
+                state = EmailProcessingState(user_email=user_email, provider=provider)
                 session.add(state)
 
             if last_processed_id is not None:
