@@ -2,13 +2,8 @@ from datetime import datetime, timedelta
 from uuid import uuid4
 
 import pytest
-from fastapi.testclient import TestClient
 
-from services.meetings.main import app
-from services.meetings.models.base import Base
 from services.meetings.tests.test_base import BaseMeetingsTest
-
-client = TestClient(app)
 
 
 class TestPollCreation(BaseMeetingsTest):
@@ -17,61 +12,6 @@ class TestPollCreation(BaseMeetingsTest):
     def setup_method(self, method):
         """Set up test environment."""
         super().setup_method(method)
-
-        # Import meetings settings module
-        import services.meetings.settings as meetings_settings
-
-        # Store original settings singleton for cleanup
-        self._original_settings = meetings_settings._settings
-
-        # Create test settings instance that doesn't load from .env file
-        from services.meetings.settings import Settings
-
-        test_settings = Settings(
-            db_url_meetings="sqlite:///file::memory:?cache=shared",
-            api_email_sync_meetings_key="test-email-sync-key",
-            api_meetings_office_key="test-meetings-office-key",
-            api_meetings_user_key="test-meetings-user-key",
-            api_frontend_meetings_key="test-frontend-meetings-key",
-            office_service_url="http://localhost:8003",
-            user_service_url="http://localhost:8001",
-            log_level="INFO",
-            log_format="json",
-        )
-
-        # Set the test settings as the singleton
-        meetings_settings._settings = test_settings
-
-        # Set up database tables
-        from sqlalchemy import create_engine
-
-        from services.meetings import models
-
-        # Clear any existing test engine to ensure fresh tables
-        if hasattr(models, "_test_engine"):
-            delattr(models, "_test_engine")
-
-        models._test_engine = create_engine(
-            "sqlite:///file::memory:?cache=shared",
-            echo=False,
-            future=True,
-            connect_args={"check_same_thread": False},
-        )
-        models.get_engine = lambda: models._test_engine
-
-        # Drop all tables and recreate them to ensure latest schema
-        Base.metadata.drop_all(models._test_engine)
-        Base.metadata.create_all(models._test_engine)
-
-    def teardown_method(self, method):
-        """Clean up test environment."""
-        # Restore original settings singleton
-        import services.meetings.settings as meetings_settings
-
-        meetings_settings._settings = self._original_settings
-
-        # Call parent teardown
-        super().teardown_method(method)
 
     @pytest.fixture
     def poll_payload(self):
@@ -101,7 +41,7 @@ class TestPollCreation(BaseMeetingsTest):
 
     def test_create_poll_sets_user_id(self, poll_payload):
         user_id = str(uuid4())
-        resp = client.post(
+        resp = self.client.post(
             "/api/v1/meetings/polls/",
             json=poll_payload,
             headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
@@ -113,7 +53,7 @@ class TestPollCreation(BaseMeetingsTest):
         assert data["participants"][0]["email"] == "alice@example.com"
 
     def test_create_poll_missing_user_id_returns_400(self, poll_payload):
-        resp = client.post(
+        resp = self.client.post(
             "/api/v1/meetings/polls/",
             json=poll_payload,
             headers={"X-API-Key": "test-frontend-meetings-key"},
@@ -124,7 +64,7 @@ class TestPollCreation(BaseMeetingsTest):
     def test_token_based_poll_response_flow(self, poll_payload):
         user_id = str(uuid4())
         # Create poll
-        resp = client.post(
+        resp = self.client.post(
             "/api/v1/meetings/polls/",
             json=poll_payload,
             headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
@@ -144,7 +84,7 @@ class TestPollCreation(BaseMeetingsTest):
                 }
             ]
         }
-        resp2 = client.put(
+        resp2 = self.client.put(
             f"/api/v1/public/polls/response/{response_token}",
             json=response_payload,
         )
@@ -154,7 +94,7 @@ class TestPollCreation(BaseMeetingsTest):
     def test_get_poll_includes_responses(self, poll_payload):
         user_id = str(uuid4())
         # Create poll
-        resp = client.post(
+        resp = self.client.post(
             "/api/v1/meetings/polls/",
             json=poll_payload,
             headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
@@ -175,14 +115,14 @@ class TestPollCreation(BaseMeetingsTest):
                 }
             ]
         }
-        resp2 = client.put(
+        resp2 = self.client.put(
             f"/api/v1/public/polls/response/{response_token}",
             json=response_payload,
         )
         assert resp2.status_code == 200, resp2.text
 
         # Get the poll and verify responses are included
-        resp3 = client.get(
+        resp3 = self.client.get(
             f"/api/v1/meetings/polls/{poll_id}",
             headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
         )
@@ -205,7 +145,7 @@ class TestPollCreation(BaseMeetingsTest):
         # Set reveal_participants to True
         poll_payload["reveal_participants"] = True
 
-        resp = client.post(
+        resp = self.client.post(
             "/api/v1/meetings/polls/",
             json=poll_payload,
             headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
@@ -222,7 +162,7 @@ class TestPollCreation(BaseMeetingsTest):
         # Set reveal_participants to False
         poll_payload["reveal_participants"] = False
 
-        resp = client.post(
+        resp = self.client.post(
             "/api/v1/meetings/polls/",
             json=poll_payload,
             headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
@@ -241,7 +181,7 @@ class TestPollCreation(BaseMeetingsTest):
         poll_payload["reveal_participants"] = True
 
         # Create poll
-        resp = client.post(
+        resp = self.client.post(
             "/api/v1/meetings/polls/",
             json=poll_payload,
             headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
@@ -256,7 +196,7 @@ class TestPollCreation(BaseMeetingsTest):
 
         # Test with Alice's response token
         alice_response_token = alice_participant["response_token"]
-        resp2 = client.get(f"/api/v1/public/polls/response/{alice_response_token}")
+        resp2 = self.client.get(f"/api/v1/public/polls/response/{alice_response_token}")
         assert resp2.status_code == 200, resp2.text
         public_data = resp2.json()
 
@@ -277,7 +217,7 @@ class TestPollCreation(BaseMeetingsTest):
 
         # Test with Bob's response token
         bob_response_token = bob_participant["response_token"]
-        resp3 = client.get(f"/api/v1/public/polls/response/{bob_response_token}")
+        resp3 = self.client.get(f"/api/v1/public/polls/response/{bob_response_token}")
         assert resp3.status_code == 200, resp3.text
         public_data_bob = resp3.json()
 
