@@ -2,15 +2,8 @@ from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
-from fastapi.testclient import TestClient
 
-from services.meetings.main import app
 from services.meetings.tests.test_base import BaseMeetingsTest
-
-
-@pytest.fixture
-def client():
-    return TestClient(app)
 
 
 @pytest.fixture
@@ -42,10 +35,14 @@ def mock_participant():
 class TestResendInvitation(BaseMeetingsTest):
     """Test cases for the resend invitation endpoint."""
 
+    def setup_method(self, method):
+        """Set up test environment."""
+        super().setup_method(method)
+
     @patch("services.meetings.api.polls.email_integration.send_invitation_email")
     @patch("services.meetings.api.polls.get_session")
     def test_resend_invitation_success(
-        self, mock_get_session, mock_send_email, client, mock_poll, mock_participant
+        self, mock_get_session, mock_send_email, mock_poll, mock_participant
     ):
         """Test successful resend of invitation email."""
         # Mock the database session
@@ -71,7 +68,7 @@ class TestResendInvitation(BaseMeetingsTest):
         mock_send_email.return_value = {"ok": True}
 
         # Make the request
-        response = client.post(
+        response = self.client.post(
             f"/api/v1/meetings/polls/{mock_poll['id']}/participants/{mock_participant['id']}/resend-invitation",
             headers={
                 "X-User-Id": mock_poll["user_id"],
@@ -95,65 +92,79 @@ class TestResendInvitation(BaseMeetingsTest):
         mock_session.commit.assert_called_once()
 
     @patch("services.meetings.api.polls.get_session")
-    def test_resend_invitation_poll_not_found(self, mock_get_session, client):
+    def test_resend_invitation_poll_not_found(self, mock_get_session):
         """Test resend invitation when poll doesn't exist."""
         # Mock empty poll query
         mock_session = Mock()
         mock_get_session.return_value.__enter__.return_value = mock_session
         mock_session.query.return_value.filter_by.return_value.first.return_value = None
 
-        response = client.post(
-            f"/api/v1/meetings/polls/{uuid4()}/participants/{uuid4()}/resend-invitation",
+        # Use valid UUIDs for the test
+        poll_id = str(uuid4())
+        participant_id = str(uuid4())
+
+        # Make the request
+        response = self.client.post(
+            f"/api/v1/meetings/polls/{poll_id}/participants/{participant_id}/resend-invitation",
             headers={
                 "X-User-Id": "test-user",
                 "X-API-Key": "test-frontend-meetings-key",
             },
         )
 
+        # Verify response
         assert response.status_code == 404
-        assert "Poll not found" in response.json()["message"]
+        # Now that mocks are working properly, we should get the business logic response
+        data = response.json()
+        assert "Poll not found" in data.get("message", "")
 
     @patch("services.meetings.api.polls.get_session")
-    def test_resend_invitation_unauthorized(self, mock_get_session, client, mock_poll):
-        """Test resend invitation when user doesn't own the poll."""
+    def test_resend_invitation_unauthorized(self, mock_get_session, mock_poll):
+        """Test resend invitation when user is not authorized."""
         # Mock poll query with different user
-        mock_poll_obj = type("MockPoll", (), mock_poll)()
-        # Add time_slots attribute to the mock poll
-        mock_poll_obj.time_slots = []
         mock_session = Mock()
         mock_get_session.return_value.__enter__.return_value = mock_session
+        mock_poll_obj = type("MockPoll", (), mock_poll)()
         mock_session.query.return_value.filter_by.return_value.first.return_value = (
             mock_poll_obj
         )
 
-        response = client.post(
-            f"/api/v1/meetings/polls/{mock_poll['id']}/participants/{uuid4()}/resend-invitation",
+        # Use valid UUID for participant
+        participant_id = str(uuid4())
+
+        # Make the request with different user
+        response = self.client.post(
+            f"/api/v1/meetings/polls/{mock_poll['id']}/participants/{participant_id}/resend-invitation",
             headers={
                 "X-User-Id": "different-user",
                 "X-API-Key": "test-frontend-meetings-key",
             },
         )
 
+        # Verify response
         assert response.status_code == 403
-        assert "Not authorized" in response.json()["message"]
+        # Now that mocks are working properly, we should get the business logic response
+        data = response.json()
+        assert "Not authorized to resend invitations for this poll" in data.get(
+            "message", ""
+        )
 
     @patch("services.meetings.api.polls.get_session")
     def test_resend_invitation_participant_not_found(
-        self, mock_get_session, client, mock_poll, mock_participant
+        self, mock_get_session, mock_poll, mock_participant
     ):
         """Test resend invitation when participant doesn't exist."""
         # Mock poll query
-        mock_poll_obj = type("MockPoll", (), mock_poll)()
-        # Add time_slots attribute to the mock poll
-        mock_poll_obj.time_slots = []
         mock_session = Mock()
         mock_get_session.return_value.__enter__.return_value = mock_session
+        mock_poll_obj = type("MockPoll", (), mock_poll)()
         mock_session.query.return_value.filter_by.return_value.first.side_effect = [
             mock_poll_obj,  # First call for poll
             None,  # Second call for participant (not found)
         ]
 
-        response = client.post(
+        # Make the request
+        response = self.client.post(
             f"/api/v1/meetings/polls/{mock_poll['id']}/participants/{mock_participant['id']}/resend-invitation",
             headers={
                 "X-User-Id": mock_poll["user_id"],
@@ -161,13 +172,16 @@ class TestResendInvitation(BaseMeetingsTest):
             },
         )
 
+        # Verify response
         assert response.status_code == 404
-        assert "Participant not found" in response.json()["message"]
+        # Now that mocks are working properly, we should get the business logic response
+        data = response.json()
+        assert "Participant not found" in data.get("message", "")
 
     @patch("services.meetings.api.polls.email_integration.send_invitation_email")
     @patch("services.meetings.api.polls.get_session")
     def test_resend_invitation_email_failure(
-        self, mock_get_session, mock_send_email, client, mock_poll, mock_participant
+        self, mock_get_session, mock_send_email, mock_poll, mock_participant
     ):
         """Test resend invitation when email sending fails."""
         # Mock the database session
@@ -176,23 +190,19 @@ class TestResendInvitation(BaseMeetingsTest):
 
         # Mock poll query
         mock_poll_obj = type("MockPoll", (), mock_poll)()
-        # Add time_slots attribute to the mock poll
         mock_poll_obj.time_slots = []
-        mock_session.query.return_value.filter_by.return_value.first.return_value = (
-            mock_poll_obj
-        )
-
-        # Mock participant query
-        mock_participant_obj = type("MockParticipant", (), mock_participant)()
         mock_session.query.return_value.filter_by.return_value.first.side_effect = [
             mock_poll_obj,  # First call for poll
-            mock_participant_obj,  # Second call for participant
+            type(
+                "MockParticipant", (), mock_participant
+            )(),  # Second call for participant
         ]
 
-        # Mock email sending failure
+        # Mock email sending failure - the endpoint catches ValueError and raises HTTPException
         mock_send_email.side_effect = ValueError("Email service unavailable")
 
-        response = client.post(
+        # Make the request - should return HTTP 400 response, not raise exception
+        response = self.client.post(
             f"/api/v1/meetings/polls/{mock_poll['id']}/participants/{mock_participant['id']}/resend-invitation",
             headers={
                 "X-User-Id": mock_poll["user_id"],
@@ -200,27 +210,37 @@ class TestResendInvitation(BaseMeetingsTest):
             },
         )
 
+        # Verify response indicates failure
         assert response.status_code == 400
-        assert "Failed to resend invitation" in response.json()["message"]
+        data = response.json()
+        # The error message is in the message field
+        assert "Failed to resend invitation" in data["message"]
+        assert "Email service unavailable" in data["message"]
 
-    def test_resend_invitation_missing_api_key(
-        self, client, mock_poll, mock_participant
-    ):
+        # Verify email service was called
+        mock_send_email.assert_called_once()
+
+    def test_resend_invitation_missing_api_key(self, mock_poll, mock_participant):
         """Test resend invitation without API key."""
-        response = client.post(
+        response = self.client.post(
             f"/api/v1/meetings/polls/{mock_poll['id']}/participants/{mock_participant['id']}/resend-invitation",
             headers={"X-User-Id": mock_poll["user_id"]},
         )
 
         assert response.status_code == 401
-        assert "Invalid or missing API key" in response.json()["message"]
+        # Check for the actual error message in the response
+        assert "Invalid or missing API key" in response.text
 
-    def test_resend_invitation_missing_user_id(self, client):
-        """Test resend invitation without user ID header."""
-        response = client.post(
-            f"/api/v1/meetings/polls/{uuid4()}/participants/{uuid4()}/resend-invitation",
+    def test_resend_invitation_missing_user_id(self):
+        """Test resend invitation without user ID."""
+        # Use valid UUIDs for the test
+        poll_id = str(uuid4())
+        participant_id = str(uuid4())
+
+        response = self.client.post(
+            f"/api/v1/meetings/polls/{poll_id}/participants/{participant_id}/resend-invitation",
             headers={"X-API-Key": "test-frontend-meetings-key"},
         )
 
         assert response.status_code == 400
-        assert "Missing X-User-Id header" in response.json()["message"]
+        assert "Missing X-User-Id header" in response.text

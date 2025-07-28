@@ -2,13 +2,8 @@ from datetime import datetime, timedelta
 from uuid import uuid4
 
 import pytest
-from fastapi.testclient import TestClient
 
-from services.meetings.main import app
-from services.meetings.models.base import Base
 from services.meetings.tests.test_base import BaseMeetingsTest
-
-client = TestClient(app)
 
 
 class TestSecurityFixes(BaseMeetingsTest):
@@ -17,61 +12,6 @@ class TestSecurityFixes(BaseMeetingsTest):
     def setup_method(self, method):
         """Set up test environment."""
         super().setup_method(method)
-
-        # Import meetings settings module
-        import services.meetings.settings as meetings_settings
-
-        # Store original settings singleton for cleanup
-        self._original_settings = meetings_settings._settings
-
-        # Create test settings instance that doesn't load from .env file
-        from services.meetings.settings import Settings
-
-        test_settings = Settings(
-            db_url_meetings="sqlite:///file::memory:?cache=shared",
-            api_email_sync_meetings_key="test-email-sync-key",
-            api_meetings_office_key="test-meetings-office-key",
-            api_meetings_user_key="test-meetings-user-key",
-            api_frontend_meetings_key="test-frontend-meetings-key",
-            office_service_url="http://localhost:8003",
-            user_service_url="http://localhost:8001",
-            log_level="INFO",
-            log_format="json",
-        )
-
-        # Set the test settings as the singleton
-        meetings_settings._settings = test_settings
-
-        # Set up database tables
-        from sqlalchemy import create_engine
-
-        from services.meetings import models
-
-        # Clear any existing test engine to ensure fresh tables
-        if hasattr(models, "_test_engine"):
-            delattr(models, "_test_engine")
-
-        models._test_engine = create_engine(
-            "sqlite:///file::memory:?cache=shared",
-            echo=False,
-            future=True,
-            connect_args={"check_same_thread": False},
-        )
-        models.get_engine = lambda: models._test_engine
-
-        # Drop all tables and recreate them to ensure latest schema
-        Base.metadata.drop_all(models._test_engine)
-        Base.metadata.create_all(models._test_engine)
-
-    def teardown_method(self, method):
-        """Clean up test environment."""
-        # Restore original settings singleton
-        import services.meetings.settings as meetings_settings
-
-        meetings_settings._settings = self._original_settings
-
-        # Call parent teardown
-        super().teardown_method(method)
 
     @pytest.fixture
     def poll_payload(self):
@@ -104,7 +44,7 @@ class TestSecurityFixes(BaseMeetingsTest):
         user_id = str(uuid4())
 
         # Create poll
-        resp = client.post(
+        resp = self.client.post(
             "/api/v1/meetings/polls/",
             json=poll_payload,
             headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
@@ -120,7 +60,7 @@ class TestSecurityFixes(BaseMeetingsTest):
             + "Z",
             "timezone": "UTC",
         }
-        resp = client.post(
+        resp = self.client.post(
             f"/api/v1/meetings/polls/{poll_id}/slots/",
             json=slot_payload,
             headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
@@ -133,7 +73,7 @@ class TestSecurityFixes(BaseMeetingsTest):
         user_id_2 = str(uuid4())
 
         # Create poll with user 1
-        resp = client.post(
+        resp = self.client.post(
             "/api/v1/meetings/polls/",
             json=poll_payload,
             headers={"X-User-Id": user_id_1, "X-API-Key": "test-frontend-meetings-key"},
@@ -149,7 +89,7 @@ class TestSecurityFixes(BaseMeetingsTest):
             + "Z",
             "timezone": "UTC",
         }
-        resp = client.post(
+        resp = self.client.post(
             f"/api/v1/meetings/polls/{poll_id}/slots/",
             json=slot_payload,
             headers={"X-User-Id": user_id_2, "X-API-Key": "test-frontend-meetings-key"},
@@ -162,7 +102,7 @@ class TestSecurityFixes(BaseMeetingsTest):
         user_id = str(uuid4())
 
         # Create poll
-        resp = client.post(
+        resp = self.client.post(
             "/api/v1/meetings/polls/",
             json=poll_payload,
             headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
@@ -179,7 +119,7 @@ class TestSecurityFixes(BaseMeetingsTest):
             + "Z",
             "timezone": "UTC",
         }
-        resp = client.put(
+        resp = self.client.put(
             f"/api/v1/meetings/polls/{poll_id}/slots/{slot_id}",
             json=slot_payload,
             headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
@@ -192,7 +132,7 @@ class TestSecurityFixes(BaseMeetingsTest):
         user_id_2 = str(uuid4())
 
         # Create poll with user 1
-        resp = client.post(
+        resp = self.client.post(
             "/api/v1/meetings/polls/",
             json=poll_payload,
             headers={"X-User-Id": user_id_1, "X-API-Key": "test-frontend-meetings-key"},
@@ -209,7 +149,7 @@ class TestSecurityFixes(BaseMeetingsTest):
             + "Z",
             "timezone": "UTC",
         }
-        resp = client.put(
+        resp = self.client.put(
             f"/api/v1/meetings/polls/{poll_id}/slots/{slot_id}",
             json=slot_payload,
             headers={"X-User-Id": user_id_2, "X-API-Key": "test-frontend-meetings-key"},
@@ -222,7 +162,7 @@ class TestSecurityFixes(BaseMeetingsTest):
         user_id = str(uuid4())
 
         # Create poll
-        resp = client.post(
+        resp = self.client.post(
             "/api/v1/meetings/polls/",
             json=poll_payload,
             headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
@@ -233,7 +173,7 @@ class TestSecurityFixes(BaseMeetingsTest):
         slot_id = data["time_slots"][0]["id"]
 
         # Delete time slot
-        resp = client.delete(
+        resp = self.client.delete(
             f"/api/v1/meetings/polls/{poll_id}/slots/{slot_id}",
             headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
         )
@@ -245,7 +185,7 @@ class TestSecurityFixes(BaseMeetingsTest):
         user_id_2 = str(uuid4())
 
         # Create poll with user 1
-        resp = client.post(
+        resp = self.client.post(
             "/api/v1/meetings/polls/",
             json=poll_payload,
             headers={"X-User-Id": user_id_1, "X-API-Key": "test-frontend-meetings-key"},
@@ -256,7 +196,7 @@ class TestSecurityFixes(BaseMeetingsTest):
         slot_id = data["time_slots"][0]["id"]
 
         # Try to delete time slot with user 2
-        resp = client.delete(
+        resp = self.client.delete(
             f"/api/v1/meetings/polls/{poll_id}/slots/{slot_id}",
             headers={"X-User-Id": user_id_2, "X-API-Key": "test-frontend-meetings-key"},
         )
@@ -268,7 +208,7 @@ class TestSecurityFixes(BaseMeetingsTest):
         user_id = str(uuid4())
 
         # Create poll
-        resp = client.post(
+        resp = self.client.post(
             "/api/v1/meetings/polls/",
             json=poll_payload,
             headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
@@ -278,7 +218,7 @@ class TestSecurityFixes(BaseMeetingsTest):
         poll_id = data["id"]
 
         # Send invitations
-        resp = client.post(
+        resp = self.client.post(
             f"/api/v1/meetings/polls/{poll_id}/send-invitations/",
             headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
         )
@@ -291,7 +231,7 @@ class TestSecurityFixes(BaseMeetingsTest):
         user_id_2 = str(uuid4())
 
         # Create poll with user 1
-        resp = client.post(
+        resp = self.client.post(
             "/api/v1/meetings/polls/",
             json=poll_payload,
             headers={"X-User-Id": user_id_1, "X-API-Key": "test-frontend-meetings-key"},
@@ -301,7 +241,7 @@ class TestSecurityFixes(BaseMeetingsTest):
         poll_id = data["id"]
 
         # Try to send invitations with user 2
-        resp = client.post(
+        resp = self.client.post(
             f"/api/v1/meetings/polls/{poll_id}/send-invitations/",
             headers={"X-User-Id": user_id_2, "X-API-Key": "test-frontend-meetings-key"},
         )
@@ -313,7 +253,7 @@ class TestSecurityFixes(BaseMeetingsTest):
         user_id = str(uuid4())
 
         # Create poll
-        resp = client.post(
+        resp = self.client.post(
             "/api/v1/meetings/polls/",
             json=poll_payload,
             headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
@@ -329,7 +269,7 @@ class TestSecurityFixes(BaseMeetingsTest):
             + "Z",
             "timezone": "UTC",
         }
-        resp = client.post(
+        resp = self.client.post(
             f"/api/v1/meetings/polls/{poll_id}/slots/",
             json=slot_payload,
             headers={"X-API-Key": "test-frontend-meetings-key"},
@@ -342,7 +282,7 @@ class TestSecurityFixes(BaseMeetingsTest):
         user_id = str(uuid4())
 
         # Create poll
-        resp = client.post(
+        resp = self.client.post(
             "/api/v1/meetings/polls/",
             json=poll_payload,
             headers={"X-User-Id": user_id, "X-API-Key": "test-frontend-meetings-key"},
@@ -352,7 +292,7 @@ class TestSecurityFixes(BaseMeetingsTest):
         poll_id = data["id"]
 
         # Try to send invitations without user ID header
-        resp = client.post(
+        resp = self.client.post(
             f"/api/v1/meetings/polls/{poll_id}/send-invitations/",
             headers={"X-API-Key": "test-frontend-meetings-key"},
         )

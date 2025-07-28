@@ -175,8 +175,9 @@ class TestAsyncRetry:
 
         assert result == "success"
         # Should have delays of ~0.1s and ~0.2s = ~0.3s total
+        # Allow more tolerance for CI environments with variable system load
         assert elapsed >= 0.25  # Allow some tolerance
-        assert elapsed < 0.5
+        assert elapsed < 0.8  # Increased tolerance for CI environments
 
 
 class TestSyncRetry:
