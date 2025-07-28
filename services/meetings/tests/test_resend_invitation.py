@@ -210,26 +210,27 @@ class TestResendInvitation(BaseMeetingsTest):
             )(),  # Second call for participant
         ]
 
-        # Mock email sending failure
-        mock_send_email.side_effect = Exception("Email service unavailable")
+        # Mock email sending failure - the endpoint catches ValueError and raises HTTPException
+        mock_send_email.side_effect = ValueError("Email service unavailable")
 
-        # Make the request and expect it to fail
-        try:
-            self.client.post(
-                f"/api/v1/meetings/polls/{mock_poll['id']}/participants/{mock_participant['id']}/resend-invitation",
-                headers={
-                    "X-User-Id": mock_poll["user_id"],
-                    "X-API-Key": "test-frontend-meetings-key",
-                },
-            )
-            # If we get here, the request didn't fail as expected
-            assert False, "Expected request to fail with email service exception"
-        except Exception as e:
-            # Expected to fail due to email service exception
-            assert "Email service unavailable" in str(e)
+        # Make the request - should return HTTP 400 response, not raise exception
+        response = self.client.post(
+            f"/api/v1/meetings/polls/{mock_poll['id']}/participants/{mock_participant['id']}/resend-invitation",
+            headers={
+                "X-User-Id": mock_poll["user_id"],
+                "X-API-Key": "test-frontend-meetings-key",
+            },
+        )
 
-        # The test should have failed with an exception above
-        pass
+        # Verify response indicates failure
+        assert response.status_code == 400
+        data = response.json()
+        # The error message is in the message field
+        assert "Failed to resend invitation" in data["message"]
+        assert "Email service unavailable" in data["message"]
+
+        # Verify email service was called
+        mock_send_email.assert_called_once()
 
     def test_resend_invitation_missing_api_key(self, mock_poll, mock_participant):
         """Test resend invitation without API key."""
