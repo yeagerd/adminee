@@ -289,7 +289,9 @@ async def chat_stream_endpoint(
                         "delta": delta_value,
                     }
                     full_response += delta_value
-                    yield f"event: chunk\ndata: {json.dumps(event_data)}\n\n"
+                    # Add unique ID for deduplication
+                    event_id = f"delta_{len(full_response)}_{hash(delta_value)}"
+                    yield f"id: {event_id}\nevent: chunk\ndata: {json.dumps(event_data)}\n\n"
                 else:
                     # Log internal events for debugging but don't stream them to client
                     logger.debug(
