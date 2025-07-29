@@ -26,6 +26,8 @@ export function CalendarGridEvent({ event, day, effectiveTimezone }: CalendarGri
         const eventDay = eventStart.toFormat('yyyy-MM-dd');
         const currentDay = DateTime.fromJSDate(day).setZone(effectiveTimezone).toFormat('yyyy-MM-dd');
 
+
+
         if (eventDay !== currentDay) return null;
 
         // Calculate start position (top)

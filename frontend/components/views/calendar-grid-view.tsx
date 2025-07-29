@@ -41,10 +41,13 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
         const start = new Date(currentDate);
         const end = new Date(currentDate);
 
+        let result;
+
         switch (viewType) {
             case 'day':
                 // Single day
-                return { start, end };
+                result = { start, end };
+                break;
             case 'work-week':
                 // Monday to Friday
                 const dayOfWeek = start.getDay();
@@ -53,7 +56,8 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
                 monday.setDate(start.getDate() - daysToMonday);
                 const friday = new Date(monday);
                 friday.setDate(monday.getDate() + 4); // Monday + 4 = Friday
-                return { start: monday, end: friday };
+                result = { start: monday, end: friday };
+                break;
             case 'week':
                 // Sunday to Saturday
                 const daysToSunday = start.getDay();
@@ -61,13 +65,19 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
                 sunday.setDate(start.getDate() - daysToSunday);
                 const saturday = new Date(sunday);
                 saturday.setDate(sunday.getDate() + 6);
-                return { start: sunday, end: saturday };
+                result = { start: sunday, end: saturday };
+                break;
             case 'month':
                 // First day of month to last day of month
                 const firstDay = new Date(start.getFullYear(), start.getMonth(), 1);
                 const lastDay = new Date(start.getFullYear(), start.getMonth() + 1, 0);
-                return { start: firstDay, end: lastDay };
+                result = { start: firstDay, end: lastDay };
+                break;
         }
+
+
+
+        return result;
     }, [currentDate, viewType]);
 
     // Generate time slots (6 AM to 10 PM)
@@ -117,15 +127,15 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
     const eventsByDay = useMemo(() => {
         const grouped: Record<string, CalendarEvent[]> = {};
         days.forEach(day => {
-            const dayKey = day.toISOString().split('T')[0];
+            const dayKey = DateTime.fromJSDate(day).setZone(effectiveTimezone).toFormat('yyyy-MM-dd');
             grouped[dayKey] = filteredEvents.filter(event => {
-                const eventStart = new Date(event.start_time);
-                const eventDate = eventStart.toISOString().split('T')[0];
+                const eventStart = DateTime.fromISO(event.start_time).setZone(effectiveTimezone);
+                const eventDate = eventStart.toFormat('yyyy-MM-dd');
                 return eventDate === dayKey;
             });
         });
         return grouped;
-    }, [filteredEvents, days]);
+    }, [filteredEvents, days, effectiveTimezone]);
 
     const fetchCalendarEvents = useCallback(async (noCache = false) => {
         if (!activeProviders || activeProviders.length === 0) {
@@ -136,6 +146,8 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
             const session = await getSession();
             const userId = session?.user?.id;
             if (!userId) throw new Error('No user id found in session');
+
+
 
             const response = await gatewayClient.getCalendarEvents(
                 activeProviders,
@@ -355,7 +367,7 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
                                 </div>
                                 {days.map((day, dayIndex) => (
                                     <div key={dayIndex} className="border-r relative min-h-[32px] p-1">
-                                        {eventsByDay[day.toISOString().split('T')[0]]?.filter(event => event.all_day).map((event) => (
+                                        {eventsByDay[DateTime.fromJSDate(day).setZone(effectiveTimezone).toFormat('yyyy-MM-dd')]?.filter(event => event.all_day).map((event) => (
                                             <CalendarGridEvent
                                                 key={event.id}
                                                 event={event}
@@ -433,14 +445,18 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
 
                                     {/* Events for this day */}
                                     <div className="absolute inset-0 pointer-events-none">
-                                        {eventsByDay[day.toISOString().split('T')[0]]?.filter(event => !event.all_day).map((event) => (
-                                            <CalendarGridEvent
-                                                key={event.id}
-                                                event={event}
-                                                day={day}
-                                                effectiveTimezone={effectiveTimezone}
-                                            />
-                                        ))}
+                                        {(() => {
+                                            const dayKey = DateTime.fromJSDate(day).setZone(effectiveTimezone).toFormat('yyyy-MM-dd');
+                                            const dayEvents = eventsByDay[dayKey]?.filter(event => !event.all_day) || [];
+                                            return dayEvents.map((event) => (
+                                                <CalendarGridEvent
+                                                    key={event.id}
+                                                    event={event}
+                                                    day={day}
+                                                    effectiveTimezone={effectiveTimezone}
+                                                />
+                                            ));
+                                        })()}
                                     </div>
                                 </div>
                             ))}
