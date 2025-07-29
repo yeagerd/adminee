@@ -51,10 +51,10 @@ Implement a shipment tracking feature that allows users to track packages direct
 - Return structured detection results
 
 **Acceptance Criteria:**
-- [ ] Hook correctly identifies Amazon shipment emails
-- [ ] Hook detects UPS, FedEx, USPS tracking numbers
-- [ ] Hook handles edge cases gracefully
-- [ ] Performance is optimized for real-time use
+- [x] Hook correctly identifies Amazon shipment emails
+- [x] Hook detects UPS, FedEx, USPS tracking numbers
+- [x] Hook handles edge cases gracefully
+- [x] Performance is optimized for real-time use
 
 ### Task 1.3: Update Email Card with Detection
 **File:** `frontend/components/email/email-card.tsx`
@@ -72,9 +72,9 @@ Implement a shipment tracking feature that allows users to track packages direct
 - Add loading states during detection
 
 **Acceptance Criteria:**
-- [ ] "Track Shipment" option is colored when detection is positive
-- [ ] Visual feedback is immediate and clear
-- [ ] No performance impact on email list rendering
+- [x] "Track Shipment" option is colored when detection is positive
+- [x] Visual feedback is immediate and clear
+- [x] No performance impact on email list rendering
 
 ## Phase 2: Backend Email Parser Integration
 

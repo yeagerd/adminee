@@ -4,6 +4,7 @@ import { EmailMessage } from '@/types/office-service';
 import { Download, Wand2, ChevronDown } from 'lucide-react';
 import React, { useState } from 'react';
 import AISummary from './ai-summary';
+import { useShipmentDetection } from '@/hooks/use-shipment-detection';
 
 interface EmailCardProps {
     email: EmailMessage;
@@ -11,6 +12,7 @@ interface EmailCardProps {
 
 const EmailCard: React.FC<EmailCardProps> = ({ email }) => {
     const [isDownloading, setIsDownloading] = useState(false);
+    const shipmentDetection = useShipmentDetection(email);
 
     const handleDownload = async () => {
         setIsDownloading(true);
@@ -51,6 +53,7 @@ const EmailCard: React.FC<EmailCardProps> = ({ email }) => {
     const handleTrackShipment = () => {
         // TODO: Implement shipment tracking modal
         console.log('Track shipment clicked for email:', email.id);
+        console.log('Shipment detection result:', shipmentDetection);
     };
 
     // Placeholder logic for flags (customize as needed)
@@ -64,6 +67,11 @@ const EmailCard: React.FC<EmailCardProps> = ({ email }) => {
                 <div className="flex items-center gap-2">
                     {/* {isHighPriority && <span className="text-red-500 font-bold">! </span>} */}
                     <span className="font-medium">{email.subject || '(No subject)'}</span>
+                    {shipmentDetection.isShipmentEmail && (
+                        <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
+                            📦 Shipment
+                        </span>
+                    )}
                 </div>
                 <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground">{new Date(email.date).toLocaleString()}</span>
@@ -90,10 +98,19 @@ const EmailCard: React.FC<EmailCardProps> = ({ email }) => {
                             </DropdownMenuItem>
                             <DropdownMenuItem 
                                 onClick={handleTrackShipment}
-                                className="flex items-center gap-2"
+                                className={`flex items-center gap-2 ${
+                                    shipmentDetection.isShipmentEmail 
+                                        ? 'text-green-600 font-medium' 
+                                        : ''
+                                }`}
                             >
                                 <Wand2 className="h-4 w-4" />
                                 Track Shipment
+                                {shipmentDetection.isShipmentEmail && (
+                                    <span className="ml-auto text-xs bg-green-100 text-green-700 px-1 rounded">
+                                        {shipmentDetection.detectedCarrier || 'Detected'}
+                                    </span>
+                                )}
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
