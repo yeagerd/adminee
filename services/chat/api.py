@@ -294,7 +294,7 @@ async def chat_stream_endpoint(
                     yield f"id: {event_id}\nevent: chunk\ndata: {json.dumps(event_data)}\n\n"
                 else:
                     # Log internal events for debugging but don't stream them to client
-                    logger.debug(
+                    logger.info(
                         f"INTERNAL EVENT (not streamed): {type(event).__name__} - {repr(event)}"
                     )
 
