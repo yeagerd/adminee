@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from services.common.logging_config import get_logger
+from services.shipments.auth import get_current_user, require_user_ownership
 from services.shipments.service_auth import service_permission_required
 
 logger = get_logger(__name__)
@@ -64,6 +65,7 @@ class DataCollectionResponse(BaseModel):
 @router.post("/collect", response_model=DataCollectionResponse)
 async def collect_shipment_data(
     request: DataCollectionRequest,
+    current_user: str = Depends(get_current_user),
     service_name: str = Depends(service_permission_required(["write_shipments"])),
 ) -> DataCollectionResponse:
     """
@@ -76,8 +78,20 @@ async def collect_shipment_data(
     - Detection confidence scores
     
     This data is used to improve the accuracy of future shipment detection.
+    
+    **Authentication:**
+    - Requires user authentication (JWT token or gateway headers)
+    - Validates user ownership of collected data
+    - Requires service API key for service-to-service calls
     """
     try:
+        # Validate user ownership of collected data
+        await require_user_ownership(request.user_id, current_user)
+        
+        logger.info("Collecting shipment data for improvements",
+                   authenticated_user=current_user,
+                   data_user_id=request.user_id,
+                   email_id=request.email_message_id)
         # Validate user consent
         if not request.consent_given:
             logger.warning("Data collection attempted without user consent", 
@@ -144,12 +158,18 @@ async def collect_shipment_data(
 
 @router.get("/stats")
 async def get_collection_stats(
+    current_user: str = Depends(get_current_user),
     service_name: str = Depends(service_permission_required(["read_shipments"])),
 ) -> Dict[str, Any]:
     """
     Get statistics about data collection (for admin/monitoring purposes)
+    
+    **Authentication:**
+    - Requires user authentication (JWT token or gateway headers)
+    - Requires service API key for service-to-service calls
     """
     try:
+        logger.info("Getting data collection stats", user_id=current_user)
         # TODO: Implement actual statistics from database
         # For now, return placeholder stats
         stats = {

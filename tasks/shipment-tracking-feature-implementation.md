@@ -493,10 +493,10 @@ Implement a shipment tracking feature that allows users to track packages direct
 - Update error handling for authentication and ownership failures
 
 **Acceptance Criteria:**
-- [ ] Data collection requires user authentication
-- [ ] User ownership of data is validated
-- [ ] Consent validation is secure and user-specific
-- [ ] Proper error responses for unauthorized access
+- [x] Data collection requires user authentication
+- [x] User ownership of data is validated
+- [x] Consent validation is secure and user-specific
+- [x] Proper error responses for unauthorized access
 
 ### Task 7.4: Secure Package Management Endpoints
 **Files:** `services/shipments/routers/labels.py`, `services/shipments/routers/carrier_configs.py`
