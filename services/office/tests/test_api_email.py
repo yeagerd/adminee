@@ -236,6 +236,43 @@ class TestEmailMessagesEndpoint:
         mock_cache_manager.get_from_cache.assert_called_once()
         assert mock_cache_manager.set_to_cache.call_count == 0
 
+    @patch("services.office.api.email.fetch_provider_emails")
+    @pytest.mark.asyncio
+    async def test_get_email_messages_no_cache_bypass(
+        self,
+        mock_fetch_provider_emails,
+        mock_cache_manager,
+        mock_api_client_factory,
+        mock_email_message,
+        client,
+        auth_headers,
+    ):
+        """Test that no_cache parameter bypasses cache."""
+        # Mock fetch_provider_emails to return test data for both providers
+        mock_fetch_provider_emails.side_effect = [
+            ([mock_email_message], "google"),
+            ([mock_email_message], "microsoft"),
+        ]
+
+        # Mock cache to return None (cache miss)
+        mock_cache_manager.get_from_cache.return_value = None
+
+        response = client.get(
+            "/v1/email/messages?limit=10&no_cache=true", headers=auth_headers
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["success"] is True
+        assert data["cache_hit"] is False
+        assert len(data["data"]["messages"]) == 2  # One from each provider
+        assert data["data"]["providers_used"] == ["google", "microsoft"]
+        assert data["data"]["total_count"] == 2
+
+        # Verify that fetch_provider_emails was called twice (once for each provider)
+        assert mock_fetch_provider_emails.call_count == 2
+
 
 class TestEmailMessageDetailEndpoint:
     """Tests for the GET /email/messages/{message_id} endpoint."""

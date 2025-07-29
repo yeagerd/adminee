@@ -232,11 +232,13 @@ export class GatewayClient {
     async getEmails(
         providers: string[],
         limit?: number,
-        offset?: number
+        offset?: number,
+        noCache?: boolean
     ): Promise<ApiResponse<GetEmailsResponse>> {
         const params = new URLSearchParams();
         if (limit) params.append('limit', limit.toString());
         if (offset) params.append('offset', offset.toString());
+        if (noCache) params.append('no_cache', 'true');
 
         // Add providers as a list
         providers.forEach(provider => {

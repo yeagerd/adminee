@@ -1,8 +1,9 @@
 import { useIntegrations } from '@/contexts/integrations-context';
 import { useDraftState } from '@/hooks/use-draft-state';
 import type { EmailMessage } from '@/types/office-service';
+import { RefreshCw } from 'lucide-react';
 import { getSession } from 'next-auth/react';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import gatewayClient from '../../lib/gateway-client';
 import EmailFilters from '../email/email-filters';
 import EmailThread from '../email/email-thread';
@@ -30,9 +31,38 @@ interface EmailViewProps {
 const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTool }) => {
     const [threads, setThreads] = useState<EmailMessage[]>([]); // If API returns messages, not threads
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [filters, setFilters] = useState<Record<string, unknown>>({});
     const { loading: integrationsLoading, activeProviders, hasExpiredButRefreshableTokens } = useIntegrations();
+
+    const fetchEmails = useCallback(async (noCache = false) => {
+        if (!activeProviders || activeProviders.length === 0) {
+            return;
+        }
+
+        try {
+            const session = await getSession();
+            const userId = session?.user?.id;
+            if (!userId) throw new Error('No user id found in session');
+
+            // Use the user's actual connected providers with no-cache flag
+            const emailsResp = await gatewayClient.getEmails(activeProviders, 50, 0, noCache) as { data?: { messages?: EmailMessage[] } };
+            setThreads(emailsResp.data?.messages || []);
+            setError(null);
+        } catch (e: unknown) {
+            setError((e && typeof e === 'object' && 'message' in e) ? (e as { message?: string }).message || 'Failed to load emails' : 'Failed to load emails');
+        }
+    }, [activeProviders]);
+
+    const handleRefresh = useCallback(async () => {
+        setRefreshing(true);
+        try {
+            await fetchEmails(true); // Pass true to bypass cache
+        } finally {
+            setRefreshing(false);
+        }
+    }, [fetchEmails]);
 
     useEffect(() => {
         // Only fetch when the tab is actually activated
@@ -58,29 +88,30 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
         setLoading(true);
         (async () => {
             try {
-                const session = await getSession();
-                const userId = session?.user?.id;
-                if (!userId) throw new Error('No user id found in session');
-
-                // Use the user's actual connected providers
-                const emailsResp = await gatewayClient.getEmails(activeProviders, 50, 0) as { data?: { messages?: EmailMessage[] } };
-                if (isMounted) setThreads(emailsResp.data?.messages || []);
-                setError(null);
-            } catch (e: unknown) {
-                if (isMounted) setError((e && typeof e === 'object' && 'message' in e) ? (e as { message?: string }).message || 'Failed to load emails' : 'Failed to load emails');
+                await fetchEmails(false); // Use cached data for initial load
             } finally {
                 if (isMounted) setLoading(false);
             }
         })();
         return () => { isMounted = false; };
-    }, [filters, activeProviders, integrationsLoading, toolDataLoading, activeTool, hasExpiredButRefreshableTokens]);
+    }, [filters, activeProviders, integrationsLoading, toolDataLoading, activeTool, hasExpiredButRefreshableTokens, fetchEmails]);
 
     return (
         <div className="flex flex-col h-full">
             <div className="p-4 border-b">
                 <div className="flex items-center justify-between">
                     <h1 className="text-xl font-semibold">Inbox</h1>
-                    <OpenDraftPaneButton />
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={handleRefresh}
+                            disabled={refreshing || loading}
+                            className="p-2 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                            title="Refresh emails"
+                        >
+                            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                        </button>
+                        <OpenDraftPaneButton />
+                    </div>
                 </div>
                 <EmailFilters filters={filters} setFilters={setFilters} />
             </div>
