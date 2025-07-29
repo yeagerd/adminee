@@ -36,9 +36,6 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
     const { loading: integrationsLoading, activeProviders } = useIntegrations();
     const { effectiveTimezone } = useUserPreferences();
 
-    // Debug timezone
-    console.log('CalendarGridView effectiveTimezone:', effectiveTimezone);
-
     // Calculate date range based on view type
     const dateRange = useMemo(() => {
         const start = new Date(currentDate);
@@ -126,32 +123,12 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
 
     // Filter events for the current date range
     const filteredEvents = useMemo(() => {
-        console.log('Filtering events:', {
-            totalEvents: events.length,
-            dateRange: {
-                start: dateRange.start.toISOString(),
-                end: dateRange.end.toISOString()
-            },
-            viewType
-        });
-
-        const filtered = events.filter(event => {
+        return events.filter(event => {
             const eventStart = new Date(event.start_time);
             const eventEnd = new Date(event.end_time);
-            const isInRange = eventStart <= dateRange.end && eventEnd >= dateRange.start;
-
-            console.log(`Event "${event.title}":`, {
-                start: eventStart.toISOString(),
-                end: eventEnd.toISOString(),
-                isInRange
-            });
-
-            return isInRange;
+            return eventStart <= dateRange.end && eventEnd >= dateRange.start;
         });
-
-        console.log('Filtered events count:', filtered.length);
-        return filtered;
-    }, [events, dateRange, viewType]);
+    }, [events, dateRange]);
 
     // Group events by day
     const eventsByDay = useMemo(() => {
@@ -418,9 +395,9 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
                     )}
 
                     {/* Time Grid */}
-                    <div className="relative w-full">
+                    <div className="relative">
                         <div
-                            className="grid w-full"
+                            className="grid"
                             style={{
                                 gridTemplateColumns: `60px repeat(${days.length}, minmax(120px, 1fr))`,
                                 minWidth: `${60 + (days.length * 120)}px`

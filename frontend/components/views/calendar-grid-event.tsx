@@ -24,19 +24,7 @@ export function CalendarGridEvent({ event, day, effectiveTimezone }: CalendarGri
         eventEnd = DateTime.fromISO(event.end_time).setZone(effectiveTimezone);
     }
 
-    // Debug: log the timezone conversion
-    console.log(`Event "${event.title}":`, {
-        originalStart: event.start_time,
-        originalEnd: event.end_time,
-        parsedStart: eventStart.toISO(),
-        parsedEnd: eventEnd.toISO(),
-        displayStart: eventStart.toFormat('h:mm a'),
-        displayEnd: eventEnd.toFormat('h:mm a'),
-        timezone: effectiveTimezone,
-        startHour: eventStart.hour,
-        startMinute: eventStart.minute,
-        isUTC: eventStart.zoneName === 'UTC'
-    });
+
 
     // Check if event is all day
     const isAllDay = event.all_day;
@@ -74,20 +62,7 @@ export function CalendarGridEvent({ event, day, effectiveTimezone }: CalendarGri
         const durationSlots = Math.max(1, durationMinutes / 30); // Minimum 1 slot (30 minutes)
         const heightPixels = durationSlots * slotHeight; // Use exact slot height
 
-        // Debug positioning
-        console.log(`Event "${event.title}" positioning:`, {
-            startHour,
-            startMinute: eventStart.minute,
-            startSlots,
-            topPixels,
-            durationMinutes,
-            durationSlots,
-            heightPixels,
-            expectedTime: `${eventStart.hour}:${eventStart.minute.toString().padStart(2, '0')}`,
-            slotHeight,
-            gridStartHour,
-            gridEndHour
-        });
+
 
         return {
             top: topPixels,
