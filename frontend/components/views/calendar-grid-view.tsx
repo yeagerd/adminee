@@ -369,12 +369,15 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
 
             {/* Calendar Grid */}
             <div className="flex-1 overflow-auto">
-                <div className="min-h-full">
+                <div className="min-h-full" style={{ minWidth: `${60 + (days.length * 120)}px` }}>
                     {/* Day Headers */}
                     <div className="sticky top-0 z-10 bg-white border-b">
                         <div
                             className="grid border-b"
-                            style={{ gridTemplateColumns: `60px repeat(${days.length}, minmax(120px, 1fr))` }}
+                            style={{
+                                gridTemplateColumns: `60px repeat(${days.length}, minmax(120px, 1fr))`,
+                                minWidth: `${60 + (days.length * 120)}px`
+                            }}
                         >
                             <div className="p-2 border-r bg-gray-50"></div>
                             {days.map((day, index) => (
@@ -390,7 +393,10 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
                         <div className="border-b bg-gray-50">
                             <div
                                 className="grid"
-                                style={{ gridTemplateColumns: `60px repeat(${days.length}, minmax(120px, 1fr))` }}
+                                style={{
+                                    gridTemplateColumns: `60px repeat(${days.length}, minmax(120px, 1fr))`,
+                                    minWidth: `${60 + (days.length * 120)}px`
+                                }}
                             >
                                 <div className="p-2 border-r bg-gray-50 text-xs text-gray-500 font-medium">
                                     All day
@@ -412,10 +418,13 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
                     )}
 
                     {/* Time Grid */}
-                    <div className="relative">
+                    <div className="relative w-full">
                         <div
-                            className="grid"
-                            style={{ gridTemplateColumns: `60px repeat(${days.length}, minmax(120px, 1fr))` }}
+                            className="grid w-full"
+                            style={{
+                                gridTemplateColumns: `60px repeat(${days.length}, minmax(120px, 1fr))`,
+                                minWidth: `${60 + (days.length * 120)}px`
+                            }}
                         >
                             {/* Time Labels */}
                             <div className="border-r">
