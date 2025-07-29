@@ -146,6 +146,9 @@ export function CalendarGridEvent({ event, day, effectiveTimezone }: CalendarGri
     const now = DateTime.now().setZone(effectiveTimezone);
     const isCurrent = eventStart <= now && now <= eventEnd;
 
+    // Calculate duration for display logic
+    const durationMinutes = eventEnd.diff(eventStart, 'minutes').minutes;
+
     return (
         <div
             className={`
@@ -174,13 +177,18 @@ export function CalendarGridEvent({ event, day, effectiveTimezone }: CalendarGri
             </div>
             {!isAllDay && (
                 <>
-                    <div className="truncate text-xs opacity-75">
-                        {`${eventStart.toFormat('h:mm a')} - ${eventEnd.toFormat('h:mm a')}`}
-                    </div>
-                    {event.location && (
-                        <div className="truncate text-xs opacity-75">
-                            📍 {event.location}
-                        </div>
+                    {/* Only show time and location for events longer than 30 minutes */}
+                    {durationMinutes > 30 && (
+                        <>
+                            <div className="truncate text-xs opacity-75">
+                                {`${eventStart.toFormat('h:mm a')} - ${eventEnd.toFormat('h:mm a')}`}
+                            </div>
+                            {event.location && (
+                                <div className="truncate text-xs opacity-75">
+                                    📍 {event.location}
+                                </div>
+                            )}
+                        </>
                     )}
                 </>
             )}

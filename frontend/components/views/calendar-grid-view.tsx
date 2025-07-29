@@ -48,8 +48,12 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
 
         switch (viewType) {
             case 'day':
-                // Single day
-                result = { start, end };
+                // Single day - set start to beginning of day and end to end of day
+                const dayStart = new Date(start);
+                dayStart.setHours(0, 0, 0, 0);
+                const dayEnd = new Date(start);
+                dayEnd.setHours(23, 59, 59, 999);
+                result = { start: dayStart, end: dayEnd };
                 break;
             case 'work-week':
                 // Monday to Friday
@@ -57,8 +61,10 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
                 const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday = 0, Monday = 1
                 const monday = new Date(start);
                 monday.setDate(start.getDate() - daysToMonday);
+                monday.setHours(0, 0, 0, 0);
                 const friday = new Date(monday);
                 friday.setDate(monday.getDate() + 4); // Monday + 4 = Friday
+                friday.setHours(23, 59, 59, 999);
                 result = { start: monday, end: friday };
                 break;
             case 'week':
@@ -66,14 +72,18 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
                 const daysToSunday = start.getDay();
                 const sunday = new Date(start);
                 sunday.setDate(start.getDate() - daysToSunday);
+                sunday.setHours(0, 0, 0, 0);
                 const saturday = new Date(sunday);
                 saturday.setDate(sunday.getDate() + 6);
+                saturday.setHours(23, 59, 59, 999);
                 result = { start: sunday, end: saturday };
                 break;
             case 'month':
                 // First day of month to last day of month
                 const firstDay = new Date(start.getFullYear(), start.getMonth(), 1);
+                firstDay.setHours(0, 0, 0, 0);
                 const lastDay = new Date(start.getFullYear(), start.getMonth() + 1, 0);
+                lastDay.setHours(23, 59, 59, 999);
                 result = { start: firstDay, end: lastDay };
                 break;
         }
@@ -116,12 +126,32 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
 
     // Filter events for the current date range
     const filteredEvents = useMemo(() => {
-        return events.filter(event => {
+        console.log('Filtering events:', {
+            totalEvents: events.length,
+            dateRange: {
+                start: dateRange.start.toISOString(),
+                end: dateRange.end.toISOString()
+            },
+            viewType
+        });
+
+        const filtered = events.filter(event => {
             const eventStart = new Date(event.start_time);
             const eventEnd = new Date(event.end_time);
-            return eventStart <= dateRange.end && eventEnd >= dateRange.start;
+            const isInRange = eventStart <= dateRange.end && eventEnd >= dateRange.start;
+
+            console.log(`Event "${event.title}":`, {
+                start: eventStart.toISOString(),
+                end: eventEnd.toISOString(),
+                isInRange
+            });
+
+            return isInRange;
         });
-    }, [events, dateRange]);
+
+        console.log('Filtered events count:', filtered.length);
+        return filtered;
+    }, [events, dateRange, viewType]);
 
     // Group events by day
     const eventsByDay = useMemo(() => {
@@ -392,7 +422,7 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
                                 {timeSlots.map((slot, index) => (
                                     <div
                                         key={index}
-                                        className="h-8 border-b border-gray-100 flex items-end justify-end pr-2 text-xs text-gray-500"
+                                        className="h-8 border-b border-gray-100 flex items-start justify-end pr-2 text-xs text-gray-500"
                                     >
                                         {slot.minute === 0 ? slot.time : ''}
                                     </div>
