@@ -53,6 +53,24 @@ export interface PackageResponse {
     labels: any[];
 }
 
+export interface DataCollectionRequest {
+    user_id: string;
+    email_message_id: string;
+    original_email_data: Record<string, any>;
+    auto_detected_data: Record<string, any>;
+    user_corrected_data: Record<string, any>;
+    detection_confidence: number;
+    correction_reason?: string;
+    consent_given: boolean;
+}
+
+export interface DataCollectionResponse {
+    success: boolean;
+    collection_id: string;
+    timestamp: string;
+    message: string;
+}
+
 class ShipmentsClient {
     private baseUrl: string;
 
@@ -114,6 +132,16 @@ class ShipmentsClient {
         return this.makeRequest<PackageResponse>('/packages', {
             method: 'POST',
             body: JSON.stringify(packageData),
+        });
+    }
+
+    /**
+     * Submit data collection for training improvements
+     */
+    async collectData(data: DataCollectionRequest): Promise<DataCollectionResponse> {
+        return this.makeRequest<DataCollectionResponse>('/data-collection/collect', {
+            method: 'POST',
+            body: JSON.stringify(data),
         });
     }
 

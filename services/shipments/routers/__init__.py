@@ -6,6 +6,7 @@ from fastapi import APIRouter
 
 from services.shipments.routers import (
     carrier_configs,
+    data_collection,
     email_parser,
     labels,
     packages,
@@ -18,3 +19,4 @@ api_router.include_router(labels.router, prefix="/labels", tags=["Labels"])
 api_router.include_router(tracking_events.router, prefix="/tracking", tags=["Tracking"])
 api_router.include_router(carrier_configs.router, prefix="/carriers", tags=["Carriers"])
 api_router.include_router(email_parser.router, prefix="/email-parser", tags=["Email Parser"])
+api_router.include_router(data_collection.router, prefix="/data-collection", tags=["Data Collection"])

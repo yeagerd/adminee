@@ -237,10 +237,10 @@ Implement a shipment tracking feature that allows users to track packages direct
 - Update documentation and examples
 
 **Acceptance Criteria:**
-- [ ] New preference field is added to schema
-- [ ] Default value is enabled
-- [ ] Documentation is updated
-- [ ] Migration handles existing users
+- [x] New preference field is added to schema
+- [x] Default value is enabled
+- [x] Documentation is updated
+- [x] Migration handles existing users
 
 ### Task 4.2: Create Data Collection Endpoint
 **File:** `services/shipments/routers/data_collection.py`
@@ -260,10 +260,10 @@ Implement a shipment tracking feature that allows users to track packages direct
 - Store structured data for future model improvements
 
 **Acceptance Criteria:**
-- [ ] Endpoint accepts user-corrected data
-- [ ] Stores both auto-generated and user data
-- [ ] Validates user consent before storing
-- [ ] Data is stored securely and anonymously
+- [x] Endpoint accepts user-corrected data
+- [x] Stores both auto-generated and user data
+- [x] Validates user consent before storing
+- [x] Data is stored securely and anonymously
 
 ### Task 4.3: Update Frontend to Check User Preferences
 **File:** `frontend/components/email/track-shipment-modal.tsx`
@@ -282,10 +282,10 @@ Implement a shipment tracking feature that allows users to track packages direct
 - Handle cases where consent is not given
 
 **Acceptance Criteria:**
-- [ ] User preference is checked before data collection
-- [ ] Data is only sent if user has consented
-- [ ] User is informed about data usage
-- [ ] Graceful handling when consent is not given
+- [x] User preference is checked before data collection
+- [x] Data is only sent if user has consented
+- [x] User is informed about data usage
+- [x] Graceful handling when consent is not given
 
 ## Phase 5: Testing and Quality Assurance
 

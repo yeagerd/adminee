@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Modal, ModalContent, ModalHeader, ModalTitle, ModalBody, ModalFooter } from '@/components/ui/modal';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { EmailMessage } from '@/types/office-service';
 import { useShipmentDetection } from '@/hooks/use-shipment-detection';
-import { Loader2, Package, Truck, CheckCircle } from 'lucide-react';
+import { useShipmentDataCollectionConsent } from '@/hooks/use-user-preferences';
+import { shipmentsClient, DataCollectionRequest } from '@/lib/shipments-client';
+import { Loader2, Package, Truck, CheckCircle, Info } from 'lucide-react';
 
 interface TrackShipmentModalProps {
     isOpen: boolean;
@@ -51,6 +53,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
     onTrackShipment
 }) => {
     const shipmentDetection = useShipmentDetection(email);
+    const hasDataCollectionConsent = useShipmentDataCollectionConsent();
     const [isLoading, setIsLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const [formData, setFormData] = useState<PackageFormData>({
@@ -63,6 +66,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
         order_number: '',
         tracking_link: '',
     });
+    const [initialFormData, setInitialFormData] = useState<PackageFormData | null>(null);
 
     // Initialize form with detected data when modal opens
     useEffect(() => {
@@ -78,6 +82,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                 tracking_link: '',
             };
             setFormData(detectedData);
+            setInitialFormData(detectedData);
         }
     }, [isOpen, shipmentDetection, email]);
 
@@ -86,6 +91,59 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
             ...prev,
             [field]: value
         }));
+    };
+
+    const submitDataCollection = async (packageData: PackageFormData) => {
+        if (!hasDataCollectionConsent || !initialFormData) {
+            return;
+        }
+
+        try {
+            // Check if user made any corrections
+            const hasCorrections = 
+                packageData.tracking_number !== initialFormData.tracking_number ||
+                packageData.carrier !== initialFormData.carrier ||
+                packageData.status !== initialFormData.status ||
+                packageData.order_number !== initialFormData.order_number ||
+                packageData.package_description !== initialFormData.package_description;
+
+            if (!hasCorrections) {
+                return; // No corrections made, no need to collect data
+            }
+
+            const dataCollectionRequest: DataCollectionRequest = {
+                user_id: 'current-user', // TODO: Get actual user ID
+                email_message_id: email.id,
+                original_email_data: {
+                    subject: email.subject,
+                    sender: email.from_address?.email,
+                    body: email.body_html || email.body_text,
+                },
+                auto_detected_data: {
+                    tracking_number: initialFormData.tracking_number,
+                    carrier: initialFormData.carrier,
+                    status: initialFormData.status,
+                    order_number: initialFormData.order_number,
+                    package_description: initialFormData.package_description,
+                },
+                user_corrected_data: {
+                    tracking_number: packageData.tracking_number,
+                    carrier: packageData.carrier,
+                    status: packageData.status,
+                    order_number: packageData.order_number,
+                    package_description: packageData.package_description,
+                },
+                detection_confidence: shipmentDetection.confidence,
+                correction_reason: hasCorrections ? 'User corrected auto-detected information' : undefined,
+                consent_given: hasDataCollectionConsent,
+            };
+
+            await shipmentsClient.collectData(dataCollectionRequest);
+            console.log('Data collection submitted successfully');
+        } catch (error) {
+            console.error('Failed to submit data collection:', error);
+            // Don't throw error - data collection failure shouldn't prevent tracking
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -99,6 +157,10 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
         setIsLoading(true);
         try {
             await onTrackShipment(formData);
+            
+            // Submit data collection if user has consented
+            await submitDataCollection(formData);
+            
             setIsSuccess(true);
             setTimeout(() => {
                 onClose();
@@ -120,16 +182,16 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
     };
 
     return (
-        <Modal open={isOpen} onOpenChange={handleClose}>
-            <ModalContent className="sm:max-w-[600px]">
-                <ModalHeader>
-                    <ModalTitle className="flex items-center gap-2">
+        <Dialog open={isOpen} onOpenChange={handleClose}>
+            <DialogContent className="sm:max-w-[600px]">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
                         <Package className="h-5 w-5" />
                         Track Shipment
-                    </ModalTitle>
-                </ModalHeader>
+                    </DialogTitle>
+                </DialogHeader>
                 
-                <ModalBody>
+                <div className="space-y-4">
                     {isSuccess ? (
                         <div className="flex flex-col items-center justify-center py-8 text-center">
                             <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
@@ -154,6 +216,22 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                             Detected carrier: {shipmentDetection.detectedCarrier.toUpperCase()}
                                         </p>
                                     )}
+                                </div>
+                            )}
+
+                            {/* Data Collection Notice */}
+                            {hasDataCollectionConsent && (
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                    <div className="flex items-start gap-2 text-blue-700">
+                                        <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                        <div className="text-sm">
+                                            <p className="font-medium">Help Improve Detection</p>
+                                            <p className="text-blue-600 mt-1">
+                                                Your corrections help us improve our shipment detection accuracy. 
+                                                Data is collected anonymously and securely.
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
 
@@ -267,9 +345,9 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                             </div>
                         </form>
                     )}
-                </ModalBody>
+                </div>
 
-                <ModalFooter>
+                <DialogFooter>
                     {!isSuccess && (
                         <>
                             <Button variant="outline" onClick={handleClose} disabled={isLoading}>
@@ -294,9 +372,9 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                             </Button>
                         </>
                     )}
-                </ModalFooter>
-            </ModalContent>
-        </Modal>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 };
 
