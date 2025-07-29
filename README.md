@@ -2,6 +2,9 @@
 
 AI-powered calendar and task management platform with intelligent scheduling, document management, and seamless office integration.
 
+<img width="715" height="537" alt="Screenshot 2025-07-29 at 7 45 52 AM" src="https://github.com/user-attachments/assets/6e53d632-9e31-49f4-8d0f-578ac3c67230" />
+
+
 ## Architecture
 
 - **Frontend:** Next.js 14 with TypeScript, Tailwind CSS, and shadcn/ui components
