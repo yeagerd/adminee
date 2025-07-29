@@ -18,7 +18,7 @@ import gatewayClient from "@/lib/gateway-client"
 import { History, Loader2, Plus, Send } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useCallback, useEffect, useRef, useState } from "react"
-import LoadingBubble from './ui/loading-bubble';
+import LoadingBubble from './ui/loading-bubble'
 
 
 type Message = {
@@ -109,7 +109,6 @@ function ChatBubble({ content, sender, windowWidth }: { content: React.ReactNode
     if (words.some(word => isUnbreakableString(word, threshold))) {
         breakClass = "break-all";
     }
-    console.log('Chat bubble word break threshold:', threshold, 'breakClass:', breakClass);
     return (
         <div
             className={`max-w-[95%] min-w-0 rounded-lg p-2 text-sm overflow-anywhere ${breakClass} ${sender === "user" ? "bg-teal-600 text-white ml-2" : "bg-gray-100 text-gray-800 mr-2"}`}
