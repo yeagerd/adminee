@@ -417,6 +417,181 @@ Implement a shipment tracking feature that allows users to track packages direct
 **Implementation Details:**
 - Add methods for email parsing and data collection
 - Update TypeScript interfaces
+
+**Acceptance Criteria:**
+- [x] Email parser client methods are implemented
+- [x] Data collection client methods are implemented
+- [x] TypeScript types are properly defined
+- [x] Error handling is comprehensive
+
+## Phase 7: Secure Endpoints
+
+### Task 7.1: Add User Authentication to Shipments Service
+**Files:** `services/shipments/auth/`, `services/shipments/main.py`
+**Priority:** High
+**Estimated Time:** 3-4 hours
+
+**Requirements:**
+- Implement user authentication middleware following user service patterns
+- Support both gateway headers (X-User-Id) and JWT tokens
+- Add user ownership validation for package resources
+- Ensure data isolation between users
+
+**Implementation Details:**
+- Create `services/shipments/auth/` directory with authentication modules
+- Implement `get_current_user_from_gateway_headers()` function
+- Implement `get_current_user_flexible()` for dual authentication support
+- Add `verify_user_ownership()` and `require_user_ownership()` functions
+- Update main.py to include user authentication middleware
+- Follow the same patterns as user service authentication
+
+**Acceptance Criteria:**
+- [ ] User authentication middleware is implemented
+- [ ] Gateway header extraction works correctly
+- [ ] JWT token fallback works correctly
+- [ ] User ownership validation functions are available
+- [ ] Authentication follows established patterns
+
+### Task 7.2: Secure Email Parser Endpoint
+**File:** `services/shipments/routers/email_parser.py`
+**Priority:** High
+**Estimated Time:** 1-2 hours
+
+**Requirements:**
+- Add user authentication to email parser endpoint
+- Validate user ownership of email data
+- Ensure proper access control for email parsing
+
+**Implementation Details:**
+- Add `get_current_user` dependency to parse_email endpoint
+- Extract user_id from email data or request context
+- Add user ownership validation for email access
+- Update error handling for authentication failures
+- Ensure email data belongs to authenticated user
+
+**Acceptance Criteria:**
+- [ ] Email parser requires user authentication
+- [ ] User ownership of email data is validated
+- [ ] Proper error responses for unauthorized access
+- [ ] API key authentication still works for service-to-service calls
+
+### Task 7.3: Secure Data Collection Endpoint
+**File:** `services/shipments/routers/data_collection.py`
+**Priority:** High
+**Estimated Time:** 1-2 hours
+
+**Requirements:**
+- Add user authentication to data collection endpoint
+- Validate user ownership of collected data
+- Ensure user consent validation is secure
+
+**Implementation Details:**
+- Add `get_current_user` dependency to collect_shipment_data endpoint
+- Validate that user_id in request matches authenticated user
+- Add user ownership validation for data collection
+- Ensure consent validation is tied to authenticated user
+- Update error handling for authentication and ownership failures
+
+**Acceptance Criteria:**
+- [ ] Data collection requires user authentication
+- [ ] User ownership of data is validated
+- [ ] Consent validation is secure and user-specific
+- [ ] Proper error responses for unauthorized access
+
+### Task 7.4: Secure Package Management Endpoints
+**Files:** `services/shipments/routers/labels.py`, `services/shipments/routers/carrier_configs.py`
+**Priority:** High
+**Estimated Time:** 2-3 hours
+
+**Requirements:**
+- Add user authentication to all package management endpoints
+- Validate user ownership of packages and labels
+- Ensure proper access control for carrier configurations
+
+**Implementation Details:**
+- Add `get_current_user` dependency to all package endpoints
+- Implement user ownership validation for packages
+- Add user ownership validation for labels
+- Ensure carrier configs are user-specific or properly secured
+- Update all CRUD operations to validate user ownership
+- Add proper error handling for unauthorized access
+
+**Acceptance Criteria:**
+- [ ] All package endpoints require user authentication
+- [ ] User ownership of packages is validated
+- [ ] User ownership of labels is validated
+- [ ] Carrier configurations are properly secured
+- [ ] Proper error responses for unauthorized access
+
+### Task 7.5: Add User Context to Package Models
+**Files:** `services/shipments/models/`, `services/shipments/database.py`
+**Priority:** Medium
+**Estimated Time:** 2-3 hours
+
+**Requirements:**
+- Ensure all package models include user_id field
+- Add database constraints for user ownership
+- Update database migrations if needed
+
+**Implementation Details:**
+- Verify Package model has user_id field with proper constraints
+- Verify Label model has user_id field with proper constraints
+- Add database indexes for user_id fields for performance
+- Update any existing migrations to include user_id constraints
+- Ensure foreign key relationships are properly defined
+
+**Acceptance Criteria:**
+- [ ] All package models have user_id fields
+- [ ] Database constraints enforce user ownership
+- [ ] Proper indexes exist for user_id fields
+- [ ] Foreign key relationships are correctly defined
+
+### Task 7.6: Update API Key Configuration
+**File:** `services/shipments/service_auth.py`
+**Priority:** Medium
+**Estimated Time:** 1 hour
+
+**Requirements:**
+- Update API key permissions to include user-specific operations
+- Ensure proper separation between service-to-service and user-facing operations
+
+**Implementation Details:**
+- Review and update API key permissions for user-specific operations
+- Ensure frontend has appropriate permissions for user operations
+- Add any missing permissions for data collection and email parsing
+- Update permission documentation
+
+**Acceptance Criteria:**
+- [ ] API key permissions are properly configured
+- [ ] Frontend has appropriate permissions for user operations
+- [ ] Service-to-service permissions are properly separated
+- [ ] Permission documentation is updated
+
+### Task 7.7: Security Testing
+**Files:** `services/shipments/tests/test_security.py`
+**Priority:** High
+**Estimated Time:** 2-3 hours
+
+**Requirements:**
+- Test user authentication and authorization
+- Test user ownership validation
+- Test API key authentication
+- Test unauthorized access scenarios
+
+**Implementation Details:**
+- Create comprehensive security test suite
+- Test authentication with both gateway headers and JWT tokens
+- Test user ownership validation for all resources
+- Test unauthorized access attempts
+- Test API key authentication for service-to-service calls
+- Test cross-user access attempts
+
+**Acceptance Criteria:**
+- [ ] User authentication tests pass
+- [ ] User ownership validation tests pass
+- [ ] API key authentication tests pass
+- [ ] Unauthorized access is properly blocked
+- [ ] Cross-user access is properly blocked
 - Maintain consistency with existing patterns
 
 **Acceptance Criteria:**
