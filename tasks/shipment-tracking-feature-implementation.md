@@ -470,10 +470,10 @@ Implement a shipment tracking feature that allows users to track packages direct
 - Ensure email data belongs to authenticated user
 
 **Acceptance Criteria:**
-- [ ] Email parser requires user authentication
-- [ ] User ownership of email data is validated
-- [ ] Proper error responses for unauthorized access
-- [ ] API key authentication still works for service-to-service calls
+- [x] Email parser requires user authentication
+- [x] User ownership of email data is validated
+- [x] Proper error responses for unauthorized access
+- [x] API key authentication still works for service-to-service calls
 
 ### Task 7.3: Secure Data Collection Endpoint
 **File:** `services/shipments/routers/data_collection.py`

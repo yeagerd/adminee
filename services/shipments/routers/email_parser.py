@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 
 from services.common.logging_config import get_logger
+from services.shipments.auth import get_current_user, require_user_ownership
 from services.shipments.email_parser import EmailParser
 from services.shipments.schemas.email_parser import (
     EmailParseRequest,
@@ -24,6 +25,7 @@ email_parser = EmailParser()
 @router.post("/parse", response_model=EmailParseResponse)
 async def parse_email(
     request: EmailParseRequest,
+    current_user: str = Depends(get_current_user),
     service_name: str = Depends(service_permission_required(["read_shipments"])),
 ) -> EmailParseResponse:
     """
@@ -36,9 +38,18 @@ async def parse_email(
     - Confidence scores for the detection
     
     Returns structured data that can be used to create package tracking entries.
+    
+    **Authentication:**
+    - Requires user authentication (JWT token or gateway headers)
+    - Validates user ownership of email data
+    - Requires service API key for service-to-service calls
     """
     try:
+        # Validate user ownership of email data
+        await require_user_ownership(request.user_id, current_user)
+        
         logger.info("Parsing email for shipment information", 
+                   user_id=current_user,
                    subject_length=len(request.subject),
                    sender=request.sender,
                    content_type=request.content_type)

@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 class EmailParseRequest(BaseModel):
     """Request schema for email parsing"""
+    user_id: str = Field(..., description="User ID for email ownership validation")
     subject: str = Field(..., description="Email subject line")
     sender: str = Field(..., description="Email sender address")
     body: str = Field(..., description="Email body content (HTML or text)")
@@ -16,6 +17,7 @@ class EmailParseRequest(BaseModel):
     class Config:
         schema_extra = {
             "example": {
+                "user_id": "user123",
                 "subject": "Your Amazon order has shipped",
                 "sender": "shipment-tracking@amazon.com",
                 "body": "Your order #123-4567890-1234567 has shipped via UPS. Tracking number: 1Z999AA1234567890",
