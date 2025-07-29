@@ -211,7 +211,8 @@ export class GatewayClient {
         end_date?: string,
         calendar_ids?: string[],
         q?: string,
-        time_zone: string = 'UTC'
+        time_zone: string = 'UTC',
+        noCache?: boolean
     ) {
         const params = new URLSearchParams();
         if (providers && providers.length > 0) {
@@ -225,6 +226,7 @@ export class GatewayClient {
         }
         if (q) params.append('q', q);
         params.append('time_zone', time_zone);
+        if (noCache) params.append('no_cache', 'true');
 
         return this.request<ApiResponse<CalendarEventsResponse>>(`/api/v1/calendar/events?${params.toString()}`);
     }

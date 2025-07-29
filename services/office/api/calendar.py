@@ -303,6 +303,9 @@ async def get_calendar_events(
     ),
     q: Optional[str] = Query(None, description="Search query to filter events"),
     time_zone: Optional[str] = Query("UTC", description="Time zone for date filtering"),
+    no_cache: bool = Query(
+        False, description="Bypass cache and fetch fresh data from providers"
+    ),
     service_name: str = Depends(service_permission_required(["read_calendar"])),
 ) -> CalendarEventListApiResponse:
     """
@@ -399,13 +402,14 @@ async def get_calendar_events(
             "calendar_ids": calendar_ids or [],
             "q": q or "",
             "time_zone": time_zone,
+            "no_cache": no_cache,
         }
         cache_key = generate_cache_key(user_id, "unified", "events", cache_params)
         logger.debug(f"[{request_id}] Generated cache key: {cache_key}")
 
         # Check cache first
         cached_result = await cache_manager.get_from_cache(cache_key)
-        if cached_result:
+        if cached_result and not no_cache:
             logger.info("Cache hit for calendar events", request_id=request_id)
             # Extract events from cached result
             if isinstance(cached_result, dict) and "events" in cached_result:

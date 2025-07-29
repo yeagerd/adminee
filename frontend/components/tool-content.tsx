@@ -1,24 +1,18 @@
 'use client';
 
-import { CalendarEventItem } from '@/components/calendar-event-item';
 import DraftsList from '@/components/drafts/drafts-list';
 import { MeetingPollEdit } from '@/components/meetings/meeting-poll-edit';
 import { MeetingPollNew } from '@/components/meetings/meeting-poll-new';
 import { MeetingPollResults } from '@/components/meetings/meeting-poll-results';
 import PackageDashboard from '@/components/packages/PackageDashboard';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { useIntegrations } from '@/contexts/integrations-context';
-import { useUserPreferences } from '@/contexts/settings-context';
 import { useToolStateUtils } from '@/hooks/use-tool-state';
 import { gatewayClient } from '@/lib/gateway-client';
 import { MeetingSubView } from '@/types/navigation';
-import { CalendarEvent } from '@/types/office-service';
-import { AlertCircle, ExternalLink } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import CalendarView from './views/calendar-view';
 import EmailView from './views/email-view';
 
 // Define MeetingPoll type for frontend use
@@ -40,11 +34,7 @@ export function ToolContent() {
         getMeetingPollId
     } = useToolStateUtils();
     const { data: session } = useSession();
-    const { effectiveTimezone } = useUserPreferences();
-    const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
-    const [calendarLoading, setCalendarLoading] = useState(false);
-    const [calendarError, setCalendarError] = useState<string | null>(null);
-    const { loading: integrationsLoading, activeProviders, triggerAutoRefreshIfNeeded } = useIntegrations();
+    const { loading: integrationsLoading, triggerAutoRefreshIfNeeded } = useIntegrations();
 
     // Call auto-refresh logic on every tool change
     useEffect(() => {
@@ -53,53 +43,6 @@ export function ToolContent() {
 
     // Compute a loading boolean for tool data readiness
     const toolDataLoading = integrationsLoading || !session?.user?.id;
-
-    const fetchCalendarEvents = useCallback(async () => {
-        if (!session?.user?.id) {
-            setCalendarError('No user session');
-            return;
-        }
-        if (!activeProviders || activeProviders.length === 0) {
-            setCalendarError('No active calendar integrations found');
-            setCalendarEvents([]);
-            return;
-        }
-        setCalendarLoading(true);
-        setCalendarError(null);
-        try {
-            const response = await gatewayClient.getCalendarEvents(
-                activeProviders,
-                10,
-                new Date().toISOString().split('T')[0],
-                new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                undefined,
-                undefined,
-                effectiveTimezone // Pass the effective timezone
-            );
-            if (response.success && response.data) {
-                // The backend returns events array directly in data, not nested under data.events
-                const events = Array.isArray(response.data) ? response.data : [];
-                setCalendarEvents(events);
-            } else {
-                setCalendarError('Failed to fetch calendar events');
-            }
-        } catch (err) {
-            console.error('Calendar fetch error:', err);
-            setCalendarError(err instanceof Error ? err.message : 'Unknown error');
-        } finally {
-            setCalendarLoading(false);
-        }
-    }, [session?.user?.id, activeProviders, effectiveTimezone]);
-
-    // Fetch calendar events when integrations are loaded and user has active calendar integrations
-    useEffect(() => {
-        if (activeTool === 'calendar' && !integrationsLoading && session?.user?.id && activeProviders.length > 0) {
-            fetchCalendarEvents();
-        }
-    }, [activeTool, integrationsLoading, activeProviders, session?.user?.id, fetchCalendarEvents, effectiveTimezone]);
-
-    // Use activeProviders to check for active calendar integrations
-    const hasActiveCalendarIntegration = activeProviders.length > 0;
 
     // Meetings dashboard state and logic
     const [polls, setPolls] = useState<MeetingPoll[]>([]);
@@ -139,86 +82,7 @@ export function ToolContent() {
     const renderToolContent = () => {
         switch (activeTool) {
             case 'calendar':
-                return (
-                    <div className="p-8">
-                        <div className="flex items-center justify-between mb-6">
-                            <h1 className="text-3xl font-bold">Calendar</h1>
-                            <Button onClick={fetchCalendarEvents} disabled={calendarLoading}>
-                                {calendarLoading ? 'Loading...' : 'Refresh'}
-                            </Button>
-                        </div>
-
-                        {/* Integration Status Warning */}
-                        {!integrationsLoading && !hasActiveCalendarIntegration && (
-                            <Alert className="mb-6 border-amber-200 bg-amber-50">
-                                <AlertCircle className="h-4 w-4 text-amber-600" />
-                                <AlertDescription className="text-amber-800">
-                                    <div className="flex items-center justify-between">
-                                        <span>
-                                            No active calendar integration found. Connect your Google Calendar or Microsoft Outlook to view your events.
-                                        </span>
-                                        <Link
-                                            href="/settings?page=integrations"
-                                            className="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 font-medium"
-                                        >
-                                            <span>Go to Integrations</span>
-                                            <ExternalLink className="h-3 w-3" />
-                                        </Link>
-                                    </div>
-                                </AlertDescription>
-                            </Alert>
-                        )}
-
-                        {calendarError && (
-                            <Card className="mb-6">
-                                <CardContent className="pt-6">
-                                    <div className="p-3 bg-red-100 border border-red-300 rounded text-red-700">
-                                        Error: {calendarError}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )}
-
-                        {calendarLoading && (
-                            <Card>
-                                <CardContent className="pt-6">
-                                    <div className="flex items-center justify-center py-8">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
-                                        <span className="ml-3">Loading calendar events...</span>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )}
-
-                        {!calendarLoading && calendarEvents.length === 0 && !calendarError && hasActiveCalendarIntegration && (
-                            <Card>
-                                <CardContent className="pt-6">
-                                    <div className="text-center py-8 text-muted-foreground">
-                                        <p>No calendar events found for the next 7 days.</p>
-                                        <Button
-                                            variant="outline"
-                                            className="mt-4"
-                                            onClick={fetchCalendarEvents}
-                                        >
-                                            Try Again
-                                        </Button>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )}
-
-                        {!calendarLoading && calendarEvents.length > 0 && (
-                            <div className="space-y-4">
-                                <div className="text-sm text-muted-foreground">
-                                    Found {calendarEvents.length} events for the next 7 days
-                                </div>
-                                {calendarEvents.map((event) => (
-                                    <CalendarEventItem key={event.id} event={event} effectiveTimezone={effectiveTimezone} />
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                );
+                return <CalendarView toolDataLoading={toolDataLoading} activeTool={activeTool} />;
             case 'email':
                 return <EmailView toolDataLoading={toolDataLoading} activeTool={activeTool} />;
             case 'documents':
