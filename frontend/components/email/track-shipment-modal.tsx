@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useShipmentDetection } from '@/hooks/use-shipment-detection';
-import { useShipmentDataCollectionConsent } from '@/hooks/use-user-preferences';
+import { useShipmentDataCollectionConsent } from '@/contexts/settings-context';
 import { DataCollectionRequest, shipmentsClient } from '@/lib/shipments-client';
 import { EmailMessage } from '@/types/office-service';
 import { CheckCircle, Info, Loader2, Package, Truck } from 'lucide-react';
