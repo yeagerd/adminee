@@ -1,5 +1,7 @@
+import { Button } from '@/components/ui/button';
 import { EmailMessage } from '@/types/office-service';
-import React from 'react';
+import { Download } from 'lucide-react';
+import React, { useState } from 'react';
 import AISummary from './ai-summary';
 
 interface EmailCardProps {
@@ -7,6 +9,44 @@ interface EmailCardProps {
 }
 
 const EmailCard: React.FC<EmailCardProps> = ({ email }) => {
+    const [isDownloading, setIsDownloading] = useState(false);
+
+    const handleDownload = async () => {
+        setIsDownloading(true);
+        try {
+            // Create a test data object that mimics the API format
+            const testData = {
+                provider: email.provider,
+                date: email.date,
+                subject: email.subject,
+                sender: email.from_address?.email || '',
+                body_data: {
+                    contentType: email.body_html ? "HTML" : "Text",
+                    content: email.body_html || email.body_text || ""
+                }
+            };
+
+            // Create and download the file
+            const blob = new Blob([JSON.stringify(testData, null, 2)], {
+                type: 'application/json'
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `email_test_${email.id}_${Date.now()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+        } catch (error) {
+            console.error('Failed to download email:', error);
+            alert('Failed to download email. Please try again.');
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
     // Placeholder logic for flags (customize as needed)
     // const isHighPriority = email.labels?.includes('important');
     // const hasCalendarEvent = false; // Not available in EmailMessage
@@ -19,7 +59,19 @@ const EmailCard: React.FC<EmailCardProps> = ({ email }) => {
                     {/* {isHighPriority && <span className="text-red-500 font-bold">! </span>} */}
                     <span className="font-medium">{email.subject || '(No subject)'}</span>
                 </div>
-                <span className="text-xs text-muted-foreground">{new Date(email.date).toLocaleString()}</span>
+                <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">{new Date(email.date).toLocaleString()}</span>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleDownload}
+                        disabled={isDownloading}
+                        title="Download for testing"
+                        className="h-8 w-8 p-0"
+                    >
+                        <Download className="h-4 w-4" />
+                    </Button>
+                </div>
             </div>
             <div className="mt-1 text-sm text-muted-foreground">From: {email.from_address?.name || email.from_address?.email || 'Unknown'}</div>
             <div className="mt-1 text-sm text-muted-foreground">To: {email.to_addresses.map(addr => addr.name || addr.email).join(', ')}</div>
