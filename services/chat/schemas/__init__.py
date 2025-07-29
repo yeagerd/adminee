@@ -1,1 +1,1 @@
-# Chat service schemas package 
+# Chat service schemas package

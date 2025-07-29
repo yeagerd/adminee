@@ -142,8 +142,10 @@ class CalendarAgent(FunctionAgent):
             if not time_zone:
                 time_zone = user_timezone  # Use user's preferred timezone
 
-            logger.info(f"CalendarAgent: Calling get_calendar_events - user_id: {user_id}, start_date: {start_date}, end_date: {end_date}, time_zone: {time_zone}, providers: {providers}")
-            
+            logger.info(
+                f"CalendarAgent: Calling get_calendar_events - user_id: {user_id}, start_date: {start_date}, end_date: {end_date}, time_zone: {time_zone}, providers: {providers}"
+            )
+
             result = get_calendar_events(
                 user_id=user_id,
                 start_date=start_date,
@@ -151,9 +153,11 @@ class CalendarAgent(FunctionAgent):
                 time_zone=time_zone,
                 providers=providers,
             )
-            
-            logger.info(f"CalendarAgent: get_calendar_events result - user_id: {user_id}, has_error: {'error' in result}, events_count: {len(result.get('events', [])) if 'events' in result else 0}")
-            
+
+            logger.info(
+                f"CalendarAgent: get_calendar_events result - user_id: {user_id}, has_error: {'error' in result}, events_count: {len(result.get('events', [])) if 'events' in result else 0}"
+            )
+
             return result
 
         # Calendar events retrieval tool

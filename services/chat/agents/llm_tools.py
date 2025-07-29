@@ -6,12 +6,12 @@ from llama_index.core.tools import FunctionTool
 from llama_index.core.tools.types import ToolOutput
 from pydantic import ValidationError as PydanticValidationError
 
-from services.chat.settings import get_settings
 from services.chat.schemas.office_responses import (
+    CalendarToolResponse,
     OfficeServiceCalendarResponse,
     OfficeServiceErrorResponse,
-    CalendarToolResponse,
 )
+from services.chat.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +85,7 @@ def get_calendar_events(
 ) -> Dict[str, Any]:
     # Use service-to-service authentication
     headers = {"Content-Type": "application/json"}
-    
+
     # Add logging to debug API key issue
     api_key = get_settings().api_chat_office_key
     if not api_key:
@@ -93,8 +93,10 @@ def get_calendar_events(
         return CalendarToolResponse(
             error="Could not retrieve calendar events due to an internal server error"
         ).model_dump()
-    
-    logger.info(f"Making calendar request to office service - user_id: {user_id}, providers: {providers}")
+
+    logger.info(
+        f"Making calendar request to office service - user_id: {user_id}, providers: {providers}"
+    )
     headers["X-API-Key"] = api_key  # type: ignore[assignment]
     headers["X-User-Id"] = user_id  # Add user_id as header, not as query param
 
@@ -113,9 +115,13 @@ def get_calendar_events(
         available_providers = get_user_available_providers(user_id)
         if available_providers:
             params["providers"] = available_providers
-            logger.info(f"Using available providers for calendar request - user_id: {user_id}, providers: {available_providers}")
+            logger.info(
+                f"Using available providers for calendar request - user_id: {user_id}, providers: {available_providers}"
+            )
         else:
-            logger.error(f"No calendar integrations available for user - user_id: {user_id}")
+            logger.error(
+                f"No calendar integrations available for user - user_id: {user_id}"
+            )
             return CalendarToolResponse(
                 error="No calendar integrations available. Please connect Google or Microsoft calendar first."
             ).model_dump()
@@ -134,38 +140,54 @@ def get_calendar_events(
         )
         response.raise_for_status()
         data = response.json()
-        
-        logger.info(f"Office service response received - user_id: {user_id}, status: {response.status_code}")
-        logger.info(f"Office service response data structure - user_id: {user_id}, keys: {list(data.keys()) if isinstance(data, dict) else 'not a dict'}")
+
+        logger.info(
+            f"Office service response received - user_id: {user_id}, status: {response.status_code}"
+        )
+        logger.info(
+            f"Office service response data structure - user_id: {user_id}, keys: {list(data.keys()) if isinstance(data, dict) else 'not a dict'}"
+        )
 
         # Validate response using Pydantic models
         try:
             if data.get("success", False):
                 office_response = OfficeServiceCalendarResponse(**data)
-                logger.info(f"Successfully validated office service response - user_id: {user_id}")
+                logger.info(
+                    f"Successfully validated office service response - user_id: {user_id}"
+                )
             else:
                 # Handle error response
                 error_response = OfficeServiceErrorResponse(**data)
-                logger.error(f"Office service returned error - user_id: {user_id}, error: {error_response.error}")
+                logger.error(
+                    f"Office service returned error - user_id: {user_id}, error: {error_response.error}"
+                )
                 return CalendarToolResponse(
                     error=f"Office service error: {error_response.error.get('message', 'Unknown error')}"
                 ).model_dump()
         except PydanticValidationError as e:
-            logger.error(f"Failed to validate office service response - user_id: {user_id}, error: {e}")
+            logger.error(
+                f"Failed to validate office service response - user_id: {user_id}, error: {e}"
+            )
             return CalendarToolResponse(
                 error=f"Invalid response format from office service: {str(e)}"
             ).model_dump()
 
         # Extract events from the data field
         events_data = data.get("data", {})
-        logger.info(f"Events data structure - user_id: {user_id}, keys: {list(events_data.keys()) if isinstance(events_data, dict) else 'not a dict'}")
-        
+        logger.info(
+            f"Events data structure - user_id: {user_id}, keys: {list(events_data.keys()) if isinstance(events_data, dict) else 'not a dict'}"
+        )
+
         # Extract events using the validated Pydantic model
         try:
             events = office_response.get_events()
-            logger.info(f"Successfully extracted {len(events)} events - user_id: {user_id}")
+            logger.info(
+                f"Successfully extracted {len(events)} events - user_id: {user_id}"
+            )
         except ValueError as e:
-            logger.error(f"Failed to extract events from office response - user_id: {user_id}, error: {e}")
+            logger.error(
+                f"Failed to extract events from office response - user_id: {user_id}, error: {e}"
+            )
             return CalendarToolResponse(
                 error=f"Failed to extract events from office response: {str(e)}"
             ).model_dump()
@@ -179,18 +201,24 @@ def get_calendar_events(
             error_messages = [
                 f"{provider}: {error}" for provider, error in provider_errors.items()
             ]
-            logger.error(f"All calendar providers failed - user_id: {user_id}, errors: {error_messages}")
+            logger.error(
+                f"All calendar providers failed - user_id: {user_id}, errors: {error_messages}"
+            )
             return CalendarToolResponse(
                 error=f"Calendar access failed - {'; '.join(error_messages)}"
             ).model_dump()
         elif provider_errors:
             # Some providers failed, but we have data from others
             # Log warning but continue with available data
-            logger.warning(f"Some calendar providers failed - user_id: {user_id}, errors: {provider_errors}")
+            logger.warning(
+                f"Some calendar providers failed - user_id: {user_id}, errors: {provider_errors}"
+            )
 
         # Format event times for better display
-        logger.info(f"Raw events array - user_id: {user_id}, count: {len(events)}, type: {type(events)}")
-        
+        logger.info(
+            f"Raw events array - user_id: {user_id}, count: {len(events)}, type: {type(events)}"
+        )
+
         # Convert CalendarEvent objects to dicts for the LLM
         events_dicts = []
         for event in events:
@@ -202,20 +230,28 @@ def get_calendar_events(
                 )
             events_dicts.append(event_dict)
 
-        logger.info(f"Successfully retrieved {len(events)} calendar events - user_id: {user_id}")
-        
+        logger.info(
+            f"Successfully retrieved {len(events)} calendar events - user_id: {user_id}"
+        )
+
         # Return validated response
         return CalendarToolResponse(events=events_dicts).model_dump()
     except requests.Timeout:
         logger.error(f"Office service request timed out - user_id: {user_id}")
-        return CalendarToolResponse(error="Request to office-service timed out.").model_dump()
+        return CalendarToolResponse(
+            error="Request to office-service timed out."
+        ).model_dump()
     except requests.HTTPError as e:
-        logger.error(f"Office service HTTP error - user_id: {user_id}, error: {str(e)}, response: {e.response.text if e.response else 'No response'}")
+        logger.error(
+            f"Office service HTTP error - user_id: {user_id}, error: {str(e)}, response: {e.response.text if e.response else 'No response'}"
+        )
         return CalendarToolResponse(
             error=f"HTTP error: {str(e)} - Response: {e.response.text if e.response else 'No response'}"
         ).model_dump()
     except Exception as e:
-        logger.error(f"Unexpected error in calendar events - user_id: {user_id}, error: {str(e)}")
+        logger.error(
+            f"Unexpected error in calendar events - user_id: {user_id}, error: {str(e)}"
+        )
         return CalendarToolResponse(error=f"Unexpected error: {str(e)}").model_dump()
 
 
@@ -239,8 +275,10 @@ def get_user_available_providers(user_id: str) -> List[str]:
         headers["X-API-Key"] = api_key  # type: ignore[assignment]
 
         user_service_url = get_settings().user_service_url
-        logger.info(f"Fetching user integrations - user_id: {user_id}, url: {user_service_url}")
-        
+        logger.info(
+            f"Fetching user integrations - user_id: {user_id}, url: {user_service_url}"
+        )
+
         response = requests.get(
             f"{user_service_url}/v1/internal/users/{user_id}/integrations",
             headers=headers,
@@ -261,14 +299,20 @@ def get_user_available_providers(user_id: str) -> List[str]:
                 if status == "active" and provider in ["google", "microsoft"]:
                     available_providers.append(provider)
 
-            logger.info(f"Found {len(available_providers)} available calendar providers for user {user_id}: {available_providers}")
+            logger.info(
+                f"Found {len(available_providers)} available calendar providers for user {user_id}: {available_providers}"
+            )
             return available_providers
         else:
-            logger.warning(f"Could not fetch user integrations - user_id: {user_id}, status: {response.status_code}")
+            logger.warning(
+                f"Could not fetch user integrations - user_id: {user_id}, status: {response.status_code}"
+            )
             return []
 
     except Exception as e:
-        logger.error(f"Error fetching user integrations - user_id: {user_id}, error: {str(e)}")
+        logger.error(
+            f"Error fetching user integrations - user_id: {user_id}, error: {str(e)}"
+        )
         return []
 
 

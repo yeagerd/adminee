@@ -65,7 +65,10 @@ def patch_chat_settings_singleton():
 
 def test_get_calendar_events_success(mock_requests, monkeypatch):
     # setup_chat_settings_env(monkeypatch) # Removed
+    from datetime import datetime, timezone
+
     from services.chat.agents.llm_tools import get_calendar_events
+    from services.office.schemas import CalendarEvent, Provider
 
     def mock_get(*args, **kwargs):
         url = args[0] if args else ""
@@ -82,35 +85,65 @@ def test_get_calendar_events_success(mock_requests, monkeypatch):
                         }
                     ],
                     "total": 1,
-                    "active_count": 1,
-                    "error_count": 0,
+                },
+                200,
+            )
+        elif "calendar/events" in url:
+            # Create proper CalendarEvent objects
+            event1 = CalendarEvent(
+                id="google_event_1",
+                calendar_id="google_primary",
+                title="Daily Standup",
+                description=None,
+                start_time=datetime(2025, 6, 20, 17, 0, 0, tzinfo=timezone.utc),
+                end_time=datetime(2025, 6, 20, 18, 0, 0, tzinfo=timezone.utc),
+                all_day=False,
+                location=None,
+                attendees=[],
+                provider=Provider.GOOGLE,
+                provider_event_id="google_event_1",
+                account_email="test@example.com",
+                calendar_name="Primary Calendar",
+                created_at=datetime(2025, 6, 20, 16, 0, 0, tzinfo=timezone.utc),
+                updated_at=datetime(2025, 6, 20, 16, 0, 0, tzinfo=timezone.utc),
+            )
+            event2 = CalendarEvent(
+                id="google_event_2",
+                calendar_id="google_primary",
+                title="Team Meeting",
+                description="Weekly team sync",
+                start_time=datetime(2025, 6, 21, 14, 0, 0, tzinfo=timezone.utc),
+                end_time=datetime(2025, 6, 21, 15, 0, 0, tzinfo=timezone.utc),
+                all_day=False,
+                location="Conference Room A",
+                attendees=[],
+                provider=Provider.GOOGLE,
+                provider_event_id="google_event_2",
+                account_email="test@example.com",
+                calendar_name="Primary Calendar",
+                created_at=datetime(2025, 6, 20, 16, 0, 0, tzinfo=timezone.utc),
+                updated_at=datetime(2025, 6, 20, 16, 0, 0, tzinfo=timezone.utc),
+            )
+            return MockResponse(
+                {
+                    "success": True,
+                    "request_id": "test-request-id",
+                    "data": {"events": [event1, event2]},
                 },
                 200,
             )
         else:
-            return MockResponse(
-                {
-                    "success": True,
-                    "data": {
-                        "events": [{"id": "1", "title": "Meeting"}],
-                        "total_count": 1,
-                        "providers_used": ["google"],
-                        "provider_errors": None,
-                    },
-                },
-                200,
-            )
+            return MockResponse({"error": "Not found"}, 404)
 
+    # Set the side_effect on the mock
     mock_requests.side_effect = mock_get
-    result = get_calendar_events(
-        "user123",
-        start_date="2025-06-05",
-        end_date="2025-06-06",
-        time_zone="UTC",
-        providers="google",
-    )
+
+    result = get_calendar_events("user123")
+    assert result is not None
     assert "events" in result
-    assert result["events"][0]["title"] == "Meeting"
+    assert len(result["events"]) == 2
+    assert result["events"][0]["title"] == "Daily Standup"
+    assert result["events"][1]["title"] == "Team Meeting"
 
 
 def test_get_calendar_events_malformed(mock_requests, monkeypatch):
@@ -132,18 +165,37 @@ def test_get_calendar_events_malformed(mock_requests, monkeypatch):
                         }
                     ],
                     "total": 1,
-                    "active_count": 1,
-                    "error_count": 0,
+                },
+                200,
+            )
+        elif "calendar/events" in url:
+            # Return malformed response
+            return MockResponse(
+                {
+                    "success": True,
+                    "request_id": "test-request-id",
+                    "data": {
+                        "events": [
+                            {
+                                "id": "google_event_1",
+                                "title": "Daily Standup",
+                                # Missing required fields
+                            }
+                        ]
+                    },
                 },
                 200,
             )
         else:
-            return MockResponse({"success": True, "data": {"bad": "data"}}, 200)
+            return MockResponse({"error": "Not found"}, 404)
 
+    # Set the side_effect on the mock
     mock_requests.side_effect = mock_get
+
     result = get_calendar_events("user123")
+    assert result is not None
     assert "error" in result
-    assert "Malformed" in result["error"]
+    assert "validation" in result["error"].lower()
 
 
 def test_get_calendar_events_timeout(mock_requests, monkeypatch):
