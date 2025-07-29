@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 class LabelOut(BaseModel):
     id: int
+    user_id: str
     name: str
     color: str
     created_at: datetime
@@ -17,6 +18,7 @@ class LabelOut(BaseModel):
 
 class PackageOut(BaseModel):
     id: int
+    user_id: str
     tracking_number: str
     carrier: str
     status: str
@@ -33,6 +35,7 @@ class PackageOut(BaseModel):
 
 
 class PackageCreate(BaseModel):
+    user_id: str
     tracking_number: str
     carrier: str
     status: Optional[str] = "pending"
@@ -74,6 +77,7 @@ class TrackingEventCreate(BaseModel):
 
 
 class LabelCreate(BaseModel):
+    user_id: str
     name: str
     color: Optional[str] = "#3B82F6"
 

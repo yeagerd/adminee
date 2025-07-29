@@ -517,11 +517,11 @@ Implement a shipment tracking feature that allows users to track packages direct
 - Add proper error handling for unauthorized access
 
 **Acceptance Criteria:**
-- [ ] All package endpoints require user authentication
-- [ ] User ownership of packages is validated
-- [ ] User ownership of labels is validated
-- [ ] Carrier configurations are properly secured
-- [ ] Proper error responses for unauthorized access
+- [x] All package endpoints require user authentication
+- [x] User ownership of packages is validated
+- [x] User ownership of labels is validated
+- [x] Carrier configurations are properly secured
+- [x] Proper error responses for unauthorized access
 
 ### Task 7.5: Add User Context to Package Models
 **Files:** `services/shipments/models/`, `services/shipments/database.py`
