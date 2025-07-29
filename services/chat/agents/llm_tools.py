@@ -72,6 +72,7 @@ def get_calendar_events(
     end_date: str | None = None,
     time_zone: str | None = None,
     providers: str | None = None,
+    no_cache: bool | None = None,
 ) -> Dict[str, Any]:
     # Use service-to-service authentication
     headers = {"Content-Type": "application/json"}
@@ -89,6 +90,8 @@ def get_calendar_events(
         params["end_date"] = end_date
     if time_zone:
         params["time_zone"] = time_zone
+    if no_cache is not None:
+        params["no_cache"] = str(no_cache).lower()
 
     # If no providers specified, get user's available integrations
     if not providers:
