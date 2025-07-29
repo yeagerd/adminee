@@ -36,6 +36,9 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
     const { loading: integrationsLoading, activeProviders } = useIntegrations();
     const { effectiveTimezone } = useUserPreferences();
 
+    // Debug timezone
+    console.log('CalendarGridView effectiveTimezone:', effectiveTimezone);
+
     // Calculate date range based on view type
     const dateRange = useMemo(() => {
         const start = new Date(currentDate);
@@ -85,21 +88,18 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
         const slots: TimeSlot[] = [];
         for (let hour = 6; hour <= 22; hour++) {
             for (let minute = 0; minute < 60; minute += 30) {
-                const time = new Date();
-                time.setHours(hour, minute, 0, 0);
+                // Create a simple time string in the user's timezone
+                const timeString = `${hour}:${minute.toString().padStart(2, '0')}`;
+                const time = DateTime.fromFormat(timeString, 'H:mm', { zone: effectiveTimezone });
                 slots.push({
                     hour,
                     minute,
-                    time: time.toLocaleTimeString('en-US', {
-                        hour: 'numeric',
-                        minute: '2-digit',
-                        hour12: true
-                    })
+                    time: time.toFormat('h:mm a')
                 });
             }
         }
         return slots;
-    }, []);
+    }, [effectiveTimezone]);
 
     // Generate days for the current view
     const days = useMemo(() => {
@@ -404,10 +404,12 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
                                 <div key={dayIndex} className="border-r relative">
                                     {/* Current time indicator */}
                                     {(() => {
-                                        const now = new Date();
-                                        const today = new Date();
-                                        if (day.toDateString() === today.toDateString()) {
-                                            const currentHour = now.getHours() + now.getMinutes() / 60;
+                                        const now = DateTime.now().setZone(effectiveTimezone);
+                                        const today = DateTime.now().setZone(effectiveTimezone);
+                                        const dayDate = DateTime.fromJSDate(day).setZone(effectiveTimezone);
+
+                                        if (dayDate.toFormat('yyyy-MM-dd') === today.toFormat('yyyy-MM-dd')) {
+                                            const currentHour = now.hour + now.minute / 60;
                                             const gridStartHour = 6;
                                             const gridEndHour = 22;
                                             if (currentHour >= gridStartHour && currentHour <= gridEndHour) {
