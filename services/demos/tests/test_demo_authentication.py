@@ -159,7 +159,6 @@ class TestDemoAuthentication:
             patch("httpx.AsyncClient") as mock_client,
             patch("services.demos.chat.create_nextauth_jwt_for_demo") as mock_jwt,
         ):
-
             mock_jwt.return_value = "mock_jwt_token"
             mock_http_client = mock_client.return_value.__aenter__.return_value
 
@@ -228,7 +227,6 @@ class TestDemoAuthentication:
             patch("httpx.AsyncClient") as mock_client,
             patch("services.demos.chat.create_nextauth_jwt_for_demo") as mock_jwt,
         ):
-
             mock_jwt.return_value = "mock_jwt_token"
             mock_http_client = mock_client.return_value.__aenter__.return_value
 

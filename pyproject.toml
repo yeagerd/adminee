@@ -36,6 +36,7 @@ members = [
     "services/chat",
     "services/user",
     "services/office",
+    "services/email_sync",
     "services/meetings",
     # Add other services as needed
 ]
