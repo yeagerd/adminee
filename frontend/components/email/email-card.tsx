@@ -1,5 +1,4 @@
 import { Button } from '@/components/ui/button';
-import gatewayClient from '@/lib/gateway-client';
 import { EmailMessage } from '@/types/office-service';
 import { Download } from 'lucide-react';
 import React, { useState } from 'react';
@@ -15,27 +14,15 @@ const EmailCard: React.FC<EmailCardProps> = ({ email }) => {
     const handleDownload = async () => {
         setIsDownloading(true);
         try {
-            // Fetch the full email with body content
-            const response = await gatewayClient.request(`/api/v1/email/messages/${email.id}?include_body=true`);
-
             // Create a test data object that mimics the API format
             const testData = {
                 provider: email.provider,
+                date: email.date,
                 subject: email.subject,
                 sender: email.from_address?.email || '',
                 body_data: {
                     contentType: email.body_html ? "HTML" : "Text",
                     content: email.body_html || email.body_text || ""
-                },
-                expected_data: {
-                    // These would be filled in by the user after testing
-                    carrier: "UNKNOWN",
-                    tracking_number: "",
-                    order_number: "",
-                    tracking_link: "",
-                    recipient: "",
-                    estimated_delivery: "",
-                    status: ""
                 }
             };
 
