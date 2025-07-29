@@ -1,4 +1,5 @@
 import { EmailMessage } from '@/types/office-service';
+import { gatewayClient } from './gateway-client';
 
 // Types for shipments service
 export interface EmailParseRequest {
@@ -72,42 +73,6 @@ export interface DataCollectionResponse {
 }
 
 class ShipmentsClient {
-    private baseUrl: string;
-
-    constructor() {
-        // Use the gateway URL for now, will be updated when gateway is configured
-        this.baseUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || 'http://localhost:3001';
-    }
-
-    private async makeRequest<T>(
-        endpoint: string,
-        options: RequestInit = {}
-    ): Promise<T> {
-        const url = `${this.baseUrl}/api/v1/shipments${endpoint}`;
-
-        const defaultOptions: RequestInit = {
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers,
-            },
-            credentials: 'include', // Include cookies for authentication
-        };
-
-        const response = await fetch(url, {
-            ...defaultOptions,
-            ...options,
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(
-                errorData.detail || `HTTP error! status: ${response.status}`
-            );
-        }
-
-        return response.json();
-    }
-
     /**
      * Parse email content to detect shipment information
      */
@@ -119,72 +84,56 @@ class ShipmentsClient {
             content_type: email.body_html ? 'html' : 'text',
         };
 
-        return this.makeRequest<EmailParseResponse>('/email-parser/parse', {
-            method: 'POST',
-            body: JSON.stringify(request),
-        });
+        return gatewayClient.parseEmail(request);
     }
 
     /**
      * Create a new package tracking entry
      */
     async createPackage(packageData: PackageCreateRequest): Promise<PackageResponse> {
-        return this.makeRequest<PackageResponse>('/packages', {
-            method: 'POST',
-            body: JSON.stringify(packageData),
-        });
+        return gatewayClient.createPackage(packageData);
     }
 
     /**
      * Submit data collection for training improvements
      */
     async collectData(data: DataCollectionRequest): Promise<DataCollectionResponse> {
-        return this.makeRequest<DataCollectionResponse>('/data-collection/collect', {
-            method: 'POST',
-            body: JSON.stringify(data),
-        });
+        return gatewayClient.collectShipmentData(data);
     }
 
     /**
      * Get all packages for the current user
      */
     async getPackages(): Promise<{ data: PackageResponse[]; pagination: any }> {
-        return this.makeRequest<{ data: PackageResponse[]; pagination: any }>('/packages');
+        return gatewayClient.getPackages();
     }
 
     /**
      * Get a specific package by ID
      */
     async getPackage(id: number): Promise<PackageResponse> {
-        return this.makeRequest<PackageResponse>(`/packages/${id}`);
+        return gatewayClient.getPackage(id);
     }
 
     /**
      * Update a package
      */
     async updatePackage(id: number, packageData: Partial<PackageCreateRequest>): Promise<PackageResponse> {
-        return this.makeRequest<PackageResponse>(`/packages/${id}`, {
-            method: 'PUT',
-            body: JSON.stringify(packageData),
-        });
+        return gatewayClient.updatePackage(id, packageData);
     }
 
     /**
      * Delete a package
      */
     async deletePackage(id: number): Promise<void> {
-        return this.makeRequest<void>(`/packages/${id}`, {
-            method: 'DELETE',
-        });
+        return gatewayClient.deletePackage(id);
     }
 
     /**
      * Refresh tracking information for a package
      */
     async refreshPackage(id: number): Promise<any> {
-        return this.makeRequest<any>(`/packages/${id}/refresh`, {
-            method: 'POST',
-        });
+        return gatewayClient.refreshPackage(id);
     }
 }
 

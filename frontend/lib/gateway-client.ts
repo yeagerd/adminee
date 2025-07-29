@@ -360,6 +360,74 @@ export class GatewayClient {
             body: { email, name },
         });
     }
+
+    // Shipments Service
+    async parseEmail(emailData: { subject: string; sender: string; body: string; content_type: string }) {
+        return this.request('/api/v1/email-parser/parse', {
+            method: 'POST',
+            body: emailData,
+        });
+    }
+
+    async createPackage(packageData: {
+        tracking_number: string;
+        carrier: string;
+        status: string;
+        recipient_name?: string;
+        shipper_name?: string;
+        package_description?: string;
+        order_number?: string;
+        tracking_link?: string;
+        email_message_id?: string;
+    }) {
+        return this.request('/api/v1/packages', {
+            method: 'POST',
+            body: packageData,
+        });
+    }
+
+    async getPackages() {
+        return this.request('/api/v1/packages');
+    }
+
+    async getPackage(id: number) {
+        return this.request(`/api/v1/packages/${id}`);
+    }
+
+    async updatePackage(id: number, packageData: Record<string, unknown>) {
+        return this.request(`/api/v1/packages/${id}`, {
+            method: 'PUT',
+            body: packageData,
+        });
+    }
+
+    async deletePackage(id: number) {
+        return this.request(`/api/v1/packages/${id}`, {
+            method: 'DELETE',
+        });
+    }
+
+    async refreshPackage(id: number) {
+        return this.request(`/api/v1/packages/${id}/refresh`, {
+            method: 'POST',
+        });
+    }
+
+    async collectShipmentData(data: {
+        user_id: string;
+        email_message_id: string;
+        original_email_data: Record<string, unknown>;
+        auto_detected_data: Record<string, unknown>;
+        user_corrected_data: Record<string, unknown>;
+        detection_confidence: number;
+        correction_reason?: string;
+        consent_given: boolean;
+    }) {
+        return this.request('/api/v1/data-collection/collect', {
+            method: 'POST',
+            body: data,
+        });
+    }
 }
 
 // Export singleton instance

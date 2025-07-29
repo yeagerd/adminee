@@ -420,10 +420,10 @@ Implement a shipment tracking feature that allows users to track packages direct
 - Maintain consistency with existing patterns
 
 **Acceptance Criteria:**
-- [ ] New methods are available in gateway client
-- [ ] TypeScript types are complete
-- [ ] Error handling is consistent
-- [ ] No breaking changes to existing functionality
+- [x] New methods are available in gateway client
+- [x] TypeScript types are complete
+- [x] Error handling is consistent
+- [x] No breaking changes to existing functionality
 
 ## Implementation Timeline
 
