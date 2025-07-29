@@ -135,19 +135,30 @@ class CalendarAgent(FunctionAgent):
             providers: str | None = None,
         ) -> Any:
             if not user_id:
+                logger.error("User ID not available in calendar agent")
                 return {"error": "User ID not available in calendar agent"}
 
             # If no timezone specified, use the user's timezone preference
             if not time_zone:
                 time_zone = user_timezone  # Use user's preferred timezone
 
-            return get_calendar_events(
+            logger.info(
+                f"CalendarAgent: Calling get_calendar_events - user_id: {user_id}, start_date: {start_date}, end_date: {end_date}, time_zone: {time_zone}, providers: {providers}"
+            )
+
+            result = get_calendar_events(
                 user_id=user_id,
                 start_date=start_date,
                 end_date=end_date,
                 time_zone=time_zone,
                 providers=providers,
             )
+
+            logger.info(
+                f"CalendarAgent: get_calendar_events result - user_id: {user_id}, has_error: {'error' in result}, events_count: {len(result.get('events', [])) if 'events' in result else 0}"
+            )
+
+            return result
 
         # Calendar events retrieval tool
         get_calendar_events_tool = FunctionTool.from_defaults(
