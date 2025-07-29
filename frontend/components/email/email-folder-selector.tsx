@@ -1,72 +1,81 @@
+'use client';
+
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useIntegrations } from '@/contexts/integrations-context';
-import { Inbox, Mail, Menu, Send, Trash2 } from 'lucide-react';
-import React from 'react';
+import { gatewayClient } from '@/lib/gateway-client';
+import { EmailFolder } from '@/types/office-service';
+import { Archive, Inbox, Mail, Menu, Send, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
-export interface EmailFolder {
-    id: string;
-    name: string;
-    icon: React.ReactNode;
-    label: string;
-}
-
-const DEFAULT_FOLDERS: EmailFolder[] = [
-    {
-        id: 'inbox',
-        name: 'Inbox',
-        icon: <Inbox className="h-4 w-4" />,
-        label: 'inbox',
-    },
-    {
-        id: 'sent',
-        name: 'Sent',
-        icon: <Send className="h-4 w-4" />,
-        label: 'sent',
-    },
-    {
-        id: 'draft',
-        name: 'Drafts',
-        icon: <Mail className="h-4 w-4" />,
-        label: 'draft',
-    },
-    {
-        id: 'spam',
-        name: 'Spam',
-        icon: <Mail className="h-4 w-4" />,
-        label: 'spam',
-    },
-    {
-        id: 'trash',
-        name: 'Trash',
-        icon: <Trash2 className="h-4 w-4" />,
-        label: 'trash',
-    },
+// Fallback folders in case API fails
+const FALLBACK_FOLDERS: EmailFolder[] = [
+    { label: 'inbox', name: 'Inbox', provider: 'google', account_email: '', is_system: true },
+    { label: 'sent', name: 'Sent', provider: 'google', account_email: '', is_system: true },
+    { label: 'draft', name: 'Drafts', provider: 'google', account_email: '', is_system: true },
+    { label: 'spam', name: 'Spam', provider: 'google', account_email: '', is_system: true },
+    { label: 'trash', name: 'Trash', provider: 'google', account_email: '', is_system: true },
 ];
 
 interface EmailFolderSelectorProps {
     onFolderSelect: (folder: EmailFolder) => void;
-    customFolders?: EmailFolder[];
 }
 
-export default function EmailFolderSelector({
-    onFolderSelect,
-    customFolders = [],
-}: EmailFolderSelectorProps) {
-    const { integrations } = useIntegrations();
+export function EmailFolderSelector({ onFolderSelect }: EmailFolderSelectorProps) {
+    const { activeProviders } = useIntegrations();
+    const [folders, setFolders] = useState<EmailFolder[]>(FALLBACK_FOLDERS);
+    const [error, setError] = useState<string | null>(null);
 
-    // Check if user has Microsoft integration for custom folders
-    const hasMicrosoft = integrations.some(
-        integration => integration.provider === 'microsoft' && integration.status === 'active'
-    );
+    const fetchFolders = useCallback(async () => {
+        if (!activeProviders || activeProviders.length === 0) {
+            setFolders(FALLBACK_FOLDERS);
+            return;
+        }
 
-    const allFolders = [...DEFAULT_FOLDERS, ...customFolders];
+        setError(null);
+
+        try {
+            const response = await gatewayClient.getEmailFolders(activeProviders, true);
+            if (response.success && response.data?.folders) {
+                setFolders(response.data.folders);
+            } else {
+                console.warn('Failed to fetch folders, using fallback:', response);
+                setFolders(FALLBACK_FOLDERS);
+            }
+        } catch (err) {
+            console.error('Error fetching email folders:', err);
+            setError('Failed to load folders');
+            setFolders(FALLBACK_FOLDERS);
+        }
+    }, [activeProviders]);
+
+    useEffect(() => {
+        fetchFolders();
+    }, [fetchFolders]);
+
+    const getFolderIcon = (label: string) => {
+        switch (label) {
+            case 'inbox':
+                return <Inbox className="h-4 w-4" />;
+            case 'sent':
+                return <Send className="h-4 w-4" />;
+            case 'draft':
+                return <Mail className="h-4 w-4" />;
+            case 'spam':
+                return <Trash2 className="h-4 w-4" />;
+            case 'trash':
+                return <Trash2 className="h-4 w-4" />;
+            case 'archive':
+                return <Archive className="h-4 w-4" />;
+            default:
+                return <Mail className="h-4 w-4" />;
+        }
+    };
 
     return (
         <DropdownMenu>
@@ -76,28 +85,27 @@ export default function EmailFolderSelector({
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-56">
-                {allFolders.map((folder) => (
+                {folders.map((folder) => (
                     <DropdownMenuItem
-                        key={folder.id}
+                        key={folder.label}
                         onClick={() => onFolderSelect(folder)}
-                        className="flex items-center gap-2"
+                        className="flex items-center gap-2 cursor-pointer"
                     >
-                        {folder.icon}
-                        <span>{folder.name}</span>
+                        {getFolderIcon(folder.label)}
+                        <span className="flex-1">{folder.name}</span>
+                        {folder.message_count !== undefined && (
+                            <span className="text-xs text-muted-foreground">
+                                {folder.message_count}
+                            </span>
+                        )}
                     </DropdownMenuItem>
                 ))}
-
-                {hasMicrosoft && customFolders.length === 0 && (
-                    <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem disabled className="text-xs text-muted-foreground">
-                            Custom folders available for Microsoft accounts
-                        </DropdownMenuItem>
-                    </>
+                {error && (
+                    <div className="px-2 py-1 text-xs text-muted-foreground">
+                        {error}
+                    </div>
                 )}
             </DropdownMenuContent>
         </DropdownMenu>
     );
 }
-
-export { DEFAULT_FOLDERS };

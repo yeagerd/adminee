@@ -96,6 +96,16 @@ class GoogleAPIClient(BaseAPIClient):
         )
         return response.json()
 
+    async def get_labels(self) -> Dict[str, Any]:
+        """
+        Get list of Gmail labels.
+
+        Returns:
+            Dictionary containing labels list
+        """
+        response = await self.get("/gmail/v1/users/me/labels")
+        return response.json()
+
     # Google Calendar API methods
     async def get_calendar_list(self) -> Dict[str, Any]:
         """

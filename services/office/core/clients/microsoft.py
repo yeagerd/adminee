@@ -70,6 +70,42 @@ class MicrosoftAPIClient(BaseAPIClient):
         response = await self.get("/me/messages", params=params)
         return response.json()
 
+    async def get_messages_from_folder(
+        self,
+        folder_id: str,
+        top: int = 100,
+        skip: int = 0,
+        filter: Optional[str] = None,
+        search: Optional[str] = None,
+        order_by: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Get list of Outlook messages from a specific folder.
+
+        Args:
+            folder_id: ID of the folder to fetch messages from
+            top: Maximum number of messages to return
+            skip: Number of messages to skip (for pagination)
+            filter: OData filter expression
+            search: Search query
+            order_by: Order by expression
+
+        Returns:
+            Dictionary containing messages list and pagination info
+        """
+        params: Dict[str, Any] = {"$top": top, "$skip": skip}
+        if filter:
+            params["$filter"] = filter
+        if search:
+            params["$search"] = search
+        if order_by:
+            params["$orderby"] = order_by
+        else:
+            params["$orderby"] = "receivedDateTime desc"
+
+        response = await self.get(f"/me/mailFolders/{folder_id}/messages", params=params)
+        return response.json()
+
     async def get_message(
         self, message_id: str, select: Optional[str] = None
     ) -> Dict[str, Any]:

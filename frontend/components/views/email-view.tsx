@@ -1,13 +1,13 @@
+import EmailFilters from '@/components/email/email-filters';
+import { EmailFolderSelector } from '@/components/email/email-folder-selector';
+import EmailThread from '@/components/email/email-thread';
 import { useIntegrations } from '@/contexts/integrations-context';
 import { useDraftState } from '@/hooks/use-draft-state';
-import type { EmailMessage } from '@/types/office-service';
+import { gatewayClient } from '@/lib/gateway-client';
+import { EmailFolder, EmailMessage } from '@/types/office-service';
 import { RefreshCw } from 'lucide-react';
 import { getSession } from 'next-auth/react';
 import React, { useCallback, useEffect, useState } from 'react';
-import gatewayClient from '../../lib/gateway-client';
-import EmailFilters from '../email/email-filters';
-import EmailFolderSelector, { DEFAULT_FOLDERS, type EmailFolder } from '../email/email-folder-selector';
-import EmailThread from '../email/email-thread';
 
 const OpenDraftPaneButton: React.FC = () => {
     const { createNewDraft } = useDraftState();
@@ -35,7 +35,13 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [filters, setFilters] = useState<Record<string, unknown>>({});
-    const [selectedFolder, setSelectedFolder] = useState<EmailFolder>(DEFAULT_FOLDERS[0]); // Default to inbox
+    const [selectedFolder, setSelectedFolder] = useState<EmailFolder>({
+        label: 'inbox',
+        name: 'Inbox',
+        provider: 'google',
+        account_email: '',
+        is_system: true
+    }); // Default to inbox
     const { loading: integrationsLoading, activeProviders, hasExpiredButRefreshableTokens } = useIntegrations();
 
     const fetchEmails = useCallback(async (noCache = false) => {
@@ -49,13 +55,17 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
             if (!userId) throw new Error('No user id found in session');
 
             // Use the user's actual connected providers with no-cache flag and folder labels
-            // For inbox and sent, don't pass any labels since Microsoft doesn't categorize these properly
-            const labels = (selectedFolder.label === 'inbox' || selectedFolder.label === 'sent') ? undefined : [selectedFolder.label];
-            const emailsResp = await gatewayClient.getEmails(activeProviders, 50, 0, noCache, labels) as { data?: { messages?: EmailMessage[] } };
+            // For inbox, sent, and archive, don't pass any labels since Microsoft doesn't categorize these properly
+            const labels = (selectedFolder.label === 'inbox' || selectedFolder.label === 'sent' || selectedFolder.label === 'archive') ? undefined : [selectedFolder.label];
+
+            // For Microsoft, use folder_id for specific folders. For Google, use labels.
+            const folderId = selectedFolder.provider === 'microsoft' && selectedFolder.provider_folder_id ? selectedFolder.provider_folder_id : undefined;
+
+            const emailsResp = await gatewayClient.getEmails(activeProviders, 50, 0, noCache, labels, folderId) as { data?: { messages?: EmailMessage[] } };
 
             let messages = emailsResp.data?.messages || [];
 
-            // Apply client-side filtering for specific folders that need it
+            // Apply client-side filtering only for inbox and sent since we now use proper folder-specific fetching
             if (selectedFolder.label === 'inbox' || selectedFolder.label === 'sent') {
                 const session = await getSession();
                 const userEmail = session?.user?.email;
@@ -81,7 +91,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
         } catch (e: unknown) {
             setError((e && typeof e === 'object' && 'message' in e) ? (e as { message?: string }).message || 'Failed to load emails' : 'Failed to load emails');
         }
-    }, [activeProviders, selectedFolder.label]);
+    }, [activeProviders, selectedFolder.label, selectedFolder.provider, selectedFolder.provider_folder_id]);
 
     const handleRefresh = useCallback(async () => {
         setRefreshing(true);
