@@ -399,10 +399,10 @@ Implement a shipment tracking feature that allows users to track packages direct
 - Verify authentication middleware
 
 **Acceptance Criteria:**
-- [ ] Email parser endpoints are accessible through gateway
-- [ ] Authentication works correctly
-- [ ] Routing is properly configured
-- [ ] No breaking changes to existing functionality
+- [x] Email parser endpoints are accessible through gateway
+- [x] Authentication works correctly
+- [x] Routing is properly configured
+- [x] No breaking changes to existing functionality
 
 ### Task 6.3: Update Frontend API Client
 **File:** `frontend/lib/gateway-client.ts`

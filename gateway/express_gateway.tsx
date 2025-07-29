@@ -442,6 +442,8 @@ const serviceRoutes = {
     '/api/v1/files': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
     '/api/v1/drafts': process.env.CHAT_SERVICE_URL || 'http://127.0.0.1:8002',
     '/api/v1/packages': process.env.SHIPMENTS_SERVICE_URL || 'http://127.0.0.1:8004',
+    '/api/v1/email-parser': process.env.SHIPMENTS_SERVICE_URL || 'http://127.0.0.1:8004',
+    '/api/v1/data-collection': process.env.SHIPMENTS_SERVICE_URL || 'http://127.0.0.1:8004',
     '/api/v1/meetings': process.env.MEETINGS_SERVICE_URL || 'http://127.0.0.1:8005',
     '/api/v1/public/polls': process.env.MEETINGS_SERVICE_URL || 'http://127.0.0.1:8005',
 };
