@@ -98,11 +98,11 @@ Implement a shipment tracking feature that allows users to track packages direct
 - Include authentication and rate limiting
 
 **Acceptance Criteria:**
-- [ ] Endpoint accepts email subject, sender, and body
-- [ ] Returns structured tracking information
-- [ ] Handles various email formats correctly
-- [ ] Includes proper error responses
-- [ ] Performance is acceptable for real-time use
+- [x] Endpoint accepts email subject, sender, and body
+- [x] Returns structured tracking information
+- [x] Handles various email formats correctly
+- [x] Includes proper error responses
+- [x] Performance is acceptable for real-time use
 
 ### Task 2.2: Update Shipments Service Router
 **File:** `services/shipments/routers/__init__.py`
@@ -119,9 +119,9 @@ Implement a shipment tracking feature that allows users to track packages direct
 - Update tags for API documentation
 
 **Acceptance Criteria:**
-- [ ] Email parser endpoints are accessible via `/api/v1/email-parser/*`
-- [ ] Router is properly integrated with authentication
-- [ ] API documentation is updated
+- [x] Email parser endpoints are accessible via `/api/v1/email-parser/*`
+- [x] Router is properly integrated with authentication
+- [x] API documentation is updated
 
 ### Task 2.3: Create Request/Response Schemas
 **File:** `services/shipments/schemas/email_parser.py`
@@ -140,10 +140,10 @@ Implement a shipment tracking feature that allows users to track packages direct
 - Add proper field validation and descriptions
 
 **Acceptance Criteria:**
-- [ ] Schemas validate input data correctly
-- [ ] Response includes all necessary tracking fields
-- [ ] Documentation is clear and complete
-- [ ] Examples are provided for testing
+- [x] Schemas validate input data correctly
+- [x] Response includes all necessary tracking fields
+- [x] Documentation is clear and complete
+- [x] Examples are provided for testing
 
 ## Phase 3: Frontend Modal and Data Collection
 
