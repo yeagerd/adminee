@@ -541,10 +541,10 @@ Implement a shipment tracking feature that allows users to track packages direct
 - Ensure foreign key relationships are properly defined
 
 **Acceptance Criteria:**
-- [ ] All package models have user_id fields
-- [ ] Database constraints enforce user ownership
-- [ ] Proper indexes exist for user_id fields
-- [ ] Foreign key relationships are correctly defined
+- [x] All package models have user_id fields
+- [x] Database constraints enforce user ownership
+- [x] Proper indexes exist for user_id fields
+- [x] Foreign key relationships are correctly defined
 
 ### Task 7.6: Update API Key Configuration
 **File:** `services/shipments/service_auth.py`
