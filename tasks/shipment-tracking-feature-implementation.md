@@ -24,12 +24,12 @@ Implement a shipment tracking feature that allows users to track packages direct
 - Ensure the dropdown is properly positioned and doesn't overflow
 
 **Acceptance Criteria:**
-- [ ] Magic wand button appears in upper-right corner of each email card
-- [ ] Clicking the wand opens a dropdown menu
-- [ ] Dropdown contains "Download Email" and "Track Shipment" options
-- [ ] Download functionality works as before
-- [ ] Button is accessible with proper ARIA labels
-- [ ] Dropdown closes when clicking outside
+- [x] Magic wand button appears in upper-right corner of each email card
+- [x] Clicking the wand opens a dropdown menu
+- [x] Dropdown contains "Download Email" and "Track Shipment" options
+- [x] Download functionality works as before
+- [x] Button is accessible with proper ARIA labels
+- [x] Dropdown closes when clicking outside
 
 ### Task 1.2: Implement Shipment Detection Logic
 **File:** `frontend/hooks/use-shipment-detection.ts`
@@ -38,10 +38,11 @@ Implement a shipment tracking feature that allows users to track packages direct
 
 **Requirements:**
 - Create a custom hook for detecting shipment information in emails
-- Implement heuristics for detecting tracking numbers and shipment emails
 - Check for common shipment email patterns (amazon.com, ups.com, etc.)
 - Detect tracking numbers using regex patterns
-- Return detection status and confidence level
+    - Use learnings from services/shipments/email_parser.py in git branch "shipments-email-parsing"
+- Implement heuristics for detecting tracking numbers and shipment emails
+- Return detection status
 
 **Implementation Details:**
 - Create regex patterns for common tracking number formats
@@ -52,7 +53,6 @@ Implement a shipment tracking feature that allows users to track packages direct
 **Acceptance Criteria:**
 - [ ] Hook correctly identifies Amazon shipment emails
 - [ ] Hook detects UPS, FedEx, USPS tracking numbers
-- [ ] Hook provides confidence scores for detection
 - [ ] Hook handles edge cases gracefully
 - [ ] Performance is optimized for real-time use
 

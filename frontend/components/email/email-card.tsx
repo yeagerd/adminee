@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { EmailMessage } from '@/types/office-service';
-import { Download } from 'lucide-react';
+import { Download, Wand2, ChevronDown } from 'lucide-react';
 import React, { useState } from 'react';
 import AISummary from './ai-summary';
 
@@ -47,6 +48,11 @@ const EmailCard: React.FC<EmailCardProps> = ({ email }) => {
         }
     };
 
+    const handleTrackShipment = () => {
+        // TODO: Implement shipment tracking modal
+        console.log('Track shipment clicked for email:', email.id);
+    };
+
     // Placeholder logic for flags (customize as needed)
     // const isHighPriority = email.labels?.includes('important');
     // const hasCalendarEvent = false; // Not available in EmailMessage
@@ -61,16 +67,36 @@ const EmailCard: React.FC<EmailCardProps> = ({ email }) => {
                 </div>
                 <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground">{new Date(email.date).toLocaleString()}</span>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleDownload}
-                        disabled={isDownloading}
-                        title="Download for testing"
-                        className="h-8 w-8 p-0"
-                    >
-                        <Download className="h-4 w-4" />
-                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                title="Email actions"
+                                aria-label="Email actions menu"
+                            >
+                                <Wand2 className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem 
+                                onClick={handleDownload}
+                                disabled={isDownloading}
+                                className="flex items-center gap-2"
+                            >
+                                <Download className="h-4 w-4" />
+                                {isDownloading ? 'Downloading...' : 'Download Email'}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                                onClick={handleTrackShipment}
+                                className="flex items-center gap-2"
+                            >
+                                <Wand2 className="h-4 w-4" />
+                                Track Shipment
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </div>
             <div className="mt-1 text-sm text-muted-foreground">From: {email.from_address?.name || email.from_address?.email || 'Unknown'}</div>
