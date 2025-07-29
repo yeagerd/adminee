@@ -219,6 +219,7 @@ def get_emails(
     folder: str | None = None,
     max_results: int | None = None,
     providers: str | None = None,
+    no_cache: bool | None = None,
 ) -> Dict[str, Any]:
     # Use service-to-service authentication
     headers = {"Content-Type": "application/json"}
@@ -238,6 +239,8 @@ def get_emails(
         params["folder"] = folder
     if max_results:
         params["max_results"] = str(max_results)
+    if no_cache is not None:
+        params["no_cache"] = str(no_cache).lower()
     if providers:
         # Handle providers as comma-separated string or list
         if isinstance(providers, str):

@@ -78,6 +78,9 @@ async def get_email_messages(
     page_token: Optional[str] = Query(
         None, description="Pagination token for next page"
     ),
+    no_cache: bool = Query(
+        False, description="Bypass cache and fetch fresh data from providers"
+    ),
 ) -> EmailMessageList:
     """
     Get unified email messages from multiple providers.
@@ -134,12 +137,13 @@ async def get_email_messages(
             "labels": labels or [],
             "q": q or "",
             "page_token": page_token or "",
+            "no_cache": no_cache,
         }
         cache_key = generate_cache_key(user_id, "unified", "messages", cache_params)
 
         # Check cache first
         cached_result = await cache_manager.get_from_cache(cache_key)
-        if cached_result:
+        if cached_result and not no_cache:
             logger.info(f"[{request_id}] Cache hit for email messages")
             return EmailMessageList(
                 success=True, data=cached_result, cache_hit=True, request_id=request_id
