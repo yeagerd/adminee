@@ -19,6 +19,20 @@ class Settings(BaseSettings):
     celery_result_backend: str = Field(
         default="redis://localhost:6379/0", validation_alias="CELERY_RESULT_BACKEND"
     )
+    
+    # JWT Authentication settings (optional - for direct JWT token support)
+    jwt_verify_signature: bool = Field(
+        default=True, validation_alias="JWT_VERIFY_SIGNATURE"
+    )
+    nextauth_issuer: str = Field(
+        default="nextauth", validation_alias="NEXTAUTH_ISSUER"
+    )
+    nextauth_audience: str | None = Field(
+        default=None, validation_alias="NEXTAUTH_AUDIENCE"
+    )
+    nextauth_jwt_key: str | None = Field(
+        default=None, validation_alias="NEXTAUTH_JWT_KEY"
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"

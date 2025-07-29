@@ -446,11 +446,11 @@ Implement a shipment tracking feature that allows users to track packages direct
 - Follow the same patterns as user service authentication
 
 **Acceptance Criteria:**
-- [ ] User authentication middleware is implemented
-- [ ] Gateway header extraction works correctly
-- [ ] JWT token fallback works correctly
-- [ ] User ownership validation functions are available
-- [ ] Authentication follows established patterns
+- [x] User authentication middleware is implemented
+- [x] Gateway header extraction works correctly
+- [x] JWT token fallback works correctly
+- [x] User ownership validation functions are available
+- [x] Authentication follows established patterns
 
 ### Task 7.2: Secure Email Parser Endpoint
 **File:** `services/shipments/routers/email_parser.py`
