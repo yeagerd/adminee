@@ -84,7 +84,7 @@ class ShipmentsClient {
         options: RequestInit = {}
     ): Promise<T> {
         const url = `${this.baseUrl}/api/v1/shipments${endpoint}`;
-        
+
         const defaultOptions: RequestInit = {
             headers: {
                 'Content-Type': 'application/json',

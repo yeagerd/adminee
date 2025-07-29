@@ -1,13 +1,13 @@
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { toast } from '@/components/ui/use-toast';
+import { useShipmentDetection } from '@/hooks/use-shipment-detection';
+import { shipmentsClient } from '@/lib/shipments-client';
 import { EmailMessage } from '@/types/office-service';
-import { Download, Wand2, ChevronDown } from 'lucide-react';
+import { Download, Wand2 } from 'lucide-react';
 import React, { useState } from 'react';
 import AISummary from './ai-summary';
-import { useShipmentDetection } from '@/hooks/use-shipment-detection';
 import TrackShipmentModal, { PackageFormData } from './track-shipment-modal';
-import { shipmentsClient } from '@/lib/shipments-client';
-import { toast } from '@/components/ui/use-toast';
 
 interface EmailCardProps {
     email: EmailMessage;
@@ -72,9 +72,9 @@ const EmailCard: React.FC<EmailCardProps> = ({ email }) => {
 
             // Create package via API
             const createdPackage = await shipmentsClient.createPackage(packageDataWithEmail);
-            
+
             console.log('Package created successfully:', createdPackage);
-            
+
             // Show success toast
             toast({
                 title: "Shipment Tracked",
@@ -120,7 +120,7 @@ const EmailCard: React.FC<EmailCardProps> = ({ email }) => {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuItem 
+                                <DropdownMenuItem
                                     onClick={handleDownload}
                                     disabled={isDownloading}
                                     className="flex items-center gap-2"
@@ -128,13 +128,12 @@ const EmailCard: React.FC<EmailCardProps> = ({ email }) => {
                                     <Download className="h-4 w-4" />
                                     {isDownloading ? 'Downloading...' : 'Download Email'}
                                 </DropdownMenuItem>
-                                <DropdownMenuItem 
+                                <DropdownMenuItem
                                     onClick={handleTrackShipment}
-                                    className={`flex items-center gap-2 ${
-                                        shipmentDetection.isShipmentEmail 
-                                            ? 'text-green-600 font-medium' 
+                                    className={`flex items-center gap-2 ${shipmentDetection.isShipmentEmail
+                                            ? 'text-green-600 font-medium'
                                             : ''
-                                    }`}
+                                        }`}
                                 >
                                     <Wand2 className="h-4 w-4" />
                                     Track Shipment

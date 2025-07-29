@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { EmailMessage } from '@/types/office-service';
 import { useShipmentDetection } from '@/hooks/use-shipment-detection';
 import { useShipmentDataCollectionConsent } from '@/hooks/use-user-preferences';
-import { shipmentsClient, DataCollectionRequest } from '@/lib/shipments-client';
-import { Loader2, Package, Truck, CheckCircle, Info } from 'lucide-react';
+import { DataCollectionRequest, shipmentsClient } from '@/lib/shipments-client';
+import { EmailMessage } from '@/types/office-service';
+import { CheckCircle, Info, Loader2, Package, Truck } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 
 interface TrackShipmentModalProps {
     isOpen: boolean;
@@ -100,7 +100,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
 
         try {
             // Check if user made any corrections
-            const hasCorrections = 
+            const hasCorrections =
                 packageData.tracking_number !== initialFormData.tracking_number ||
                 packageData.carrier !== initialFormData.carrier ||
                 packageData.status !== initialFormData.status ||
@@ -148,7 +148,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         if (!formData.tracking_number.trim()) {
             alert('Tracking number is required');
             return;
@@ -157,10 +157,10 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
         setIsLoading(true);
         try {
             await onTrackShipment(formData);
-            
+
             // Submit data collection if user has consented
             await submitDataCollection(formData);
-            
+
             setIsSuccess(true);
             setTimeout(() => {
                 onClose();
@@ -190,7 +190,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                         Track Shipment
                     </DialogTitle>
                 </DialogHeader>
-                
+
                 <div className="space-y-4">
                     {isSuccess ? (
                         <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -227,7 +227,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                         <div className="text-sm">
                                             <p className="font-medium">Help Improve Detection</p>
                                             <p className="text-blue-600 mt-1">
-                                                Your corrections help us improve our shipment detection accuracy. 
+                                                Your corrections help us improve our shipment detection accuracy.
                                                 Data is collected anonymously and securely.
                                             </p>
                                         </div>
@@ -353,8 +353,8 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                             <Button variant="outline" onClick={handleClose} disabled={isLoading}>
                                 Cancel
                             </Button>
-                            <Button 
-                                onClick={handleSubmit} 
+                            <Button
+                                onClick={handleSubmit}
                                 disabled={isLoading || !formData.tracking_number.trim()}
                                 className="flex items-center gap-2"
                             >
