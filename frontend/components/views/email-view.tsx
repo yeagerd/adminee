@@ -6,6 +6,7 @@ import { getSession } from 'next-auth/react';
 import React, { useCallback, useEffect, useState } from 'react';
 import gatewayClient from '../../lib/gateway-client';
 import EmailFilters from '../email/email-filters';
+import EmailFolderSelector, { DEFAULT_FOLDERS, type EmailFolder } from '../email/email-folder-selector';
 import EmailThread from '../email/email-thread';
 
 const OpenDraftPaneButton: React.FC = () => {
@@ -34,6 +35,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [filters, setFilters] = useState<Record<string, unknown>>({});
+    const [selectedFolder, setSelectedFolder] = useState<EmailFolder>(DEFAULT_FOLDERS[0]); // Default to inbox
     const { loading: integrationsLoading, activeProviders, hasExpiredButRefreshableTokens } = useIntegrations();
 
     const fetchEmails = useCallback(async (noCache = false) => {
@@ -46,14 +48,40 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
             const userId = session?.user?.id;
             if (!userId) throw new Error('No user id found in session');
 
-            // Use the user's actual connected providers with no-cache flag
-            const emailsResp = await gatewayClient.getEmails(activeProviders, 50, 0, noCache) as { data?: { messages?: EmailMessage[] } };
-            setThreads(emailsResp.data?.messages || []);
+            // Use the user's actual connected providers with no-cache flag and folder labels
+            // For inbox and sent, don't pass any labels since Microsoft doesn't categorize these properly
+            const labels = (selectedFolder.label === 'inbox' || selectedFolder.label === 'sent') ? undefined : [selectedFolder.label];
+            const emailsResp = await gatewayClient.getEmails(activeProviders, 50, 0, noCache, labels) as { data?: { messages?: EmailMessage[] } };
+
+            let messages = emailsResp.data?.messages || [];
+
+            // Apply client-side filtering for specific folders that need it
+            if (selectedFolder.label === 'inbox' || selectedFolder.label === 'sent') {
+                const session = await getSession();
+                const userEmail = session?.user?.email;
+                if (userEmail) {
+                    messages = messages.filter(msg => {
+                        if (selectedFolder.label === 'inbox') {
+                            // For inbox: show messages where user is recipient (in "to" field, not "from")
+                            const isInToField = msg.to_addresses.some(addr => addr.email === userEmail);
+                            const isFromUser = msg.from_address?.email === userEmail;
+                            return isInToField && !isFromUser;
+                        } else if (selectedFolder.label === 'sent') {
+                            // For sent: show messages where user is sender (in "from" field)
+                            const isFromUser = msg.from_address?.email === userEmail;
+                            return isFromUser;
+                        }
+                        return true;
+                    });
+                }
+            }
+
+            setThreads(messages);
             setError(null);
         } catch (e: unknown) {
             setError((e && typeof e === 'object' && 'message' in e) ? (e as { message?: string }).message || 'Failed to load emails' : 'Failed to load emails');
         }
-    }, [activeProviders]);
+    }, [activeProviders, selectedFolder.label]);
 
     const handleRefresh = useCallback(async () => {
         setRefreshing(true);
@@ -63,6 +91,10 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
             setRefreshing(false);
         }
     }, [fetchEmails]);
+
+    const handleFolderSelect = useCallback((folder: EmailFolder) => {
+        setSelectedFolder(folder);
+    }, []);
 
     useEffect(() => {
         // Only fetch when the tab is actually activated
@@ -94,13 +126,21 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
             }
         })();
         return () => { isMounted = false; };
-    }, [filters, activeProviders, integrationsLoading, toolDataLoading, activeTool, hasExpiredButRefreshableTokens, fetchEmails]);
+    }, [filters, activeProviders, integrationsLoading, toolDataLoading, activeTool, hasExpiredButRefreshableTokens, fetchEmails, selectedFolder.label]);
 
     return (
         <div className="flex flex-col h-full">
             <div className="p-4 border-b">
                 <div className="flex items-center justify-between">
-                    <h1 className="text-xl font-semibold">Inbox</h1>
+                    <div className="flex items-center gap-3 flex-1">
+                        <EmailFolderSelector
+                            onFolderSelect={handleFolderSelect}
+                        />
+                        <h1 className="text-xl font-semibold">{selectedFolder.name}</h1>
+                        <div className="ml-4 flex-1 max-w-md">
+                            <EmailFilters filters={filters} setFilters={setFilters} />
+                        </div>
+                    </div>
                     <div className="flex items-center gap-2">
                         <button
                             onClick={handleRefresh}
@@ -113,7 +153,6 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                         <OpenDraftPaneButton />
                     </div>
                 </div>
-                <EmailFilters filters={filters} setFilters={setFilters} />
             </div>
             <div className="flex-1 overflow-y-auto">
                 {loading ? (

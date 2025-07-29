@@ -235,7 +235,8 @@ export class GatewayClient {
         providers: string[],
         limit?: number,
         offset?: number,
-        noCache?: boolean
+        noCache?: boolean,
+        labels?: string[]
     ): Promise<ApiResponse<GetEmailsResponse>> {
         const params = new URLSearchParams();
         if (limit) params.append('limit', limit.toString());
@@ -246,6 +247,13 @@ export class GatewayClient {
         providers.forEach(provider => {
             params.append('providers', provider);
         });
+
+        // Add labels for folder filtering
+        if (labels && labels.length > 0) {
+            labels.forEach(label => {
+                params.append('labels', label);
+            });
+        }
 
         return this.request<ApiResponse<GetEmailsResponse>>(`/api/v1/email/messages?${params.toString()}`);
     }
