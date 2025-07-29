@@ -167,11 +167,11 @@ Implement a shipment tracking feature that allows users to track packages direct
 - Provide clear error messages
 
 **Acceptance Criteria:**
-- [ ] Modal opens when "Track Shipment" is clicked
-- [ ] Form fields are pre-populated with detected data
-- [ ] Users can edit all fields
-- [ ] Validation prevents submission of invalid data
-- [ ] Modal closes properly on cancel/success
+- [x] Modal opens when "Track Shipment" is clicked
+- [x] Form fields are pre-populated with detected data
+- [x] Users can edit all fields
+- [x] Validation prevents submission of invalid data
+- [x] Modal closes properly on cancel/success
 
 ### Task 3.2: Implement Frontend API Integration
 **File:** `frontend/lib/shipments-client.ts`
@@ -191,10 +191,10 @@ Implement a shipment tracking feature that allows users to track packages direct
 - Add TypeScript interfaces for all data structures
 
 **Acceptance Criteria:**
-- [ ] API client can call email parser endpoint
-- [ ] Proper error handling for network issues
-- [ ] TypeScript types are complete and accurate
-- [ ] Authentication is handled correctly
+- [x] API client can call email parser endpoint
+- [x] Proper error handling for network issues
+- [x] TypeScript types are complete and accurate
+- [x] Authentication is handled correctly
 
 ### Task 3.3: Integrate Modal with Email Card
 **File:** `frontend/components/email/email-card.tsx`
@@ -214,10 +214,10 @@ Implement a shipment tracking feature that allows users to track packages direct
 - Show success/error messages after tracking
 
 **Acceptance Criteria:**
-- [ ] Clicking "Track Shipment" opens the modal
-- [ ] Email data is passed correctly to modal
-- [ ] Modal state is managed properly
-- [ ] User gets feedback on success/failure
+- [x] Clicking "Track Shipment" opens the modal
+- [x] Email data is passed correctly to modal
+- [x] Modal state is managed properly
+- [x] User gets feedback on success/failure
 
 ## Phase 4: Data Collection and User Preferences
 
