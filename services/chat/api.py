@@ -277,19 +277,24 @@ async def chat_stream_endpoint(
             # Stream the workflow responses
             full_response = ""
             async for event in agent.stream_chat(user_input):
-                # Convert event to JSON and send as SSE
-                event_data = {
-                    "type": type(event).__name__,
-                    "content": str(event) if hasattr(event, "__str__") else "",
-                }
-
-                # Extract delta if available
+                # SECURITY FIX: Only stream events that contain actual response deltas
+                # Filter out internal agent events that contain system prompts and internal state
                 delta_value = getattr(event, "delta", None)
-                if delta_value:
-                    event_data["delta"] = delta_value
-                    full_response += delta_value
 
-                yield f"event: chunk\ndata: {json.dumps(event_data)}\n\n"
+                # Only stream events that have actual content for the user
+                if delta_value:
+                    event_data = {
+                        "type": "AgentStream",
+                        "content": str(event) if hasattr(event, "__str__") else "",
+                        "delta": delta_value,
+                    }
+                    full_response += delta_value
+                    yield f"event: chunk\ndata: {json.dumps(event_data)}\n\n"
+                else:
+                    # Log internal events for debugging but don't stream them to client
+                    logger.debug(
+                        f"INTERNAL EVENT (not streamed): {type(event).__name__} - {repr(event)}"
+                    )
 
             # After streaming, update the placeholder message with the full response content
             if placeholder_message.id is not None:
