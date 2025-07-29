@@ -26,7 +26,7 @@ email_parser = EmailParser()
 async def parse_email(
     request: EmailParseRequest,
     current_user: str = Depends(get_current_user),
-    service_name: str = Depends(service_permission_required(["read_shipments"])),
+    service_name: str = Depends(service_permission_required(["parse_emails"])),
 ) -> EmailParseResponse:
     """
     Parse email content to detect shipment information

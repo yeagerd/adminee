@@ -562,10 +562,10 @@ Implement a shipment tracking feature that allows users to track packages direct
 - Update permission documentation
 
 **Acceptance Criteria:**
-- [ ] API key permissions are properly configured
-- [ ] Frontend has appropriate permissions for user operations
-- [ ] Service-to-service permissions are properly separated
-- [ ] Permission documentation is updated
+- [x] API key permissions are properly configured
+- [x] Frontend has appropriate permissions for user operations
+- [x] Service-to-service permissions are properly separated
+- [x] Permission documentation is updated
 
 ### Task 7.7: Security Testing
 **Files:** `services/shipments/tests/test_security.py`

@@ -66,7 +66,7 @@ class DataCollectionResponse(BaseModel):
 async def collect_shipment_data(
     request: DataCollectionRequest,
     current_user: str = Depends(get_current_user),
-    service_name: str = Depends(service_permission_required(["write_shipments"])),
+    service_name: str = Depends(service_permission_required(["collect_data"])),
 ) -> DataCollectionResponse:
     """
     Collect user-corrected shipment data for service improvements

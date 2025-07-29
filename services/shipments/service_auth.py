@@ -27,6 +27,8 @@ API_KEY_CONFIGS: Dict[str, APIKeyConfig] = {
             "write_shipments",
             "read_labels",
             "write_labels",
+            "parse_emails",
+            "collect_data",
         ],
         settings_key="api_frontend_shipments_key",
     ),
@@ -39,6 +41,8 @@ SERVICE_PERMISSIONS = {
         "write_shipments",
         "read_labels",
         "write_labels",
+        "parse_emails",
+        "collect_data",
     ],
 }
 
@@ -68,6 +72,8 @@ def get_client_permissions(client_name: str) -> list[str]:
                 "write_shipments",
                 "read_labels",
                 "write_labels",
+                "parse_emails",
+                "collect_data",
             ],
         },
     )
@@ -83,6 +89,8 @@ def client_has_permission(client_name: str, required_permission: str) -> bool:
                 "write_shipments",
                 "read_labels",
                 "write_labels",
+                "parse_emails",
+                "collect_data",
             ],
         },
     )
