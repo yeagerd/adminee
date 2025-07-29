@@ -10,6 +10,7 @@ import { getSession } from 'next-auth/react';
 import Link from 'next/link';
 import React, { useCallback, useEffect, useState } from 'react';
 import { CalendarEventItem } from '../calendar-event-item';
+import CalendarGridView from './calendar-grid-view';
 
 interface CalendarViewProps {
     toolDataLoading?: boolean;
@@ -17,6 +18,7 @@ interface CalendarViewProps {
 }
 
 const CalendarView: React.FC<CalendarViewProps> = ({ toolDataLoading = false, activeTool }) => {
+    const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
     const [events, setEvents] = useState<CalendarEvent[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -97,10 +99,31 @@ const CalendarView: React.FC<CalendarViewProps> = ({ toolDataLoading = false, ac
     const hasActiveCalendarIntegration = activeProviders.length > 0;
 
     return (
-        <div className="p-8">
-            <div className="flex items-center justify-between mb-6">
-                <h1 className="text-3xl font-bold">Calendar</h1>
+        <div className="h-full flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b bg-white">
+                <h1 className="text-2xl font-bold">Calendar</h1>
                 <div className="flex items-center gap-2">
+                    <div className="flex items-center border rounded-md">
+                        <button
+                            onClick={() => setViewMode('grid')}
+                            className={`px-3 py-1 text-sm transition-colors ${viewMode === 'grid'
+                                    ? 'bg-blue-500 text-white'
+                                    : 'bg-white text-gray-600 hover:bg-gray-50'
+                                }`}
+                        >
+                            Grid
+                        </button>
+                        <button
+                            onClick={() => setViewMode('list')}
+                            className={`px-3 py-1 text-sm transition-colors ${viewMode === 'list'
+                                    ? 'bg-blue-500 text-white'
+                                    : 'bg-white text-gray-600 hover:bg-gray-50'
+                                }`}
+                        >
+                            List
+                        </button>
+                    </div>
                     <button
                         onClick={handleRefresh}
                         disabled={refreshing || loading}
@@ -112,75 +135,87 @@ const CalendarView: React.FC<CalendarViewProps> = ({ toolDataLoading = false, ac
                 </div>
             </div>
 
-            {/* Integration Status Warning */}
-            {!integrationsLoading && !hasActiveCalendarIntegration && (
-                <Alert className="mb-6 border-amber-200 bg-amber-50">
-                    <AlertCircle className="h-4 w-4 text-amber-600" />
-                    <AlertDescription className="text-amber-800">
-                        <div className="flex items-center justify-between">
-                            <span>
-                                No active calendar integration found. Connect your Google Calendar or Microsoft Outlook to view your events.
-                            </span>
-                            <Link
-                                href="/settings?page=integrations"
-                                className="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 font-medium"
-                            >
-                                <span>Go to Integrations</span>
-                                <ExternalLink className="h-3 w-3" />
-                            </Link>
-                        </div>
-                    </AlertDescription>
-                </Alert>
-            )}
+            {/* Content */}
+            <div className="flex-1 overflow-hidden">
+                {viewMode === 'grid' ? (
+                    <CalendarGridView
+                        toolDataLoading={toolDataLoading}
+                        activeTool={activeTool}
+                    />
+                ) : (
+                    <div className="p-6">
+                        {/* Integration Status Warning */}
+                        {!integrationsLoading && !hasActiveCalendarIntegration && (
+                            <Alert className="mb-6 border-amber-200 bg-amber-50">
+                                <AlertCircle className="h-4 w-4 text-amber-600" />
+                                <AlertDescription className="text-amber-800">
+                                    <div className="flex items-center justify-between">
+                                        <span>
+                                            No active calendar integration found. Connect your Google Calendar or Microsoft Outlook to view your events.
+                                        </span>
+                                        <Link
+                                            href="/settings?page=integrations"
+                                            className="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 font-medium"
+                                        >
+                                            <span>Go to Integrations</span>
+                                            <ExternalLink className="h-3 w-3" />
+                                        </Link>
+                                    </div>
+                                </AlertDescription>
+                            </Alert>
+                        )}
 
-            {error && (
-                <Card className="mb-6">
-                    <CardContent className="pt-6">
-                        <div className="p-3 bg-red-100 border border-red-300 rounded text-red-700">
-                            Error: {error}
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
+                        {error && (
+                            <Card className="mb-6">
+                                <CardContent className="pt-6">
+                                    <div className="p-3 bg-red-100 border border-red-300 rounded text-red-700">
+                                        Error: {error}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
 
-            {loading && (
-                <Card>
-                    <CardContent className="pt-6">
-                        <div className="flex items-center justify-center py-8">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
-                            <span className="ml-3">Loading calendar events...</span>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
+                        {loading && (
+                            <Card>
+                                <CardContent className="pt-6">
+                                    <div className="flex items-center justify-center py-8">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
+                                        <span className="ml-3">Loading calendar events...</span>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
 
-            {!loading && events.length === 0 && !error && hasActiveCalendarIntegration && (
-                <Card>
-                    <CardContent className="pt-6">
-                        <div className="text-center py-8 text-muted-foreground">
-                            <p>No calendar events found for the next 7 days.</p>
-                            <Button
-                                variant="outline"
-                                className="mt-4"
-                                onClick={() => fetchCalendarEvents(false)}
-                            >
-                                Try Again
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
+                        {!loading && events.length === 0 && !error && hasActiveCalendarIntegration && (
+                            <Card>
+                                <CardContent className="pt-6">
+                                    <div className="text-center py-8 text-muted-foreground">
+                                        <p>No calendar events found for the next 7 days.</p>
+                                        <Button
+                                            variant="outline"
+                                            className="mt-4"
+                                            onClick={() => fetchCalendarEvents(false)}
+                                        >
+                                            Try Again
+                                        </Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
 
-            {!loading && events.length > 0 && (
-                <div className="space-y-4">
-                    <div className="text-sm text-muted-foreground">
-                        Found {events.length} events for the next 7 days
+                        {!loading && events.length > 0 && (
+                            <div className="space-y-4">
+                                <div className="text-sm text-muted-foreground">
+                                    Found {events.length} events for the next 7 days
+                                </div>
+                                {events.map((event) => (
+                                    <CalendarEventItem key={event.id} event={event} effectiveTimezone={effectiveTimezone} />
+                                ))}
+                            </div>
+                        )}
                     </div>
-                    {events.map((event) => (
-                        <CalendarEventItem key={event.id} event={event} effectiveTimezone={effectiveTimezone} />
-                    ))}
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 };
