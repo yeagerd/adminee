@@ -126,7 +126,7 @@ class GoogleAPIClient(BaseAPIClient):
         params: Dict[str, Any] = {"maxResults": max_results}
         if page_token:
             params["pageToken"] = page_token
-        
+
         # Use the label query parameter to filter messages by label
         params["q"] = f"label:{label_id}"
 

@@ -26,11 +26,10 @@ from services.office.core.normalizer import (
 )
 from services.office.models import Provider
 from services.office.schemas import (
-    ApiResponse,
-    EmailMessage,
-    EmailMessageList,
     EmailFolder,
     EmailFolderList,
+    EmailMessage,
+    EmailMessageList,
     SendEmailRequest,
     SendEmailResponse,
 )
@@ -389,7 +388,9 @@ async def get_email_folders(
         }
 
         # Cache the result
-        await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=3600)  # 1 hour
+        await cache_manager.set_to_cache(
+            cache_key, response_data, ttl_seconds=3600
+        )  # 1 hour
 
         end_time = datetime.now(timezone.utc)
         duration = (end_time - start_time).total_seconds()
@@ -805,7 +806,7 @@ async def fetch_provider_emails(
             # Build provider-specific parameters
             if provider == "google":
                 google_client = cast(GoogleAPIClient, client)
-                
+
                 # Fetch messages from Gmail - use label-specific endpoint if folder_id is provided
                 if folder_id:
                     messages_response = await google_client.get_messages_from_label(
@@ -942,7 +943,7 @@ async def fetch_provider_folders(
             # Build provider-specific parameters
             if provider == "google":
                 google_client = cast(GoogleAPIClient, client)
-                
+
                 # Fetch labels from Gmail
                 labels_response = await google_client.get_labels()
                 labels = labels_response.get("labels", [])
@@ -961,33 +962,46 @@ async def fetch_provider_folders(
                     label_id = label.get("id")
                     label_name = label.get("name", "")
                     message_count = label.get("messagesTotal", 0)
-                    
+
                     # Skip system labels that we don't want to show
                     system_labels_to_skip = {
-                        "UNREAD", "STARRED", "IMPORTANT", "CATEGORY_PERSONAL", 
-                        "CATEGORY_SOCIAL", "CATEGORY_PROMOTIONS", "CATEGORY_UPDATES", 
-                        "CATEGORY_FORUMS", "CHAT"
+                        "UNREAD",
+                        "STARRED",
+                        "IMPORTANT",
+                        "CATEGORY_PERSONAL",
+                        "CATEGORY_SOCIAL",
+                        "CATEGORY_PROMOTIONS",
+                        "CATEGORY_UPDATES",
+                        "CATEGORY_FORUMS",
+                        "CHAT",
                     }
-                    
+
                     if label_id in system_labels_to_skip:
                         continue
-                    
+
                     # Determine if this is a system folder
-                    system_labels = {"INBOX", "SENT", "DRAFT", "SPAM", "TRASH", "ARCHIVE"}
+                    system_labels = {
+                        "INBOX",
+                        "SENT",
+                        "DRAFT",
+                        "SPAM",
+                        "TRASH",
+                        "ARCHIVE",
+                    }
                     is_system = label_id in system_labels
-                    
+
                     # Map Gmail label IDs to our standardized labels
                     label_map = {
                         "INBOX": "inbox",
-                        "SENT": "sent", 
+                        "SENT": "sent",
                         "DRAFT": "draft",
                         "SPAM": "spam",
                         "TRASH": "trash",
                         "ARCHIVE": "archive",
                     }
-                    
+
                     normalized_label = label_map.get(label_id, label_id.lower())
-                    
+
                     folder = EmailFolder(
                         label=normalized_label,
                         name=label_name,
@@ -1021,32 +1035,45 @@ async def fetch_provider_folders(
                     folder_id = mailbox.get("id")
                     folder_name = mailbox.get("displayName", "")
                     message_count = mailbox.get("totalItemCount", 0)
-                    
+
                     # Skip system folders we don't want to show
                     system_folders_to_skip = {
-                        "Conversation History", "Notes", 
-                        "Outbox", "RSS Feeds", "Search Folders", "Sync Issues"
+                        "Conversation History",
+                        "Notes",
+                        "Outbox",
+                        "RSS Feeds",
+                        "Search Folders",
+                        "Sync Issues",
                     }
-                    
+
                     if folder_name in system_folders_to_skip:
                         continue
-                    
+
                     # Determine if this is a system folder
-                    system_folders = {"Inbox", "Sent Items", "Drafts", "Junk Email", "Deleted Items", "Archive"}
+                    system_folders = {
+                        "Inbox",
+                        "Sent Items",
+                        "Drafts",
+                        "Junk Email",
+                        "Deleted Items",
+                        "Archive",
+                    }
                     is_system = folder_name in system_folders
-                    
+
                     # Map Microsoft folder names to our standardized labels
                     folder_map = {
                         "Inbox": "inbox",
                         "Sent Items": "sent",
-                        "Drafts": "draft", 
+                        "Drafts": "draft",
                         "Junk Email": "spam",
                         "Deleted Items": "trash",
                         "Archive": "archive",
                     }
-                    
-                    normalized_label = folder_map.get(folder_name, folder_name.lower().replace(" ", "_"))
-                    
+
+                    normalized_label = folder_map.get(
+                        folder_name, folder_name.lower().replace(" ", "_")
+                    )
+
                     folder = EmailFolder(
                         label=normalized_label,
                         name=folder_name,

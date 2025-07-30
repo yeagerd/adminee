@@ -103,7 +103,9 @@ class MicrosoftAPIClient(BaseAPIClient):
         else:
             params["$orderby"] = "receivedDateTime desc"
 
-        response = await self.get(f"/me/mailFolders/{folder_id}/messages", params=params)
+        response = await self.get(
+            f"/me/mailFolders/{folder_id}/messages", params=params
+        )
         return response.json()
 
     async def get_message(
