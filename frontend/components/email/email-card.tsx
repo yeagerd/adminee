@@ -1,13 +1,78 @@
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { toast } from '@/components/ui/use-toast';
 import { useShipmentDetection } from '@/hooks/use-shipment-detection';
 import { shipmentsClient } from '@/lib/shipments-client';
 import { EmailMessage } from '@/types/office-service';
+import DOMPurify from 'dompurify';
 import { Archive, Clock, Download, MoreHorizontal, Reply, Star, Trash2, Wand2 } from 'lucide-react';
 import React, { useState } from 'react';
+import { toast } from 'sonner';
 import AISummary from './ai-summary';
 import TrackShipmentModal, { PackageFormData } from './track-shipment-modal';
+
+// Configure DOMPurify for email content
+const emailSanitizeConfig = {
+    ALLOWED_TAGS: [
+        // Basic text formatting
+        'p', 'br', 'div', 'span', 'strong', 'b', 'em', 'i', 'u', 'strike', 's',
+        // Headers
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        // Lists
+        'ul', 'ol', 'li',
+        // Links
+        'a',
+        // Tables
+        'table', 'thead', 'tbody', 'tr', 'td', 'th',
+        // Images
+        'img',
+        // Code
+        'code', 'pre',
+        // Blockquotes
+        'blockquote',
+        // Horizontal rule
+        'hr'
+    ],
+    ALLOWED_ATTR: [
+        // Link attributes
+        'href', 'target', 'rel',
+        // Image attributes
+        'src', 'alt', 'width', 'height', 'style',
+        // Table attributes
+        'colspan', 'rowspan', 'align', 'valign',
+        // Style attributes (for email formatting)
+        'style', 'class', 'id',
+        // Common email attributes
+        'bgcolor', 'color', 'face', 'size'
+    ],
+    ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|cid|xmpp):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+    KEEP_CONTENT: true,
+    RETURN_DOM: false,
+    RETURN_DOM_FRAGMENT: false,
+    RETURN_TRUSTED_TYPE: false
+};
+
+// Safe sanitization function with fallback
+const sanitizeEmailHtml = (html: string): string => {
+    if (!html) return '';
+
+    try {
+        // Use DOMPurify if available
+        if (typeof DOMPurify !== 'undefined' && DOMPurify.sanitize) {
+            return DOMPurify.sanitize(html, emailSanitizeConfig);
+        }
+
+        // Fallback: basic sanitization (should rarely be used)
+        console.warn('DOMPurify not available, using fallback sanitization');
+        return html
+            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+            .replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '')
+            .replace(/javascript:/gi, '')
+            .replace(/data:/gi, '');
+    } catch (error) {
+        console.error('Error sanitizing HTML:', error);
+        return 'Error rendering email content';
+    }
+};
 
 interface EmailCardProps {
     email: EmailMessage;
@@ -120,10 +185,7 @@ const EmailCard: React.FC<EmailCardProps> = ({
 
             console.log('Package created successfully:', createdPackage);
 
-            toast({
-                title: "Shipment Tracked",
-                description: `Successfully started tracking package ${packageData.tracking_number}`,
-            });
+            toast.success(`Successfully started tracking package ${packageData.tracking_number}`);
 
         } catch (error) {
             console.error('Failed to create package:', error);
@@ -211,8 +273,25 @@ const EmailCard: React.FC<EmailCardProps> = ({
                                 <div className="text-sm text-gray-600 mb-3">
                                     To: {email.to_addresses.map(addr => addr.name || addr.email).join(', ')}
                                 </div>
-                                <div className="text-sm text-gray-700 mb-3">
-                                    {email.snippet || email.body_text?.substring(0, 200) || 'No preview available'}
+
+                                {/* Email Body - HTML iframe or text fallback */}
+                                <div className="mb-3">
+                                    {email.body_html ? (
+                                        <div
+                                            className="mx-2 prose prose-sm max-w-none"
+                                            style={{
+                                                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                                                fontSize: '14px',
+                                                lineHeight: '1.5',
+                                                color: '#333'
+                                            }}
+                                            dangerouslySetInnerHTML={{ __html: sanitizeEmailHtml(email.body_html) }}
+                                        />
+                                    ) : (
+                                        <div className="text-sm text-gray-700">
+                                            {email.snippet || email.body_text?.substring(0, 200) || 'No preview available'}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* AI Summary */}
