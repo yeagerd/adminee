@@ -153,31 +153,18 @@ export default function CalendarGridView({
 
     // Filter events for the current date range
     const filteredEvents = useMemo(() => {
-        const filtered = events.filter(event => {
+        return events.filter(event => {
             const eventStart = new Date(event.start_time);
             const eventEnd = new Date(event.end_time);
 
             // For list view, only include events that start within the date range
             if (viewType === 'list') {
-                const isInRange = eventStart >= dateRange.start && eventStart <= dateRange.end;
-                console.log(`Event "${event.title}":`, {
-                    start: eventStart.toISOString(),
-                    dateRangeStart: dateRange.start.toISOString(),
-                    dateRangeEnd: dateRange.end.toISOString(),
-                    isInRange
-                });
-                return isInRange;
+                return eventStart >= dateRange.start && eventStart <= dateRange.end;
             }
 
             // For grid views, include events that overlap with the date range
             return eventStart <= dateRange.end && eventEnd >= dateRange.start;
         });
-
-        if (viewType === 'list') {
-            console.log('Filtered events for list view:', filtered.length);
-        }
-
-        return filtered;
     }, [events, dateRange, viewType]);
 
     // Group events by day
