@@ -6,6 +6,8 @@ import re
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
+from services.shipments.utils import normalize_tracking_number
+
 
 @dataclass
 class ParsedEmailData:
@@ -193,12 +195,21 @@ class EmailParser:
             patterns = self.CARRIER_PATTERNS[detected_carrier]["tracking_patterns"]
             for pattern in patterns:
                 matches = re.findall(pattern, text, re.IGNORECASE)
-                found_numbers.update(matches)
+                # Normalize each found tracking number
+                normalized_matches = [
+                    normalize_tracking_number(match, detected_carrier)
+                    for match in matches
+                ]
+                found_numbers.update(normalized_matches)
 
         # Check generic patterns
         for pattern in self.GENERIC_TRACKING_PATTERNS:
             matches = re.findall(pattern, text, re.IGNORECASE)
-            found_numbers.update(matches)
+            # Normalize each found tracking number
+            normalized_matches = [
+                normalize_tracking_number(match, detected_carrier) for match in matches
+            ]
+            found_numbers.update(normalized_matches)
 
         return list(found_numbers)
 
@@ -206,8 +217,11 @@ class EmailParser:
         self, tracking_number: str, carrier: Optional[str], subject: str, body: str
     ) -> Dict:
         """Generate suggested package data for creating a tracking entry"""
+        # Ensure tracking number is normalized
+        normalized_tracking = normalize_tracking_number(tracking_number, carrier)
+
         suggested_data = {
-            "tracking_number": tracking_number,
+            "tracking_number": normalized_tracking,
             "carrier": carrier or "unknown",
             "status": "pending",
         }

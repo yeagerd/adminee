@@ -15,6 +15,10 @@ from services.shipments.schemas import (
     PackageUpdate,
 )
 from services.shipments.service_auth import service_permission_required
+from services.shipments.utils import (
+    normalize_tracking_number,
+    validate_tracking_number_format,
+)
 
 logger = get_logger(__name__)
 
@@ -73,9 +77,35 @@ async def add_package(
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["write_shipments"])),
 ) -> PackageOut:
-    # Create package data with authenticated user's ID
+    # Normalize tracking number
+    normalized_tracking = normalize_tracking_number(pkg.tracking_number, pkg.carrier)
+
+    # Validate tracking number format
+    if not validate_tracking_number_format(normalized_tracking, pkg.carrier):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid tracking number format for carrier '{pkg.carrier}'",
+        )
+
+    # Check for existing package with same tracking number and carrier
+    existing_query = select(Package).where(
+        Package.user_id == current_user,
+        Package.tracking_number == normalized_tracking,
+        Package.carrier == pkg.carrier,
+    )  # type: ignore
+    existing_result = await session.execute(existing_query)
+    existing_package = existing_result.scalar_one_or_none()
+
+    if existing_package:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Package with tracking number '{normalized_tracking}' and carrier '{pkg.carrier}' already exists",
+        )
+
+    # Create package data with authenticated user's ID and normalized tracking number
     package_data = pkg.dict()
     package_data["user_id"] = current_user
+    package_data["tracking_number"] = normalized_tracking
 
     db_pkg = Package(**package_data)  # type: ignore
     session.add(db_pkg)
@@ -188,6 +218,38 @@ async def update_package(
 
     # Update package fields
     update_data = pkg.dict(exclude_unset=True)
+
+    # Handle tracking number normalization if it's being updated
+    if "tracking_number" in update_data:
+        normalized_tracking = normalize_tracking_number(
+            update_data["tracking_number"], package.carrier
+        )
+
+        # Validate tracking number format
+        if not validate_tracking_number_format(normalized_tracking, package.carrier):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid tracking number format for carrier '{package.carrier}'",
+            )
+
+        # Check for existing package with same tracking number and carrier (excluding current package)
+        existing_query = select(Package).where(
+            Package.user_id == current_user,
+            Package.tracking_number == normalized_tracking,
+            Package.carrier == package.carrier,
+            Package.id != id,
+        )  # type: ignore
+        existing_result = await session.execute(existing_query)
+        existing_package = existing_result.scalar_one_or_none()
+
+        if existing_package:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Package with tracking number '{normalized_tracking}' and carrier '{package.carrier}' already exists",
+            )
+
+        update_data["tracking_number"] = normalized_tracking
+
     for field, value in update_data.items():
         setattr(package, field, value)  # type: ignore
 

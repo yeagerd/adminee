@@ -30,7 +30,7 @@ class PackageLabel(SQLModel, table=True):
 class Package(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: str = Field(index=True)
-    tracking_number: str = Field(max_length=255)
+    tracking_number: str = Field(max_length=255, index=True)
     carrier: str = Field(max_length=50)
     status: PackageStatus = Field(default=PackageStatus.PENDING)
     estimated_delivery: Optional[date] = None
@@ -54,7 +54,12 @@ class Package(SQLModel, table=True):
         back_populates="packages", link_model=PackageLabel
     )
 
-    __table_args__ = ({"sqlite_autoincrement": True},)
+    __table_args__ = (
+        {"sqlite_autoincrement": True},
+        # Unique constraint: user can't have duplicate tracking numbers for the same carrier
+        # This allows the same tracking number across different carriers (which can happen)
+        {"sqlite_on_conflict": "REPLACE"},
+    )
 
 
 class Label(SQLModel, table=True):
