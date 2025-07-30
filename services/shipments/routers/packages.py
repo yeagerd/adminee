@@ -130,26 +130,43 @@ async def get_package(
 async def update_package(
     id: int,
     pkg: PackageUpdate,
+    current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["write_shipments"])),
 ) -> PackageOut:
-    # TODO: Implement update package
+    # Query package and validate user ownership
+    query = select(Package).where(Package.id == id, Package.user_id == current_user)
+    result = await session.execute(query)
+    package = result.scalar_one_or_none()
+    
+    if not package:
+        raise HTTPException(status_code=404, detail="Package not found or access denied")
+    
+    # Update package fields
+    update_data = pkg.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(package, field, value)
+    
+    package.updated_at = datetime.utcnow()
+    await session.commit()
+    await session.refresh(package)
+    
     return PackageOut(
-        id=id,
-        user_id="dummy_user_id",
-        tracking_number="dummy",
-        carrier="dummy",
-        status="pending",
-        estimated_delivery=None,
-        actual_delivery=None,
-        recipient_name=None,
-        shipper_name=None,
-        package_description=None,
-        order_number=None,
-        tracking_link=None,
-        updated_at=datetime.utcnow(),
-        events_count=0,
-        labels=[],
+        id=package.id if package.id is not None else 0,
+        user_id=str(package.user_id),
+        tracking_number=package.tracking_number,
+        carrier=package.carrier,
+        status=package.status,
+        estimated_delivery=package.estimated_delivery,
+        actual_delivery=package.actual_delivery,
+        recipient_name=package.recipient_name,
+        shipper_name=package.shipper_name,
+        package_description=package.package_description,
+        order_number=package.order_number,
+        tracking_link=package.tracking_link,
+        updated_at=package.updated_at,
+        events_count=0,  # TODO: Query for real count
+        labels=[],  # TODO: Query for real labels
     )
 
 

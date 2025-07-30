@@ -575,9 +575,9 @@ Implement a shipment tracking feature that allows users to track packages direct
 - Update error handling for unauthorized access
 
 **Acceptance Criteria:**
-- [ ] Package update endpoint requires user authentication
-- [ ] User ownership of package is validated before updates
-- [ ] Users cannot modify packages owned by other users
+- [x] Package update endpoint requires user authentication
+- [x] User ownership of package is validated before updates
+- [x] Users cannot modify packages owned by other users
 
 #### Task 7.4.4: Add User Auth to Package Delete Endpoint
 **File:** `services/shipments/routers/packages.py`
