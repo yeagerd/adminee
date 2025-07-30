@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useShipmentDataCollectionConsent } from '@/contexts/settings-context';
 import { useShipmentDetection } from '@/hooks/use-shipment-detection';
+import { PACKAGE_STATUS, PACKAGE_STATUS_OPTIONS, PackageStatus } from '@/lib/package-status';
 import { DataCollectionRequest, shipmentsClient } from '@/lib/shipments-client';
 import { EmailMessage } from '@/types/office-service';
 import { CheckCircle, Info, Loader2, Package, Truck } from 'lucide-react';
@@ -22,7 +23,7 @@ interface TrackShipmentModalProps {
 export interface PackageFormData {
     tracking_number: string;
     carrier: string;
-    status: string;
+    status: PackageStatus;
     recipient_name?: string;
     shipper_name?: string;
     package_description?: string;
@@ -39,13 +40,7 @@ const CARRIERS = [
     { value: 'unknown', label: 'Unknown' },
 ];
 
-const STATUS_OPTIONS = [
-    { value: 'pending', label: 'Pending' },
-    { value: 'in_transit', label: 'In Transit' },
-    { value: 'out_for_delivery', label: 'Out for Delivery' },
-    { value: 'delivered', label: 'Delivered' },
-    { value: 'exception', label: 'Exception' },
-];
+
 
 const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
     isOpen,
@@ -61,7 +56,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
     const [formData, setFormData] = useState<PackageFormData>({
         tracking_number: '',
         carrier: 'unknown',
-        status: 'pending',
+        status: PACKAGE_STATUS.PENDING,
         recipient_name: '',
         shipper_name: '',
         package_description: '',
@@ -76,7 +71,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
             const detectedData: PackageFormData = {
                 tracking_number: shipmentDetection.trackingNumbers[0] || '',
                 carrier: shipmentDetection.detectedCarrier || 'unknown',
-                status: 'pending',
+                status: PACKAGE_STATUS.PENDING,
                 recipient_name: '',
                 shipper_name: '',
                 package_description: email.subject || '',
@@ -352,7 +347,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                                 <SelectValue placeholder="Select status" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {STATUS_OPTIONS.map((status) => (
+                                                {PACKAGE_STATUS_OPTIONS.map((status) => (
                                                     <SelectItem key={status.value} value={status.value}>
                                                         {status.label}
                                                     </SelectItem>

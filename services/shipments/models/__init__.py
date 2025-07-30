@@ -3,9 +3,21 @@ Database models for the shipments service
 """
 
 from datetime import date, datetime
+from enum import Enum
 from typing import TYPE_CHECKING, List, Optional
 
 from sqlmodel import Field, Relationship, SQLModel
+
+
+class PackageStatus(str, Enum):
+    PENDING = "pending"  # Package created, not yet shipped
+    IN_TRANSIT = "in_transit"  # Package is moving through carrier network
+    OUT_FOR_DELIVERY = "out_for_delivery"  # Package is out for final delivery
+    DELIVERED = "delivered"  # Package successfully delivered
+    EXCEPTION = "exception"  # Delivery issue/exception
+    DELAYED = "delayed"  # Package is delayed
+    CANCELLED = "cancelled"  # Package was cancelled
+    RETURNED = "returned"  # Package was returned to sender
 
 
 class PackageLabel(SQLModel, table=True):
@@ -20,7 +32,7 @@ class Package(SQLModel, table=True):
     user_id: str = Field(index=True)
     tracking_number: str = Field(max_length=255)
     carrier: str = Field(max_length=50)
-    status: str = Field(max_length=50)
+    status: PackageStatus = Field(default=PackageStatus.PENDING)
     estimated_delivery: Optional[date] = None
     actual_delivery: Optional[date] = None
     recipient_name: Optional[str] = Field(default=None, max_length=255)
@@ -64,7 +76,7 @@ class TrackingEvent(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     package_id: int = Field(foreign_key="package.id")
     event_date: datetime
-    status: str = Field(max_length=100)
+    status: PackageStatus = Field(max_length=100)
     location: Optional[str] = Field(default=None, max_length=255)
     description: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)

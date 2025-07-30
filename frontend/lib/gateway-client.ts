@@ -6,6 +6,7 @@ import {
 } from '@/types/office-service';
 import { getSession } from 'next-auth/react';
 import { IntegrationStatus } from './constants';
+import { PackageStatus } from './package-status';
 import { env, validateClientEnv } from './env';
 
 interface GatewayClientOptions {
@@ -428,7 +429,7 @@ export class GatewayClient {
     async createPackage(packageData: {
         tracking_number: string;
         carrier: string;
-        status: string;
+        status: PackageStatus;
         recipient_name?: string;
         shipper_name?: string;
         package_description?: string;
@@ -439,7 +440,7 @@ export class GatewayClient {
         id: number;
         tracking_number: string;
         carrier: string;
-        status: string;
+        status: PackageStatus;
         estimated_delivery?: string;
         actual_delivery?: string;
         recipient_name?: string;
@@ -462,7 +463,7 @@ export class GatewayClient {
             id: number;
             tracking_number: string;
             carrier: string;
-            status: string;
+            status: PackageStatus;
             estimated_delivery?: string;
             actual_delivery?: string;
             recipient_name?: string;
@@ -490,7 +491,7 @@ export class GatewayClient {
         id: number;
         tracking_number: string;
         carrier: string;
-        status: string;
+        status: PackageStatus;
         estimated_delivery?: string;
         actual_delivery?: string;
         recipient_name?: string;
@@ -509,7 +510,7 @@ export class GatewayClient {
         id: number;
         tracking_number: string;
         carrier: string;
-        status: string;
+        status: PackageStatus;
         estimated_delivery?: string;
         actual_delivery?: string;
         recipient_name?: string;
@@ -540,7 +541,7 @@ export class GatewayClient {
             id: number;
             tracking_number: string;
             carrier: string;
-            status: string;
+            status: PackageStatus;
             estimated_delivery?: string;
             actual_delivery?: string;
             recipient_name?: string;

@@ -4,6 +4,7 @@ import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import { AlertTriangle, Calendar, CheckCircle, Clock, Plus, Truck } from 'lucide-react';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import gatewayClient from '../../lib/gateway-client';
+import { DASHBOARD_STATUS_MAPPING, PACKAGE_STATUS } from '../../lib/package-status';
 import '../../styles/summary-grid.css';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
@@ -77,7 +78,7 @@ export default function PackageDashboard() {
                 pkg.recipient_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 pkg.package_description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 pkg.order_number?.toLowerCase().includes(searchTerm.toLowerCase());
-            const status = pkg.status || 'pending';
+            const status = pkg.status || PACKAGE_STATUS.PENDING;
             const matchesStatus = selectedStatusFilters.length === 0 || selectedStatusFilters.includes(status);
             const matchesCarrier = selectedCarrierFilters.length === 0 || selectedCarrierFilters.includes(pkg.carrier);
             // Date range filter
@@ -144,8 +145,9 @@ export default function PackageDashboard() {
     const statusCounts = useMemo(() => {
         const counts = { pending: 0, shipped: 0, late: 0, delivered: 0 };
         for (const p of packages) {
-            const status = (p.status || 'pending') as keyof typeof counts;
-            if (counts[status] !== undefined) counts[status]++;
+            const status = (p.status || PACKAGE_STATUS.PENDING) as keyof typeof DASHBOARD_STATUS_MAPPING;
+            const dashboardStatus = DASHBOARD_STATUS_MAPPING[status] || 'late';
+            counts[dashboardStatus as keyof typeof counts]++;
         }
         return counts;
     }, [packages]);

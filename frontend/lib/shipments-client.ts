@@ -1,4 +1,5 @@
 import { EmailMessage } from '@/types/office-service';
+import { PackageStatus } from './package-status';
 import { gatewayClient } from './gateway-client';
 
 // Define proper types for shipment data
@@ -47,7 +48,7 @@ export interface EmailParseResponse {
 export interface PackageCreateRequest {
     tracking_number: string;
     carrier: string;
-    status: string;
+    status: PackageStatus;
     recipient_name?: string;
     shipper_name?: string;
     package_description?: string;
@@ -60,7 +61,7 @@ export interface PackageResponse {
     id: number;
     tracking_number: string;
     carrier: string;
-    status: string;
+    status: PackageStatus;
     estimated_delivery?: string;
     actual_delivery?: string;
     recipient_name?: string;
