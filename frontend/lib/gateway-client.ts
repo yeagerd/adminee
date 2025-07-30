@@ -1,4 +1,9 @@
-import { ApiResponse, CalendarEventsResponse, GetEmailsResponse } from '@/types/office-service';
+import {
+    ApiResponse,
+    CalendarEventsResponse,
+    EmailFolder,
+    GetEmailsResponse,
+} from '@/types/office-service';
 import { getSession } from 'next-auth/react';
 import { IntegrationStatus } from './constants';
 import { env, validateClientEnv } from './env';
@@ -235,7 +240,9 @@ export class GatewayClient {
         providers: string[],
         limit?: number,
         offset?: number,
-        noCache?: boolean
+        noCache?: boolean,
+        labels?: string[],
+        folderId?: string
     ): Promise<ApiResponse<GetEmailsResponse>> {
         const params = new URLSearchParams();
         if (limit) params.append('limit', limit.toString());
@@ -247,7 +254,36 @@ export class GatewayClient {
             params.append('providers', provider);
         });
 
+        // Add labels for folder filtering
+        if (labels && labels.length > 0) {
+            labels.forEach(label => {
+                params.append('labels', label);
+            });
+        }
+
+        // Add folder_id for folder-specific fetching
+        if (folderId) {
+            params.append('folder_id', folderId);
+        }
+
         return this.request<ApiResponse<GetEmailsResponse>>(`/api/v1/email/messages?${params.toString()}`);
+    }
+
+    async getEmailFolders(
+        providers?: string[],
+        noCache?: boolean
+    ): Promise<ApiResponse<{ folders: EmailFolder[] }>> {
+        const params = new URLSearchParams();
+        if (noCache) params.append('no_cache', 'true');
+
+        // Add providers as a list
+        if (providers && providers.length > 0) {
+            providers.forEach(provider => {
+                params.append('providers', provider);
+            });
+        }
+
+        return this.request<ApiResponse<{ folders: EmailFolder[] }>>(`/api/v1/email/folders?${params.toString()}`);
     }
 
     async getFiles(provider: string, path?: string) {
