@@ -90,6 +90,17 @@ export interface EmailMessage {
     account_name?: string;
 }
 
+export interface EmailFolder {
+    label: string;
+    name: string;
+    provider: 'google' | 'microsoft';
+    provider_folder_id?: string;
+    account_email: string;
+    account_name?: string;
+    is_system: boolean;
+    message_count?: number;
+}
+
 export interface EmailThread {
     id: string;
     subject?: string;

@@ -8,11 +8,11 @@ interface EmailFiltersProps {
 
 const EmailFilters: React.FC<EmailFiltersProps> = ({ filters, setFilters }) => {
     return (
-        <div className="mt-2 flex gap-2">
+        <div className="flex gap-2">
             <input
                 type="text"
                 placeholder="Search emails…"
-                className="border rounded px-2 py-1 text-sm"
+                className="border rounded px-2 py-1 text-sm w-full"
                 value={typeof filters.query === 'string' ? filters.query : ''}
                 onChange={e => setFilters({ ...filters, query: e.target.value })}
             />

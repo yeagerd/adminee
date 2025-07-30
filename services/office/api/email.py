@@ -26,6 +26,8 @@ from services.office.core.normalizer import (
 )
 from services.office.models import Provider
 from services.office.schemas import (
+    EmailFolder,
+    EmailFolderList,
     EmailMessage,
     EmailMessageList,
     SendEmailRequest,
@@ -73,6 +75,9 @@ async def get_email_messages(
     ),
     labels: Optional[List[str]] = Query(
         None, description="Filter by labels (inbox, sent, etc.)"
+    ),
+    folder_id: Optional[str] = Query(
+        None, description="Folder ID to fetch messages from (provider-specific)"
     ),
     q: Optional[str] = Query(None, description="Search query to filter messages"),
     page_token: Optional[str] = Query(
@@ -135,6 +140,7 @@ async def get_email_messages(
             "limit": limit,
             "include_body": include_body,
             "labels": labels or [],
+            "folder_id": folder_id or "",
             "q": q or "",
             "page_token": page_token or "",
             "no_cache": no_cache,
@@ -159,6 +165,7 @@ async def get_email_messages(
                 limit,
                 include_body,
                 labels,
+                folder_id,
                 q,
                 page_token,
             )
@@ -253,6 +260,155 @@ async def get_email_messages(
     except Exception as e:
         logger.error(f"[{request_id}] Email messages request failed: {e}")
         raise ServiceError(message=f"Failed to fetch email messages: {str(e)}")
+
+
+@router.get("/folders", response_model=EmailFolderList)
+async def get_email_folders(
+    request: Request,
+    service_name: str = Depends(service_permission_required(["read_emails"])),
+    providers: Optional[List[str]] = Query(
+        None,
+        description="Providers to fetch from (google, microsoft). If not specified, fetches from all available providers",
+    ),
+    no_cache: bool = Query(
+        False, description="Bypass cache and fetch fresh data from providers"
+    ),
+) -> EmailFolderList:
+    """
+    Get unified email folders/labels from multiple providers.
+
+    Fetches email folders from Microsoft Outlook and labels from Google Gmail APIs,
+    normalizes them to a unified format, and returns aggregated results.
+    Responses are cached for improved performance.
+
+    Args:
+        user_id: ID of the user to fetch folders for
+        providers: List of providers to query (defaults to all available)
+        no_cache: Bypass cache and fetch fresh data
+
+    Returns:
+        EmailFolderList with aggregated email folders
+    """
+    user_id = await get_user_id_from_gateway(request)
+    request_id = str(uuid.uuid4())
+    start_time = datetime.now(timezone.utc)
+
+    logger.info(
+        f"[{request_id}] Email folders request: user_id={user_id}, providers={providers}"
+    )
+
+    try:
+        # Default to all providers if not specified
+        if not providers:
+            providers = ["google", "microsoft"]
+
+        # Validate providers
+        valid_providers = []
+        for provider_name in providers:
+            if provider_name.lower() in ["google", "microsoft"]:
+                valid_providers.append(provider_name.lower())
+            else:
+                logger.warning(f"[{request_id}] Invalid provider: {provider_name}")
+
+        if not valid_providers:
+            raise ValidationError(message="No valid providers specified")
+
+        # Build cache key
+        cache_params = {
+            "providers": valid_providers,
+            "no_cache": no_cache,
+        }
+        cache_key = generate_cache_key(user_id, "unified", "folders", cache_params)
+
+        # Check cache first
+        cached_result = await cache_manager.get_from_cache(cache_key)
+        if cached_result and not no_cache:
+            logger.info(f"[{request_id}] Cache hit for email folders")
+            return EmailFolderList(
+                success=True, data=cached_result, cache_hit=True, request_id=request_id
+            )
+
+        # Fetch from providers in parallel
+        tasks = []
+        for provider_name in valid_providers:
+            task = fetch_provider_folders(
+                request_id,
+                user_id,
+                provider_name,
+            )
+            tasks.append(task)
+
+        # Execute parallel requests
+        provider_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Process results
+        aggregated_folders: List[EmailFolder] = []
+        provider_errors = {}
+        providers_used = []
+
+        for i, result in enumerate(provider_results):
+            provider_name = valid_providers[i]
+
+            if isinstance(result, Exception):
+                logger.error(
+                    f"[{request_id}] Provider {provider_name} failed: {result}"
+                )
+                provider_errors[provider_name] = str(result)
+            elif result is not None and not isinstance(result, BaseException):
+                try:
+                    # Type narrowing: result should be tuple[List[EmailFolder], str]
+                    folders, provider_name = result
+                    aggregated_folders.extend(folders)
+                    providers_used.append(provider_name)
+                    logger.info(
+                        f"[{request_id}] Provider {provider_name} returned {len(folders)} folders"
+                    )
+                except (TypeError, ValueError) as e:
+                    logger.error(
+                        f"[{request_id}] Invalid result format from {provider_name}: {e}"
+                    )
+                    provider_errors[provider_name] = f"Invalid result format: {e}"
+
+        # Remove duplicates based on label
+        seen_labels = set()
+        unique_folders = []
+        for folder in aggregated_folders:
+            if folder.label not in seen_labels:
+                seen_labels.add(folder.label)
+                unique_folders.append(folder)
+
+        # Sort folders by name
+        unique_folders.sort(key=lambda folder: folder.name.lower())
+
+        # Build response
+        response_data = {
+            "folders": unique_folders,
+            "providers_used": providers_used,
+            "provider_errors": provider_errors,
+        }
+
+        # Cache the result
+        await cache_manager.set_to_cache(
+            cache_key, response_data, ttl_seconds=3600
+        )  # 1 hour
+
+        end_time = datetime.now(timezone.utc)
+        duration = (end_time - start_time).total_seconds()
+        logger.info(
+            f"[{request_id}] Email folders request completed in {duration:.2f}s: "
+            f"{len(unique_folders)} folders from {len(providers_used)} providers"
+        )
+
+        return EmailFolderList(
+            success=True, data=response_data, cache_hit=False, request_id=request_id
+        )
+
+    except Exception as e:
+        logger.error(f"[{request_id}] Error fetching email folders: {e}")
+        raise ServiceError(
+            message="Failed to fetch email folders",
+            details={"error": str(e)},
+        )
 
 
 @router.get("/messages/{message_id}", response_model=EmailMessageList)
@@ -617,6 +773,7 @@ async def fetch_provider_emails(
     limit: int,
     include_body: bool,
     labels: Optional[List[str]],
+    folder_id: Optional[str],
     q: Optional[str],
     page_token: Optional[str],
 ) -> tuple[List[EmailMessage], str]:
@@ -649,10 +806,18 @@ async def fetch_provider_emails(
             # Build provider-specific parameters
             if provider == "google":
                 google_client = cast(GoogleAPIClient, client)
-                # Fetch messages from Gmail
-                messages_response = await google_client.get_messages(
-                    max_results=limit, page_token=page_token, query=q
-                )
+
+                # Fetch messages from Gmail - use label-specific endpoint if folder_id is provided
+                if folder_id:
+                    messages_response = await google_client.get_messages_from_label(
+                        label_id=folder_id,
+                        max_results=limit,
+                        page_token=page_token,
+                    )
+                else:
+                    messages_response = await google_client.get_messages(
+                        max_results=limit, page_token=page_token, query=q
+                    )
                 messages = messages_response.get("messages", [])
 
                 # Normalize messages
@@ -699,14 +864,24 @@ async def fetch_provider_emails(
                     except (ValueError, TypeError):
                         skip_value = 0
 
-                # Fetch messages from Outlook
-                messages_response = await microsoft_client.get_messages(
-                    top=limit,
-                    skip=skip_value,
-                    filter=filter_expr,
-                    search=q,
-                    order_by="receivedDateTime desc",
-                )
+                # Fetch messages from Outlook - use folder-specific endpoint if folder_id is provided
+                if folder_id:
+                    messages_response = await microsoft_client.get_messages_from_folder(
+                        folder_id=folder_id,
+                        top=limit,
+                        skip=skip_value,
+                        filter=filter_expr,
+                        search=q,
+                        order_by="receivedDateTime desc",
+                    )
+                else:
+                    messages_response = await microsoft_client.get_messages(
+                        top=limit,
+                        skip=skip_value,
+                        filter=filter_expr,
+                        search=q,
+                        order_by="receivedDateTime desc",
+                    )
                 messages = messages_response.get("value", [])
 
                 # Normalize messages
@@ -735,7 +910,189 @@ async def fetch_provider_emails(
             return normalized_messages, provider
 
     except Exception as e:
-        logger.error(f"[{request_id}] Failed to fetch emails from {provider}: {e}")
+        logger.error(f"[{request_id}] Error fetching emails from {provider}: {e}")
+        raise
+
+
+async def fetch_provider_folders(
+    request_id: str,
+    user_id: str,
+    provider: str,
+) -> tuple[List[EmailFolder], str]:
+    """
+    Fetch folders/labels from a specific provider.
+
+    Args:
+        request_id: Request tracking ID
+        user_id: User ID
+        provider: Provider name (google, microsoft)
+
+    Returns:
+        Tuple of (folders list, provider name)
+    """
+    try:
+        # Get API client for provider
+        client = await api_client_factory.create_client(user_id, provider)
+        if client is None:
+            raise ValidationError(
+                message=f"Failed to create API client for provider {provider}"
+            )
+
+        # Use client as async context manager
+        async with client:
+            # Build provider-specific parameters
+            if provider == "google":
+                google_client = cast(GoogleAPIClient, client)
+
+                # Fetch labels from Gmail
+                labels_response = await google_client.get_labels()
+                labels = labels_response.get("labels", [])
+
+                # Get user account info
+                if "@" in user_id:
+                    account_email = user_id
+                    account_name = f"Gmail Account ({user_id.split('@')[0]})"
+                else:
+                    account_email = f"{user_id}@gmail.com"  # Placeholder
+                    account_name = f"Gmail Account ({user_id})"  # Placeholder
+
+                # Normalize Gmail labels to EmailFolder objects
+                normalized_folders = []
+                for label in labels:
+                    label_id = label.get("id")
+                    label_name = label.get("name", "")
+                    message_count = label.get("messagesTotal", 0)
+
+                    # Skip system labels that we don't want to show
+                    system_labels_to_skip = {
+                        "UNREAD",
+                        "STARRED",
+                        "IMPORTANT",
+                        "CATEGORY_PERSONAL",
+                        "CATEGORY_SOCIAL",
+                        "CATEGORY_PROMOTIONS",
+                        "CATEGORY_UPDATES",
+                        "CATEGORY_FORUMS",
+                        "CHAT",
+                    }
+
+                    if label_id in system_labels_to_skip:
+                        continue
+
+                    # Determine if this is a system folder
+                    system_labels = {
+                        "INBOX",
+                        "SENT",
+                        "DRAFT",
+                        "SPAM",
+                        "TRASH",
+                        "ARCHIVE",
+                    }
+                    is_system = label_id in system_labels
+
+                    # Map Gmail label IDs to our standardized labels
+                    label_map = {
+                        "INBOX": "inbox",
+                        "SENT": "sent",
+                        "DRAFT": "draft",
+                        "SPAM": "spam",
+                        "TRASH": "trash",
+                        "ARCHIVE": "archive",
+                    }
+
+                    normalized_label = label_map.get(label_id, label_id.lower())
+
+                    folder = EmailFolder(
+                        label=normalized_label,
+                        name=label_name,
+                        provider=Provider.GOOGLE,
+                        provider_folder_id=label_id,
+                        account_email=account_email,
+                        account_name=account_name,
+                        is_system=is_system,
+                        message_count=message_count,
+                    )
+                    normalized_folders.append(folder)
+
+            elif provider == "microsoft":
+                microsoft_client = cast(MicrosoftAPIClient, client)
+
+                # Fetch mailboxes from Outlook
+                mailboxes_response = await microsoft_client.get_mailboxes()
+                mailboxes = mailboxes_response.get("value", [])
+
+                # Get user account info
+                if "@" in user_id:
+                    account_email = user_id
+                    account_name = f"Outlook Account ({user_id.split('@')[0]})"
+                else:
+                    account_email = f"{user_id}@outlook.com"  # Placeholder
+                    account_name = f"Outlook Account ({user_id})"  # Placeholder
+
+                # Normalize Microsoft mailboxes to EmailFolder objects
+                normalized_folders = []
+                for mailbox in mailboxes:
+                    folder_id = mailbox.get("id")
+                    folder_name = mailbox.get("displayName", "")
+                    message_count = mailbox.get("totalItemCount", 0)
+
+                    # Skip system folders we don't want to show
+                    system_folders_to_skip = {
+                        "Conversation History",
+                        "Notes",
+                        "Outbox",
+                        "RSS Feeds",
+                        "Search Folders",
+                        "Sync Issues",
+                    }
+
+                    if folder_name in system_folders_to_skip:
+                        continue
+
+                    # Determine if this is a system folder
+                    system_folders = {
+                        "Inbox",
+                        "Sent Items",
+                        "Drafts",
+                        "Junk Email",
+                        "Deleted Items",
+                        "Archive",
+                    }
+                    is_system = folder_name in system_folders
+
+                    # Map Microsoft folder names to our standardized labels
+                    folder_map = {
+                        "Inbox": "inbox",
+                        "Sent Items": "sent",
+                        "Drafts": "draft",
+                        "Junk Email": "spam",
+                        "Deleted Items": "trash",
+                        "Archive": "archive",
+                    }
+
+                    normalized_label = folder_map.get(
+                        folder_name, folder_name.lower().replace(" ", "_")
+                    )
+
+                    folder = EmailFolder(
+                        label=normalized_label,
+                        name=folder_name,
+                        provider=Provider.MICROSOFT,
+                        provider_folder_id=folder_id,
+                        account_email=account_email,
+                        account_name=account_name,
+                        is_system=is_system,
+                        message_count=message_count,
+                    )
+                    normalized_folders.append(folder)
+
+            else:
+                raise ValidationError(message=f"Unsupported provider: {provider}")
+
+        return normalized_folders, provider
+
+    except Exception as e:
+        logger.error(f"[{request_id}] Error fetching folders from {provider}: {e}")
         raise
 
 
