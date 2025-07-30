@@ -8,19 +8,10 @@ import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from services.shipments.auth import (
-    get_current_user,
-    get_current_user_flexible,
-    get_current_user_from_gateway_headers,
-    require_user_ownership,
-    verify_user_ownership,
-)
 from services.shipments.main import app
 from services.shipments.service_auth import (
     client_has_permission,
     get_client_permissions,
-    service_permission_required,
-    verify_service_authentication,
 )
 
 client = TestClient(app)
@@ -32,15 +23,17 @@ class TestUserAuthentication:
     def test_get_current_user_from_gateway_headers_success(self):
         """Test successful user extraction from gateway headers."""
         from fastapi import Request
-        
+
         # Mock request with gateway headers
-        request = Request(scope={
-            "type": "http",
-            "method": "GET",
-            "path": "/test",
-            "headers": [(b"x-user-id", b"user123")]
-        })
-        
+        request = Request(
+            scope={
+                "type": "http",
+                "method": "GET",
+                "path": "/test",
+                "headers": [(b"x-user-id", b"user123")],
+            }
+        )
+
         # This would need to be async in real usage
         # For testing, we'll test the logic directly
         user_id = "user123"
@@ -49,15 +42,12 @@ class TestUserAuthentication:
     def test_get_current_user_from_gateway_headers_missing(self):
         """Test user extraction when gateway headers are missing."""
         from fastapi import Request
-        
+
         # Mock request without gateway headers
-        request = Request(scope={
-            "type": "http",
-            "method": "GET",
-            "path": "/test",
-            "headers": []
-        })
-        
+        request = Request(
+            scope={"type": "http", "method": "GET", "path": "/test", "headers": []}
+        )
+
         # This would return None in real usage
         user_id = None
         assert user_id is None
@@ -66,7 +56,7 @@ class TestUserAuthentication:
         """Test successful user ownership verification."""
         current_user = "user123"
         resource_user = "user123"
-        
+
         # This should not raise an exception
         result = True  # In real usage, this would call verify_user_ownership
         assert result is True
@@ -75,12 +65,14 @@ class TestUserAuthentication:
         """Test user ownership verification failure."""
         current_user = "user123"
         resource_user = "user456"
-        
+
         # This should raise an HTTPException
         with pytest.raises(HTTPException) as exc_info:
             # In real usage, this would call verify_user_ownership
-            raise HTTPException(status_code=403, detail="User does not own the resource.")
-        
+            raise HTTPException(
+                status_code=403, detail="User does not own the resource."
+            )
+
         assert exc_info.value.status_code == 403
         assert "User does not own the resource" in str(exc_info.value.detail)
 
@@ -93,13 +85,13 @@ class TestServiceAuthentication:
         frontend_permissions = get_client_permissions("frontend")
         expected_permissions = [
             "read_shipments",
-            "write_shipments", 
+            "write_shipments",
             "read_labels",
             "write_labels",
             "parse_emails",
             "collect_data",
         ]
-        
+
         assert set(frontend_permissions) == set(expected_permissions)
 
     def test_client_has_permission_success(self):
@@ -130,8 +122,8 @@ class TestEndpointSecurity:
                 "subject": "Test email",
                 "sender": "test@example.com",
                 "body": "Test body",
-                "content_type": "text"
-            }
+                "content_type": "text",
+            },
         )
         # Should return 401 or 403 due to missing authentication
         assert response.status_code in [401, 403]
@@ -147,8 +139,8 @@ class TestEndpointSecurity:
                 "auto_detected_data": {},
                 "user_corrected_data": {},
                 "detection_confidence": 0.8,
-                "consent_given": True
-            }
+                "consent_given": True,
+            },
         )
         # Should return 401 or 403 due to missing authentication
         assert response.status_code in [401, 403]
@@ -175,7 +167,7 @@ class TestUserOwnershipValidation:
         # For now, we'll test the logic
         request_user_id = "user123"
         authenticated_user_id = "user123"
-        
+
         # Should pass validation
         assert request_user_id == authenticated_user_id
 
@@ -183,7 +175,7 @@ class TestUserOwnershipValidation:
         """Test that email parser rejects wrong user ownership."""
         request_user_id = "user123"
         authenticated_user_id = "user456"
-        
+
         # Should fail validation
         assert request_user_id != authenticated_user_id
 
@@ -191,7 +183,7 @@ class TestUserOwnershipValidation:
         """Test that data collection validates user ownership."""
         request_user_id = "user123"
         authenticated_user_id = "user123"
-        
+
         # Should pass validation
         assert request_user_id == authenticated_user_id
 
@@ -199,7 +191,7 @@ class TestUserOwnershipValidation:
         """Test that data collection rejects wrong user ownership."""
         request_user_id = "user123"
         authenticated_user_id = "user456"
-        
+
         # Should fail validation
         assert request_user_id != authenticated_user_id
 
@@ -213,7 +205,7 @@ class TestCrossUserAccess:
         # For now, we'll test the concept
         user_a = "user123"
         user_b = "user456"
-        
+
         # Users should be different
         assert user_a != user_b
 
@@ -223,7 +215,7 @@ class TestCrossUserAccess:
         # For now, we'll test the concept
         user_a = "user123"
         user_b = "user456"
-        
+
         # Users should be different
         assert user_a != user_b
 
@@ -255,7 +247,7 @@ class TestAPIKeyPermissions:
         """Test that frontend has label permissions."""
         read_labels = client_has_permission("frontend", "read_labels")
         write_labels = client_has_permission("frontend", "write_labels")
-        
+
         assert read_labels is True
         assert write_labels is True
 
@@ -286,4 +278,4 @@ class TestErrorHandling:
 
 
 if __name__ == "__main__":
-    pytest.main([__file__]) 
+    pytest.main([__file__])

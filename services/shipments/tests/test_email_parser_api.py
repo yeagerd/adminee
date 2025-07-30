@@ -5,14 +5,11 @@ Tests the email parser API with various email formats, error handling,
 authentication, and data collection functionality.
 """
 
-import json
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
 
 from services.shipments.main import app
-from services.shipments.auth import get_current_user, require_user_ownership
-from services.shipments.service_auth import service_permission_required
 
 client = TestClient(app)
 
@@ -35,7 +32,7 @@ SAMPLE_EMAILS = {
         
         Thank you for shopping with Amazon!
         """,
-        "content_type": "text"
+        "content_type": "text",
     },
     "fedex": {
         "user_id": "user123",
@@ -50,7 +47,7 @@ SAMPLE_EMAILS = {
         
         Track at: https://www.fedex.com/fedextrack/?trknbr=123456789012
         """,
-        "content_type": "text"
+        "content_type": "text",
     },
     "usps": {
         "user_id": "user123",
@@ -65,7 +62,7 @@ SAMPLE_EMAILS = {
         
         Track at: https://tools.usps.com/go/TrackConfirmAction?tLabels=9400100000000000000000
         """,
-        "content_type": "text"
+        "content_type": "text",
     },
     "dhl": {
         "user_id": "user123",
@@ -80,7 +77,7 @@ SAMPLE_EMAILS = {
         
         Track at: https://www.dhl.com/track?tracking-id=1234567890
         """,
-        "content_type": "text"
+        "content_type": "text",
     },
     "non_shipment": {
         "user_id": "user123",
@@ -94,7 +91,7 @@ SAMPLE_EMAILS = {
         Best regards,
         Calendar System
         """,
-        "content_type": "text"
+        "content_type": "text",
     },
     "html_email": {
         "user_id": "user123",
@@ -110,8 +107,8 @@ SAMPLE_EMAILS = {
         </body>
         </html>
         """,
-        "content_type": "html"
-    }
+        "content_type": "html",
+    },
 }
 
 
@@ -121,15 +118,15 @@ class TestEmailParserCore:
     def test_parse_amazon_ups_email_core(self):
         """Test parsing Amazon email with UPS tracking - core functionality."""
         from services.shipments.email_parser import EmailParser
-        
+
         parser = EmailParser()
         result = parser.parse_email(
             subject=SAMPLE_EMAILS["amazon_ups"]["subject"],
             sender=SAMPLE_EMAILS["amazon_ups"]["sender"],
             body=SAMPLE_EMAILS["amazon_ups"]["body"],
-            content_type=SAMPLE_EMAILS["amazon_ups"]["content_type"]
+            content_type=SAMPLE_EMAILS["amazon_ups"]["content_type"],
         )
-        
+
         assert result.is_shipment_email is True
         assert result.detected_carrier == "amazon"
         assert len(result.tracking_numbers) > 0
@@ -140,15 +137,15 @@ class TestEmailParserCore:
     def test_parse_fedex_email_core(self):
         """Test parsing FedEx email - core functionality."""
         from services.shipments.email_parser import EmailParser
-        
+
         parser = EmailParser()
         result = parser.parse_email(
             subject=SAMPLE_EMAILS["fedex"]["subject"],
             sender=SAMPLE_EMAILS["fedex"]["sender"],
             body=SAMPLE_EMAILS["fedex"]["body"],
-            content_type=SAMPLE_EMAILS["fedex"]["content_type"]
+            content_type=SAMPLE_EMAILS["fedex"]["content_type"],
         )
-        
+
         assert result.is_shipment_email is True
         assert result.detected_carrier == "fedex"
         assert len(result.tracking_numbers) > 0
@@ -157,15 +154,15 @@ class TestEmailParserCore:
     def test_parse_usps_email_core(self):
         """Test parsing USPS email - core functionality."""
         from services.shipments.email_parser import EmailParser
-        
+
         parser = EmailParser()
         result = parser.parse_email(
             subject=SAMPLE_EMAILS["usps"]["subject"],
             sender=SAMPLE_EMAILS["usps"]["sender"],
             body=SAMPLE_EMAILS["usps"]["body"],
-            content_type=SAMPLE_EMAILS["usps"]["content_type"]
+            content_type=SAMPLE_EMAILS["usps"]["content_type"],
         )
-        
+
         assert result.is_shipment_email is True
         assert result.detected_carrier == "usps"
         assert len(result.tracking_numbers) > 0
@@ -174,15 +171,15 @@ class TestEmailParserCore:
     def test_parse_dhl_email_core(self):
         """Test parsing DHL email - core functionality."""
         from services.shipments.email_parser import EmailParser
-        
+
         parser = EmailParser()
         result = parser.parse_email(
             subject=SAMPLE_EMAILS["dhl"]["subject"],
             sender=SAMPLE_EMAILS["dhl"]["sender"],
             body=SAMPLE_EMAILS["dhl"]["body"],
-            content_type=SAMPLE_EMAILS["dhl"]["content_type"]
+            content_type=SAMPLE_EMAILS["dhl"]["content_type"],
         )
-        
+
         assert result.is_shipment_email is True
         assert result.detected_carrier == "dhl"
         assert len(result.tracking_numbers) > 0
@@ -191,15 +188,15 @@ class TestEmailParserCore:
     def test_parse_html_email_core(self):
         """Test parsing HTML email - core functionality."""
         from services.shipments.email_parser import EmailParser
-        
+
         parser = EmailParser()
         result = parser.parse_email(
             subject=SAMPLE_EMAILS["html_email"]["subject"],
             sender=SAMPLE_EMAILS["html_email"]["sender"],
             body=SAMPLE_EMAILS["html_email"]["body"],
-            content_type=SAMPLE_EMAILS["html_email"]["content_type"]
+            content_type=SAMPLE_EMAILS["html_email"]["content_type"],
         )
-        
+
         assert result.is_shipment_email is True
         assert len(result.tracking_numbers) > 0
         # Check that we found some tracking number (the exact one may vary based on regex patterns)
@@ -208,61 +205,64 @@ class TestEmailParserCore:
     def test_parse_non_shipment_email_core(self):
         """Test parsing non-shipment email - core functionality."""
         from services.shipments.email_parser import EmailParser
-        
+
         parser = EmailParser()
         result = parser.parse_email(
             subject=SAMPLE_EMAILS["non_shipment"]["subject"],
             sender=SAMPLE_EMAILS["non_shipment"]["sender"],
             body=SAMPLE_EMAILS["non_shipment"]["body"],
-            content_type=SAMPLE_EMAILS["non_shipment"]["content_type"]
+            content_type=SAMPLE_EMAILS["non_shipment"]["content_type"],
         )
-        
+
         # Should detect as non-shipment or low confidence
         assert result.is_shipment_email is False or result.confidence < 0.3
 
     def test_empty_body_core(self):
         """Test parsing email with empty body - core functionality."""
         from services.shipments.email_parser import EmailParser
-        
+
         parser = EmailParser()
         result = parser.parse_email(
             subject=SAMPLE_EMAILS["amazon_ups"]["subject"],
             sender=SAMPLE_EMAILS["amazon_ups"]["sender"],
             body="",
-            content_type="text"
+            content_type="text",
         )
-        
+
         # Should still detect based on sender domain
         assert result.is_shipment_email is True
 
     def test_very_long_email_core(self):
         """Test parsing very long email - core functionality."""
         from services.shipments.email_parser import EmailParser
-        
+
         parser = EmailParser()
         long_body = "x" * 10000 + "\nTracking number: 1Z999AA1234567890"
         result = parser.parse_email(
             subject="Test",
             sender="test@example.com",
             body=long_body,
-            content_type="text"
+            content_type="text",
         )
-        
+
         assert len(result.tracking_numbers) > 0
 
     def test_multiple_tracking_numbers_core(self):
         """Test parsing email with multiple tracking numbers - core functionality."""
         from services.shipments.email_parser import EmailParser
-        
+
         parser = EmailParser()
-        multi_body = SAMPLE_EMAILS["amazon_ups"]["body"] + "\nAdditional tracking: 1Z999AA9876543210"
+        multi_body = (
+            SAMPLE_EMAILS["amazon_ups"]["body"]
+            + "\nAdditional tracking: 1Z999AA9876543210"
+        )
         result = parser.parse_email(
             subject=SAMPLE_EMAILS["amazon_ups"]["subject"],
             sender=SAMPLE_EMAILS["amazon_ups"]["sender"],
             body=multi_body,
-            content_type="text"
+            content_type="text",
         )
-        
+
         assert len(result.tracking_numbers) >= 2
 
 
@@ -272,10 +272,9 @@ class TestEmailParserAPI:
     def test_authentication_required(self):
         """Test that authentication is required."""
         response = client.post(
-            "/api/v1/email-parser/parse",
-            json=SAMPLE_EMAILS["amazon_ups"]
+            "/api/v1/email-parser/parse", json=SAMPLE_EMAILS["amazon_ups"]
         )
-        
+
         # Should fail without authentication
         assert response.status_code in [401, 403]
 
@@ -283,15 +282,12 @@ class TestEmailParserAPI:
         """Test error handling for missing required fields."""
         incomplete_data = {
             "user_id": "user123",
-            "subject": "Test email"
+            "subject": "Test email",
             # Missing sender and body
         }
-        
-        response = client.post(
-            "/api/v1/email-parser/parse",
-            json=incomplete_data
-        )
-        
+
+        response = client.post("/api/v1/email-parser/parse", json=incomplete_data)
+
         # Should fail due to missing authentication first
         assert response.status_code in [401, 403]
 
@@ -300,9 +296,9 @@ class TestEmailParserAPI:
         response = client.post(
             "/api/v1/email-parser/parse",
             data="invalid json",
-            headers={"Content-Type": "application/json"}
+            headers={"Content-Type": "application/json"},
         )
-        
+
         assert response.status_code == 422
 
 
@@ -312,7 +308,7 @@ class TestDataCollectionCore:
     def test_data_collection_structure(self):
         """Test data collection request structure validation."""
         from services.shipments.routers.data_collection import DataCollectionRequest
-        
+
         # Valid data collection request
         collection_data = {
             "user_id": "user123",
@@ -320,23 +316,23 @@ class TestDataCollectionCore:
             "original_email_data": {
                 "subject": "Test email",
                 "sender": "test@example.com",
-                "body": "Test body"
+                "body": "Test body",
             },
             "auto_detected_data": {
                 "tracking_number": "1Z999AA1234567890",
                 "carrier": "ups",
-                "confidence": 0.85
+                "confidence": 0.85,
             },
             "user_corrected_data": {
                 "tracking_number": "1Z999AA1234567890",
                 "carrier": "ups",
-                "status": "in_transit"
+                "status": "in_transit",
             },
             "detection_confidence": 0.85,
             "correction_reason": "User confirmed carrier",
-            "consent_given": True
+            "consent_given": True,
         }
-        
+
         # Should validate successfully
         request = DataCollectionRequest(**collection_data)
         assert request.user_id == "user123"
@@ -345,9 +341,10 @@ class TestDataCollectionCore:
 
     def test_data_collection_invalid_confidence(self):
         """Test data collection with invalid confidence score."""
-        from services.shipments.routers.data_collection import DataCollectionRequest
         from pydantic import ValidationError
-        
+
+        from services.shipments.routers.data_collection import DataCollectionRequest
+
         invalid_data = {
             "user_id": "user123",
             "email_message_id": "email123",
@@ -355,24 +352,25 @@ class TestDataCollectionCore:
             "auto_detected_data": {},
             "user_corrected_data": {},
             "detection_confidence": 1.5,  # Invalid: > 1.0
-            "consent_given": True
+            "consent_given": True,
         }
-        
+
         # Should raise validation error
         with pytest.raises(ValidationError):
             DataCollectionRequest(**invalid_data)
 
     def test_data_collection_missing_required_fields(self):
         """Test data collection with missing required fields."""
-        from services.shipments.routers.data_collection import DataCollectionRequest
         from pydantic import ValidationError
-        
+
+        from services.shipments.routers.data_collection import DataCollectionRequest
+
         incomplete_data = {
             "user_id": "user123",
-            "email_message_id": "email123"
+            "email_message_id": "email123",
             # Missing other required fields
         }
-        
+
         # Should raise validation error
         with pytest.raises(ValidationError):
             DataCollectionRequest(**incomplete_data)
@@ -392,10 +390,10 @@ class TestDataCollectionAPI:
                 "auto_detected_data": {},
                 "user_corrected_data": {},
                 "detection_confidence": 0.8,
-                "consent_given": True
-            }
+                "consent_given": True,
+            },
         )
-        
+
         # Should fail without authentication
         assert response.status_code in [401, 403]
 
@@ -406,16 +404,16 @@ class TestErrorHandling:
     def test_email_parser_internal_error_core(self):
         """Test email parser internal error handling - core functionality."""
         from services.shipments.email_parser import EmailParser
-        
+
         parser = EmailParser()
-        
+
         # Test with invalid input that might cause issues
         try:
             result = parser.parse_email(
                 subject=None,  # Invalid input
                 sender="test@example.com",
                 body="Test body",
-                content_type="text"
+                content_type="text",
             )
             # Should handle gracefully
             assert result is not None
@@ -426,16 +424,16 @@ class TestErrorHandling:
     def test_large_payload_core(self):
         """Test handling of very large payload - core functionality."""
         from services.shipments.email_parser import EmailParser
-        
+
         parser = EmailParser()
         large_body = "x" * 100000  # Very large body
-        
+
         try:
             result = parser.parse_email(
                 subject="Test",
                 sender="test@example.com",
                 body=large_body,
-                content_type="text"
+                content_type="text",
             )
             # Should handle large payload gracefully
             assert result is not None
@@ -450,19 +448,20 @@ class TestPerformance:
     def test_email_parser_performance_core(self):
         """Test email parser performance with typical email - core functionality."""
         import time
+
         from services.shipments.email_parser import EmailParser
-        
+
         parser = EmailParser()
-        
+
         start_time = time.time()
         result = parser.parse_email(
             subject=SAMPLE_EMAILS["amazon_ups"]["subject"],
             sender=SAMPLE_EMAILS["amazon_ups"]["sender"],
             body=SAMPLE_EMAILS["amazon_ups"]["body"],
-            content_type=SAMPLE_EMAILS["amazon_ups"]["content_type"]
+            content_type=SAMPLE_EMAILS["amazon_ups"]["content_type"],
         )
         end_time = time.time()
-        
+
         assert result is not None
         # Should complete within reasonable time (e.g., 1 second)
         assert (end_time - start_time) < 1.0
@@ -474,7 +473,7 @@ class TestSchemaValidation:
     def test_email_parse_request_validation(self):
         """Test EmailParseRequest schema validation."""
         from services.shipments.schemas.email_parser import EmailParseRequest
-        
+
         # Valid request
         valid_data = SAMPLE_EMAILS["amazon_ups"]
         request = EmailParseRequest(**valid_data)
@@ -484,16 +483,19 @@ class TestSchemaValidation:
 
     def test_email_parse_response_structure(self):
         """Test EmailParseResponse schema structure."""
-        from services.shipments.schemas.email_parser import EmailParseResponse, ParsedTrackingInfo
-        
+        from services.shipments.schemas.email_parser import (
+            EmailParseResponse,
+            ParsedTrackingInfo,
+        )
+
         # Create sample response
         tracking_info = ParsedTrackingInfo(
             tracking_number="1Z999AA1234567890",
             carrier="ups",
             confidence=0.95,
-            source="body"
+            source="body",
         )
-        
+
         response = EmailParseResponse(
             is_shipment_email=True,
             detected_carrier="amazon",
@@ -503,10 +505,10 @@ class TestSchemaValidation:
             suggested_package_data={
                 "carrier": "ups",
                 "tracking_number": "1Z999AA1234567890",
-                "status": "in_transit"
-            }
+                "status": "in_transit",
+            },
         )
-        
+
         assert response.is_shipment_email is True
         assert response.detected_carrier == "amazon"
         assert len(response.tracking_numbers) == 1
@@ -515,4 +517,4 @@ class TestSchemaValidation:
 
 
 if __name__ == "__main__":
-    pytest.main([__file__]) 
+    pytest.main([__file__])

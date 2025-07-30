@@ -16,7 +16,7 @@ def list_carriers(
 ) -> list[CarrierConfigOut]:
     """
     List carrier configurations.
-    
+
     **Authentication:**
     - Requires user authentication (JWT token or gateway headers)
     - Requires service API key for service-to-service calls

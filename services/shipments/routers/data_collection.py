@@ -3,7 +3,8 @@ Data collection router for storing user-corrected shipment data
 """
 
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
@@ -18,15 +19,28 @@ router = APIRouter()
 
 class DataCollectionRequest(BaseModel):
     """Request schema for collecting user-corrected shipment data"""
+
     user_id: str = Field(..., description="User ID")
     email_message_id: str = Field(..., description="Original email message ID")
-    original_email_data: Dict[str, Any] = Field(..., description="Original email content")
-    auto_detected_data: Dict[str, Any] = Field(..., description="Auto-detected shipment data")
-    user_corrected_data: Dict[str, Any] = Field(..., description="User-corrected shipment data")
-    detection_confidence: float = Field(..., ge=0.0, le=1.0, description="Original detection confidence")
-    correction_reason: Optional[str] = Field(None, description="Reason for user correction")
-    consent_given: bool = Field(..., description="Whether user has given consent for data collection")
-    
+    original_email_data: Dict[str, Any] = Field(
+        ..., description="Original email content"
+    )
+    auto_detected_data: Dict[str, Any] = Field(
+        ..., description="Auto-detected shipment data"
+    )
+    user_corrected_data: Dict[str, Any] = Field(
+        ..., description="User-corrected shipment data"
+    )
+    detection_confidence: float = Field(
+        ..., ge=0.0, le=1.0, description="Original detection confidence"
+    )
+    correction_reason: Optional[str] = Field(
+        None, description="Reason for user correction"
+    )
+    consent_given: bool = Field(
+        ..., description="Whether user has given consent for data collection"
+    )
+
     class Config:
         schema_extra = {
             "example": {
@@ -35,29 +49,32 @@ class DataCollectionRequest(BaseModel):
                 "original_email_data": {
                     "subject": "Your Amazon order has shipped",
                     "sender": "shipment-tracking@amazon.com",
-                    "body": "Your order #123-4567890-1234567 has shipped via UPS. Tracking number: 1Z999AA1234567890"
+                    "body": "Your order #123-4567890-1234567 has shipped via UPS. Tracking number: 1Z999AA1234567890",
                 },
                 "auto_detected_data": {
                     "tracking_number": "1Z999AA1234567890",
                     "carrier": "amazon",
-                    "confidence": 0.85
+                    "confidence": 0.85,
                 },
                 "user_corrected_data": {
                     "tracking_number": "1Z999AA1234567890",
                     "carrier": "ups",
-                    "status": "in_transit"
+                    "status": "in_transit",
                 },
                 "detection_confidence": 0.85,
                 "correction_reason": "Carrier was incorrectly identified as Amazon instead of UPS",
-                "consent_given": True
+                "consent_given": True,
             }
         }
 
 
 class DataCollectionResponse(BaseModel):
     """Response schema for data collection"""
+
     success: bool = Field(..., description="Whether data collection was successful")
-    collection_id: str = Field(..., description="Unique identifier for this data collection entry")
+    collection_id: str = Field(
+        ..., description="Unique identifier for this data collection entry"
+    )
     timestamp: datetime = Field(..., description="When the data was collected")
     message: str = Field(..., description="Response message")
 
@@ -70,15 +87,15 @@ async def collect_shipment_data(
 ) -> DataCollectionResponse:
     """
     Collect user-corrected shipment data for service improvements
-    
+
     This endpoint stores:
     - Original email content
     - Auto-detected shipment information
     - User corrections and improvements
     - Detection confidence scores
-    
+
     This data is used to improve the accuracy of future shipment detection.
-    
+
     **Authentication:**
     - Requires user authentication (JWT token or gateway headers)
     - Validates user ownership of collected data
@@ -87,31 +104,37 @@ async def collect_shipment_data(
     try:
         # Validate user ownership of collected data
         await require_user_ownership(request.user_id, current_user)
-        
-        logger.info("Collecting shipment data for improvements",
-                   authenticated_user=current_user,
-                   data_user_id=request.user_id,
-                   email_id=request.email_message_id)
+
+        logger.info(
+            "Collecting shipment data for improvements",
+            authenticated_user=current_user,
+            data_user_id=request.user_id,
+            email_id=request.email_message_id,
+        )
         # Validate user consent
         if not request.consent_given:
-            logger.warning("Data collection attempted without user consent", 
-                          user_id=request.user_id, email_id=request.email_message_id)
-            raise HTTPException(
-                status_code=403,
-                detail="Data collection requires explicit user consent"
+            logger.warning(
+                "Data collection attempted without user consent",
+                user_id=request.user_id,
+                email_id=request.email_message_id,
             )
-        
+            raise HTTPException(
+                status_code=403, detail="Data collection requires explicit user consent"
+            )
+
         # Generate collection ID
         collection_id = f"collection_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{request.user_id[:8]}"
-        
+
         # Log the data collection (in production, this would be stored in a database)
-        logger.info("Collecting shipment data for improvements",
-                   collection_id=collection_id,
-                   user_id=request.user_id,
-                   email_id=request.email_message_id,
-                   confidence=request.detection_confidence,
-                   has_corrections=bool(request.correction_reason))
-        
+        logger.info(
+            "Collecting shipment data for improvements",
+            collection_id=collection_id,
+            user_id=request.user_id,
+            email_id=request.email_message_id,
+            confidence=request.detection_confidence,
+            has_corrections=bool(request.correction_reason),
+        )
+
         # TODO: Store data in database for training improvements
         # For now, we'll just log the data structure
         training_data = {
@@ -126,33 +149,35 @@ async def collect_shipment_data(
             "consent_given": request.consent_given,
             "collected_at": datetime.utcnow().isoformat(),
         }
-        
+
         # In a real implementation, this would be stored in a database
         # For now, we'll just log it for demonstration
         logger.info("Training data structure", training_data=training_data)
-        
+
         return DataCollectionResponse(
             success=True,
             collection_id=collection_id,
             timestamp=datetime.utcnow(),
-            message="Shipment data collected successfully for service improvements"
+            message="Shipment data collected successfully for service improvements",
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("Error collecting shipment data", 
-                    error=str(e), 
-                    user_id=request.user_id,
-                    email_id=request.email_message_id,
-                    exc_info=True)
+        logger.error(
+            "Error collecting shipment data",
+            error=str(e),
+            user_id=request.user_id,
+            email_id=request.email_message_id,
+            exc_info=True,
+        )
         raise HTTPException(
             status_code=500,
             detail={
                 "error": "Failed to collect shipment data",
                 "details": str(e),
-                "error_code": "COLLECTION_ERROR"
-            }
+                "error_code": "COLLECTION_ERROR",
+            },
         )
 
 
@@ -163,7 +188,7 @@ async def get_collection_stats(
 ) -> Dict[str, Any]:
     """
     Get statistics about data collection (for admin/monitoring purposes)
-    
+
     **Authentication:**
     - Requires user authentication (JWT token or gateway headers)
     - Requires service API key for service-to-service calls
@@ -178,14 +203,13 @@ async def get_collection_stats(
             "average_confidence": 0.0,
             "correction_rate": 0.0,
             "top_correction_reasons": [],
-            "last_updated": datetime.utcnow().isoformat()
+            "last_updated": datetime.utcnow().isoformat(),
         }
-        
+
         return stats
-        
+
     except Exception as e:
         logger.error("Error getting collection stats", error=str(e), exc_info=True)
         raise HTTPException(
-            status_code=500,
-            detail="Failed to retrieve collection statistics"
-        ) 
+            status_code=500, detail="Failed to retrieve collection statistics"
+        )

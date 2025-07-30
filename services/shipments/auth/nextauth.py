@@ -351,4 +351,4 @@ async def require_user_ownership(
         raise
     except Exception as e:
         logger_instance.error(f"Unexpected ownership verification error: {e}")
-        raise HTTPException(status_code=403, detail="Access verification failed") 
+        raise HTTPException(status_code=403, detail="Access verification failed")

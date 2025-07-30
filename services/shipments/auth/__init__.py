@@ -16,9 +16,9 @@ from .nextauth import (
 
 __all__ = [
     "get_current_user",
-    "get_current_user_flexible", 
+    "get_current_user_flexible",
     "get_current_user_from_gateway_headers",
     "get_current_user_with_claims",
     "require_user_ownership",
     "verify_user_ownership",
-] 
+]

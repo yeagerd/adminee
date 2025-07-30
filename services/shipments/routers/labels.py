@@ -2,7 +2,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from services.shipments.auth import get_current_user, require_user_ownership
+from services.shipments.auth import get_current_user
 from services.shipments.schemas import LabelCreate, LabelOut, LabelUpdate
 from services.shipments.service_auth import service_permission_required
 
@@ -16,7 +16,7 @@ def list_labels(
 ) -> list[LabelOut]:
     """
     List all labels for the authenticated user.
-    
+
     **Authentication:**
     - Requires user authentication (JWT token or gateway headers)
     - Returns only labels owned by the authenticated user
@@ -35,7 +35,7 @@ def create_label(
 ) -> LabelOut:
     """
     Create a new label for the authenticated user.
-    
+
     **Authentication:**
     - Requires user authentication (JWT token or gateway headers)
     - Validates user ownership of label data
@@ -46,7 +46,7 @@ def create_label(
     # For now, we'll validate that the user_id in the request matches the authenticated user
     if label.user_id != current_user:
         raise HTTPException(status_code=403, detail="User does not own the label data")
-    
+
     # TODO: Implement label creation with user ownership
     raise NotImplementedError
 
@@ -60,7 +60,7 @@ def update_label(
 ) -> LabelOut:
     """
     Update a label for the authenticated user.
-    
+
     **Authentication:**
     - Requires user authentication (JWT token or gateway headers)
     - Validates user ownership of the label
@@ -73,13 +73,13 @@ def update_label(
 
 @router.delete("/{id}")
 def delete_label(
-    id: int, 
+    id: int,
     current_user: str = Depends(get_current_user),
-    service_name: str = Depends(service_permission_required(["write_labels"]))
+    service_name: str = Depends(service_permission_required(["write_labels"])),
 ) -> None:
     """
     Delete a label for the authenticated user.
-    
+
     **Authentication:**
     - Requires user authentication (JWT token or gateway headers)
     - Validates user ownership of the label
