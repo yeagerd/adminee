@@ -2,27 +2,11 @@ import EmailFilters from '@/components/email/email-filters';
 import { EmailFolderSelector } from '@/components/email/email-folder-selector';
 import EmailThread from '@/components/email/email-thread';
 import { useIntegrations } from '@/contexts/integrations-context';
-import { useDraftState } from '@/hooks/use-draft-state';
 import { gatewayClient } from '@/lib/gateway-client';
 import { EmailFolder, EmailMessage } from '@/types/office-service';
 import { RefreshCw } from 'lucide-react';
 import { getSession } from 'next-auth/react';
 import React, { useCallback, useEffect, useState } from 'react';
-
-const OpenDraftPaneButton: React.FC = () => {
-    const { createNewDraft } = useDraftState();
-    const handleClick = async () => {
-        const session = await getSession();
-        const userId = session?.user?.id;
-        if (userId) createNewDraft('email', userId);
-        // Optionally, scroll to or focus the draft pane if needed
-    };
-    return (
-        <button className="btn btn-primary" onClick={handleClick}>
-            Compose Email
-        </button>
-    );
-};
 
 interface EmailViewProps {
     toolDataLoading?: boolean;
@@ -54,12 +38,16 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
             const userId = session?.user?.id;
             if (!userId) throw new Error('No user id found in session');
 
-            // Use the user's actual connected providers with no-cache flag and folder labels
-            // For inbox, sent, and archive, don't pass any labels since Microsoft doesn't categorize these properly
-            const labels = (selectedFolder.label === 'inbox' || selectedFolder.label === 'sent' || selectedFolder.label === 'archive') ? undefined : [selectedFolder.label];
+            // For system folders (inbox, sent, archive, draft, trash), use folder-specific fetching
+            // For user-created folders, use labels for Google and folder_id for Microsoft
+            const isSystemFolder = selectedFolder.is_system;
+            const labels = isSystemFolder ? undefined : [selectedFolder.label];
 
-            // For Microsoft, use folder_id for specific folders. For Google, use labels.
-            const folderId = selectedFolder.provider === 'microsoft' && selectedFolder.provider_folder_id ? selectedFolder.provider_folder_id : undefined;
+            // For Microsoft, use folder_id for all folders. For Google, use folder_id for system folders, labels for user folders.
+            const folderId = selectedFolder.provider === 'microsoft' && selectedFolder.provider_folder_id ?
+                selectedFolder.provider_folder_id :
+                (selectedFolder.provider === 'google' && isSystemFolder && selectedFolder.provider_folder_id ?
+                    selectedFolder.provider_folder_id : undefined);
 
             const emailsResp = await gatewayClient.getEmails(activeProviders, 50, 0, noCache, labels, folderId) as { data?: { messages?: EmailMessage[] } };
 
@@ -91,7 +79,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
         } catch (e: unknown) {
             setError((e && typeof e === 'object' && 'message' in e) ? (e as { message?: string }).message || 'Failed to load emails' : 'Failed to load emails');
         }
-    }, [activeProviders, selectedFolder.label, selectedFolder.provider, selectedFolder.provider_folder_id]);
+    }, [activeProviders, selectedFolder.label, selectedFolder.provider, selectedFolder.provider_folder_id, selectedFolder.is_system]);
 
     const handleRefresh = useCallback(async () => {
         setRefreshing(true);
@@ -160,7 +148,6 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                         >
                             <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
                         </button>
-                        <OpenDraftPaneButton />
                     </div>
                 </div>
             </div>

@@ -5,6 +5,7 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useIntegrations } from '@/contexts/integrations-context';
@@ -77,6 +78,49 @@ export function EmailFolderSelector({ onFolderSelect }: EmailFolderSelectorProps
         }
     };
 
+    // Sort folders in the specified order
+    const sortFolders = (folders: EmailFolder[]): EmailFolder[] => {
+        // Define the order for system folders
+        const systemFolderOrder = ['inbox', 'draft', 'archive', 'sent', 'trash'];
+
+        // Separate system and user folders
+        const systemFolders: EmailFolder[] = [];
+        const userFolders: EmailFolder[] = [];
+
+        folders.forEach(folder => {
+            if (folder.is_system) {
+                systemFolders.push(folder);
+            } else {
+                userFolders.push(folder);
+            }
+        });
+
+        // Sort system folders by the defined order
+        const sortedSystemFolders = systemFolders.sort((a, b) => {
+            const aIndex = systemFolderOrder.indexOf(a.label);
+            const bIndex = systemFolderOrder.indexOf(b.label);
+            // If both are in the order list, sort by their position
+            if (aIndex !== -1 && bIndex !== -1) {
+                return aIndex - bIndex;
+            }
+            // If only one is in the order list, prioritize it
+            if (aIndex !== -1) return -1;
+            if (bIndex !== -1) return 1;
+            // If neither is in the order list, sort alphabetically
+            return a.name.localeCompare(b.name);
+        });
+
+        // Sort user folders alphabetically
+        const sortedUserFolders = userFolders.sort((a, b) =>
+            a.name.localeCompare(b.name)
+        );
+
+        return [...sortedSystemFolders, ...sortedUserFolders];
+    };
+
+    const sortedFolders = sortFolders(folders);
+    const systemFolderCount = sortedFolders.filter(f => f.is_system).length;
+
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -85,20 +129,25 @@ export function EmailFolderSelector({ onFolderSelect }: EmailFolderSelectorProps
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-56">
-                {folders.map((folder) => (
-                    <DropdownMenuItem
-                        key={folder.label}
-                        onClick={() => onFolderSelect(folder)}
-                        className="flex items-center gap-2 cursor-pointer"
-                    >
-                        {getFolderIcon(folder.label)}
-                        <span className="flex-1">{folder.name}</span>
-                        {folder.message_count !== undefined && (
-                            <span className="text-xs text-muted-foreground">
-                                {folder.message_count}
-                            </span>
+                {sortedFolders.map((folder, index) => (
+                    <div key={folder.label}>
+                        <DropdownMenuItem
+                            onClick={() => onFolderSelect(folder)}
+                            className="flex items-center gap-2 cursor-pointer"
+                        >
+                            {getFolderIcon(folder.label)}
+                            <span className="flex-1">{folder.name}</span>
+                            {folder.message_count !== undefined && (
+                                <span className="text-xs text-muted-foreground">
+                                    {folder.message_count}
+                                </span>
+                            )}
+                        </DropdownMenuItem>
+                        {/* Add separator after system folders if there are user folders */}
+                        {folder.is_system && index === systemFolderCount - 1 && sortedFolders.some(f => !f.is_system) && (
+                            <DropdownMenuSeparator />
                         )}
-                    </DropdownMenuItem>
+                    </div>
                 ))}
                 {error && (
                     <div className="px-2 py-1 text-xs text-muted-foreground">

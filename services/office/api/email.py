@@ -805,10 +805,18 @@ async def fetch_provider_emails(
             # Build provider-specific parameters
             if provider == "google":
                 google_client = cast(GoogleAPIClient, client)
-                # Fetch messages from Gmail
-                messages_response = await google_client.get_messages(
-                    max_results=limit, page_token=page_token, query=q
-                )
+                
+                # Fetch messages from Gmail - use label-specific endpoint if folder_id is provided
+                if folder_id:
+                    messages_response = await google_client.get_messages_from_label(
+                        label_id=folder_id,
+                        max_results=limit,
+                        page_token=page_token,
+                    )
+                else:
+                    messages_response = await google_client.get_messages(
+                        max_results=limit, page_token=page_token, query=q
+                    )
                 messages = messages_response.get("messages", [])
 
                 # Normalize messages
