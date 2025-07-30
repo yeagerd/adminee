@@ -186,7 +186,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
+            <DialogContent className="sm:max-w-[95vw] max-h-[90vh] flex flex-col bg-white">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Package className="h-5 w-5" />
@@ -194,7 +194,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                     </DialogTitle>
                 </DialogHeader>
 
-                <div className="space-y-4 flex-1 overflow-y-auto">
+                <div className="flex-1 overflow-y-auto">
                     {isSuccess ? (
                         <div className="flex flex-col items-center justify-center py-8 text-center">
                             <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
@@ -204,149 +204,222 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                             </p>
                         </div>
                     ) : (
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            {/* Detection Status */}
-                            {shipmentDetection.isShipmentEmail && (
-                                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                                    <div className="flex items-center gap-2 text-green-700">
-                                        <CheckCircle className="h-4 w-4" />
-                                        <span className="text-sm font-medium">
-                                            Shipment detected with {Math.round(shipmentDetection.confidence * 100)}% confidence
-                                        </span>
-                                    </div>
-                                    {shipmentDetection.detectedCarrier && (
-                                        <p className="text-sm text-green-600 mt-1">
-                                            Detected carrier: {shipmentDetection.detectedCarrier.toUpperCase()}
-                                        </p>
-                                    )}
-                                </div>
-                            )}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* Email Content - Left Side */}
+                            <div className="space-y-4">
+                                <div className="border rounded-lg p-4">
+                                    <h4 className="font-medium text-sm text-gray-700 mb-3">Email Content</h4>
 
-                            {/* Data Collection Notice */}
-                            {hasDataCollectionConsent && (
-                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                    <div className="flex items-start gap-2 text-blue-700">
-                                        <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                                        <div className="text-sm">
-                                            <p className="font-medium">Help Improve Detection</p>
-                                            <p className="text-blue-600 mt-1">
-                                                Your corrections help us improve our shipment detection accuracy.
-                                                Data is collected anonymously and securely.
-                                            </p>
+                                    {/* Sender */}
+                                    <div className="mb-3">
+                                        <div className="text-xs font-medium text-gray-500 mb-1">From:</div>
+                                        <div className="text-sm text-gray-900">
+                                            {email.from_address?.name || email.from_address?.email || 'Unknown'}
+                                        </div>
+                                    </div>
+
+                                    {/* Subject */}
+                                    <div className="mb-3">
+                                        <div className="text-xs font-medium text-gray-500 mb-1">Subject:</div>
+                                        <div className="text-sm text-gray-900 font-medium">
+                                            {email.subject || '(No subject)'}
+                                        </div>
+                                    </div>
+
+                                    {/* Body */}
+                                    <div>
+                                        <div className="text-xs font-medium text-gray-500 mb-1">Body:</div>
+                                        <div className="text-sm text-gray-900 max-h-48 overflow-y-auto border rounded p-3 bg-white">
+                                            {email.body_text ? (
+                                                <div className="whitespace-pre-wrap">
+                                                    {email.body_text}
+                                                </div>
+                                            ) : email.body_html ? (
+                                                <iframe
+                                                    srcDoc={`
+                                                        <!DOCTYPE html>
+                                                        <html>
+                                                        <head>
+                                                            <meta charset="utf-8">
+                                                            <style>
+                                                                body {
+                                                                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                                                                    font-size: 14px;
+                                                                    line-height: 1.5;
+                                                                    color: #333;
+                                                                    margin: 0;
+                                                                    padding: 0;
+                                                                    background: white;
+                                                                }
+                                                                * {
+                                                                    box-sizing: border-box;
+                                                                }
+                                                            </style>
+                                                        </head>
+                                                        <body>
+                                                            ${email.body_html}
+                                                        </body>
+                                                        </html>
+                                                    `}
+                                                    className="w-full h-full border-0"
+                                                    style={{ minHeight: '200px' }}
+                                                    sandbox="allow-same-origin"
+                                                />
+                                            ) : (
+                                                <span className="text-gray-500 italic">No content</span>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
-                            )}
-
-                            {/* Tracking Number */}
-                            <div className="space-y-2">
-                                <Label htmlFor="tracking_number">Tracking Number *</Label>
-                                <Input
-                                    id="tracking_number"
-                                    value={formData.tracking_number}
-                                    onChange={(e) => handleInputChange('tracking_number', e.target.value)}
-                                    placeholder="Enter tracking number"
-                                    required
-                                />
                             </div>
 
-                            {/* Carrier */}
-                            <div className="space-y-2">
-                                <Label htmlFor="carrier">Carrier</Label>
-                                <Select
-                                    value={formData.carrier}
-                                    onValueChange={(value) => handleInputChange('carrier', value)}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select carrier" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {CARRIERS.map((carrier) => (
-                                            <SelectItem key={carrier.value} value={carrier.value}>
-                                                {carrier.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                            {/* Form - Right Side */}
+                            <div className="space-y-4">
+                                <form onSubmit={handleSubmit} className="space-y-4">
+                                    {/* Detection Status */}
+                                    {shipmentDetection.isShipmentEmail && (
+                                        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                                            <div className="flex items-center gap-2 text-green-700">
+                                                <CheckCircle className="h-4 w-4" />
+                                                <span className="text-sm font-medium">
+                                                    Shipment detected with {Math.round(shipmentDetection.confidence * 100)}% confidence
+                                                </span>
+                                            </div>
+                                            {shipmentDetection.detectedCarrier && (
+                                                <p className="text-sm text-green-600 mt-1">
+                                                    Detected carrier: {shipmentDetection.detectedCarrier.toUpperCase()}
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
 
-                            {/* Status */}
-                            <div className="space-y-2">
-                                <Label htmlFor="status">Status</Label>
-                                <Select
-                                    value={formData.status}
-                                    onValueChange={(value) => handleInputChange('status', value)}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select status" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {STATUS_OPTIONS.map((status) => (
-                                            <SelectItem key={status.value} value={status.value}>
-                                                {status.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                                    {/* Data Collection Notice */}
+                                    {hasDataCollectionConsent && (
+                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                            <div className="flex items-start gap-2 text-blue-700">
+                                                <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                                <div className="text-sm">
+                                                    <p className="font-medium">Help Improve Detection</p>
+                                                    <p className="text-blue-600 mt-1">
+                                                        Your corrections help us improve our shipment detection accuracy.
+                                                        Data is collected anonymously and securely.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
 
-                            {/* Order Number */}
-                            <div className="space-y-2">
-                                <Label htmlFor="order_number">Order Number</Label>
-                                <Input
-                                    id="order_number"
-                                    value={formData.order_number}
-                                    onChange={(e) => handleInputChange('order_number', e.target.value)}
-                                    placeholder="Enter order number (optional)"
-                                />
-                            </div>
+                                    {/* Tracking Number */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="tracking_number">Tracking Number *</Label>
+                                        <Input
+                                            id="tracking_number"
+                                            value={formData.tracking_number}
+                                            onChange={(e) => handleInputChange('tracking_number', e.target.value)}
+                                            placeholder="Enter tracking number"
+                                            required
+                                        />
+                                    </div>
 
-                            {/* Package Description */}
-                            <div className="space-y-2">
-                                <Label htmlFor="package_description">Package Description</Label>
-                                <Textarea
-                                    id="package_description"
-                                    value={formData.package_description}
-                                    onChange={(e) => handleInputChange('package_description', e.target.value)}
-                                    placeholder="Enter package description (optional)"
-                                    rows={2}
-                                />
-                            </div>
+                                    {/* Carrier */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="carrier">Carrier</Label>
+                                        <Select
+                                            value={formData.carrier}
+                                            onValueChange={(value) => handleInputChange('carrier', value)}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select carrier" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {CARRIERS.map((carrier) => (
+                                                    <SelectItem key={carrier.value} value={carrier.value}>
+                                                        {carrier.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
 
-                            {/* Recipient Name */}
-                            <div className="space-y-2">
-                                <Label htmlFor="recipient_name">Recipient Name</Label>
-                                <Input
-                                    id="recipient_name"
-                                    value={formData.recipient_name}
-                                    onChange={(e) => handleInputChange('recipient_name', e.target.value)}
-                                    placeholder="Enter recipient name (optional)"
-                                />
-                            </div>
+                                    {/* Status */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="status">Status</Label>
+                                        <Select
+                                            value={formData.status}
+                                            onValueChange={(value) => handleInputChange('status', value)}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select status" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {STATUS_OPTIONS.map((status) => (
+                                                    <SelectItem key={status.value} value={status.value}>
+                                                        {status.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
 
-                            {/* Shipper Name */}
-                            <div className="space-y-2">
-                                <Label htmlFor="shipper_name">Shipper Name</Label>
-                                <Input
-                                    id="shipper_name"
-                                    value={formData.shipper_name}
-                                    onChange={(e) => handleInputChange('shipper_name', e.target.value)}
-                                    placeholder="Enter shipper name (optional)"
-                                />
-                            </div>
+                                    {/* Order Number */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="order_number">Order Number</Label>
+                                        <Input
+                                            id="order_number"
+                                            value={formData.order_number}
+                                            onChange={(e) => handleInputChange('order_number', e.target.value)}
+                                            placeholder="Enter order number (optional)"
+                                        />
+                                    </div>
 
-                            {/* Tracking Link */}
-                            <div className="space-y-2">
-                                <Label htmlFor="tracking_link">Tracking Link</Label>
-                                <Input
-                                    id="tracking_link"
-                                    value={formData.tracking_link}
-                                    onChange={(e) => handleInputChange('tracking_link', e.target.value)}
-                                    placeholder="Enter tracking URL (optional)"
-                                    type="url"
-                                />
+                                    {/* Package Description */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="package_description">Package Description</Label>
+                                        <Textarea
+                                            id="package_description"
+                                            value={formData.package_description}
+                                            onChange={(e) => handleInputChange('package_description', e.target.value)}
+                                            placeholder="Enter package description (optional)"
+                                            rows={2}
+                                        />
+                                    </div>
+
+                                    {/* Recipient Name */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="recipient_name">Recipient Name</Label>
+                                        <Input
+                                            id="recipient_name"
+                                            value={formData.recipient_name}
+                                            onChange={(e) => handleInputChange('recipient_name', e.target.value)}
+                                            placeholder="Enter recipient name (optional)"
+                                        />
+                                    </div>
+
+                                    {/* Shipper Name */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="shipper_name">Shipper Name</Label>
+                                        <Input
+                                            id="shipper_name"
+                                            value={formData.shipper_name}
+                                            onChange={(e) => handleInputChange('shipper_name', e.target.value)}
+                                            placeholder="Enter shipper name (optional)"
+                                        />
+                                    </div>
+
+                                    {/* Tracking Link */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="tracking_link">Tracking Link</Label>
+                                        <Input
+                                            id="tracking_link"
+                                            value={formData.tracking_link}
+                                            onChange={(e) => handleInputChange('tracking_link', e.target.value)}
+                                            placeholder="Enter tracking URL (optional)"
+                                            type="url"
+                                        />
+                                    </div>
+                                </form>
                             </div>
-                        </form>
+                        </div>
                     )}
                 </div>
 
