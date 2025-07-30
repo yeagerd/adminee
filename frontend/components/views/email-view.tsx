@@ -1,7 +1,7 @@
 import EmailCard from '@/components/email/email-card';
 import EmailFilters from '@/components/email/email-filters';
 import { EmailFolderSelector } from '@/components/email/email-folder-selector';
-import EmailThread from '@/components/email/email-thread';
+import EmailListCard from '@/components/email/email-list-card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useIntegrations } from '@/contexts/integrations-context';
@@ -319,7 +319,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                                     </button>
                                     <h2 className="text-lg font-semibold">Thread</h2>
                                 </div>
-                                <EmailThread
+                                <EmailListCard
                                     thread={selectedThread}
                                     mode="expanded"
                                     showReadingPane={true}
@@ -369,7 +369,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                         ) : (
                             <div className={viewMode === 'tight' ? '' : 'p-4'}>
                                 {groupedThreads.map((thread) => (
-                                    <EmailThread
+                                    <EmailListCard
                                         key={thread.id}
                                         thread={thread}
                                         mode={viewMode}
