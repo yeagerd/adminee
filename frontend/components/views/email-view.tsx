@@ -7,7 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { useIntegrations } from '@/contexts/integrations-context';
 import { gatewayClient } from '@/lib/gateway-client';
 import { EmailFolder, EmailMessage } from '@/types/office-service';
-import { ChevronLeft, Grid3X3, List, PanelLeft, RefreshCw, Settings, Square } from 'lucide-react';
+import { ChevronLeft, List, ListTodo, PanelLeft, RefreshCw, Settings, Square } from 'lucide-react';
 import { getSession } from 'next-auth/react';
 import React, { useCallback, useEffect, useState } from 'react';
 
@@ -261,7 +261,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                                             className={`p-1.5 ${viewMode === 'expanded' ? 'bg-blue-100 text-blue-600' : 'text-gray-600'}`}
                                             title="Expanded view"
                                         >
-                                            <Grid3X3 className="w-3 h-3" />
+                                            <ListTodo className="w-3 h-3" />
                                         </button>
                                     </div>
                                 </DropdownMenuItem>
