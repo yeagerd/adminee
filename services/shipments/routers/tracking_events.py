@@ -19,7 +19,7 @@ from services.shipments.service_auth import service_permission_required
 router = APIRouter()
 
 
-@router.get("/packages/{id}/events", response_model=List[TrackingEventOut])
+@router.get("/{id}/events", response_model=List[TrackingEventOut])
 async def get_tracking_events(
     id: int,
     current_user: str = Depends(get_current_user),
@@ -58,7 +58,7 @@ async def get_tracking_events(
     ]
 
 
-@router.post("/packages/{id}/events", response_model=TrackingEventOut)
+@router.post("/{id}/events", response_model=TrackingEventOut)
 async def create_tracking_event(
     id: int,
     event: TrackingEventCreate,

@@ -64,7 +64,7 @@ class TestEndpointAuthentication:
     def test_tracking_events_endpoint_requires_auth(self, client):
         """Test that tracking events endpoint requires authentication."""
         # Test without any authentication
-        response = client.get("/api/v1/shipments/events/packages/1")
+        response = client.get("/api/v1/shipments/packages/1/events")
         assert response.status_code == 401
         assert "Authentication required" in response.json()["message"]
 
@@ -101,12 +101,12 @@ class TestEndpointAuthentication:
         assert "Authentication required" in response.json()["message"]
 
         # Test add label to package without API key
-        response = client.post("/api/v1/packages/1/labels")
+        response = client.post("/api/v1/shipments/packages/1/labels")
         assert response.status_code == 401
         assert "Authentication required" in response.json()["message"]
 
         # Test remove label from package without API key
-        response = client.delete("/api/v1/packages/1/labels/1")
+        response = client.delete("/api/v1/shipments/packages/1/labels/1")
         assert response.status_code == 401
         assert "Authentication required" in response.json()["message"]
 
