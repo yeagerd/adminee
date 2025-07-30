@@ -60,7 +60,7 @@ export default function AddPackageModal({ onClose, onAdd }: { onClose: () => voi
         setLoading(true);
         setError(null);
         try {
-            await gatewayClient.request('/api/v1/packages', {
+            await gatewayClient.request('/api/v1/shipments/packages', {
                 method: 'POST',
                 body: {
                     tracking_number: form.tracking_number,

@@ -58,7 +58,7 @@ export default function PackageDashboard() {
     useEffect(() => {
         setLoading(true);
         setError(null);
-        gatewayClient.request('/api/v1/packages')
+        gatewayClient.request('/api/v1/shipments/packages')
             .then((res) => {
                 const typedRes = res as { data: Package[] };
                 setPackages(typedRes.data || []);
@@ -128,7 +128,7 @@ export default function PackageDashboard() {
         setLoading(true);
         setError(null);
         try {
-            const res = await gatewayClient.request('/api/v1/packages') as { data: Package[] };
+            const res = await gatewayClient.request('/api/v1/shipments/packages') as { data: Package[] };
             setPackages(res.data || []);
         } catch (err) {
             if (err instanceof Error) {
