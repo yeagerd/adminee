@@ -41,7 +41,7 @@ async def get_tracking_events(
 
     return [
         TrackingEventOut(
-            id=event.id if event.id is not None else 0,
+            id=event.id,
             event_date=event.event_date,
             status=event.status,
             location=event.location,
@@ -80,7 +80,7 @@ async def create_tracking_event(
     await session.refresh(db_event)
 
     return TrackingEventOut(
-        id=db_event.id if db_event.id is not None else 0,
+        id=db_event.id,
         event_date=db_event.event_date,
         status=db_event.status,
         location=db_event.location,

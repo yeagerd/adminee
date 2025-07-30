@@ -43,7 +43,7 @@ async def list_packages(
 
         package_out.append(
             PackageOut(
-                id=pkg.id if pkg.id is not None else 0,
+                id=pkg.id,
                 user_id=pkg.user_id,
                 tracking_number=pkg.tracking_number,
                 carrier=pkg.carrier,
@@ -82,31 +82,46 @@ async def add_package(
     await session.commit()
     await session.refresh(db_pkg)
 
+    # Extract all values before creating the tracking event
+    package_id = db_pkg.id
+    package_status = db_pkg.status
+    user_id = db_pkg.user_id
+    tracking_number = db_pkg.tracking_number
+    carrier = db_pkg.carrier
+    estimated_delivery = db_pkg.estimated_delivery
+    actual_delivery = db_pkg.actual_delivery
+    recipient_name = db_pkg.recipient_name
+    shipper_name = db_pkg.shipper_name
+    package_description = db_pkg.package_description
+    order_number = db_pkg.order_number
+    tracking_link = db_pkg.tracking_link
+    updated_at = db_pkg.updated_at
+
     # Create initial tracking event
     initial_event = TrackingEvent(
-        package_id=db_pkg.id if db_pkg.id is not None else 0,
+        package_id=package_id,
         event_date=datetime.now(timezone.utc),
-        status=db_pkg.status,
+        status=package_status,
         location=None,
-        description=f"Package tracking initiated - Status: {db_pkg.status.value}",
+        description=f"Package tracking initiated - Status: {package_status.value}",
     )  # type: ignore
     session.add(initial_event)
     await session.commit()
 
     return PackageOut(
-        id=db_pkg.id if db_pkg.id is not None else 0,
-        user_id=db_pkg.user_id,
-        tracking_number=db_pkg.tracking_number,
-        carrier=db_pkg.carrier,
-        status=db_pkg.status,
-        estimated_delivery=db_pkg.estimated_delivery,
-        actual_delivery=db_pkg.actual_delivery,
-        recipient_name=db_pkg.recipient_name,
-        shipper_name=db_pkg.shipper_name,
-        package_description=db_pkg.package_description,
-        order_number=db_pkg.order_number,
-        tracking_link=db_pkg.tracking_link,
-        updated_at=db_pkg.updated_at,
+        id=package_id,
+        user_id=user_id,
+        tracking_number=tracking_number,
+        carrier=carrier,
+        status=package_status,
+        estimated_delivery=estimated_delivery,
+        actual_delivery=actual_delivery,
+        recipient_name=recipient_name,
+        shipper_name=shipper_name,
+        package_description=package_description,
+        order_number=order_number,
+        tracking_link=tracking_link,
+        updated_at=updated_at,
         events_count=1,  # Now we have 1 event (the initial one)
         labels=[],  # TODO: Query for real labels
     )
@@ -135,7 +150,7 @@ async def get_package(
     events_count = len(events_result.scalars().all())
 
     return PackageOut(
-        id=package.id if package.id is not None else 0,
+        id=package.id,
         user_id=package.user_id,
         tracking_number=package.tracking_number,
         carrier=package.carrier,
@@ -181,7 +196,7 @@ async def update_package(
     await session.refresh(package)
 
     return PackageOut(
-        id=package.id if package.id is not None else 0,
+        id=package.id,
         user_id=package.user_id,
         tracking_number=package.tracking_number,
         carrier=package.carrier,
