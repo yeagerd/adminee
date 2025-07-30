@@ -58,7 +58,12 @@ class Package(SQLModel, table=True):
     __table_args__ = (
         # Unique constraint: user can't have duplicate tracking numbers for the same carrier
         # This allows the same tracking number across different carriers (which can happen)
-        sa.UniqueConstraint("user_id", "tracking_number", "carrier", name="uq_package_user_tracking_carrier"),
+        sa.UniqueConstraint(
+            "user_id",
+            "tracking_number",
+            "carrier",
+            name="uq_package_user_tracking_carrier",
+        ),
         {"sqlite_autoincrement": True},
     )
 
