@@ -615,9 +615,9 @@ Implement a shipment tracking feature that allows users to track packages direct
 - Update error handling for unauthorized access
 
 **Acceptance Criteria:**
-- [ ] Package refresh endpoint requires user authentication
-- [ ] User ownership of package is validated before refresh
-- [ ] Users cannot refresh packages owned by other users
+- [x] Package refresh endpoint requires user authentication
+- [x] User ownership of package is validated before refresh
+- [x] Users cannot refresh packages owned by other users
 
 #### Task 7.4.6: Add User Auth to Package Label Management Endpoints
 **File:** `services/shipments/routers/packages.py`

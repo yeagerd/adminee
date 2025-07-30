@@ -195,11 +195,24 @@ async def delete_package(
 @router.post("/{id}/refresh")
 async def refresh_package(
     id: int,
+    current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["write_shipments"])),
 ) -> dict:
-    # TODO: Implement force refresh tracking
-    return {"success": True}
+    # Query package and validate user ownership
+    query = select(Package).where(Package.id == id, Package.user_id == current_user)
+    result = await session.execute(query)
+    package = result.scalar_one_or_none()
+    
+    if not package:
+        raise HTTPException(status_code=404, detail="Package not found or access denied")
+    
+    # TODO: Implement actual tracking refresh logic
+    # For now, just update the timestamp
+    package.updated_at = datetime.utcnow()
+    await session.commit()
+    
+    return {"message": "Package refresh initiated successfully"}
 
 
 @router.post("/{id}/labels")
