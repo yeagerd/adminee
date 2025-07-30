@@ -240,8 +240,18 @@ class EmailParser:
         # Try to extract package description from subject
         if subject:
             # Remove common prefixes and clean up
-            clean_subject = re.sub(r'^(Your |Order |Package |Shipment |Tracking )', '', subject, flags=re.IGNORECASE)
-            clean_subject = re.sub(r' has (shipped|been shipped|arrived|been delivered)', '', clean_subject, flags=re.IGNORECASE)
+            clean_subject = re.sub(
+                r"^(Your |Order |Package |Shipment |Tracking )",
+                "",
+                subject,
+                flags=re.IGNORECASE,
+            )
+            clean_subject = re.sub(
+                r" has (shipped|been shipped|arrived|been delivered)",
+                "",
+                clean_subject,
+                flags=re.IGNORECASE,
+            )
             if clean_subject and len(clean_subject) > 5:
                 suggested_data["package_description"] = clean_subject
 

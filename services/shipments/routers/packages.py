@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,7 +37,7 @@ async def list_packages(
     package_out = []
     for pkg in packages:
         # Count tracking events for this package
-        events_query = select(TrackingEvent).where(TrackingEvent.package_id == pkg.id)
+        events_query = select(TrackingEvent).where(TrackingEvent.package_id == pkg.id)  # type: ignore
         events_result = await session.execute(events_query)
         events_count = len(events_result.scalars().all())
 
@@ -77,21 +77,19 @@ async def add_package(
     package_data = pkg.dict()
     package_data["user_id"] = current_user
 
-    db_pkg = Package(**package_data)
+    db_pkg = Package(**package_data)  # type: ignore
     session.add(db_pkg)
     await session.commit()
     await session.refresh(db_pkg)
 
     # Create initial tracking event
-    from datetime import datetime, timezone
-
     initial_event = TrackingEvent(
         package_id=db_pkg.id if db_pkg.id is not None else 0,
         event_date=datetime.now(timezone.utc),
         status=db_pkg.status,
         location=None,
         description=f"Package tracking initiated - Status: {db_pkg.status.value}",
-    )
+    )  # type: ignore
     session.add(initial_event)
     await session.commit()
 
@@ -132,7 +130,7 @@ async def get_package(
         )
 
     # Count tracking events for this package
-    events_query = select(TrackingEvent).where(TrackingEvent.package_id == package.id)
+    events_query = select(TrackingEvent).where(TrackingEvent.package_id == package.id)  # type: ignore
     events_result = await session.execute(events_query)
     events_count = len(events_result.scalars().all())
 
@@ -176,9 +174,9 @@ async def update_package(
     # Update package fields
     update_data = pkg.dict(exclude_unset=True)
     for field, value in update_data.items():
-        setattr(package, field, value)
+        setattr(package, field, value)  # type: ignore
 
-    package.updated_at = datetime.utcnow()
+    package.updated_at = datetime.now(timezone.utc)
     await session.commit()
     await session.refresh(package)
 
@@ -244,7 +242,7 @@ async def refresh_package(
 
     # TODO: Implement actual tracking refresh logic
     # For now, just update the timestamp
-    package.updated_at = datetime.utcnow()
+    package.updated_at = datetime.now(timezone.utc)
     await session.commit()
 
     return {"message": "Package refresh initiated successfully"}

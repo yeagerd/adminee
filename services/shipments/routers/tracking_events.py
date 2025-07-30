@@ -33,7 +33,7 @@ async def get_tracking_events(
     # Query tracking events for this package
     events_query = (
         select(TrackingEvent)
-        .where(TrackingEvent.package_id == id)
+        .where(TrackingEvent.package_id == id)  # type: ignore
         .order_by(TrackingEvent.event_date.desc())
     )
     events_result = await session.execute(events_query)
@@ -74,7 +74,7 @@ async def create_tracking_event(
     event_data = event.dict()
     event_data["package_id"] = id
 
-    db_event = TrackingEvent(**event_data)
+    db_event = TrackingEvent(**event_data)  # type: ignore
     session.add(db_event)
     await session.commit()
     await session.refresh(db_event)
