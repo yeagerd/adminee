@@ -186,7 +186,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-[600px]">
+            <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Package className="h-5 w-5" />
@@ -194,7 +194,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                     </DialogTitle>
                 </DialogHeader>
 
-                <div className="space-y-4">
+                <div className="space-y-4 flex-1 overflow-y-auto">
                     {isSuccess ? (
                         <div className="flex flex-col items-center justify-center py-8 text-center">
                             <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
