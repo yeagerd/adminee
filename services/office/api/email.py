@@ -407,7 +407,7 @@ async def get_email_folders(
         logger.error(f"[{request_id}] Error fetching email folders: {e}")
         raise ServiceError(
             message="Failed to fetch email folders",
-            details=str(e),
+            details={"error": str(e)},
         )
 
 
