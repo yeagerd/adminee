@@ -13,6 +13,22 @@ from services.shipments.main import app
 client = TestClient(app)
 
 
+@pytest.fixture(autouse=True)
+def patch_settings():
+    """Patch the _settings global variable to return test settings."""
+    import services.shipments.settings as shipments_settings
+
+    test_settings = shipments_settings.Settings(
+        db_url_shipments="sqlite:///:memory:",
+        api_frontend_shipments_key="test-frontend-shipments-key",
+    )
+
+    # Directly set the singleton instead of using monkeypatch
+    shipments_settings._settings = test_settings
+    yield
+    shipments_settings._settings = None
+
+
 # Test data for various email formats
 SAMPLE_EMAILS = {
     "amazon_ups": {
