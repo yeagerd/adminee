@@ -23,13 +23,14 @@ router = APIRouter()
 
 @router.get("/", response_model=PackageListResponse)
 async def list_packages(
+    current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["read_shipments"])),
 ) -> dict:
-    logger.info("Fetching all packages from DB")
-    result = await session.execute(select(Package))
+    logger.info("Fetching packages for user", user_id=current_user)
+    result = await session.execute(select(Package).where(Package.user_id == current_user))
     packages = result.scalars().all()
-    logger.info("Found packages", count=len(packages))
+    logger.info("Found packages for user", user_id=current_user, count=len(packages))
     # Convert to PackageOut (minimal fields for now)
     package_out = [
         PackageOut(

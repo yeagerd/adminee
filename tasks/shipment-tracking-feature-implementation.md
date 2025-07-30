@@ -535,9 +535,9 @@ Implement a shipment tracking feature that allows users to track packages direct
 - Add proper error handling for authentication failures
 
 **Acceptance Criteria:**
-- [ ] Package list endpoint requires user authentication
-- [ ] Only packages owned by authenticated user are returned
-- [ ] Proper error responses for unauthorized access
+- [x] Package list endpoint requires user authentication
+- [x] Only packages owned by authenticated user are returned
+- [x] Proper error responses for unauthorized access
 
 #### Task 7.4.2: Add User Auth to Package Detail Endpoint
 **File:** `services/shipments/routers/packages.py`
