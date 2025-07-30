@@ -51,7 +51,8 @@ export function ChatPanelProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const setWidth = useCallback((width: number) => {
-        const clampedWidth = Math.max(MIN_CHAT_WIDTH, Math.min(MAX_CHAT_WIDTH, width));
+        // Ensure width is within valid bounds and is a positive number
+        const clampedWidth = Math.max(MIN_CHAT_WIDTH, Math.min(MAX_CHAT_WIDTH, Math.max(0, width)));
         setState(prev => ({ ...prev, width: clampedWidth }));
     }, []);
 

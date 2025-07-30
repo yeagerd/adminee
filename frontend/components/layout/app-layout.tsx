@@ -2,7 +2,7 @@ import Navbar from "@/components/navbar";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { useChatPanelState } from "@/contexts/chat-panel-context";
-import React, { ReactElement, ReactNode, RefObject, useRef } from "react";
+import React, { ReactElement, ReactNode, RefObject, useEffect, useRef, useState } from "react";
 
 interface AppLayoutProps {
     sidebar?: ReactNode;
@@ -14,7 +14,27 @@ interface AppLayoutProps {
 
 export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = false }: AppLayoutProps) {
     const chatPaneRef = useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>;
+    const containerRef = useRef<HTMLDivElement>(null);
     const { isOpen, width, setWidth } = useChatPanelState();
+    const [containerWidth, setContainerWidth] = useState<number>(0);
+
+    // Track container width for responsive sizing
+    useEffect(() => {
+        const updateContainerWidth = () => {
+            if (containerRef.current) {
+                setContainerWidth(containerRef.current.offsetWidth);
+            }
+        };
+
+        updateContainerWidth();
+        const resizeObserver = new ResizeObserver(updateContainerWidth);
+
+        if (containerRef.current) {
+            resizeObserver.observe(containerRef.current);
+        }
+
+        return () => resizeObserver.disconnect();
+    }, []);
 
     // Calculate panel sizes based on chat state
     const getPanelSizes = () => {
@@ -22,11 +42,13 @@ export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = fa
             return { mainSize: 100, chatSize: 0 };
         }
 
-        // Calculate chat panel size as percentage of total width
-        // Assuming a reasonable total width for calculation
-        const totalWidth = 1200; // Approximate total width
-        const chatSizePercent = Math.round((width / totalWidth) * 100);
-        const mainSizePercent = 100 - chatSizePercent;
+        // Use actual container width for accurate percentage calculations
+        const totalWidth = containerWidth || 1200; // Fallback to 1200px if not measured yet
+
+        // Ensure width doesn't exceed container width
+        const clampedWidth = Math.min(width, totalWidth);
+        const chatSizePercent = Math.max(0, Math.min(100, Math.round((clampedWidth / totalWidth) * 100)));
+        const mainSizePercent = Math.max(0, 100 - chatSizePercent);
 
         return { mainSize: mainSizePercent, chatSize: chatSizePercent };
     };
@@ -35,9 +57,9 @@ export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = fa
 
     const handlePanelResize = (sizes: number[]) => {
         if (sizes.length >= 2) {
-            // Calculate actual width from percentage
-            const totalWidth = 1200; // Approximate total width
-            const newChatWidth = Math.round((sizes[1] / 100) * totalWidth);
+            // Calculate actual width from percentage using real container width
+            const totalWidth = containerWidth || 1200; // Fallback to 1200px if not measured yet
+            const newChatWidth = Math.max(0, Math.round((sizes[1] / 100) * totalWidth));
             setWidth(newChatWidth);
         }
     };
@@ -51,7 +73,7 @@ export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = fa
                         {sidebar || <div className="h-full w-full border-r bg-sidebar flex items-center justify-center text-muted-foreground">Sidebar</div>}
                     </SidebarProvider>
                 </div>
-                <div className="flex-1 min-w-0 h-full flex flex-col">
+                <div ref={containerRef} className="flex-1 min-w-0 h-full flex flex-col">
                     {draft ? (
                         <ResizablePanelGroup
                             key={`chat-${isOpen ? 'open' : 'closed'}-${chatSize}`}
@@ -106,7 +128,7 @@ export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = fa
                             )}
                         </ResizablePanelGroup>
                     ) : (
-                        <div className="flex-1 min-w-0 h-full flex flex-col">
+                        <div ref={containerRef} className="flex-1 min-w-0 h-full flex flex-col">
                             {draftPane && hasActiveDraft ? (
                                 <ResizablePanelGroup direction="vertical" className="h-full">
                                     <ResizablePanel minSize={10} defaultSize={50} className="h-full">
