@@ -21,7 +21,7 @@ async def get_tracking_events(
     service_name: str = Depends(service_permission_required(["read_shipments"])),
 ) -> list[TrackingEventOut]:
     # Query package and validate user ownership
-    query = select(Package).where(Package.id == id, Package.user_id == current_user)
+    query = select(Package).where(Package.id == id, Package.user_id == current_user)  # type: ignore
     result = await session.execute(query)
     package = result.scalar_one_or_none()
 

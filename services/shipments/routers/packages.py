@@ -29,7 +29,7 @@ async def list_packages(
 ) -> dict:
     logger.info("Fetching packages for user", user_id=current_user)
     result = await session.execute(
-        select(Package).where(Package.user_id == current_user)
+        select(Package).where(Package.user_id == current_user)  # type: ignore
     )
     packages = result.scalars().all()
     logger.info("Found packages for user", user_id=current_user, count=len(packages))
@@ -37,7 +37,7 @@ async def list_packages(
     package_out = [
         PackageOut(
             id=pkg.id if pkg.id is not None else 0,
-            user_id=str(pkg.user_id),
+            user_id=pkg.user_id,
             tracking_number=pkg.tracking_number,
             carrier=pkg.carrier,
             status=pkg.status,
@@ -77,7 +77,7 @@ async def add_package(
     await session.refresh(db_pkg)
     return PackageOut(
         id=db_pkg.id if db_pkg.id is not None else 0,
-        user_id=str(db_pkg.user_id),
+        user_id=db_pkg.user_id,
         tracking_number=db_pkg.tracking_number,
         carrier=db_pkg.carrier,
         status=db_pkg.status,
@@ -102,7 +102,7 @@ async def get_package(
     service_name: str = Depends(service_permission_required(["read_shipments"])),
 ) -> PackageOut:
     # Query package and validate user ownership
-    query = select(Package).where(Package.id == id, Package.user_id == current_user)
+    query = select(Package).where(Package.id == id, Package.user_id == current_user)  # type: ignore
     result = await session.execute(query)
     package = result.scalar_one_or_none()
 
@@ -113,7 +113,7 @@ async def get_package(
 
     return PackageOut(
         id=package.id if package.id is not None else 0,
-        user_id=str(package.user_id),
+        user_id=package.user_id,
         tracking_number=package.tracking_number,
         carrier=package.carrier,
         status=package.status,
@@ -139,7 +139,7 @@ async def update_package(
     service_name: str = Depends(service_permission_required(["write_shipments"])),
 ) -> PackageOut:
     # Query package and validate user ownership
-    query = select(Package).where(Package.id == id, Package.user_id == current_user)
+    query = select(Package).where(Package.id == id, Package.user_id == current_user)  # type: ignore
     result = await session.execute(query)
     package = result.scalar_one_or_none()
 
@@ -159,7 +159,7 @@ async def update_package(
 
     return PackageOut(
         id=package.id if package.id is not None else 0,
-        user_id=str(package.user_id),
+        user_id=package.user_id,
         tracking_number=package.tracking_number,
         carrier=package.carrier,
         status=package.status,
@@ -184,7 +184,7 @@ async def delete_package(
     service_name: str = Depends(service_permission_required(["write_shipments"])),
 ) -> dict:
     # Query package and validate user ownership
-    query = select(Package).where(Package.id == id, Package.user_id == current_user)
+    query = select(Package).where(Package.id == id, Package.user_id == current_user)  # type: ignore
     result = await session.execute(query)
     package = result.scalar_one_or_none()
 
@@ -208,7 +208,7 @@ async def refresh_package(
     service_name: str = Depends(service_permission_required(["write_shipments"])),
 ) -> dict:
     # Query package and validate user ownership
-    query = select(Package).where(Package.id == id, Package.user_id == current_user)
+    query = select(Package).where(Package.id == id, Package.user_id == current_user)  # type: ignore
     result = await session.execute(query)
     package = result.scalar_one_or_none()
 
@@ -233,7 +233,7 @@ async def add_label_to_package(
     service_name: str = Depends(service_permission_required(["write_shipments"])),
 ) -> dict:
     # Query package and validate user ownership
-    query = select(Package).where(Package.id == id, Package.user_id == current_user)
+    query = select(Package).where(Package.id == id, Package.user_id == current_user)  # type: ignore
     result = await session.execute(query)
     package = result.scalar_one_or_none()
 
@@ -256,7 +256,7 @@ async def remove_label_from_package(
     service_name: str = Depends(service_permission_required(["write_shipments"])),
 ) -> dict:
     # Query package and validate user ownership
-    query = select(Package).where(Package.id == id, Package.user_id == current_user)
+    query = select(Package).where(Package.id == id, Package.user_id == current_user)  # type: ignore
     result = await session.execute(query)
     package = result.scalar_one_or_none()
 

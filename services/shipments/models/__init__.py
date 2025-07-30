@@ -17,7 +17,7 @@ class PackageLabel(SQLModel, table=True):
 
 class Package(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(index=True)
+    user_id: str = Field(index=True)
     tracking_number: str = Field(max_length=255)
     carrier: str = Field(max_length=50)
     status: str = Field(max_length=50)
@@ -47,7 +47,7 @@ class Package(SQLModel, table=True):
 
 class Label(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(index=True)
+    user_id: str = Field(index=True)
     name: str = Field(max_length=100)
     color: str = Field(default="#3B82F6", max_length=7)
     created_at: datetime = Field(default_factory=datetime.utcnow)
