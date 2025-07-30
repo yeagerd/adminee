@@ -101,7 +101,7 @@ const EmailCard: React.FC<EmailCardProps> = ({ email }) => {
                         <span className="font-medium">{email.subject || '(No subject)'}</span>
                         {shipmentDetection.isShipmentEmail && (
                             <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
-                                📦 Shipment
+                                📦
                             </span>
                         )}
                     </div>
