@@ -234,7 +234,8 @@ const EmailCard: React.FC<EmailCardProps> = ({
                 `}
                 onClick={() => onSelect?.(email.id)}
             >
-                <div className={`${inlineAvatar ? '' : 'flex items-start gap-3'}`}>
+                {/* Header Section - Avatar, Sender Info, Date, Actions */}
+                <div className={`${inlineAvatar ? '' : 'flex items-start gap-3'} mb-3`}>
                     {/* Avatar - conditionally positioned */}
                     {!inlineAvatar && (
                         <div className="flex-shrink-0">
@@ -244,7 +245,7 @@ const EmailCard: React.FC<EmailCardProps> = ({
                         </div>
                     )}
 
-                    {/* Content */}
+                    {/* Header Content */}
                     <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-4">
                             <div className="flex-1 min-w-0">
@@ -270,59 +271,8 @@ const EmailCard: React.FC<EmailCardProps> = ({
                                 <div className={`text-lg mb-2 ${isUnread ? 'font-semibold' : ''}`}>
                                     {email.subject || '(No subject)'}
                                 </div>
-                                <div className="text-sm text-gray-600 mb-3">
+                                <div className="text-sm text-gray-600">
                                     To: {email.to_addresses.map(addr => addr.name || addr.email).join(', ')}
-                                </div>
-
-                                {/* Email Body - HTML iframe or text fallback */}
-                                <div className="mb-3">
-                                    {email.body_html ? (
-                                        <div
-                                            className="mx-2 prose prose-sm max-w-none"
-                                            style={{
-                                                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                                                fontSize: '14px',
-                                                lineHeight: '1.5',
-                                                color: '#333'
-                                            }}
-                                            dangerouslySetInnerHTML={{ __html: sanitizeEmailHtml(email.body_html) }}
-                                        />
-                                    ) : (
-                                        <div className="text-sm text-gray-700">
-                                            {email.snippet || email.body_text?.substring(0, 200) || 'No preview available'}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* AI Summary */}
-                                <div className="mb-3">
-                                    <AISummary email={email} />
-                                </div>
-
-                                {/* Action buttons */}
-                                <div className="flex items-center gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleReply();
-                                        }}
-                                    >
-                                        <Reply className="h-4 w-4 mr-1" />
-                                        Reply
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleArchive();
-                                        }}
-                                    >
-                                        <Archive className="h-4 w-4 mr-1" />
-                                        Archive
-                                    </Button>
                                 </div>
                             </div>
 
@@ -381,22 +331,36 @@ const EmailCard: React.FC<EmailCardProps> = ({
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={handleDownload} disabled={isDownloading}>
+                                            <DropdownMenuItem onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleReply();
+                                            }}>
+                                                <Reply className="h-4 w-4 mr-2" />
+                                                Reply
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleArchive();
+                                            }}>
+                                                <Archive className="h-4 w-4 mr-2" />
+                                                Archive
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDownload();
+                                            }}>
                                                 <Download className="h-4 w-4 mr-2" />
-                                                {isDownloading ? 'Downloading...' : 'Download Email'}
+                                                Download
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                onClick={handleTrackShipment}
-                                                className={shipmentDetection.isShipmentEmail ? 'text-green-600 font-medium' : ''}
-                                            >
-                                                <Wand2 className="h-4 w-4 mr-2" />
-                                                Track Shipment
-                                                {shipmentDetection.isShipmentEmail && (
-                                                    <span className="ml-auto text-xs bg-green-100 text-green-700 px-1 rounded">
-                                                        {shipmentDetection.detectedCarrier || 'Detected'}
-                                                    </span>
-                                                )}
-                                            </DropdownMenuItem>
+                                            {shipmentDetection.isShipmentEmail && (
+                                                <DropdownMenuItem onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleTrackShipment();
+                                                }}>
+                                                    <Wand2 className="h-4 w-4 mr-2" />
+                                                    Track Shipment
+                                                </DropdownMenuItem>
+                                            )}
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 </div>
@@ -404,8 +368,58 @@ const EmailCard: React.FC<EmailCardProps> = ({
                         </div>
                     </div>
                 </div>
-            </div>
 
+                {/* Email Body Section - Full Width */}
+                <div className="w-full">
+                    {email.body_html ? (
+                        <div
+                            className="prose prose-sm max-w-none"
+                            style={{
+                                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                                fontSize: '14px',
+                                lineHeight: '1.5',
+                                color: '#333'
+                            }}
+                            dangerouslySetInnerHTML={{ __html: sanitizeEmailHtml(email.body_html) }}
+                        />
+                    ) : (
+                        <div className="text-sm text-gray-700">
+                            {email.snippet || email.body_text?.substring(0, 200) || 'No preview available'}
+                        </div>
+                    )}
+                </div>
+
+                {/* AI Summary Section */}
+                <div className="mt-3">
+                    <AISummary email={email} />
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex items-center gap-2 mt-3">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleReply();
+                        }}
+                    >
+                        <Reply className="h-4 w-4 mr-1" />
+                        Reply
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleArchive();
+                        }}
+                    >
+                        <Archive className="h-4 w-4 mr-1" />
+                        Archive
+                    </Button>
+                </div>
+            </div>
             <TrackShipmentModal
                 isOpen={isModalOpen}
                 onClose={handleModalClose}
