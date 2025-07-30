@@ -71,7 +71,7 @@ app.middleware("http")(create_request_logging_middleware())
 register_briefly_exception_handlers(app)
 
 # Register routers with v1 prefix
-app.include_router(api_router, prefix="/api/v1")
+app.include_router(api_router, prefix="/v1")
 
 
 @app.get("/health")
