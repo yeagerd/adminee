@@ -3,9 +3,22 @@ Database models for the shipments service
 """
 
 from datetime import date, datetime
+from enum import Enum
 from typing import TYPE_CHECKING, List, Optional
 
+import sqlalchemy as sa
 from sqlmodel import Field, Relationship, SQLModel
+
+
+class PackageStatus(str, Enum):
+    PENDING = "PENDING"  # Package created, not yet shipped
+    IN_TRANSIT = "IN_TRANSIT"  # Package is moving through carrier network
+    OUT_FOR_DELIVERY = "OUT_FOR_DELIVERY"  # Package is out for final delivery
+    DELIVERED = "DELIVERED"  # Package successfully delivered
+    EXCEPTION = "EXCEPTION"  # Delivery issue/exception
+    DELAYED = "DELAYED"  # Package is delayed
+    CANCELLED = "CANCELLED"  # Package was cancelled
+    RETURNED = "RETURNED"  # Package was returned to sender
 
 
 class PackageLabel(SQLModel, table=True):
@@ -17,10 +30,10 @@ class PackageLabel(SQLModel, table=True):
 
 class Package(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(index=True)
-    tracking_number: str = Field(max_length=255)
+    user_id: str = Field(index=True)
+    tracking_number: str = Field(max_length=255, index=True)
     carrier: str = Field(max_length=50)
-    status: str = Field(max_length=50)
+    status: PackageStatus = Field(default=PackageStatus.PENDING)
     estimated_delivery: Optional[date] = None
     actual_delivery: Optional[date] = None
     recipient_name: Optional[str] = Field(default=None, max_length=255)
@@ -42,12 +55,22 @@ class Package(SQLModel, table=True):
         back_populates="packages", link_model=PackageLabel
     )
 
-    __table_args__ = ({"sqlite_autoincrement": True},)
+    __table_args__ = (
+        # Unique constraint: user can't have duplicate tracking numbers for the same carrier
+        # This allows the same tracking number across different carriers (which can happen)
+        sa.UniqueConstraint(
+            "user_id",
+            "tracking_number",
+            "carrier",
+            name="uq_package_user_tracking_carrier",
+        ),
+        {"sqlite_autoincrement": True},
+    )
 
 
 class Label(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(index=True)
+    user_id: str = Field(index=True)
     name: str = Field(max_length=100)
     color: str = Field(default="#3B82F6", max_length=7)
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -64,7 +87,7 @@ class TrackingEvent(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     package_id: int = Field(foreign_key="package.id")
     event_date: datetime
-    status: str = Field(max_length=100)
+    status: PackageStatus = Field(max_length=100)
     location: Optional[str] = Field(default=None, max_length=255)
     description: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)

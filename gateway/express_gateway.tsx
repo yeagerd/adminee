@@ -441,7 +441,7 @@ const serviceRoutes = {
     '/api/v1/email': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
     '/api/v1/files': process.env.OFFICE_SERVICE_URL || 'http://127.0.0.1:8003',
     '/api/v1/drafts': process.env.CHAT_SERVICE_URL || 'http://127.0.0.1:8002',
-    '/api/v1/packages': process.env.SHIPMENTS_SERVICE_URL || 'http://127.0.0.1:8004',
+    '/api/v1/shipments': process.env.SHIPMENTS_SERVICE_URL || 'http://127.0.0.1:8004',
     '/api/v1/meetings': process.env.MEETINGS_SERVICE_URL || 'http://127.0.0.1:8005',
     '/api/v1/public/polls': process.env.MEETINGS_SERVICE_URL || 'http://127.0.0.1:8005',
 };
@@ -606,8 +606,8 @@ app.use('/api/v1/meetings', validateAuth, standardLimiter, createServiceProxy(se
 app.use('/api/v1/meetings/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/meetings'], { '^/api/v1/meetings': '/api/v1/meetings' }));
 app.use('/api/v1/public/polls', standardLimiter, createServiceProxy(serviceRoutes['/api/v1/public/polls'], { '^/api/v1/public/polls': '/api/v1/public/polls' }));
 app.use('/api/v1/public/polls/*', standardLimiter, createServiceProxy(serviceRoutes['/api/v1/public/polls'], { '^/api/v1/public/polls': '/api/v1/public/polls' }));
-app.use('/api/v1/packages', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/packages'], { '^/api/v1/packages': '/api/v1/packages' }));
-app.use('/api/v1/packages/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/packages'], { '^/api/v1/packages': '/api/v1/packages' }));
+app.use('/api/v1/shipments', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/shipments'], { '^/api/v1/shipments': '/v1/shipments' }));
+app.use('/api/v1/shipments/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/shipments'], { '^/api/v1/shipments': '/v1/shipments' }));
 
 // Fallback for other API routes (default to user service)
 app.use('/api/v1', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/users'], { '^/api/v1': '/v1' }));
@@ -646,7 +646,7 @@ const server = app.listen(PORT, () => {
     logWithContext('info', `  /api/v1/drafts     → ${serviceRoutes['/api/v1/drafts']}`);
     logWithContext('info', `  /api/v1/meetings → ${serviceRoutes['/api/v1/meetings']}`);
     logWithContext('info', `  /api/v1/public/polls → ${serviceRoutes['/api/v1/public/polls']}`);
-    logWithContext('info', `  /api/v1/packages → ${serviceRoutes['/api/v1/packages']}`);
+    logWithContext('info', `  /api/v1/shipments → ${serviceRoutes['/api/v1/shipments']}`);
 });
 
 // Handle WebSocket upgrades
@@ -667,8 +667,8 @@ server.on('upgrade', (request: any, socket: any, head: any) => {
         targetService = serviceRoutes['/api/v1/meetings'];
     } else if (path.startsWith('/api/v1/public/polls')) {
         targetService = serviceRoutes['/api/v1/public/polls'];
-    } else if (path.startsWith('/api/v1/packages')) {
-        targetService = serviceRoutes['/api/v1/packages'];
+    } else if (path.startsWith('/api/v1/shipments')) {
+        targetService = serviceRoutes['/api/v1/shipments'];
     }
 
     // Create proxy for WebSocket

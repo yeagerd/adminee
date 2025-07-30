@@ -83,6 +83,12 @@ export interface UserPreferences {
     ui?: {
         sidebar_expanded?: boolean;
     };
+    privacy?: {
+        shipment_data_collection?: boolean;
+        data_collection?: boolean;
+        analytics?: boolean;
+        personalization?: boolean;
+    };
     // ...other fields as needed
 }
 
@@ -109,6 +115,12 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
                     timezone_mode: (typeof obj.timezone_mode === 'string' && (obj.timezone_mode === 'auto' || obj.timezone_mode === 'manual')) ? obj.timezone_mode : 'auto',
                     manual_timezone: (typeof obj.manual_timezone === 'string') ? obj.manual_timezone : '',
                     ui: { sidebar_expanded: (obj.ui as any)?.sidebar_expanded ?? false },
+                    privacy: {
+                        shipment_data_collection: (obj.privacy as any)?.shipment_data_collection ?? true,
+                        data_collection: (obj.privacy as any)?.data_collection ?? true,
+                        analytics: (obj.privacy as any)?.analytics ?? true,
+                        personalization: (obj.privacy as any)?.personalization ?? true,
+                    },
                     // ...other fields as needed
                 };
                 setUserPreferencesState(prefs);
@@ -131,6 +143,10 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
             ui: {
                 ...userPreferences?.ui,
                 ...prefs.ui,
+            },
+            privacy: {
+                ...userPreferences?.privacy,
+                ...prefs.privacy,
             },
             // ...other fields as needed
         };
@@ -156,4 +172,10 @@ export function useUserPreferences() {
         throw new Error('useUserPreferences must be used within a UserPreferencesProvider');
     }
     return context;
+}
+
+// Helper function to check if user has consented to shipment data collection
+export function useShipmentDataCollectionConsent(): boolean {
+    const { userPreferences } = useUserPreferences();
+    return userPreferences?.privacy?.shipment_data_collection ?? true; // Default to true
 } 

@@ -415,6 +415,12 @@ class PrivacyPreferencesSchema(BaseModel):
         default=True, description="Encrypt sensitive data"
     )
 
+    # Shipment tracking data collection
+    shipment_data_collection: bool = Field(
+        default=True,
+        description="Allow collection of shipment data for service improvements",
+    )
+
     model_config = ConfigDict(
         json_schema_extra={
             "example": {

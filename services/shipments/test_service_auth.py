@@ -17,6 +17,8 @@ class TestServiceAuth(BaseShipmentsTest):
             "write_shipments",
             "read_labels",
             "write_labels",
+            "parse_emails",
+            "collect_data",
         ]
         assert perms == expected
 

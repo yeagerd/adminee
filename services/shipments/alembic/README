@@ -1,4 +1,0 @@
-Alembic migrations for the Briefly Shipments Service.
-
-- Place migration scripts in the versions/ directory.
-- Use alembic CLI to generate and apply migrations.
