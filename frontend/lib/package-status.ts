@@ -1,13 +1,13 @@
 // Package status constants - must match backend enum values
 export const PACKAGE_STATUS = {
-    PENDING: 'pending',
-    IN_TRANSIT: 'in_transit',
-    OUT_FOR_DELIVERY: 'out_for_delivery',
-    DELIVERED: 'delivered',
-    EXCEPTION: 'exception',
-    DELAYED: 'delayed',
-    CANCELLED: 'cancelled',
-    RETURNED: 'returned',
+    PENDING: 'PENDING',
+    IN_TRANSIT: 'IN_TRANSIT',
+    OUT_FOR_DELIVERY: 'OUT_FOR_DELIVERY',
+    DELIVERED: 'DELIVERED',
+    EXCEPTION: 'EXCEPTION',
+    DELAYED: 'DELAYED',
+    CANCELLED: 'CANCELLED',
+    RETURNED: 'RETURNED',
 } as const;
 
 export type PackageStatus = typeof PACKAGE_STATUS[keyof typeof PACKAGE_STATUS];

@@ -10,14 +10,14 @@ from sqlmodel import Field, Relationship, SQLModel
 
 
 class PackageStatus(str, Enum):
-    PENDING = "pending"  # Package created, not yet shipped
-    IN_TRANSIT = "in_transit"  # Package is moving through carrier network
-    OUT_FOR_DELIVERY = "out_for_delivery"  # Package is out for final delivery
-    DELIVERED = "delivered"  # Package successfully delivered
-    EXCEPTION = "exception"  # Delivery issue/exception
-    DELAYED = "delayed"  # Package is delayed
-    CANCELLED = "cancelled"  # Package was cancelled
-    RETURNED = "returned"  # Package was returned to sender
+    PENDING = "PENDING"  # Package created, not yet shipped
+    IN_TRANSIT = "IN_TRANSIT"  # Package is moving through carrier network
+    OUT_FOR_DELIVERY = "OUT_FOR_DELIVERY"  # Package is out for final delivery
+    DELIVERED = "DELIVERED"  # Package successfully delivered
+    EXCEPTION = "EXCEPTION"  # Delivery issue/exception
+    DELAYED = "DELAYED"  # Package is delayed
+    CANCELLED = "CANCELLED"  # Package was cancelled
+    RETURNED = "RETURNED"  # Package was returned to sender
 
 
 class PackageLabel(SQLModel, table=True):

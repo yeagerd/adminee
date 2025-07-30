@@ -559,6 +559,36 @@ export class GatewayClient {
         });
     }
 
+    async getTrackingEvents(packageId: number): Promise<Array<{
+        id: number;
+        event_date: string;
+        status: PackageStatus;
+        location?: string;
+        description?: string;
+        created_at: string;
+    }>> {
+        return this.request(`/api/v1/tracking/packages/${packageId}/events`);
+    }
+
+    async createTrackingEvent(packageId: number, eventData: {
+        event_date: string;
+        status: PackageStatus;
+        location?: string;
+        description?: string;
+    }): Promise<{
+        id: number;
+        event_date: string;
+        status: PackageStatus;
+        location?: string;
+        description?: string;
+        created_at: string;
+    }> {
+        return this.request(`/api/v1/tracking/packages/${packageId}/events`, {
+            method: 'POST',
+            body: eventData,
+        });
+    }
+
     async collectShipmentData(data: {
         user_id: string;
         email_message_id: string;

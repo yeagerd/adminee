@@ -7,7 +7,7 @@ from sqlalchemy.future import select
 from services.common.logging_config import get_logger
 from services.shipments.auth import get_current_user
 from services.shipments.database import get_async_session_dep
-from services.shipments.models import Package
+from services.shipments.models import Package, TrackingEvent
 from services.shipments.schemas import (
     PackageCreate,
     PackageListResponse,
@@ -33,27 +33,33 @@ async def list_packages(
     )
     packages = result.scalars().all()
     logger.info("Found packages for user", user_id=current_user, count=len(packages))
-    # Convert to PackageOut (minimal fields for now)
-    package_out = [
-        PackageOut(
-            id=pkg.id if pkg.id is not None else 0,
-            user_id=pkg.user_id,
-            tracking_number=pkg.tracking_number,
-            carrier=pkg.carrier,
-            status=pkg.status,
-            estimated_delivery=pkg.estimated_delivery,
-            actual_delivery=pkg.actual_delivery,
-            recipient_name=pkg.recipient_name,
-            shipper_name=pkg.shipper_name,
-            package_description=pkg.package_description,
-            order_number=pkg.order_number,
-            tracking_link=pkg.tracking_link,
-            updated_at=pkg.updated_at,
-            events_count=0,
-            labels=[],
+    # Convert to PackageOut with actual events count
+    package_out = []
+    for pkg in packages:
+        # Count tracking events for this package
+        events_query = select(TrackingEvent).where(TrackingEvent.package_id == pkg.id)
+        events_result = await session.execute(events_query)
+        events_count = len(events_result.scalars().all())
+
+        package_out.append(
+            PackageOut(
+                id=pkg.id if pkg.id is not None else 0,
+                user_id=pkg.user_id,
+                tracking_number=pkg.tracking_number,
+                carrier=pkg.carrier,
+                status=pkg.status,
+                estimated_delivery=pkg.estimated_delivery,
+                actual_delivery=pkg.actual_delivery,
+                recipient_name=pkg.recipient_name,
+                shipper_name=pkg.shipper_name,
+                package_description=pkg.package_description,
+                order_number=pkg.order_number,
+                tracking_link=pkg.tracking_link,
+                updated_at=pkg.updated_at,
+                events_count=events_count,
+                labels=[],
+            )
         )
-        for pkg in packages
-    ]
     return {
         "data": package_out,
         "pagination": {"page": 1, "per_page": 100, "total": len(package_out)},
@@ -75,6 +81,20 @@ async def add_package(
     session.add(db_pkg)
     await session.commit()
     await session.refresh(db_pkg)
+
+    # Create initial tracking event
+    from datetime import datetime, timezone
+
+    initial_event = TrackingEvent(
+        package_id=db_pkg.id if db_pkg.id is not None else 0,
+        event_date=datetime.now(timezone.utc),
+        status=db_pkg.status,
+        location=None,
+        description=f"Package tracking initiated - Status: {db_pkg.status.value}",
+    )
+    session.add(initial_event)
+    await session.commit()
+
     return PackageOut(
         id=db_pkg.id if db_pkg.id is not None else 0,
         user_id=db_pkg.user_id,
@@ -89,7 +109,7 @@ async def add_package(
         order_number=db_pkg.order_number,
         tracking_link=db_pkg.tracking_link,
         updated_at=db_pkg.updated_at,
-        events_count=0,  # TODO: Query for real count
+        events_count=1,  # Now we have 1 event (the initial one)
         labels=[],  # TODO: Query for real labels
     )
 
@@ -111,6 +131,11 @@ async def get_package(
             status_code=404, detail="Package not found or access denied"
         )
 
+    # Count tracking events for this package
+    events_query = select(TrackingEvent).where(TrackingEvent.package_id == package.id)
+    events_result = await session.execute(events_query)
+    events_count = len(events_result.scalars().all())
+
     return PackageOut(
         id=package.id if package.id is not None else 0,
         user_id=package.user_id,
@@ -125,7 +150,7 @@ async def get_package(
         order_number=package.order_number,
         tracking_link=package.tracking_link,
         updated_at=package.updated_at,
-        events_count=0,  # TODO: Query for real count
+        events_count=events_count,
         labels=[],  # TODO: Query for real labels
     )
 

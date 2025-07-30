@@ -161,6 +161,39 @@ class ShipmentsClient {
     async refreshPackage(id: number): Promise<PackageRefreshResponse> {
         return gatewayClient.refreshPackage(id);
     }
+
+    /**
+     * Get tracking events for a package
+     */
+    async getTrackingEvents(packageId: number): Promise<Array<{
+        id: number;
+        event_date: string;
+        status: PackageStatus;
+        location?: string;
+        description?: string;
+        created_at: string;
+    }>> {
+        return gatewayClient.getTrackingEvents(packageId);
+    }
+
+    /**
+     * Create a new tracking event for a package
+     */
+    async createTrackingEvent(packageId: number, eventData: {
+        event_date: string;
+        status: PackageStatus;
+        location?: string;
+        description?: string;
+    }): Promise<{
+        id: number;
+        event_date: string;
+        status: PackageStatus;
+        location?: string;
+        description?: string;
+        created_at: string;
+    }> {
+        return gatewayClient.createTrackingEvent(packageId, eventData);
+    }
 }
 
 // Export a singleton instance
