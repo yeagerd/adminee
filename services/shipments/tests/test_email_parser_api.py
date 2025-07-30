@@ -10,8 +10,6 @@ from fastapi.testclient import TestClient
 
 from services.shipments.main import app
 
-client = TestClient(app)
-
 
 @pytest.fixture(autouse=True)
 def patch_settings():
@@ -27,6 +25,12 @@ def patch_settings():
     shipments_settings._settings = test_settings
     yield
     shipments_settings._settings = None
+
+
+@pytest.fixture
+def client():
+    """Create a test client with patched settings."""
+    return TestClient(app)
 
 
 # Test data for various email formats
@@ -278,7 +282,7 @@ class TestEmailParserCore:
 class TestEmailParserAPI:
     """Test email parser API endpoints with authentication."""
 
-    def test_authentication_required(self):
+    def test_authentication_required(self, client):
         """Test that authentication is required."""
         response = client.post(
             "/api/v1/email-parser/parse", json=SAMPLE_EMAILS["amazon_ups"]
@@ -287,7 +291,7 @@ class TestEmailParserAPI:
         # Should fail without authentication
         assert response.status_code in [401, 403]
 
-    def test_missing_required_fields(self):
+    def test_missing_required_fields(self, client):
         """Test error handling for missing required fields."""
         incomplete_data = {
             "user_id": "user123",
@@ -300,7 +304,7 @@ class TestEmailParserAPI:
         # Should fail due to missing authentication first
         assert response.status_code in [401, 403]
 
-    def test_malformed_json(self):
+    def test_malformed_json(self, client):
         """Test handling of malformed JSON."""
         response = client.post(
             "/api/v1/email-parser/parse",
@@ -384,7 +388,7 @@ class TestDataCollectionCore:
 class TestDataCollectionAPI:
     """Test data collection API endpoints."""
 
-    def test_data_collection_authentication_required(self):
+    def test_data_collection_authentication_required(self, client):
         """Test that data collection requires authentication."""
         response = client.post(
             "/api/v1/data-collection/collect",

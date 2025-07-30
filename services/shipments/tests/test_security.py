@@ -14,8 +14,6 @@ from services.shipments.service_auth import (
     get_client_permissions,
 )
 
-client = TestClient(app)
-
 
 @pytest.fixture(autouse=True)
 def patch_settings():
@@ -31,6 +29,12 @@ def patch_settings():
     shipments_settings._settings = test_settings
     yield
     shipments_settings._settings = None
+
+
+@pytest.fixture
+def client():
+    """Create a test client with patched settings."""
+    return TestClient(app)
 
 
 class TestUserAuthentication:
@@ -137,7 +141,7 @@ class TestServiceAuthentication:
 class TestEndpointSecurity:
     """Test endpoint security and authentication."""
 
-    def test_email_parser_endpoint_requires_auth(self):
+    def test_email_parser_endpoint_requires_auth(self, client):
         """Test that email parser endpoint requires authentication."""
         response = client.post(
             "/api/v1/email-parser/parse",
@@ -152,7 +156,7 @@ class TestEndpointSecurity:
         # Should return 401 or 403 due to missing authentication
         assert response.status_code in [401, 403]
 
-    def test_data_collection_endpoint_requires_auth(self):
+    def test_data_collection_endpoint_requires_auth(self, client):
         """Test that data collection endpoint requires authentication."""
         response = client.post(
             "/api/v1/data-collection/collect",
@@ -169,13 +173,13 @@ class TestEndpointSecurity:
         # Should return 401 or 403 due to missing authentication
         assert response.status_code in [401, 403]
 
-    def test_labels_endpoint_requires_auth(self):
+    def test_labels_endpoint_requires_auth(self, client):
         """Test that labels endpoint requires authentication."""
         response = client.get("/api/v1/labels/")
         # Should return 401 or 403 due to missing authentication
         assert response.status_code in [401, 403]
 
-    def test_carrier_configs_endpoint_requires_auth(self):
+    def test_carrier_configs_endpoint_requires_auth(self, client):
         """Test that carrier configs endpoint requires authentication."""
         response = client.get("/api/v1/carrier-configs/")
         # Should return 401, 403, or 404 (if endpoint not implemented yet)
