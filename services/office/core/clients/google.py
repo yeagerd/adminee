@@ -96,6 +96,43 @@ class GoogleAPIClient(BaseAPIClient):
         )
         return response.json()
 
+    async def get_labels(self) -> Dict[str, Any]:
+        """
+        Get list of Gmail labels.
+
+        Returns:
+            Dictionary containing labels list
+        """
+        response = await self.get("/gmail/v1/users/me/labels")
+        return response.json()
+
+    async def get_messages_from_label(
+        self,
+        label_id: str,
+        max_results: int = 100,
+        page_token: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Get list of Gmail messages from a specific label.
+
+        Args:
+            label_id: Gmail label ID
+            max_results: Maximum number of messages to return
+            page_token: Token for pagination
+
+        Returns:
+            Dictionary containing messages list and pagination info
+        """
+        params: Dict[str, Any] = {"maxResults": max_results}
+        if page_token:
+            params["pageToken"] = page_token
+
+        # Use the label query parameter to filter messages by label
+        params["q"] = f"label:{label_id}"
+
+        response = await self.get("/gmail/v1/users/me/messages", params=params)
+        return response.json()
+
     # Google Calendar API methods
     async def get_calendar_list(self) -> Dict[str, Any]:
         """

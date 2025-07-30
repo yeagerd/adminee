@@ -688,7 +688,7 @@ class TestFetchProviderEmails:
         mock_normalize_google_email.return_value = mock_email_message
 
         result = await fetch_provider_emails(
-            "req_123", "test_user", "google", 10, False, None, None, None
+            "req_123", "test_user", "google", 10, False, None, None, None, None
         )
 
         messages, provider = result
@@ -717,7 +717,7 @@ class TestFetchProviderEmails:
         mock_normalize_microsoft_email.return_value = mock_email_message
 
         result = await fetch_provider_emails(
-            "req_123", "test_user", "microsoft", 10, False, None, None, None
+            "req_123", "test_user", "microsoft", 10, False, None, None, None, None
         )
 
         messages, provider = result
@@ -740,7 +740,7 @@ class TestFetchProviderEmails:
 
         with pytest.raises(Exception) as exc_info:
             await fetch_provider_emails(
-                "req_123", "test_user", "google", 10, False, None, None, None
+                "req_123", "test_user", "google", 10, False, None, None, None, None
             )
 
         assert "Token retrieval failed" in str(exc_info.value)
