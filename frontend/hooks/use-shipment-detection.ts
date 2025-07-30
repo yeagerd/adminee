@@ -14,35 +14,35 @@ const CARRIER_PATTERNS = {
     amazon: {
         domains: ['amazon.com', 'amazon.co.uk', 'amazon.ca', 'amazon.de', 'amazon.fr', 'amazon.it', 'amazon.es', 'amazon.co.jp'],
         keywords: ['shipment', 'package', 'order', 'delivery', 'tracking'],
-        trackingPatterns: [/1Z[0-9A-Z]{16}/, /TBA[0-9]{10}/, /[0-9]{10,}/]
+        trackingPatterns: [/1Z[0-9A-Z]{15,}/g, /TBA[0-9]{10}/g, /\b[0-9]{10,}\b/g]
     },
     ups: {
         domains: ['ups.com', 'ups.ca'],
         keywords: ['ups', 'united parcel service', 'tracking'],
-        trackingPatterns: [/1Z[0-9A-Z]{16}/, /[0-9]{9}/, /[0-9]{10}/, /[0-9]{12}/]
+        trackingPatterns: [/1Z[0-9A-Z]{16}/g, /[0-9]{9}/g, /[0-9]{10}/g, /[0-9]{12}/g]
     },
     fedex: {
         domains: ['fedex.com', 'fedex.ca'],
         keywords: ['fedex', 'federal express', 'tracking'],
-        trackingPatterns: [/[0-9]{12}/, /[0-9]{15}/, /[0-9]{22}/]
+        trackingPatterns: [/[0-9]{12}/g, /[0-9]{15}/g, /[0-9]{22}/g]
     },
     usps: {
         domains: ['usps.com'],
         keywords: ['usps', 'united states postal service', 'tracking'],
-        trackingPatterns: [/[0-9]{20}/, /[0-9]{22}/, /[0-9]{13}/, /[0-9]{15}/]
+        trackingPatterns: [/[0-9]{20}/g, /[0-9]{22}/g, /[0-9]{13}/g, /[0-9]{15}/g]
     },
     dhl: {
         domains: ['dhl.com', 'dhl.de'],
         keywords: ['dhl', 'tracking'],
-        trackingPatterns: [/[0-9]{10}/, /[0-9]{11}/, /[0-9]{12}/, /[0-9]{13}/]
+        trackingPatterns: [/[0-9]{10}/g, /[0-9]{11}/g, /[0-9]{12}/g, /[0-9]{13}/g]
     }
 };
 
 // Generic tracking number patterns
 const GENERIC_TRACKING_PATTERNS = [
-    /[0-9]{10,}/, // 10+ digits
-    /[A-Z]{2}[0-9]{9}[A-Z]{2}/, // Generic format
-    /[0-9]{3}-[0-9]{3}-[0-9]{4}/, // XXX-XXX-XXXX format
+    /[0-9]{10,}/g, // 10+ digits
+    /[A-Z]{2}[0-9]{9}[A-Z]{2}/g, // Generic format
+    /[0-9]{3}-[0-9]{3}-[0-9]{4}/g, // XXX-XXX-XXXX format
 ];
 
 export const useShipmentDetection = (email: EmailMessage): ShipmentDetectionResult => {
@@ -94,26 +94,57 @@ export const useShipmentDetection = (email: EmailMessage): ShipmentDetectionResu
             }
         }
 
-        // Extract tracking numbers
-        const allText = `${subject} ${body}`;
+        // Extract tracking numbers (use original case for regex matching)
+        const originalSubject = email.subject || '';
+        const originalBody = email.body_text || email.body_html || '';
+        const allText = `${originalSubject} ${originalBody}`;
         const foundTrackingNumbers = new Set<string>();
+
+        // Collect all possible matches with their positions
+        const allMatches: Array<{ match: string; start: number; end: number }> = [];
 
         // Check carrier-specific patterns first
         if (detectedCarrier) {
             const patterns = CARRIER_PATTERNS[detectedCarrier as keyof typeof CARRIER_PATTERNS];
             for (const pattern of patterns.trackingPatterns) {
-                const matches = allText.match(pattern);
-                if (matches) {
-                    matches.forEach(match => foundTrackingNumbers.add(match));
+                const matches = allText.matchAll(pattern);
+                for (const match of matches) {
+                    allMatches.push({
+                        match: match[0],
+                        start: match.index!,
+                        end: match.index! + match[0].length
+                    });
                 }
             }
         }
 
-        // Check generic patterns
-        for (const pattern of GENERIC_TRACKING_PATTERNS) {
-            const matches = allText.match(pattern);
-            if (matches) {
-                matches.forEach(match => foundTrackingNumbers.add(match));
+        // Check generic patterns if no carrier-specific patterns were found
+        if (allMatches.length === 0) {
+            for (const pattern of GENERIC_TRACKING_PATTERNS) {
+                const matches = allText.matchAll(pattern);
+                for (const match of matches) {
+                    allMatches.push({
+                        match: match[0],
+                        start: match.index!,
+                        end: match.index! + match[0].length
+                    });
+                }
+            }
+        }
+
+        // Sort matches by length (longest first) and remove overlapping matches
+        allMatches.sort((a, b) => b.match.length - a.match.length);
+
+        for (const match of allMatches) {
+            // Check if this match overlaps with any already selected match
+            const overlaps = Array.from(foundTrackingNumbers).some(existing => {
+                const existingStart = allText.indexOf(existing);
+                const existingEnd = existingStart + existing.length;
+                return !(match.end <= existingStart || match.start >= existingEnd);
+            });
+
+            if (!overlaps) {
+                foundTrackingNumbers.add(match.match);
             }
         }
 

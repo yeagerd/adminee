@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from services.common.logging_config import get_logger
+from services.shipments.auth import get_current_user
 from services.shipments.database import get_async_session_dep
 from services.shipments.models import Package
 from services.shipments.schemas import (
@@ -33,6 +34,7 @@ async def list_packages(
     package_out = [
         PackageOut(
             id=pkg.id if pkg.id is not None else 0,
+            user_id=str(pkg.user_id),
             tracking_number=pkg.tracking_number,
             carrier=pkg.carrier,
             status=pkg.status,
@@ -58,15 +60,21 @@ async def list_packages(
 @router.post("/", response_model=PackageOut)
 async def add_package(
     pkg: PackageCreate,
+    current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["write_shipments"])),
 ) -> PackageOut:
-    db_pkg = Package(**pkg.dict())
+    # Create package data with authenticated user's ID
+    package_data = pkg.dict()
+    package_data["user_id"] = current_user
+
+    db_pkg = Package(**package_data)
     session.add(db_pkg)
     await session.commit()
     await session.refresh(db_pkg)
     return PackageOut(
         id=db_pkg.id if db_pkg.id is not None else 0,
+        user_id=str(db_pkg.user_id),
         tracking_number=db_pkg.tracking_number,
         carrier=db_pkg.carrier,
         status=db_pkg.status,
@@ -93,6 +101,7 @@ async def get_package(
     # For now, return a dummy response
     return PackageOut(
         id=id,
+        user_id="dummy_user_id",
         tracking_number="dummy",
         carrier="dummy",
         status="pending",
@@ -119,6 +128,7 @@ async def update_package(
     # TODO: Implement update package
     return PackageOut(
         id=id,
+        user_id="dummy_user_id",
         tracking_number="dummy",
         carrier="dummy",
         status="pending",

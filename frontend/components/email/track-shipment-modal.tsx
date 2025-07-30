@@ -4,11 +4,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useShipmentDetection } from '@/hooks/use-shipment-detection';
 import { useShipmentDataCollectionConsent } from '@/contexts/settings-context';
+import { useShipmentDetection } from '@/hooks/use-shipment-detection';
 import { DataCollectionRequest, shipmentsClient } from '@/lib/shipments-client';
 import { EmailMessage } from '@/types/office-service';
 import { CheckCircle, Info, Loader2, Package, Truck } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 import React, { useEffect, useState } from 'react';
 
 interface TrackShipmentModalProps {
@@ -52,6 +53,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
     email,
     onTrackShipment
 }) => {
+    const { data: session } = useSession();
     const shipmentDetection = useShipmentDetection(email);
     const hasDataCollectionConsent = useShipmentDataCollectionConsent();
     const [isLoading, setIsLoading] = useState(false);
@@ -94,7 +96,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
     };
 
     const submitDataCollection = async (packageData: PackageFormData) => {
-        if (!hasDataCollectionConsent || !initialFormData) {
+        if (!hasDataCollectionConsent || !initialFormData || !session?.user?.id) {
             return;
         }
 
@@ -112,7 +114,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
             }
 
             const dataCollectionRequest: DataCollectionRequest = {
-                user_id: 'current-user', // TODO: Get actual user ID
+                user_id: session?.user?.id || '',
                 email_message_id: email.id,
                 original_email_data: {
                     subject: email.subject,
@@ -138,6 +140,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                 consent_given: hasDataCollectionConsent,
             };
 
+            console.log('Submitting data collection with user ID:', session?.user?.id);
             await shipmentsClient.collectData(dataCollectionRequest);
             console.log('Data collection submitted successfully');
         } catch (error) {

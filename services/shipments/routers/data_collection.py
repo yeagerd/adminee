@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from services.common.logging_config import get_logger
-from services.shipments.auth import get_current_user, require_user_ownership
+from services.shipments.auth import get_current_user
 from services.shipments.service_auth import service_permission_required
 
 logger = get_logger(__name__)
@@ -20,7 +20,6 @@ router = APIRouter()
 class DataCollectionRequest(BaseModel):
     """Request schema for collecting user-corrected shipment data"""
 
-    user_id: str = Field(..., description="User ID")
     email_message_id: str = Field(..., description="Original email message ID")
     original_email_data: Dict[str, Any] = Field(
         ..., description="Original email content"
@@ -102,20 +101,16 @@ async def collect_shipment_data(
     - Requires service API key for service-to-service calls
     """
     try:
-        # Validate user ownership of collected data
-        await require_user_ownership(request.user_id, current_user)
-
         logger.info(
             "Collecting shipment data for improvements",
             authenticated_user=current_user,
-            data_user_id=request.user_id,
             email_id=request.email_message_id,
         )
         # Validate user consent
         if not request.consent_given:
             logger.warning(
                 "Data collection attempted without user consent",
-                user_id=request.user_id,
+                user_id=current_user,
                 email_id=request.email_message_id,
             )
             raise HTTPException(
@@ -123,13 +118,13 @@ async def collect_shipment_data(
             )
 
         # Generate collection ID
-        collection_id = f"collection_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{request.user_id[:8]}"
+        collection_id = f"collection_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{current_user[:8]}"
 
         # Log the data collection (in production, this would be stored in a database)
         logger.info(
             "Collecting shipment data for improvements",
             collection_id=collection_id,
-            user_id=request.user_id,
+            user_id=current_user,
             email_id=request.email_message_id,
             confidence=request.detection_confidence,
             has_corrections=bool(request.correction_reason),
@@ -139,7 +134,7 @@ async def collect_shipment_data(
         # For now, we'll just log the data structure
         training_data = {
             "collection_id": collection_id,
-            "user_id": request.user_id,
+            "user_id": current_user,
             "email_message_id": request.email_message_id,
             "original_email_data": request.original_email_data,
             "auto_detected_data": request.auto_detected_data,
@@ -167,7 +162,7 @@ async def collect_shipment_data(
         logger.error(
             "Error collecting shipment data",
             error=str(e),
-            user_id=request.user_id,
+            user_id=current_user,
             email_id=request.email_message_id,
             exc_info=True,
         )

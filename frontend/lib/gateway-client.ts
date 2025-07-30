@@ -362,7 +362,27 @@ export class GatewayClient {
     }
 
     // Shipments Service
-    async parseEmail(emailData: { subject: string; sender: string; body: string; content_type: string }) {
+    async parseEmail(emailData: { subject: string; sender: string; body: string; content_type: string }): Promise<{
+        is_shipment_email: boolean;
+        detected_carrier?: string;
+        tracking_numbers: Array<{
+            tracking_number: string;
+            carrier?: string;
+            confidence: number;
+            source: string;
+        }>;
+        confidence: number;
+        detected_from: string;
+        suggested_package_data?: {
+            tracking_number?: string;
+            carrier?: string;
+            recipient_name?: string;
+            shipper_name?: string;
+            package_description?: string;
+            order_number?: string;
+            estimated_delivery?: string;
+        };
+    }> {
         return this.request('/api/v1/email-parser/parse', {
             method: 'POST',
             body: emailData,
@@ -379,35 +399,124 @@ export class GatewayClient {
         order_number?: string;
         tracking_link?: string;
         email_message_id?: string;
-    }) {
+    }): Promise<{
+        id: number;
+        tracking_number: string;
+        carrier: string;
+        status: string;
+        estimated_delivery?: string;
+        actual_delivery?: string;
+        recipient_name?: string;
+        shipper_name?: string;
+        package_description?: string;
+        order_number?: string;
+        tracking_link?: string;
+        updated_at: string;
+        events_count: number;
+        labels: string[];
+    }> {
         return this.request('/api/v1/packages', {
             method: 'POST',
             body: packageData,
         });
     }
 
-    async getPackages() {
+    async getPackages(): Promise<{
+        data: Array<{
+            id: number;
+            tracking_number: string;
+            carrier: string;
+            status: string;
+            estimated_delivery?: string;
+            actual_delivery?: string;
+            recipient_name?: string;
+            shipper_name?: string;
+            package_description?: string;
+            order_number?: string;
+            tracking_link?: string;
+            updated_at: string;
+            events_count: number;
+            labels: string[];
+        }>;
+        pagination: {
+            page: number;
+            per_page: number;
+            total: number;
+            total_pages: number;
+            has_next: boolean;
+            has_prev: boolean;
+        };
+    }> {
         return this.request('/api/v1/packages');
     }
 
-    async getPackage(id: number) {
+    async getPackage(id: number): Promise<{
+        id: number;
+        tracking_number: string;
+        carrier: string;
+        status: string;
+        estimated_delivery?: string;
+        actual_delivery?: string;
+        recipient_name?: string;
+        shipper_name?: string;
+        package_description?: string;
+        order_number?: string;
+        tracking_link?: string;
+        updated_at: string;
+        events_count: number;
+        labels: string[];
+    }> {
         return this.request(`/api/v1/packages/${id}`);
     }
 
-    async updatePackage(id: number, packageData: Record<string, unknown>) {
+    async updatePackage(id: number, packageData: Record<string, unknown>): Promise<{
+        id: number;
+        tracking_number: string;
+        carrier: string;
+        status: string;
+        estimated_delivery?: string;
+        actual_delivery?: string;
+        recipient_name?: string;
+        shipper_name?: string;
+        package_description?: string;
+        order_number?: string;
+        tracking_link?: string;
+        updated_at: string;
+        events_count: number;
+        labels: string[];
+    }> {
         return this.request(`/api/v1/packages/${id}`, {
             method: 'PUT',
             body: packageData,
         });
     }
 
-    async deletePackage(id: number) {
+    async deletePackage(id: number): Promise<void> {
         return this.request(`/api/v1/packages/${id}`, {
             method: 'DELETE',
         });
     }
 
-    async refreshPackage(id: number) {
+    async refreshPackage(id: number): Promise<{
+        success: boolean;
+        message: string;
+        updated_data?: Partial<{
+            id: number;
+            tracking_number: string;
+            carrier: string;
+            status: string;
+            estimated_delivery?: string;
+            actual_delivery?: string;
+            recipient_name?: string;
+            shipper_name?: string;
+            package_description?: string;
+            order_number?: string;
+            tracking_link?: string;
+            updated_at: string;
+            events_count: number;
+            labels: string[];
+        }>;
+    }> {
         return this.request(`/api/v1/packages/${id}/refresh`, {
             method: 'POST',
         });
@@ -422,7 +531,12 @@ export class GatewayClient {
         detection_confidence: number;
         correction_reason?: string;
         consent_given: boolean;
-    }) {
+    }): Promise<{
+        success: boolean;
+        collection_id: string;
+        timestamp: string;
+        message: string;
+    }> {
         return this.request('/api/v1/data-collection/collect', {
             method: 'POST',
             body: data,

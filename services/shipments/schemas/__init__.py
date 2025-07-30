@@ -35,7 +35,6 @@ class PackageOut(BaseModel):
 
 
 class PackageCreate(BaseModel):
-    user_id: str
     tracking_number: str
     carrier: str
     status: Optional[str] = "pending"
@@ -77,7 +76,6 @@ class TrackingEventCreate(BaseModel):
 
 
 class LabelCreate(BaseModel):
-    user_id: str
     name: str
     color: Optional[str] = "#3B82F6"
 

@@ -5,7 +5,7 @@ Email parser router for detecting shipment information in emails
 from fastapi import APIRouter, Depends, HTTPException
 
 from services.common.logging_config import get_logger
-from services.shipments.auth import get_current_user, require_user_ownership
+from services.shipments.auth import get_current_user
 from services.shipments.email_parser import EmailParser
 from services.shipments.schemas.email_parser import (
     EmailParseRequest,
@@ -43,9 +43,6 @@ async def parse_email(
     - Requires service API key for service-to-service calls
     """
     try:
-        # Validate user ownership of email data
-        await require_user_ownership(request.user_id, current_user)
-
         logger.info(
             "Parsing email for shipment information",
             user_id=current_user,

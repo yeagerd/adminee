@@ -1,7 +1,26 @@
 import { EmailMessage } from '@/types/office-service';
 import { gatewayClient } from './gateway-client';
 
-// Types for shipments service
+// Define proper types for shipment data
+export interface SuggestedPackageData {
+    tracking_number?: string;
+    carrier?: string;
+    recipient_name?: string;
+    shipper_name?: string;
+    package_description?: string;
+    order_number?: string;
+    estimated_delivery?: string;
+}
+
+export interface PaginationInfo {
+    page: number;
+    per_page: number;
+    total: number;
+    total_pages: number;
+    has_next: boolean;
+    has_prev: boolean;
+}
+
 export interface EmailParseRequest {
     subject: string;
     sender: string;
@@ -22,7 +41,7 @@ export interface EmailParseResponse {
     tracking_numbers: ParsedTrackingInfo[];
     confidence: number;
     detected_from: string;
-    suggested_package_data?: any;
+    suggested_package_data?: SuggestedPackageData;
 }
 
 export interface PackageCreateRequest {
@@ -51,15 +70,15 @@ export interface PackageResponse {
     tracking_link?: string;
     updated_at: string;
     events_count: number;
-    labels: any[];
+    labels: string[];
 }
 
 export interface DataCollectionRequest {
     user_id: string;
     email_message_id: string;
-    original_email_data: Record<string, any>;
-    auto_detected_data: Record<string, any>;
-    user_corrected_data: Record<string, any>;
+    original_email_data: Record<string, unknown>;
+    auto_detected_data: Record<string, unknown>;
+    user_corrected_data: Record<string, unknown>;
     detection_confidence: number;
     correction_reason?: string;
     consent_given: boolean;
@@ -70,6 +89,12 @@ export interface DataCollectionResponse {
     collection_id: string;
     timestamp: string;
     message: string;
+}
+
+export interface PackageRefreshResponse {
+    success: boolean;
+    message: string;
+    updated_data?: Partial<PackageResponse>;
 }
 
 class ShipmentsClient {
@@ -104,7 +129,7 @@ class ShipmentsClient {
     /**
      * Get all packages for the current user
      */
-    async getPackages(): Promise<{ data: PackageResponse[]; pagination: any }> {
+    async getPackages(): Promise<{ data: PackageResponse[]; pagination: PaginationInfo }> {
         return gatewayClient.getPackages();
     }
 
@@ -132,7 +157,7 @@ class ShipmentsClient {
     /**
      * Refresh tracking information for a package
      */
-    async refreshPackage(id: number): Promise<any> {
+    async refreshPackage(id: number): Promise<PackageRefreshResponse> {
         return gatewayClient.refreshPackage(id);
     }
 }

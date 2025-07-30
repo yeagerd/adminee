@@ -16,7 +16,6 @@ client = TestClient(app)
 # Test data for various email formats
 SAMPLE_EMAILS = {
     "amazon_ups": {
-        "user_id": "user123",
         "subject": "Your Amazon order has shipped",
         "sender": "shipment-tracking@amazon.com",
         "body": """
@@ -34,7 +33,6 @@ SAMPLE_EMAILS = {
         "content_type": "text",
     },
     "fedex": {
-        "user_id": "user123",
         "subject": "FedEx Shipment Notification",
         "sender": "notifications@fedex.com",
         "body": """
@@ -49,7 +47,6 @@ SAMPLE_EMAILS = {
         "content_type": "text",
     },
     "usps": {
-        "user_id": "user123",
         "subject": "USPS Tracking Update",
         "sender": "tracking@usps.com",
         "body": """
@@ -64,7 +61,6 @@ SAMPLE_EMAILS = {
         "content_type": "text",
     },
     "dhl": {
-        "user_id": "user123",
         "subject": "DHL Shipment Update",
         "sender": "tracking@dhl.com",
         "body": """
@@ -79,7 +75,6 @@ SAMPLE_EMAILS = {
         "content_type": "text",
     },
     "non_shipment": {
-        "user_id": "user123",
         "subject": "Meeting Reminder",
         "sender": "calendar@company.com",
         "body": """
@@ -93,7 +88,6 @@ SAMPLE_EMAILS = {
         "content_type": "text",
     },
     "html_email": {
-        "user_id": "user123",
         "subject": "Your order has shipped",
         "sender": "orders@store.com",
         "body": """
@@ -310,7 +304,6 @@ class TestDataCollectionCore:
 
         # Valid data collection request
         collection_data = {
-            "user_id": "user123",
             "email_message_id": "email123",
             "original_email_data": {
                 "subject": "Test email",
@@ -334,7 +327,6 @@ class TestDataCollectionCore:
 
         # Should validate successfully
         request = DataCollectionRequest(**collection_data)
-        assert request.user_id == "user123"
         assert request.consent_given is True
         assert request.detection_confidence == 0.85
 
@@ -345,7 +337,6 @@ class TestDataCollectionCore:
         from services.shipments.routers.data_collection import DataCollectionRequest
 
         invalid_data = {
-            "user_id": "user123",
             "email_message_id": "email123",
             "original_email_data": {},
             "auto_detected_data": {},
@@ -365,7 +356,6 @@ class TestDataCollectionCore:
         from services.shipments.routers.data_collection import DataCollectionRequest
 
         incomplete_data = {
-            "user_id": "user123",
             "email_message_id": "email123",
             # Missing other required fields
         }
@@ -383,7 +373,6 @@ class TestDataCollectionAPI:
         response = client.post(
             "/api/v1/data-collection/collect",
             json={
-                "user_id": "user123",
                 "email_message_id": "email123",
                 "original_email_data": {},
                 "auto_detected_data": {},
@@ -476,7 +465,7 @@ class TestSchemaValidation:
         # Valid request
         valid_data = SAMPLE_EMAILS["amazon_ups"]
         request = EmailParseRequest(**valid_data)
-        assert request.user_id == "user123"
+        assert request.subject == "Your Amazon order has shipped"
         assert request.subject == "Your Amazon order has shipped"
         assert request.sender == "shipment-tracking@amazon.com"
 

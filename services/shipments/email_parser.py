@@ -82,7 +82,7 @@ class EmailParser:
         r"[0-9]{3}-[0-9]{3}-[0-9]{4}",  # XXX-XXX-XXXX format
     ]
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.shipment_keywords = [
             "shipment",
             "package",

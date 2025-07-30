@@ -499,22 +499,165 @@ Implement a shipment tracking feature that allows users to track packages direct
 - [x] Proper error responses for unauthorized access
 
 ### Task 7.4: Secure Package Management Endpoints
-**Files:** `services/shipments/routers/labels.py`, `services/shipments/routers/carrier_configs.py`
+**Files:** `services/shipments/routers/labels.py`, `services/shipments/routers/carrier_configs.py`, `services/shipments/routers/packages.py`, `services/shipments/routers/tracking_events.py`
 **Priority:** High
-**Estimated Time:** 2-3 hours
+**Estimated Time:** 4-5 hours
 
 **Requirements:**
 - Add user authentication to all package management endpoints
 - Validate user ownership of packages and labels
 - Ensure proper access control for carrier configurations
+- Fix inconsistent authentication across package endpoints
 
 **Implementation Details:**
-- Add `get_current_user` dependency to all package endpoints
+- Add `get_current_user` dependency to all package endpoints that are missing it
 - Implement user ownership validation for packages
 - Add user ownership validation for labels
 - Ensure carrier configs are user-specific or properly secured
 - Update all CRUD operations to validate user ownership
 - Add proper error handling for unauthorized access
+
+**Subtasks:**
+
+#### Task 7.4.1: Add User Auth to Package List Endpoint
+**File:** `services/shipments/routers/packages.py`
+**Priority:** High
+**Estimated Time:** 30 minutes
+
+**Requirements:**
+- Add user authentication to `GET /api/v1/packages/` endpoint
+- Filter packages by authenticated user
+- Ensure data isolation between users
+
+**Implementation Details:**
+- Add `get_current_user` dependency to `list_packages` function
+- Update database query to filter by `user_id = current_user`
+- Add proper error handling for authentication failures
+
+**Acceptance Criteria:**
+- [ ] Package list endpoint requires user authentication
+- [ ] Only packages owned by authenticated user are returned
+- [ ] Proper error responses for unauthorized access
+
+#### Task 7.4.2: Add User Auth to Package Detail Endpoint
+**File:** `services/shipments/routers/packages.py`
+**Priority:** High
+**Estimated Time:** 30 minutes
+
+**Requirements:**
+- Add user authentication to `GET /api/v1/packages/{id}` endpoint
+- Validate user ownership of requested package
+- Ensure users can only access their own packages
+
+**Implementation Details:**
+- Add `get_current_user` dependency to `get_package` function
+- Add user ownership validation before returning package details
+- Update error handling for unauthorized access
+
+**Acceptance Criteria:**
+- [ ] Package detail endpoint requires user authentication
+- [ ] User ownership of package is validated
+- [ ] Users cannot access packages owned by other users
+
+#### Task 7.4.3: Add User Auth to Package Update Endpoint
+**File:** `services/shipments/routers/packages.py`
+**Priority:** High
+**Estimated Time:** 30 minutes
+
+**Requirements:**
+- Add user authentication to `PUT /api/v1/packages/{id}` endpoint
+- Validate user ownership of package before allowing updates
+- Ensure users can only modify their own packages
+
+**Implementation Details:**
+- Add `get_current_user` dependency to `update_package` function
+- Add user ownership validation before allowing updates
+- Update error handling for unauthorized access
+
+**Acceptance Criteria:**
+- [ ] Package update endpoint requires user authentication
+- [ ] User ownership of package is validated before updates
+- [ ] Users cannot modify packages owned by other users
+
+#### Task 7.4.4: Add User Auth to Package Delete Endpoint
+**File:** `services/shipments/routers/packages.py`
+**Priority:** High
+**Estimated Time:** 30 minutes
+
+**Requirements:**
+- Add user authentication to `DELETE /api/v1/packages/{id}` endpoint
+- Validate user ownership of package before allowing deletion
+- Ensure users can only delete their own packages
+
+**Implementation Details:**
+- Add `get_current_user` dependency to `delete_package` function
+- Add user ownership validation before allowing deletion
+- Update error handling for unauthorized access
+
+**Acceptance Criteria:**
+- [ ] Package delete endpoint requires user authentication
+- [ ] User ownership of package is validated before deletion
+- [ ] Users cannot delete packages owned by other users
+
+#### Task 7.4.5: Add User Auth to Package Refresh Endpoint
+**File:** `services/shipments/routers/packages.py`
+**Priority:** High
+**Estimated Time:** 30 minutes
+
+**Requirements:**
+- Add user authentication to `POST /api/v1/packages/{id}/refresh` endpoint
+- Validate user ownership of package before allowing refresh
+- Ensure users can only refresh their own packages
+
+**Implementation Details:**
+- Add `get_current_user` dependency to `refresh_package` function
+- Add user ownership validation before allowing refresh
+- Update error handling for unauthorized access
+
+**Acceptance Criteria:**
+- [ ] Package refresh endpoint requires user authentication
+- [ ] User ownership of package is validated before refresh
+- [ ] Users cannot refresh packages owned by other users
+
+#### Task 7.4.6: Add User Auth to Package Label Management Endpoints
+**File:** `services/shipments/routers/packages.py`
+**Priority:** High
+**Estimated Time:** 45 minutes
+
+**Requirements:**
+- Add user authentication to package label management endpoints
+- Validate user ownership of both package and labels
+- Ensure users can only manage labels on their own packages
+
+**Implementation Details:**
+- Add `get_current_user` dependency to `add_label_to_package` and `remove_label_from_package` functions
+- Add user ownership validation for both package and label
+- Update error handling for unauthorized access
+
+**Acceptance Criteria:**
+- [ ] Package label management endpoints require user authentication
+- [ ] User ownership of both package and label is validated
+- [ ] Users cannot manage labels on packages owned by other users
+
+#### Task 7.4.7: Add User Auth to Tracking Events Endpoint
+**File:** `services/shipments/routers/tracking_events.py`
+**Priority:** High
+**Estimated Time:** 30 minutes
+
+**Requirements:**
+- Add user authentication to `GET /api/v1/tracking/packages/{id}/events` endpoint
+- Validate user ownership of package before returning tracking events
+- Ensure users can only access tracking events for their own packages
+
+**Implementation Details:**
+- Add `get_current_user` dependency to `get_tracking_events` function
+- Add user ownership validation before returning tracking events
+- Update error handling for unauthorized access
+
+**Acceptance Criteria:**
+- [ ] Tracking events endpoint requires user authentication
+- [ ] User ownership of package is validated before returning events
+- [ ] Users cannot access tracking events for packages owned by other users
 
 **Acceptance Criteria:**
 - [x] All package endpoints require user authentication
@@ -522,6 +665,7 @@ Implement a shipment tracking feature that allows users to track packages direct
 - [x] User ownership of labels is validated
 - [x] Carrier configurations are properly secured
 - [x] Proper error responses for unauthorized access
+- [ ] All subtasks are completed and tested
 
 ### Task 7.5: Add User Context to Package Models
 **Files:** `services/shipments/models/`, `services/shipments/database.py`

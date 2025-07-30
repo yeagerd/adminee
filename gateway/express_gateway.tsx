@@ -610,6 +610,10 @@ app.use('/api/v1/public/polls', standardLimiter, createServiceProxy(serviceRoute
 app.use('/api/v1/public/polls/*', standardLimiter, createServiceProxy(serviceRoutes['/api/v1/public/polls'], { '^/api/v1/public/polls': '/api/v1/public/polls' }));
 app.use('/api/v1/packages', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/packages'], { '^/api/v1/packages': '/api/v1/packages' }));
 app.use('/api/v1/packages/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/packages'], { '^/api/v1/packages': '/api/v1/packages' }));
+app.use('/api/v1/email-parser', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/email-parser'], { '^/api/v1/email-parser': '/api/v1/email-parser' }));
+app.use('/api/v1/email-parser/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/email-parser'], { '^/api/v1/email-parser': '/api/v1/email-parser' }));
+app.use('/api/v1/data-collection', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/data-collection'], { '^/api/v1/data-collection': '/api/v1/data-collection' }));
+app.use('/api/v1/data-collection/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/data-collection'], { '^/api/v1/data-collection': '/api/v1/data-collection' }));
 
 // Fallback for other API routes (default to user service)
 app.use('/api/v1', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/users'], { '^/api/v1': '/v1' }));
@@ -649,6 +653,8 @@ const server = app.listen(PORT, () => {
     logWithContext('info', `  /api/v1/meetings → ${serviceRoutes['/api/v1/meetings']}`);
     logWithContext('info', `  /api/v1/public/polls → ${serviceRoutes['/api/v1/public/polls']}`);
     logWithContext('info', `  /api/v1/packages → ${serviceRoutes['/api/v1/packages']}`);
+    logWithContext('info', `  /api/v1/email-parser → ${serviceRoutes['/api/v1/email-parser']}`);
+    logWithContext('info', `  /api/v1/data-collection → ${serviceRoutes['/api/v1/data-collection']}`);
 });
 
 // Handle WebSocket upgrades
@@ -671,6 +677,10 @@ server.on('upgrade', (request: any, socket: any, head: any) => {
         targetService = serviceRoutes['/api/v1/public/polls'];
     } else if (path.startsWith('/api/v1/packages')) {
         targetService = serviceRoutes['/api/v1/packages'];
+    } else if (path.startsWith('/api/v1/email-parser')) {
+        targetService = serviceRoutes['/api/v1/email-parser'];
+    } else if (path.startsWith('/api/v1/data-collection')) {
+        targetService = serviceRoutes['/api/v1/data-collection'];
     }
 
     // Create proxy for WebSocket

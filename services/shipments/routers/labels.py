@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 from services.shipments.auth import get_current_user
 from services.shipments.schemas import LabelCreate, LabelOut, LabelUpdate
@@ -38,16 +38,11 @@ def create_label(
 
     **Authentication:**
     - Requires user authentication (JWT token or gateway headers)
-    - Validates user ownership of label data
+    - User ownership is automatically derived from authenticated user context
     - Requires service API key for service-to-service calls
     """
-    # Validate user ownership of label data
-    # Note: In a real implementation, this would be done in the service layer
-    # For now, we'll validate that the user_id in the request matches the authenticated user
-    if label.user_id != current_user:
-        raise HTTPException(status_code=403, detail="User does not own the label data")
-
     # TODO: Implement label creation with user ownership
+    # The user_id should be derived from current_user, not from client input
     raise NotImplementedError
 
 
