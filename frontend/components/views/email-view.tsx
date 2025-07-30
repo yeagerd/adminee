@@ -19,14 +19,18 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [filters, setFilters] = useState<Record<string, unknown>>({});
+    const { loading: integrationsLoading, activeProviders, hasExpiredButRefreshableTokens } = useIntegrations();
+    
+    // Determine default provider from active integrations, fallback to 'google' if none available
+    const defaultProvider = activeProviders && activeProviders.length > 0 ? activeProviders[0] as 'google' | 'microsoft' : 'google';
+    
     const [selectedFolder, setSelectedFolder] = useState<EmailFolder>({
         label: 'inbox',
         name: 'Inbox',
-        provider: 'google',
+        provider: defaultProvider,
         account_email: '',
         is_system: true
     }); // Default to inbox
-    const { loading: integrationsLoading, activeProviders, hasExpiredButRefreshableTokens } = useIntegrations();
 
     const fetchEmails = useCallback(async (noCache = false) => {
         if (!activeProviders || activeProviders.length === 0) {
@@ -38,16 +42,26 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
             const userId = session?.user?.id;
             if (!userId) throw new Error('No user id found in session');
 
-            // For system folders (inbox, sent, archive, draft, trash), use folder-specific fetching
-            // For user-created folders, use labels for Google and folder_id for Microsoft
+            // For Microsoft, always use folder_id when available (both system and user folders)
+            // For Google, use folder_id for system folders, labels for user folders
             const isSystemFolder = selectedFolder.is_system;
-            const labels = isSystemFolder ? undefined : [selectedFolder.label];
+            let labels: string[] | undefined;
+            let folderId: string | undefined;
 
-            // For Microsoft, use folder_id for all folders. For Google, use folder_id for system folders, labels for user folders.
-            const folderId = selectedFolder.provider === 'microsoft' && selectedFolder.provider_folder_id ?
-                selectedFolder.provider_folder_id :
-                (selectedFolder.provider === 'google' && isSystemFolder && selectedFolder.provider_folder_id ?
-                    selectedFolder.provider_folder_id : undefined);
+            if (selectedFolder.provider === 'microsoft') {
+                // Microsoft: use folder_id for all folders when available
+                folderId = selectedFolder.provider_folder_id;
+                labels = undefined;
+            } else if (selectedFolder.provider === 'google') {
+                // Google: use folder_id for system folders, labels for user folders
+                if (isSystemFolder && selectedFolder.provider_folder_id) {
+                    folderId = selectedFolder.provider_folder_id;
+                    labels = undefined;
+                } else {
+                    labels = [selectedFolder.label];
+                    folderId = undefined;
+                }
+            }
 
             const emailsResp = await gatewayClient.getEmails(activeProviders, 50, 0, noCache, labels, folderId) as { data?: { messages?: EmailMessage[] } };
 
@@ -93,6 +107,19 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
     const handleFolderSelect = useCallback((folder: EmailFolder) => {
         setSelectedFolder(folder);
     }, []);
+
+    // Update selectedFolder provider when activeProviders change
+    useEffect(() => {
+        if (activeProviders && activeProviders.length > 0) {
+            const newProvider = activeProviders[0] as 'google' | 'microsoft';
+            if (selectedFolder.provider !== newProvider) {
+                setSelectedFolder(prev => ({
+                    ...prev,
+                    provider: newProvider
+                }));
+            }
+        }
+    }, [activeProviders, selectedFolder.provider]);
 
     useEffect(() => {
         // Only fetch when the tab is actually activated
