@@ -285,7 +285,7 @@ class TestEmailParserAPI:
     def test_authentication_required(self, client):
         """Test that authentication is required."""
         response = client.post(
-            "/api/v1/email-parser/parse", json=SAMPLE_EMAILS["amazon_ups"]
+            "/api/v1/shipments/events/from-email", json=SAMPLE_EMAILS["amazon_ups"]
         )
 
         # Should fail without authentication
@@ -299,7 +299,9 @@ class TestEmailParserAPI:
             # Missing sender and body
         }
 
-        response = client.post("/api/v1/email-parser/parse", json=incomplete_data)
+        response = client.post(
+            "/api/v1/shipments/events/from-email", json=incomplete_data
+        )
 
         # Should fail due to missing authentication first
         assert response.status_code in [401, 403]
@@ -307,7 +309,7 @@ class TestEmailParserAPI:
     def test_malformed_json(self, client):
         """Test handling of malformed JSON."""
         response = client.post(
-            "/api/v1/email-parser/parse",
+            "/api/v1/shipments/events/from-email",
             data="invalid json",
             headers={"Content-Type": "application/json"},
         )
@@ -320,7 +322,7 @@ class TestDataCollectionCore:
 
     def test_data_collection_structure(self):
         """Test data collection request structure validation."""
-        from services.shipments.routers.data_collection import DataCollectionRequest
+        from services.shipments.routers.packages import DataCollectionRequest
 
         # Valid data collection request
         collection_data = {
@@ -354,7 +356,7 @@ class TestDataCollectionCore:
         """Test data collection with invalid confidence score."""
         from pydantic import ValidationError
 
-        from services.shipments.routers.data_collection import DataCollectionRequest
+        from services.shipments.routers.packages import DataCollectionRequest
 
         invalid_data = {
             "email_message_id": "email123",
@@ -373,7 +375,7 @@ class TestDataCollectionCore:
         """Test data collection with missing required fields."""
         from pydantic import ValidationError
 
-        from services.shipments.routers.data_collection import DataCollectionRequest
+        from services.shipments.routers.packages import DataCollectionRequest
 
         incomplete_data = {
             "email_message_id": "email123",
@@ -391,7 +393,7 @@ class TestDataCollectionAPI:
     def test_data_collection_authentication_required(self, client):
         """Test that data collection requires authentication."""
         response = client.post(
-            "/api/v1/data-collection/collect",
+            "/api/v1/shipments/packages/collect-data",
             json={
                 "email_message_id": "email123",
                 "original_email_data": {},
