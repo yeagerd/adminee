@@ -61,10 +61,10 @@ class TestEndpointAuthentication:
 
     def test_tracking_events_endpoint_requires_auth(self, client):
         """Test that tracking events endpoint requires authentication."""
-        # Test without API key
+        # Test without any authentication
         response = client.get("/api/v1/tracking/packages/1/events")
         assert response.status_code == 401
-        assert "API key required" in response.json()["message"]
+        assert "Authentication required" in response.json()["message"]
 
     def test_packages_endpoints_require_auth(self, client):
         """Test that packages endpoints require authentication."""
@@ -110,9 +110,10 @@ class TestEndpointAuthentication:
 
     def test_valid_api_key_works(self, client):
         """Test that valid API key allows access."""
-        # Test with valid API key
+        # Test with valid API key and user authentication
         response = client.get(
-            "/api/v1/carriers/", headers={"X-API-Key": "test-api-key"}
+            "/api/v1/carriers/",
+            headers={"X-API-Key": "test-api-key", "X-User-Id": "test-user-123"},
         )
         # Should not return 401 (authentication error)
         assert response.status_code != 401
