@@ -11,7 +11,6 @@ import TrackShipmentModal, { PackageFormData } from './track-shipment-modal';
 
 interface EmailCardProps {
     email: EmailMessage;
-    mode: 'tight' | 'expanded';
     isSelected?: boolean;
     onSelect?: (emailId: string) => void;
     showReadingPane?: boolean;
@@ -57,7 +56,6 @@ const getSenderInitials = (name?: string, email?: string): string => {
 
 const EmailCard: React.FC<EmailCardProps> = ({
     email,
-    mode,
     isSelected = false,
     onSelect,
     showReadingPane = false
@@ -161,153 +159,7 @@ const EmailCard: React.FC<EmailCardProps> = ({
     const formattedDate = formatEmailDate(email.date);
     const isUnread = !email.is_read;
 
-    if (mode === 'tight') {
-        return (
-            <>
-                <div
-                    className={`
-                        group relative flex items-center gap-3 px-4 py-2 border-b border-gray-100 hover:bg-gray-50 cursor-pointer
-                        ${isSelected ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''}
-                        ${isUnread ? 'bg-blue-50 font-semibold' : ''}
-                    `}
-                    onClick={() => onSelect?.(email.id)}
-                >
-                    {/* Checkbox */}
-                    <input
-                        type="checkbox"
-                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                        checked={isSelected}
-                        onChange={(e) => e.stopPropagation()}
-                    />
-
-                    {/* Star */}
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            handleStarToggle();
-                        }}
-                        className={`p-1 rounded hover:bg-gray-200 ${isStarred ? 'text-yellow-500' : 'text-gray-400'}`}
-                    >
-                        <Star className={`w-4 h-4 ${isStarred ? 'fill-current' : ''}`} />
-                    </button>
-
-                    {/* Sender */}
-                    <div className="flex-shrink-0 w-32">
-                        <span className={`truncate ${isUnread ? 'font-semibold' : ''}`}>
-                            {senderName}
-                        </span>
-                    </div>
-
-                    {/* Subject and snippet */}
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                            <span className={`truncate ${isUnread ? 'font-semibold' : ''}`}>
-                                {email.subject || '(No subject)'}
-                            </span>
-                            {email.has_attachments && (
-                                <span className="text-gray-400">📎</span>
-                            )}
-                            {shipmentDetection.isShipmentEmail && (
-                                <span className="text-green-600">📦</span>
-                            )}
-                        </div>
-                        <div className="text-sm text-gray-500 truncate">
-                            {email.snippet || email.body_text?.substring(0, 100) || ''}
-                        </div>
-                    </div>
-
-                    {/* Date */}
-                    <div className="flex-shrink-0 w-16 text-right">
-                        <span className="text-sm text-gray-500">{formattedDate}</span>
-                    </div>
-
-                    {/* Hover actions */}
-                    <div className="absolute right-2 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 hover:bg-gray-200"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleArchive();
-                            }}
-                            title="Archive"
-                        >
-                            <Archive className="h-4 w-4" />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 hover:bg-gray-200"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleSnooze();
-                            }}
-                            title="Snooze"
-                        >
-                            <Clock className="h-4 w-4" />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 hover:bg-gray-200"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleDelete();
-                            }}
-                            title="Delete"
-                        >
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 w-8 p-0 hover:bg-gray-200"
-                                    onClick={(e) => e.stopPropagation()}
-                                    title="More actions"
-                                >
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={handleReply}>
-                                    <Reply className="h-4 w-4 mr-2" />
-                                    Reply
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={handleDownload} disabled={isDownloading}>
-                                    <Download className="h-4 w-4 mr-2" />
-                                    {isDownloading ? 'Downloading...' : 'Download Email'}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    onClick={handleTrackShipment}
-                                    className={shipmentDetection.isShipmentEmail ? 'text-green-600 font-medium' : ''}
-                                >
-                                    <Wand2 className="h-4 w-4 mr-2" />
-                                    Track Shipment
-                                    {shipmentDetection.isShipmentEmail && (
-                                        <span className="ml-auto text-xs bg-green-100 text-green-700 px-1 rounded">
-                                            {shipmentDetection.detectedCarrier || 'Detected'}
-                                        </span>
-                                    )}
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
-                </div>
-
-                <TrackShipmentModal
-                    isOpen={isModalOpen}
-                    onClose={handleModalClose}
-                    email={email}
-                    onTrackShipment={handleTrackShipmentSubmit}
-                />
-            </>
-        );
-    }
-
-    // Expanded mode
+    // Only handle expanded mode - tight mode is handled by email-thread.tsx
     return (
         <>
             <div

@@ -102,35 +102,66 @@ const EmailThread: React.FC<EmailThreadProps> = ({
                     </button>
 
                     {/* Sender */}
-                    <div className="flex-shrink-0 w-32">
-                        <span className={`truncate ${!latestEmail.is_read ? 'font-semibold' : ''}`}>
+                    <div className="flex-shrink-0 w-32 min-w-0">
+                        <span className={`block truncate text-xs ${!latestEmail.is_read ? 'font-semibold' : ''}`}>
                             {latestEmail.from_address?.name || latestEmail.from_address?.email || 'Unknown'}
                         </span>
                     </div>
 
-                    {/* Subject and snippet */}
+                    {/* Subject and snippet - Single line layout */}
                     <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                            <span className={`truncate ${!latestEmail.is_read ? 'font-semibold' : ''}`}>
+                        <div className="text-xs leading-tight truncate">
+                            <span className={`${!latestEmail.is_read ? 'font-semibold' : ''}`}>
                                 {latestEmail.subject || '(No subject)'}
                             </span>
                             {hasMultipleEmails && (
-                                <span className="text-xs text-gray-500 bg-gray-100 px-1 rounded">
+                                <span className="text-xs text-gray-500 bg-gray-100 px-1 rounded mx-1">
                                     {sortedEmails.length}
                                 </span>
                             )}
                             {latestEmail.has_attachments && (
-                                <span className="text-gray-400">📎</span>
+                                <span className="text-gray-400 mx-1">📎</span>
                             )}
-                        </div>
-                        <div className="text-sm text-gray-500 truncate">
-                            {latestEmail.snippet || latestEmail.body_text?.substring(0, 100) || ''}
+                            <span className="text-gray-500">
+                                — {latestEmail.snippet || latestEmail.body_text?.substring(0, 80) || ''}
+                            </span>
                         </div>
                     </div>
 
-                    {/* Date */}
-                    <div className="flex-shrink-0 w-16 text-right">
-                        <span className="text-sm text-gray-500">{formatEmailDate(latestEmail.date)}</span>
+                    {/* Date and Actions Container */}
+                    <div className="flex-shrink-0 w-20 flex items-center justify-end">
+                        {/* Date - shown when not hovering */}
+                        <span className="text-xs text-gray-500 group-hover:hidden">
+                            {formatEmailDate(latestEmail.date)}
+                        </span>
+
+                        {/* Hover actions with solid background */}
+                        <div className="hidden group-hover:flex items-center gap-1 bg-white rounded shadow-sm border px-1 py-0.5">
+                            <button
+                                className="h-6 w-6 p-0 hover:bg-gray-100 rounded flex items-center justify-center"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    // TODO: Implement archive functionality
+                                }}
+                                title="Archive"
+                            >
+                                <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-14 0h14" />
+                                </svg>
+                            </button>
+                            <button
+                                className="h-6 w-6 p-0 hover:bg-gray-100 rounded flex items-center justify-center"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    // TODO: Implement delete functionality
+                                }}
+                                title="Delete"
+                            >
+                                <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
                     {/* Thread expansion toggle */}
@@ -152,34 +183,6 @@ const EmailThread: React.FC<EmailThreadProps> = ({
                             </svg>
                         </button>
                     )}
-
-                    {/* Hover actions */}
-                    <div className="absolute right-2 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                        <button
-                            className="p-1 rounded hover:bg-gray-200 text-gray-400"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                // TODO: Implement archive functionality
-                            }}
-                            title="Archive"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-14 0h14" />
-                            </svg>
-                        </button>
-                        <button
-                            className="p-1 rounded hover:bg-gray-200 text-gray-400"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                // TODO: Implement delete functionality
-                            }}
-                            title="Delete"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                        </button>
-                    </div>
                 </div>
 
                 {/* Expanded thread emails */}
@@ -189,7 +192,6 @@ const EmailThread: React.FC<EmailThreadProps> = ({
                             <div key={email.id} className="px-4 py-2 border-b border-gray-100 last:border-b-0">
                                 <EmailCard
                                     email={email}
-                                    mode="tight"
                                     onSelect={() => toggleEmailExpansion(email.id)}
                                     showReadingPane={showReadingPane}
                                 />
@@ -208,7 +210,6 @@ const EmailThread: React.FC<EmailThreadProps> = ({
                 <div key={email.id} className={index > 0 ? 'ml-8 border-l-2 border-gray-200 pl-4' : ''}>
                     <EmailCard
                         email={email}
-                        mode="expanded"
                         onSelect={() => toggleEmailExpansion(email.id)}
                         showReadingPane={showReadingPane}
                     />

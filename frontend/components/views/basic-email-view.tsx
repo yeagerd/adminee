@@ -1,6 +1,6 @@
 import EmailFilters from '@/components/email/email-filters';
 import { EmailFolderSelector } from '@/components/email/email-folder-selector';
-import EmailThread from '@/components/email/basic-email-thread';
+import EmailThread from '@/components/email/email-thread';
 import { useIntegrations } from '@/contexts/integrations-context';
 import { gatewayClient } from '@/lib/gateway-client';
 import { EmailFolder, EmailMessage } from '@/types/office-service';
