@@ -665,7 +665,7 @@ Implement a shipment tracking feature that allows users to track packages direct
 - [x] User ownership of labels is validated
 - [x] Carrier configurations are properly secured
 - [x] Proper error responses for unauthorized access
-- [ ] All subtasks are completed and tested
+- [x] All subtasks are completed and tested
 
 ### Task 7.5: Add User Context to Package Models
 **Files:** `services/shipments/models/`, `services/shipments/database.py`
