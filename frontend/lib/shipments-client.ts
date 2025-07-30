@@ -1,16 +1,18 @@
 import { EmailMessage } from '@/types/office-service';
-import { PackageStatus } from './package-status';
 import { gatewayClient } from './gateway-client';
+import { PackageStatus } from './package-status';
 
 // Define proper types for shipment data
 export interface SuggestedPackageData {
     tracking_number?: string;
     carrier?: string;
+    status?: string;
     recipient_name?: string;
     shipper_name?: string;
     package_description?: string;
     order_number?: string;
     estimated_delivery?: string;
+    tracking_link?: string;
 }
 
 export interface PaginationInfo {

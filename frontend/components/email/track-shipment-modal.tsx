@@ -53,6 +53,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
     const hasDataCollectionConsent = useShipmentDataCollectionConsent();
     const [isLoading, setIsLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+    const [isParsing, setIsParsing] = useState(false);
     const [formData, setFormData] = useState<PackageFormData>({
         tracking_number: '',
         carrier: 'unknown',
@@ -65,23 +66,69 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
     });
     const [initialFormData, setInitialFormData] = useState<PackageFormData | null>(null);
 
-    // Initialize form with detected data when modal opens
+    // Parse email with backend when modal opens
     useEffect(() => {
-        if (isOpen && shipmentDetection.isShipmentEmail) {
-            const detectedData: PackageFormData = {
-                tracking_number: shipmentDetection.trackingNumbers[0] || '',
-                carrier: shipmentDetection.detectedCarrier || 'unknown',
-                status: PACKAGE_STATUS.PENDING,
-                recipient_name: '',
-                shipper_name: '',
-                package_description: email.subject || '',
-                order_number: '',
-                tracking_link: '',
-            };
-            setFormData(detectedData);
-            setInitialFormData(detectedData);
-        }
-    }, [isOpen, shipmentDetection, email]);
+        const parseEmailWithBackend = async () => {
+            if (!isOpen) return;
+
+            setIsParsing(true);
+            try {
+                // Call backend email parser
+                const parseResponse = await shipmentsClient.parseEmail(email);
+
+                if (parseResponse.is_shipment_email && parseResponse.suggested_package_data) {
+                    const suggestedData = parseResponse.suggested_package_data;
+                    const detectedData: PackageFormData = {
+                        tracking_number: suggestedData.tracking_number || parseResponse.tracking_numbers[0]?.tracking_number || '',
+                        carrier: suggestedData.carrier || parseResponse.detected_carrier || 'unknown',
+                        status: suggestedData.status ? (suggestedData.status.toUpperCase() as PackageStatus) : PACKAGE_STATUS.PENDING,
+                        recipient_name: suggestedData.recipient_name || '',
+                        shipper_name: suggestedData.shipper_name || '',
+                        package_description: email.subject || '',
+                        order_number: suggestedData.order_number || '',
+                        tracking_link: suggestedData.tracking_link || '',
+                    };
+                    setFormData(detectedData);
+                    setInitialFormData(detectedData);
+                } else if (shipmentDetection.isShipmentEmail) {
+                    // Fallback to frontend detection if backend doesn't detect it
+                    const detectedData: PackageFormData = {
+                        tracking_number: shipmentDetection.trackingNumbers[0] || '',
+                        carrier: shipmentDetection.detectedCarrier || 'unknown',
+                        status: PACKAGE_STATUS.PENDING,
+                        recipient_name: '',
+                        shipper_name: '',
+                        package_description: email.subject || '',
+                        order_number: '',
+                        tracking_link: '',
+                    };
+                    setFormData(detectedData);
+                    setInitialFormData(detectedData);
+                }
+            } catch (error) {
+                console.error('Failed to parse email with backend:', error);
+                // Fallback to frontend detection on error
+                if (shipmentDetection.isShipmentEmail) {
+                    const detectedData: PackageFormData = {
+                        tracking_number: shipmentDetection.trackingNumbers[0] || '',
+                        carrier: shipmentDetection.detectedCarrier || 'unknown',
+                        status: PACKAGE_STATUS.PENDING,
+                        recipient_name: '',
+                        shipper_name: '',
+                        package_description: email.subject || '',
+                        order_number: '',
+                        tracking_link: '',
+                    };
+                    setFormData(detectedData);
+                    setInitialFormData(detectedData);
+                }
+            } finally {
+                setIsParsing(false);
+            }
+        };
+
+        parseEmailWithBackend();
+    }, [isOpen, email, shipmentDetection]);
 
     const handleInputChange = (field: keyof PackageFormData, value: string) => {
         setFormData(prev => ({
@@ -196,6 +243,14 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                             <h3 className="text-lg font-semibold mb-2">Shipment Tracked Successfully!</h3>
                             <p className="text-muted-foreground">
                                 Your package is now being tracked. You'll receive updates on its status.
+                            </p>
+                        </div>
+                    ) : isParsing ? (
+                        <div className="flex flex-col items-center justify-center py-8 text-center">
+                            <Loader2 className="h-12 w-12 text-blue-500 mb-4 animate-spin" />
+                            <h3 className="text-lg font-semibold mb-2">Analyzing Email...</h3>
+                            <p className="text-muted-foreground">
+                                Extracting shipment information from your email.
                             </p>
                         </div>
                     ) : (

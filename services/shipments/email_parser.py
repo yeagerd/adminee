@@ -225,4 +225,24 @@ class EmailParser:
                 suggested_data["order_number"] = match.group(1)
                 break
 
+        # Try to extract shipper name from sender domain or common patterns
+        if carrier == "amazon":
+            suggested_data["shipper_name"] = "Amazon"
+        elif carrier == "ups":
+            suggested_data["shipper_name"] = "UPS"
+        elif carrier == "fedex":
+            suggested_data["shipper_name"] = "FedEx"
+        elif carrier == "usps":
+            suggested_data["shipper_name"] = "USPS"
+        elif carrier == "dhl":
+            suggested_data["shipper_name"] = "DHL"
+
+        # Try to extract package description from subject
+        if subject:
+            # Remove common prefixes and clean up
+            clean_subject = re.sub(r'^(Your |Order |Package |Shipment |Tracking )', '', subject, flags=re.IGNORECASE)
+            clean_subject = re.sub(r' has (shipped|been shipped|arrived|been delivered)', '', clean_subject, flags=re.IGNORECASE)
+            if clean_subject and len(clean_subject) > 5:
+                suggested_data["package_description"] = clean_subject
+
         return suggested_data
