@@ -6,7 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { useIntegrations } from '@/contexts/integrations-context';
 import { gatewayClient } from '@/lib/gateway-client';
 import { EmailFolder, EmailMessage } from '@/types/office-service';
-import { Grid3X3, List, PanelLeft, RefreshCw, Settings, Square } from 'lucide-react';
+import { ChevronLeft, Grid3X3, List, PanelLeft, RefreshCw, Settings, Square } from 'lucide-react';
 import { getSession } from 'next-auth/react';
 import React, { useCallback, useEffect, useState } from 'react';
 
@@ -28,6 +28,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
     const [viewMode, setViewMode] = useState<ViewMode>('tight');
     const [readingPaneMode, setReadingPaneMode] = useState<ReadingPaneMode>('right');
     const [settingsOpen, setSettingsOpen] = useState(false);
+    const [isInThreadView, setIsInThreadView] = useState(false);
     const { loading: integrationsLoading, activeProviders, hasExpiredButRefreshableTokens } = useIntegrations();
 
     // Determine default provider from active integrations, fallback to 'google' if none available
@@ -119,6 +120,18 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
 
     const handleThreadSelect = useCallback((threadId: string) => {
         setSelectedThreadId(threadId);
+
+        // Handle click behavior based on pane mode
+        if (readingPaneMode === 'none') {
+            // One-pane mode: navigate to thread view
+            setIsInThreadView(true);
+        }
+        // Two-pane mode: thread will be shown in right pane automatically
+    }, [readingPaneMode]);
+
+    const handleBackToList = useCallback(() => {
+        setIsInThreadView(false);
+        setSelectedThreadId(null);
     }, []);
 
     // Update selectedFolder provider when activeProviders change
@@ -133,6 +146,14 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
             }
         }
     }, [activeProviders, selectedFolder.provider]);
+
+    // Reset thread view when reading pane mode changes
+    useEffect(() => {
+        if (readingPaneMode === 'right') {
+            // When switching to two-pane mode, exit thread view
+            setIsInThreadView(false);
+        }
+    }, [readingPaneMode]);
 
     useEffect(() => {
         // Only fetch when the tab is actually activated
@@ -251,14 +272,21 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                                     <span className="text-sm font-medium">Reading Pane</span>
                                     <div className="flex items-center border rounded-md">
                                         <button
-                                            onClick={() => { setReadingPaneMode('none'); setSettingsOpen(false); }}
+                                            onClick={() => {
+                                                setReadingPaneMode('none');
+                                                setSettingsOpen(false);
+                                                setSelectedThreadId(null); // Clear selection when switching to one-pane
+                                            }}
                                             className={`p-1.5 ${readingPaneMode === 'none' ? 'bg-blue-100 text-blue-600' : 'text-gray-600'}`}
                                             title="No reading pane"
                                         >
                                             <Square className="w-3 h-3" />
                                         </button>
                                         <button
-                                            onClick={() => { setReadingPaneMode('right'); setSettingsOpen(false); }}
+                                            onClick={() => {
+                                                setReadingPaneMode('right');
+                                                setSettingsOpen(false);
+                                            }}
                                             className={`p-1.5 ${readingPaneMode === 'right' ? 'bg-blue-100 text-blue-600' : 'text-gray-600'}`}
                                             title="Reading pane on right"
                                         >
@@ -274,65 +302,90 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
 
             {/* Main content */}
             <div className="flex-1 flex overflow-hidden">
-                {/* Email list */}
-                <div className={`flex-1 overflow-y-auto ${readingPaneMode === 'right' ? 'border-r' : ''}`}>
-                    {loading ? (
-                        <div className="p-8 text-center text-muted-foreground">Loading…</div>
-                    ) : error ? (
-                        <div className="p-8 text-center">
-                            {error.includes('No active email integrations') ? (
-                                <div className="text-amber-600">
-                                    <p className="mb-4">No active email integration found. Connect your Gmail or Microsoft Outlook to view your emails.</p>
-                                    <a
-                                        href="/settings?page=integrations"
-                                        className="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 font-medium"
+                {/* Email list or Thread view */}
+                {isInThreadView && readingPaneMode === 'none' ? (
+                    // One-pane thread view
+                    <div className="flex-1 overflow-y-auto">
+                        {selectedThread && (
+                            <div className="p-4">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <button
+                                        onClick={handleBackToList}
+                                        className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+                                        title="Back to email list"
                                     >
-                                        <span>Go to Integrations</span>
-                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                        </svg>
-                                    </a>
+                                        <ChevronLeft className="w-4 h-4" />
+                                    </button>
+                                    <h2 className="text-lg font-semibold">Thread</h2>
                                 </div>
-                            ) : error.includes('expired and is being refreshed') ? (
-                                <div className="text-amber-600">
-                                    <p className="mb-4">Your email integration token has expired and is being refreshed. Please wait or try reconnecting.</p>
-                                    <a
-                                        href="/settings?page=integrations"
-                                        className="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 font-medium"
-                                    >
-                                        <span>Go to Integrations</span>
-                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                        </svg>
-                                    </a>
-                                </div>
-                            ) : (
-                                <div className="text-red-500">{error}</div>
-                            )}
-                        </div>
-                    ) : groupedThreads.length === 0 ? (
-                        <div className="p-8 text-center text-muted-foreground">No emails found.</div>
-                    ) : (
-                        <div className={viewMode === 'tight' ? '' : 'p-4'}>
-                            {groupedThreads.map((thread) => (
                                 <EmailThread
-                                    key={thread.id}
-                                    thread={thread}
-                                    mode={viewMode}
-                                    isSelected={selectedThreadId === thread.id}
-                                    onSelect={handleThreadSelect}
-                                    showReadingPane={readingPaneMode === 'right'}
+                                    thread={selectedThread}
+                                    mode="expanded"
+                                    showReadingPane={false}
                                 />
-                            ))}
-                        </div>
-                    )}
-                </div>
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    // Email list (for both two-pane and one-pane modes)
+                    <div className={`flex-1 overflow-y-auto ${readingPaneMode === 'right' ? 'border-r' : ''}`}>
+                        {loading ? (
+                            <div className="p-8 text-center text-muted-foreground">Loading…</div>
+                        ) : error ? (
+                            <div className="p-8 text-center">
+                                {error.includes('No active email integrations') ? (
+                                    <div className="text-amber-600">
+                                        <p className="mb-4">No active email integration found. Connect your Gmail or Microsoft Outlook to view your emails.</p>
+                                        <a
+                                            href="/settings?page=integrations"
+                                            className="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 font-medium"
+                                        >
+                                            <span>Go to Integrations</span>
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                            </svg>
+                                        </a>
+                                    </div>
+                                ) : error.includes('expired and is being refreshed') ? (
+                                    <div className="text-amber-600">
+                                        <p className="mb-4">Your email integration token has expired and is being refreshed. Please wait or try reconnecting.</p>
+                                        <a
+                                            href="/settings?page=integrations"
+                                            className="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 font-medium"
+                                        >
+                                            <span>Go to Integrations</span>
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                            </svg>
+                                        </a>
+                                    </div>
+                                ) : (
+                                    <div className="text-red-500">{error}</div>
+                                )}
+                            </div>
+                        ) : groupedThreads.length === 0 ? (
+                            <div className="p-8 text-center text-muted-foreground">No emails found.</div>
+                        ) : (
+                            <div className={viewMode === 'tight' ? '' : 'p-4'}>
+                                {groupedThreads.map((thread) => (
+                                    <EmailThread
+                                        key={thread.id}
+                                        thread={thread}
+                                        mode={viewMode}
+                                        isSelected={selectedThreadId === thread.id}
+                                        onSelect={handleThreadSelect}
+                                        showReadingPane={readingPaneMode === 'right'}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Reading pane */}
                 {readingPaneMode === 'right' && selectedThread && (
                     <div className="w-1/2 border-l bg-gray-50 overflow-y-auto">
                         <div className="p-4">
-                            <h2 className="text-lg font-semibold mb-4">Reading Pane</h2>
                             <EmailThread
                                 thread={selectedThread}
                                 mode="expanded"

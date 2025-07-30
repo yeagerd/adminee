@@ -14,6 +14,7 @@ interface EmailCardProps {
     isSelected?: boolean;
     onSelect?: (emailId: string) => void;
     showReadingPane?: boolean;
+    inlineAvatar?: boolean;
 }
 
 // Utility function to format email date
@@ -58,7 +59,8 @@ const EmailCard: React.FC<EmailCardProps> = ({
     email,
     isSelected = false,
     onSelect,
-    showReadingPane = false
+    showReadingPane = false,
+    inlineAvatar = false
 }) => {
     const [isDownloading, setIsDownloading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -170,19 +172,27 @@ const EmailCard: React.FC<EmailCardProps> = ({
                 `}
                 onClick={() => onSelect?.(email.id)}
             >
-                <div className="flex items-start gap-3">
-                    {/* Avatar */}
-                    <div className="flex-shrink-0">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <span className="text-blue-600 font-medium text-sm">{senderInitials}</span>
+                <div className={`${inlineAvatar ? '' : 'flex items-start gap-3'}`}>
+                    {/* Avatar - conditionally positioned */}
+                    {!inlineAvatar && (
+                        <div className="flex-shrink-0">
+                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                <span className="text-blue-600 font-medium text-sm">{senderInitials}</span>
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between">
                             <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
+                                    {/* Inline avatar with sender name */}
+                                    {inlineAvatar && (
+                                        <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                            <span className="text-blue-600 font-medium text-xs">{senderInitials}</span>
+                                        </div>
+                                    )}
                                     <span className={`font-medium ${isUnread ? 'font-semibold' : ''}`}>
                                         {senderName}
                                     </span>
