@@ -24,10 +24,12 @@ async def get_tracking_events(
     query = select(Package).where(Package.id == id, Package.user_id == current_user)
     result = await session.execute(query)
     package = result.scalar_one_or_none()
-    
+
     if not package:
-        raise HTTPException(status_code=404, detail="Package not found or access denied")
-    
+        raise HTTPException(
+            status_code=404, detail="Package not found or access denied"
+        )
+
     # TODO: Implement actual tracking events query
     # For now, return empty list
     return []

@@ -28,7 +28,9 @@ async def list_packages(
     service_name: str = Depends(service_permission_required(["read_shipments"])),
 ) -> dict:
     logger.info("Fetching packages for user", user_id=current_user)
-    result = await session.execute(select(Package).where(Package.user_id == current_user))
+    result = await session.execute(
+        select(Package).where(Package.user_id == current_user)
+    )
     packages = result.scalars().all()
     logger.info("Found packages for user", user_id=current_user, count=len(packages))
     # Convert to PackageOut (minimal fields for now)
@@ -103,10 +105,12 @@ async def get_package(
     query = select(Package).where(Package.id == id, Package.user_id == current_user)
     result = await session.execute(query)
     package = result.scalar_one_or_none()
-    
+
     if not package:
-        raise HTTPException(status_code=404, detail="Package not found or access denied")
-    
+        raise HTTPException(
+            status_code=404, detail="Package not found or access denied"
+        )
+
     return PackageOut(
         id=package.id if package.id is not None else 0,
         user_id=str(package.user_id),
@@ -138,19 +142,21 @@ async def update_package(
     query = select(Package).where(Package.id == id, Package.user_id == current_user)
     result = await session.execute(query)
     package = result.scalar_one_or_none()
-    
+
     if not package:
-        raise HTTPException(status_code=404, detail="Package not found or access denied")
-    
+        raise HTTPException(
+            status_code=404, detail="Package not found or access denied"
+        )
+
     # Update package fields
     update_data = pkg.dict(exclude_unset=True)
     for field, value in update_data.items():
         setattr(package, field, value)
-    
+
     package.updated_at = datetime.utcnow()
     await session.commit()
     await session.refresh(package)
-    
+
     return PackageOut(
         id=package.id if package.id is not None else 0,
         user_id=str(package.user_id),
@@ -181,14 +187,16 @@ async def delete_package(
     query = select(Package).where(Package.id == id, Package.user_id == current_user)
     result = await session.execute(query)
     package = result.scalar_one_or_none()
-    
+
     if not package:
-        raise HTTPException(status_code=404, detail="Package not found or access denied")
-    
+        raise HTTPException(
+            status_code=404, detail="Package not found or access denied"
+        )
+
     # Delete the package
     await session.delete(package)
     await session.commit()
-    
+
     return {"message": "Package deleted successfully"}
 
 
@@ -203,15 +211,17 @@ async def refresh_package(
     query = select(Package).where(Package.id == id, Package.user_id == current_user)
     result = await session.execute(query)
     package = result.scalar_one_or_none()
-    
+
     if not package:
-        raise HTTPException(status_code=404, detail="Package not found or access denied")
-    
+        raise HTTPException(
+            status_code=404, detail="Package not found or access denied"
+        )
+
     # TODO: Implement actual tracking refresh logic
     # For now, just update the timestamp
     package.updated_at = datetime.utcnow()
     await session.commit()
-    
+
     return {"message": "Package refresh initiated successfully"}
 
 
@@ -226,10 +236,12 @@ async def add_label_to_package(
     query = select(Package).where(Package.id == id, Package.user_id == current_user)
     result = await session.execute(query)
     package = result.scalar_one_or_none()
-    
+
     if not package:
-        raise HTTPException(status_code=404, detail="Package not found or access denied")
-    
+        raise HTTPException(
+            status_code=404, detail="Package not found or access denied"
+        )
+
     # TODO: Implement actual label addition logic
     # For now, just return success
     return {"message": "Label added to package successfully"}
@@ -247,10 +259,12 @@ async def remove_label_from_package(
     query = select(Package).where(Package.id == id, Package.user_id == current_user)
     result = await session.execute(query)
     package = result.scalar_one_or_none()
-    
+
     if not package:
-        raise HTTPException(status_code=404, detail="Package not found or access denied")
-    
+        raise HTTPException(
+            status_code=404, detail="Package not found or access denied"
+        )
+
     # TODO: Implement actual label removal logic
     # For now, just return success
     return {"message": "Label removed from package successfully"}
