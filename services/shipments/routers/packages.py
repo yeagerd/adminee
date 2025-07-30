@@ -43,7 +43,7 @@ async def list_packages(
 
         package_out.append(
             PackageOut(
-                id=pkg.id,
+                id=pkg.id,  # type: ignore
                 user_id=pkg.user_id,
                 tracking_number=pkg.tracking_number,
                 carrier=pkg.carrier,
@@ -109,7 +109,7 @@ async def add_package(
     await session.commit()
 
     return PackageOut(
-        id=package_id,
+        id=package_id,  # type: ignore
         user_id=user_id,
         tracking_number=tracking_number,
         carrier=carrier,
@@ -150,7 +150,7 @@ async def get_package(
     events_count = len(events_result.scalars().all())
 
     return PackageOut(
-        id=package.id,
+        id=package.id,  # type: ignore
         user_id=package.user_id,
         tracking_number=package.tracking_number,
         carrier=package.carrier,
@@ -196,7 +196,7 @@ async def update_package(
     await session.refresh(package)
 
     return PackageOut(
-        id=package.id,
+        id=package.id,  # type: ignore
         user_id=package.user_id,
         tracking_number=package.tracking_number,
         carrier=package.carrier,

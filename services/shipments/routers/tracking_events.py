@@ -34,14 +34,14 @@ async def get_tracking_events(
     events_query = (
         select(TrackingEvent)
         .where(TrackingEvent.package_id == id)  # type: ignore
-        .order_by(TrackingEvent.event_date.desc())
+        .order_by(TrackingEvent.event_date.desc())  # type: ignore
     )
     events_result = await session.execute(events_query)
     events = events_result.scalars().all()
 
     return [
         TrackingEventOut(
-            id=event.id,
+            id=event.id,  # type: ignore
             event_date=event.event_date,
             status=event.status,
             location=event.location,
@@ -80,7 +80,7 @@ async def create_tracking_event(
     await session.refresh(db_event)
 
     return TrackingEventOut(
-        id=db_event.id,
+        id=db_event.id,  # type: ignore
         event_date=db_event.event_date,
         status=db_event.status,
         location=db_event.location,
