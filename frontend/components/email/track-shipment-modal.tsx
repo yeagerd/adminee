@@ -206,8 +206,8 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                     ) : (
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             {/* Email Content - Left Side */}
-                            <div className="space-y-4">
-                                <div className="border rounded-lg p-4">
+                            <div className="flex flex-col h-full">
+                                <div className="border rounded-lg p-4 flex flex-col h-full">
                                     <h4 className="font-medium text-sm text-gray-700 mb-3">Email Content</h4>
 
                                     {/* Sender */}
@@ -227,9 +227,9 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                     </div>
 
                                     {/* Body */}
-                                    <div>
+                                    <div className="flex-1 flex flex-col min-h-0">
                                         <div className="text-xs font-medium text-gray-500 mb-1">Body:</div>
-                                        <div className="text-sm text-gray-900 max-h-48 overflow-y-auto border rounded p-3 bg-white">
+                                        <div className="text-sm text-gray-900 flex-1 overflow-y-auto border rounded p-3 bg-white min-h-0">
                                             {email.body_text ? (
                                                 <div className="whitespace-pre-wrap">
                                                     {email.body_text}
