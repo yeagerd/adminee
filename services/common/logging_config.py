@@ -193,7 +193,7 @@ class EnhancedTextRenderer:
                 if isinstance(value, (str, int, float, bool)):
                     extra_context.append(f"{key}={value}")
                 else:
-                    extra_context.append(f"{key}={str(value)[:50]}...")
+                    extra_context.append(f"{key}={str(value)[:150]}...")
 
         if extra_context:
             parts.append(f" | {', '.join(extra_context)}")
