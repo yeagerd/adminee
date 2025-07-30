@@ -1,10 +1,12 @@
 import EmailFilters from '@/components/email/email-filters';
 import { EmailFolderSelector } from '@/components/email/email-folder-selector';
 import EmailThread from '@/components/email/email-thread';
+import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useIntegrations } from '@/contexts/integrations-context';
 import { gatewayClient } from '@/lib/gateway-client';
 import { EmailFolder, EmailMessage } from '@/types/office-service';
-import { ChevronLeft, ChevronRight, Grid3X3, List, RefreshCw, Settings } from 'lucide-react';
+import { Grid3X3, List, PanelLeft, RefreshCw, Settings, Square } from 'lucide-react';
 import { getSession } from 'next-auth/react';
 import React, { useCallback, useEffect, useState } from 'react';
 
@@ -25,6 +27,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
     const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<ViewMode>('tight');
     const [readingPaneMode, setReadingPaneMode] = useState<ReadingPaneMode>('right');
+    const [settingsOpen, setSettingsOpen] = useState(false);
     const { loading: integrationsLoading, activeProviders, hasExpiredButRefreshableTokens } = useIntegrations();
 
     // Determine default provider from active integrations, fallback to 'google' if none available
@@ -198,42 +201,6 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        {/* View mode toggle */}
-                        <div className="flex items-center border rounded-md">
-                            <button
-                                onClick={() => setViewMode('tight')}
-                                className={`p-2 ${viewMode === 'tight' ? 'bg-blue-100 text-blue-600' : 'text-gray-600'}`}
-                                title="Compact view"
-                            >
-                                <List className="w-4 h-4" />
-                            </button>
-                            <button
-                                onClick={() => setViewMode('expanded')}
-                                className={`p-2 ${viewMode === 'expanded' ? 'bg-blue-100 text-blue-600' : 'text-gray-600'}`}
-                                title="Expanded view"
-                            >
-                                <Grid3X3 className="w-4 h-4" />
-                            </button>
-                        </div>
-
-                        {/* Reading pane toggle */}
-                        <div className="flex items-center border rounded-md">
-                            <button
-                                onClick={() => setReadingPaneMode('none')}
-                                className={`p-2 ${readingPaneMode === 'none' ? 'bg-blue-100 text-blue-600' : 'text-gray-600'}`}
-                                title="No reading pane"
-                            >
-                                <ChevronLeft className="w-4 h-4" />
-                            </button>
-                            <button
-                                onClick={() => setReadingPaneMode('right')}
-                                className={`p-2 ${readingPaneMode === 'right' ? 'bg-blue-100 text-blue-600' : 'text-gray-600'}`}
-                                title="Reading pane on right"
-                            >
-                                <ChevronRight className="w-4 h-4" />
-                            </button>
-                        </div>
-
                         <button
                             onClick={handleRefresh}
                             disabled={refreshing || loading}
@@ -243,12 +210,64 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                             <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
                         </button>
 
-                        <button
-                            className="p-2 text-muted-foreground hover:text-foreground transition-colors"
-                            title="Settings"
-                        >
-                            <Settings className="w-4 h-4" />
-                        </button>
+                        {/* Settings dropdown */}
+                        <DropdownMenu open={settingsOpen} onOpenChange={setSettingsOpen}>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+                                    title="Settings"
+                                >
+                                    <Settings className="w-4 h-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-64">
+                                {/* Email Card View Mode */}
+                                <DropdownMenuItem className="flex items-center justify-between p-3">
+                                    <span className="text-sm font-medium">Email Card View</span>
+                                    <div className="flex items-center border rounded-md">
+                                        <button
+                                            onClick={() => { setViewMode('tight'); setSettingsOpen(false); }}
+                                            className={`p-1.5 ${viewMode === 'tight' ? 'bg-blue-100 text-blue-600' : 'text-gray-600'}`}
+                                            title="Compact view"
+                                        >
+                                            <List className="w-3 h-3" />
+                                        </button>
+                                        <button
+                                            onClick={() => { setViewMode('expanded'); setSettingsOpen(false); }}
+                                            className={`p-1.5 ${viewMode === 'expanded' ? 'bg-blue-100 text-blue-600' : 'text-gray-600'}`}
+                                            title="Expanded view"
+                                        >
+                                            <Grid3X3 className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                </DropdownMenuItem>
+
+                                <DropdownMenuSeparator />
+
+                                {/* Reading Pane Mode */}
+                                <DropdownMenuItem className="flex items-center justify-between p-3">
+                                    <span className="text-sm font-medium">Reading Pane</span>
+                                    <div className="flex items-center border rounded-md">
+                                        <button
+                                            onClick={() => { setReadingPaneMode('none'); setSettingsOpen(false); }}
+                                            className={`p-1.5 ${readingPaneMode === 'none' ? 'bg-blue-100 text-blue-600' : 'text-gray-600'}`}
+                                            title="No reading pane"
+                                        >
+                                            <Square className="w-3 h-3" />
+                                        </button>
+                                        <button
+                                            onClick={() => { setReadingPaneMode('right'); setSettingsOpen(false); }}
+                                            className={`p-1.5 ${readingPaneMode === 'right' ? 'bg-blue-100 text-blue-600' : 'text-gray-600'}`}
+                                            title="Reading pane on right"
+                                        >
+                                            <PanelLeft className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                 </div>
             </div>
