@@ -91,4 +91,38 @@ describe('useShipmentDetection', () => {
         expect(result.current.trackingNumbers).toContain('1Z999AA1234567890');
         expect(result.current.confidence).toBeGreaterThan(0);
     });
+
+    it('should correctly handle duplicate tracking numbers in different positions', () => {
+        const email: EmailMessage = {
+            id: '4',
+            subject: 'Your shipment with tracking number 1Z999AA1234567890',
+            body_text: 'Your package 1Z999AA1234567890 has been shipped. Please track your package 1Z999AA1234567890 for updates.',
+            from_address: {
+                name: 'UPS',
+                email: 'tracking@ups.com'
+            },
+            to_addresses: [],
+            cc_addresses: [],
+            bcc_addresses: [],
+            date: new Date().toISOString(),
+            labels: [],
+            is_read: false,
+            has_attachments: false,
+            provider: 'google',
+            provider_message_id: 'test-message-id',
+            account_email: 'test@example.com'
+        };
+
+        const { result } = renderHook(() => useShipmentDetection(email));
+
+        // Should only detect the tracking number once, even though it appears multiple times
+        expect(result.current.trackingNumbers).toHaveLength(1);
+        expect(result.current.trackingNumbers).toContain('1Z999AA1234567890');
+
+        // Verify that the tracking number appears multiple times in the text but is only detected once
+        const allText = `${email.subject} ${email.body_text}`;
+        const occurrences = (allText.match(/1Z999AA1234567890/g) || []).length;
+        expect(occurrences).toBeGreaterThan(1); // Verify it appears multiple times
+        expect(result.current.trackingNumbers).toHaveLength(1); // But only detected once
+    });
 }); 

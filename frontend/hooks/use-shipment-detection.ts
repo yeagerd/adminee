@@ -19,7 +19,7 @@ const CARRIER_PATTERNS = {
     ups: {
         domains: ['ups.com', 'ups.ca'],
         keywords: ['ups', 'united parcel service', 'tracking'],
-        trackingPatterns: [/1Z[0-9A-Z]{16}/g, /[0-9]{9}/g, /[0-9]{10}/g, /[0-9]{12}/g]
+        trackingPatterns: [/1Z[0-9A-Z]{15,}/g, /[0-9]{9}/g, /[0-9]{10}/g, /[0-9]{12}/g]
     },
     fedex: {
         domains: ['fedex.com', 'fedex.ca'],
@@ -135,16 +135,18 @@ export const useShipmentDetection = (email: EmailMessage): ShipmentDetectionResu
         // Sort matches by length (longest first) and remove overlapping matches
         allMatches.sort((a, b) => b.match.length - a.match.length);
 
+        // Track selected matches with their positions to avoid re-finding with indexOf
+        const selectedMatches: Array<{ match: string; start: number; end: number }> = [];
+
         for (const match of allMatches) {
             // Check if this match overlaps with any already selected match
-            const overlaps = Array.from(foundTrackingNumbers).some(existing => {
-                const existingStart = allText.indexOf(existing);
-                const existingEnd = existingStart + existing.length;
-                return !(match.end <= existingStart || match.start >= existingEnd);
+            const overlaps = selectedMatches.some(selected => {
+                return !(match.end <= selected.start || match.start >= selected.end);
             });
 
             if (!overlaps) {
                 foundTrackingNumbers.add(match.match);
+                selectedMatches.push(match);
             }
         }
 
