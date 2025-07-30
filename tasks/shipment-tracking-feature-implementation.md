@@ -655,9 +655,9 @@ Implement a shipment tracking feature that allows users to track packages direct
 - Update error handling for unauthorized access
 
 **Acceptance Criteria:**
-- [ ] Tracking events endpoint requires user authentication
-- [ ] User ownership of package is validated before returning events
-- [ ] Users cannot access tracking events for packages owned by other users
+- [x] Tracking events endpoint requires user authentication
+- [x] User ownership of package is validated before returning events
+- [x] Users cannot access tracking events for packages owned by other users
 
 **Acceptance Criteria:**
 - [x] All package endpoints require user authentication
