@@ -19,7 +19,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from services.meetings.models.base import Base
 
 
-def utc_now():
+def utc_now() -> datetime:
     """Return current UTC datetime with timezone info."""
     return datetime.now(timezone.utc)
 

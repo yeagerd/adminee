@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from sqlmodel import Field, Relationship, SQLModel
 
 
-def utc_now():
+def utc_now() -> datetime:
     """Return current UTC datetime with timezone info."""
     return datetime.now(timezone.utc)
 
