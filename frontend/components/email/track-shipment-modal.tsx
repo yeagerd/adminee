@@ -40,7 +40,22 @@ const CARRIERS = [
     { value: 'unknown', label: 'Unknown' },
 ];
 
+// Helper function to validate and safely convert status string to PackageStatus
+const validatePackageStatus = (statusString: string): PackageStatus => {
+    const validStatuses = PACKAGE_STATUS_OPTIONS.map(option => option.value);
+    const upperCaseStatus = statusString.toUpperCase();
 
+    // Check if the status is valid
+    if (validStatuses.includes(upperCaseStatus as PackageStatus)) {
+        return upperCaseStatus as PackageStatus;
+    }
+
+    // Log warning for invalid status
+    console.warn(`Invalid package status received from backend: "${statusString}". Falling back to PENDING.`);
+
+    // Return default status
+    return PACKAGE_STATUS.PENDING;
+};
 
 const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
     isOpen,
@@ -81,7 +96,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                     const detectedData: PackageFormData = {
                         tracking_number: suggestedData.tracking_number || parseResponse.tracking_numbers[0]?.tracking_number || '',
                         carrier: suggestedData.carrier || parseResponse.detected_carrier || 'unknown',
-                        status: suggestedData.status ? (suggestedData.status.toUpperCase() as PackageStatus) : PACKAGE_STATUS.PENDING,
+                        status: suggestedData.status ? validatePackageStatus(suggestedData.status.toUpperCase()) : PACKAGE_STATUS.PENDING,
                         recipient_name: suggestedData.recipient_name || '',
                         shipper_name: suggestedData.shipper_name || '',
                         package_description: email.subject || '',
