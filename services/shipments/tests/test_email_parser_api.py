@@ -5,7 +5,6 @@ Tests the email parser API with various email formats, error handling,
 authentication, and data collection functionality.
 """
 
-
 import pytest
 from fastapi.testclient import TestClient
 
