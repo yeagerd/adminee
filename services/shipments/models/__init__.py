@@ -6,6 +6,7 @@ from datetime import date, datetime
 from enum import Enum
 from typing import TYPE_CHECKING, List, Optional
 
+import sqlalchemy as sa
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -55,10 +56,10 @@ class Package(SQLModel, table=True):
     )
 
     __table_args__ = (
-        {"sqlite_autoincrement": True},
         # Unique constraint: user can't have duplicate tracking numbers for the same carrier
         # This allows the same tracking number across different carriers (which can happen)
-        {"sqlite_on_conflict": "REPLACE"},
+        sa.UniqueConstraint("user_id", "tracking_number", "carrier", name="uq_package_user_tracking_carrier"),
+        {"sqlite_autoincrement": True},
     )
 
 
