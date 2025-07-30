@@ -38,13 +38,13 @@ class PackageCreate(BaseModel):
     tracking_number: str
     carrier: str
     status: Optional[str] = "pending"
-    estimated_delivery: Optional[date]
-    recipient_name: Optional[str]
-    shipper_name: Optional[str]
-    package_description: Optional[str]
-    order_number: Optional[str]
-    tracking_link: Optional[str]
-    email_message_id: Optional[str]
+    estimated_delivery: Optional[date] = None
+    recipient_name: Optional[str] = None
+    shipper_name: Optional[str] = None
+    package_description: Optional[str] = None
+    order_number: Optional[str] = None
+    tracking_link: Optional[str] = None
+    email_message_id: Optional[str] = None
 
 
 class PackageUpdate(BaseModel):
