@@ -74,7 +74,7 @@ const sanitizeEmailHtml = (html: string): string => {
     }
 };
 
-interface EmailCardProps {
+interface EmailThreadCardProps {
     email: EmailMessage;
     isSelected?: boolean;
     onSelect?: (emailId: string) => void;
@@ -120,7 +120,7 @@ const getSenderInitials = (name?: string, email?: string): string => {
     return '?';
 };
 
-const EmailCard: React.FC<EmailCardProps> = ({
+const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
     email,
     isSelected = false,
     onSelect,
@@ -430,4 +430,4 @@ const EmailCard: React.FC<EmailCardProps> = ({
     );
 };
 
-export default EmailCard; 
+export default EmailThreadCard; 

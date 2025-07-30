@@ -1,7 +1,7 @@
-import EmailCard from '@/components/email/email-card';
 import EmailFilters from '@/components/email/email-filters';
 import { EmailFolderSelector } from '@/components/email/email-folder-selector';
 import EmailListCard from '@/components/email/email-list-card';
+import EmailThreadCard from '@/components/email/email-thread-card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useIntegrations } from '@/contexts/integrations-context';
@@ -388,7 +388,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                     <div className="w-1/2 border-l bg-gray-50 overflow-y-auto">
                         <div className="p-4">
                             {selectedThread.emails.map((email) => (
-                                <EmailCard
+                                <EmailThreadCard
                                     key={email.id}
                                     email={email}
                                     showReadingPane={true}
