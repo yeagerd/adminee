@@ -18,7 +18,7 @@ export function CalendarGridEvent({ event, day, effectiveTimezone }: CalendarGri
         // Parse as UTC first, then convert to user's timezone
         eventStart = DateTime.fromISO(event.start_time, { zone: 'utc' }).setZone(effectiveTimezone);
         eventEnd = DateTime.fromISO(event.end_time, { zone: 'utc' }).setZone(effectiveTimezone);
-    } catch (e) {
+    } catch {
         // Fallback: try parsing as-is
         eventStart = DateTime.fromISO(event.start_time).setZone(effectiveTimezone);
         eventEnd = DateTime.fromISO(event.end_time).setZone(effectiveTimezone);
@@ -45,7 +45,6 @@ export function CalendarGridEvent({ event, day, effectiveTimezone }: CalendarGri
         const startHour = eventStart.hour;
         const startMinute = eventStart.minute;
         const gridStartHour = 6; // Grid starts at 6 AM
-        const gridEndHour = 22; // Grid ends at 10 PM
 
         // Each 30-minute slot is 32px high
         const slotHeight = 32; // 30-minute slot height

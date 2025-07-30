@@ -60,7 +60,6 @@ export default function CalendarGridView({
     // Calculate date range based on view type
     const dateRange = useMemo(() => {
         const start = new Date(currentDate);
-        const end = new Date(currentDate);
 
         let result;
 

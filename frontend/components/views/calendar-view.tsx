@@ -88,8 +88,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ toolDataLoading = false, ac
         return () => { isMounted = false; };
     }, [activeProviders, integrationsLoading, toolDataLoading, activeTool, fetchCalendarEvents]);
 
-    // Use activeProviders to check for active calendar integrations
-    const hasActiveCalendarIntegration = activeProviders.length > 0;
+
 
     return (
         <div className="h-full flex flex-col">
