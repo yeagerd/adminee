@@ -435,7 +435,7 @@ async def list_threads(
     ]
     return JSONResponse(
         {
-            "threads": [tr.dict() for tr in thread_responses],
+            "threads": [tr.model_dump() for tr in thread_responses],
             "has_more": has_more,
             "offset": offset,
             "limit": limit,

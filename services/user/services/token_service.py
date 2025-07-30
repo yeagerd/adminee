@@ -832,7 +832,7 @@ class TokenService:
                     "reason": reason,
                     "integrations_count": len(integrations),
                     "revoked_count": len(revocation_responses),
-                    "results": [r.dict() for r in revocation_responses],
+                    "results": [r.model_dump() for r in revocation_responses],
                 },
             )
 

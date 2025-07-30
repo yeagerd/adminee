@@ -1,6 +1,6 @@
 import enum
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import (
     Boolean,
@@ -17,6 +17,11 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from services.meetings.models.base import Base
+
+
+def utc_now():
+    """Return current UTC datetime with timezone info."""
+    return datetime.now(timezone.utc)
 
 
 class MeetingType(str, enum.Enum):
@@ -64,10 +69,8 @@ class MeetingPoll(Base):
     min_participants = Column(Integer, default=1)
     max_participants = Column(Integer)
     reveal_participants: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(
-        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
     scheduled_slot_id = Column(UUID(as_uuid=True), ForeignKey("time_slots.id"))
     poll_token = Column(String(64), unique=True, nullable=False)
 
@@ -96,7 +99,7 @@ class TimeSlot(Base):
     end_time = Column(DateTime(timezone=True), nullable=False)
     timezone = Column(String(50), nullable=False)
     is_available = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
 
     poll = relationship(
         "MeetingPoll", back_populates="time_slots", foreign_keys="[TimeSlot.poll_id]"
@@ -121,7 +124,7 @@ class PollParticipant(Base):
     status: Mapped[ParticipantStatus] = mapped_column(
         Enum(ParticipantStatus), default=ParticipantStatus.pending
     )
-    invited_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    invited_at = Column(DateTime(timezone=True), default=utc_now)
     responded_at = Column(DateTime(timezone=True))
     reminder_sent_count = Column(Integer, default=0)
     response_token = Column(String(64), unique=True, nullable=False)
@@ -156,10 +159,8 @@ class PollResponse(Base):
     )
     response: Mapped[ResponseType] = mapped_column(Enum(ResponseType), nullable=False)
     comment = Column(Text)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at = Column(
-        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
     participant = relationship("PollParticipant", back_populates="responses")
     time_slot = relationship("TimeSlot", back_populates="responses")
@@ -178,4 +179,4 @@ class ChatMeeting(Base):
     chat_message = Column(Text, nullable=False)
     extracted_intent = Column(Text)  # Store as JSON string
     poll_id = Column(UUID(as_uuid=True), ForeignKey("meeting_polls.id"))
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=utc_now)

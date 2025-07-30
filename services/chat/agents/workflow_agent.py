@@ -321,12 +321,22 @@ class WorkflowAgent:
                     logger.warning("Context object missing get method")
                     return
 
-                # Try to get current state
-                logger.debug("Calling context.get('state', {}) method")
-                state_result = get_method("state", {})
-                logger.debug(
-                    f"Context.get returned: {state_result} (type: {type(state_result)})"
-                )
+                # Try to get current state using modern context.store.get if available
+                if hasattr(self.context, "store") and hasattr(
+                    self.context.store, "get"
+                ):
+                    logger.debug("Calling context.store.get('state', {}) method")
+                    state_result = self.context.store.get("state", {})
+                    logger.debug(
+                        f"Context.store.get returned: {state_result} (type: {type(state_result)})"
+                    )
+                else:
+                    # Fallback to legacy context.get method
+                    logger.debug("Calling legacy context.get('state', {}) method")
+                    state_result = get_method("state", {})
+                    logger.debug(
+                        f"Context.get returned: {state_result} (type: {type(state_result)})"
+                    )
 
                 # Handle both sync and async get methods
                 if hasattr(state_result, "__await__"):

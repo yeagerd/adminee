@@ -2,12 +2,17 @@
 Database models for the shipments service
 """
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from enum import Enum
 from typing import TYPE_CHECKING, List, Optional
 
 import sqlalchemy as sa
 from sqlmodel import Field, Relationship, SQLModel
+
+
+def utc_now():
+    """Return current UTC datetime with timezone info."""
+    return datetime.now(timezone.utc)
 
 
 class PackageStatus(str, Enum):
@@ -25,7 +30,7 @@ class PackageLabel(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     package_id: int = Field(foreign_key="package.id")
     label_id: int = Field(foreign_key="label.id")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
 
 
 class Package(SQLModel, table=True):
@@ -42,8 +47,8 @@ class Package(SQLModel, table=True):
     package_description: Optional[str] = None
     order_number: Optional[str] = Field(default=None, max_length=255)
     tracking_link: Optional[str] = Field(default=None, max_length=500)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
     archived_at: Optional[datetime] = None
     email_message_id: Optional[str] = Field(default=None, max_length=255)
 
@@ -73,7 +78,7 @@ class Label(SQLModel, table=True):
     user_id: str = Field(index=True)
     name: str = Field(max_length=100)
     color: str = Field(default="#3B82F6", max_length=7)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
 
     if TYPE_CHECKING:
         from services.shipments.models import Package
@@ -90,7 +95,7 @@ class TrackingEvent(SQLModel, table=True):
     status: PackageStatus = Field(max_length=100)
     location: Optional[str] = Field(default=None, max_length=255)
     description: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
 
     package: Optional["Package"] = Relationship(back_populates="tracking_events")
 
@@ -102,4 +107,4 @@ class CarrierConfig(SQLModel, table=True):
     rate_limit_per_hour: int = Field(default=1000)
     is_active: bool = Field(default=True)
     email_patterns: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)

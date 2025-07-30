@@ -4,7 +4,7 @@ Pydantic schemas for email parser functionality
 
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class EmailParseRequest(BaseModel):
@@ -17,8 +17,8 @@ class EmailParseRequest(BaseModel):
         default="text", description="Content type: 'text' or 'html'"
     )
 
-    class Config:
-        schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "subject": "Your Amazon order has shipped",
                 "sender": "shipment-tracking@amazon.com",
@@ -26,6 +26,7 @@ class EmailParseRequest(BaseModel):
                 "content_type": "text",
             }
         }
+    )
 
 
 class ParsedTrackingInfo(BaseModel):
@@ -65,8 +66,8 @@ class EmailParseResponse(BaseModel):
         None, description="Suggested package data for creating tracking entry"
     )
 
-    class Config:
-        schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "is_shipment_email": True,
                 "detected_carrier": "amazon",
@@ -87,6 +88,7 @@ class EmailParseResponse(BaseModel):
                 },
             }
         }
+    )
 
 
 class EmailParseError(BaseModel):

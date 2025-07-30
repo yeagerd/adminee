@@ -77,7 +77,7 @@ async def create_tracking_event(
         )
 
     # Create tracking event
-    event_data = event.dict()
+    event_data = event.model_dump()
     event_data["package_id"] = id
 
     db_event = TrackingEvent(**event_data)  # type: ignore

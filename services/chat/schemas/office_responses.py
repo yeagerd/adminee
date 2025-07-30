@@ -6,7 +6,7 @@ These models ensure type safety and catch data structure issues early.
 
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from services.office.schemas import CalendarEvent
 
@@ -23,7 +23,7 @@ class OfficeServiceCalendarResponse(BaseModel):
         description="Events data - can be direct list or nested dict with events field"
     )
 
-    @validator("data")
+    @field_validator("data")
     @classmethod
     def validate_data_structure(
         cls, v: Union[List[CalendarEvent], Dict[str, Any]]
@@ -87,7 +87,7 @@ class CalendarToolResponse(BaseModel):
     events: Optional[List[Dict[str, Any]]] = None
     error: Optional[str] = None
 
-    @validator("events", pre=True)
+    @field_validator("events", mode="before")
     @classmethod
     def validate_events(cls, v: Any) -> Optional[List[Dict[str, Any]]]:
         """Validate events list."""
@@ -97,7 +97,7 @@ class CalendarToolResponse(BaseModel):
             raise ValueError(f"Events must be a list, got {type(v)}")
         return v
 
-    @validator("error", pre=True)
+    @field_validator("error", mode="before")
     @classmethod
     def validate_error(cls, v: Any) -> Optional[str]:
         """Validate error message."""
