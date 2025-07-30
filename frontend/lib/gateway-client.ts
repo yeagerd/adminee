@@ -6,8 +6,8 @@ import {
 } from '@/types/office-service';
 import { getSession } from 'next-auth/react';
 import { IntegrationStatus } from './constants';
-import { PackageStatus } from './package-status';
 import { env, validateClientEnv } from './env';
+import { PackageStatus } from './package-status';
 
 interface GatewayClientOptions {
     method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -420,7 +420,7 @@ export class GatewayClient {
             estimated_delivery?: string;
         };
     }> {
-        return this.request('/api/v1/email-parser/parse', {
+        return this.request('/api/v1/shipments/events/from-email', {
             method: 'POST',
             body: emailData,
         });
@@ -452,7 +452,7 @@ export class GatewayClient {
         events_count: number;
         labels: string[];
     }> {
-        return this.request('/api/v1/packages', {
+        return this.request('/api/v1/shipments/packages', {
             method: 'POST',
             body: packageData,
         });
@@ -484,7 +484,7 @@ export class GatewayClient {
             has_prev: boolean;
         };
     }> {
-        return this.request('/api/v1/packages');
+        return this.request('/api/v1/shipments/packages');
     }
 
     async getPackage(id: number): Promise<{
@@ -503,7 +503,7 @@ export class GatewayClient {
         events_count: number;
         labels: string[];
     }> {
-        return this.request(`/api/v1/packages/${id}`);
+        return this.request(`/api/v1/shipments/packages/${id}`);
     }
 
     async updatePackage(id: number, packageData: Record<string, unknown>): Promise<{
@@ -522,14 +522,14 @@ export class GatewayClient {
         events_count: number;
         labels: string[];
     }> {
-        return this.request(`/api/v1/packages/${id}`, {
+        return this.request(`/api/v1/shipments/packages/${id}`, {
             method: 'PUT',
             body: packageData,
         });
     }
 
     async deletePackage(id: number): Promise<void> {
-        return this.request(`/api/v1/packages/${id}`, {
+        return this.request(`/api/v1/shipments/packages/${id}`, {
             method: 'DELETE',
         });
     }
@@ -554,7 +554,7 @@ export class GatewayClient {
             labels: string[];
         }>;
     }> {
-        return this.request(`/api/v1/packages/${id}/refresh`, {
+        return this.request(`/api/v1/shipments/packages/${id}/refresh`, {
             method: 'POST',
         });
     }
@@ -567,7 +567,7 @@ export class GatewayClient {
         description?: string;
         created_at: string;
     }>> {
-        return this.request(`/api/v1/tracking/packages/${packageId}/events`);
+        return this.request(`/api/v1/shipments/events/packages/${packageId}/events`);
     }
 
     async createTrackingEvent(packageId: number, eventData: {
@@ -583,7 +583,7 @@ export class GatewayClient {
         description?: string;
         created_at: string;
     }> {
-        return this.request(`/api/v1/tracking/packages/${packageId}/events`, {
+        return this.request(`/api/v1/shipments/events/packages/${packageId}/events`, {
             method: 'POST',
             body: eventData,
         });
@@ -604,7 +604,7 @@ export class GatewayClient {
         timestamp: string;
         message: string;
     }> {
-        return this.request('/api/v1/data-collection/collect', {
+        return this.request('/api/v1/shipments/packages/collect-data', {
             method: 'POST',
             body: data,
         });

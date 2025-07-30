@@ -6,21 +6,26 @@ from fastapi import APIRouter
 
 from services.shipments.routers import (
     carrier_configs,
-    data_collection,
-    email_parser,
     labels,
     packages,
     tracking_events,
 )
 
+# Create main shipments router
+shipments_router = APIRouter()
+
+# Include all sub-routers under /shipments
+shipments_router.include_router(packages.router, prefix="/packages", tags=["Packages"])
+shipments_router.include_router(labels.router, prefix="/labels", tags=["Labels"])
+shipments_router.include_router(
+    tracking_events.router, prefix="/events", tags=["Events"]
+)
+shipments_router.include_router(
+    carrier_configs.router, prefix="/carriers", tags=["Carriers"]
+)
+
+# Create the main API router
 api_router = APIRouter()
-api_router.include_router(packages.router, prefix="/packages", tags=["Packages"])
-api_router.include_router(labels.router, prefix="/labels", tags=["Labels"])
-api_router.include_router(tracking_events.router, prefix="/tracking", tags=["Tracking"])
-api_router.include_router(carrier_configs.router, prefix="/carriers", tags=["Carriers"])
-api_router.include_router(
-    email_parser.router, prefix="/email-parser", tags=["Email Parser"]
-)
-api_router.include_router(
-    data_collection.router, prefix="/data-collection", tags=["Data Collection"]
-)
+
+# Include the shipments router under /shipments
+api_router.include_router(shipments_router, prefix="/shipments", tags=["Shipments"])
