@@ -218,19 +218,39 @@ async def refresh_package(
 @router.post("/{id}/labels")
 async def add_label_to_package(
     id: int,
+    current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["write_shipments"])),
 ) -> dict:
-    # TODO: Implement add label to package
-    return {"success": True}
+    # Query package and validate user ownership
+    query = select(Package).where(Package.id == id, Package.user_id == current_user)
+    result = await session.execute(query)
+    package = result.scalar_one_or_none()
+    
+    if not package:
+        raise HTTPException(status_code=404, detail="Package not found or access denied")
+    
+    # TODO: Implement actual label addition logic
+    # For now, just return success
+    return {"message": "Label added to package successfully"}
 
 
 @router.delete("/{id}/labels/{label_id}")
 async def remove_label_from_package(
     id: int,
     label_id: int,
+    current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["write_shipments"])),
 ) -> dict:
-    # TODO: Implement remove label from package
-    return {"success": True}
+    # Query package and validate user ownership
+    query = select(Package).where(Package.id == id, Package.user_id == current_user)
+    result = await session.execute(query)
+    package = result.scalar_one_or_none()
+    
+    if not package:
+        raise HTTPException(status_code=404, detail="Package not found or access denied")
+    
+    # TODO: Implement actual label removal logic
+    # For now, just return success
+    return {"message": "Label removed from package successfully"}

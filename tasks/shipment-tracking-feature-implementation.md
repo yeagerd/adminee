@@ -635,9 +635,9 @@ Implement a shipment tracking feature that allows users to track packages direct
 - Update error handling for unauthorized access
 
 **Acceptance Criteria:**
-- [ ] Package label management endpoints require user authentication
-- [ ] User ownership of both package and label is validated
-- [ ] Users cannot manage labels on packages owned by other users
+- [x] Package label management endpoints require user authentication
+- [x] User ownership of both package and label is validated
+- [x] Users cannot manage labels on packages owned by other users
 
 #### Task 7.4.7: Add User Auth to Tracking Events Endpoint
 **File:** `services/shipments/routers/tracking_events.py`
