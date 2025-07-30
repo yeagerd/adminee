@@ -1,3 +1,4 @@
+import EmailCard from '@/components/email/email-card';
 import EmailFilters from '@/components/email/email-filters';
 import { EmailFolderSelector } from '@/components/email/email-folder-selector';
 import EmailThread from '@/components/email/email-thread';
@@ -304,7 +305,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
             <div className="flex-1 flex overflow-hidden">
                 {/* Email list or Thread view */}
                 {isInThreadView && readingPaneMode === 'none' ? (
-                    // One-pane thread view
+                    // One-pane thread view - show EmailCard for full email content
                     <div className="flex-1 overflow-y-auto">
                         {selectedThread && (
                             <div className="p-4">
@@ -321,7 +322,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                                 <EmailThread
                                     thread={selectedThread}
                                     mode="expanded"
-                                    showReadingPane={false}
+                                    showReadingPane={true}
                                 />
                             </div>
                         )}
@@ -374,7 +375,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                                         mode={viewMode}
                                         isSelected={selectedThreadId === thread.id}
                                         onSelect={handleThreadSelect}
-                                        showReadingPane={readingPaneMode === 'right'}
+                                        showReadingPane={false}
                                     />
                                 ))}
                             </div>
@@ -386,11 +387,14 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                 {readingPaneMode === 'right' && selectedThread && (
                     <div className="w-1/2 border-l bg-gray-50 overflow-y-auto">
                         <div className="p-4">
-                            <EmailThread
-                                thread={selectedThread}
-                                mode="expanded"
-                                showReadingPane={true}
-                            />
+                            {selectedThread.emails.map((email) => (
+                                <EmailCard
+                                    key={email.id}
+                                    email={email}
+                                    showReadingPane={true}
+                                    inlineAvatar={true}
+                                />
+                            ))}
                         </div>
                     </div>
                 )}
