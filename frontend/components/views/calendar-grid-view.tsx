@@ -10,14 +10,20 @@ import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { getSession } from 'next-auth/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { CalendarEventItem } from '../calendar-event-item';
 import { CalendarGridEvent } from './calendar-grid-event';
 
 interface CalendarGridViewProps {
     toolDataLoading?: boolean;
     activeTool?: string;
+    events?: CalendarEvent[];
+    loading?: boolean;
+    refreshing?: boolean;
+    error?: string | null;
+    onRefresh?: () => void;
 }
 
-type ViewType = 'day' | 'work-week' | 'week' | 'month';
+type ViewType = 'day' | 'work-week' | 'week' | 'month' | 'list';
 
 interface TimeSlot {
     hour: number;
@@ -25,13 +31,28 @@ interface TimeSlot {
     time: string;
 }
 
-export default function CalendarGridView({ toolDataLoading = false, activeTool }: CalendarGridViewProps) {
+export default function CalendarGridView({
+    toolDataLoading = false,
+    activeTool,
+    events: externalEvents,
+    loading: externalLoading,
+    refreshing: externalRefreshing,
+    error: externalError,
+    onRefresh
+}: CalendarGridViewProps) {
     const [events, setEvents] = useState<CalendarEvent[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [currentDate, setCurrentDate] = useState(() => new Date());
     const [viewType, setViewType] = useState<ViewType>('week');
+
+    // Use external props if provided, otherwise use internal state
+    // For list view, always use internal events to support navigation
+    const finalEvents = viewType === 'list' ? events : (externalEvents || events);
+    const finalLoading = viewType === 'list' ? loading : (externalLoading !== undefined ? externalLoading : loading);
+    const finalRefreshing = viewType === 'list' ? refreshing : (externalRefreshing !== undefined ? externalRefreshing : refreshing);
+    const finalError = viewType === 'list' ? error : (externalError !== undefined ? externalError : error);
 
     const { loading: integrationsLoading, activeProviders } = useIntegrations();
     const { effectiveTimezone } = useUserPreferences();
@@ -83,6 +104,15 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
                 lastDay.setHours(23, 59, 59, 999);
                 result = { start: firstDay, end: lastDay };
                 break;
+            case 'list':
+                // List view - show next 7 days
+                const listStart = new Date(start);
+                listStart.setHours(0, 0, 0, 0);
+                const listEnd = new Date(start);
+                listEnd.setDate(start.getDate() + 7);
+                listEnd.setHours(23, 59, 59, 999);
+                result = { start: listStart, end: listEnd };
+                break;
         }
 
 
@@ -123,12 +153,32 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
 
     // Filter events for the current date range
     const filteredEvents = useMemo(() => {
-        return events.filter(event => {
+        const filtered = events.filter(event => {
             const eventStart = new Date(event.start_time);
             const eventEnd = new Date(event.end_time);
+
+            // For list view, only include events that start within the date range
+            if (viewType === 'list') {
+                const isInRange = eventStart >= dateRange.start && eventStart <= dateRange.end;
+                console.log(`Event "${event.title}":`, {
+                    start: eventStart.toISOString(),
+                    dateRangeStart: dateRange.start.toISOString(),
+                    dateRangeEnd: dateRange.end.toISOString(),
+                    isInRange
+                });
+                return isInRange;
+            }
+
+            // For grid views, include events that overlap with the date range
             return eventStart <= dateRange.end && eventEnd >= dateRange.start;
         });
-    }, [events, dateRange]);
+
+        if (viewType === 'list') {
+            console.log('Filtered events for list view:', filtered.length);
+        }
+
+        return filtered;
+    }, [events, dateRange, viewType]);
 
     // Group events by day
     const eventsByDay = useMemo(() => {
@@ -156,11 +206,23 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
 
 
 
+            // Convert date range to UTC for API call
+            const startUTC = DateTime.fromJSDate(dateRange.start).setZone(effectiveTimezone).startOf('day').toUTC();
+            const endUTC = DateTime.fromJSDate(dateRange.end).setZone(effectiveTimezone).endOf('day').toUTC();
+
+            console.log('API call date range:', {
+                originalStart: dateRange.start.toISOString(),
+                originalEnd: dateRange.end.toISOString(),
+                startUTC: startUTC.toFormat('yyyy-MM-dd'),
+                endUTC: endUTC.toFormat('yyyy-MM-dd'),
+                userTimezone: effectiveTimezone
+            });
+
             const response = await gatewayClient.getCalendarEvents(
                 activeProviders,
                 100, // Increased limit for grid view
-                dateRange.start.toISOString().split('T')[0],
-                dateRange.end.toISOString().split('T')[0],
+                startUTC.toFormat('yyyy-MM-dd'),
+                endUTC.toFormat('yyyy-MM-dd'),
                 undefined,
                 undefined,
                 effectiveTimezone,
@@ -169,6 +231,11 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
 
             if (response.success && response.data) {
                 const events = Array.isArray(response.data) ? response.data : [];
+                console.log('API returned events:', events.map(e => ({
+                    title: e.title,
+                    start: e.start_time,
+                    end: e.end_time
+                })));
                 setEvents(events);
                 setError(null);
             } else {
@@ -196,6 +263,7 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
                 break;
             case 'work-week':
             case 'week':
+            case 'list':
                 newDate.setDate(newDate.getDate() + (direction === 'next' ? 7 : -7));
                 break;
             case 'month':
@@ -234,6 +302,26 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
         })();
         return () => { isMounted = false; };
     }, [activeProviders, integrationsLoading, toolDataLoading, activeTool, fetchCalendarEvents]);
+
+    // Fetch events when date range changes (for list view or when not using external events)
+    useEffect(() => {
+        if (viewType !== 'list' && externalEvents !== undefined) return; // Don't fetch if using external events (except for list view)
+        if (toolDataLoading) return;
+        if (integrationsLoading) return;
+        if (!activeProviders || activeProviders.length === 0) return;
+        if (activeTool !== 'calendar') return;
+
+        let isMounted = true;
+        setLoading(true);
+        (async () => {
+            try {
+                await fetchCalendarEvents(false);
+            } finally {
+                if (isMounted) setLoading(false);
+            }
+        })();
+        return () => { isMounted = false; };
+    }, [dateRange, viewType, externalEvents, toolDataLoading, integrationsLoading, activeProviders, activeTool, fetchCalendarEvents]);
 
     // Format date for display
     const formatDate = (date: Date) => {
@@ -292,7 +380,7 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
         <div className="h-full flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b bg-white">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-4">
                     <Button variant="outline" size="sm" onClick={goToToday}>
                         Today
                     </Button>
@@ -317,6 +405,7 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
                         {viewType === 'work-week' && `${formatDate(dateRange.start)} - ${formatDate(dateRange.end)}`}
                         {viewType === 'week' && `${formatDate(dateRange.start)} - ${formatDate(dateRange.end)}`}
                         {viewType === 'month' && DateTime.fromJSDate(currentDate).setZone(effectiveTimezone).toFormat('MMMM yyyy')}
+                        {viewType === 'list' && `${formatDate(dateRange.start)} - ${formatDate(dateRange.end)}`}
                     </div>
                 </div>
 
@@ -330,44 +419,103 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
                             <SelectItem value="work-week">Work week</SelectItem>
                             <SelectItem value="week">Week</SelectItem>
                             <SelectItem value="month">Month</SelectItem>
+                            <SelectItem value="list">List</SelectItem>
                         </SelectContent>
                     </Select>
 
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={handleRefresh}
-                        disabled={refreshing}
+                        onClick={onRefresh || handleRefresh}
+                        disabled={finalRefreshing}
                     >
-                        <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                        <RefreshCw className={`h-4 w-4 ${finalRefreshing ? 'animate-spin' : ''}`} />
                     </Button>
                 </div>
             </div>
 
-            {/* Calendar Grid */}
+            {/* Content */}
             <div className="flex-1 overflow-auto">
-                <div className="min-h-full" style={{ minWidth: `${60 + (days.length * 120)}px` }}>
-                    {/* Day Headers */}
-                    <div className="sticky top-0 z-10 bg-white border-b">
-                        <div
-                            className="grid border-b"
-                            style={{
-                                gridTemplateColumns: `60px repeat(${days.length}, minmax(120px, 1fr))`,
-                                minWidth: `${60 + (days.length * 120)}px`
-                            }}
-                        >
-                            <div className="p-2 border-r bg-gray-50"></div>
-                            {days.map((day, index) => (
-                                <div key={index} className="p-2 border-r">
-                                    {formatDateHeader(day)}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                {viewType === 'list' ? (
+                    <div className="p-6">
+                        {finalLoading && (
+                            <div className="flex items-center justify-center py-8">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
+                                <span className="ml-3">Loading calendar events...</span>
+                            </div>
+                        )}
 
-                    {/* All-day events section */}
-                    {viewType !== 'day' && (
-                        <div className="border-b bg-gray-50">
+                        {finalError && (
+                            <div className="p-3 bg-red-100 border border-red-300 rounded text-red-700 mb-6">
+                                Error: {finalError}
+                            </div>
+                        )}
+
+                        {!finalLoading && finalEvents.length === 0 && !finalError && (
+                            <div className="text-center py-8 text-muted-foreground">
+                                <p>No calendar events found.</p>
+                            </div>
+                        )}
+
+                        {!finalLoading && finalEvents.length > 0 && (
+                            <div className="space-y-4">
+                                {finalEvents.map((event) => (
+                                    <CalendarEventItem key={event.id} event={event} effectiveTimezone={effectiveTimezone} />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div className="min-h-full" style={{ minWidth: `${60 + (days.length * 120)}px` }}>
+                        {/* Day Headers */}
+                        <div className="sticky top-0 z-10 bg-white border-b">
+                            <div
+                                className="grid border-b"
+                                style={{
+                                    gridTemplateColumns: `60px repeat(${days.length}, minmax(120px, 1fr))`,
+                                    minWidth: `${60 + (days.length * 120)}px`
+                                }}
+                            >
+                                <div className="p-2 border-r bg-gray-50"></div>
+                                {days.map((day, index) => (
+                                    <div key={index} className="p-2 border-r">
+                                        {formatDateHeader(day)}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* All-day events section */}
+                        {viewType !== 'day' && (
+                            <div className="border-b bg-gray-50">
+                                <div
+                                    className="grid"
+                                    style={{
+                                        gridTemplateColumns: `60px repeat(${days.length}, minmax(120px, 1fr))`,
+                                        minWidth: `${60 + (days.length * 120)}px`
+                                    }}
+                                >
+                                    <div className="p-2 border-r bg-gray-50 text-xs text-gray-500 font-medium">
+                                        All day
+                                    </div>
+                                    {days.map((day, dayIndex) => (
+                                        <div key={dayIndex} className="border-r relative min-h-[32px] p-1">
+                                            {eventsByDay[DateTime.fromJSDate(day).setZone(effectiveTimezone).toFormat('yyyy-MM-dd')]?.filter(event => event.all_day).map((event) => (
+                                                <CalendarGridEvent
+                                                    key={event.id}
+                                                    event={event}
+                                                    day={day}
+                                                    effectiveTimezone={effectiveTimezone}
+                                                />
+                                            ))}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Time Grid */}
+                        <div className="relative">
                             <div
                                 className="grid"
                                 style={{
@@ -375,112 +523,85 @@ export default function CalendarGridView({ toolDataLoading = false, activeTool }
                                     minWidth: `${60 + (days.length * 120)}px`
                                 }}
                             >
-                                <div className="p-2 border-r bg-gray-50 text-xs text-gray-500 font-medium">
-                                    All day
+                                {/* Time Labels */}
+                                <div className="border-r">
+                                    {timeSlots.map((slot, index) => (
+                                        <div
+                                            key={index}
+                                            className="h-8 border-b border-gray-100 flex items-start justify-end pr-2 text-xs text-gray-500"
+                                        >
+                                            {slot.minute === 0 ? slot.time : ''}
+                                        </div>
+                                    ))}
                                 </div>
+
+                                {/* Day Columns */}
                                 {days.map((day, dayIndex) => (
-                                    <div key={dayIndex} className="border-r relative min-h-[32px] p-1">
-                                        {eventsByDay[DateTime.fromJSDate(day).setZone(effectiveTimezone).toFormat('yyyy-MM-dd')]?.filter(event => event.all_day).map((event) => (
-                                            <CalendarGridEvent
-                                                key={event.id}
-                                                event={event}
-                                                day={day}
-                                                effectiveTimezone={effectiveTimezone}
+                                    <div key={dayIndex} className="border-r relative">
+                                        {/* Current time indicator */}
+                                        {(() => {
+                                            const now = DateTime.now().setZone(effectiveTimezone);
+                                            const today = DateTime.now().setZone(effectiveTimezone);
+                                            const dayDate = DateTime.fromJSDate(day).setZone(effectiveTimezone);
+
+                                            if (dayDate.toFormat('yyyy-MM-dd') === today.toFormat('yyyy-MM-dd')) {
+                                                const currentHour = now.hour + now.minute / 60;
+                                                const gridStartHour = 6;
+                                                const gridEndHour = 22;
+                                                if (currentHour >= gridStartHour && currentHour <= gridEndHour) {
+                                                    const topPercent = ((currentHour - gridStartHour) / (gridEndHour - gridStartHour)) * 100;
+                                                    const totalHeight = (gridEndHour - gridStartHour) * 2 * 16; // 16px per 30-min slot
+                                                    const topPixels = (topPercent / 100) * totalHeight;
+
+                                                    return (
+                                                        <div
+                                                            className="absolute left-0 right-0 z-10 pointer-events-none"
+                                                            style={{ top: `${topPixels}px` }}
+                                                        >
+                                                            <div className="flex items-center">
+                                                                <div className="w-2 h-2 bg-red-500 rounded-full -ml-1"></div>
+                                                                <div className="flex-1 h-0.5 bg-red-500"></div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+                                            }
+                                            return null;
+                                        })()}
+
+                                        {/* Time slots */}
+                                        {timeSlots.map((slot, slotIndex) => (
+                                            <div
+                                                key={slotIndex}
+                                                className="h-8 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+                                                onClick={() => {
+                                                    // Future: Create event on click
+                                                    console.log('Create event at:', day, slot.time);
+                                                }}
                                             />
                                         ))}
+
+                                        {/* Events for this day */}
+                                        <div className="absolute inset-0 pointer-events-none">
+                                            {(() => {
+                                                const dayKey = DateTime.fromJSDate(day).setZone(effectiveTimezone).toFormat('yyyy-MM-dd');
+                                                const dayEvents = eventsByDay[dayKey]?.filter(event => !event.all_day) || [];
+                                                return dayEvents.map((event) => (
+                                                    <CalendarGridEvent
+                                                        key={event.id}
+                                                        event={event}
+                                                        day={day}
+                                                        effectiveTimezone={effectiveTimezone}
+                                                    />
+                                                ));
+                                            })()}
+                                        </div>
                                     </div>
                                 ))}
                             </div>
-                        </div>
-                    )}
-
-                    {/* Time Grid */}
-                    <div className="relative">
-                        <div
-                            className="grid"
-                            style={{
-                                gridTemplateColumns: `60px repeat(${days.length}, minmax(120px, 1fr))`,
-                                minWidth: `${60 + (days.length * 120)}px`
-                            }}
-                        >
-                            {/* Time Labels */}
-                            <div className="border-r">
-                                {timeSlots.map((slot, index) => (
-                                    <div
-                                        key={index}
-                                        className="h-8 border-b border-gray-100 flex items-start justify-end pr-2 text-xs text-gray-500"
-                                    >
-                                        {slot.minute === 0 ? slot.time : ''}
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Day Columns */}
-                            {days.map((day, dayIndex) => (
-                                <div key={dayIndex} className="border-r relative">
-                                    {/* Current time indicator */}
-                                    {(() => {
-                                        const now = DateTime.now().setZone(effectiveTimezone);
-                                        const today = DateTime.now().setZone(effectiveTimezone);
-                                        const dayDate = DateTime.fromJSDate(day).setZone(effectiveTimezone);
-
-                                        if (dayDate.toFormat('yyyy-MM-dd') === today.toFormat('yyyy-MM-dd')) {
-                                            const currentHour = now.hour + now.minute / 60;
-                                            const gridStartHour = 6;
-                                            const gridEndHour = 22;
-                                            if (currentHour >= gridStartHour && currentHour <= gridEndHour) {
-                                                const topPercent = ((currentHour - gridStartHour) / (gridEndHour - gridStartHour)) * 100;
-                                                const totalHeight = (gridEndHour - gridStartHour) * 2 * 16; // 16px per 30-min slot
-                                                const topPixels = (topPercent / 100) * totalHeight;
-
-                                                return (
-                                                    <div
-                                                        className="absolute left-0 right-0 z-10 pointer-events-none"
-                                                        style={{ top: `${topPixels}px` }}
-                                                    >
-                                                        <div className="flex items-center">
-                                                            <div className="w-2 h-2 bg-red-500 rounded-full -ml-1"></div>
-                                                            <div className="flex-1 h-0.5 bg-red-500"></div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            }
-                                        }
-                                        return null;
-                                    })()}
-
-                                    {/* Time slots */}
-                                    {timeSlots.map((slot, slotIndex) => (
-                                        <div
-                                            key={slotIndex}
-                                            className="h-8 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
-                                            onClick={() => {
-                                                // Future: Create event on click
-                                                console.log('Create event at:', day, slot.time);
-                                            }}
-                                        />
-                                    ))}
-
-                                    {/* Events for this day */}
-                                    <div className="absolute inset-0 pointer-events-none">
-                                        {(() => {
-                                            const dayKey = DateTime.fromJSDate(day).setZone(effectiveTimezone).toFormat('yyyy-MM-dd');
-                                            const dayEvents = eventsByDay[dayKey]?.filter(event => !event.all_day) || [];
-                                            return dayEvents.map((event) => (
-                                                <CalendarGridEvent
-                                                    key={event.id}
-                                                    event={event}
-                                                    day={day}
-                                                    effectiveTimezone={effectiveTimezone}
-                                                />
-                                            ));
-                                        })()}
-                                    </div>
-                                </div>
-                            ))}
                         </div>
                     </div>
-                </div>
+                )}
             </div>
         </div>
     );
