@@ -164,7 +164,7 @@ export function CalendarEventItem({ event, effectiveTimezone: propTimezone }: Ev
                                         {event.all_day ? (
                                             `${startLuxon.toLocaleString({ month: 'short', day: 'numeric', year: 'numeric', timeZoneName: 'short' })} (All Day)`
                                         ) : (
-                                            `${startLuxon.toLocaleString(DateTime.TIME_SIMPLE)} – ${endLuxon.toLocaleString(DateTime.TIME_SIMPLE)} ${endLuxon.offsetNameShort}`
+                                            `${startLuxon.toFormat('MMM d')} ${startLuxon.toLocaleString(DateTime.TIME_SIMPLE)} – ${endLuxon.toLocaleString(DateTime.TIME_SIMPLE)} ${endLuxon.offsetNameShort}`
                                         )}
                                     </span>
                                 </div>
