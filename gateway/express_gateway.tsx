@@ -606,8 +606,8 @@ app.use('/api/v1/meetings', validateAuth, standardLimiter, createServiceProxy(se
 app.use('/api/v1/meetings/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/meetings'], { '^/api/v1/meetings': '/api/v1/meetings' }));
 app.use('/api/v1/public/polls', standardLimiter, createServiceProxy(serviceRoutes['/api/v1/public/polls'], { '^/api/v1/public/polls': '/api/v1/public/polls' }));
 app.use('/api/v1/public/polls/*', standardLimiter, createServiceProxy(serviceRoutes['/api/v1/public/polls'], { '^/api/v1/public/polls': '/api/v1/public/polls' }));
-app.use('/api/v1/shipments', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/shipments']));
-app.use('/api/v1/shipments/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/shipments']));
+app.use('/api/v1/shipments', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/shipments'], { '^/api/v1/shipments': '/v1/shipments' }));
+app.use('/api/v1/shipments/*', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/shipments'], { '^/api/v1/shipments': '/v1/shipments' }));
 
 // Fallback for other API routes (default to user service)
 app.use('/api/v1', validateAuth, standardLimiter, createServiceProxy(serviceRoutes['/api/v1/users'], { '^/api/v1': '/v1' }));

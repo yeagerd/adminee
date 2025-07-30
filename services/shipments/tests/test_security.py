@@ -144,7 +144,7 @@ class TestEndpointSecurity:
     def test_email_parser_endpoint_requires_auth(self, client):
         """Test that email parser endpoint requires authentication."""
         response = client.post(
-            "/api/v1/shipments/events/from-email",
+            "/v1/shipments/events/from-email",
             json={
                 "user_id": "user123",
                 "subject": "Test email",
@@ -159,7 +159,7 @@ class TestEndpointSecurity:
     def test_data_collection_endpoint_requires_auth(self, client):
         """Test that data collection endpoint requires authentication."""
         response = client.post(
-            "/api/v1/shipments/packages/collect-data",
+            "/v1/shipments/packages/collect-data",
             json={
                 "user_id": "user123",
                 "email_message_id": "email123",
@@ -175,7 +175,7 @@ class TestEndpointSecurity:
 
     def test_labels_endpoint_requires_auth(self, client):
         """Test that labels endpoint requires authentication."""
-        response = client.get("/api/v1/shipments/labels/")
+        response = client.get("/v1/shipments/labels/")
         # Should return 401 or 403 due to missing authentication
         assert response.status_code in [401, 403]
 

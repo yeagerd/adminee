@@ -567,7 +567,7 @@ export class GatewayClient {
         description?: string;
         created_at: string;
     }>> {
-        return this.request(`/api/v1/shipments/events/packages/${packageId}/events`);
+        return this.request(`/api/v1/shipments/packages/${packageId}/events`);
     }
 
     async createTrackingEvent(packageId: number, eventData: {
@@ -583,7 +583,7 @@ export class GatewayClient {
         description?: string;
         created_at: string;
     }> {
-        return this.request(`/api/v1/shipments/events/packages/${packageId}/events`, {
+        return this.request(`/api/v1/shipments/packages/${packageId}/events`, {
             method: 'POST',
             body: eventData,
         });
