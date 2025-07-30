@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
@@ -15,21 +15,21 @@ class TestPollCreation(BaseMeetingsTest):
 
     @pytest.fixture
     def poll_payload(self):
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         return {
             "title": "Test Poll",
             "description": "A test poll.",
             "duration_minutes": 30,
             "location": "Test Room",
             "meeting_type": "virtual",
-            "response_deadline": (now + timedelta(days=2)).isoformat() + "Z",
+            "response_deadline": (now + timedelta(days=2)).isoformat(),
             "min_participants": 1,
             "max_participants": 5,
             "reveal_participants": False,
             "time_slots": [
                 {
-                    "start_time": (now + timedelta(days=3)).isoformat() + "Z",
-                    "end_time": (now + timedelta(days=3, minutes=30)).isoformat() + "Z",
+                    "start_time": (now + timedelta(days=3)).isoformat(),
+                    "end_time": (now + timedelta(days=3, minutes=30)).isoformat(),
                     "timezone": "UTC",
                 }
             ],

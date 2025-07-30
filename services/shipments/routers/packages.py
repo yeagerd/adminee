@@ -143,7 +143,7 @@ async def add_package(
         )
 
     # Create package data with authenticated user's ID and normalized tracking number
-    package_data = pkg.dict()
+    package_data = pkg.model_dump()
     package_data["user_id"] = current_user
     package_data["tracking_number"] = normalized_tracking
 
@@ -446,7 +446,7 @@ async def collect_shipment_data(
             )
 
         # Generate collection ID
-        collection_id = f"collection_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{current_user[:8]}"
+        collection_id = f"collection_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{current_user[:8]}"
 
         # Log the data collection (in production, this would be stored in a database)
         logger.info(
@@ -470,7 +470,7 @@ async def collect_shipment_data(
             "detection_confidence": request.detection_confidence,
             "correction_reason": request.correction_reason,
             "consent_given": request.consent_given,
-            "collected_at": datetime.utcnow().isoformat(),
+            "collected_at": datetime.now(timezone.utc).isoformat(),
         }
 
         # In a real implementation, this would be stored in a database
@@ -480,7 +480,7 @@ async def collect_shipment_data(
         return DataCollectionResponse(
             success=True,
             collection_id=collection_id,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             message="Shipment data collected successfully for service improvements",
         )
 
@@ -522,7 +522,7 @@ async def get_collection_stats(
             "average_confidence": 0.0,
             "correction_rate": 0.0,
             "top_correction_reasons": [],
-            "last_updated": datetime.utcnow().isoformat(),
+            "last_updated": datetime.now(timezone.utc).isoformat(),
         }
 
         return stats
@@ -593,7 +593,7 @@ async def create_tracking_event(
         )
 
     # Create tracking event
-    event_data = event.dict()
+    event_data = event.model_dump()
     event_data["package_id"] = id
 
     db_event = TrackingEvent(**event_data)  # type: ignore

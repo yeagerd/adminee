@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
@@ -15,21 +15,21 @@ class TestSecurityFixes(BaseMeetingsTest):
 
     @pytest.fixture
     def poll_payload(self):
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         return {
             "title": "Test Poll",
             "description": "A test poll.",
             "duration_minutes": 30,
             "location": "Test Room",
             "meeting_type": "virtual",
-            "response_deadline": (now + timedelta(days=2)).isoformat() + "Z",
+            "response_deadline": (now + timedelta(days=2)).isoformat(),
             "min_participants": 1,
             "max_participants": 5,
             "reveal_participants": False,
             "time_slots": [
                 {
-                    "start_time": (now + timedelta(days=3)).isoformat() + "Z",
-                    "end_time": (now + timedelta(days=3, minutes=30)).isoformat() + "Z",
+                    "start_time": (now + timedelta(days=3)).isoformat(),
+                    "end_time": (now + timedelta(days=3, minutes=30)).isoformat(),
                     "timezone": "UTC",
                 }
             ],
@@ -55,9 +55,10 @@ class TestSecurityFixes(BaseMeetingsTest):
 
         # Add time slot
         slot_payload = {
-            "start_time": (datetime.utcnow() + timedelta(days=4)).isoformat() + "Z",
-            "end_time": (datetime.utcnow() + timedelta(days=4, minutes=30)).isoformat()
-            + "Z",
+            "start_time": (datetime.now(timezone.utc) + timedelta(days=4)).isoformat(),
+            "end_time": (
+                datetime.now(timezone.utc) + timedelta(days=4, minutes=30)
+            ).isoformat(),
             "timezone": "UTC",
         }
         resp = self.client.post(
@@ -84,9 +85,10 @@ class TestSecurityFixes(BaseMeetingsTest):
 
         # Try to add time slot with user 2
         slot_payload = {
-            "start_time": (datetime.utcnow() + timedelta(days=4)).isoformat() + "Z",
-            "end_time": (datetime.utcnow() + timedelta(days=4, minutes=30)).isoformat()
-            + "Z",
+            "start_time": (datetime.now(timezone.utc) + timedelta(days=4)).isoformat(),
+            "end_time": (
+                datetime.now(timezone.utc) + timedelta(days=4, minutes=30)
+            ).isoformat(),
             "timezone": "UTC",
         }
         resp = self.client.post(
@@ -114,9 +116,10 @@ class TestSecurityFixes(BaseMeetingsTest):
 
         # Update time slot
         slot_payload = {
-            "start_time": (datetime.utcnow() + timedelta(days=5)).isoformat() + "Z",
-            "end_time": (datetime.utcnow() + timedelta(days=5, minutes=30)).isoformat()
-            + "Z",
+            "start_time": (datetime.now(timezone.utc) + timedelta(days=5)).isoformat(),
+            "end_time": (
+                datetime.now(timezone.utc) + timedelta(days=5, minutes=30)
+            ).isoformat(),
             "timezone": "UTC",
         }
         resp = self.client.put(
@@ -144,9 +147,10 @@ class TestSecurityFixes(BaseMeetingsTest):
 
         # Try to update time slot with user 2
         slot_payload = {
-            "start_time": (datetime.utcnow() + timedelta(days=5)).isoformat() + "Z",
-            "end_time": (datetime.utcnow() + timedelta(days=5, minutes=30)).isoformat()
-            + "Z",
+            "start_time": (datetime.now(timezone.utc) + timedelta(days=5)).isoformat(),
+            "end_time": (
+                datetime.now(timezone.utc) + timedelta(days=5, minutes=30)
+            ).isoformat(),
             "timezone": "UTC",
         }
         resp = self.client.put(
@@ -264,9 +268,10 @@ class TestSecurityFixes(BaseMeetingsTest):
 
         # Try to add slot without user ID header
         slot_payload = {
-            "start_time": (datetime.utcnow() + timedelta(days=4)).isoformat() + "Z",
-            "end_time": (datetime.utcnow() + timedelta(days=4, minutes=30)).isoformat()
-            + "Z",
+            "start_time": (datetime.now(timezone.utc) + timedelta(days=4)).isoformat(),
+            "end_time": (
+                datetime.now(timezone.utc) + timedelta(days=4, minutes=30)
+            ).isoformat(),
             "timezone": "UTC",
         }
         resp = self.client.post(
