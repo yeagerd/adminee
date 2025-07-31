@@ -2,7 +2,7 @@ import React from 'react';
 
 // Component for showing field update messages
 interface FieldUpdateMessageProps {
-    existingPackage: any; // Using 'any' for flexibility across different package types
+    existingPackage: unknown; // Using 'unknown' for flexibility across different package types
     currentValue: string;
     originalValue?: string;
 }

@@ -65,13 +65,7 @@ const getReadableStatus = (status: PackageStatus): string => {
     return statusOption ? statusOption.label : status;
 };
 
-// Helper function to get update message for a field
-const getUpdateMessage = (fieldName: keyof PackageFormData, currentValue: string, originalValue?: string): string | null => {
-    if (!originalValue || currentValue === originalValue) {
-        return null;
-    }
-    return `Will be updated from: ${originalValue}`;
-};
+
 
 
 
