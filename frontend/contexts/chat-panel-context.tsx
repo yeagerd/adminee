@@ -2,6 +2,22 @@
 
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 
+/**
+ * Chat Panel State Management Strategy
+ * 
+ * Strategy:
+ * 1. Provider returns effectiveWidth: Returns the actual width when open, 0 when closed
+ * 2. Local state tracking: Component maintains localChatWidth for immediate sizing
+ * 3. Sync logic: When provider's effectiveWidth differs from local width, sync them
+ * 4. No re-rendering: Tool content stays mounted because we removed the key prop
+ * 
+ * How it works:
+ * 1. User resizes: Updates both local width and provider width
+ * 2. User closes chat: Provider effectiveWidth becomes 0, local width resets to 0
+ * 3. User reopens chat: Provider effectiveWidth becomes the saved width, local width syncs to it
+ * 4. Tool content: Never re-renders because no key prop forces remounting
+ */
+
 interface ChatPanelState {
     isOpen: boolean;
     width: number;
