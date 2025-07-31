@@ -1,10 +1,15 @@
+"""
+Tracking events management endpoints for the shipments service
+"""
+
 from typing import List
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from services.shipments.auth import get_current_user
+from services.common.api_key_auth import get_current_user, service_permission_required
 from services.shipments.database import get_async_session_dep
 from services.shipments.email_parser import EmailParser
 from services.shipments.models import Package, TrackingEvent
@@ -14,20 +19,19 @@ from services.shipments.schemas.email_parser import (
     EmailParseResponse,
     ParsedTrackingInfo,
 )
-from services.shipments.service_auth import service_permission_required
 
 router = APIRouter()
 
 
 @router.get("/{id}/events", response_model=List[TrackingEventOut])
 async def get_tracking_events(
-    id: int,
+    id: UUID,  # Changed from int to UUID
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["read_shipments"])),
 ) -> list[TrackingEventOut]:
     # Query package and validate user ownership
-    query = select(Package).where(Package.id == id, Package.user_id == current_user)  # type: ignore
+    query = select(Package).where(Package.id == id, Package.user_id == current_user)
     result = await session.execute(query)
     package = result.scalar_one_or_none()
 
@@ -39,15 +43,15 @@ async def get_tracking_events(
     # Query tracking events for this package
     events_query = (
         select(TrackingEvent)
-        .where(TrackingEvent.package_id == id)  # type: ignore
-        .order_by(TrackingEvent.event_date.desc())  # type: ignore
+        .where(TrackingEvent.package_id == id)
+        .order_by(TrackingEvent.event_date.desc())
     )
     events_result = await session.execute(events_query)
     events = events_result.scalars().all()
 
     return [
         TrackingEventOut(
-            id=event.id,  # type: ignore
+            id=event.id,
             event_date=event.event_date,
             status=event.status,
             location=event.location,
@@ -60,14 +64,14 @@ async def get_tracking_events(
 
 @router.post("/{id}/events", response_model=TrackingEventOut)
 async def create_tracking_event(
-    id: int,
+    id: UUID,  # Changed from int to UUID
     event: TrackingEventCreate,
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["write_shipments"])),
 ) -> TrackingEventOut:
     # Query package and validate user ownership
-    query = select(Package).where(Package.id == id, Package.user_id == current_user)  # type: ignore
+    query = select(Package).where(Package.id == id, Package.user_id == current_user)
     result = await session.execute(query)
     package = result.scalar_one_or_none()
 
@@ -80,13 +84,13 @@ async def create_tracking_event(
     event_data = event.model_dump()
     event_data["package_id"] = id
 
-    db_event = TrackingEvent(**event_data)  # type: ignore
+    db_event = TrackingEvent(**event_data)
     session.add(db_event)
     await session.commit()
     await session.refresh(db_event)
 
     return TrackingEventOut(
-        id=db_event.id,  # type: ignore
+        id=db_event.id,
         event_date=db_event.event_date,
         status=db_event.status,
         location=db_event.location,

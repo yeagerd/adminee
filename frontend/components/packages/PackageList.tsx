@@ -59,9 +59,9 @@ export default function PackageList({
 }: {
     packages: Package[],
     onSort: (field: string) => void,
-    editingCell: { id: number; field: string } | null,
-    setEditingCell: (cell: { id: number; field: string } | null) => void,
-    onCellEdit: (id: number, field: string, value: string) => void,
+    editingCell: { id: string; field: string } | null,
+    setEditingCell: (cell: { id: string; field: string } | null) => void,
+    onCellEdit: (id: string, field: string, value: string) => void,
     onRowClick: (pkg: Package) => void,
     selectedStatusFilters: string[],
     onStatusFilterChange: (values: string[]) => void,

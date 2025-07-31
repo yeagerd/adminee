@@ -5,6 +5,7 @@ Database models for the shipments service
 from datetime import date, datetime, timezone
 from enum import Enum
 from typing import TYPE_CHECKING, List, Optional
+from uuid import UUID, uuid4
 
 import sqlalchemy as sa
 from sqlmodel import Field, Relationship, SQLModel
@@ -27,14 +28,14 @@ class PackageStatus(str, Enum):
 
 
 class PackageLabel(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    package_id: int = Field(foreign_key="package.id")
-    label_id: int = Field(foreign_key="label.id")
+    id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
+    package_id: UUID = Field(foreign_key="package.id")
+    label_id: UUID = Field(foreign_key="label.id")
     created_at: datetime = Field(default_factory=utc_now)
 
 
 class Package(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     user_id: str = Field(index=True)
     tracking_number: str = Field(max_length=255, index=True)
     carrier: str = Field(max_length=50)
@@ -69,12 +70,11 @@ class Package(SQLModel, table=True):
             "carrier",
             name="uq_package_user_tracking_carrier",
         ),
-        {"sqlite_autoincrement": True},
     )
 
 
 class Label(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     user_id: str = Field(index=True)
     name: str = Field(max_length=100)
     color: str = Field(default="#3B82F6", max_length=7)
@@ -89,8 +89,8 @@ class Label(SQLModel, table=True):
 
 
 class TrackingEvent(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    package_id: int = Field(foreign_key="package.id")
+    id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
+    package_id: UUID = Field(foreign_key="package.id")
     event_date: datetime
     status: PackageStatus = Field(max_length=100)
     location: Optional[str] = Field(default=None, max_length=255)
@@ -101,7 +101,7 @@ class TrackingEvent(SQLModel, table=True):
 
 
 class CarrierConfig(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: Optional[UUID] = Field(default_factory=uuid4, primary_key=True)
     carrier_name: str = Field(max_length=50)
     api_endpoint: Optional[str] = Field(default=None, max_length=255)
     rate_limit_per_hour: int = Field(default=1000)

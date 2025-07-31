@@ -1,5 +1,5 @@
 export default function LabelPicker({ labels, selectedLabels, onChange }: {
-    labels: { id: number, name: string, color: string }[],
+    labels: { id: string, name: string, color: string }[],
     selectedLabels: string[],
     onChange: (labels: string[]) => void,
 }) {

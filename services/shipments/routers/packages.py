@@ -1,5 +1,10 @@
+"""
+Package management endpoints for the shipments service
+"""
+
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -7,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from services.common.logging_config import get_logger
-from services.shipments.auth import get_current_user
+from services.common.api_key_auth import get_current_user, service_permission_required
 from services.shipments.database import get_async_session_dep
 from services.shipments.models import Package, TrackingEvent
 from services.shipments.schemas import (
@@ -18,8 +23,7 @@ from services.shipments.schemas import (
     TrackingEventCreate,
     TrackingEventOut,
 )
-from services.shipments.service_auth import service_permission_required
-from services.shipments.utils import (
+from services.shipments.utils.tracking_validation import (
     normalize_tracking_number,
     validate_tracking_number_format,
 )
@@ -223,7 +227,7 @@ async def add_package(
 
 @router.get("/{id}", response_model=PackageOut)
 async def get_package(
-    id: int,
+    id: UUID,  # Changed from int to UUID
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["read_shipments"])),
@@ -264,7 +268,7 @@ async def get_package(
 
 @router.put("/{id}", response_model=PackageOut)
 async def update_package(
-    id: int,
+    id: UUID,  # Changed from int to UUID
     pkg: PackageUpdate,
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
@@ -321,6 +325,11 @@ async def update_package(
     await session.commit()
     await session.refresh(package)
 
+    # Count tracking events for this package
+    events_query = select(TrackingEvent).where(TrackingEvent.package_id == package.id)  # type: ignore
+    events_result = await session.execute(events_query)
+    events_count = len(events_result.scalars().all())
+
     return PackageOut(
         id=package.id,  # type: ignore
         user_id=package.user_id,
@@ -335,14 +344,14 @@ async def update_package(
         order_number=package.order_number,
         tracking_link=package.tracking_link,
         updated_at=package.updated_at,
-        events_count=0,  # TODO: Query for real count
+        events_count=events_count,
         labels=[],  # TODO: Query for real labels
     )
 
 
 @router.delete("/{id}")
 async def delete_package(
-    id: int,
+    id: UUID,  # Changed from int to UUID
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["write_shipments"])),
@@ -366,7 +375,7 @@ async def delete_package(
 
 @router.post("/{id}/refresh")
 async def refresh_package(
-    id: int,
+    id: UUID,  # Changed from int to UUID
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["write_shipments"])),
@@ -391,7 +400,7 @@ async def refresh_package(
 
 @router.post("/{id}/labels")
 async def add_label_to_package(
-    id: int,
+    id: UUID,  # Changed from int to UUID
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["write_shipments"])),
@@ -407,14 +416,13 @@ async def add_label_to_package(
         )
 
     # TODO: Implement actual label addition logic
-    # For now, just return success
     return {"message": "Label added to package successfully"}
 
 
 @router.delete("/{id}/labels/{label_id}")
 async def remove_label_from_package(
-    id: int,
-    label_id: int,
+    id: UUID,  # Changed from int to UUID
+    label_id: UUID,  # Changed from int to UUID
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["write_shipments"])),
@@ -430,7 +438,6 @@ async def remove_label_from_package(
         )
 
     # TODO: Implement actual label removal logic
-    # For now, just return success
     return {"message": "Label removed from package successfully"}
 
 
@@ -561,7 +568,7 @@ async def get_collection_stats(
 # Package-specific tracking events endpoints
 @router.get("/{id}/events", response_model=List[TrackingEventOut])
 async def get_tracking_events(
-    id: int,
+    id: UUID,  # Changed from int to UUID
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["read_shipments"])),
@@ -600,7 +607,7 @@ async def get_tracking_events(
 
 @router.post("/{id}/events", response_model=TrackingEventOut)
 async def create_tracking_event(
-    id: int,
+    id: UUID,  # Changed from int to UUID
     event: TrackingEventCreate,
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
