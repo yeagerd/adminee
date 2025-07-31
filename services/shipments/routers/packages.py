@@ -76,14 +76,14 @@ async def list_packages(
 ) -> dict:
     logger.info("Fetching packages for user", user_id=current_user)
     query = select(Package).where(Package.user_id == current_user)  # type: ignore
-    
+
     if tracking_number:
         normalized_tracking = normalize_tracking_number(tracking_number, carrier)
         query = query.where(Package.tracking_number == normalized_tracking)
-    
+
     if carrier:
         query = query.where(Package.carrier == carrier)
-    
+
     result = await session.execute(query)
     packages = result.scalars().all()
     logger.info("Found packages for user", user_id=current_user, count=len(packages))
