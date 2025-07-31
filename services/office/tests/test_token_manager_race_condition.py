@@ -8,7 +8,7 @@ implementation properly handles concurrent access without race conditions.
 
 import asyncio
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 

@@ -78,26 +78,31 @@ class TokenManager:
 
             # Only initialize if this is the first user
             if self._client_ref_count == 1:
-                from services.common.logging_config import request_id_var
+                try:
 
-                # Use API key for user management service if available
-                headers: dict[str, str] = {}
-                api_key = get_settings().api_office_user_key
-                if api_key:
-                    headers["X-API-Key"] = api_key
+                    # Use API key for user management service if available
+                    headers: dict[str, str] = {}
+                    api_key = get_settings().api_office_user_key
+                    if api_key:
+                        headers["X-API-Key"] = api_key
 
-                # Propagate request ID for distributed tracing
-                request_id = request_id_var.get()
-                if request_id and request_id != "uninitialized":
-                    headers["X-Request-Id"] = request_id
+                    # Note: We don't set X-Request-Id here anymore since it should be per-request
+                    # The request ID will be set dynamically in get_user_token for each request
 
-                self.http_client = httpx.AsyncClient(
-                    timeout=httpx.Timeout(10.0),  # 10 second timeout
-                    headers=headers,
-                )
-                logger.info(
-                    f"TokenManager instance {self._instance_id} initialized with request_id: {request_id}"
-                )
+                    self.http_client = httpx.AsyncClient(
+                        timeout=httpx.Timeout(10.0),  # 10 second timeout
+                        headers=headers,
+                    )
+                    logger.info(
+                        f"TokenManager instance {self._instance_id} initialized successfully"
+                    )
+                except Exception as e:
+                    # If initialization fails, decrement the ref count and re-raise
+                    self._client_ref_count -= 1
+                    logger.error(
+                        f"TokenManager instance {self._instance_id} initialization failed: {e}"
+                    )
+                    raise
 
         return self
 
@@ -205,6 +210,16 @@ class TokenManager:
                 f"TokenManager instance {self._instance_id}: Requesting token for user {user_id}, provider {provider}"
             )
 
+            # Get current request ID for distributed tracing
+            from services.common.logging_config import request_id_var
+
+            request_id = request_id_var.get()
+
+            # Prepare headers with dynamic request ID
+            headers = {}
+            if request_id and request_id != "uninitialized":
+                headers["X-Request-Id"] = request_id
+
             response = await self.http_client.post(
                 f"{get_settings().USER_SERVICE_URL}/v1/internal/tokens/get",
                 json={
@@ -212,6 +227,7 @@ class TokenManager:
                     "provider": provider,
                     "required_scopes": scopes,
                 },
+                headers=headers,
             )
 
             if response.status_code == 200:
