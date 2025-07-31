@@ -17,6 +17,7 @@ from services.office.schemas import (
     DriveFile,
     EmailAddress,
     EmailMessage,
+    EmailThread,
 )
 
 logger = get_logger(__name__)
@@ -660,11 +661,328 @@ def _parse_google_datetime(dt_data: Dict[str, Any]) -> tuple[datetime, bool]:
 
 
 def _parse_iso_datetime(dt_str: Optional[str]) -> Optional[datetime]:
-    """Parse ISO datetime string with fallback."""
+    """
+    Parse ISO datetime string to datetime object.
+
+    Args:
+        dt_str: ISO datetime string
+
+    Returns:
+        datetime object or None if parsing fails
+    """
     if not dt_str:
         return None
 
     try:
-        return datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
-    except Exception:
-        return None
+        # Try parsing with timezone info
+        dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+        return dt
+    except ValueError:
+        try:
+            # Try parsing without timezone info (assume UTC)
+            dt = datetime.fromisoformat(dt_str)
+            return dt.replace(tzinfo=timezone.utc)
+        except ValueError:
+            logger.warning(f"Failed to parse datetime: {dt_str}")
+            return None
+
+
+def normalize_google_thread(
+    raw_data: Dict[str, Any], account_email: str, account_name: Optional[str] = None
+) -> EmailThread:
+    """
+    Convert a raw Gmail API thread response into a unified EmailThread model.
+
+    Args:
+        raw_data: Raw JSON response from Gmail API threads endpoint
+        account_email: Email address of the account this thread belongs to
+        account_name: Display name for the account
+
+    Returns:
+        EmailThread: Unified email thread model
+
+    Raises:
+        ValueError: If required fields are missing from raw_data
+    """
+    try:
+        # Extract basic thread info
+        thread_id = raw_data.get("id")
+        if not thread_id:
+            raise ValueError("Missing required field 'id' in Gmail thread response")
+
+        # Extract messages from thread
+        messages_data = raw_data.get("messages", [])
+        if not messages_data:
+            raise ValueError("No messages found in Gmail thread")
+
+        # Normalize each message
+        messages = []
+        for msg_data in messages_data:
+            try:
+                normalized_msg = normalize_google_email(msg_data, account_email, account_name)
+                messages.append(normalized_msg)
+            except Exception as e:
+                logger.warning(f"Failed to normalize message in thread {thread_id}: {e}")
+                continue
+
+        if not messages:
+            raise ValueError(f"No valid messages found in thread {thread_id}")
+
+        # Sort messages by date
+        messages.sort(key=lambda msg: msg.date)
+
+        # Calculate thread metadata
+        first_message = messages[0]
+        last_message = messages[-1]
+        
+        # Count unique participants
+        participants = set()
+        for msg in messages:
+            if msg.from_address:
+                participants.add(msg.from_address.email)
+            for addr in msg.to_addresses:
+                participants.add(addr.email)
+            for addr in msg.cc_addresses:
+                participants.add(addr.email)
+
+        # Determine read status (thread is read if all messages are read)
+        is_read = all(msg.is_read for msg in messages)
+
+        return EmailThread(
+            id=f"gmail_{thread_id}",
+            subject=first_message.subject,
+            messages=messages,
+            participant_count=len(participants),
+            last_message_date=last_message.date,
+            is_read=is_read,
+            providers=[Provider.GOOGLE],
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to normalize Gmail thread: {e}")
+        raise
+
+
+def normalize_microsoft_conversation(
+    raw_data: Dict[str, Any], 
+    messages_data: List[Dict[str, Any]], 
+    account_email: str, 
+    account_name: Optional[str] = None
+) -> EmailThread:
+    """
+    Convert a raw Microsoft Graph API conversation response into a unified EmailThread model.
+
+    Args:
+        raw_data: Raw JSON response from Microsoft Graph conversations endpoint
+        messages_data: List of message data from the conversation
+        account_email: Email address of the account this conversation belongs to
+        account_name: Display name for the account
+
+    Returns:
+        EmailThread: Unified email thread model
+
+    Raises:
+        ValueError: If required fields are missing from raw_data
+    """
+    try:
+        # Extract basic conversation info
+        conversation_id = raw_data.get("id")
+        if not conversation_id:
+            raise ValueError("Missing required field 'id' in Microsoft conversation response")
+
+        if not messages_data:
+            raise ValueError("No messages found in Microsoft conversation")
+
+        # Normalize each message
+        messages = []
+        for msg_data in messages_data:
+            try:
+                normalized_msg = normalize_microsoft_email(msg_data, account_email, account_name)
+                messages.append(normalized_msg)
+            except Exception as e:
+                logger.warning(f"Failed to normalize message in conversation {conversation_id}: {e}")
+                continue
+
+        if not messages:
+            raise ValueError(f"No valid messages found in conversation {conversation_id}")
+
+        # Sort messages by date
+        messages.sort(key=lambda msg: msg.date)
+
+        # Calculate thread metadata
+        first_message = messages[0]
+        last_message = messages[-1]
+        
+        # Count unique participants
+        participants = set()
+        for msg in messages:
+            if msg.from_address:
+                participants.add(msg.from_address.email)
+            for addr in msg.to_addresses:
+                participants.add(addr.email)
+            for addr in msg.cc_addresses:
+                participants.add(addr.email)
+
+        # Determine read status (thread is read if all messages are read)
+        is_read = all(msg.is_read for msg in messages)
+
+        return EmailThread(
+            id=f"microsoft_{conversation_id}",
+            subject=raw_data.get("topic") or first_message.subject,
+            messages=messages,
+            participant_count=len(participants),
+            last_message_date=last_message.date,
+            is_read=is_read,
+            providers=[Provider.MICROSOFT],
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to normalize Microsoft conversation: {e}")
+        raise
+
+
+def normalize_thread_id(provider: str, original_id: str) -> str:
+    """
+    Normalize a thread ID to the unified format.
+
+    Args:
+        provider: Provider name (google, microsoft)
+        original_id: Original thread ID from the provider
+
+    Returns:
+        Unified thread ID in format "provider_originalId"
+    """
+    provider_map = {
+        "google": "gmail",
+        "gmail": "gmail",
+        "microsoft": "microsoft",
+        "outlook": "microsoft",
+    }
+    
+    normalized_provider = provider_map.get(provider.lower(), provider.lower())
+    return f"{normalized_provider}_{original_id}"
+
+
+def merge_threads(threads: List[EmailThread]) -> List[EmailThread]:
+    """
+    Merge threads that represent the same conversation across providers.
+
+    Args:
+        threads: List of threads to merge
+
+    Returns:
+        List of merged threads
+    """
+    if not threads:
+        return []
+
+    # Group threads by subject and participants
+    thread_groups = {}
+    
+    for thread in threads:
+        # Create a key based on subject and participants
+        participants = set()
+        for msg in thread.messages:
+            if msg.from_address:
+                participants.add(msg.from_address.email)
+            for addr in msg.to_addresses:
+                participants.add(addr.email)
+            for addr in msg.cc_addresses:
+                participants.add(addr.email)
+        
+        # Normalize subject for comparison
+        subject_key = (thread.subject or "").lower().strip()
+        
+        # Create a composite key
+        key = (subject_key, frozenset(participants))
+        
+        if key not in thread_groups:
+            thread_groups[key] = []
+        thread_groups[key].append(thread)
+
+    # Merge threads in each group
+    merged_threads = []
+    
+    for key, group_threads in thread_groups.items():
+        if len(group_threads) == 1:
+            # No merging needed
+            merged_threads.append(group_threads[0])
+        else:
+            # Merge multiple threads
+            merged_thread = _merge_thread_group(group_threads)
+            merged_threads.append(merged_thread)
+
+    # Sort by last message date
+    merged_threads.sort(key=lambda t: t.last_message_date, reverse=True)
+    
+    return merged_threads
+
+
+def _merge_thread_group(threads: List[EmailThread]) -> EmailThread:
+    """
+    Merge a group of threads that represent the same conversation.
+
+    Args:
+        threads: List of threads to merge
+
+    Returns:
+        Merged thread
+    """
+    if not threads:
+        raise ValueError("Cannot merge empty thread group")
+    
+    if len(threads) == 1:
+        return threads[0]
+
+    # Combine all messages from all threads
+    all_messages = []
+    all_providers = set()
+    
+    for thread in threads:
+        all_messages.extend(thread.messages)
+        all_providers.update(thread.providers)
+
+    # Remove duplicates based on message ID
+    seen_ids = set()
+    unique_messages = []
+    
+    for msg in all_messages:
+        if msg.id not in seen_ids:
+            seen_ids.add(msg.id)
+            unique_messages.append(msg)
+
+    # Sort messages by date
+    unique_messages.sort(key=lambda msg: msg.date)
+
+    if not unique_messages:
+        raise ValueError("No valid messages found after merging")
+
+    # Calculate merged thread metadata
+    first_message = unique_messages[0]
+    last_message = unique_messages[-1]
+    
+    # Count unique participants
+    participants = set()
+    for msg in unique_messages:
+        if msg.from_address:
+            participants.add(msg.from_address.email)
+        for addr in msg.to_addresses:
+            participants.add(addr.email)
+        for addr in msg.cc_addresses:
+            participants.add(addr.email)
+
+    # Determine read status (thread is read if all messages are read)
+    is_read = all(msg.is_read for msg in unique_messages)
+
+    # Use the first thread's ID as the merged ID
+    merged_id = threads[0].id
+
+    return EmailThread(
+        id=merged_id,
+        subject=first_message.subject,
+        messages=unique_messages,
+        participant_count=len(participants),
+        last_message_date=last_message.date,
+        is_read=is_read,
+        providers=list(all_providers),
+    )

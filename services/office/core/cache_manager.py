@@ -8,7 +8,7 @@ import hashlib
 import json
 import logging
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 
 import redis.asyncio as redis
 from redis.asyncio import Redis
@@ -273,25 +273,144 @@ def generate_cache_key(
 
 def generate_user_cache_pattern(user_id: str, provider: Optional[str] = None) -> str:
     """
-    Generate Redis pattern for user-specific cache invalidation.
+    Generate a cache pattern for deleting all user data.
 
     Args:
-        user_id: ID of the user
+        user_id: User ID
         provider: Optional provider filter
 
     Returns:
-        Redis pattern string for matching user cache keys
-
-    Examples:
-        >>> generate_user_cache_pattern("user123")
-        'office_service:user123:*'
-        >>> generate_user_cache_pattern("user123", "google")
-        'office_service:user123:google:*'
+        Cache pattern string
     """
     if provider:
-        return f"office_service:{user_id}:{provider}:*"
-    else:
-        return f"office_service:{user_id}:*"
+        return f"office:{user_id}:{provider}:*"
+    return f"office:{user_id}:*"
+
+
+def generate_thread_cache_key(
+    user_id: str,
+    thread_id: Optional[str] = None,
+    include_body: bool = False,
+    **kwargs
+) -> str:
+    """
+    Generate a cache key for thread-related data.
+
+    Args:
+        user_id: User ID
+        thread_id: Optional specific thread ID
+        include_body: Whether body content is included
+        **kwargs: Additional parameters for cache key
+
+    Returns:
+        Cache key string
+    """
+    key_parts = ["office", user_id, "thread"]
+    
+    if thread_id:
+        key_parts.append(thread_id)
+    
+    if include_body:
+        key_parts.append("with_body")
+    
+    # Add additional parameters
+    for key, value in sorted(kwargs.items()):
+        if value is not None:
+            key_parts.extend([key, str(value)])
+    
+    return ":".join(key_parts)
+
+
+def generate_threads_list_cache_key(
+    user_id: str,
+    providers: Optional[List[str]] = None,
+    limit: Optional[int] = None,
+    include_body: bool = False,
+    labels: Optional[List[str]] = None,
+    folder_id: Optional[str] = None,
+    q: Optional[str] = None,
+    page_token: Optional[str] = None,
+) -> str:
+    """
+    Generate a cache key for threads list data.
+
+    Args:
+        user_id: User ID
+        providers: List of providers
+        limit: Maximum number of threads
+        include_body: Whether body content is included
+        labels: Filter by labels
+        folder_id: Folder ID filter
+        q: Search query
+        page_token: Pagination token
+
+    Returns:
+        Cache key string
+    """
+    key_parts = ["office", user_id, "threads"]
+    
+    if providers:
+        key_parts.extend(["providers", ",".join(sorted(providers))])
+    
+    if limit:
+        key_parts.extend(["limit", str(limit)])
+    
+    if include_body:
+        key_parts.append("with_body")
+    
+    if labels:
+        key_parts.extend(["labels", ",".join(sorted(labels))])
+    
+    if folder_id:
+        key_parts.extend(["folder", folder_id])
+    
+    if q:
+        key_parts.extend(["q", q])
+    
+    if page_token:
+        key_parts.extend(["page", page_token])
+    
+    return ":".join(key_parts)
+
+
+def generate_message_thread_cache_key(
+    user_id: str,
+    message_id: str,
+    include_body: bool = False,
+) -> str:
+    """
+    Generate a cache key for message thread data.
+
+    Args:
+        user_id: User ID
+        message_id: Message ID
+        include_body: Whether body content is included
+
+    Returns:
+        Cache key string
+    """
+    key_parts = ["office", user_id, "message_thread", message_id]
+    
+    if include_body:
+        key_parts.append("with_body")
+    
+    return ":".join(key_parts)
+
+
+def generate_thread_cache_pattern(user_id: str, provider: Optional[str] = None) -> str:
+    """
+    Generate a cache pattern for deleting all thread data for a user.
+
+    Args:
+        user_id: User ID
+        provider: Optional provider filter
+
+    Returns:
+        Cache pattern string
+    """
+    if provider:
+        return f"office:{user_id}:thread:{provider}:*"
+    return f"office:{user_id}:thread*"
 
 
 # Global cache manager instance

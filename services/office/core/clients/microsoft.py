@@ -383,3 +383,138 @@ class MicrosoftAPIClient(BaseAPIClient):
         """
         response = await self.get("/me")
         return response.json()
+
+    # Microsoft Graph Threading API methods
+    async def get_conversations(
+        self,
+        top: int = 100,
+        skip: int = 0,
+        filter: Optional[str] = None,
+        order_by: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Get list of email conversations/threads.
+
+        Args:
+            top: Maximum number of conversations to return
+            skip: Number of conversations to skip (for pagination)
+            filter: OData filter expression
+            order_by: Order by expression
+
+        Returns:
+            Dictionary containing conversations list and pagination info
+        """
+        params: Dict[str, Any] = {"$top": top, "$skip": skip}
+        if filter:
+            params["$filter"] = filter
+        if order_by:
+            params["$orderby"] = order_by
+        else:
+            params["$orderby"] = "lastDeliveredDateTime desc"
+
+        response = await self.get("/me/conversations", params=params)
+        return response.json()
+
+    async def get_conversation_messages(
+        self,
+        conversation_id: str,
+        top: int = 100,
+        skip: int = 0,
+        include_body: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Get messages in a specific conversation/thread.
+
+        Args:
+            conversation_id: Microsoft Graph conversation ID
+            top: Maximum number of messages to return
+            skip: Number of messages to skip (for pagination)
+            include_body: Whether to include message body content
+
+        Returns:
+            Dictionary containing messages list and pagination info
+        """
+        params: Dict[str, Any] = {"$top": top, "$skip": skip}
+        if include_body:
+            params["$select"] = "id,subject,body,bodyPreview,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,isRead,hasAttachments,conversationId,conversationIndex,parentFolderId,importance,flag,isDraft,webLink,uniqueBody"
+        else:
+            params["$select"] = "id,subject,bodyPreview,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,isRead,hasAttachments,conversationId,conversationIndex,parentFolderId,importance,flag,isDraft,webLink"
+
+        response = await self.get(f"/me/conversations/{conversation_id}/messages", params=params)
+        return response.json()
+
+    async def get_message_conversation(
+        self,
+        message_id: str,
+        include_body: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Get conversation information for a specific message.
+
+        Args:
+            message_id: Microsoft Graph message ID
+            include_body: Whether to include message body content
+
+        Returns:
+            Dictionary containing conversation information
+        """
+        # First get the message to extract conversation ID
+        message_params = {}
+        if include_body:
+            message_params["$select"] = "id,conversationId,conversationIndex,subject,body,bodyPreview,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,isRead,hasAttachments,parentFolderId,importance,flag,isDraft,webLink,uniqueBody"
+        else:
+            message_params["$select"] = "id,conversationId,conversationIndex,subject,bodyPreview,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,isRead,hasAttachments,parentFolderId,importance,flag,isDraft,webLink"
+
+        message_response = await self.get(f"/me/messages/{message_id}", params=message_params)
+        message_data = message_response.json()
+        
+        conversation_id = message_data.get("conversationId")
+        if not conversation_id:
+            raise ValueError(f"Message {message_id} does not have a conversation ID")
+        
+        # Get all messages in the conversation
+        return await self.get_conversation_messages(conversation_id, include_body=include_body)
+
+    async def get_messages_with_conversation(
+        self,
+        top: int = 100,
+        skip: int = 0,
+        filter: Optional[str] = None,
+        search: Optional[str] = None,
+        order_by: Optional[str] = None,
+        include_body: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Get messages with conversation expansion.
+
+        Args:
+            top: Maximum number of messages to return
+            skip: Number of messages to skip (for pagination)
+            filter: OData filter expression
+            search: Search query
+            order_by: Order by expression
+            include_body: Whether to include message body content
+
+        Returns:
+            Dictionary containing messages list with conversation info and pagination info
+        """
+        params: Dict[str, Any] = {"$top": top, "$skip": skip}
+        if filter:
+            params["$filter"] = filter
+        if search:
+            params["$search"] = search
+        if order_by:
+            params["$orderby"] = order_by
+        else:
+            params["$orderby"] = "receivedDateTime desc"
+        
+        # Expand conversation to get thread information
+        params["$expand"] = "conversation"
+        
+        if include_body:
+            params["$select"] = "id,subject,body,bodyPreview,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,isRead,hasAttachments,conversationId,conversationIndex,parentFolderId,importance,flag,isDraft,webLink,uniqueBody,conversation"
+        else:
+            params["$select"] = "id,subject,bodyPreview,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,isRead,hasAttachments,conversationId,conversationIndex,parentFolderId,importance,flag,isDraft,webLink,conversation"
+
+        response = await self.get("/me/messages", params=params)
+        return response.json()

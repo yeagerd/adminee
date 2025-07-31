@@ -3,6 +3,8 @@ import {
     CalendarEventsResponse,
     EmailFolder,
     GetEmailsResponse,
+    GetThreadResponse,
+    GetThreadsResponse,
 } from '@/types/office-service';
 import { getSession } from 'next-auth/react';
 import { IntegrationStatus } from './constants';
@@ -246,28 +248,66 @@ export class GatewayClient {
         folderId?: string
     ): Promise<ApiResponse<GetEmailsResponse>> {
         const params = new URLSearchParams();
+
+        providers.forEach(provider => params.append('providers', provider));
+
         if (limit) params.append('limit', limit.toString());
         if (offset) params.append('offset', offset.toString());
         if (noCache) params.append('no_cache', 'true');
-
-        // Add providers as a list
-        providers.forEach(provider => {
-            params.append('providers', provider);
-        });
-
-        // Add labels for folder filtering
-        if (labels && labels.length > 0) {
-            labels.forEach(label => {
-                params.append('labels', label);
-            });
-        }
-
-        // Add folder_id for folder-specific fetching
-        if (folderId) {
-            params.append('folder_id', folderId);
-        }
+        if (labels) labels.forEach(label => params.append('labels', label));
+        if (folderId) params.append('folder_id', folderId);
 
         return this.request<ApiResponse<GetEmailsResponse>>(`/api/v1/email/messages?${params.toString()}`);
+    }
+
+    async getThreads(
+        providers?: string[],
+        limit?: number,
+        includeBody?: boolean,
+        labels?: string[],
+        folderId?: string,
+        q?: string,
+        pageToken?: string,
+        noCache?: boolean
+    ): Promise<ApiResponse<GetThreadsResponse>> {
+        const params = new URLSearchParams();
+
+        if (providers) providers.forEach(provider => params.append('providers', provider));
+        if (limit) params.append('limit', limit.toString());
+        if (includeBody) params.append('include_body', 'true');
+        if (labels) labels.forEach(label => params.append('labels', label));
+        if (folderId) params.append('folder_id', folderId);
+        if (q) params.append('q', q);
+        if (pageToken) params.append('page_token', pageToken);
+        if (noCache) params.append('no_cache', 'true');
+
+        return this.request<ApiResponse<GetThreadsResponse>>(`/api/v1/email/threads?${params.toString()}`);
+    }
+
+    async getThread(
+        threadId: string,
+        includeBody?: boolean,
+        noCache?: boolean
+    ): Promise<ApiResponse<GetThreadResponse>> {
+        const params = new URLSearchParams();
+
+        if (includeBody) params.append('include_body', 'true');
+        if (noCache) params.append('no_cache', 'true');
+
+        return this.request<ApiResponse<GetThreadResponse>>(`/api/v1/email/threads/${threadId}?${params.toString()}`);
+    }
+
+    async getMessageThread(
+        messageId: string,
+        includeBody?: boolean,
+        noCache?: boolean
+    ): Promise<ApiResponse<GetThreadResponse>> {
+        const params = new URLSearchParams();
+
+        if (includeBody) params.append('include_body', 'true');
+        if (noCache) params.append('no_cache', 'true');
+
+        return this.request<ApiResponse<GetThreadResponse>>(`/api/v1/email/messages/${messageId}/thread?${params.toString()}`);
     }
 
     async getEmailFolders(

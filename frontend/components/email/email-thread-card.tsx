@@ -141,7 +141,9 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
     email,
     isSelected = false,
     onSelect,
-    inlineAvatar = false
+    inlineAvatar = false,
+    isFirstInThread = false,
+    threadId
 }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isStarred, setIsStarred] = useState(false);
