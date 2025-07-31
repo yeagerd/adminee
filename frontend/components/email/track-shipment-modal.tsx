@@ -65,13 +65,30 @@ const sanitizeEmailHtml = (html: string): string => {
     } catch (error) {
         console.error('Error sanitizing HTML with DOMPurify, using fallback:', error);
 
-        // Fallback: basic sanitization when DOMPurify fails
+        // Fallback: comprehensive sanitization when DOMPurify fails
         return html
+            // Remove script tags and their content
             .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+            // Remove event handler attributes
             .replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '')
+            // Remove javascript: protocol
             .replace(/javascript:/gi, '')
-            // Only block non-image data URLs to allow legitimate inline images
-            .replace(/data:(?!image\/)[^;]*;base64,[^"'\s]*/gi, '');
+            // Remove all data URLs except legitimate image data URLs
+            .replace(/data:(?!image\/)[^;]*;[^"'\s]*/gi, '')
+            // Remove vbscript: protocol
+            .replace(/vbscript:/gi, '')
+            // Remove expression() CSS function (IE-specific XSS vector)
+            .replace(/expression\s*\(/gi, '')
+            // Remove eval() function calls
+            .replace(/eval\s*\(/gi, '')
+            // Remove iframe tags
+            .replace(/<iframe[^>]*>[\s\S]*?<\/iframe>/gi, '')
+            // Remove object tags
+            .replace(/<object[^>]*>[\s\S]*?<\/object>/gi, '')
+            // Remove embed tags
+            .replace(/<embed[^>]*>/gi, '')
+            // Remove applet tags
+            .replace(/<applet[^>]*>[\s\S]*?<\/applet>/gi, '');
     }
 };
 
