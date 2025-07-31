@@ -15,7 +15,7 @@ interface AppLayoutProps {
 export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = false }: AppLayoutProps) {
     const chatPaneRef = useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>;
     const containerRef = useRef<HTMLDivElement>(null);
-    const { isOpen, width, effectiveWidth, setWidth } = useChatPanelState();
+    const { isOpen, effectiveWidth, setWidth } = useChatPanelState();
     const [containerWidth, setContainerWidth] = useState<number>(0);
     const [localChatWidth, setLocalChatWidth] = useState<number>(0);
 
@@ -100,13 +100,13 @@ export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = fa
                             <ResizablePanel id="main-panel" order={1} minSize={30} defaultSize={mainSize} className="h-full">
                                 {draftPane && hasActiveDraft ? (
                                     <ResizablePanelGroup direction="vertical" className="h-full">
-                                        <ResizablePanel minSize={10} size={50} className="h-full">
+                                        <ResizablePanel minSize={10} defaultSize={50} className="h-full">
                                             <div className="h-full overflow-auto">
                                                 {main || <div className="flex-1 flex items-center justify-center text-muted-foreground">Main Pane</div>}
                                             </div>
                                         </ResizablePanel>
                                         <ResizableHandle withHandle />
-                                        <ResizablePanel minSize={10} size={50} className="h-full min-h-0 border-t bg-card">
+                                        <ResizablePanel minSize={10} defaultSize={50} className="h-full min-h-0 border-t bg-card">
                                             <div className="h-full overflow-auto">
                                                 {draftPane}
                                             </div>
@@ -149,13 +149,13 @@ export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = fa
                         <div ref={containerRef} className="flex-1 min-w-0 h-full flex flex-col">
                             {draftPane && hasActiveDraft ? (
                                 <ResizablePanelGroup direction="vertical" className="h-full">
-                                    <ResizablePanel minSize={10} size={50} className="h-full">
+                                    <ResizablePanel minSize={10} defaultSize={50} className="h-full">
                                         <div className="h-full overflow-auto">
                                             {main || <div className="flex-1 flex items-center justify-center text-muted-foreground">Main Pane</div>}
                                         </div>
                                     </ResizablePanel>
                                     <ResizableHandle withHandle />
-                                    <ResizablePanel minSize={10} size={50} className="h-full min-h-0 border-t bg-card">
+                                    <ResizablePanel minSize={10} defaultSize={50} className="h-full min-h-0 border-t bg-card">
                                         <div className="h-full overflow-auto">
                                             {draftPane}
                                         </div>
