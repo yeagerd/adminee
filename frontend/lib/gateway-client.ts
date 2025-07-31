@@ -470,6 +470,8 @@ export class GatewayClient {
         tracking_number: string;
         carrier: string;
         status: PackageStatus;
+        estimated_delivery?: string;
+        actual_delivery?: string;
         recipient_name?: string;
         shipper_name?: string;
         package_description?: string;
