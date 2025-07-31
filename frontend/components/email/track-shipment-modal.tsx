@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useShipmentDataCollectionConsent } from '@/contexts/settings-context';
 import { useShipmentDetection } from '@/hooks/use-shipment-detection';
 import { PACKAGE_STATUS, PACKAGE_STATUS_OPTIONS, PackageStatus } from '@/lib/package-status';
-import { DataCollectionRequest, shipmentsClient } from '@/lib/shipments-client';
+import { DataCollectionRequest, PackageResponse, shipmentsClient } from '@/lib/shipments-client';
 import { EmailMessage } from '@/types/office-service';
 import { CheckCircle, Info, Loader2, Package, Truck } from 'lucide-react';
 import { useSession } from 'next-auth/react';
@@ -29,6 +29,7 @@ export interface PackageFormData {
     package_description?: string;
     order_number?: string;
     tracking_link?: string;
+    expected_delivery?: string;
 }
 
 const CARRIERS = [
@@ -69,6 +70,8 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
     const [isLoading, setIsLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const [isParsing, setIsParsing] = useState(false);
+    const [isCheckingPackage, setIsCheckingPackage] = useState(false);
+    const [existingPackage, setExistingPackage] = useState<PackageResponse | null>(null);
     const [formData, setFormData] = useState<PackageFormData>({
         tracking_number: '',
         carrier: 'unknown',
@@ -78,8 +81,27 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
         package_description: '',
         order_number: '',
         tracking_link: '',
+        expected_delivery: '',
     });
     const [initialFormData, setInitialFormData] = useState<PackageFormData | null>(null);
+
+    // Check if a package already exists with the given tracking number and carrier
+    const checkExistingPackage = async (trackingNumber: string, carrier: string) => {
+        if (!trackingNumber || !carrier || carrier === 'unknown') {
+            return;
+        }
+
+        setIsCheckingPackage(true);
+        try {
+            const existingPkg = await shipmentsClient.checkPackageExists(trackingNumber, carrier);
+            setExistingPackage(existingPkg);
+        } catch (error) {
+            console.error('Failed to check for existing package:', error);
+            setExistingPackage(null);
+        } finally {
+            setIsCheckingPackage(false);
+        }
+    };
 
     // Parse email with backend when modal opens
     useEffect(() => {
@@ -105,6 +127,11 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                     };
                     setFormData(detectedData);
                     setInitialFormData(detectedData);
+
+                    // Check if package already exists
+                    if (detectedData.tracking_number && detectedData.carrier !== 'unknown') {
+                        await checkExistingPackage(detectedData.tracking_number, detectedData.carrier);
+                    }
                 } else if (shipmentDetection.isShipmentEmail) {
                     // Fallback to frontend detection if backend doesn't detect it
                     const detectedData: PackageFormData = {
@@ -133,9 +160,15 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                         package_description: email.subject || '',
                         order_number: '',
                         tracking_link: '',
+                        expected_delivery: '',
                     };
                     setFormData(detectedData);
                     setInitialFormData(detectedData);
+
+                    // Check if package already exists
+                    if (detectedData.tracking_number && detectedData.carrier !== 'unknown') {
+                        await checkExistingPackage(detectedData.tracking_number, detectedData.carrier);
+                    }
                 }
             } finally {
                 setIsParsing(false);
@@ -216,7 +249,25 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
 
         setIsLoading(true);
         try {
-            await onTrackShipment(formData);
+            if (existingPackage) {
+                // If package exists, create a tracking event instead of new package
+                await shipmentsClient.createTrackingEvent(existingPackage.id, {
+                    event_date: new Date().toISOString(),
+                    status: formData.status,
+                    location: undefined,
+                    description: `New tracking event from email - Status: ${formData.status}`,
+                });
+
+                // Optionally update delivery date if provided
+                if (formData.expected_delivery) {
+                    await shipmentsClient.updatePackage(existingPackage.id, {
+                        estimated_delivery: formData.expected_delivery,
+                    });
+                }
+            } else {
+                // Create new package
+                await onTrackShipment(formData);
+            }
 
             // Submit data collection if user has consented
             await submitDataCollection(formData);
@@ -255,9 +306,14 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                     {isSuccess ? (
                         <div className="flex flex-col items-center justify-center py-8 text-center">
                             <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
-                            <h3 className="text-lg font-semibold mb-2">Shipment Tracked Successfully!</h3>
+                            <h3 className="text-lg font-semibold mb-2">
+                                {existingPackage ? 'Tracking Event Added Successfully!' : 'Shipment Tracked Successfully!'}
+                            </h3>
                             <p className="text-muted-foreground">
-                                Your package is now being tracked. You'll receive updates on its status.
+                                {existingPackage
+                                    ? 'A new tracking event has been added to your existing package.'
+                                    : 'Your package is now being tracked. You\'ll receive updates on its status.'
+                                }
                             </p>
                         </div>
                     ) : isParsing ? (
@@ -355,6 +411,33 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                                     Detected carrier: {shipmentDetection.detectedCarrier.toUpperCase()}
                                                 </p>
                                             )}
+                                        </div>
+                                    )}
+
+                                    {/* Existing Package Notice */}
+                                    {isCheckingPackage && (
+                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                            <div className="flex items-center gap-2 text-blue-700">
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                <span className="text-sm font-medium">
+                                                    Checking if package already exists...
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {existingPackage && !isCheckingPackage && (
+                                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                                            <div className="flex items-start gap-2 text-yellow-700">
+                                                <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                                <div className="text-sm">
+                                                    <p className="font-medium">Package Already Exists</p>
+                                                    <p className="text-yellow-600 mt-1">
+                                                        A package with this tracking number already exists.
+                                                        We'll add a new tracking event instead of creating a duplicate.
+                                                    </p>
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
 
@@ -471,6 +554,18 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                         />
                                     </div>
 
+                                    {/* Expected Delivery */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="expected_delivery">Expected Delivery Date</Label>
+                                        <Input
+                                            id="expected_delivery"
+                                            value={formData.expected_delivery}
+                                            onChange={(e) => handleInputChange('expected_delivery', e.target.value)}
+                                            placeholder="YYYY-MM-DD (optional)"
+                                            type="date"
+                                        />
+                                    </div>
+
                                     {/* Tracking Link */}
                                     <div className="space-y-2">
                                         <Label htmlFor="tracking_link">Tracking Link</Label>
@@ -502,12 +597,12 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                 {isLoading ? (
                                     <>
                                         <Loader2 className="h-4 w-4 animate-spin" />
-                                        Tracking...
+                                        {existingPackage ? 'Adding Event...' : 'Tracking...'}
                                     </>
                                 ) : (
                                     <>
                                         <Truck className="h-4 w-4" />
-                                        Track Shipment
+                                        {existingPackage ? 'Add Tracking Event' : 'Track Shipment'}
                                     </>
                                 )}
                             </Button>

@@ -134,8 +134,28 @@ class ShipmentsClient {
     /**
      * Get all packages for the current user
      */
-    async getPackages(): Promise<{ data: PackageResponse[]; pagination: PaginationInfo }> {
-        return gatewayClient.getPackages();
+    async getPackages(params?: {
+        tracking_number?: string;
+        carrier?: string;
+    }): Promise<{ data: PackageResponse[]; pagination: PaginationInfo }> {
+        return gatewayClient.getPackages(params);
+    }
+
+    /**
+     * Check if a package exists with the given tracking number and carrier
+     */
+    async checkPackageExists(trackingNumber: string, carrier: string): Promise<PackageResponse | null> {
+        const response = await gatewayClient.getPackages({
+            tracking_number: trackingNumber,
+            carrier: carrier
+        });
+
+        // Return the first result if exactly one package is found
+        if (response.data.length === 1) {
+            return response.data[0];
+        }
+
+        return null;
     }
 
     /**

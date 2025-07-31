@@ -71,11 +71,20 @@ async def list_packages(
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["read_shipments"])),
+    tracking_number: Optional[str] = None,
+    carrier: Optional[str] = None,
 ) -> dict:
     logger.info("Fetching packages for user", user_id=current_user)
-    result = await session.execute(
-        select(Package).where(Package.user_id == current_user)  # type: ignore
-    )
+    query = select(Package).where(Package.user_id == current_user)  # type: ignore
+    
+    if tracking_number:
+        normalized_tracking = normalize_tracking_number(tracking_number, carrier)
+        query = query.where(Package.tracking_number == normalized_tracking)
+    
+    if carrier:
+        query = query.where(Package.carrier == carrier)
+    
+    result = await session.execute(query)
     packages = result.scalars().all()
     logger.info("Found packages for user", user_id=current_user, count=len(packages))
     # Convert to PackageOut with actual events count

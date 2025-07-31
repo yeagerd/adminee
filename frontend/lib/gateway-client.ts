@@ -460,7 +460,10 @@ export class GatewayClient {
         });
     }
 
-    async getPackages(): Promise<{
+    async getPackages(params?: {
+        tracking_number?: string;
+        carrier?: string;
+    }): Promise<{
         data: Array<{
             id: number;
             tracking_number: string;
@@ -486,7 +489,16 @@ export class GatewayClient {
             has_prev: boolean;
         };
     }> {
-        return this.request('/api/v1/shipments/packages');
+        const queryParams = new URLSearchParams();
+        if (params?.tracking_number) {
+            queryParams.append('tracking_number', params.tracking_number);
+        }
+        if (params?.carrier) {
+            queryParams.append('carrier', params.carrier);
+        }
+
+        const url = queryParams.toString() ? `/api/v1/shipments/packages?${queryParams.toString()}` : '/api/v1/shipments/packages';
+        return this.request(url);
     }
 
     async getPackage(id: number): Promise<{
