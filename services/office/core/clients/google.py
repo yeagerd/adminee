@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, List, Optional
 
 from services.office.core.clients.base import BaseAPIClient
 from services.office.models import Provider
@@ -337,9 +337,7 @@ class GoogleAPIClient(BaseAPIClient):
         response = await self.get("/gmail/v1/users/me/threads", params=params)
         return response.json()
 
-    async def get_thread(
-        self, thread_id: str, format: str = "full"
-    ) -> Dict[str, Any]:
+    async def get_thread(self, thread_id: str, format: str = "full") -> Dict[str, Any]:
         """
         Get a specific Gmail thread with all its messages.
 
@@ -384,7 +382,9 @@ class GoogleAPIClient(BaseAPIClient):
             params["labelIds"] = label_ids
 
         # Include thread information in the response
-        params["fields"] = "nextPageToken,messages(id,threadId,labelIds,internalDate,snippet,payload,sizeEstimate)"
+        params["fields"] = (
+            "nextPageToken,messages(id,threadId,labelIds,internalDate,snippet,payload,sizeEstimate)"
+        )
 
         response = await self.get("/gmail/v1/users/me/messages", params=params)
         return response.json()

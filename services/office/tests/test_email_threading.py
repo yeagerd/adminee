@@ -4,26 +4,25 @@ Tests for email threading functionality.
 Tests the new thread API endpoints and normalization functions.
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from services.office.api.email import (
-    get_email_threads,
+    fetch_provider_threads,
     get_email_thread,
+    get_email_threads,
     get_message_thread,
     parse_thread_id,
-    fetch_provider_threads,
-    fetch_single_thread,
-    fetch_message_thread,
 )
 from services.office.core.normalizer import (
+    merge_threads,
     normalize_google_thread,
     normalize_microsoft_conversation,
     normalize_thread_id,
-    merge_threads,
 )
-from services.office.schemas import EmailThread, EmailMessage, EmailAddress, Provider
+from services.office.schemas import EmailAddress, EmailMessage, EmailThread, Provider
 
 
 class TestThreadIDParsing:
@@ -103,12 +102,14 @@ class TestThreadNormalization:
                         ]
                     },
                     "labelIds": ["INBOX", "UNREAD"],
-                }
-            ]
+                },
+            ],
         }
 
-        thread = normalize_google_thread(mock_thread_data, "user@example.com", "Test User")
-        
+        thread = normalize_google_thread(
+            mock_thread_data, "user@example.com", "Test User"
+        )
+
         assert thread.id == "gmail_thread123"
         assert thread.subject == "Test Thread"
         assert len(thread.messages) == 2
@@ -122,15 +123,24 @@ class TestThreadNormalization:
             "id": "conv123",
             "topic": "Test Conversation",
         }
-        
+
         mock_messages_data = [
             {
                 "id": "msg1",
                 "conversationId": "conv123",
                 "subject": "Test Conversation",
                 "bodyPreview": "Test message 1",
-                "from": {"emailAddress": {"address": "sender@example.com", "name": "Sender"}},
-                "toRecipients": [{"emailAddress": {"address": "recipient@example.com", "name": "Recipient"}}],
+                "from": {
+                    "emailAddress": {"address": "sender@example.com", "name": "Sender"}
+                },
+                "toRecipients": [
+                    {
+                        "emailAddress": {
+                            "address": "recipient@example.com",
+                            "name": "Recipient",
+                        }
+                    }
+                ],
                 "receivedDateTime": "2024-01-01T12:00:00Z",
                 "isRead": True,
                 "hasAttachments": False,
@@ -140,18 +150,27 @@ class TestThreadNormalization:
                 "conversationId": "conv123",
                 "subject": "Re: Test Conversation",
                 "bodyPreview": "Test message 2",
-                "from": {"emailAddress": {"address": "reply@example.com", "name": "Replier"}},
-                "toRecipients": [{"emailAddress": {"address": "sender@example.com", "name": "Sender"}}],
+                "from": {
+                    "emailAddress": {"address": "reply@example.com", "name": "Replier"}
+                },
+                "toRecipients": [
+                    {
+                        "emailAddress": {
+                            "address": "sender@example.com",
+                            "name": "Sender",
+                        }
+                    }
+                ],
                 "receivedDateTime": "2024-01-01T13:00:00Z",
                 "isRead": False,
                 "hasAttachments": False,
-            }
+            },
         ]
 
         thread = normalize_microsoft_conversation(
             mock_conv_data, mock_messages_data, "user@example.com", "Test User"
         )
-        
+
         assert thread.id == "microsoft_conv123"
         assert thread.subject == "Test Conversation"
         assert len(thread.messages) == 2
@@ -204,7 +223,7 @@ class TestThreadNormalization:
         )
 
         merged_threads = merge_threads([thread1, thread2])
-        
+
         assert len(merged_threads) == 1
         merged_thread = merged_threads[0]
         assert len(merged_thread.messages) == 2
@@ -218,27 +237,31 @@ class TestThreadAPIEndpoints:
     @pytest.mark.asyncio
     async def test_get_email_threads_success(self):
         """Test successful thread fetching."""
-        with patch('services.office.api.email.fetch_provider_threads') as mock_fetch:
+        with patch("services.office.api.email.fetch_provider_threads") as mock_fetch:
             mock_fetch.return_value = ([], "google")
-            
+
             # Mock request and dependencies
             mock_request = MagicMock()
             mock_request.headers = {"X-User-Id": "test_user"}
-            
-            with patch('services.office.api.email.get_request_id') as mock_request_id:
+
+            with patch("services.office.api.email.get_request_id") as mock_request_id:
                 mock_request_id.return_value = "test_request"
-                
-                with patch('services.office.api.email.cache_manager.get') as mock_cache_get:
+
+                with patch(
+                    "services.office.api.email.cache_manager.get"
+                ) as mock_cache_get:
                     mock_cache_get.return_value = None
-                    
-                    with patch('services.office.api.email.cache_manager.set') as mock_cache_set:
+
+                    with patch(
+                        "services.office.api.email.cache_manager.set"
+                    ) as mock_cache_set:
                         response = await get_email_threads(
                             request=mock_request,
                             service_name="test_service",
                             providers=["google"],
                             limit=10,
                         )
-                        
+
                         assert response.success is True
                         assert "threads" in response.data
                         mock_cache_set.assert_called_once()
@@ -246,7 +269,7 @@ class TestThreadAPIEndpoints:
     @pytest.mark.asyncio
     async def test_get_email_thread_success(self):
         """Test successful single thread fetching."""
-        with patch('services.office.api.email.fetch_single_thread') as mock_fetch:
+        with patch("services.office.api.email.fetch_single_thread") as mock_fetch:
             mock_thread = EmailThread(
                 id="gmail_thread1",
                 subject="Test Thread",
@@ -257,24 +280,28 @@ class TestThreadAPIEndpoints:
                 providers=[Provider.GOOGLE],
             )
             mock_fetch.return_value = mock_thread
-            
+
             # Mock request and dependencies
             mock_request = MagicMock()
             mock_request.headers = {"X-User-Id": "test_user"}
-            
-            with patch('services.office.api.email.get_request_id') as mock_request_id:
+
+            with patch("services.office.api.email.get_request_id") as mock_request_id:
                 mock_request_id.return_value = "test_request"
-                
-                with patch('services.office.api.email.cache_manager.get') as mock_cache_get:
+
+                with patch(
+                    "services.office.api.email.cache_manager.get"
+                ) as mock_cache_get:
                     mock_cache_get.return_value = None
-                    
-                    with patch('services.office.api.email.cache_manager.set') as mock_cache_set:
+
+                    with patch(
+                        "services.office.api.email.cache_manager.set"
+                    ) as mock_cache_set:
                         response = await get_email_thread(
                             request=mock_request,
                             thread_id="gmail_thread1",
                             service_name="test_service",
                         )
-                        
+
                         assert response.success is True
                         assert "thread" in response.data
                         mock_cache_set.assert_called_once()
@@ -282,7 +309,7 @@ class TestThreadAPIEndpoints:
     @pytest.mark.asyncio
     async def test_get_message_thread_success(self):
         """Test successful message thread fetching."""
-        with patch('services.office.api.email.fetch_message_thread') as mock_fetch:
+        with patch("services.office.api.email.fetch_message_thread") as mock_fetch:
             mock_thread = EmailThread(
                 id="gmail_thread1",
                 subject="Test Thread",
@@ -293,24 +320,28 @@ class TestThreadAPIEndpoints:
                 providers=[Provider.GOOGLE],
             )
             mock_fetch.return_value = mock_thread
-            
+
             # Mock request and dependencies
             mock_request = MagicMock()
             mock_request.headers = {"X-User-Id": "test_user"}
-            
-            with patch('services.office.api.email.get_request_id') as mock_request_id:
+
+            with patch("services.office.api.email.get_request_id") as mock_request_id:
                 mock_request_id.return_value = "test_request"
-                
-                with patch('services.office.api.email.cache_manager.get') as mock_cache_get:
+
+                with patch(
+                    "services.office.api.email.cache_manager.get"
+                ) as mock_cache_get:
                     mock_cache_get.return_value = None
-                    
-                    with patch('services.office.api.email.cache_manager.set') as mock_cache_set:
+
+                    with patch(
+                        "services.office.api.email.cache_manager.set"
+                    ) as mock_cache_set:
                         response = await get_message_thread(
                             request=mock_request,
                             message_id="gmail_msg1",
                             service_name="test_service",
                         )
-                        
+
                         assert response.success is True
                         assert "thread" in response.data
                         mock_cache_set.assert_called_once()
@@ -322,14 +353,12 @@ class TestThreadFetchFunctions:
     @pytest.mark.asyncio
     async def test_fetch_provider_threads_google(self):
         """Test fetching threads from Google provider."""
-        with patch('services.office.api.email.get_api_client_factory') as mock_factory:
+        with patch("services.office.api.email.get_api_client_factory") as mock_factory:
             mock_client = AsyncMock()
             mock_factory.return_value.create_client.return_value = mock_client
-            
+
             # Mock Gmail API responses
-            mock_client.get_threads.return_value = {
-                "threads": [{"id": "thread1"}]
-            }
+            mock_client.get_threads.return_value = {"threads": [{"id": "thread1"}]}
             mock_client.get_thread.return_value = {
                 "messages": [
                     {
@@ -340,14 +369,17 @@ class TestThreadFetchFunctions:
                             "headers": [
                                 {"name": "Subject", "value": "Test"},
                                 {"name": "From", "value": "sender@example.com"},
-                                {"name": "Date", "value": "Mon, 1 Jan 2024 12:00:00 +0000"},
+                                {
+                                    "name": "Date",
+                                    "value": "Mon, 1 Jan 2024 12:00:00 +0000",
+                                },
                             ]
                         },
                         "labelIds": ["INBOX"],
                     }
                 ]
             }
-            
+
             threads, provider = await fetch_provider_threads(
                 "test_request",
                 "test_user",
@@ -359,7 +391,7 @@ class TestThreadFetchFunctions:
                 None,
                 None,
             )
-            
+
             assert provider == "google"
             assert len(threads) == 1
             assert threads[0].id == "gmail_thread1"
@@ -367,30 +399,85 @@ class TestThreadFetchFunctions:
     @pytest.mark.asyncio
     async def test_fetch_provider_threads_microsoft(self):
         """Test fetching threads from Microsoft provider."""
-        with patch('services.office.api.email.get_api_client_factory') as mock_factory:
+        with patch("services.office.api.email.get_api_client_factory") as mock_factory:
             mock_client = AsyncMock()
             mock_factory.return_value.create_client.return_value = mock_client
-            
-            # Mock Microsoft API responses
-            mock_client.get_conversations.return_value = {
-                "value": [{"id": "conv1", "topic": "Test Conversation"}]
-            }
-            mock_client.get_conversation_messages.return_value = {
+
+            # Mock Microsoft API responses - now using get_messages and grouping by conversationId
+            mock_client.get_messages.return_value = {
                 "value": [
                     {
                         "id": "msg1",
                         "conversationId": "conv1",
                         "subject": "Test Conversation",
                         "bodyPreview": "Test",
-                        "from": {"emailAddress": {"address": "sender@example.com", "name": "Sender"}},
-                        "toRecipients": [{"emailAddress": {"address": "recipient@example.com", "name": "Recipient"}}],
+                        "from": {
+                            "emailAddress": {
+                                "address": "sender@example.com",
+                                "name": "Sender",
+                            }
+                        },
+                        "toRecipients": [
+                            {
+                                "emailAddress": {
+                                    "address": "recipient@example.com",
+                                    "name": "Recipient",
+                                }
+                            }
+                        ],
                         "receivedDateTime": "2024-01-01T12:00:00Z",
                         "isRead": True,
                         "hasAttachments": False,
-                    }
+                    },
+                    {
+                        "id": "msg2",
+                        "conversationId": "conv1",
+                        "subject": "Test Conversation",
+                        "bodyPreview": "Reply",
+                        "from": {
+                            "emailAddress": {
+                                "address": "recipient@example.com",
+                                "name": "Recipient",
+                            }
+                        },
+                        "toRecipients": [
+                            {
+                                "emailAddress": {
+                                    "address": "sender@example.com",
+                                    "name": "Sender",
+                                }
+                            }
+                        ],
+                        "receivedDateTime": "2024-01-01T13:00:00Z",
+                        "isRead": True,
+                        "hasAttachments": False,
+                    },
+                    {
+                        "id": "msg3",
+                        "conversationId": "conv2",
+                        "subject": "Another Conversation",
+                        "bodyPreview": "Different thread",
+                        "from": {
+                            "emailAddress": {
+                                "address": "other@example.com",
+                                "name": "Other",
+                            }
+                        },
+                        "toRecipients": [
+                            {
+                                "emailAddress": {
+                                    "address": "recipient@example.com",
+                                    "name": "Recipient",
+                                }
+                            }
+                        ],
+                        "receivedDateTime": "2024-01-01T14:00:00Z",
+                        "isRead": True,
+                        "hasAttachments": False,
+                    },
                 ]
             }
-            
+
             threads, provider = await fetch_provider_threads(
                 "test_request",
                 "test_user",
@@ -402,7 +489,9 @@ class TestThreadFetchFunctions:
                 None,
                 None,
             )
-            
+
             assert provider == "microsoft"
-            assert len(threads) == 1
-            assert threads[0].id == "microsoft_conv1" 
+            assert len(threads) == 2  # Should have 2 threads (conv1 and conv2)
+            thread_ids = [thread.id for thread in threads]
+            assert "microsoft_conv1" in thread_ids
+            assert "microsoft_conv2" in thread_ids

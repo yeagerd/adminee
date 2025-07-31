@@ -17,20 +17,19 @@ from services.common.logging_config import get_logger, request_id_var
 from services.office.core.api_client_factory import APIClientFactory
 from services.office.core.auth import service_permission_required
 from services.office.core.cache_manager import (
-    cache_manager, 
+    cache_manager,
     generate_cache_key,
-    generate_threads_list_cache_key,
-    generate_thread_cache_key,
     generate_message_thread_cache_key,
+    generate_thread_cache_key,
+    generate_threads_list_cache_key,
 )
 from services.office.core.clients.google import GoogleAPIClient
 from services.office.core.clients.microsoft import MicrosoftAPIClient
 from services.office.core.normalizer import (
     normalize_google_email,
-    normalize_microsoft_email,
     normalize_google_thread,
     normalize_microsoft_conversation,
-    merge_threads,
+    normalize_microsoft_email,
 )
 from services.office.models import Provider
 from services.office.schemas import (
@@ -39,9 +38,9 @@ from services.office.schemas import (
     EmailMessage,
     EmailMessageList,
     EmailThread,
+    EmailThreadList,
     SendEmailRequest,
     SendEmailResponse,
-    EmailThreadList,
 )
 
 logger = get_logger(__name__)
@@ -591,7 +590,9 @@ async def send_email(
                 result = await send_gmail_message(request_id, google_client, email_data)
             elif provider == "microsoft":
                 microsoft_client = cast(MicrosoftAPIClient, client)
-                result = await send_outlook_message(request_id, microsoft_client, email_data)
+                result = await send_outlook_message(
+                    request_id, microsoft_client, email_data
+                )
             else:
                 raise ValidationError(message=f"Unsupported provider: {provider}")
 
@@ -727,7 +728,9 @@ async def get_email_threads(
 
         # Cache the result
         if not no_cache:
-            await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=300)  # 5 minutes
+            await cache_manager.set_to_cache(
+                cache_key, response_data, ttl_seconds=300
+            )  # 5 minutes
 
         return EmailThreadList(
             success=True,
@@ -765,7 +768,9 @@ async def get_email_thread(
     request_id = get_request_id()
     user_id = await get_user_id_from_gateway(request)
 
-    logger.info(f"Get email thread request {request_id} for user {user_id}, thread {thread_id}")
+    logger.info(
+        f"Get email thread request {request_id} for user {user_id}, thread {thread_id}"
+    )
 
     try:
         # Parse thread ID to get provider and original ID
@@ -809,7 +814,9 @@ async def get_email_thread(
 
         # Cache the result
         if not no_cache:
-            await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=600)  # 10 minutes
+            await cache_manager.set_to_cache(
+                cache_key, response_data, ttl_seconds=600
+            )  # 10 minutes
 
         return EmailThreadList(
             success=True,
@@ -847,7 +854,9 @@ async def get_message_thread(
     request_id = get_request_id()
     user_id = await get_user_id_from_gateway(request)
 
-    logger.info(f"Get message thread request {request_id} for user {user_id}, message {message_id}")
+    logger.info(
+        f"Get message thread request {request_id} for user {user_id}, message {message_id}"
+    )
 
     try:
         # Parse message ID to get provider and original ID
@@ -891,7 +900,9 @@ async def get_message_thread(
 
         # Cache the result
         if not no_cache:
-            await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=600)  # 10 minutes
+            await cache_manager.set_to_cache(
+                cache_key, response_data, ttl_seconds=600
+            )  # 10 minutes
 
         return EmailThreadList(
             success=True,
@@ -901,7 +912,9 @@ async def get_message_thread(
         )
 
     except Exception as e:
-        logger.error(f"Failed to get message thread for {message_id} and user {user_id}: {e}")
+        logger.error(
+            f"Failed to get message thread for {message_id} and user {user_id}: {e}"
+        )
         return EmailThreadList(
             success=False,
             error={"message": str(e)},
@@ -1528,6 +1541,30 @@ def parse_message_id(message_id: str) -> tuple[str, str]:
         )
 
 
+def get_user_account_info(user_id: str, provider: str) -> tuple[str, str]:
+    """
+    Get standardized user account info for a provider.
+
+    Args:
+        user_id: User ID
+        provider: Provider name (google, microsoft)
+
+    Returns:
+        Tuple of (account_email, account_name)
+    """
+    if "@" in user_id:
+        account_email = user_id
+        account_name = f"{provider.title()} Account ({user_id.split('@')[0]})"
+    else:
+        if provider == "google":
+            account_email = f"{user_id}@gmail.com"
+        else:  # microsoft
+            account_email = f"{user_id}@outlook.com"
+        account_name = f"{provider.title()} Account ({user_id})"
+
+    return account_email, account_name
+
+
 def parse_thread_id(thread_id: str) -> tuple[str, str]:
     """
     Parse a unified thread ID to extract provider and original ID.
@@ -1616,14 +1653,9 @@ async def fetch_provider_threads(
                     q=q,
                     label_ids=labels,
                 )
-                
-                # Get user account info (simplified)
-                if "@" in user_id:
-                    account_email = user_id
-                    account_name = f"Gmail Account ({user_id.split('@')[0]})"
-                else:
-                    account_email = f"{user_id}@gmail.com"  # Placeholder
-                    account_name = f"Gmail Account ({user_id})"  # Placeholder
+
+                # Get user account info
+                account_email, account_name = get_user_account_info(user_id, provider)
 
                 # Convert Gmail threads to unified format
                 threads = []
@@ -1632,56 +1664,58 @@ async def fetch_provider_threads(
                     if thread_id:
                         # Get messages for this thread
                         thread_messages = await google_client.get_thread(thread_id)
-                        
+
                         # Use the normalization function
                         try:
-                            normalized_thread = normalize_google_thread(thread_messages, account_email, account_name)
+                            normalized_thread = normalize_google_thread(
+                                thread_messages, account_email, account_name
+                            )
                             threads.append(normalized_thread)
                         except Exception as e:
-                            logger.warning(f"Failed to normalize Gmail thread {thread_id}: {e}")
+                            logger.warning(
+                                f"Failed to normalize Gmail thread {thread_id}: {e}"
+                            )
                             continue
 
                 return threads, provider
 
             elif provider == "microsoft":
                 microsoft_client = cast(MicrosoftAPIClient, client)
-                # For Microsoft, use the conversations API
-                conversations_data = await microsoft_client.get_conversations(
-                    top=limit,
-                    filter=None,  # Could add filtering in the future
+                # For Microsoft, get messages and group by conversationId to create threads
+                messages_response = await microsoft_client.get_messages(
+                    top=limit
+                    * 10,  # Get more messages to ensure we have enough threads
                 )
-                
-                # Get user account info (simplified)
-                if "@" in user_id:
-                    account_email = user_id
-                    account_name = f"Outlook Account ({user_id.split('@')[0]})"
-                else:
-                    account_email = f"{user_id}@outlook.com"  # Placeholder
-                    account_name = f"Outlook Account ({user_id})"  # Placeholder
+                messages = messages_response.get("value", [])
 
-                # Convert Microsoft conversations to unified format
-                threads = []
-                for conv_data in conversations_data.get("value", []):
-                    conv_id = conv_data.get("id")
+                # Get user account info
+                account_email, account_name = get_user_account_info(user_id, provider)
+
+                # Group messages by conversationId to create threads
+                conversation_groups = {}
+                for message in messages:
+                    conv_id = message.get("conversationId")
                     if conv_id:
-                        # Get messages for this conversation
-                        conv_messages = await microsoft_client.get_conversation_messages(
-                            conv_id,
-                            include_body=include_body,
+                        if conv_id not in conversation_groups:
+                            conversation_groups[conv_id] = []
+                        conversation_groups[conv_id].append(message)
+
+                # Convert grouped messages to unified thread format
+                threads = []
+                for conv_id, conv_messages in list(conversation_groups.items())[:limit]:
+                    try:
+                        # Create minimal conversation data
+                        conv_data = {"id": conv_id}
+
+                        normalized_thread = normalize_microsoft_conversation(
+                            conv_data, conv_messages, account_email, account_name
                         )
-                        
-                        # Use the normalization function
-                        try:
-                            normalized_thread = normalize_microsoft_conversation(
-                                conv_data, 
-                                conv_messages.get("value", []), 
-                                account_email, 
-                                account_name
-                            )
-                            threads.append(normalized_thread)
-                        except Exception as e:
-                            logger.warning(f"Failed to normalize Microsoft conversation {conv_id}: {e}")
-                            continue
+                        threads.append(normalized_thread)
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to normalize Microsoft thread {conv_id}: {e}"
+                        )
+                        continue
 
                 return threads, provider
 
@@ -1728,91 +1762,66 @@ async def fetch_single_thread(
                 google_client = cast(GoogleAPIClient, client)
                 # Get thread from Gmail
                 thread_data = await google_client.get_thread(original_thread_id)
-                
-                # Get user account info (simplified)
-                if "@" in user_id:
-                    account_email = user_id
-                    account_name = f"Gmail Account ({user_id.split('@')[0]})"
-                else:
-                    account_email = f"{user_id}@gmail.com"  # Placeholder
-                    account_name = f"Gmail Account ({user_id})"  # Placeholder
+
+                # Get user account info
+                account_email, account_name = get_user_account_info(user_id, provider)
 
                 # Use the normalization function
                 try:
-                    return normalize_google_thread(thread_data, account_email, account_name)
+                    return normalize_google_thread(
+                        thread_data, account_email, account_name
+                    )
                 except Exception as e:
-                    logger.warning(f"Failed to normalize Gmail thread {original_thread_id}: {e}")
+                    logger.warning(
+                        f"Failed to normalize Gmail thread {original_thread_id}: {e}"
+                    )
                     return None
 
             elif provider == "microsoft":
                 microsoft_client = cast(MicrosoftAPIClient, client)
-                # Get conversation from Microsoft
-                logger.info(f"Fetching Microsoft conversation {original_thread_id} for user {user_id}")
+                # Get messages and filter by conversation ID for Microsoft
+                logger.info(
+                    f"Fetching Microsoft thread {original_thread_id} for user {user_id}"
+                )
                 try:
-                    conv_messages = await microsoft_client.get_conversation_messages(
-                        original_thread_id,
-                        include_body=include_body,
+                    # Get recent messages and filter client-side by conversationId
+                    messages_response = await microsoft_client.get_messages(
+                        top=200,  # Get more messages to increase chances of finding the thread
                     )
-                    logger.info(f"Successfully fetched conversation {original_thread_id}, got {len(conv_messages.get('value', []))} messages")
-                except Exception as e:
-                    logger.error(f"Failed to fetch Microsoft conversation {original_thread_id}: {e}")
-                    # Try alternative approach: get messages without complex filtering
-                    try:
-                        logger.info(f"Trying alternative approach for conversation {original_thread_id}")
-                        # Get recent messages and filter client-side
-                        messages_response = await microsoft_client.get_messages(
-                            top=200,  # Get more messages to increase chances of finding the conversation
+                    messages = messages_response.get("value", [])
+
+                    # Filter messages that belong to this thread
+                    thread_messages = [
+                        msg
+                        for msg in messages
+                        if msg.get("conversationId") == original_thread_id
+                    ]
+
+                    if thread_messages:
+                        logger.info(
+                            f"Found {len(thread_messages)} messages for thread {original_thread_id}"
                         )
-                        messages = messages_response.get("value", [])
-                        
-                        # Filter messages that belong to this conversation
-                        conversation_messages = [
-                            msg for msg in messages 
-                            if msg.get("conversationId") == original_thread_id
-                        ]
-                        
-                        if conversation_messages:
-                            logger.info(f"Found {len(conversation_messages)} messages for conversation {original_thread_id}")
-                            
-                            # Get user account info
-                            if "@" in user_id:
-                                account_email = user_id
-                                account_name = f"Outlook Account ({user_id.split('@')[0]})"
-                            else:
-                                account_email = f"{user_id}@outlook.com"
-                                account_name = f"Outlook Account ({user_id})"
 
-                            return normalize_microsoft_conversation(
-                                {"id": original_thread_id},
-                                conversation_messages,
-                                account_email,
-                                account_name
-                            )
-                        else:
-                            logger.warning(f"No messages found for conversation {original_thread_id}")
-                            return None
-                    except Exception as fallback_error:
-                        logger.error(f"Fallback approach also failed for conversation {original_thread_id}: {fallback_error}")
+                        # Get user account info
+                        account_email, account_name = get_user_account_info(
+                            user_id, provider
+                        )
+
+                        return normalize_microsoft_conversation(
+                            {"id": original_thread_id},
+                            thread_messages,
+                            account_email,
+                            account_name,
+                        )
+                    else:
+                        logger.warning(
+                            f"No messages found for thread {original_thread_id}"
+                        )
                         return None
-                
-                # Get user account info (simplified)
-                if "@" in user_id:
-                    account_email = user_id
-                    account_name = f"Outlook Account ({user_id.split('@')[0]})"
-                else:
-                    account_email = f"{user_id}@outlook.com"  # Placeholder
-                    account_name = f"Outlook Account ({user_id})"  # Placeholder
-
-                # Use the normalization function
-                try:
-                    return normalize_microsoft_conversation(
-                        {"id": original_thread_id},  # Create minimal conversation data
-                        conv_messages.get("value", []),
-                        account_email,
-                        account_name
-                    )
                 except Exception as e:
-                    logger.warning(f"Failed to normalize Microsoft conversation {original_thread_id}: {e}")
+                    logger.error(
+                        f"Failed to fetch Microsoft thread {original_thread_id}: {e}"
+                    )
                     return None
 
             else:
@@ -1821,7 +1830,9 @@ async def fetch_single_thread(
         return None
 
     except Exception as e:
-        logger.error(f"Failed to fetch thread {original_thread_id} from {provider}: {e}")
+        logger.error(
+            f"Failed to fetch thread {original_thread_id} from {provider}: {e}"
+        )
         return None
 
 
@@ -1861,7 +1872,7 @@ async def fetch_message_thread(
                 # Get message to find its thread ID
                 message_data = await google_client.get_message(original_message_id)
                 thread_id = message_data.get("threadId")
-                
+
                 if thread_id:
                     return await fetch_single_thread(
                         request_id, user_id, provider, thread_id, include_body
@@ -1869,30 +1880,18 @@ async def fetch_message_thread(
 
             elif provider == "microsoft":
                 microsoft_client = cast(MicrosoftAPIClient, client)
-                # Get conversation for the message
-                conv_data = await microsoft_client.get_message_conversation(
-                    original_message_id,
-                    include_body=include_body,
-                )
-                
-                # Get user account info (simplified)
-                if "@" in user_id:
-                    account_email = user_id
-                    account_name = f"Outlook Account ({user_id.split('@')[0]})"
-                else:
-                    account_email = f"{user_id}@outlook.com"  # Placeholder
-                    account_name = f"Outlook Account ({user_id})"  # Placeholder
+                # Get the message to find its conversation ID
+                message_data = await microsoft_client.get_message(original_message_id)
+                conversation_id = message_data.get("conversationId")
 
-                # Use the normalization function
-                try:
-                    return normalize_microsoft_conversation(
-                        {"id": "unknown"},  # Create minimal conversation data
-                        conv_data.get("value", []),
-                        account_email,
-                        account_name
+                if conversation_id:
+                    return await fetch_single_thread(
+                        request_id, user_id, provider, conversation_id, include_body
                     )
-                except Exception as e:
-                    logger.warning(f"Failed to normalize Microsoft conversation for message {original_message_id}: {e}")
+                else:
+                    logger.warning(
+                        f"Message {original_message_id} does not have a conversation ID"
+                    )
                     return None
 
             else:
@@ -1901,5 +1900,7 @@ async def fetch_message_thread(
         return None
 
     except Exception as e:
-        logger.error(f"Failed to fetch message thread for {original_message_id} from {provider}: {e}")
+        logger.error(
+            f"Failed to fetch message thread for {original_message_id} from {provider}: {e}"
+        )
         return None

@@ -8,7 +8,7 @@ import hashlib
 import json
 import logging
 from datetime import datetime
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, List, Optional
 
 import redis.asyncio as redis
 from redis.asyncio import Redis
@@ -288,10 +288,7 @@ def generate_user_cache_pattern(user_id: str, provider: Optional[str] = None) ->
 
 
 def generate_thread_cache_key(
-    user_id: str,
-    thread_id: Optional[str] = None,
-    include_body: bool = False,
-    **kwargs
+    user_id: str, thread_id: Optional[str] = None, include_body: bool = False, **kwargs
 ) -> str:
     """
     Generate a cache key for thread-related data.
@@ -306,18 +303,18 @@ def generate_thread_cache_key(
         Cache key string
     """
     key_parts = ["office", user_id, "thread"]
-    
+
     if thread_id:
         key_parts.append(thread_id)
-    
+
     if include_body:
         key_parts.append("with_body")
-    
+
     # Add additional parameters
     for key, value in sorted(kwargs.items()):
         if value is not None:
             key_parts.extend([key, str(value)])
-    
+
     return ":".join(key_parts)
 
 
@@ -348,28 +345,28 @@ def generate_threads_list_cache_key(
         Cache key string
     """
     key_parts = ["office", user_id, "threads"]
-    
+
     if providers:
         key_parts.extend(["providers", ",".join(sorted(providers))])
-    
+
     if limit:
         key_parts.extend(["limit", str(limit)])
-    
+
     if include_body:
         key_parts.append("with_body")
-    
+
     if labels:
         key_parts.extend(["labels", ",".join(sorted(labels))])
-    
+
     if folder_id:
         key_parts.extend(["folder", folder_id])
-    
+
     if q:
         key_parts.extend(["q", q])
-    
+
     if page_token:
         key_parts.extend(["page", page_token])
-    
+
     return ":".join(key_parts)
 
 
@@ -390,10 +387,10 @@ def generate_message_thread_cache_key(
         Cache key string
     """
     key_parts = ["office", user_id, "message_thread", message_id]
-    
+
     if include_body:
         key_parts.append("with_body")
-    
+
     return ":".join(key_parts)
 
 
