@@ -56,21 +56,18 @@ const sanitizeEmailHtml = (html: string): string => {
     if (!html) return '';
 
     try {
-        // Use DOMPurify if available
-        if (typeof DOMPurify !== 'undefined' && DOMPurify.sanitize) {
-            return DOMPurify.sanitize(html, emailSanitizeConfig);
-        }
+        // Use DOMPurify for sanitization (ES6 import guarantees it's available)
+        return DOMPurify.sanitize(html, emailSanitizeConfig);
+    } catch (error) {
+        console.error('Error sanitizing HTML with DOMPurify, using fallback:', error);
 
-        // Fallback: basic sanitization (should rarely be used)
-        console.warn('DOMPurify not available, using fallback sanitization');
+        // Fallback: basic sanitization when DOMPurify fails
         return html
             .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
             .replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '')
             .replace(/javascript:/gi, '')
-            .replace(/data:/gi, '');
-    } catch (error) {
-        console.error('Error sanitizing HTML:', error);
-        return 'Error rendering email content';
+            // Only block non-image data URLs to allow legitimate inline images
+            .replace(/data:(?!image\/)[^;]*;base64,[^"'\s]*/gi, '');
     }
 };
 
@@ -109,16 +106,34 @@ const formatEmailDate = (dateString: string): string => {
 
 // Utility function to get sender initials
 const getSenderInitials = (name?: string, email?: string): string => {
+    if (!name && !email) return '?';
+
     if (name) {
-        const parts = name.split(' ');
+        // Clean the name: trim whitespace and handle multiple consecutive spaces
+        const cleanName = name.trim().replace(/\s+/g, ' ');
+        const parts = cleanName.split(' ');
+
+        // Filter out empty parts and get first character of each part
+        const initials = parts
+            .filter(part => part.length > 0)
+            .map(part => part[0])
+            .join('');
+
+        // For names with 2+ parts: use first and last initial
         if (parts.length >= 2) {
             return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
         }
-        return name[0]?.toUpperCase() || '?';
+
+        // For single names: use first 2 characters if available
+        return initials.substring(0, 2).toUpperCase();
     }
+
     if (email) {
-        return email[0]?.toUpperCase() || '?';
+        // For email fallback: use first character of local part
+        const localPart = email.split('@')[0];
+        return localPart[0]?.toUpperCase() || '?';
     }
+
     return '?';
 };
 
