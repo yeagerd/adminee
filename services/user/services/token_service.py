@@ -5,6 +5,7 @@ Provides secure token storage, retrieval, and lifecycle management for
 internal service-to-service communication with automatic refresh and validation.
 """
 
+import asyncio
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -31,6 +32,7 @@ from services.user.services.audit_service import audit_logger
 from services.user.services.integration_service import (
     get_integration_service,
 )
+from services.user.settings import get_settings
 
 # Set up logging
 logger = get_logger(__name__)
@@ -48,6 +50,9 @@ class TokenService:
         """Initialize the token service."""
         self.token_encryption = TokenEncryption()
         self.logger = logger
+        # Track ongoing refresh operations to prevent duplicates
+        self._ongoing_refreshes: Dict[str, asyncio.Future] = {}
+        self._refresh_lock = asyncio.Lock()
 
     async def store_tokens(
         self,
@@ -573,12 +578,60 @@ class TokenService:
         self, integration: Integration, user_id: str, provider: IntegrationProvider
     ) -> Any:
         """Refresh token if refresh token is available."""
+        # Create a unique key for this refresh operation
+        refresh_key = f"{user_id}:{provider.value}"
+
+        async with self._refresh_lock:
+            # Check if a refresh is already in progress for this user/provider
+            if refresh_key in self._ongoing_refreshes:
+                self.logger.info(
+                    f"Token refresh already in progress for user {user_id}, provider {provider.value}. "
+                    "Waiting for it to complete."
+                )
+                # Wait for the ongoing refresh to complete
+                refresh_future = self._ongoing_refreshes[refresh_key]
+                try:
+                    await asyncio.wait_for(
+                        refresh_future, timeout=get_settings().refresh_timeout_seconds
+                    )
+                except asyncio.TimeoutError:
+                    # If the refresh times out, remove it from tracking and proceed with a new refresh
+                    self.logger.warning(
+                        f"Token refresh operation timed out for user {user_id}, provider {provider.value}. "
+                        "Removing from tracking and proceeding with new refresh."
+                    )
+                    async with self._refresh_lock:
+                        if refresh_key in self._ongoing_refreshes:
+                            del self._ongoing_refreshes[refresh_key]
+                    # Continue with the refresh logic below
+                    # Note: We don't return here, so we'll proceed to start a new refresh
+                else:
+                    # After waiting, the refresh_key will be removed from _ongoing_refreshes
+                    # by the finally block, so we can proceed with a new lock.
+                    # However, if the refresh failed, we might need to re-raise the exception.
+                    # The refresh_future.exception() will give us the exception if it failed.
+                    exception = refresh_future.exception()
+                    if exception is not None:
+                        raise exception
+                    # If it completed successfully, return the result
+                    return refresh_future.result()
+
+            # Mark this refresh as in progress
+            refresh_future = asyncio.Future()
+            self._ongoing_refreshes[refresh_key] = refresh_future
+
         try:
-            return await get_integration_service().refresh_integration_tokens(
+            # Let the integration service handle its own timeout
+            result = await get_integration_service().refresh_integration_tokens(
                 user_id=user_id,
                 provider=provider,
                 force=True,
             )
+
+            # Set the future result so waiting callers get the response
+            refresh_future.set_result(result)
+            return result
+
         except Exception as e:
             self.logger.warning(
                 "Token refresh failed",
@@ -604,6 +657,9 @@ class TokenService:
                     error=str(update_error),
                 )
 
+            # Set the future exception so waiting callers get the error
+            refresh_future.set_exception(e)
+
             # Return a failed response similar to TokenRefreshResponse
             from services.user.schemas.integration import (
                 TokenRefreshResponse,
@@ -617,6 +673,11 @@ class TokenService:
                 refreshed_at=datetime.now(timezone.utc),
                 error=str(e),
             )
+        finally:
+            # Always remove the refresh key when done
+            async with self._refresh_lock:
+                if refresh_key in self._ongoing_refreshes:
+                    del self._ongoing_refreshes[refresh_key]
 
     def _has_required_scopes(
         self, granted_scopes: List[str], required_scopes: List[str]

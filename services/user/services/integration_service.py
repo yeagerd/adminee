@@ -16,7 +16,7 @@ from sqlmodel import select
 from services.common.http_errors import NotFoundError, ServiceError
 from services.common.logging_config import get_logger
 from services.user.database import get_async_session
-from services.user.integrations.oauth_config import OAuthConfig, OAuthState
+from services.user.integrations.oauth_config import OAuthState, get_oauth_config
 from services.user.models.integration import (
     Integration,
     IntegrationProvider,
@@ -51,7 +51,7 @@ class IntegrationService:
 
     def __init__(self) -> None:
         """Initialize the integration service."""
-        self.oauth_config = OAuthConfig()
+        self.oauth_config = get_oauth_config()
         self.token_encryption = TokenEncryption()
         self.logger = logger
         # Track ongoing refresh operations to prevent duplicates
