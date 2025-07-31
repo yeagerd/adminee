@@ -290,12 +290,12 @@ class TestRefreshDeduplication:
                             # Use side_effect to return different values based on call count
                             call_count = 0
 
-                            def refresh_side_effect(*args, **kwargs):
+                            async def refresh_side_effect(*args, **kwargs):
                                 nonlocal call_count
                                 call_count += 1
                                 if call_count == 1:
-                                    # First call returns a hanging future
-                                    return asyncio.Future()
+                                    # First call hangs indefinitely
+                                    await asyncio.Future()  # This will never complete
                                 else:
                                     # Subsequent calls return a valid dict
                                     return {
@@ -374,12 +374,12 @@ class TestRefreshDeduplication:
                             # Use side_effect to return different values based on call count
                             call_count = 0
 
-                            def refresh_side_effect(*args, **kwargs):
+                            async def refresh_side_effect(*args, **kwargs):
                                 nonlocal call_count
                                 call_count += 1
                                 if call_count == 1:
-                                    # First call returns a hanging future
-                                    return asyncio.Future()
+                                    # First call hangs indefinitely
+                                    await asyncio.Future()  # This will never complete
                                 else:
                                     # Subsequent calls return a valid dict
                                     return {
