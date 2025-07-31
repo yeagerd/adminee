@@ -63,6 +63,7 @@ class EmailParser:
                 r"[0-9]{22}",
                 r"[0-9]{13}",
                 r"[0-9]{15}",
+                r"[0-9]{26}",  # USPS 26-digit tracking numbers
             ],
         },
         "dhl": {
@@ -158,6 +159,15 @@ class EmailParser:
         tracking_numbers = self._extract_tracking_numbers(all_text, detected_carrier)
         result.tracking_numbers = tracking_numbers
 
+        # If no carrier detected from sender but we have tracking numbers, try to detect from tracking number
+        if not detected_carrier and tracking_numbers:
+            detected_carrier = self._detect_carrier_from_tracking_number(
+                tracking_numbers[0]
+            )
+            if detected_carrier:
+                result.detected_carrier = detected_carrier
+                result.confidence += 0.2
+
         # Boost confidence if tracking numbers found
         if tracking_numbers:
             result.confidence += 0.3
@@ -178,6 +188,23 @@ class EmailParser:
         for carrier, patterns in self.CARRIER_PATTERNS.items():
             if any(domain in sender for domain in patterns["domains"]):
                 return carrier
+        return None
+
+    def _detect_carrier_from_tracking_number(
+        self, tracking_number: str
+    ) -> Optional[str]:
+        """Detect carrier from tracking number format"""
+        if not tracking_number:
+            return None
+
+        # Remove any non-alphanumeric characters
+        clean_number = re.sub(r"[^0-9A-Za-z]", "", tracking_number)
+
+        # Check each carrier's patterns
+        for carrier, patterns in self.CARRIER_PATTERNS.items():
+            for pattern in patterns["tracking_patterns"]:
+                if re.match(pattern, clean_number):
+                    return carrier
         return None
 
     def _has_shipment_keywords(self, text: str) -> bool:

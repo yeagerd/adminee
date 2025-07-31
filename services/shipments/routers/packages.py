@@ -71,11 +71,33 @@ async def list_packages(
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["read_shipments"])),
+    tracking_number: Optional[str] = None,
+    carrier: Optional[str] = None,
 ) -> dict:
     logger.info("Fetching packages for user", user_id=current_user)
-    result = await session.execute(
-        select(Package).where(Package.user_id == current_user)  # type: ignore
-    )
+    query = select(Package).where(Package.user_id == current_user)  # type: ignore
+
+    if tracking_number:
+        # Always search by tracking number first, regardless of carrier
+        # This handles cases where the package was created with 'unknown' carrier
+        # but is now being searched with a detected carrier
+        normalized_tracking = (
+            normalize_tracking_number(tracking_number, carrier)
+            if carrier
+            else tracking_number
+        )
+        query = query.where(Package.tracking_number == normalized_tracking)
+
+        # If carrier is provided and not 'unknown', also filter by carrier
+        # But allow 'unknown' carrier in database to match any detected carrier
+        if carrier and carrier != "unknown":
+            query = query.where(
+                (Package.carrier == carrier) | (Package.carrier == "unknown")  # type: ignore
+            )
+
+    # Note: Carrier filtering is now handled above in the tracking number search logic
+
+    result = await session.execute(query)
     packages = result.scalars().all()
     logger.info("Found packages for user", user_id=current_user, count=len(packages))
     # Convert to PackageOut with actual events count

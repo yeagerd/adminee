@@ -64,3 +64,47 @@ export function formatCalendarTimesInText(text: string): string {
         return match;
     });
 }
+
+/**
+ * Safely parse a date string and return a Date object or null if invalid
+ * @param dateString - The date string to parse
+ * @returns Date object if valid, null if invalid
+ */
+export function safeParseDate(dateString: string | null | undefined): Date | null {
+    if (!dateString || typeof dateString !== 'string') {
+        return null;
+    }
+
+    try {
+        const date = new Date(dateString);
+        // Check if the date is valid (not NaN)
+        return isNaN(date.getTime()) ? null : date;
+    } catch (error) {
+        console.warn('Failed to parse date:', dateString, error);
+        return null;
+    }
+}
+
+/**
+ * Safely parse a date string and return an ISO date string (YYYY-MM-DD) or empty string if invalid
+ * @param dateString - The date string to parse
+ * @returns ISO date string if valid, empty string if invalid
+ */
+export function safeParseDateToISOString(dateString: string | null | undefined): string {
+    const date = safeParseDate(dateString);
+    return date ? date.toISOString().split('T')[0] : '';
+}
+
+/**
+ * Safely parse a date string and return a localized date string or empty string if invalid
+ * @param dateString - The date string to parse
+ * @param options - Intl.DateTimeFormat options
+ * @returns Localized date string if valid, empty string if invalid
+ */
+export function safeParseDateToLocaleString(
+    dateString: string | null | undefined,
+    options: Intl.DateTimeFormatOptions = {}
+): string {
+    const date = safeParseDate(dateString);
+    return date ? date.toLocaleDateString([], options) : '';
+}

@@ -1,3 +1,4 @@
+import FieldUpdateMessage from '@/components/general/field-update-message';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -7,11 +8,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { useShipmentDataCollectionConsent } from '@/contexts/settings-context';
 import { useShipmentDetection } from '@/hooks/use-shipment-detection';
 import { PACKAGE_STATUS, PACKAGE_STATUS_OPTIONS, PackageStatus } from '@/lib/package-status';
-import { DataCollectionRequest, shipmentsClient } from '@/lib/shipments-client';
+import { DataCollectionRequest, PackageCreateRequest, PackageResponse, shipmentsClient } from '@/lib/shipments-client';
+import { safeParseDateToISOString, safeParseDateToLocaleString } from '@/lib/utils';
 import { EmailMessage } from '@/types/office-service';
 import { CheckCircle, Info, Loader2, Package, Truck } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface TrackShipmentModalProps {
     isOpen: boolean;
@@ -29,6 +31,7 @@ export interface PackageFormData {
     package_description?: string;
     order_number?: string;
     tracking_link?: string;
+    expected_delivery?: string;
 }
 
 const CARRIERS = [
@@ -57,6 +60,16 @@ const validatePackageStatus = (statusString: string): PackageStatus => {
     return PACKAGE_STATUS.PENDING;
 };
 
+// Helper function to get readable status label
+const getReadableStatus = (status: PackageStatus): string => {
+    const statusOption = PACKAGE_STATUS_OPTIONS.find(option => option.value === status);
+    return statusOption ? statusOption.label : status;
+};
+
+
+
+
+
 const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
     isOpen,
     onClose,
@@ -69,6 +82,9 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
     const [isLoading, setIsLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const [isParsing, setIsParsing] = useState(false);
+    const [isCheckingPackage, setIsCheckingPackage] = useState(false);
+    const [existingPackage, setExistingPackage] = useState<PackageResponse | null>(null);
+    const [originalPackageData, setOriginalPackageData] = useState<PackageResponse | null>(null);
     const [formData, setFormData] = useState<PackageFormData>({
         tracking_number: '',
         carrier: 'unknown',
@@ -78,8 +94,52 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
         package_description: '',
         order_number: '',
         tracking_link: '',
+        expected_delivery: '',
     });
     const [initialFormData, setInitialFormData] = useState<PackageFormData | null>(null);
+    const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Check if a package already exists with the given tracking number and carrier
+    const checkExistingPackage = async (trackingNumber: string, carrier?: string) => {
+        if (!trackingNumber) {
+            return;
+        }
+
+        setIsCheckingPackage(true);
+        try {
+            const existingPkg = await shipmentsClient.checkPackageExists(trackingNumber, carrier);
+            setExistingPackage(existingPkg);
+
+            // If existing package found, update form data with existing package info
+            if (existingPkg) {
+                // Store the original package data for comparison
+                setOriginalPackageData(existingPkg);
+
+                setFormData(prev => ({
+                    ...prev,
+                    tracking_number: existingPkg.tracking_number,
+                    carrier: existingPkg.carrier,
+                    status: existingPkg.status,
+                    recipient_name: existingPkg.recipient_name || '',
+                    shipper_name: existingPkg.shipper_name || '',
+                    package_description: existingPkg.package_description || '',
+                    order_number: existingPkg.order_number || '',
+                    tracking_link: existingPkg.tracking_link || '',
+                    expected_delivery: safeParseDateToISOString(existingPkg.estimated_delivery)
+                }));
+            }
+        } catch (error) {
+            console.error('Failed to check for existing package:', error);
+            if (error instanceof Error && error.message.includes('Multiple packages found')) {
+                // Handle ambiguity - show error that carrier is required
+                setExistingPackage(null);
+            } else {
+                setExistingPackage(null);
+            }
+        } finally {
+            setIsCheckingPackage(false);
+        }
+    };
 
     // Parse email with backend when modal opens
     useEffect(() => {
@@ -102,9 +162,16 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                         package_description: email.subject || '',
                         order_number: suggestedData.order_number || '',
                         tracking_link: suggestedData.tracking_link || '',
+                        expected_delivery: suggestedData.estimated_delivery || '',
                     };
                     setFormData(detectedData);
                     setInitialFormData(detectedData);
+
+                    // Check if package already exists
+                    if (detectedData.tracking_number) {
+                        const carrierToUse = detectedData.carrier !== 'unknown' ? detectedData.carrier : undefined;
+                        await checkExistingPackage(detectedData.tracking_number, carrierToUse);
+                    }
                 } else if (shipmentDetection.isShipmentEmail) {
                     // Fallback to frontend detection if backend doesn't detect it
                     const detectedData: PackageFormData = {
@@ -116,9 +183,16 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                         package_description: email.subject || '',
                         order_number: '',
                         tracking_link: '',
+                        expected_delivery: '',
                     };
                     setFormData(detectedData);
                     setInitialFormData(detectedData);
+
+                    // Check if package already exists
+                    if (detectedData.tracking_number) {
+                        const carrierToUse = detectedData.carrier !== 'unknown' ? detectedData.carrier : undefined;
+                        await checkExistingPackage(detectedData.tracking_number, carrierToUse);
+                    }
                 }
             } catch (error) {
                 console.error('Failed to parse email with backend:', error);
@@ -133,9 +207,16 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                         package_description: email.subject || '',
                         order_number: '',
                         tracking_link: '',
+                        expected_delivery: '',
                     };
                     setFormData(detectedData);
                     setInitialFormData(detectedData);
+
+                    // Check if package already exists
+                    if (detectedData.tracking_number) {
+                        const carrierToUse = detectedData.carrier !== 'unknown' ? detectedData.carrier : undefined;
+                        await checkExistingPackage(detectedData.tracking_number, carrierToUse);
+                    }
                 }
             } finally {
                 setIsParsing(false);
@@ -145,11 +226,45 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
         parseEmailWithBackend();
     }, [isOpen, email, shipmentDetection]);
 
+    // Cleanup timeout on unmount or modal close
+    useEffect(() => {
+        return () => {
+            if (debounceTimeoutRef.current) {
+                clearTimeout(debounceTimeoutRef.current);
+            }
+        };
+    }, []);
+
     const handleInputChange = (field: keyof PackageFormData, value: string) => {
         setFormData(prev => ({
             ...prev,
             [field]: value
         }));
+
+        // If tracking number changed, check for existing package
+        if (field === 'tracking_number' && value.trim()) {
+            // Clear existing package when tracking number changes
+            setExistingPackage(null);
+            setOriginalPackageData(null);
+            setIsCheckingPackage(true);
+
+            // Clear any existing timeout to prevent race conditions
+            if (debounceTimeoutRef.current) {
+                clearTimeout(debounceTimeoutRef.current);
+            }
+
+            // Debounce the lookup to avoid too many API calls
+            debounceTimeoutRef.current = setTimeout(async () => {
+                try {
+                    await checkExistingPackage(value.trim(), formData.carrier);
+                } catch (error) {
+                    console.error('Error checking existing package:', error);
+                    setExistingPackage(null);
+                } finally {
+                    setIsCheckingPackage(false);
+                }
+            }, 500);
+        }
     };
 
     const submitDataCollection = async (packageData: PackageFormData) => {
@@ -216,7 +331,48 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
 
         setIsLoading(true);
         try {
-            await onTrackShipment(formData);
+            if (existingPackage) {
+                // If package exists, create a tracking event instead of new package
+                await shipmentsClient.createTrackingEvent(existingPackage.id, {
+                    event_date: new Date().toISOString(),
+                    status: formData.status,
+                    location: undefined,
+                    description: `New tracking event from email - Status: ${formData.status}`,
+                });
+
+                // Check if any package fields need to be updated
+                const packageUpdates: Partial<PackageCreateRequest> = {};
+
+                // Check each field and add to updates if different from original
+                if (originalPackageData) {
+                    if (formData.expected_delivery !== safeParseDateToISOString(originalPackageData.estimated_delivery)) {
+                        packageUpdates.estimated_delivery = formData.expected_delivery;
+                    }
+                    if (formData.recipient_name !== (originalPackageData.recipient_name || '')) {
+                        packageUpdates.recipient_name = formData.recipient_name;
+                    }
+                    if (formData.shipper_name !== (originalPackageData.shipper_name || '')) {
+                        packageUpdates.shipper_name = formData.shipper_name;
+                    }
+                    if (formData.package_description !== (originalPackageData.package_description || '')) {
+                        packageUpdates.package_description = formData.package_description;
+                    }
+                    if (formData.order_number !== (originalPackageData.order_number || '')) {
+                        packageUpdates.order_number = formData.order_number;
+                    }
+                    if (formData.tracking_link !== (originalPackageData.tracking_link || '')) {
+                        packageUpdates.tracking_link = formData.tracking_link;
+                    }
+                }
+
+                // Update package if there are any changes
+                if (Object.keys(packageUpdates).length > 0) {
+                    await shipmentsClient.updatePackage(existingPackage.id, packageUpdates);
+                }
+            } else {
+                // Create new package
+                await onTrackShipment(formData);
+            }
 
             // Submit data collection if user has consented
             await submitDataCollection(formData);
@@ -235,6 +391,12 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
     };
 
     const handleClose = () => {
+        // Clear any pending debounced operations
+        if (debounceTimeoutRef.current) {
+            clearTimeout(debounceTimeoutRef.current);
+            debounceTimeoutRef.current = null;
+        }
+
         if (!isLoading) {
             onClose();
             setIsSuccess(false);
@@ -255,9 +417,14 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                     {isSuccess ? (
                         <div className="flex flex-col items-center justify-center py-8 text-center">
                             <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
-                            <h3 className="text-lg font-semibold mb-2">Shipment Tracked Successfully!</h3>
+                            <h3 className="text-lg font-semibold mb-2">
+                                {existingPackage ? 'Tracking Event Added Successfully!' : 'Shipment Tracked Successfully!'}
+                            </h3>
                             <p className="text-muted-foreground">
-                                Your package is now being tracked. You'll receive updates on its status.
+                                {existingPackage
+                                    ? 'A new tracking event has been added to your existing package.'
+                                    : 'Your package is now being tracked. You\'ll receive updates on its status.'
+                                }
                             </p>
                         </div>
                     ) : isParsing ? (
@@ -341,21 +508,196 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                             {/* Form - Right Side */}
                             <div className="space-y-4">
                                 <form onSubmit={handleSubmit} className="space-y-4">
-                                    {/* Detection Status */}
-                                    {shipmentDetection.isShipmentEmail && (
-                                        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                                            <div className="flex items-center gap-2 text-green-700">
-                                                <CheckCircle className="h-4 w-4" />
-                                                <span className="text-sm font-medium">
-                                                    Shipment detected with {Math.round(shipmentDetection.confidence * 100)}% confidence
-                                                </span>
-                                            </div>
-                                            {shipmentDetection.detectedCarrier && (
-                                                <p className="text-sm text-green-600 mt-1">
-                                                    Detected carrier: {shipmentDetection.detectedCarrier.toUpperCase()}
-                                                </p>
+
+
+                                    {/* Tracking Number */}
+                                    <div className="flex items-center gap-3 p-1">
+                                        <Label htmlFor="tracking_number" className="w-24 text-sm font-medium">Tracking Number</Label>
+                                        <Input
+                                            id="tracking_number"
+                                            value={formData.tracking_number}
+                                            onChange={(e) => handleInputChange('tracking_number', e.target.value)}
+                                            placeholder="Enter tracking number"
+                                            required
+                                            className="flex-1"
+                                        />
+                                    </div>
+
+                                    {/* Tracking Number Status */}
+                                    {formData.tracking_number.trim() && (
+                                        <div className="text-xs text-gray-600">
+                                            {isCheckingPackage ? (
+                                                <div className="flex items-center gap-1">
+                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                    Searching...
+                                                </div>
+                                            ) : existingPackage ? (
+                                                <div className="flex items-center gap-1 text-green-600">
+                                                    <CheckCircle className="h-3 w-3" />
+                                                    Existing package found.  Status: {getReadableStatus(existingPackage.status)}{existingPackage.estimated_delivery ? `.  Expected: ${safeParseDateToLocaleString(existingPackage.estimated_delivery)}` : ''}
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-1 text-blue-600">
+                                                    <Info className="h-3 w-3" />
+                                                    New package
+                                                </div>
                                             )}
                                         </div>
+                                    )}
+
+                                    {/* Carrier */}
+                                    <div className="flex items-center gap-3 p-1">
+                                        <Label htmlFor="carrier" className="w-24 text-sm font-medium">Carrier</Label>
+                                        <Select
+                                            value={formData.carrier}
+                                            onValueChange={(value) => handleInputChange('carrier', value)}
+                                        >
+                                            <SelectTrigger className="flex-1">
+                                                <SelectValue placeholder="Select carrier" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {CARRIERS.map((carrier) => (
+                                                    <SelectItem key={carrier.value} value={carrier.value}>
+                                                        {carrier.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {/* Status */}
+                                    <div className="flex items-center gap-3 p-1">
+                                        <Label htmlFor="status" className="w-24 text-sm font-medium">Status</Label>
+                                        <Select
+                                            value={formData.status}
+                                            onValueChange={(value) => handleInputChange('status', value)}
+                                        >
+                                            <SelectTrigger className="flex-1">
+                                                <SelectValue placeholder="Select status" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {PACKAGE_STATUS_OPTIONS.map((status) => (
+                                                    <SelectItem key={status.value} value={status.value}>
+                                                        {status.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {/* Expected Delivery */}
+                                    <div className="flex items-center gap-3 p-1">
+                                        <Label htmlFor="expected_delivery" className="w-24 text-sm font-medium">Expected Delivery</Label>
+                                        <Input
+                                            id="expected_delivery"
+                                            value={formData.expected_delivery}
+                                            onChange={(e) => handleInputChange('expected_delivery', e.target.value)}
+                                            placeholder="YYYY-MM-DD (optional)"
+                                            type="date"
+                                            className="flex-1"
+                                        />
+                                    </div>
+
+                                    {/* Separator for existing packages */}
+                                    {existingPackage && (
+                                        <div className="border-t-2 border-gray-300 my-4"></div>
+                                    )}
+
+                                    {/* Order Number */}
+                                    <div className="flex items-center gap-3 p-1">
+                                        <Label htmlFor="order_number" className="w-24 text-sm font-medium">Order Number</Label>
+                                        <Input
+                                            id="order_number"
+                                            value={formData.order_number}
+                                            onChange={(e) => handleInputChange('order_number', e.target.value)}
+                                            placeholder="Enter order number (optional)"
+                                            className="flex-1"
+                                        />
+                                    </div>
+                                    {existingPackage && formData.order_number && (
+                                        <FieldUpdateMessage
+                                            existingPackage={existingPackage}
+                                            currentValue={formData.order_number}
+                                            originalValue={originalPackageData?.order_number}
+                                        />
+                                    )}
+
+                                    {/* Package Description */}
+                                    <div className="flex items-start gap-3 p-1">
+                                        <Label htmlFor="package_description" className="w-24 text-sm font-medium mt-2">Description</Label>
+                                        <Textarea
+                                            id="package_description"
+                                            value={formData.package_description}
+                                            onChange={(e) => handleInputChange('package_description', e.target.value)}
+                                            placeholder="Enter package description (optional)"
+                                            rows={2}
+                                            className="flex-1"
+                                        />
+                                    </div>
+                                    {existingPackage && formData.package_description && (
+                                        <FieldUpdateMessage
+                                            existingPackage={existingPackage}
+                                            currentValue={formData.package_description}
+                                            originalValue={originalPackageData?.package_description}
+                                        />
+                                    )}
+
+                                    {/* Recipient Name */}
+                                    <div className="flex items-center gap-3 p-1">
+                                        <Label htmlFor="recipient_name" className="w-24 text-sm font-medium">Recipient</Label>
+                                        <Input
+                                            id="recipient_name"
+                                            value={formData.recipient_name}
+                                            onChange={(e) => handleInputChange('recipient_name', e.target.value)}
+                                            placeholder="Enter recipient name (optional)"
+                                            className="flex-1"
+                                        />
+                                    </div>
+                                    {existingPackage && formData.recipient_name && (
+                                        <FieldUpdateMessage
+                                            existingPackage={existingPackage}
+                                            currentValue={formData.recipient_name}
+                                            originalValue={originalPackageData?.recipient_name}
+                                        />
+                                    )}
+
+                                    {/* Shipper Name */}
+                                    <div className="flex items-center gap-3 p-1">
+                                        <Label htmlFor="shipper_name" className="w-24 text-sm font-medium">Shipper</Label>
+                                        <Input
+                                            id="shipper_name"
+                                            value={formData.shipper_name}
+                                            onChange={(e) => handleInputChange('shipper_name', e.target.value)}
+                                            placeholder="Enter shipper name (optional)"
+                                            className="flex-1"
+                                        />
+                                    </div>
+                                    {existingPackage && formData.shipper_name && (
+                                        <FieldUpdateMessage
+                                            existingPackage={existingPackage}
+                                            currentValue={formData.shipper_name}
+                                            originalValue={originalPackageData?.shipper_name}
+                                        />
+                                    )}
+
+                                    {/* Tracking Link */}
+                                    <div className="flex items-center gap-3 p-1">
+                                        <Label htmlFor="tracking_link" className="w-24 text-sm font-medium">Tracking Link</Label>
+                                        <Input
+                                            id="tracking_link"
+                                            value={formData.tracking_link}
+                                            onChange={(e) => handleInputChange('tracking_link', e.target.value)}
+                                            placeholder="Enter tracking URL (optional)"
+                                            type="url"
+                                            className="flex-1"
+                                        />
+                                    </div>
+                                    {existingPackage && formData.tracking_link && (
+                                        <FieldUpdateMessage
+                                            existingPackage={existingPackage}
+                                            currentValue={formData.tracking_link}
+                                            originalValue={originalPackageData?.tracking_link}
+                                        />
                                     )}
 
                                     {/* Data Collection Notice */}
@@ -373,115 +715,6 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                             </div>
                                         </div>
                                     )}
-
-                                    {/* Tracking Number */}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="tracking_number">Tracking Number *</Label>
-                                        <Input
-                                            id="tracking_number"
-                                            value={formData.tracking_number}
-                                            onChange={(e) => handleInputChange('tracking_number', e.target.value)}
-                                            placeholder="Enter tracking number"
-                                            required
-                                        />
-                                    </div>
-
-                                    {/* Carrier */}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="carrier">Carrier</Label>
-                                        <Select
-                                            value={formData.carrier}
-                                            onValueChange={(value) => handleInputChange('carrier', value)}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select carrier" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {CARRIERS.map((carrier) => (
-                                                    <SelectItem key={carrier.value} value={carrier.value}>
-                                                        {carrier.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    {/* Status */}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="status">Status</Label>
-                                        <Select
-                                            value={formData.status}
-                                            onValueChange={(value) => handleInputChange('status', value)}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select status" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {PACKAGE_STATUS_OPTIONS.map((status) => (
-                                                    <SelectItem key={status.value} value={status.value}>
-                                                        {status.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    {/* Order Number */}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="order_number">Order Number</Label>
-                                        <Input
-                                            id="order_number"
-                                            value={formData.order_number}
-                                            onChange={(e) => handleInputChange('order_number', e.target.value)}
-                                            placeholder="Enter order number (optional)"
-                                        />
-                                    </div>
-
-                                    {/* Package Description */}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="package_description">Package Description</Label>
-                                        <Textarea
-                                            id="package_description"
-                                            value={formData.package_description}
-                                            onChange={(e) => handleInputChange('package_description', e.target.value)}
-                                            placeholder="Enter package description (optional)"
-                                            rows={2}
-                                        />
-                                    </div>
-
-                                    {/* Recipient Name */}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="recipient_name">Recipient Name</Label>
-                                        <Input
-                                            id="recipient_name"
-                                            value={formData.recipient_name}
-                                            onChange={(e) => handleInputChange('recipient_name', e.target.value)}
-                                            placeholder="Enter recipient name (optional)"
-                                        />
-                                    </div>
-
-                                    {/* Shipper Name */}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="shipper_name">Shipper Name</Label>
-                                        <Input
-                                            id="shipper_name"
-                                            value={formData.shipper_name}
-                                            onChange={(e) => handleInputChange('shipper_name', e.target.value)}
-                                            placeholder="Enter shipper name (optional)"
-                                        />
-                                    </div>
-
-                                    {/* Tracking Link */}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="tracking_link">Tracking Link</Label>
-                                        <Input
-                                            id="tracking_link"
-                                            value={formData.tracking_link}
-                                            onChange={(e) => handleInputChange('tracking_link', e.target.value)}
-                                            placeholder="Enter tracking URL (optional)"
-                                            type="url"
-                                        />
-                                    </div>
                                 </form>
                             </div>
                         </div>
@@ -502,12 +735,12 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                 {isLoading ? (
                                     <>
                                         <Loader2 className="h-4 w-4 animate-spin" />
-                                        Tracking...
+                                        {existingPackage ? 'Adding Event...' : 'Tracking...'}
                                     </>
                                 ) : (
                                     <>
                                         <Truck className="h-4 w-4" />
-                                        Track Shipment
+                                        {existingPackage ? 'Add Tracking Event' : 'Track Shipment'}
                                     </>
                                 )}
                             </Button>
