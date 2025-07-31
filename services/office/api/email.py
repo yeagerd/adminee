@@ -39,8 +39,9 @@ logger = get_logger(__name__)
 # Create router
 router = APIRouter(prefix="/email", tags=["email"])
 
-# Initialize dependencies
+# Global API client factory instance
 api_client_factory = APIClientFactory()
+logger.info("Created global APIClientFactory instance with shared TokenManager")
 
 
 async def get_user_id_from_gateway(request: Request) -> str:
@@ -158,6 +159,7 @@ async def get_email_messages(
         # Fetch from providers in parallel
         tasks = []
         for provider_name in valid_providers:
+            logger.info(f"[{request_id}] Creating task for provider: {provider_name}")
             task = fetch_provider_emails(
                 request_id,
                 user_id,
@@ -170,6 +172,10 @@ async def get_email_messages(
                 page_token,
             )
             tasks.append(task)
+
+        logger.info(
+            f"[{request_id}] Created {len(tasks)} tasks, executing with asyncio.gather"
+        )
 
         # Execute parallel requests
         provider_results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -784,9 +790,10 @@ async def fetch_provider_emails(
         request_id: Request tracking ID
         user_id: User ID
         provider: Provider name (google, microsoft)
-        limit: Maximum number of messages
-        include_body: Whether to include message bodies
-        labels: Label filters
+        limit: Maximum messages to return
+        include_body: Whether to include message body content
+        labels: Filter by labels (inbox, sent, etc.)
+        folder_id: Folder ID to fetch from
         q: Search query
         page_token: Pagination token
 
@@ -794,12 +801,23 @@ async def fetch_provider_emails(
         Tuple of (messages list, provider name)
     """
     try:
+        logger.info(
+            f"[{request_id}] fetch_provider_emails called for user {user_id}, provider {provider}"
+        )
+
         # Get API client for provider
+        logger.info(
+            f"[{request_id}] Calling api_client_factory.create_client for user {user_id}, provider {provider}"
+        )
         client = await api_client_factory.create_client(user_id, provider)
         if client is None:
             raise ValidationError(
                 message=f"Failed to create API client for provider {provider}"
             )
+
+        logger.info(
+            f"[{request_id}] Successfully created {provider} client for user {user_id}"
+        )
 
         # Use client as async context manager
         async with client:

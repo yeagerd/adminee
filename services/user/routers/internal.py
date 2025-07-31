@@ -17,7 +17,7 @@ from services.common.http_errors import (
     ServiceError,
     ValidationError,
 )
-from services.common.logging_config import get_logger
+from services.common.logging_config import get_logger, request_id_var
 from services.user.auth.service_auth import service_permission_required
 from services.user.schemas.integration import (
     InternalTokenRefreshRequest,
@@ -57,61 +57,40 @@ router = APIRouter(
 
 
 @router.post("/tokens/get", response_model=InternalTokenResponse)
-async def get_user_tokens(
+async def get_user_token(
     request: InternalTokenRequest,
     service_name: str = Depends(service_permission_required(["read_tokens"])),
 ) -> InternalTokenResponse:
     """
-    Get user tokens for other services.
+    Get a valid access token for a user and provider.
 
-    Retrieves valid OAuth tokens for a user and provider with automatic
-    refresh, scope validation, and comprehensive error handling.
-
-    **Authentication:**
-    - Requires service-to-service API key authentication
-    - Only authorized services can retrieve user tokens
-
-    **Request Body:**
-    - `user_id`: User identifier
-    - `provider`: OAuth provider (google, microsoft, etc.)
-    - `required_scopes`: Required OAuth scopes (optional)
-    - `refresh_if_needed`: Auto-refresh if token near expiration (default: true)
-
-    **Response:**
-    - `success`: Whether token retrieval succeeded
-    - `access_token`: OAuth access token (if successful)
-    - `refresh_token`: OAuth refresh token (if available)
-    - `expires_at`: Token expiration time
-    - `scopes`: Granted OAuth scopes
-    - `error`: Error message (if failed)
-
-    **Security Features:**
-    - Encrypted token storage with user-specific keys
-    - Automatic token refresh with 5-minute buffer
-    - Scope validation and error reporting
-    - Comprehensive audit logging
+    This endpoint is used by other services to retrieve tokens for API operations.
     """
+
+    request_id = request_id_var.get()
+    logger.info(
+        f"[{request_id}] Token request received: user_id={request.user_id}, provider={request.provider}, scopes={request.required_scopes}"
+    )
+
     try:
-        return await get_token_service().get_valid_token(
+        token_service = get_token_service()
+        result = await token_service.get_valid_token(
             user_id=request.user_id,
             provider=request.provider,
             required_scopes=request.required_scopes,
             refresh_if_needed=request.refresh_if_needed,
         )
-    except NotFoundError:
-        raise NotFoundError("User", request.user_id)
-    except ServiceError as e:
-        # Return error in response rather than raising HTTP exception
-        return InternalTokenResponse(
-            success=False,
-            access_token=None,
-            refresh_token=None,
-            expires_at=None,
-            provider=request.provider,
-            user_id=request.user_id,
-            integration_id=None,
-            error=str(e),
+
+        logger.info(
+            f"[{request_id}] Token request completed: success={result.success}, provider={request.provider}"
         )
+        return result
+
+    except Exception as e:
+        logger.error(
+            f"[{request_id}] Token request failed: user_id={request.user_id}, provider={request.provider}, error={str(e)}"
+        )
+        raise
 
 
 @router.post("/tokens/refresh", response_model=InternalTokenResponse)

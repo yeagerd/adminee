@@ -44,8 +44,9 @@ logger = get_logger(__name__)
 # Create router
 router = APIRouter(prefix="/calendar", tags=["calendar"])
 
-# Initialize dependencies
+# Global API client factory instance
 api_client_factory = APIClientFactory()
+logger.info("Created global APIClientFactory instance with shared TokenManager")
 
 
 async def get_user_id_from_gateway(request: Request) -> str:
