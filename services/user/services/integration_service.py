@@ -627,9 +627,17 @@ class IntegrationService:
                 )
             elif new_tokens.get("expires_at"):
                 if isinstance(new_tokens["expires_at"], str):
-                    new_expires_at = datetime.fromisoformat(new_tokens["expires_at"])
-                    if new_expires_at.tzinfo is None:
-                        new_expires_at = new_expires_at.replace(tzinfo=timezone.utc)
+                    try:
+                        new_expires_at = datetime.fromisoformat(new_tokens["expires_at"])
+                        if new_expires_at.tzinfo is None:
+                            new_expires_at = new_expires_at.replace(tzinfo=timezone.utc)
+                    except (ValueError, TypeError) as e:
+                        self.logger.warning(
+                            f"Failed to parse expires_at '{new_tokens['expires_at']}' for user {user_id}, "
+                            f"provider {provider.value}: {e}. Using fallback expiration."
+                        )
+                        # Use a fallback expiration time (1 hour from now)
+                        new_expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
 
             result = TokenRefreshResponse(
                 success=True,
