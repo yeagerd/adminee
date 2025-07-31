@@ -74,8 +74,8 @@ class TrackingEventOut(BaseModel):
 class TrackingEventCreate(BaseModel):
     event_date: datetime
     status: PackageStatus
-    location: Optional[str]
-    description: Optional[str]
+    location: Optional[str] = None
+    description: Optional[str] = None
 
 
 class LabelCreate(BaseModel):
