@@ -2,7 +2,7 @@
 Tests for the calendar API endpoints.
 """
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -81,9 +81,13 @@ def mock_cache_manager():
 @pytest.fixture
 def mock_api_client_factory():
     """Mock the API client factory."""
-    with patch("services.office.api.calendar.api_client_factory") as mock:
-        # Mock the get_user_preferred_provider method
-        mock.get_user_preferred_provider = AsyncMock(return_value=None)
+    with patch("services.office.api.calendar.get_api_client_factory") as mock:
+        # Create a mock factory
+        mock_factory = MagicMock()
+        mock_factory.get_user_preferred_provider = AsyncMock(return_value=None)
+        mock_factory.create_client = AsyncMock(return_value=None)
+        # Make the mock return the factory directly
+        mock.return_value = mock_factory
         yield mock
 
 

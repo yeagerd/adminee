@@ -707,7 +707,8 @@ async def create_calendar_event(
         provider = provider.lower()
 
         # Get API client for provider
-        client = await get_api_client_factory().create_client(user_id, provider)
+        factory = await get_api_client_factory()
+        client = await factory.create_client(user_id, provider)
         if client is None:
             raise AuthError(
                 message=f"Failed to create API client for provider {provider}. User may not have connected this provider."
@@ -802,7 +803,8 @@ async def update_calendar_event(
         provider, original_event_id = parse_event_id(event_id)
 
         # Get API client for provider
-        client = await get_api_client_factory().create_client(user_id, provider)
+        factory = await get_api_client_factory()
+        client = await factory.create_client(user_id, provider)
         if client is None:
             raise AuthError(
                 message=f"Failed to create API client for provider {provider}. User may not have connected this provider."
@@ -1223,7 +1225,8 @@ async def delete_calendar_event(
         provider, original_event_id = parse_event_id(event_id)
 
         # Get API client for provider
-        client = await get_api_client_factory().create_client(user_id, provider)
+        factory = await get_api_client_factory()
+        client = await factory.create_client(user_id, provider)
         if client is None:
             raise AuthError(
                 message=f"Failed to create API client for provider {provider}. User may not have connected this provider."
@@ -1362,7 +1365,8 @@ async def fetch_provider_events(
         # Get API client for provider with calendar-specific scopes
         calendar_scopes = _get_calendar_scopes(provider)
         logger.debug(f"Creating {provider} client with scopes: {calendar_scopes}")
-        client = await get_api_client_factory().create_client(
+        factory = await get_api_client_factory()
+        client = await factory.create_client(
             user_id, provider, calendar_scopes
         )
         if client is None:
@@ -1503,7 +1507,8 @@ async def fetch_single_event(
     try:
         # Get API client for provider with calendar-specific scopes
         calendar_scopes = _get_calendar_scopes(provider)
-        client = await get_api_client_factory().create_client(
+        factory = await get_api_client_factory()
+        client = await factory.create_client(
             user_id, provider, calendar_scopes
         )
         if client is None:
