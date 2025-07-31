@@ -34,8 +34,24 @@ logger = get_logger(__name__)
 # Create router
 router = APIRouter(prefix="/files", tags=["files"])
 
-# Initialize dependencies
-api_client_factory = APIClientFactory()
+# Lazy-initialized API client factory instance
+_api_client_factory = None
+_api_client_factory_lock = asyncio.Lock()
+
+
+async def get_api_client_factory() -> APIClientFactory:
+    """Get or create the shared API client factory instance."""
+    global _api_client_factory
+
+    if _api_client_factory is None:
+        async with _api_client_factory_lock:
+            if _api_client_factory is None:
+                _api_client_factory = APIClientFactory()
+                logger.info(
+                    "Created lazy-initialized APIClientFactory instance with shared TokenManager"
+                )
+
+    return _api_client_factory
 
 
 async def get_user_id_from_gateway(request: Request) -> str:
@@ -161,7 +177,8 @@ async def get_files(
                 logger.info(f"Fetching files from {provider}")
 
                 # Get API client for the provider
-                client = await api_client_factory.create_client(user_id, provider)
+                factory = await get_api_client_factory()
+                client = await factory.create_client(user_id, provider)
                 if client is None:
                     raise Exception(
                         f"Failed to create API client for provider {provider}"
@@ -431,7 +448,8 @@ async def search_files(
                 logger.info(f"Searching files in {provider}")
 
                 # Get API client for the provider
-                client = await api_client_factory.create_client(user_id, provider)
+                factory = await get_api_client_factory()
+                client = await factory.create_client(user_id, provider)
                 if client is None:
                     raise Exception(
                         f"Failed to create API client for provider {provider}"
@@ -613,7 +631,8 @@ async def get_file(
         logger.info(f"Fetching file from {provider}: {original_file_id}")
 
         # Get API client for the provider
-        client = await api_client_factory.create_client(user_id, provider)
+        factory = await get_api_client_factory()
+        client = await factory.create_client(user_id, provider)
         if client is None:
             raise Exception(f"Failed to create API client for provider {provider}")
 
