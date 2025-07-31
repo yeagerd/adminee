@@ -460,11 +460,13 @@ class IntegrationService:
         # If there was an existing refresh, wait for it
         if existing_future is not None:
             try:
-                result = await asyncio.wait_for(
+                # Wait for the existing future to complete
+                await asyncio.wait_for(
                     existing_future, timeout=get_settings().refresh_timeout_seconds
                 )
-                # If we get here, the future completed successfully
-                return result
+                # If the future completed, get its result. If an exception was stored,
+                # this will raise it, propagating the error to the caller.
+                return existing_future.result()
             except asyncio.TimeoutError:
                 # If the refresh times out, we need to clean up and start a new one
                 self.logger.warning(
