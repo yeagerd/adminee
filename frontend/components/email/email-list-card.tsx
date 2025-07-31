@@ -290,7 +290,7 @@ const EmailListCard: React.FC<EmailListCardProps> = ({
         // List view mode - show 3-line format for each email in thread
         return (
             <div className="border-b border-gray-100">
-                {sortedEmails.map((email, index) => {
+                {sortedEmails.map((email) => {
                     const senderName = email.from_address?.name || email.from_address?.email || 'Unknown';
                     const senderInitials = getSenderInitials(email.from_address?.name, email.from_address?.email);
                     const formattedDate = formatEmailDate(email.date);

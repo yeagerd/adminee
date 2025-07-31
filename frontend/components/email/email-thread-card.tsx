@@ -126,18 +126,13 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
     email,
     isSelected = false,
     onSelect,
-    showReadingPane = false,
-    inlineAvatar = false,
-    isFirstInThread = false,
-    threadId
+    inlineAvatar = false
 }) => {
-    const [isDownloading, setIsDownloading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isStarred, setIsStarred] = useState(false);
     const shipmentDetection = useShipmentDetection(email);
 
     const handleDownload = async () => {
-        setIsDownloading(true);
         try {
             const testData = {
                 provider: email.provider,
@@ -165,8 +160,6 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
         } catch (error) {
             console.error('Failed to download email:', error);
             alert('Failed to download email. Please try again.');
-        } finally {
-            setIsDownloading(false);
         }
     };
 

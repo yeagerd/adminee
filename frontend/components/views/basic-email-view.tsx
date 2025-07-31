@@ -1,5 +1,6 @@
 import EmailFilters from '@/components/email/email-filters';
 import { EmailFolderSelector } from '@/components/email/email-folder-selector';
+import EmailListCard from '@/components/email/email-list-card';
 import EmailThread from '@/components/email/email-thread';
 import { useIntegrations } from '@/contexts/integrations-context';
 import { gatewayClient } from '@/lib/gateway-client';
@@ -296,7 +297,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                     ) : (
                         <div className={viewMode === 'tight' ? '' : 'p-4'}>
                             {groupedThreads.map((thread) => (
-                                <EmailThread
+                                <EmailListCard
                                     key={thread.id}
                                     thread={thread}
                                     mode={viewMode}
@@ -315,9 +316,8 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                         <div className="p-4">
                             <h2 className="text-lg font-semibold mb-4">Reading Pane</h2>
                             <EmailThread
-                                thread={selectedThread}
-                                mode="expanded"
-                                showReadingPane={true}
+                                emails={selectedThread.emails}
+                                threadId={selectedThread.id}
                             />
                         </div>
                     </div>
