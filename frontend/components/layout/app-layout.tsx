@@ -15,6 +15,7 @@ interface AppLayoutProps {
 export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = false }: AppLayoutProps) {
     const chatPaneRef = useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>;
     const containerRef = useRef<HTMLDivElement>(null);
+    const panelGroupRef = useRef<any>(null);
     const { isOpen, width, setWidth } = useChatPanelState();
     const [containerWidth, setContainerWidth] = useState<number>(0);
 
@@ -42,23 +43,46 @@ export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = fa
             return { mainSize: 100, chatSize: 0 };
         }
 
+        // Only calculate sizes when we have the actual container width
+        if (!containerWidth) {
+            // Return a reasonable default until we have the real container width
+            return { mainSize: 70, chatSize: 30 };
+        }
+
         // Use actual container width for accurate percentage calculations
-        const totalWidth = containerWidth || 1200; // Fallback to 1200px if not measured yet
+        const totalWidth = containerWidth;
 
         // Ensure width doesn't exceed container width
         const clampedWidth = Math.min(width, totalWidth);
         const chatSizePercent = Math.max(0, Math.min(100, Math.round((clampedWidth / totalWidth) * 100)));
         const mainSizePercent = Math.max(0, 100 - chatSizePercent);
 
+
+
         return { mainSize: mainSizePercent, chatSize: chatSizePercent };
     };
 
     const { mainSize, chatSize } = getPanelSizes();
 
+    // Force panel size update when chat panel opens
+    useEffect(() => {
+        if (isOpen && containerWidth && panelGroupRef.current) {
+            // Programmatically set panel sizes when chat panel opens
+            const totalWidth = containerWidth;
+            const chatSizePercent = Math.round((width / totalWidth) * 100);
+            const mainSizePercent = 100 - chatSizePercent;
+
+            // Use the panel group's API to set sizes
+            if (panelGroupRef.current.setLayout) {
+                panelGroupRef.current.setLayout([mainSizePercent, chatSizePercent]);
+            }
+        }
+    }, [isOpen, containerWidth, width]);
+
     const handlePanelResize = (sizes: number[]) => {
-        if (sizes.length >= 2) {
+        if (sizes.length >= 2 && containerWidth) {
             // Calculate actual width from percentage using real container width
-            const totalWidth = containerWidth || 1200; // Fallback to 1200px if not measured yet
+            const totalWidth = containerWidth;
             const newChatWidth = Math.max(0, Math.round((sizes[1] / 100) * totalWidth));
             setWidth(newChatWidth);
         }
@@ -76,11 +100,12 @@ export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = fa
                 <div ref={containerRef} className="flex-1 min-w-0 h-full flex flex-col">
                     {draft ? (
                         <ResizablePanelGroup
+                            ref={panelGroupRef}
                             className="flex-1 flex min-w-0"
                             direction="horizontal"
                             onLayout={handlePanelResize}
                         >
-                            <ResizablePanel minSize={30} size={mainSize} className="h-full">
+                            <ResizablePanel id="main-panel" order={1} minSize={30} size={mainSize} className="h-full">
                                 {draftPane && hasActiveDraft ? (
                                     <ResizablePanelGroup direction="vertical" className="h-full">
                                         <ResizablePanel minSize={10} size={50} className="h-full">
@@ -112,6 +137,8 @@ export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = fa
                                 <>
                                     <ResizableHandle withHandle />
                                     <ResizablePanel
+                                        id="chat-panel"
+                                        order={2}
                                         minSize={20}
                                         size={chatSize}
                                         collapsible
