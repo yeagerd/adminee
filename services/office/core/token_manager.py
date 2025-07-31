@@ -62,39 +62,58 @@ class TokenManager:
         self.http_client: Optional[httpx.AsyncClient] = None
         self._token_cache: Dict[str, CachedToken] = {}
         self._cache_lock = asyncio.Lock()
+        self._client_lock = asyncio.Lock()
+        self._client_ref_count = 0
         # Add instance tracking
         self._instance_id = str(uuid.uuid4())[:8]
         logger.info(f"TokenManager instance created: {self._instance_id}")
 
     async def __aenter__(self) -> "TokenManager":
         """Async context manager entry"""
-        from services.common.logging_config import request_id_var
+        async with self._client_lock:
+            self._client_ref_count += 1
+            logger.info(f"TokenManager instance {self._instance_id}: Client ref count increased to {self._client_ref_count}")
+            
+            # Only initialize if this is the first user
+            if self._client_ref_count == 1:
+                from services.common.logging_config import request_id_var
 
-        # Use API key for user management service if available
-        headers: dict[str, str] = {}
-        api_key = get_settings().api_office_user_key
-        if api_key:
-            headers["X-API-Key"] = api_key
+                # Use API key for user management service if available
+                headers: dict[str, str] = {}
+                api_key = get_settings().api_office_user_key
+                if api_key:
+                    headers["X-API-Key"] = api_key
 
-        # Propagate request ID for distributed tracing
-        request_id = request_id_var.get()
-        if request_id and request_id != "uninitialized":
-            headers["X-Request-Id"] = request_id
+                # Propagate request ID for distributed tracing
+                request_id = request_id_var.get()
+                if request_id and request_id != "uninitialized":
+                    headers["X-Request-Id"] = request_id
 
-        self.http_client = httpx.AsyncClient(
-            timeout=httpx.Timeout(10.0),  # 10 second timeout
-            headers=headers,
-        )
-        logger.info(
-            f"TokenManager instance {self._instance_id} initialized with request_id: {request_id}"
-        )
+                self.http_client = httpx.AsyncClient(
+                    timeout=httpx.Timeout(10.0),  # 10 second timeout
+                    headers=headers,
+                )
+                logger.info(
+                    f"TokenManager instance {self._instance_id} initialized with request_id: {request_id}"
+                )
+        
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Async context manager exit"""
-        if self.http_client:
-            await self.http_client.aclose()
-            logger.info(f"TokenManager instance {self._instance_id} closed")
+        async with self._client_lock:
+            self._client_ref_count -= 1
+            logger.info(f"TokenManager instance {self._instance_id}: Client ref count decreased to {self._client_ref_count}")
+            
+            # Only close if this is the last user
+            if self._client_ref_count == 0:
+                if self.http_client:
+                    await self.http_client.aclose()
+                    self.http_client = None
+                    logger.info(f"TokenManager instance {self._instance_id} closed")
+            elif self._client_ref_count < 0:
+                logger.warning(f"TokenManager instance {self._instance_id}: Negative ref count detected: {self._client_ref_count}")
+                self._client_ref_count = 0
 
     def _generate_cache_key(
         self, user_id: str, provider: str, scopes: List[str]
