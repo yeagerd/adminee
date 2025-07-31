@@ -7,7 +7,6 @@ Internal/service endpoints, if any, should be under /internal and require API ke
 """
 
 import asyncio
-import uuid
 from datetime import datetime, timezone
 from typing import List, Optional, cast
 
@@ -17,7 +16,7 @@ from services.common.http_errors import (
     ServiceError,
     ValidationError,
 )
-from services.common.logging_config import get_logger
+from services.common.logging_config import get_logger, request_id_var
 from services.office.core.api_client_factory import APIClientFactory
 from services.office.core.auth import service_permission_required
 from services.office.core.cache_manager import cache_manager, generate_cache_key
@@ -50,6 +49,17 @@ async def get_user_id_from_gateway(request: Request) -> str:
     if not user_id:
         raise ValidationError(message="X-User-Id header is required", field="X-User-Id")
     return user_id
+
+
+def get_request_id() -> str:
+    """
+    Get the current request ID from context or generate a fallback.
+    """
+    request_id = request_id_var.get()
+    if not request_id or request_id == "uninitialized":
+        # Fallback for cases where middleware hasn't set the context
+        return "no-request-id"
+    return request_id
 
 
 @router.get("/", response_model=ApiResponse)
@@ -98,11 +108,11 @@ async def get_files(
         ApiResponse with aggregated files
     """
     user_id = await get_user_id_from_gateway(request)
-    request_id = str(uuid.uuid4())
+    request_id = get_request_id()
     start_time = datetime.now(timezone.utc)
 
     logger.info(
-        f"[{request_id}] Files request: user_id={user_id}, providers={providers}, limit={limit}"
+        f"Files request: user_id={user_id}, providers={providers}, limit={limit}"
     )
 
     try:
@@ -116,7 +126,7 @@ async def get_files(
             if provider.lower() in ["google", "microsoft"]:
                 valid_providers.append(provider.lower())
             else:
-                logger.warning(f"[{request_id}] Invalid provider: {provider}")
+                logger.warning(f"Invalid provider: {provider}")
 
         if not valid_providers:
             raise ValidationError(message="No valid providers specified")
@@ -136,7 +146,7 @@ async def get_files(
         # Check cache first (shortened TTL for files as they change frequently)
         cached_result = await cache_manager.get_from_cache(cache_key)
         if cached_result:
-            logger.info(f"[{request_id}] Cache hit for files")
+            logger.info("Cache hit for files")
             return ApiResponse(
                 success=True, data=cached_result, cache_hit=True, request_id=request_id
             )
@@ -148,7 +158,7 @@ async def get_files(
 
         async def fetch_from_provider(provider: str) -> None:
             try:
-                logger.info(f"[{request_id}] Fetching files from {provider}")
+                logger.info(f"Fetching files from {provider}")
 
                 # Get API client for the provider
                 client = await api_client_factory.create_client(user_id, provider)
@@ -199,13 +209,13 @@ async def get_files(
                                     all_files.append(normalized_file)
                                 except Exception as norm_error:
                                     logger.error(
-                                        f"[{request_id}] Failed to normalize Google Drive file: {norm_error}"
+                                        f"Failed to normalize Google Drive file: {norm_error}"
                                     )
                                     continue
 
                         providers_used.append("google")
                         logger.info(
-                            f"[{request_id}] Successfully fetched {len(response.get('files', []))} files from Google"
+                            f"Successfully fetched {len(response.get('files', []))} files from Google"
                         )
 
                     elif provider == "microsoft":
@@ -253,20 +263,18 @@ async def get_files(
                                     all_files.append(normalized_file)
                                 except Exception as norm_error:
                                     logger.error(
-                                        f"[{request_id}] Failed to normalize Microsoft Drive file: {norm_error}"
+                                        f"Failed to normalize Microsoft Drive file: {norm_error}"
                                     )
                                     continue
 
                         providers_used.append("microsoft")
                         logger.info(
-                            f"[{request_id}] Successfully fetched {len(response.get('value', []))} files from Microsoft"
+                            f"Successfully fetched {len(response.get('value', []))} files from Microsoft"
                         )
 
             except Exception as e:
                 error_msg = str(e)
-                logger.error(
-                    f"[{request_id}] Failed to fetch files from {provider}: {error_msg}"
-                )
+                logger.error(f"Failed to fetch files from {provider}: {error_msg}")
                 provider_errors[provider] = error_msg
 
         # Execute provider requests in parallel
@@ -312,7 +320,7 @@ async def get_files(
             await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=300)
         else:
             logger.info(
-                f"[{request_id}] Not caching response due to no successful providers",
+                "Not caching response due to no successful providers",
                 extra={
                     "providers_used": providers_used,
                     "provider_errors": provider_errors,
@@ -324,7 +332,7 @@ async def get_files(
         response_time_ms = int((end_time - start_time).total_seconds() * 1000)
 
         logger.info(
-            f"[{request_id}] Files request completed in {response_time_ms}ms: {len(all_files)} files from {len(providers_used)} providers"
+            f"Files request completed in {response_time_ms}ms: {len(all_files)} files from {len(providers_used)} providers"
         )
 
         # Ensure all collection values are not None for mypy
@@ -338,7 +346,7 @@ async def get_files(
     except ValidationError:
         raise
     except Exception as e:
-        logger.error(f"[{request_id}] Files request failed: {e}")
+        logger.error(f"Files request failed: {e}")
         raise ServiceError(message=f"Failed to fetch files: {str(e)}")
 
 
@@ -373,11 +381,11 @@ async def search_files(
         ApiResponse with search results
     """
     user_id = await get_user_id_from_gateway(request)
-    request_id = str(uuid.uuid4())
+    request_id = get_request_id()
     start_time = datetime.now(timezone.utc)
 
     logger.info(
-        f"[{request_id}] File search request: user_id={user_id}, query='{q}', providers={providers}"
+        f"File search request: user_id={user_id}, query='{q}', providers={providers}"
     )
 
     try:
@@ -391,7 +399,7 @@ async def search_files(
             if provider.lower() in ["google", "microsoft"]:
                 valid_providers.append(provider.lower())
             else:
-                logger.warning(f"[{request_id}] Invalid provider: {provider}")
+                logger.warning(f"Invalid provider: {provider}")
 
         if not valid_providers:
             raise ValidationError(message="No valid providers specified")
@@ -408,7 +416,7 @@ async def search_files(
         # Check cache first (5 minute TTL for search results)
         cached_result = await cache_manager.get_from_cache(cache_key)
         if cached_result:
-            logger.info(f"[{request_id}] Cache hit for file search")
+            logger.info("Cache hit for file search")
             return ApiResponse(
                 success=True, data=cached_result, cache_hit=True, request_id=request_id
             )
@@ -420,7 +428,7 @@ async def search_files(
 
         async def search_provider(provider: str) -> None:
             try:
-                logger.info(f"[{request_id}] Searching files in {provider}")
+                logger.info(f"Searching files in {provider}")
 
                 # Get API client for the provider
                 client = await api_client_factory.create_client(user_id, provider)
@@ -461,13 +469,13 @@ async def search_files(
                                     all_results.append(normalized_file)
                                 except Exception as norm_error:
                                     logger.error(
-                                        f"[{request_id}] Failed to normalize Google search result: {norm_error}"
+                                        f"Failed to normalize Google search result: {norm_error}"
                                     )
                                     continue
 
                         providers_used.append("google")
                         logger.info(
-                            f"[{request_id}] Successfully searched Google: {len(response.get('files', []))} results"
+                            f"Successfully searched Google: {len(response.get('files', []))} results"
                         )
 
                     elif provider == "microsoft":
@@ -503,20 +511,18 @@ async def search_files(
                                     all_results.append(normalized_file)
                                 except Exception as norm_error:
                                     logger.error(
-                                        f"[{request_id}] Failed to normalize Microsoft search result: {norm_error}"
+                                        f"Failed to normalize Microsoft search result: {norm_error}"
                                     )
                                     continue
 
                         providers_used.append("microsoft")
                         logger.info(
-                            f"[{request_id}] Successfully searched Microsoft: {len(response.get('value', []))} results"
+                            f"Successfully searched Microsoft: {len(response.get('value', []))} results"
                         )
 
             except Exception as e:
                 error_msg = str(e)
-                logger.error(
-                    f"[{request_id}] Failed to search files in {provider}: {error_msg}"
-                )
+                logger.error(f"Failed to search files in {provider}: {error_msg}")
                 provider_errors[provider] = error_msg
 
         # Execute provider searches in parallel
@@ -546,7 +552,7 @@ async def search_files(
             await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=300)
         else:
             logger.info(
-                f"[{request_id}] Not caching search response due to no successful providers",
+                "Not caching search response due to no successful providers",
                 extra={
                     "providers_used": providers_used,
                     "provider_errors": provider_errors,
@@ -558,7 +564,7 @@ async def search_files(
         response_time_ms = int((end_time - start_time).total_seconds() * 1000)
 
         logger.info(
-            f"[{request_id}] File search completed in {response_time_ms}ms: {len(all_results)} results from {len(providers_used)} providers"
+            f"File search completed in {response_time_ms}ms: {len(all_results)} results from {len(providers_used)} providers"
         )
 
         return ApiResponse(
@@ -568,7 +574,7 @@ async def search_files(
     except ValidationError:
         raise
     except Exception as e:
-        logger.error(f"[{request_id}] File search failed: {e}")
+        logger.error(f"File search failed: {e}")
         raise ServiceError(message=f"Failed to search files: {str(e)}")
 
 
@@ -595,18 +601,16 @@ async def get_file(
         ApiResponse with the specific file
     """
     user_id = await get_user_id_from_gateway(request)
-    request_id = str(uuid.uuid4())
+    request_id = get_request_id()
     start_time = datetime.now(timezone.utc)
 
-    logger.info(
-        f"[{request_id}] File detail request: file_id={file_id}, user_id={user_id}"
-    )
+    logger.info(f"File detail request: file_id={file_id}, user_id={user_id}")
 
     try:
         # Parse provider from file_id
         provider, original_file_id = parse_file_id(file_id)
 
-        logger.info(f"[{request_id}] Fetching file from {provider}: {original_file_id}")
+        logger.info(f"Fetching file from {provider}: {original_file_id}")
 
         # Get API client for the provider
         client = await api_client_factory.create_client(user_id, provider)
@@ -666,7 +670,7 @@ async def get_file(
                 response_time_ms = int((end_time - start_time).total_seconds() * 1000)
 
                 logger.info(
-                    f"[{request_id}] File detail request completed in {response_time_ms}ms: {normalized_file.name}"
+                    f"File detail request completed in {response_time_ms}ms: {normalized_file.name}"
                 )
 
                 return ApiResponse(
@@ -679,9 +683,7 @@ async def get_file(
 
             except Exception as e:
                 error_msg = str(e)
-                logger.error(
-                    f"[{request_id}] Failed to fetch file from {provider}: {error_msg}"
-                )
+                logger.error(f"Failed to fetch file from {provider}: {error_msg}")
 
                 # Return error response
                 response_data = {
@@ -706,7 +708,7 @@ async def get_file(
     except ValidationError:
         raise
     except Exception as e:
-        logger.error(f"[{request_id}] File detail request failed: {e}")
+        logger.error(f"File detail request failed: {e}")
         raise ServiceError(message=f"Failed to fetch file: {str(e)}")
 
 

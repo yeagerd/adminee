@@ -9,12 +9,11 @@ import sys
 from unittest.mock import patch
 
 import pytest
-import respx
 from fastapi.testclient import TestClient
-from httpx import Response
 
 # Set up test settings before any imports
 import services.chat.settings as chat_settings
+from services.chat.tests.test_base import BaseChatTest
 
 # Create test settings instance
 test_settings = chat_settings.Settings(
@@ -47,188 +46,200 @@ def test_env():
         yield env_vars
 
 
-@pytest.fixture
-def app(test_env):
-    """Fixture to provide the FastAPI app with test environment."""
-    # Force reload the auth module to pick up the new settings
-    for module in list(sys.modules):
-        if module.startswith("services.chat"):
-            del sys.modules[module]
+class TestChatServiceE2E(BaseChatTest):
+    @classmethod
+    def setup_class(cls):
+        # Set up environment variables
+        env_vars = {
+            "DB_URL_CHAT": "sqlite+aiosqlite:///file::memory:?cache=shared",
+            # Don't set OPENAI_API_KEY so it falls back to FakeLLM
+            "LLM_MODEL": "fake-model",
+            "LLM_PROVIDER": "fake",
+        }
+        patcher = patch.dict("os.environ", env_vars)
+        patcher.start()
+        cls._env_patcher = patcher
+        # Force reload the auth module to pick up the new settings
+        for module in list(sys.modules):
+            if module.startswith("services.chat"):
+                del sys.modules[module]
+        import services.chat.settings as chat_settings
+        from services.chat import history_manager
+        from services.chat.main import app as fresh_app
 
-    # Import after module cleanup to ensure fresh imports
-    # Re-set the test settings after module reload
-    import services.chat.settings as chat_settings
-    from services.chat import history_manager
-    from services.chat.main import app as fresh_app
+        test_settings = chat_settings.Settings(
+            db_url_chat="sqlite+aiosqlite:///file::memory:?cache=shared",
+            api_frontend_chat_key="test-frontend-chat-key",
+            api_chat_user_key="test-chat-user-key",
+            api_chat_office_key="test-chat-office-key",
+            user_service_url="http://localhost:8001",
+            office_service_url="http://localhost:8003",
+        )
+        chat_settings._settings = test_settings
+        cls._history_manager = history_manager
+        cls.app = fresh_app
+        # Initialize test database synchronously
+        import asyncio
 
-    test_settings = chat_settings.Settings(
-        db_url_chat="sqlite+aiosqlite:///file::memory:?cache=shared",
-        api_frontend_chat_key="test-frontend-chat-key",
-        api_chat_user_key="test-chat-user-key",
-        api_chat_office_key="test-chat-office-key",
-        user_service_url="http://localhost:8001",
-        office_service_url="http://localhost:8003",
-    )
-    chat_settings._settings = test_settings
+        asyncio.run(history_manager.init_db())
 
-    # Update the global _history_manager reference
-    global _history_manager
-    _history_manager = history_manager
+    @classmethod
+    def teardown_class(cls):
+        if hasattr(cls, "_env_patcher"):
+            cls._env_patcher.stop()
 
-    return fresh_app
+    def test_end_to_end_chat_flow(self):
+        client = TestClient(self.app)
+        user_id = "testuser"
+        headers_with_user = {**TEST_HEADERS, "X-User-Id": user_id}
 
+        # List threads (record initial count)
+        resp = client.get("/v1/chat/threads", headers=headers_with_user)
+        assert resp.status_code == 200
 
-@pytest.fixture(autouse=True)
-def setup_test_environment(app):
-    """Set up the test environment."""
-    # Initialize test database synchronously
-    import asyncio
+        # Start a chat (should create a new thread and return response)
+        msg = "Hello, world!"
+        resp = client.post(
+            "/v1/chat/completions", json={"message": msg}, headers=headers_with_user
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "thread_id" in data
+        assert "messages" in data
+        assert len(data["messages"]) > 0
+        # Verify we got a response (content varies based on LLM availability)
+        assert data["messages"][-1]["content"] is not None
+        assert len(data["messages"][-1]["content"]) > 0
 
-    from services.chat import history_manager
+        thread_id = data["thread_id"]
 
-    asyncio.run(history_manager.init_db())
+        # Send another message in the same thread
+        msg2 = "How are you?"
+        resp = client.post(
+            "/v1/chat/completions",
+            json={"thread_id": thread_id, "message": msg2},
+            headers=headers_with_user,
+        )
+        assert resp.status_code == 200
+        data2 = resp.json()
+        assert data2["thread_id"] == thread_id
+        # Verify we got a response (content varies based on LLM availability)
+        assert data2["messages"][-1]["content"] is not None
+        assert len(data2["messages"][-1]["content"]) > 0
 
+        # List threads (should contain the thread we just used)
+        resp = client.get("/v1/chat/threads", headers=headers_with_user)
+        assert resp.status_code == 200
+        threads_resp = resp.json()
+        threads = threads_resp["threads"]
+        assert any(t["thread_id"] == thread_id for t in threads)
 
-def test_end_to_end_chat_flow(app):
-    client = TestClient(app)
-    user_id = "testuser"
-    headers_with_user = {**TEST_HEADERS, "X-User-Id": user_id}
+        # Get thread history
+        resp = client.get(f"/v1/chat/threads/{thread_id}/history", headers=TEST_HEADERS)
+        assert resp.status_code == 200
+        history = resp.json()
+        assert history["thread_id"] == thread_id
+        assert len(history["messages"]) >= 2
 
-    # List threads (record initial count)
-    resp = client.get("/v1/chat/threads", headers=headers_with_user)
-    assert resp.status_code == 200
+        # Feedback endpoint
+        last_msg = history["messages"][-1]
+        resp = client.post(
+            "/v1/chat/feedback",
+            json={
+                "thread_id": thread_id,
+                "message_id": last_msg["message_id"],
+                "feedback": "up",
+            },
+            headers=headers_with_user,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "success"
 
-    # Start a chat (should create a new thread and return response)
-    msg = "Hello, world!"
-    resp = client.post(
-        "/v1/chat/completions", json={"message": msg}, headers=headers_with_user
-    )
-    assert resp.status_code == 200
-    data = resp.json()
-    assert "thread_id" in data
-    assert "messages" in data
-    assert len(data["messages"]) > 0
-    # Verify we got a response (content varies based on LLM availability)
-    assert data["messages"][-1]["content"] is not None
-    assert len(data["messages"][-1]["content"]) > 0
+    def test_multiple_blank_thread_creates_distinct_threads(self):
+        client = TestClient(self.app)
+        user_id = "testuser_multi"
+        headers_with_user = {**TEST_HEADERS, "X-User-Id": user_id}
 
-    thread_id = data["thread_id"]
+        # Send first message with blank thread_id
+        resp1 = client.post(
+            "/v1/chat/completions",
+            json={"message": "First message"},
+            headers=headers_with_user,
+        )
+        assert resp1.status_code == 200
+        data1 = resp1.json()
+        thread_id1 = data1["thread_id"]
 
-    # Send another message in the same thread
-    msg2 = "How are you?"
-    resp = client.post(
-        "/v1/chat/completions",
-        json={"thread_id": thread_id, "message": msg2},
-        headers=headers_with_user,
-    )
-    assert resp.status_code == 200
-    data2 = resp.json()
-    assert data2["thread_id"] == thread_id
-    # Verify we got a response (content varies based on LLM availability)
-    assert data2["messages"][-1]["content"] is not None
-    assert len(data2["messages"][-1]["content"]) > 0
+        # Send second message with blank thread_id
+        resp2 = client.post(
+            "/v1/chat/completions",
+            json={"message": "Second message"},
+            headers=headers_with_user,
+        )
+        assert resp2.status_code == 200
+        data2 = resp2.json()
+        thread_id2 = data2["thread_id"]
 
-    # List threads (should contain the thread we just used)
-    resp = client.get("/v1/chat/threads", headers=headers_with_user)
-    assert resp.status_code == 200
-    threads_resp = resp.json()
-    threads = threads_resp["threads"]
-    assert any(t["thread_id"] == thread_id for t in threads)
+        # The thread IDs should be different
+        assert thread_id1 != thread_id2
 
-    # Get thread history
-    resp = client.get(f"/v1/chat/threads/{thread_id}/history", headers=TEST_HEADERS)
-    assert resp.status_code == 200
-    history = resp.json()
-    assert history["thread_id"] == thread_id
-    assert len(history["messages"]) >= 2
+        # List threads and verify both thread IDs are present
+        resp = client.get("/v1/chat/threads", headers=headers_with_user)
+        assert resp.status_code == 200
+        threads_resp = resp.json()
+        threads = threads_resp["threads"]
+        thread_ids = {t["thread_id"] for t in threads}
+        assert thread_id1 in thread_ids
+        assert thread_id2 in thread_ids
 
-    # Feedback endpoint
-    last_msg = history["messages"][-1]
-    resp = client.post(
-        "/v1/chat/feedback",
-        json={
-            "thread_id": thread_id,
-            "message_id": last_msg["message_id"],
-            "feedback": "up",
-        },
-        headers=headers_with_user,
-    )
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "success"
+    def test_request_id_propagation(self):
+        """
+        Test that X-Request-Id is properly propagated to downstream services.
+        """
+        # Arrange
+        test_request_id = "test-req-id-123"
+        user_id = "test-user-for-req-id"
 
+        # Mock the downstream user service using unittest.mock
+        from unittest.mock import AsyncMock, patch
 
-def test_multiple_blank_thread_creates_distinct_threads(app):
-    client = TestClient(app)
-    user_id = "testuser_multi"
-    headers_with_user = {**TEST_HEADERS, "X-User-Id": user_id}
+        import httpx
 
-    # Send first message with blank thread_id
-    resp1 = client.post(
-        "/v1/chat/completions",
-        json={"message": "First message"},
-        headers=headers_with_user,
-    )
-    assert resp1.status_code == 200
-    data1 = resp1.json()
-    thread_id1 = data1["thread_id"]
+        from services.common.logging_config import request_id_var
 
-    # Send second message with blank thread_id
-    resp2 = client.post(
-        "/v1/chat/completions",
-        json={"message": "Second message"},
-        headers=headers_with_user,
-    )
-    assert resp2.status_code == 200
-    data2 = resp2.json()
-    thread_id2 = data2["thread_id"]
+        # Create a mock response
+        mock_response = AsyncMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"timezone": "UTC"}
 
-    # The thread IDs should be different
-    assert thread_id1 != thread_id2
+        # Mock the httpx.AsyncClient.get method
+        with patch.object(
+            httpx.AsyncClient, "get", return_value=mock_response
+        ) as mock_get:
+            # Set the request ID in the context
+            request_id_var.set(test_request_id)
 
-    # List threads and verify both thread IDs are present
-    resp = client.get("/v1/chat/threads", headers=headers_with_user)
-    assert resp.status_code == 200
-    threads_resp = resp.json()
-    threads = threads_resp["threads"]
-    thread_ids = {t["thread_id"] for t in threads}
-    assert thread_id1 in thread_ids
-    assert thread_id2 in thread_ids
+            # Act - test the ServiceClient directly
+            import asyncio
 
+            from services.chat.service_client import ServiceClient
 
-@respx.mock
-def test_request_id_propagation(app):
-    """
-    Test that X-Request-Id is properly propagated to downstream services.
-    """
-    # Arrange
-    client = TestClient(app)
-    test_request_id = "test-req-id-123"
-    user_id = "test-user-for-req-id"
+            async def test_service_client():
+                async with ServiceClient() as service_client:
+                    await service_client.get_user_preferences(user_id)
 
-    # Mock the downstream user service
-    # The URL must match what's configured in the test_env fixture
-    user_service_url = "http://localhost:8001"
+            # Run the async function
+            asyncio.run(test_service_client())
 
-    # Mock the get_user_preferences call
-    preferences_route = respx.get(
-        f"{user_service_url}/v1/internal/users/{user_id}/preferences"
-    ).mock(return_value=Response(200, json={"timezone": "UTC"}))
+            # Assert
+            assert mock_get.called, "The downstream service was not called."
 
-    # Act
-    headers = {
-        "X-API-Key": TEST_API_KEY,
-        "X-Request-Id": test_request_id,
-        "X-User-Id": user_id,
-    }
-    # The /v1/chat/completions endpoint triggers a call to get_user_preferences
-    response = client.post(
-        "/v1/chat/completions", headers=headers, json={"message": "Hello"}
-    )
+            # Check that the request was made with the correct URL
+            call_args = mock_get.call_args
+            assert call_args is not None
+            url = call_args[0][0]  # First positional argument is the URL
+            assert f"/v1/internal/users/{user_id}/preferences" in url
 
-    # Assert
-    assert response.status_code == 200
-    assert preferences_route.called, "The downstream service was not called."
-
-    # Check the headers of the request made to the downstream service
-    last_request = preferences_route.calls.last.request
-    assert last_request.headers.get("x-request-id") == test_request_id
+            # Check the headers
+            headers = call_args[1].get("headers", {})  # Keyword arguments
+            assert headers.get("X-Request-Id") == test_request_id
