@@ -37,8 +37,8 @@ class CachedToken:
     """Internal class for storing cached tokens with TTL"""
 
     def __init__(
-        self, token_data: TokenData, ttl_seconds: int = 900
-    ):  # 15 minutes default
+        self, token_data: TokenData, ttl_seconds: int = 300
+    ) -> None:  # 5 minutes default
         self.token_data = token_data
         self.expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
 
@@ -111,7 +111,7 @@ class TokenManager:
             return None
 
     async def _set_cache(
-        self, cache_key: str, token_data: TokenData, ttl_seconds: int = 900
+        self, cache_key: str, token_data: TokenData, ttl_seconds: int = 300
     ) -> None:
         """Store token in cache with TTL"""
         async with self._cache_lock:
