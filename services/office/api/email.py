@@ -7,14 +7,13 @@ Internal/service endpoints, if any, should be under /internal and require API ke
 """
 
 import asyncio
-import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, cast
 
 from fastapi import APIRouter, Depends, Path, Query, Request
 
 from services.common.http_errors import NotFoundError, ServiceError, ValidationError
-from services.common.logging_config import get_logger
+from services.common.logging_config import get_logger, request_id_var
 from services.office.core.api_client_factory import APIClientFactory
 from services.office.core.auth import service_permission_required
 from services.office.core.cache_manager import cache_manager, generate_cache_key
@@ -55,6 +54,17 @@ async def get_user_id_from_gateway(request: Request) -> str:
     if not user_id:
         raise ValidationError(message="X-User-Id header is required", field="X-User-Id")
     return user_id
+
+
+def get_request_id() -> str:
+    """
+    Get the current request ID from context or generate a fallback.
+    """
+    request_id = request_id_var.get()
+    if not request_id or request_id == "uninitialized":
+        # Fallback for cases where middleware hasn't set the context
+        return "no-request-id"
+    return request_id
 
 
 @router.get("/messages", response_model=EmailMessageList)
@@ -108,11 +118,11 @@ async def get_email_messages(
         EmailMessageList with aggregated email messages
     """
     user_id = await get_user_id_from_gateway(request)
-    request_id = str(uuid.uuid4())
+    request_id = get_request_id()
     start_time = datetime.now(timezone.utc)
 
     logger.info(
-        f"[{request_id}] Email messages request: user_id={user_id}, providers={providers}, limit={limit}"
+        f"Email messages request: user_id={user_id}, providers={providers}, limit={limit}"
     )
 
     try:
@@ -130,7 +140,7 @@ async def get_email_messages(
             if provider_name.lower() in ["google", "microsoft"]:
                 valid_providers.append(provider_name.lower())
             else:
-                logger.warning(f"[{request_id}] Invalid provider: {provider_name}")
+                logger.warning(f"Invalid provider: {provider_name}")
 
         if not valid_providers:
             raise ValidationError(message="No valid providers specified")
@@ -151,7 +161,7 @@ async def get_email_messages(
         # Check cache first
         cached_result = await cache_manager.get_from_cache(cache_key)
         if cached_result and not no_cache:
-            logger.info(f"[{request_id}] Cache hit for email messages")
+            logger.info("Cache hit for email messages")
             return EmailMessageList(
                 success=True, data=cached_result, cache_hit=True, request_id=request_id
             )
@@ -189,9 +199,7 @@ async def get_email_messages(
             provider_name = valid_providers[i]
 
             if isinstance(result, Exception):
-                logger.error(
-                    f"[{request_id}] Provider {provider_name} failed: {result}"
-                )
+                logger.error(f"Provider {provider_name} failed: {result}")
                 provider_errors[provider_name] = str(result)
             elif result is not None and not isinstance(result, BaseException):
                 try:
@@ -200,12 +208,10 @@ async def get_email_messages(
                     aggregated_messages.extend(messages)
                     providers_used.append(provider_name)
                     logger.info(
-                        f"[{request_id}] Provider {provider_name} returned {len(messages)} messages"
+                        f"Provider {provider_name} returned {len(messages)} messages"
                     )
                 except (TypeError, ValueError) as e:
-                    logger.error(
-                        f"[{request_id}] Invalid result format from {provider_name}: {e}"
-                    )
+                    logger.error(f"Invalid result format from {provider_name}: {e}")
                     provider_errors[provider_name] = f"Invalid result format: {e}"
 
         # Sort messages by date (newest first)
@@ -236,7 +242,7 @@ async def get_email_messages(
             await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=900)
         else:
             logger.info(
-                f"[{request_id}] Not caching response due to no successful providers",
+                "Not caching response due to no successful providers",
                 extra={
                     "providers_used": providers_used,
                     "provider_errors": provider_errors,
@@ -247,9 +253,7 @@ async def get_email_messages(
         end_time = datetime.now(timezone.utc)
         response_time_ms = int((end_time - start_time).total_seconds() * 1000)
 
-        logger.info(
-            f"[{request_id}] Email messages request completed in {response_time_ms}ms"
-        )
+        logger.info(f"Email messages request completed in {response_time_ms}ms")
 
         return EmailMessageList(
             success=True,
@@ -264,7 +268,7 @@ async def get_email_messages(
     except ValidationError:
         raise
     except Exception as e:
-        logger.error(f"[{request_id}] Email messages request failed: {e}")
+        logger.error(f"Email messages request failed: {e}")
         raise ServiceError(message=f"Failed to fetch email messages: {str(e)}")
 
 
@@ -296,12 +300,10 @@ async def get_email_folders(
         EmailFolderList with aggregated email folders
     """
     user_id = await get_user_id_from_gateway(request)
-    request_id = str(uuid.uuid4())
+    request_id = get_request_id()
     start_time = datetime.now(timezone.utc)
 
-    logger.info(
-        f"[{request_id}] Email folders request: user_id={user_id}, providers={providers}"
-    )
+    logger.info(f"Email folders request: user_id={user_id}, providers={providers}")
 
     try:
         # Default to all providers if not specified
@@ -314,7 +316,7 @@ async def get_email_folders(
             if provider_name.lower() in ["google", "microsoft"]:
                 valid_providers.append(provider_name.lower())
             else:
-                logger.warning(f"[{request_id}] Invalid provider: {provider_name}")
+                logger.warning(f"Invalid provider: {provider_name}")
 
         if not valid_providers:
             raise ValidationError(message="No valid providers specified")
@@ -329,7 +331,7 @@ async def get_email_folders(
         # Check cache first
         cached_result = await cache_manager.get_from_cache(cache_key)
         if cached_result and not no_cache:
-            logger.info(f"[{request_id}] Cache hit for email folders")
+            logger.info("Cache hit for email folders")
             return EmailFolderList(
                 success=True, data=cached_result, cache_hit=True, request_id=request_id
             )
@@ -356,9 +358,7 @@ async def get_email_folders(
             provider_name = valid_providers[i]
 
             if isinstance(result, Exception):
-                logger.error(
-                    f"[{request_id}] Provider {provider_name} failed: {result}"
-                )
+                logger.error(f"Provider {provider_name} failed: {result}")
                 provider_errors[provider_name] = str(result)
             elif result is not None and not isinstance(result, BaseException):
                 try:
@@ -367,12 +367,10 @@ async def get_email_folders(
                     aggregated_folders.extend(folders)
                     providers_used.append(provider_name)
                     logger.info(
-                        f"[{request_id}] Provider {provider_name} returned {len(folders)} folders"
+                        f"Provider {provider_name} returned {len(folders)} folders"
                     )
                 except (TypeError, ValueError) as e:
-                    logger.error(
-                        f"[{request_id}] Invalid result format from {provider_name}: {e}"
-                    )
+                    logger.error(f"Invalid result format from {provider_name}: {e}")
                     provider_errors[provider_name] = f"Invalid result format: {e}"
 
         # Remove duplicates based on label
@@ -401,7 +399,7 @@ async def get_email_folders(
         end_time = datetime.now(timezone.utc)
         duration = (end_time - start_time).total_seconds()
         logger.info(
-            f"[{request_id}] Email folders request completed in {duration:.2f}s: "
+            f"Email folders request completed in {duration:.2f}s: "
             f"{len(unique_folders)} folders from {len(providers_used)} providers"
         )
 
@@ -410,7 +408,7 @@ async def get_email_folders(
         )
 
     except Exception as e:
-        logger.error(f"[{request_id}] Error fetching email folders: {e}")
+        logger.error(f"Error fetching email folders: {e}")
         raise ServiceError(
             message="Failed to fetch email folders",
             details={"error": str(e)},
@@ -441,11 +439,11 @@ async def get_email_message(
         EmailMessageList with the specific email message
     """
     user_id = await get_user_id_from_gateway(request)
-    request_id = str(uuid.uuid4())
+    request_id = get_request_id()
     start_time = datetime.now(timezone.utc)
 
     logger.info(
-        f"[{request_id}] Email message detail request: message_id={message_id}, user_id={user_id}"
+        f"Email message detail request: message_id={message_id}, user_id={user_id}"
     )
 
     try:
@@ -461,7 +459,7 @@ async def get_email_message(
         # Check cache first
         cached_result = await cache_manager.get_from_cache(cache_key)
         if cached_result:
-            logger.info(f"[{request_id}] Cache hit for message detail")
+            logger.info("Cache hit for message detail")
             return EmailMessageList(
                 success=True, data=cached_result, cache_hit=True, request_id=request_id
             )
@@ -492,9 +490,7 @@ async def get_email_message(
         end_time = datetime.now(timezone.utc)
         response_time_ms = int((end_time - start_time).total_seconds() * 1000)
 
-        logger.info(
-            f"[{request_id}] Message detail request completed in {response_time_ms}ms"
-        )
+        logger.info(f"Message detail request completed in {response_time_ms}ms")
 
         return EmailMessageList(
             success=True,
@@ -509,7 +505,7 @@ async def get_email_message(
     except ValidationError:
         raise
     except Exception as e:
-        logger.error(f"[{request_id}] Message detail request failed: {e}")
+        logger.error(f"Message detail request failed: {e}")
         raise ServiceError(message=f"Failed to fetch message: {str(e)}")
 
 
@@ -533,11 +529,11 @@ async def send_email(
         SendEmailResponse with sent message details
     """
     user_id = await get_user_id_from_gateway(request)
-    request_id = str(uuid.uuid4())
+    request_id = get_request_id()
     start_time = datetime.now(timezone.utc)
 
     logger.info(
-        f"[{request_id}] Send email request: user_id={user_id}, "
+        f"Send email request: user_id={user_id}, "
         f"to={[addr.email for addr in email_data.to]}, subject='{email_data.subject}'"
     )
 
@@ -594,9 +590,7 @@ async def send_email(
         end_time = datetime.now(timezone.utc)
         response_time_ms = int((end_time - start_time).total_seconds() * 1000)
 
-        logger.info(
-            f"[{request_id}] Email sent successfully in {response_time_ms}ms via {provider}"
-        )
+        logger.info(f"Email sent successfully in {response_time_ms}ms via {provider}")
 
         return SendEmailResponse(
             success=True,
@@ -607,7 +601,7 @@ async def send_email(
     except ValidationError:
         raise
     except Exception as e:
-        logger.error(f"[{request_id}] Send email request failed: {e}")
+        logger.error(f"Send email request failed: {e}")
         raise ServiceError(message=f"Failed to send email: {str(e)}")
 
 
@@ -651,13 +645,11 @@ async def send_gmail_message(
         # Send the message
         result = await client.send_message(message_content)
 
-        logger.info(
-            f"[{request_id}] Gmail message sent successfully: {result.get('id')}"
-        )
+        logger.info(f"Gmail message sent successfully: {result.get('id')}")
         return result
 
     except Exception as e:
-        logger.error(f"[{request_id}] Failed to send Gmail message: {e}")
+        logger.error(f"Failed to send Gmail message: {e}")
         raise
 
 
@@ -734,11 +726,11 @@ async def send_outlook_message(
         # We'll return a simple confirmation
         result = {"id": f"outlook_sent_{request_id}", "status": "sent"}
 
-        logger.info(f"[{request_id}] Outlook message sent successfully")
+        logger.info("Outlook message sent successfully")
         return result
 
     except Exception as e:
-        logger.error(f"[{request_id}] Failed to send Outlook message: {e}")
+        logger.error(f"Failed to send Outlook message: {e}")
         raise
 
 
@@ -923,12 +915,12 @@ async def fetch_provider_emails(
                 raise ValidationError(message=f"Unsupported provider: {provider}")
 
             logger.info(
-                f"[{request_id}] Successfully fetched {len(normalized_messages)} messages from {provider}"
+                f"Successfully fetched {len(normalized_messages)} messages from {provider}"
             )
             return normalized_messages, provider
 
     except Exception as e:
-        logger.error(f"[{request_id}] Error fetching emails from {provider}: {e}")
+        logger.error(f"Error fetching emails from {provider}: {e}")
         raise
 
 
@@ -1110,7 +1102,7 @@ async def fetch_provider_folders(
         return normalized_folders, provider
 
     except Exception as e:
-        logger.error(f"[{request_id}] Error fetching folders from {provider}: {e}")
+        logger.error(f"Error fetching folders from {provider}: {e}")
         raise
 
 
@@ -1183,7 +1175,7 @@ async def fetch_single_message(
 
     except Exception as e:
         logger.error(
-            f"[{request_id}] Failed to fetch message {original_message_id} from {provider}: {e}"
+            f"Failed to fetch message {original_message_id} from {provider}: {e}"
         )
         return None
 
