@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useShipmentDataCollectionConsent } from '@/contexts/settings-context';
 import { useShipmentDetection } from '@/hooks/use-shipment-detection';
 import { PACKAGE_STATUS, PACKAGE_STATUS_OPTIONS, PackageStatus } from '@/lib/package-status';
-import { DataCollectionRequest, PackageResponse, shipmentsClient } from '@/lib/shipments-client';
+import { DataCollectionRequest, PackageCreateRequest, PackageResponse, shipmentsClient } from '@/lib/shipments-client';
 import { EmailMessage } from '@/types/office-service';
 import { CheckCircle, Info, Loader2, Package, Truck } from 'lucide-react';
 import { useSession } from 'next-auth/react';
@@ -64,6 +64,14 @@ const getReadableStatus = (status: PackageStatus): string => {
     return statusOption ? statusOption.label : status;
 };
 
+// Helper function to get update message for a field
+const getUpdateMessage = (fieldName: keyof PackageFormData, currentValue: string, originalValue?: string): string | null => {
+    if (!originalValue || currentValue === originalValue) {
+        return null;
+    }
+    return `Will be updated from: ${originalValue}`;
+};
+
 const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
     isOpen,
     onClose,
@@ -78,6 +86,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
     const [isParsing, setIsParsing] = useState(false);
     const [isCheckingPackage, setIsCheckingPackage] = useState(false);
     const [existingPackage, setExistingPackage] = useState<PackageResponse | null>(null);
+    const [originalPackageData, setOriginalPackageData] = useState<PackageResponse | null>(null);
     const [formData, setFormData] = useState<PackageFormData>({
         tracking_number: '',
         carrier: 'unknown',
@@ -104,6 +113,9 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
 
             // If existing package found, update form data with existing package info
             if (existingPkg) {
+                // Store the original package data for comparison
+                setOriginalPackageData(existingPkg);
+
                 setFormData(prev => ({
                     ...prev,
                     tracking_number: existingPkg.tracking_number,
@@ -226,6 +238,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
         if (field === 'tracking_number' && value.trim()) {
             // Clear existing package when tracking number changes
             setExistingPackage(null);
+            setOriginalPackageData(null);
             setIsCheckingPackage(true);
 
             // Debounce the lookup to avoid too many API calls
@@ -315,11 +328,34 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                     description: `New tracking event from email - Status: ${formData.status}`,
                 });
 
-                // Optionally update delivery date if provided
-                if (formData.expected_delivery) {
-                    await shipmentsClient.updatePackage(existingPackage.id, {
-                        estimated_delivery: formData.expected_delivery,
-                    });
+                // Check if any package fields need to be updated
+                const packageUpdates: Partial<PackageCreateRequest> = {};
+
+                // Check each field and add to updates if different from original
+                if (originalPackageData) {
+                    if (formData.expected_delivery !== (originalPackageData.estimated_delivery ? new Date(originalPackageData.estimated_delivery).toISOString().split('T')[0] : '')) {
+                        packageUpdates.estimated_delivery = formData.expected_delivery;
+                    }
+                    if (formData.recipient_name !== (originalPackageData.recipient_name || '')) {
+                        packageUpdates.recipient_name = formData.recipient_name;
+                    }
+                    if (formData.shipper_name !== (originalPackageData.shipper_name || '')) {
+                        packageUpdates.shipper_name = formData.shipper_name;
+                    }
+                    if (formData.package_description !== (originalPackageData.package_description || '')) {
+                        packageUpdates.package_description = formData.package_description;
+                    }
+                    if (formData.order_number !== (originalPackageData.order_number || '')) {
+                        packageUpdates.order_number = formData.order_number;
+                    }
+                    if (formData.tracking_link !== (originalPackageData.tracking_link || '')) {
+                        packageUpdates.tracking_link = formData.tracking_link;
+                    }
+                }
+
+                // Update package if there are any changes
+                if (Object.keys(packageUpdates).length > 0) {
+                    await shipmentsClient.updatePackage(existingPackage.id, packageUpdates);
                 }
             } else {
                 // Create new package
@@ -457,7 +493,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
 
 
                                     {/* Tracking Number */}
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-3 p-1">
                                         <Label htmlFor="tracking_number" className="w-24 text-sm font-medium">Tracking Number</Label>
                                         <Input
                                             id="tracking_number"
@@ -492,7 +528,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                     )}
 
                                     {/* Carrier */}
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-3 p-1">
                                         <Label htmlFor="carrier" className="w-24 text-sm font-medium">Carrier</Label>
                                         <Select
                                             value={formData.carrier}
@@ -512,7 +548,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                     </div>
 
                                     {/* Status */}
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-3 p-1">
                                         <Label htmlFor="status" className="w-24 text-sm font-medium">Status</Label>
                                         <Select
                                             value={formData.status}
@@ -532,7 +568,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                     </div>
 
                                     {/* Expected Delivery */}
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-3 p-1">
                                         <Label htmlFor="expected_delivery" className="w-24 text-sm font-medium">Expected Delivery</Label>
                                         <Input
                                             id="expected_delivery"
@@ -550,7 +586,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                     )}
 
                                     {/* Order Number */}
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-3 p-1">
                                         <Label htmlFor="order_number" className="w-24 text-sm font-medium">Order Number</Label>
                                         <Input
                                             id="order_number"
@@ -560,9 +596,14 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                             className="flex-1"
                                         />
                                     </div>
+                                    {existingPackage && originalPackageData?.order_number && formData.order_number !== originalPackageData.order_number && (
+                                        <div className="text-xs text-blue-600 ml-28">
+                                            Will be updated from: {originalPackageData.order_number}
+                                        </div>
+                                    )}
 
                                     {/* Package Description */}
-                                    <div className="flex items-start gap-3">
+                                    <div className="flex items-start gap-3 p-1">
                                         <Label htmlFor="package_description" className="w-24 text-sm font-medium mt-2">Description</Label>
                                         <Textarea
                                             id="package_description"
@@ -573,9 +614,14 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                             className="flex-1"
                                         />
                                     </div>
+                                    {existingPackage && originalPackageData?.package_description && formData.package_description !== originalPackageData.package_description && (
+                                        <div className="text-xs text-blue-600 ml-28">
+                                            Will be updated from: {originalPackageData.package_description}
+                                        </div>
+                                    )}
 
                                     {/* Recipient Name */}
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-3 p-1">
                                         <Label htmlFor="recipient_name" className="w-24 text-sm font-medium">Recipient</Label>
                                         <Input
                                             id="recipient_name"
@@ -585,9 +631,14 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                             className="flex-1"
                                         />
                                     </div>
+                                    {existingPackage && originalPackageData?.recipient_name && formData.recipient_name !== originalPackageData.recipient_name && (
+                                        <div className="text-xs text-blue-600 ml-28">
+                                            Will be updated from: {originalPackageData.recipient_name}
+                                        </div>
+                                    )}
 
                                     {/* Shipper Name */}
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-3 p-1">
                                         <Label htmlFor="shipper_name" className="w-24 text-sm font-medium">Shipper</Label>
                                         <Input
                                             id="shipper_name"
@@ -597,9 +648,14 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                             className="flex-1"
                                         />
                                     </div>
+                                    {existingPackage && originalPackageData?.shipper_name && formData.shipper_name !== originalPackageData.shipper_name && (
+                                        <div className="text-xs text-blue-600 ml-28">
+                                            Will be updated from: {originalPackageData.shipper_name}
+                                        </div>
+                                    )}
 
                                     {/* Tracking Link */}
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-3 p-1">
                                         <Label htmlFor="tracking_link" className="w-24 text-sm font-medium">Tracking Link</Label>
                                         <Input
                                             id="tracking_link"
@@ -610,6 +666,11 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                             className="flex-1"
                                         />
                                     </div>
+                                    {existingPackage && originalPackageData?.tracking_link && formData.tracking_link !== originalPackageData.tracking_link && (
+                                        <div className="text-xs text-blue-600 ml-28">
+                                            Will be updated from: {originalPackageData.tracking_link}
+                                        </div>
+                                    )}
 
                                     {/* Data Collection Notice */}
                                     {hasDataCollectionConsent && (
