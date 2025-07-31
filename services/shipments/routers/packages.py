@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import or_
 from sqlmodel import select
 
 from services.common.logging_config import get_logger
@@ -78,19 +79,25 @@ async def list_packages(
     query = select(Package).where(Package.user_id == current_user)  # type: ignore
 
     if tracking_number:
-        if carrier:
-            # If carrier is provided, normalize the tracking number with carrier-specific rules
-            normalized_tracking = normalize_tracking_number(tracking_number, carrier)
-            logger.info(f"Searching with normalized tracking: {normalized_tracking} for carrier: {carrier}")
-            query = query.where(Package.tracking_number == normalized_tracking)
-        else:
-            # If no carrier is provided, search for the tracking number without normalization
-            # This allows users to search across all carriers without knowing the exact carrier
-            logger.info(f"Searching with unnormalized tracking: {tracking_number} across all carriers")
-            query = query.where(Package.tracking_number == tracking_number)
+        # Always search by tracking number first, regardless of carrier
+        # This handles cases where the package was created with 'unknown' carrier
+        # but is now being searched with a detected carrier
+        normalized_tracking = normalize_tracking_number(tracking_number, carrier) if carrier else tracking_number
+        logger.info(f"Searching with tracking: {normalized_tracking}")
+        query = query.where(Package.tracking_number == normalized_tracking)
+        
+        # If carrier is provided and not 'unknown', also filter by carrier
+        # But allow 'unknown' carrier in database to match any detected carrier
+        if carrier and carrier != 'unknown':
+            logger.info(f"Also filtering by carrier: {carrier}")
+            query = query.where(
+                or_(
+                    Package.carrier == carrier,
+                    Package.carrier == 'unknown'
+                )
+            )
 
-    if carrier:
-        query = query.where(Package.carrier == carrier)
+    # Note: Carrier filtering is now handled above in the tracking number search logic
 
     result = await session.execute(query)
     packages = result.scalars().all()
