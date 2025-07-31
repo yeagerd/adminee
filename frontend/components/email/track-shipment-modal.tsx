@@ -58,6 +58,12 @@ const validatePackageStatus = (statusString: string): PackageStatus => {
     return PACKAGE_STATUS.PENDING;
 };
 
+// Helper function to get readable status label
+const getReadableStatus = (status: PackageStatus): string => {
+    const statusOption = PACKAGE_STATUS_OPTIONS.find(option => option.value === status);
+    return statusOption ? statusOption.label : status;
+};
+
 const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
     isOpen,
     onClose,
@@ -225,8 +231,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
             // Debounce the lookup to avoid too many API calls
             setTimeout(async () => {
                 try {
-                    const packageData = await checkExistingPackage(value.trim(), formData.carrier);
-                    setExistingPackage(packageData);
+                    await checkExistingPackage(value.trim(), formData.carrier);
                 } catch (error) {
                     console.error('Error checking existing package:', error);
                     setExistingPackage(null);
@@ -452,14 +457,15 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
 
 
                                     {/* Tracking Number */}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="tracking_number">Tracking Number</Label>
+                                    <div className="flex items-center gap-3">
+                                        <Label htmlFor="tracking_number" className="w-24 text-sm font-medium">Tracking Number</Label>
                                         <Input
                                             id="tracking_number"
                                             value={formData.tracking_number}
                                             onChange={(e) => handleInputChange('tracking_number', e.target.value)}
                                             placeholder="Enter tracking number"
                                             required
+                                            className="flex-1"
                                         />
                                     </div>
 
@@ -474,7 +480,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                             ) : existingPackage ? (
                                                 <div className="flex items-center gap-1 text-green-600">
                                                     <CheckCircle className="h-3 w-3" />
-                                                    Existing package found
+                                                    Existing package found.  Status: {getReadableStatus(existingPackage.status)}{existingPackage.estimated_delivery ? `.  Expected: ${new Date(existingPackage.estimated_delivery).toLocaleDateString()}` : ''}
                                                 </div>
                                             ) : (
                                                 <div className="flex items-center gap-1 text-blue-600">
@@ -486,13 +492,13 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                     )}
 
                                     {/* Carrier */}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="carrier">Carrier</Label>
+                                    <div className="flex items-center gap-3">
+                                        <Label htmlFor="carrier" className="w-24 text-sm font-medium">Carrier</Label>
                                         <Select
                                             value={formData.carrier}
                                             onValueChange={(value) => handleInputChange('carrier', value)}
                                         >
-                                            <SelectTrigger>
+                                            <SelectTrigger className="flex-1">
                                                 <SelectValue placeholder="Select carrier" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -506,13 +512,13 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                     </div>
 
                                     {/* Status */}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="status">Status</Label>
+                                    <div className="flex items-center gap-3">
+                                        <Label htmlFor="status" className="w-24 text-sm font-medium">Status</Label>
                                         <Select
                                             value={formData.status}
                                             onValueChange={(value) => handleInputChange('status', value)}
                                         >
-                                            <SelectTrigger>
+                                            <SelectTrigger className="flex-1">
                                                 <SelectValue placeholder="Select status" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -526,14 +532,15 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                     </div>
 
                                     {/* Expected Delivery */}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="expected_delivery">Expected Delivery Date</Label>
+                                    <div className="flex items-center gap-3">
+                                        <Label htmlFor="expected_delivery" className="w-24 text-sm font-medium">Expected Delivery</Label>
                                         <Input
                                             id="expected_delivery"
                                             value={formData.expected_delivery}
                                             onChange={(e) => handleInputChange('expected_delivery', e.target.value)}
                                             placeholder="YYYY-MM-DD (optional)"
                                             type="date"
+                                            className="flex-1"
                                         />
                                     </div>
 
@@ -543,59 +550,64 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                     )}
 
                                     {/* Order Number */}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="order_number">Order Number</Label>
+                                    <div className="flex items-center gap-3">
+                                        <Label htmlFor="order_number" className="w-24 text-sm font-medium">Order Number</Label>
                                         <Input
                                             id="order_number"
                                             value={formData.order_number}
                                             onChange={(e) => handleInputChange('order_number', e.target.value)}
                                             placeholder="Enter order number (optional)"
+                                            className="flex-1"
                                         />
                                     </div>
 
                                     {/* Package Description */}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="package_description">Package Description</Label>
+                                    <div className="flex items-start gap-3">
+                                        <Label htmlFor="package_description" className="w-24 text-sm font-medium mt-2">Description</Label>
                                         <Textarea
                                             id="package_description"
                                             value={formData.package_description}
                                             onChange={(e) => handleInputChange('package_description', e.target.value)}
                                             placeholder="Enter package description (optional)"
                                             rows={2}
+                                            className="flex-1"
                                         />
                                     </div>
 
                                     {/* Recipient Name */}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="recipient_name">Recipient Name</Label>
+                                    <div className="flex items-center gap-3">
+                                        <Label htmlFor="recipient_name" className="w-24 text-sm font-medium">Recipient</Label>
                                         <Input
                                             id="recipient_name"
                                             value={formData.recipient_name}
                                             onChange={(e) => handleInputChange('recipient_name', e.target.value)}
                                             placeholder="Enter recipient name (optional)"
+                                            className="flex-1"
                                         />
                                     </div>
 
                                     {/* Shipper Name */}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="shipper_name">Shipper Name</Label>
+                                    <div className="flex items-center gap-3">
+                                        <Label htmlFor="shipper_name" className="w-24 text-sm font-medium">Shipper</Label>
                                         <Input
                                             id="shipper_name"
                                             value={formData.shipper_name}
                                             onChange={(e) => handleInputChange('shipper_name', e.target.value)}
                                             placeholder="Enter shipper name (optional)"
+                                            className="flex-1"
                                         />
                                     </div>
 
                                     {/* Tracking Link */}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="tracking_link">Tracking Link</Label>
+                                    <div className="flex items-center gap-3">
+                                        <Label htmlFor="tracking_link" className="w-24 text-sm font-medium">Tracking Link</Label>
                                         <Input
                                             id="tracking_link"
                                             value={formData.tracking_link}
                                             onChange={(e) => handleInputChange('tracking_link', e.target.value)}
                                             placeholder="Enter tracking URL (optional)"
                                             type="url"
+                                            className="flex-1"
                                         />
                                     </div>
 
