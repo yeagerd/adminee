@@ -516,17 +516,23 @@ class TestRefreshDeduplication:
 
                         mock_result = Mock()
                         call_count = 0
+
                         def scalar_one_or_none():
                             nonlocal call_count
                             call_count += 1
                             return (
-                                mock_access_token if call_count % 2 == 1 else mock_refresh_token
+                                mock_access_token
+                                if call_count % 2 == 1
+                                else mock_refresh_token
                             )
+
                         mock_result.scalar_one_or_none.side_effect = scalar_one_or_none
                         mock_session_instance.execute.return_value = mock_result
 
                         # Mock token decryption
-                        integration_service.token_encryption.decrypt_token = lambda encrypted_token, user_id: "decrypted_token_value"
+                        integration_service.token_encryption.decrypt_token = (
+                            lambda encrypted_token, user_id: "decrypted_token_value"
+                        )
 
                         # Mock the token storage to avoid encryption issues
                         with patch.object(
@@ -539,21 +545,29 @@ class TestRefreshDeduplication:
                             mock_session_instance.commit = AsyncMock()
 
                             # Execute the refresh
-                            result = await integration_service.refresh_integration_tokens(
-                                user_id=user_id, provider=provider, force=True
+                            result = (
+                                await integration_service.refresh_integration_tokens(
+                                    user_id=user_id, provider=provider, force=True
+                                )
                             )
 
                             # Verify the result
                             assert result.success is True
                             assert result.integration_id == integration.id
                             assert result.provider == provider
-                            
+
                             # Verify that a fallback expiration was used (should be roughly 1 hour from now)
                             assert result.token_expires_at is not None
                             now = datetime.now(timezone.utc)
-                            expected_min = now + timedelta(hours=1, minutes=-1)  # Allow 1 minute tolerance
-                            expected_max = now + timedelta(hours=1, minutes=1)   # Allow 1 minute tolerance
-                            assert expected_min <= result.token_expires_at <= expected_max
+                            expected_min = now + timedelta(
+                                hours=1, minutes=-1
+                            )  # Allow 1 minute tolerance
+                            expected_max = now + timedelta(
+                                hours=1, minutes=1
+                            )  # Allow 1 minute tolerance
+                            assert (
+                                expected_min <= result.token_expires_at <= expected_max
+                            )
 
                             # Verify that the warning was logged
                             # Note: We can't easily verify the log message in this test setup,
@@ -615,17 +629,23 @@ class TestRefreshDeduplication:
 
                         mock_result = Mock()
                         call_count = 0
+
                         def scalar_one_or_none():
                             nonlocal call_count
                             call_count += 1
                             return (
-                                mock_access_token if call_count % 2 == 1 else mock_refresh_token
+                                mock_access_token
+                                if call_count % 2 == 1
+                                else mock_refresh_token
                             )
+
                         mock_result.scalar_one_or_none.side_effect = scalar_one_or_none
                         mock_session_instance.execute.return_value = mock_result
 
                         # Mock token decryption
-                        integration_service.token_encryption.decrypt_token = lambda encrypted_token, user_id: "decrypted_token_value"
+                        integration_service.token_encryption.decrypt_token = (
+                            lambda encrypted_token, user_id: "decrypted_token_value"
+                        )
 
                         # Mock the token storage to avoid encryption issues
                         with patch.object(
@@ -638,8 +658,10 @@ class TestRefreshDeduplication:
                             mock_session_instance.commit = AsyncMock()
 
                             # Execute the refresh - this should not deadlock
-                            result = await integration_service.refresh_integration_tokens(
-                                user_id=user_id, provider=provider, force=True
+                            result = (
+                                await integration_service.refresh_integration_tokens(
+                                    user_id=user_id, provider=provider, force=True
+                                )
                             )
 
                             # Verify the result

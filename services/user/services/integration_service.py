@@ -628,7 +628,9 @@ class IntegrationService:
             elif new_tokens.get("expires_at"):
                 if isinstance(new_tokens["expires_at"], str):
                     try:
-                        new_expires_at = datetime.fromisoformat(new_tokens["expires_at"])
+                        new_expires_at = datetime.fromisoformat(
+                            new_tokens["expires_at"]
+                        )
                         if new_expires_at.tzinfo is None:
                             new_expires_at = new_expires_at.replace(tzinfo=timezone.utc)
                     except (ValueError, TypeError) as e:
