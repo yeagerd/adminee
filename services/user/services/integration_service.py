@@ -9,11 +9,10 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
-from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from services.common.http_errors import NotFoundError, ServiceError
+from services.common.http_errors import NotFoundError, ServiceError, ValidationError
 from services.common.logging_config import get_logger
 from services.user.database import get_async_session
 from services.user.integrations.oauth_config import OAuthState, get_oauth_config
@@ -453,7 +452,7 @@ class IntegrationService:
                 refresh_future = self._ongoing_refreshes[refresh_key]
                 try:
                     await asyncio.wait_for(
-                        refresh_future, timeout=get_settings().REFRESH_TIMEOUT_SECONDS
+                        refresh_future, timeout=get_settings().refresh_timeout_seconds
                     )
                 except asyncio.TimeoutError:
                     # If the refresh times out, remove it from tracking and proceed with a new refresh

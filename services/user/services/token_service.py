@@ -506,9 +506,7 @@ class TokenService:
             tokens_result = await session.execute(
                 select(EncryptedToken).where(
                     EncryptedToken.integration_id == integration.id,
-                    EncryptedToken.token_type.in_(
-                        [TokenType.ACCESS, TokenType.REFRESH]
-                    ),
+                    EncryptedToken.token_type.in_([TokenType.ACCESS, TokenType.REFRESH]),  # type: ignore[attr-defined]
                 )
             )
             tokens = tokens_result.scalars().all()

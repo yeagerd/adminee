@@ -63,7 +63,9 @@ class TestTokenOptimization:
             with patch.object(
                 token_service.token_encryption, "decrypt_token"
             ) as mock_decrypt:
-                mock_decrypt.side_effect = lambda token, user_id: f"decrypted_{token}"
+                mock_decrypt.side_effect = (
+                    lambda *args, **kwargs: f"decrypted_{args[0] if args else kwargs.get('encrypted_token')}"
+                )
 
                 # Call the optimized method
                 result = await token_service.get_valid_token(
@@ -84,27 +86,88 @@ class TestTokenOptimization:
         user_id = "test_user"
         provider = IntegrationProvider.MICROSOFT
 
-        # Mock the refresh operation to simulate a delay
-        with patch.object(
-            integration_service, "_get_user_integration_in_session"
-        ) as mock_get_integration:
-            mock_integration = AsyncMock()
-            mock_get_integration.return_value = mock_integration
+        # Mock the database session
+        with patch(
+            "services.user.services.integration_service.get_async_session"
+        ) as mock_session:
+            mock_session_instance = AsyncMock()
+            mock_session_instance.__aenter__ = AsyncMock(
+                return_value=mock_session_instance
+            )
+            mock_session_instance.__aexit__ = AsyncMock(return_value=None)
+            mock_session.return_value = lambda: mock_session_instance
 
-            # Start two concurrent refresh operations
-            async def refresh_operation():
-                return await integration_service.refresh_integration_tokens(
-                    user_id=user_id, provider=provider, force=True
+            # Mock the integration retrieval
+            with patch.object(
+                integration_service, "_get_user_integration_in_session"
+            ) as mock_get_integration:
+                mock_integration = AsyncMock()
+                mock_integration.id = 1
+                mock_get_integration.return_value = mock_integration
+
+                # Mock the database queries for tokens
+                from unittest.mock import Mock
+
+                mock_access_token = Mock()
+                mock_access_token.encrypted_value = "encrypted_access_token"
+                mock_access_token.expires_at = datetime.now(timezone.utc) + timedelta(
+                    hours=1
                 )
 
-            # Run both operations concurrently
-            results = await asyncio.gather(
-                refresh_operation(), refresh_operation(), return_exceptions=True
-            )
+                mock_refresh_token = Mock()
+                mock_refresh_token.encrypted_value = "encrypted_refresh_token"
 
-            # One should succeed, one should be deduplicated
-            success_count = sum(1 for r in results if not isinstance(r, Exception))
-            assert success_count >= 1
+                calls = [mock_access_token, mock_refresh_token]
+
+                def scalar_one_or_none():
+                    return calls.pop(0)
+
+                mock_result = Mock()
+                mock_result.scalar_one_or_none.side_effect = scalar_one_or_none
+                mock_session_instance.execute.return_value = mock_result
+
+                # Mock token decryption
+                with patch.object(
+                    integration_service.token_encryption, "decrypt_token"
+                ) as mock_decrypt:
+                    mock_decrypt.side_effect = (
+                        lambda *args, **kwargs: f"decrypted_{args[0] if args else kwargs.get('encrypted_token')}"
+                    )
+
+                    # Mock token operations
+                    with patch.object(
+                        integration_service, "_store_encrypted_tokens"
+                    ) as mock_store:
+                        mock_store.return_value = None
+
+                        # Mock OAuth refresh
+                        with patch.object(
+                            integration_service.oauth_config, "refresh_access_token"
+                        ) as mock_refresh:
+                            mock_refresh.return_value = {
+                                "access_token": "new_access_token",
+                                "refresh_token": "new_refresh_token",
+                                "expires_in": 3600,
+                            }
+
+                            # Start two concurrent refresh operations
+                            async def refresh_operation():
+                                return await integration_service.refresh_integration_tokens(
+                                    user_id=user_id, provider=provider, force=True
+                                )
+
+                            # Run both operations concurrently
+                            results = await asyncio.gather(
+                                refresh_operation(),
+                                refresh_operation(),
+                                return_exceptions=True,
+                            )
+
+                            # One should succeed, one should be deduplicated
+                            success_count = sum(
+                                1 for r in results if not isinstance(r, Exception)
+                            )
+                            assert success_count >= 1
 
     @pytest.mark.asyncio
     async def test_database_query_reduction(self, token_service):
