@@ -8,7 +8,9 @@ implementation properly handles concurrent access without race conditions.
 
 import asyncio
 import uuid
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from services.office.core.api_client_factory import APIClientFactory
 from services.office.core.token_manager import TokenManager
@@ -40,6 +42,7 @@ class MockSettings:
         self.USER_SERVICE_URL = "http://localhost:8000"
 
 
+@pytest.mark.asyncio
 async def test_realistic_concurrent_access():
     """
     Test realistic concurrent access patterns that could occur in production.
@@ -141,6 +144,7 @@ async def test_realistic_concurrent_access():
     print("Realistic concurrent test completed successfully!")
 
 
+@pytest.mark.asyncio
 async def test_sequential_access():
     """Test that sequential access works correctly."""
 
@@ -179,6 +183,7 @@ async def test_sequential_access():
     print("Sequential test completed successfully!")
 
 
+@pytest.mark.asyncio
 async def test_ref_count_validation():
     """
     Test that reference counting works correctly under various scenarios.
@@ -232,6 +237,7 @@ async def test_ref_count_validation():
     print("Reference counting validation completed successfully!")
 
 
+@pytest.mark.asyncio
 async def test_error_handling():
     """
     Test that errors are handled gracefully without affecting other operations.
@@ -281,6 +287,7 @@ async def test_error_handling():
     print("Error handling test completed successfully!")
 
 
+# Keep the main function for manual testing if needed
 async def main():
     """Run all comprehensive tests."""
     print("Starting comprehensive TokenManager race condition tests...")
