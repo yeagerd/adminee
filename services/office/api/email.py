@@ -82,7 +82,11 @@ async def get_user_email_providers(user_id: str) -> List[str]:
     """
     settings = get_settings()
     url = f"{settings.USER_SERVICE_URL}/v1/internal/users/{user_id}/integrations"
-    headers = {"X-API-Key": settings.api_office_user_key}
+    headers: Dict[str, str] = {}
+
+    # Add API key if available
+    if settings.api_office_user_key:
+        headers["X-API-Key"] = settings.api_office_user_key
 
     # Propagate request ID for distributed tracing
     request_id = request_id_var.get()
