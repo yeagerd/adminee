@@ -147,9 +147,8 @@ async def get_user_availability(
 
         # If no providers specified, get user's preferred provider
         if not providers:
-            preferred_provider = (
-                await get_api_client_factory().get_user_preferred_provider(user_id)
-            )
+            factory = await get_api_client_factory()
+            preferred_provider = await factory.get_user_preferred_provider(user_id)
             if preferred_provider:
                 providers = [preferred_provider.value]
             else:
@@ -361,9 +360,8 @@ async def get_calendar_events(
     try:
         # If no providers specified, get user's preferred provider
         if not providers:
-            preferred_provider = (
-                await get_api_client_factory().get_user_preferred_provider(user_id)
-            )
+            factory = await get_api_client_factory()
+            preferred_provider = await factory.get_user_preferred_provider(user_id)
             if preferred_provider:
                 providers = [preferred_provider.value]
             else:

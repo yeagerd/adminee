@@ -448,7 +448,8 @@ async def search_files(
                 logger.info(f"Searching files in {provider}")
 
                 # Get API client for the provider
-                client = await get_api_client_factory().create_client(user_id, provider)
+                factory = await get_api_client_factory()
+                client = await factory.create_client(user_id, provider)
                 if client is None:
                     raise Exception(
                         f"Failed to create API client for provider {provider}"
