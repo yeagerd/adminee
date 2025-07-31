@@ -124,6 +124,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                         package_description: email.subject || '',
                         order_number: suggestedData.order_number || '',
                         tracking_link: suggestedData.tracking_link || '',
+                        expected_delivery: suggestedData.estimated_delivery || '',
                     };
                     setFormData(detectedData);
                     setInitialFormData(detectedData);
@@ -143,6 +144,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                         package_description: email.subject || '',
                         order_number: '',
                         tracking_link: '',
+                        expected_delivery: '',
                     };
                     setFormData(detectedData);
                     setInitialFormData(detectedData);
