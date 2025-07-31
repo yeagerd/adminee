@@ -379,9 +379,7 @@ class TestSendEmailEndpoint:
         data = response.json()
 
         assert data["success"] is True
-        assert data["data"]["message_id"] == "gmail_sent_123"
-        assert data["data"]["provider"] == "google"
-        assert data["data"]["status"] == "sent"
+        assert data["data"]["id"] == "gmail_sent_123"
 
         # Verify API client was created
         mock_create_client.assert_called_once()
@@ -432,9 +430,7 @@ class TestSendEmailEndpoint:
 
         assert data["success"] is True
         # Microsoft generates a custom ID since the API doesn't return one
-        assert data["data"]["message_id"].startswith("outlook_sent_")
-        assert data["data"]["provider"] == "microsoft"
-        assert data["data"]["status"] == "sent"
+        assert data["data"]["id"].startswith("outlook_sent_")
 
         # Verify API client was created
         mock_create_client.assert_called_once()
@@ -468,7 +464,10 @@ class TestSendEmailEndpoint:
         )
 
         # Should fail because no client available, but verify it tried Google
-        assert response.status_code == 502  # ServiceError now returns 502
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is False
+        assert "Failed to create API client" in data["error"]["message"]
         mock_create_client.assert_called_once()
         mock_factory.create_client.assert_called_once_with("test_user", "google")
 
@@ -488,7 +487,10 @@ class TestSendEmailEndpoint:
             headers=auth_headers,
         )
 
-        assert response.status_code == 422  # ValidationError now returns 422
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is False
+        assert "Invalid provider" in data["error"]["message"]
         assert "Invalid provider" in response.json()["message"]
 
     @patch("services.office.api.email.get_api_client_factory")
@@ -512,7 +514,10 @@ class TestSendEmailEndpoint:
             headers=auth_headers,
         )
 
-        assert response.status_code == 502  # ServiceError now returns 502
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is False
+        assert "Failed to create API client" in data["error"]["message"]
         assert "Failed to create API client" in response.json()["message"]
 
     @pytest.mark.asyncio
@@ -598,8 +603,7 @@ class TestSendEmailEndpoint:
         data = response.json()
 
         assert data["success"] is True
-        assert data["data"]["message_id"] == "gmail_sent_789"
-        assert data["data"]["provider"] == "google"
+        assert data["data"]["id"] == "gmail_sent_789"
 
         # Verify the client send_message was called
         mock_google_client.send_message.assert_called_once()

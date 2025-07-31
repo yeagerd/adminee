@@ -16,6 +16,7 @@ from services.office.api.email import (
     get_message_thread,
     parse_thread_id,
 )
+from services.common.http_errors import ValidationError
 from services.office.core.normalizer import (
     merge_threads,
     normalize_google_thread,
@@ -51,13 +52,13 @@ class TestThreadIDParsing:
 
     def test_parse_thread_id_invalid(self):
         """Test parsing invalid thread IDs."""
-        with pytest.raises(ValueError, match="Invalid thread ID format"):
+        with pytest.raises(ValidationError, match="Invalid thread ID format"):
             parse_thread_id("invalid")
 
-        with pytest.raises(ValueError, match="Invalid thread ID format"):
+        with pytest.raises(ValidationError, match="Invalid thread ID format"):
             parse_thread_id("gmail")
 
-        with pytest.raises(ValueError, match="Unknown provider prefix"):
+        with pytest.raises(ValidationError, match="Unknown provider prefix"):
             parse_thread_id("unknown_123")
 
 
@@ -248,18 +249,25 @@ class TestThreadAPIEndpoints:
                 mock_request_id.return_value = "test_request"
 
                 with patch(
-                    "services.office.api.email.cache_manager.get"
+                    "services.office.api.email.cache_manager.get_from_cache"
                 ) as mock_cache_get:
                     mock_cache_get.return_value = None
 
                     with patch(
-                        "services.office.api.email.cache_manager.set"
+                        "services.office.api.email.cache_manager.set_to_cache"
                     ) as mock_cache_set:
+                        # Test the core logic by calling the function with proper parameters
                         response = await get_email_threads(
                             request=mock_request,
                             service_name="test_service",
                             providers=["google"],
                             limit=10,
+                            include_body=False,
+                            labels=None,
+                            folder_id=None,
+                            q=None,
+                            page_token=None,
+                            no_cache=False,
                         )
 
                         assert response.success is True
@@ -289,17 +297,19 @@ class TestThreadAPIEndpoints:
                 mock_request_id.return_value = "test_request"
 
                 with patch(
-                    "services.office.api.email.cache_manager.get"
+                    "services.office.api.email.cache_manager.get_from_cache"
                 ) as mock_cache_get:
                     mock_cache_get.return_value = None
 
                     with patch(
-                        "services.office.api.email.cache_manager.set"
+                        "services.office.api.email.cache_manager.set_to_cache"
                     ) as mock_cache_set:
                         response = await get_email_thread(
                             request=mock_request,
                             thread_id="gmail_thread1",
                             service_name="test_service",
+                            include_body=True,
+                            no_cache=False,
                         )
 
                         assert response.success is True
@@ -329,12 +339,12 @@ class TestThreadAPIEndpoints:
                 mock_request_id.return_value = "test_request"
 
                 with patch(
-                    "services.office.api.email.cache_manager.get"
+                    "services.office.api.email.cache_manager.get_from_cache"
                 ) as mock_cache_get:
                     mock_cache_get.return_value = None
 
                     with patch(
-                        "services.office.api.email.cache_manager.set"
+                        "services.office.api.email.cache_manager.set_to_cache"
                     ) as mock_cache_set:
                         response = await get_message_thread(
                             request=mock_request,
@@ -360,6 +370,7 @@ class TestThreadFetchFunctions:
             # Mock Gmail API responses
             mock_client.get_threads.return_value = {"threads": [{"id": "thread1"}]}
             mock_client.get_thread.return_value = {
+                "id": "thread1",
                 "messages": [
                     {
                         "id": "msg1",

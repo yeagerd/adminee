@@ -8,7 +8,7 @@ Provides functions to normalize API responses from different providers
 import re
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from services.common.logging_config import get_logger
 from services.office.models import Provider
@@ -889,7 +889,7 @@ def merge_threads(threads: List[EmailThread]) -> List[EmailThread]:
         return []
 
     # Group threads by subject and participants
-    thread_groups = {}
+    thread_groups: Dict[Tuple[str, frozenset], List[EmailThread]] = {}
 
     for thread in threads:
         # Create a key based on subject and participants
