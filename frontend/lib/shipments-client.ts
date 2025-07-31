@@ -144,18 +144,31 @@ class ShipmentsClient {
     /**
      * Check if a package exists with the given tracking number and carrier
      */
-    async checkPackageExists(trackingNumber: string, carrier: string): Promise<PackageResponse | null> {
-        const response = await gatewayClient.getPackages({
-            tracking_number: trackingNumber,
-            carrier: carrier
-        });
+    async checkPackageExists(trackingNumber: string, carrier?: string): Promise<PackageResponse | null> {
+        const params: { tracking_number: string; carrier?: string } = {
+            tracking_number: trackingNumber
+        };
 
-        // Return the first result if exactly one package is found
-        if (response.data.length === 1) {
+        if (carrier && carrier !== 'unknown') {
+            params.carrier = carrier;
+        }
+
+        const response = await gatewayClient.getPackages(params);
+
+        // If carrier was specified and we found exactly one package, return it
+        if (carrier && carrier !== 'unknown' && response.data.length === 1) {
             return response.data[0];
         }
 
-        return null;
+        // If no carrier specified or carrier was 'unknown', handle multiple results
+        if (response.data.length === 0) {
+            return null;
+        } else if (response.data.length === 1) {
+            return response.data[0];
+        } else {
+            // Multiple packages found - this indicates ambiguity
+            throw new Error(`Multiple packages found with tracking number ${trackingNumber}. Please specify the carrier.`);
+        }
     }
 
     /**

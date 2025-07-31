@@ -86,9 +86,9 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
     const [initialFormData, setInitialFormData] = useState<PackageFormData | null>(null);
 
     // Check if a package already exists with the given tracking number and carrier
-    const checkExistingPackage = async (trackingNumber: string, carrier: string) => {
-        if (!trackingNumber || !carrier || carrier === 'unknown') {
-            console.log('Skipping package check - invalid tracking number or carrier:', { trackingNumber, carrier });
+    const checkExistingPackage = async (trackingNumber: string, carrier?: string) => {
+        if (!trackingNumber) {
+            console.log('Skipping package check - no tracking number');
             return;
         }
 
@@ -100,7 +100,14 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
             setExistingPackage(existingPkg);
         } catch (error) {
             console.error('Failed to check for existing package:', error);
-            setExistingPackage(null);
+            if (error instanceof Error && error.message.includes('Multiple packages found')) {
+                // Handle ambiguity - show error that carrier is required
+                setExistingPackage(null);
+                // You could set an error state here to show a message to the user
+                console.error('Carrier required due to multiple packages with same tracking number');
+            } else {
+                setExistingPackage(null);
+            }
         } finally {
             setIsCheckingPackage(false);
         }
@@ -135,15 +142,12 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                     setInitialFormData(detectedData);
 
                     // Check if package already exists
-                    if (detectedData.tracking_number && detectedData.carrier !== 'unknown') {
-                        console.log('Will check for existing package with:', { trackingNumber: detectedData.tracking_number, carrier: detectedData.carrier });
-                        await checkExistingPackage(detectedData.tracking_number, detectedData.carrier);
+                    if (detectedData.tracking_number) {
+                        const carrierToUse = detectedData.carrier !== 'unknown' ? detectedData.carrier : undefined;
+                        console.log('Will check for existing package with:', { trackingNumber: detectedData.tracking_number, carrier: carrierToUse });
+                        await checkExistingPackage(detectedData.tracking_number, carrierToUse);
                     } else {
-                        console.log('Skipping package check - conditions not met:', {
-                            hasTrackingNumber: !!detectedData.tracking_number,
-                            carrier: detectedData.carrier,
-                            trackingNumber: detectedData.tracking_number
-                        });
+                        console.log('Skipping package check - no tracking number');
                     }
                 } else if (shipmentDetection.isShipmentEmail) {
                     console.log('Backend did not detect shipment, using frontend detection');
@@ -163,8 +167,9 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                     setInitialFormData(detectedData);
 
                     // Check if package already exists
-                    if (detectedData.tracking_number && detectedData.carrier !== 'unknown') {
-                        await checkExistingPackage(detectedData.tracking_number, detectedData.carrier);
+                    if (detectedData.tracking_number) {
+                        const carrierToUse = detectedData.carrier !== 'unknown' ? detectedData.carrier : undefined;
+                        await checkExistingPackage(detectedData.tracking_number, carrierToUse);
                     }
                 }
             } catch (error) {
@@ -186,8 +191,9 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                     setInitialFormData(detectedData);
 
                     // Check if package already exists
-                    if (detectedData.tracking_number && detectedData.carrier !== 'unknown') {
-                        await checkExistingPackage(detectedData.tracking_number, detectedData.carrier);
+                    if (detectedData.tracking_number) {
+                        const carrierToUse = detectedData.carrier !== 'unknown' ? detectedData.carrier : undefined;
+                        await checkExistingPackage(detectedData.tracking_number, carrierToUse);
                     }
                 }
             } finally {
