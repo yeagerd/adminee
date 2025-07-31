@@ -32,6 +32,13 @@ class ParsedEmailData:
     vendor_url: Optional[str] = None
     is_valid_tracking: bool = True
     confidence_score: float = 0.0
+    # Additional fields for shipment detection
+    is_shipment_email: bool = False
+    detected_carrier: Optional[str] = None
+    tracking_numbers: Optional[List[str]] = None
+    confidence: float = 0.0
+    detected_from: str = "unknown"
+    suggested_package_data: Optional[Dict] = None
 
 
 class EmailParser:
@@ -68,7 +75,6 @@ class EmailParser:
             import html
             import quopri
             from email import policy
-            from urllib.parse import unquote
 
             from bs4 import BeautifulSoup
         except ImportError as e:
@@ -1243,12 +1249,21 @@ class EmailParser:
 
             # Check if we have a template for this vendor
             if vendor_url == "amazon.com":
-                return self._parse_amazon_shipping_email(
+                parsed_data = self._parse_amazon_shipping_email(
+                    subject, sender, body, email_date
+                )
+            else:
+                # Step 2: Generic parsing for unknown vendors
+                parsed_data = self._parse_generic_shipping_email(
                     subject, sender, body, email_date
                 )
 
-            # Step 2: Generic parsing for unknown vendors
-            return self._parse_generic_shipping_email(subject, sender, body, email_date)
+            # Step 3: Add shipment detection fields
+            parsed_data = self._add_shipment_detection_fields(
+                parsed_data, subject, sender, body
+            )
+
+            return parsed_data
 
         except Exception as e:
             logger.error(f"Error parsing email: {e}")
@@ -1258,7 +1273,90 @@ class EmailParser:
                 vendor_name=None,
                 is_valid_tracking=False,
                 confidence_score=0.0,
+                is_shipment_email=False,
+                confidence=0.0,
+                detected_from="unknown",
             )
+
+    def _add_shipment_detection_fields(
+        self, parsed_data: ParsedEmailData, subject: str, sender: str, body: str
+    ) -> ParsedEmailData:
+        """
+        Add shipment detection fields to the parsed data.
+        """
+        # Initialize detection fields
+        sender_lower = sender.lower()
+        subject_lower = subject.lower()
+        body_lower = body.lower()
+
+        # Initialize result object
+        result = parsed_data
+        result.detected_carrier = result.carrier
+        result.tracking_numbers = (
+            [result.tracking_number] if result.tracking_number else []
+        )
+        result.confidence = result.confidence_score
+        result.is_shipment_email = False
+        result.detected_from = "unknown"
+        result.suggested_package_data = None
+
+        # Check sender domain
+        detected_carrier = self._detect_carrier_from_sender(sender_lower)
+        if detected_carrier:
+            result.detected_carrier = detected_carrier
+            result.is_shipment_email = True
+            result.confidence += 0.4
+            result.detected_from = "sender"
+
+        # Check subject line
+        subject_has_keywords = self._has_shipment_keywords(subject_lower)
+        if subject_has_keywords:
+            result.is_shipment_email = True
+            result.confidence += 0.3
+            if result.detected_from == "sender":
+                result.detected_from = "subject"
+            else:
+                result.detected_from = "multiple"
+
+        # Check body
+        body_has_keywords = self._has_shipment_keywords(body_lower)
+        if body_has_keywords:
+            result.is_shipment_email = True
+            result.confidence += 0.2
+            if result.detected_from == "sender":
+                result.detected_from = "body"
+            else:
+                result.detected_from = "multiple"
+
+        # Extract tracking numbers
+        all_text = f"{subject} {body}"
+        tracking_numbers = self._extract_tracking_numbers(all_text, detected_carrier)
+        if tracking_numbers:
+            result.tracking_numbers = tracking_numbers
+
+        # If no carrier detected from sender but we have tracking numbers, try to detect from tracking number
+        if not detected_carrier and tracking_numbers:
+            detected_carrier = self._detect_carrier_from_tracking_number(
+                tracking_numbers[0]
+            )
+            if detected_carrier:
+                result.detected_carrier = detected_carrier
+                result.confidence += 0.2
+
+        # Boost confidence if tracking numbers found
+        if tracking_numbers:
+            result.confidence += 0.3
+
+        # Cap confidence at 1.0
+        result.confidence = min(result.confidence, 1.0)
+
+        # Generate suggested package data
+        if result.is_shipment_email and tracking_numbers:
+            result.suggested_package_data = self._generate_suggested_package_data(
+                tracking_numbers[0], detected_carrier, subject, body
+            )
+
+        return result
 
     def _parse_generic_shipping_email(
         self, subject: str, sender: str, body: str, email_date: Optional[str] = None
@@ -1336,7 +1434,6 @@ class EmailParser:
             )
         recipient_name = self._extract_recipient_name(cleaned_body)
         estimated_delivery = self._extract_delivery_date(cleaned_body, email_date)
-        shipper_name = self._extract_shipper_name(cleaned_body)
         package_description = self._extract_package_description(cleaned_body)
         status = self._extract_status(subject, cleaned_body)
 
@@ -3706,66 +3803,10 @@ class EmailParser:
 
         return True
 
-        # Check sender domain
-        detected_carrier = self._detect_carrier_from_sender(sender_lower)
-        if detected_carrier:
-            result.detected_carrier = detected_carrier
-            result.is_shipment_email = True
-            result.confidence += 0.4
-
-        # Check subject line
-        subject_has_keywords = self._has_shipment_keywords(subject_lower)
-        if subject_has_keywords:
-            result.is_shipment_email = True
-            result.confidence += 0.3
-            if result.detected_from == "sender":
-                result.detected_from = "subject"
-            else:
-                result.detected_from = "multiple"
-
-        # Check body
-        body_has_keywords = self._has_shipment_keywords(body_lower)
-        if body_has_keywords:
-            result.is_shipment_email = True
-            result.confidence += 0.2
-            if result.detected_from == "sender":
-                result.detected_from = "body"
-            else:
-                result.detected_from = "multiple"
-
-        # Extract tracking numbers
-        all_text = f"{subject} {body}"
-        tracking_numbers = self._extract_tracking_numbers(all_text, detected_carrier)
-        result.tracking_numbers = tracking_numbers
-
-        # If no carrier detected from sender but we have tracking numbers, try to detect from tracking number
-        if not detected_carrier and tracking_numbers:
-            detected_carrier = self._detect_carrier_from_tracking_number(
-                tracking_numbers[0]
-            )
-            if detected_carrier:
-                result.detected_carrier = detected_carrier
-                result.confidence += 0.2
-
-        # Boost confidence if tracking numbers found
-        if tracking_numbers:
-            result.confidence += 0.3
-
-        # Cap confidence at 1.0
-        result.confidence = min(result.confidence, 1.0)
-
-        # Generate suggested package data
-        if result.is_shipment_email and tracking_numbers:
-            result.suggested_package_data = self._generate_suggested_package_data(
-                tracking_numbers[0], detected_carrier, subject, body
-            )
-
-        return result
-
     def _detect_carrier_from_sender(self, sender: str) -> Optional[str]:
         """Detect carrier from sender email domain"""
-        for carrier, patterns in self.CARRIER_PATTERNS.items():
-            if any(domain in sender for domain in patterns["domains"]):
+        for carrier, patterns in self.carrier_patterns.items():
+            if any(domain in sender for domain in patterns.get("domains", [])):
                 return carrier
         return None
 
@@ -3780,15 +3821,26 @@ class EmailParser:
         clean_number = re.sub(r"[^0-9A-Za-z]", "", tracking_number)
 
         # Check each carrier's patterns
-        for carrier, patterns in self.CARRIER_PATTERNS.items():
-            for pattern in patterns["tracking_patterns"]:
+        for carrier, patterns in self.carrier_patterns.items():
+            for pattern in patterns.get("tracking_patterns", []):
                 if re.match(pattern, clean_number):
                     return carrier
         return None
 
     def _has_shipment_keywords(self, text: str) -> bool:
         """Check if text contains shipment-related keywords"""
-        return any(keyword in text for keyword in self.shipment_keywords)
+        shipment_keywords = [
+            "shipment",
+            "package",
+            "order",
+            "delivery",
+            "tracking",
+            "shipped",
+            "out for delivery",
+            "in transit",
+            "arrived",
+        ]
+        return any(keyword in text for keyword in shipment_keywords)
 
     def _extract_tracking_numbers(
         self, text: str, detected_carrier: Optional[str]
@@ -3797,8 +3849,10 @@ class EmailParser:
         found_numbers = set()
 
         # Check carrier-specific patterns first
-        if detected_carrier and detected_carrier in self.CARRIER_PATTERNS:
-            patterns = self.CARRIER_PATTERNS[detected_carrier]["tracking_patterns"]
+        if detected_carrier and detected_carrier in self.carrier_patterns:
+            patterns = self.carrier_patterns[detected_carrier].get(
+                "tracking_patterns", []
+            )
             for pattern in patterns:
                 matches = re.findall(pattern, text, re.IGNORECASE)
                 # Normalize each found tracking number
@@ -3808,8 +3862,8 @@ class EmailParser:
                 ]
                 found_numbers.update(normalized_matches)
 
-        # Check generic patterns
-        for pattern in self.GENERIC_TRACKING_PATTERNS:
+        # Check generic patterns from tracking_patterns
+        for pattern in self.tracking_patterns.values():
             matches = re.findall(pattern, text, re.IGNORECASE)
             # Normalize each found tracking number
             normalized_matches = [
