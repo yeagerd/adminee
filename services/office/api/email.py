@@ -735,7 +735,9 @@ async def get_email_threads(
         return EmailThreadList(
             success=True,
             data=response_data,
-            provider_used=get_provider_enum(primary_provider) if primary_provider else None,
+            provider_used=(
+                get_provider_enum(primary_provider) if primary_provider else None
+            ),
             request_id=request_id,
         )
 
@@ -1544,11 +1546,11 @@ def parse_message_id(message_id: str) -> tuple[str, str]:
 def get_user_account_info(user_id: str, provider: str) -> tuple[str, str]:
     """
     Get standardized user account info for a provider.
- 
+
     Args:
         user_id: User ID
         provider: Provider name (google, microsoft)
- 
+
     Returns:
         Tuple of (account_email, account_name)
     """
@@ -1561,17 +1563,17 @@ def get_user_account_info(user_id: str, provider: str) -> tuple[str, str]:
         else:  # microsoft
             account_email = f"{user_id}@outlook.com"
         account_name = f"{provider.title()} Account ({user_id})"
- 
+
     return account_email, account_name
 
 
 def get_provider_enum(provider: str) -> Optional[Provider]:
     """
     Convert string provider to Provider enum.
-    
+
     Args:
         provider: Provider string (google, microsoft)
-        
+
     Returns:
         Provider enum value or None if invalid
     """

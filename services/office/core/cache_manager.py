@@ -288,7 +288,10 @@ def generate_user_cache_pattern(user_id: str, provider: Optional[str] = None) ->
 
 
 def generate_thread_cache_key(
-    user_id: str, thread_id: Optional[str] = None, include_body: bool = False, **kwargs: Any
+    user_id: str,
+    thread_id: Optional[str] = None,
+    include_body: bool = False,
+    **kwargs: Any,
 ) -> str:
     """
     Generate a cache key for thread-related data.

@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from services.common.http_errors import ValidationError
 from services.office.api.email import (
     fetch_provider_threads,
     get_email_thread,
@@ -16,7 +17,6 @@ from services.office.api.email import (
     get_message_thread,
     parse_thread_id,
 )
-from services.common.http_errors import ValidationError
 from services.office.core.normalizer import (
     merge_threads,
     normalize_google_thread,
@@ -350,6 +350,8 @@ class TestThreadAPIEndpoints:
                             request=mock_request,
                             message_id="gmail_msg1",
                             service_name="test_service",
+                            include_body=True,
+                            no_cache=False,
                         )
 
                         assert response.success is True
@@ -388,7 +390,7 @@ class TestThreadFetchFunctions:
                         },
                         "labelIds": ["INBOX"],
                     }
-                ]
+                ],
             }
 
             threads, provider = await fetch_provider_threads(

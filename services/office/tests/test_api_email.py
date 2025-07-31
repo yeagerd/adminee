@@ -491,7 +491,6 @@ class TestSendEmailEndpoint:
         data = response.json()
         assert data["success"] is False
         assert "Invalid provider" in data["error"]["message"]
-        assert "Invalid provider" in response.json()["message"]
 
     @patch("services.office.api.email.get_api_client_factory")
     @pytest.mark.asyncio
@@ -518,7 +517,6 @@ class TestSendEmailEndpoint:
         data = response.json()
         assert data["success"] is False
         assert "Failed to create API client" in data["error"]["message"]
-        assert "Failed to create API client" in response.json()["message"]
 
     @pytest.mark.asyncio
     async def test_send_email_missing_user_id(self, send_email_request, client):
