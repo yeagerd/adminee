@@ -825,7 +825,7 @@ class TestEmailFoldersEndpoint:
     def mock_email_folder(self):
         """Create a mock EmailFolder for testing."""
         from services.office.schemas import EmailFolder, Provider
-        
+
         return EmailFolder(
             label="inbox",
             name="Inbox",
@@ -834,7 +834,7 @@ class TestEmailFoldersEndpoint:
             account_email="test@example.com",
             account_name="Test Account",
             is_system=True,
-            message_count=42
+            message_count=42,
         )
 
     @patch("services.office.api.email.fetch_provider_folders")
@@ -863,13 +863,13 @@ class TestEmailFoldersEndpoint:
         assert data["cache_hit"] is False
         assert "request_id" in data
         assert "data" in data
-        
+
         # Verify the response structure
         response_data = data["data"]
         assert "folders" in response_data
         assert "providers_used" in response_data
         assert "provider_errors" in response_data
-        
+
         # Verify folders data
         folders = response_data["folders"]
         assert len(folders) == 1
@@ -879,13 +879,14 @@ class TestEmailFoldersEndpoint:
 
         # Verify cache was called
         mock_cache_manager.set_to_cache.assert_called_once()
-        
+
         # Verify the cached data is serializable (this would catch the original bug)
         cache_call_args = mock_cache_manager.set_to_cache.call_args
         cached_data = cache_call_args[0][1]  # Second argument is the data
-        
+
         # This test would have caught the serialization error
         import json
+
         try:
             json.dumps(cached_data)
         except TypeError as e:
@@ -915,12 +916,12 @@ class TestEmailFoldersEndpoint:
         assert data["success"] is True
         assert data["cache_hit"] is True
         assert "request_id" in data
-        
+
         # Verify the response structure
         response_data = data["data"]
         assert "folders" in response_data
         assert len(response_data["folders"]) == 1
-        
+
         # Verify the folder was properly reconstructed from cache
         folder = response_data["folders"][0]
         assert folder["label"] == "inbox"
@@ -948,13 +949,16 @@ class TestEmailFoldersEndpoint:
         # Mock cache miss
         mock_cache_manager.get_from_cache.return_value = None
 
-        response = client.get("/v1/email/folders?providers=google&providers=microsoft", headers=auth_headers)
+        response = client.get(
+            "/v1/email/folders?providers=google&providers=microsoft",
+            headers=auth_headers,
+        )
 
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
         assert data["cache_hit"] is False
-        
+
         response_data = data["data"]
         assert "provider_errors" in response_data
         assert "microsoft" in response_data["provider_errors"]
@@ -963,7 +967,9 @@ class TestEmailFoldersEndpoint:
     @pytest.mark.asyncio
     async def test_get_email_folders_invalid_providers(self, client, auth_headers):
         """Test email folders with invalid providers."""
-        response = client.get("/v1/email/folders?providers=invalid", headers=auth_headers)
+        response = client.get(
+            "/v1/email/folders?providers=invalid", headers=auth_headers
+        )
 
         # The endpoint returns 502 when no valid providers are specified
         assert response.status_code == 502
@@ -1027,14 +1033,15 @@ class TestEmailFoldersEndpoint:
         response = client.get("/v1/email/folders", headers=auth_headers)
 
         assert response.status_code == 200
-        
+
         # Verify cache was called and the data is serializable
         mock_cache_manager.set_to_cache.assert_called_once()
         cache_call_args = mock_cache_manager.set_to_cache.call_args
         cached_data = cache_call_args[0][1]  # Second argument is the data
-        
+
         # This assertion would have failed with the original bug
         import json
+
         try:
             serialized = json.dumps(cached_data)
             # Additional verification that the serialized data can be deserialized
@@ -1060,8 +1067,10 @@ class TestEmailFoldersEndpoint:
     ):
         """Test that duplicate folders are removed based on label."""
         # Create a duplicate folder with same label but different name
-        duplicate_folder = mock_email_folder.model_copy(update={"name": "Inbox (Duplicate)"})
-        
+        duplicate_folder = mock_email_folder.model_copy(
+            update={"name": "Inbox (Duplicate)"}
+        )
+
         # Mock both providers returning the same folder
         mock_fetch_provider_folders.side_effect = [
             ([mock_email_folder], "google"),
@@ -1071,12 +1080,15 @@ class TestEmailFoldersEndpoint:
         # Mock cache miss
         mock_cache_manager.get_from_cache.return_value = None
 
-        response = client.get("/v1/email/folders?providers=google&providers=microsoft", headers=auth_headers)
+        response = client.get(
+            "/v1/email/folders?providers=google&providers=microsoft",
+            headers=auth_headers,
+        )
 
         assert response.status_code == 200
         data = response.json()
         response_data = data["data"]
-        
+
         # Should only have one folder (duplicates removed)
         assert len(response_data["folders"]) == 1
         assert response_data["folders"][0]["label"] == "inbox"

@@ -329,7 +329,10 @@ async def get_email_folders(
             # Convert cached dictionary data back to proper format for response
             # The cached data contains folder dictionaries, but we need to return the original format
             response_data = {
-                "folders": [EmailFolder(**folder_data) for folder_data in cached_result.get("folders", [])],
+                "folders": [
+                    EmailFolder(**folder_data)
+                    for folder_data in cached_result.get("folders", [])
+                ],
                 "providers_used": cached_result.get("providers_used", []),
                 "provider_errors": cached_result.get("provider_errors", {}),
             }
