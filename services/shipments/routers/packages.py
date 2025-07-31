@@ -81,10 +81,12 @@ async def list_packages(
         if carrier:
             # If carrier is provided, normalize the tracking number with carrier-specific rules
             normalized_tracking = normalize_tracking_number(tracking_number, carrier)
+            logger.info(f"Searching with normalized tracking: {normalized_tracking} for carrier: {carrier}")
             query = query.where(Package.tracking_number == normalized_tracking)
         else:
             # If no carrier is provided, search for the tracking number without normalization
             # This allows users to search across all carriers without knowing the exact carrier
+            logger.info(f"Searching with unnormalized tracking: {tracking_number} across all carriers")
             query = query.where(Package.tracking_number == tracking_number)
 
     if carrier:
@@ -93,6 +95,14 @@ async def list_packages(
     result = await session.execute(query)
     packages = result.scalars().all()
     logger.info("Found packages for user", user_id=current_user, count=len(packages))
+    
+    # Debug: Log all packages for this user to see what's in the database
+    if tracking_number:
+        all_packages_query = select(Package).where(Package.user_id == current_user)
+        all_result = await session.execute(all_packages_query)
+        all_packages = all_result.scalars().all()
+        logger.info(f"All packages for user {current_user}:", 
+                   packages=[{"tracking": p.tracking_number, "carrier": p.carrier} for p in all_packages])
     # Convert to PackageOut with actual events count
     package_out = []
     for pkg in packages:
