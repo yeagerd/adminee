@@ -142,33 +142,6 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
 
     const selectedThread = selectedThreadId ? groupedThreads.find(t => t.id === selectedThreadId) : null;
 
-    // Helper function to convert legacy thread structure to unified EmailThread structure
-    const convertToEmailThread = useCallback((legacyThread: { id: string; emails: EmailMessage[] }): EmailThreadType => {
-        const { id, emails } = legacyThread;
-        const sortedEmails = [...emails].sort((a, b) =>
-            new Date(a.date).getTime() - new Date(b.date).getTime()
-        );
-
-        // Get unique participants from all emails
-        const participants = new Set<string>();
-        emails.forEach(email => {
-            if (email.from_address?.email) participants.add(email.from_address.email);
-            email.to_addresses.forEach(addr => participants.add(addr.email));
-            email.cc_addresses.forEach(addr => participants.add(addr.email));
-            email.bcc_addresses.forEach(addr => participants.add(addr.email));
-        });
-
-        return {
-            id,
-            subject: sortedEmails[0]?.subject || 'No Subject',
-            messages: sortedEmails,
-            participant_count: participants.size,
-            last_message_date: sortedEmails[sortedEmails.length - 1]?.date || new Date().toISOString(),
-            is_read: sortedEmails.every(email => email.is_read),
-            providers: [...new Set(sortedEmails.map(email => email.provider))]
-        };
-    }, []);
-
     // Function to fetch full thread when user clicks into it
     const fetchFullThread = useCallback(async (threadId: string) => {
         setLoadingThread(true);
