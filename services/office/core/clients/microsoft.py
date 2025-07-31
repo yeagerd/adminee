@@ -384,7 +384,7 @@ class MicrosoftAPIClient(BaseAPIClient):
         response = await self.get("/me")
         return response.json()
 
-    # Microsoft Graph Teams Conversation API methods (NOT for email)
+    # Microsoft Graph Email Conversation API methods
     async def get_conversations(
         self,
         top: int = 100,
@@ -393,10 +393,10 @@ class MicrosoftAPIClient(BaseAPIClient):
         order_by: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Get list of Microsoft Teams conversations (NOT email threads).
+        Get list of email conversations/threads using Microsoft Graph API.
 
-        WARNING: This method is for Teams conversations, not email threads.
-        For email functionality, use get_messages() and group by conversationId.
+        This method uses the /me/conversations endpoint to retrieve email conversations.
+        Each conversation represents an email thread with related messages.
 
         Args:
             top: Maximum number of conversations to return
@@ -405,7 +405,7 @@ class MicrosoftAPIClient(BaseAPIClient):
             order_by: Order by expression
 
         Returns:
-            Dictionary containing Teams conversations list and pagination info
+            Dictionary containing email conversations list and pagination info
         """
         params: Dict[str, Any] = {"$top": top, "$skip": skip}
         if filter:
@@ -426,19 +426,19 @@ class MicrosoftAPIClient(BaseAPIClient):
         include_body: bool = True,
     ) -> Dict[str, Any]:
         """
-        Get messages in a specific Microsoft Teams conversation (NOT email thread).
+        Get messages in a specific email conversation/thread using Microsoft Graph API.
 
-        WARNING: This method is for Teams conversations, not email threads.
-        For email functionality, use get_messages() and filter by conversationId.
+        This method uses the /me/conversations/{conversation_id}/messages endpoint to retrieve
+        all messages within a specific email conversation/thread.
 
         Args:
-            conversation_id: Microsoft Graph Teams conversation ID
+            conversation_id: Microsoft Graph email conversation ID
             top: Maximum number of messages to return
             skip: Number of messages to skip (for pagination)
             include_body: Whether to include message body content
 
         Returns:
-            Dictionary containing Teams conversation messages list and pagination info
+            Dictionary containing email conversation messages list and pagination info
         """
         params: Dict[str, Any] = {"$top": top, "$skip": skip}
         if include_body:
