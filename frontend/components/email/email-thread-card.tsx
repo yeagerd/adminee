@@ -80,6 +80,8 @@ interface EmailThreadCardProps {
     onSelect?: (emailId: string) => void;
     showReadingPane?: boolean;
     inlineAvatar?: boolean;
+    isFirstInThread?: boolean;
+    threadId?: string;
 }
 
 // Utility function to format email date
@@ -125,7 +127,9 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
     isSelected = false,
     onSelect,
     showReadingPane = false,
-    inlineAvatar = false
+    inlineAvatar = false,
+    isFirstInThread = false,
+    threadId
 }) => {
     const [isDownloading, setIsDownloading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
