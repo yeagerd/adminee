@@ -28,6 +28,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
     const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
     const [fullThread, setFullThread] = useState<EmailThreadType | null>(null);
     const [loadingThread, setLoadingThread] = useState(false);
+    const [threadError, setThreadError] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<ViewMode>('tight');
     const [readingPaneMode, setReadingPaneMode] = useState<ReadingPaneMode>('right');
     const [settingsOpen, setSettingsOpen] = useState(false);
@@ -171,20 +172,23 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
     // Function to fetch full thread when user clicks into it
     const fetchFullThread = useCallback(async (threadId: string) => {
         setLoadingThread(true);
+        setThreadError(null);
+
         try {
             const response = await gatewayClient.getThread(threadId, true); // include body
             if (response.data?.thread) {
                 setFullThread(response.data.thread);
+            } else {
+                throw new Error('No thread data received from API');
             }
         } catch (error) {
             console.error('Error fetching full thread:', error);
-            // Fallback to legacy structure if API fails
-            const fallbackThread = selectedThread ? convertToEmailThread(selectedThread) : null;
-            setFullThread(fallbackThread);
+            setThreadError('Failed to load thread data. Please try refreshing.');
+            setFullThread(null);
         } finally {
             setLoadingThread(false);
         }
-    }, [selectedThread, convertToEmailThread]);
+    }, []);
 
     const handleThreadSelect = useCallback((threadId: string) => {
         setSelectedThreadId(threadId);
@@ -379,14 +383,18 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                                 </div>
                                 {loadingThread ? (
                                     <div className="p-8 text-center text-muted-foreground">Loading thread...</div>
+                                ) : threadError ? (
+                                    <div className="p-8 text-center text-red-500">
+                                        {threadError}
+                                    </div>
                                 ) : fullThread ? (
                                     <EmailThread
                                         thread={fullThread}
                                     />
                                 ) : (
-                                    <EmailThread
-                                        thread={convertToEmailThread(selectedThread)}
-                                    />
+                                    <div className="p-8 text-center text-muted-foreground">
+                                        No thread data available
+                                    </div>
                                 )}
                             </div>
                         )}
@@ -453,14 +461,18 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                         <div className="p-4">
                             {loadingThread ? (
                                 <div className="p-8 text-center text-muted-foreground">Loading thread...</div>
+                            ) : threadError ? (
+                                <div className="p-8 text-center text-red-500">
+                                    {threadError}
+                                </div>
                             ) : fullThread ? (
                                 <EmailThread
                                     thread={fullThread}
                                 />
                             ) : (
-                                <EmailThread
-                                    thread={convertToEmailThread(selectedThread)}
-                                />
+                                <div className="p-8 text-center text-muted-foreground">
+                                    No thread data available
+                                </div>
                             )}
                         </div>
                     </div>
