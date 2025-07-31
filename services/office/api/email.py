@@ -38,9 +38,24 @@ logger = get_logger(__name__)
 # Create router
 router = APIRouter(prefix="/email", tags=["email"])
 
-# Global API client factory instance
-api_client_factory = APIClientFactory()
-logger.info("Created global APIClientFactory instance with shared TokenManager")
+# Lazy-initialized API client factory instance
+_api_client_factory = None
+_api_client_factory_lock = asyncio.Lock()
+
+
+async def get_api_client_factory() -> APIClientFactory:
+    """Get or create the shared API client factory instance."""
+    global _api_client_factory
+
+    if _api_client_factory is None:
+        async with _api_client_factory_lock:
+            if _api_client_factory is None:
+                _api_client_factory = APIClientFactory()
+                logger.info(
+                    "Created lazy-initialized APIClientFactory instance with shared TokenManager"
+                )
+
+    return _api_client_factory
 
 
 async def get_user_id_from_gateway(request: Request) -> str:
@@ -550,7 +565,8 @@ async def send_email(
         provider = provider.lower()
 
         # Get API client for provider
-        client = await api_client_factory.create_client(user_id, provider)
+        factory = await get_api_client_factory()
+        client = await factory.create_client(user_id, provider)
         if client is None:
             raise ServiceError(
                 message=f"Failed to create API client for provider {provider}. "
@@ -801,7 +817,8 @@ async def fetch_provider_emails(
         logger.info(
             f"[{request_id}] Calling api_client_factory.create_client for user {user_id}, provider {provider}"
         )
-        client = await api_client_factory.create_client(user_id, provider)
+        factory = await get_api_client_factory()
+        client = await factory.create_client(user_id, provider)
         if client is None:
             raise ValidationError(
                 message=f"Failed to create API client for provider {provider}"
@@ -942,7 +959,8 @@ async def fetch_provider_folders(
     """
     try:
         # Get API client for provider
-        client = await api_client_factory.create_client(user_id, provider)
+        factory = await get_api_client_factory()
+        client = await factory.create_client(user_id, provider)
         if client is None:
             raise ValidationError(
                 message=f"Failed to create API client for provider {provider}"
@@ -1128,7 +1146,8 @@ async def fetch_single_message(
     """
     try:
         # Get API client for provider
-        client = await api_client_factory.create_client(user_id, provider)
+        factory = await get_api_client_factory()
+        client = await factory.create_client(user_id, provider)
         if client is None:
             raise ValidationError(
                 message=f"Failed to create API client for provider {provider}"
