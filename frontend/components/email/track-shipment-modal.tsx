@@ -451,27 +451,9 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                 <form onSubmit={handleSubmit} className="space-y-4">
 
 
-                                    {/* Package Check Status */}
-                                    {isCheckingPackage && (
-                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                            <div className="flex items-center gap-2 text-blue-700">
-                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                                <span className="text-sm font-medium">
-                                                    Checking if package already exists...
-                                                </span>
-                                            </div>
-                                        </div>
-                                    )}
-
-
-
-
-
-
-
                                     {/* Tracking Number */}
                                     <div className="space-y-2">
-                                        <Label htmlFor="tracking_number">Tracking Number *</Label>
+                                        <Label htmlFor="tracking_number">Tracking Number</Label>
                                         <Input
                                             id="tracking_number"
                                             value={formData.tracking_number}
@@ -481,22 +463,25 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                         />
                                     </div>
 
-                                    {/* Package Info Bubble */}
-                                    {existingPackage && !isCheckingPackage && (
-                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                            <div className="flex items-start gap-2 text-blue-700">
-                                                <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                                                <div className="text-sm">
-                                                    <p className="font-medium">Known Package Found</p>
-                                                    <p className="text-blue-600 mt-1">
-                                                        This tracking number matches an existing package.
-                                                        {existingPackage.events_count > 0
-                                                            ? ` We'll add a new tracking event (${existingPackage.events_count} event${existingPackage.events_count !== 1 ? 's' : ''} already recorded).`
-                                                            : " We'll add the first tracking event."
-                                                        }
-                                                    </p>
+                                    {/* Tracking Number Status */}
+                                    {formData.tracking_number.trim() && (
+                                        <div className="text-xs text-gray-600">
+                                            {isCheckingPackage ? (
+                                                <div className="flex items-center gap-1">
+                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                    Searching...
                                                 </div>
-                                            </div>
+                                            ) : existingPackage ? (
+                                                <div className="flex items-center gap-1 text-green-600">
+                                                    <CheckCircle className="h-3 w-3" />
+                                                    Existing package found
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-1 text-blue-600">
+                                                    <Info className="h-3 w-3" />
+                                                    New package
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 
@@ -551,6 +536,11 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                             type="date"
                                         />
                                     </div>
+
+                                    {/* Separator for existing packages */}
+                                    {existingPackage && (
+                                        <div className="border-t-2 border-gray-300 my-4"></div>
+                                    )}
 
                                     {/* Order Number */}
                                     <div className="space-y-2">
