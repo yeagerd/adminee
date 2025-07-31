@@ -72,8 +72,10 @@ class TokenManager:
         """Async context manager entry"""
         async with self._client_lock:
             self._client_ref_count += 1
-            logger.info(f"TokenManager instance {self._instance_id}: Client ref count increased to {self._client_ref_count}")
-            
+            logger.info(
+                f"TokenManager instance {self._instance_id}: Client ref count increased to {self._client_ref_count}"
+            )
+
             # Only initialize if this is the first user
             if self._client_ref_count == 1:
                 from services.common.logging_config import request_id_var
@@ -96,15 +98,17 @@ class TokenManager:
                 logger.info(
                     f"TokenManager instance {self._instance_id} initialized with request_id: {request_id}"
                 )
-        
+
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Async context manager exit"""
         async with self._client_lock:
             self._client_ref_count -= 1
-            logger.info(f"TokenManager instance {self._instance_id}: Client ref count decreased to {self._client_ref_count}")
-            
+            logger.info(
+                f"TokenManager instance {self._instance_id}: Client ref count decreased to {self._client_ref_count}"
+            )
+
             # Only close if this is the last user
             if self._client_ref_count == 0:
                 if self.http_client:
@@ -112,7 +116,9 @@ class TokenManager:
                     self.http_client = None
                     logger.info(f"TokenManager instance {self._instance_id} closed")
             elif self._client_ref_count < 0:
-                logger.warning(f"TokenManager instance {self._instance_id}: Negative ref count detected: {self._client_ref_count}")
+                logger.warning(
+                    f"TokenManager instance {self._instance_id}: Negative ref count detected: {self._client_ref_count}"
+                )
                 self._client_ref_count = 0
 
     def _generate_cache_key(
