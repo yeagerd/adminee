@@ -29,6 +29,7 @@ from services.user.integrations.oauth_config import (
 )
 from services.user.models.integration import IntegrationProvider
 from services.user.settings import Settings
+from services.user.tests.test_base import BaseUserManagementTest
 
 
 @pytest.fixture(autouse=True)
@@ -348,9 +349,6 @@ class TestOAuthProviderConfig:
 
         sensitive_scopes = config.get_sensitive_scopes()
         assert set(sensitive_scopes) == {"drive", "gmail"}
-
-
-from services.user.tests.test_base import BaseUserManagementTest
 
 
 class TestOAuthConfig(BaseUserManagementTest):
@@ -977,7 +975,6 @@ class TestOAuthConfig(BaseUserManagementTest):
             assert user_info["displayName"] == "Test User Microsoft"
 
             expected_userinfo_url = "https://graph.microsoft.com/v1.0/me"
-            expected_headers = {"Authorization": "Bearer test-msft-access-token"}
 
             # Get the actual call arguments to check for X-Request-Id header
             actual_call = mock_client.get.call_args
