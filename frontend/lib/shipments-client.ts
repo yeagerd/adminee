@@ -149,24 +149,34 @@ class ShipmentsClient {
             tracking_number: trackingNumber
         };
 
-        if (carrier && carrier !== 'unknown') {
+        // Always include carrier in the request if it's provided, even if it's 'unknown'
+        if (carrier) {
             params.carrier = carrier;
         }
 
         const response = await gatewayClient.getPackages(params);
 
-        // If carrier was specified and we found exactly one package, return it
-        if (carrier && carrier !== 'unknown' && response.data.length === 1) {
+        // If no packages found, return null
+        if (response.data.length === 0) {
+            return null;
+        }
+
+        // If exactly one package found, return it
+        if (response.data.length === 1) {
             return response.data[0];
         }
 
-        // If no carrier specified or carrier was 'unknown', handle multiple results
-        if (response.data.length === 0) {
-            return null;
-        } else if (response.data.length === 1) {
-            return response.data[0];
+        // Multiple packages found - handle based on carrier specification
+        if (carrier) {
+            // If carrier was specified, try to find a package that matches the specified carrier
+            const matchingPackage = response.data.find(pkg => pkg.carrier === carrier);
+            if (matchingPackage) {
+                return matchingPackage;
+            }
+            // If no matching carrier found, throw a more specific error
+            throw new Error(`Multiple packages found with tracking number ${trackingNumber}, but none match the specified carrier '${carrier}'.`);
         } else {
-            // Multiple packages found - this indicates ambiguity
+            // No carrier specified - this indicates ambiguity
             throw new Error(`Multiple packages found with tracking number ${trackingNumber}. Please specify the carrier.`);
         }
     }

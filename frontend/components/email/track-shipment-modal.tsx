@@ -9,6 +9,7 @@ import { useShipmentDataCollectionConsent } from '@/contexts/settings-context';
 import { useShipmentDetection } from '@/hooks/use-shipment-detection';
 import { PACKAGE_STATUS, PACKAGE_STATUS_OPTIONS, PackageStatus } from '@/lib/package-status';
 import { DataCollectionRequest, PackageCreateRequest, PackageResponse, shipmentsClient } from '@/lib/shipments-client';
+import { safeParseDateToISOString, safeParseDateToLocaleString } from '@/lib/utils';
 import { EmailMessage } from '@/types/office-service';
 import { CheckCircle, Info, Loader2, Package, Truck } from 'lucide-react';
 import { useSession } from 'next-auth/react';
@@ -124,8 +125,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                     package_description: existingPkg.package_description || '',
                     order_number: existingPkg.order_number || '',
                     tracking_link: existingPkg.tracking_link || '',
-                    expected_delivery: existingPkg.estimated_delivery ?
-                        new Date(existingPkg.estimated_delivery).toISOString().split('T')[0] : ''
+                    expected_delivery: safeParseDateToISOString(existingPkg.estimated_delivery)
                 }));
             }
         } catch (error) {
@@ -345,7 +345,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
 
                 // Check each field and add to updates if different from original
                 if (originalPackageData) {
-                    if (formData.expected_delivery !== (originalPackageData.estimated_delivery ? new Date(originalPackageData.estimated_delivery).toISOString().split('T')[0] : '')) {
+                    if (formData.expected_delivery !== safeParseDateToISOString(originalPackageData.estimated_delivery)) {
                         packageUpdates.estimated_delivery = formData.expected_delivery;
                     }
                     if (formData.recipient_name !== (originalPackageData.recipient_name || '')) {
@@ -534,7 +534,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                             ) : existingPackage ? (
                                                 <div className="flex items-center gap-1 text-green-600">
                                                     <CheckCircle className="h-3 w-3" />
-                                                    Existing package found.  Status: {getReadableStatus(existingPackage.status)}{existingPackage.estimated_delivery ? `.  Expected: ${new Date(existingPackage.estimated_delivery).toLocaleDateString()}` : ''}
+                                                    Existing package found.  Status: {getReadableStatus(existingPackage.status)}{existingPackage.estimated_delivery ? `.  Expected: ${safeParseDateToLocaleString(existingPackage.estimated_delivery)}` : ''}
                                                 </div>
                                             ) : (
                                                 <div className="flex items-center gap-1 text-blue-600">
