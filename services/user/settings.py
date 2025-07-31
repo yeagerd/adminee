@@ -107,6 +107,12 @@ class Settings(BaseSettings):
         description="Base URL for OAuth callbacks (used to construct redirect URI)",
     )
 
+    # Token Management Configuration
+    refresh_timeout_seconds: float = Field(
+        default=30.0,
+        description="Timeout for waiting on concurrent token refresh operations (seconds)",
+    )
+
     # NextAuth Configuration
     nextauth_jwt_key: Optional[str] = Field(
         default=None, description="NextAuth JWT secret key for token verification"
