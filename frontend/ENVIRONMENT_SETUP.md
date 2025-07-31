@@ -38,9 +38,9 @@ NEXT_PUBLIC_GATEWAY_URL=http://localhost:3001
 
 ### Service URLs (for server-side use)
 ```bash
-CHAT_SERVICE_URL=http://localhost:8001
-USER_SERVICE_URL=http://localhost:8000
-OFFICE_SERVICE_URL=http://localhost:8002
+CHAT_SERVICE_URL=http://localhost:8002
+USER_SERVICE_URL=http://localhost:8001
+OFFICE_SERVICE_URL=http://localhost:8003
 ```
 
 ### API Keys for Service-to-Service Communication
