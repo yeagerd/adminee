@@ -7,7 +7,6 @@ Internal/service endpoints, if any, should be under /internal and require API ke
 """
 
 import asyncio
-import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, cast
 
@@ -19,7 +18,7 @@ from services.common.http_errors import (
     ServiceError,
     ValidationError,
 )
-from services.common.logging_config import get_logger
+from services.common.logging_config import get_logger, request_id_var
 from services.office.core.api_client_factory import APIClientFactory
 from services.office.core.auth import service_permission_required
 from services.office.core.cache_manager import cache_manager, generate_cache_key
@@ -59,6 +58,17 @@ async def get_user_id_from_gateway(request: Request) -> str:
     if not user_id:
         raise ValidationError(message="X-User-Id header is required", field="X-User-Id")
     return user_id
+
+
+def get_request_id() -> str:
+    """
+    Get the current request ID from context or generate a fallback.
+    """
+    request_id = request_id_var.get()
+    if not request_id or request_id == "uninitialized":
+        # Fallback for cases where middleware hasn't set the context
+        return "no-request-id"
+    return request_id
 
 
 def _get_calendar_scopes(provider: str) -> List[str]:
@@ -101,7 +111,7 @@ async def get_user_availability(
         ApiResponse with available time slots
     """
     user_id = await get_user_id_from_gateway(request)
-    request_id = str(uuid.uuid4())
+    request_id = get_request_id()
     start_time = datetime.now(timezone.utc)
 
     logger.info(
@@ -329,7 +339,7 @@ async def get_calendar_events(
         ApiResponse with aggregated calendar events
     """
     user_id = await get_user_id_from_gateway(request)
-    request_id = str(uuid.uuid4())
+    request_id = get_request_id()
     start_time = datetime.now(timezone.utc)
 
     logger.info(
@@ -583,7 +593,7 @@ async def get_calendar_event(
         ApiResponse with the specific calendar event
     """
     user_id = await get_user_id_from_gateway(request)
-    request_id = str(uuid.uuid4())
+    request_id = get_request_id()
     start_time = datetime.now(timezone.utc)
 
     logger.info(
@@ -669,7 +679,7 @@ async def create_calendar_event(
         ApiResponse with created event details
     """
     user_id = await get_user_id_from_gateway(request)
-    request_id = str(uuid.uuid4())
+    request_id = get_request_id()
     start_time = datetime.now(timezone.utc)
 
     logger.info(
@@ -773,7 +783,7 @@ async def update_calendar_event(
     Returns:
         ApiResponse with updated event details
     """
-    request_id = str(uuid.uuid4())
+    request_id = get_request_id()
     start_time = datetime.now(timezone.utc)
 
     logger.info(
@@ -1201,7 +1211,7 @@ async def delete_calendar_event(
         ApiResponse confirming deletion
     """
     user_id = await get_user_id_from_gateway(request)
-    request_id = str(uuid.uuid4())
+    request_id = get_request_id()
     start_time = datetime.now(timezone.utc)
 
     logger.info(
