@@ -1,11 +1,12 @@
 import FieldUpdateMessage from '@/components/general/field-update-message';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useShipmentDataCollectionConsent } from '@/contexts/settings-context';
+
 import { useShipmentDetection } from '@/hooks/use-shipment-detection';
 import { PACKAGE_STATUS, PACKAGE_STATUS_OPTIONS, PackageStatus } from '@/lib/package-status';
 import { DataCollectionRequest, PackageCreateRequest, PackageResponse, shipmentsClient } from '@/lib/shipments-client';
@@ -78,13 +79,13 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
 }) => {
     const { data: session } = useSession();
     const shipmentDetection = useShipmentDetection(email);
-    const hasDataCollectionConsent = useShipmentDataCollectionConsent();
     const [isLoading, setIsLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const [isParsing, setIsParsing] = useState(false);
     const [isCheckingPackage, setIsCheckingPackage] = useState(false);
     const [existingPackage, setExistingPackage] = useState<PackageResponse | null>(null);
     const [originalPackageData, setOriginalPackageData] = useState<PackageResponse | null>(null);
+    const [dataCollectionConsent, setDataCollectionConsent] = useState(false);
     const [formData, setFormData] = useState<PackageFormData>({
         tracking_number: '',
         carrier: 'unknown',
@@ -268,7 +269,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
     };
 
     const submitDataCollection = async (packageData: PackageFormData) => {
-        if (!hasDataCollectionConsent || !initialFormData || !session?.user?.id) {
+        if (!dataCollectionConsent || !initialFormData || !session?.user?.id) {
             return;
         }
 
@@ -309,7 +310,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                 },
                 detection_confidence: shipmentDetection.confidence,
                 correction_reason: hasCorrections ? 'User corrected auto-detected information' : undefined,
-                consent_given: hasDataCollectionConsent,
+                consent_given: dataCollectionConsent,
             };
 
             console.log('Submitting data collection with user ID:', session?.user?.id);
@@ -700,55 +701,60 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                         />
                                     )}
 
-                                    {/* Data Collection Notice */}
-                                    {hasDataCollectionConsent && (
-                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                            <div className="flex items-start gap-2 text-blue-700">
-                                                <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                                                <div className="text-sm">
-                                                    <p className="font-medium">Help Improve Detection</p>
-                                                    <p className="text-blue-600 mt-1">
-                                                        Your corrections help us improve our shipment detection accuracy.
-                                                        Data is collected anonymously and securely.
-                                                    </p>
-                                                </div>
-                                            </div>
+                                    {/* Data Collection Consent */}
+                                    <div className="flex items-start space-x-2">
+                                        <Checkbox
+                                            id="data_collection_consent"
+                                            checked={dataCollectionConsent}
+                                            onCheckedChange={(checked) => setDataCollectionConsent(checked as boolean)}
+                                        />
+                                        <div className="grid gap-1.5 leading-none">
+                                            <Label
+                                                htmlFor="data_collection_consent"
+                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                            >
+                                                Use my data to improve the service
+                                            </Label>
+                                            <p className="text-sm text-muted-foreground">
+                                                Your corrections help us improve our shipment detection accuracy.
+                                                Data is collected anonymously and securely.
+                                            </p>
                                         </div>
-                                    )}
-                                </form>
-                            </div>
-                        </div>
+                                    </div>
+                                </form >
+                            </div >
+                        </div >
                     )}
-                </div>
+                </div >
 
-                <DialogFooter>
-                    {!isSuccess && (
+    <DialogFooter>
+        {!isSuccess && (
+            <>
+                <Button variant="outline" onClick={handleClose} disabled={isLoading}>
+                    Cancel
+                </Button>
+                <Button
+                    onClick={handleSubmit}
+                    disabled={isLoading || !formData.tracking_number.trim()}
+                    className="flex items-center gap-2"
+                >
+                    {isLoading ? (
                         <>
-                            <Button variant="outline" onClick={handleClose} disabled={isLoading}>
-                                Cancel
-                            </Button>
-                            <Button
-                                onClick={handleSubmit}
-                                disabled={isLoading || !formData.tracking_number.trim()}
-                                className="flex items-center gap-2"
-                            >
-                                {isLoading ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                        {existingPackage ? 'Adding Event...' : 'Tracking...'}
-                                    </>
-                                ) : (
-                                    <>
-                                        <Truck className="h-4 w-4" />
-                                        {existingPackage ? 'Add Tracking Event' : 'Track Shipment'}
-                                    </>
-                                )}
-                            </Button>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            {existingPackage ? 'Adding Event...' : 'Tracking...'}
+                        </>
+                    ) : (
+                        <>
+                            <Truck className="h-4 w-4" />
+                            {existingPackage ? 'Add Tracking Event' : 'Track Shipment'}
                         </>
                     )}
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                </Button>
+            </>
+        )}
+    </DialogFooter>
+            </DialogContent >
+        </Dialog >
     );
 };
 
