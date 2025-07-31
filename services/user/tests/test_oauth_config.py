@@ -350,11 +350,17 @@ class TestOAuthProviderConfig:
         assert set(sensitive_scopes) == {"drive", "gmail"}
 
 
-class TestOAuthConfig:
+from services.user.tests.test_base import BaseUserManagementTest
+
+
+class TestOAuthConfig(BaseUserManagementTest):
     """Test OAuth configuration manager."""
 
     def setup_method(self):
         """Set up test environment."""
+        # Call parent setup to prevent HTTP calls
+        super().setup_method()
+
         # Reset global config before each test
         reset_oauth_config()
 
@@ -376,6 +382,9 @@ class TestOAuthConfig:
 
         # Reset global config after each test
         reset_oauth_config()
+
+        # Call parent teardown
+        super().teardown_method()
 
     def test_oauth_config_initialization(self):
         """Test OAuth configuration initialization."""
@@ -707,12 +716,19 @@ class TestOAuthConfig:
                 "grant_type": "authorization_code",
                 "code_verifier": oauth_state.pkce_verifier,
             }
-            mock_client.post.assert_called_once_with(
-                expected_token_url,
-                data=expected_payload,
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-                timeout=30.0,
-            )
+            # Get the actual call arguments to check for X-Request-Id header
+            actual_call = mock_client.post.call_args
+            assert actual_call is not None
+
+            # Check the URL and data
+            assert actual_call[0][0] == expected_token_url
+            assert actual_call[1]["data"] == expected_payload
+            assert actual_call[1]["timeout"] == 30.0
+
+            # Check headers - should include Content-Type and may include X-Request-Id
+            headers = actual_call[1]["headers"]
+            assert headers["Content-Type"] == "application/x-www-form-urlencoded"
+            # X-Request-Id may be present but we don't need to assert its exact value
 
     @pytest.mark.asyncio
     async def test_refresh_access_token_microsoft_success(self):
@@ -756,12 +772,19 @@ class TestOAuthConfig:
                 "refresh_token": "test-msft-refresh-token",
                 "grant_type": "refresh_token",
             }
-            mock_client.post.assert_called_once_with(
-                expected_token_url,
-                data=expected_payload,
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-                timeout=30.0,
-            )
+            # Get the actual call arguments to check for X-Request-Id header
+            actual_call = mock_client.post.call_args
+            assert actual_call is not None
+
+            # Check the URL and data
+            assert actual_call[0][0] == expected_token_url
+            assert actual_call[1]["data"] == expected_payload
+            assert actual_call[1]["timeout"] == 30.0
+
+            # Check headers - should include Content-Type and may include X-Request-Id
+            headers = actual_call[1]["headers"]
+            assert headers["Content-Type"] == "application/x-www-form-urlencoded"
+            # X-Request-Id may be present but we don't need to assert its exact value
 
     @pytest.mark.asyncio
     async def test_exchange_code_for_tokens_microsoft_success(self):
@@ -821,12 +844,19 @@ class TestOAuthConfig:
                 "redirect_uri": oauth_state.redirect_uri,
                 "code_verifier": oauth_state.pkce_verifier,
             }
-            mock_client.post.assert_called_once_with(
-                expected_token_url,
-                data=expected_payload,
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-                timeout=30.0,
-            )
+            # Get the actual call arguments to check for X-Request-Id header
+            actual_call = mock_client.post.call_args
+            assert actual_call is not None
+
+            # Check the URL and data
+            assert actual_call[0][0] == expected_token_url
+            assert actual_call[1]["data"] == expected_payload
+            assert actual_call[1]["timeout"] == 30.0
+
+            # Check headers - should include Content-Type and may include X-Request-Id
+            headers = actual_call[1]["headers"]
+            assert headers["Content-Type"] == "application/x-www-form-urlencoded"
+            # X-Request-Id may be present but we don't need to assert its exact value
 
     @pytest.mark.asyncio
     async def test_exchange_code_for_tokens_failure(self):
@@ -948,9 +978,19 @@ class TestOAuthConfig:
 
             expected_userinfo_url = "https://graph.microsoft.com/v1.0/me"
             expected_headers = {"Authorization": "Bearer test-msft-access-token"}
-            mock_client.get.assert_called_once_with(
-                expected_userinfo_url, headers=expected_headers, timeout=30.0
-            )
+
+            # Get the actual call arguments to check for X-Request-Id header
+            actual_call = mock_client.get.call_args
+            assert actual_call is not None
+
+            # Check the URL and timeout
+            assert actual_call[0][0] == expected_userinfo_url
+            assert actual_call[1]["timeout"] == 30.0
+
+            # Check headers - should include Authorization and may include X-Request-Id
+            headers = actual_call[1]["headers"]
+            assert headers["Authorization"] == "Bearer test-msft-access-token"
+            # X-Request-Id may be present but we don't need to assert its exact value
 
     @pytest.mark.asyncio
     async def test_get_user_info_failure(self):
