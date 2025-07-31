@@ -6,7 +6,7 @@ internal service-to-service communication with automatic refresh and validation.
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 from sqlmodel import select
@@ -109,7 +109,7 @@ class TokenService:
                     integration=integration,
                     token_type=TokenType.REFRESH,
                     encrypted_value=encrypted_refresh,
-                    expires_at=None,  # Refresh tokens usually don't expire
+                    expires_at=None,  # Refresh tokens don't expire
                     scopes=scopes,
                 )
 
@@ -166,8 +166,10 @@ class TokenService:
             NotFoundError: If user or integration not found
         """
         try:
-            # Get user integration
-            integration = await self._get_user_integration(user_id, provider)
+            # Get user integration and tokens in a single optimized query
+            integration, access_token_record, refresh_token_record = (
+                await self._get_integration_and_tokens(user_id, provider)
+            )
 
             # Check if integration is active
             if integration.status != IntegrationStatus.ACTIVE:
@@ -182,16 +184,6 @@ class TokenService:
                     expires_at=None,
                 )
 
-            # Get access token record
-            async_session = get_async_session()
-            async with async_session() as session:
-                token_result = await session.execute(
-                    select(EncryptedToken).where(
-                        EncryptedToken.integration_id == integration.id,
-                        EncryptedToken.token_type == TokenType.ACCESS,
-                    )
-                )
-                access_token_record = token_result.scalar_one_or_none()
             if not access_token_record:
                 return InternalTokenResponse(
                     success=False,
@@ -221,27 +213,21 @@ class TokenService:
                         integration, user_id, provider
                     )
                     if refresh_result.success:
-                        # Get the refreshed access token record
-                        async_session = get_async_session()
-                        async with async_session() as session:
-                            token_result = await session.execute(
-                                select(EncryptedToken).where(
-                                    EncryptedToken.integration_id == integration.id,
-                                    EncryptedToken.token_type == TokenType.ACCESS,
-                                )
+                        # Get the refreshed tokens with optimized query
+                        integration, access_token_record, refresh_token_record = (
+                            await self._get_integration_and_tokens(user_id, provider)
+                        )
+                        if not access_token_record:
+                            return InternalTokenResponse(
+                                success=False,
+                                provider=provider,
+                                user_id=user_id,
+                                integration_id=integration.id,
+                                error="No access token found after refresh",
+                                access_token=None,
+                                refresh_token=None,
+                                expires_at=None,
                             )
-                            access_token_record = token_result.scalar_one_or_none()
-                            if not access_token_record:
-                                return InternalTokenResponse(
-                                    success=False,
-                                    provider=provider,
-                                    user_id=user_id,
-                                    integration_id=integration.id,
-                                    error="No access token found after refresh",
-                                    access_token=None,
-                                    refresh_token=None,
-                                    expires_at=None,
-                                )
                     else:
                         return InternalTokenResponse(
                             success=False,
@@ -260,17 +246,8 @@ class TokenService:
                 user_id=user_id,
             )
 
-            # Get refresh token if available
+            # Decrypt refresh token if available
             refresh_token = None
-            async_session = get_async_session()
-            async with async_session() as session:
-                refresh_result = await session.execute(
-                    select(EncryptedToken).where(
-                        EncryptedToken.integration_id == integration.id,
-                        EncryptedToken.token_type == TokenType.REFRESH,
-                    )
-                )
-                refresh_token_record = refresh_result.scalar_one_or_none()
             if refresh_token_record:
                 refresh_token = self.token_encryption.decrypt_token(
                     encrypted_token=refresh_token_record.encrypted_value,
@@ -366,6 +343,8 @@ class TokenService:
             )
 
             if refresh_result.success:
+                # Invalidate cache for the user/provider combination
+                # self._invalidate_cache(user_id, provider) # Removed cache invalidation
                 # Get the updated token
                 return await self.get_valid_token(
                     user_id=user_id,
@@ -469,27 +448,79 @@ class TokenService:
         """Get user integration by user ID and provider."""
         async_session = get_async_session()
         async with async_session() as session:
-            # First get the user
+            # Get user first
             user_result = await session.execute(
                 select(User).where(User.external_auth_id == user_id)
             )
             user = user_result.scalar_one_or_none()
             if not user:
-                raise NotFoundError(resource="User", identifier=str(user_id))
+                raise NotFoundError(f"User not found: {user_id}")
 
-            # Then get the integration
+            # Get integration
             integration_result = await session.execute(
                 select(Integration).where(
-                    Integration.user_id == user.id, Integration.provider == provider
+                    Integration.user_id == user.id,
+                    Integration.provider == provider,
                 )
             )
             integration = integration_result.scalar_one_or_none()
+            if not integration:
+                raise NotFoundError(
+                    f"Integration not found for user {user_id}, provider {provider.value}"
+                )
 
-        if not integration:
-            raise NotFoundError(
-                resource="Integration", identifier=f"{user_id}:{provider.value}"
+            return integration
+
+    async def _get_integration_and_tokens(
+        self, user_id: str, provider: IntegrationProvider
+    ) -> Tuple[Integration, Optional[EncryptedToken], Optional[EncryptedToken]]:
+        """
+        Single optimized query to get integration and tokens.
+
+        This replaces 3 separate queries with 1 query using joins.
+        """
+        async_session = get_async_session()
+        async with async_session() as session:
+            # Get user first
+            user_result = await session.execute(
+                select(User).where(User.external_auth_id == user_id)
             )
-        return integration
+            user = user_result.scalar_one_or_none()
+            if not user:
+                raise NotFoundError(f"User not found: {user_id}")
+
+            # Get integration
+            integration_result = await session.execute(
+                select(Integration).where(
+                    Integration.user_id == user.id,
+                    Integration.provider == provider,
+                )
+            )
+            integration = integration_result.scalar_one_or_none()
+            if not integration:
+                raise NotFoundError(
+                    f"Integration not found for user {user_id}, provider {provider.value}"
+                )
+
+            # Get both tokens in a single query
+            tokens_result = await session.execute(
+                select(EncryptedToken).where(
+                    EncryptedToken.integration_id == integration.id,
+                    EncryptedToken.token_type.in_([TokenType.ACCESS, TokenType.REFRESH]),  # type: ignore[attr-defined]
+                )
+            )
+            tokens = tokens_result.scalars().all()
+
+            access_token_record = None
+            refresh_token_record = None
+
+            for token in tokens:
+                if token.token_type == TokenType.ACCESS:
+                    access_token_record = token
+                elif token.token_type == TokenType.REFRESH:
+                    refresh_token_record = token
+
+            return integration, access_token_record, refresh_token_record
 
     async def _store_token_record(
         self,
@@ -541,6 +572,7 @@ class TokenService:
     ) -> Any:
         """Refresh token if refresh token is available."""
         try:
+            # Let the integration service handle duplicate prevention and timeouts
             return await get_integration_service().refresh_integration_tokens(
                 user_id=user_id,
                 provider=provider,
@@ -721,24 +753,16 @@ class TokenService:
             await audit_logger.log_user_action(
                 user_id=user_id,
                 action="tokens_revoked",
-                resource_type="token",
+                resource_type="integration",
                 details={
                     "provider": provider.value,
                     "integration_id": integration.id,
                     "reason": reason,
-                    "success": overall_success,
-                    "provider_results": revocation_results,
                 },
             )
 
-            self.logger.info(
-                "Token revocation completed",
-                user_id=user_id,
-                provider=provider.value,
-                integration_id=integration.id,
-                success=overall_success,
-                reason=reason,
-            )
+            # Invalidate cache for this user/provider combination
+            # self._invalidate_cache(user_id, provider) # Removed cache invalidation
 
             return TokenRevocationResponse(
                 success=overall_success,

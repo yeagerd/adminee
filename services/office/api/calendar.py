@@ -43,8 +43,24 @@ logger = get_logger(__name__)
 # Create router
 router = APIRouter(prefix="/calendar", tags=["calendar"])
 
-# Initialize dependencies
-api_client_factory = APIClientFactory()
+# Lazy-initialized API client factory instance
+_api_client_factory = None
+_api_client_factory_lock = asyncio.Lock()
+
+
+async def get_api_client_factory() -> APIClientFactory:
+    """Get or create the shared API client factory instance."""
+    global _api_client_factory
+
+    if _api_client_factory is None:
+        async with _api_client_factory_lock:
+            if _api_client_factory is None:
+                _api_client_factory = APIClientFactory()
+                logger.info(
+                    "Created lazy-initialized APIClientFactory instance with shared TokenManager"
+                )
+
+    return _api_client_factory
 
 
 async def get_user_id_from_gateway(request: Request) -> str:
@@ -131,9 +147,8 @@ async def get_user_availability(
 
         # If no providers specified, get user's preferred provider
         if not providers:
-            preferred_provider = await api_client_factory.get_user_preferred_provider(
-                user_id
-            )
+            factory = await get_api_client_factory()
+            preferred_provider = await factory.get_user_preferred_provider(user_id)
             if preferred_provider:
                 providers = [preferred_provider.value]
             else:
@@ -345,9 +360,8 @@ async def get_calendar_events(
     try:
         # If no providers specified, get user's preferred provider
         if not providers:
-            preferred_provider = await api_client_factory.get_user_preferred_provider(
-                user_id
-            )
+            factory = await get_api_client_factory()
+            preferred_provider = await factory.get_user_preferred_provider(user_id)
             if preferred_provider:
                 providers = [preferred_provider.value]
             else:
@@ -691,7 +705,8 @@ async def create_calendar_event(
         provider = provider.lower()
 
         # Get API client for provider
-        client = await api_client_factory.create_client(user_id, provider)
+        factory = await get_api_client_factory()
+        client = await factory.create_client(user_id, provider)
         if client is None:
             raise AuthError(
                 message=f"Failed to create API client for provider {provider}. User may not have connected this provider."
@@ -786,7 +801,8 @@ async def update_calendar_event(
         provider, original_event_id = parse_event_id(event_id)
 
         # Get API client for provider
-        client = await api_client_factory.create_client(user_id, provider)
+        factory = await get_api_client_factory()
+        client = await factory.create_client(user_id, provider)
         if client is None:
             raise AuthError(
                 message=f"Failed to create API client for provider {provider}. User may not have connected this provider."
@@ -1207,7 +1223,8 @@ async def delete_calendar_event(
         provider, original_event_id = parse_event_id(event_id)
 
         # Get API client for provider
-        client = await api_client_factory.create_client(user_id, provider)
+        factory = await get_api_client_factory()
+        client = await factory.create_client(user_id, provider)
         if client is None:
             raise AuthError(
                 message=f"Failed to create API client for provider {provider}. User may not have connected this provider."
@@ -1346,9 +1363,8 @@ async def fetch_provider_events(
         # Get API client for provider with calendar-specific scopes
         calendar_scopes = _get_calendar_scopes(provider)
         logger.debug(f"Creating {provider} client with scopes: {calendar_scopes}")
-        client = await api_client_factory.create_client(
-            user_id, provider, calendar_scopes
-        )
+        factory = await get_api_client_factory()
+        client = await factory.create_client(user_id, provider, calendar_scopes)
         if client is None:
             logger.error(f"Failed to create API client for provider {provider}")
             raise ValueError(f"Failed to create API client for provider {provider}")
@@ -1487,9 +1503,8 @@ async def fetch_single_event(
     try:
         # Get API client for provider with calendar-specific scopes
         calendar_scopes = _get_calendar_scopes(provider)
-        client = await api_client_factory.create_client(
-            user_id, provider, calendar_scopes
-        )
+        factory = await get_api_client_factory()
+        client = await factory.create_client(user_id, provider, calendar_scopes)
         if client is None:
             raise ValueError(f"Failed to create API client for provider {provider}")
 

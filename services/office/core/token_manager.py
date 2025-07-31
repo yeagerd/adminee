@@ -7,6 +7,7 @@ API calls and improve performance while maintaining security best practices.
 """
 
 import asyncio
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
@@ -61,32 +62,69 @@ class TokenManager:
         self.http_client: Optional[httpx.AsyncClient] = None
         self._token_cache: Dict[str, CachedToken] = {}
         self._cache_lock = asyncio.Lock()
+        self._client_lock = asyncio.Lock()
+        self._client_ref_count = 0
+        # Add instance tracking
+        self._instance_id = str(uuid.uuid4())[:8]
+        logger.info(f"TokenManager instance created: {self._instance_id}")
 
     async def __aenter__(self) -> "TokenManager":
         """Async context manager entry"""
-        from services.common.logging_config import request_id_var
+        async with self._client_lock:
+            self._client_ref_count += 1
+            logger.info(
+                f"TokenManager instance {self._instance_id}: Client ref count increased to {self._client_ref_count}"
+            )
 
-        # Use API key for user management service if available
-        headers: dict[str, str] = {}
-        api_key = get_settings().api_office_user_key
-        if api_key:
-            headers["X-API-Key"] = api_key
+            # Only initialize if this is the first user
+            if self._client_ref_count == 1:
+                try:
 
-        # Propagate request ID for distributed tracing
-        request_id = request_id_var.get()
-        if request_id and request_id != "uninitialized":
-            headers["X-Request-Id"] = request_id
+                    # Use API key for user management service if available
+                    headers: dict[str, str] = {}
+                    api_key = get_settings().api_office_user_key
+                    if api_key:
+                        headers["X-API-Key"] = api_key
 
-        self.http_client = httpx.AsyncClient(
-            timeout=httpx.Timeout(10.0),  # 10 second timeout
-            headers=headers,
-        )
+                    # Note: We don't set X-Request-Id here anymore since it should be per-request
+                    # The request ID will be set dynamically in get_user_token for each request
+
+                    self.http_client = httpx.AsyncClient(
+                        timeout=httpx.Timeout(10.0),  # 10 second timeout
+                        headers=headers,
+                    )
+                    logger.info(
+                        f"TokenManager instance {self._instance_id} initialized successfully"
+                    )
+                except Exception as e:
+                    # If initialization fails, decrement the ref count and re-raise
+                    self._client_ref_count -= 1
+                    logger.error(
+                        f"TokenManager instance {self._instance_id} initialization failed: {e}"
+                    )
+                    raise
+
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Async context manager exit"""
-        if self.http_client:
-            await self.http_client.aclose()
+        async with self._client_lock:
+            self._client_ref_count -= 1
+            logger.info(
+                f"TokenManager instance {self._instance_id}: Client ref count decreased to {self._client_ref_count}"
+            )
+
+            # Only close if this is the last user
+            if self._client_ref_count == 0:
+                if self.http_client:
+                    await self.http_client.aclose()
+                    self.http_client = None
+                    logger.info(f"TokenManager instance {self._instance_id} closed")
+            elif self._client_ref_count < 0:
+                logger.warning(
+                    f"TokenManager instance {self._instance_id}: Negative ref count detected: {self._client_ref_count}"
+                )
+                self._client_ref_count = 0
 
     def _generate_cache_key(
         self, user_id: str, provider: str, scopes: List[str]
@@ -151,7 +189,14 @@ class TokenManager:
         cache_key = self._generate_cache_key(user_id, provider, scopes)
         cached_token = await self._get_from_cache(cache_key)
         if cached_token:
+            logger.info(
+                f"TokenManager instance {self._instance_id}: Cache HIT for user {user_id}, provider {provider}"
+            )
             return cached_token
+
+        logger.info(
+            f"TokenManager instance {self._instance_id}: Cache MISS for user {user_id}, provider {provider}"
+        )
 
         # Clean up expired tokens periodically
         await self._cleanup_expired_tokens()
@@ -161,7 +206,19 @@ class TokenManager:
             return None
 
         try:
-            logger.info(f"Requesting token for user {user_id}, provider {provider}")
+            logger.info(
+                f"TokenManager instance {self._instance_id}: Requesting token for user {user_id}, provider {provider}"
+            )
+
+            # Get current request ID for distributed tracing
+            from services.common.logging_config import request_id_var
+
+            request_id = request_id_var.get()
+
+            # Prepare headers with dynamic request ID
+            headers = {}
+            if request_id and request_id != "uninitialized":
+                headers["X-Request-Id"] = request_id
 
             response = await self.http_client.post(
                 f"{get_settings().USER_SERVICE_URL}/v1/internal/tokens/get",
@@ -170,6 +227,7 @@ class TokenManager:
                     "provider": provider,
                     "required_scopes": scopes,
                 },
+                headers=headers,
             )
 
             if response.status_code == 200:
@@ -183,56 +241,56 @@ class TokenManager:
                     await self._set_cache(cache_key, token_data)
 
                     logger.info(
-                        f"Successfully retrieved token for user {user_id}, provider {provider}"
+                        f"TokenManager instance {self._instance_id}: Successfully retrieved and cached token for user {user_id}, provider {provider}"
                     )
                     return token_data
                 else:
                     # Log the error from the User service
                     error_msg = response_data.get("error", "Unknown error")
                     logger.warning(
-                        f"Token retrieval failed for user {user_id}, provider {provider}: {error_msg}"
+                        f"TokenManager instance {self._instance_id}: Token retrieval failed for user {user_id}, provider {provider}: {error_msg}"
                     )
                     return None
 
             elif response.status_code == 404:
                 logger.warning(
-                    f"No token found for user {user_id}, provider {provider}"
+                    f"TokenManager instance {self._instance_id}: No token found for user {user_id}, provider {provider}"
                 )
                 return None
 
             elif response.status_code == 403:
                 logger.warning(
-                    f"Insufficient permissions for user {user_id}, provider {provider}"
+                    f"TokenManager instance {self._instance_id}: Insufficient permissions for user {user_id}, provider {provider}"
                 )
                 return None
 
             else:
                 logger.error(
-                    f"Token retrieval failed with status {response.status_code}: {response.text}"
+                    f"TokenManager instance {self._instance_id}: Token retrieval failed with status {response.status_code}: {response.text}"
                 )
                 return None
 
         except httpx.TimeoutException:
             logger.error(
-                f"Token retrieval timed out for user {user_id}, provider {provider}"
+                f"TokenManager instance {self._instance_id}: Token retrieval timed out for user {user_id}, provider {provider}"
             )
             return None
 
         except httpx.NetworkError as e:
             logger.error(
-                f"Network error during token retrieval for user {user_id}, provider {provider}: {e}"
+                f"TokenManager instance {self._instance_id}: Network error during token retrieval for user {user_id}, provider {provider}: {e}"
             )
             return None
 
         except httpx.HTTPStatusError as e:
             logger.error(
-                f"HTTP error during token retrieval for user {user_id}, provider {provider}: {e}"
+                f"TokenManager instance {self._instance_id}: HTTP error during token retrieval for user {user_id}, provider {provider}: {e}"
             )
             return None
 
         except Exception as e:
             logger.error(
-                f"Unexpected error during token retrieval for user {user_id}, provider {provider}: {e}"
+                f"TokenManager instance {self._instance_id}: Unexpected error during token retrieval for user {user_id}, provider {provider}: {e}"
             )
             return None
 

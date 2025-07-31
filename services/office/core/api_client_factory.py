@@ -6,6 +6,7 @@ with automatic token management and initialization. It abstracts the complexity
 of token retrieval and client instantiation across multiple OAuth providers.
 """
 
+import asyncio
 from typing import Dict, List, Optional, Union
 
 from services.common.logging_config import get_logger
@@ -22,13 +23,9 @@ logger = get_logger(__name__)
 
 class APIClientFactory:
     """
-    Factory class for creating provider-specific API clients.
+    Factory for creating provider-specific API clients.
 
-    This factory handles:
-    - Token retrieval from User Management Service via TokenManager
-    - Provider-specific client instantiation
-    - Error handling for token and client creation failures
-    - Demo mode support using environment variables instead of user service
+    Handles token management, client creation, and provider-specific configuration.
     """
 
     def __init__(self, token_manager: Optional[TokenManager] = None):
@@ -36,10 +33,46 @@ class APIClientFactory:
         Initialize the API client factory.
 
         Args:
-            token_manager: Optional TokenManager instance. If None, will create one
-                          based on DEMO_MODE setting.
+            token_manager: Optional TokenManager instance. If None, creates a shared instance.
         """
-        self.token_manager = token_manager
+        self._shared_token_manager = token_manager
+        self._token_manager_lock = asyncio.Lock()
+
+    async def _get_or_create_token_manager(self) -> TokenManager:
+        """
+        Get or create a shared TokenManager instance.
+
+        This ensures we reuse the same TokenManager instance across multiple
+        create_client() calls, preventing duplicate token requests.
+        """
+        if self._shared_token_manager is None:
+            async with self._token_manager_lock:
+                # Double-check pattern to ensure thread safety
+                if self._shared_token_manager is None:
+                    if get_settings().DEMO_MODE:
+                        logger.info("Demo mode enabled - using DemoTokenManager")
+                        self._shared_token_manager = DemoTokenManager()
+                    else:
+                        logger.info(
+                            "Creating shared TokenManager instance for APIClientFactory"
+                        )
+                        self._shared_token_manager = TokenManager()
+
+        return self._shared_token_manager
+
+    def set_shared_token_manager(self, token_manager: TokenManager) -> None:
+        """
+        Set a shared TokenManager instance for dependency injection.
+
+        This allows external code to provide a TokenManager instance,
+        useful for testing or when you want to share a TokenManager
+        across multiple APIClientFactory instances.
+
+        Args:
+            token_manager: TokenManager instance to use
+        """
+        self._shared_token_manager = token_manager
+        logger.info("Shared TokenManager instance set via dependency injection")
 
     async def create_client(
         self,
@@ -56,11 +89,7 @@ class APIClientFactory:
             scopes: Optional list of OAuth scopes. If None, uses default scopes.
 
         Returns:
-            Initialized API client or None if creation failed
-
-        Raises:
-            ValueError: For invalid provider
-            Exception: For other creation failures
+            Provider-specific API client instance or None if creation failed
         """
         # Normalize provider to enum
         if isinstance(provider, str):
@@ -71,7 +100,7 @@ class APIClientFactory:
                     f"Invalid provider: {provider}. Must be 'google' or 'microsoft'"
                 )
 
-        # Set default scopes based on provider
+        # Get default scopes if not provided
         if scopes is None:
             scopes = self._get_default_scopes(provider)
 
@@ -79,14 +108,11 @@ class APIClientFactory:
             f"Creating {provider} API client for user {user_id} with scopes: {scopes}"
         )
 
-        # Use provided token manager or create a new one
-        token_manager = self.token_manager
-        if token_manager is None:
-            if get_settings().DEMO_MODE:
-                logger.info("Demo mode enabled - using DemoTokenManager")
-                token_manager = DemoTokenManager()
-            else:
-                token_manager = TokenManager()
+        # Use shared token manager
+        token_manager = await self._get_or_create_token_manager()
+        logger.info(
+            f"Using shared TokenManager instance for {provider} client (user {user_id})"
+        )
 
         try:
             # Get token from User Management Service
