@@ -24,6 +24,11 @@ dependencies = [
     "redis",
     # Time zone handling
     "pytz",
+    # LLM and AI
+    "litellm>=1.73.6",
+    "instructor>=1.0.0",
+    "beautifulsoup4>=4.12.0",
+    "markdownify>=0.11.6",
     # OpenTelemetry
     "opentelemetry-api",
     "opentelemetry-sdk",
