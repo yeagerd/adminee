@@ -65,6 +65,7 @@ export default function AddPackageModal({ onClose, onAdd }: { onClose: () => voi
                 carrier: form.carrier,
                 status: form.status,
                 estimated_delivery: form.estimated_delivery || undefined,
+                actual_delivery: form.actual_delivery || undefined,
                 recipient_name: form.recipient_name || undefined,
                 shipper_name: form.shipper_name || undefined,
                 package_description: form.package_description || undefined,
