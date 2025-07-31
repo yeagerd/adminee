@@ -9,7 +9,6 @@ import sys
 from unittest.mock import patch
 
 import pytest
-import respx
 from fastapi.testclient import TestClient
 
 # Set up test settings before any imports
@@ -193,7 +192,6 @@ class TestChatServiceE2E(BaseChatTest):
         assert thread_id1 in thread_ids
         assert thread_id2 in thread_ids
 
-    @respx.mock
     def test_request_id_propagation(self):
         """
         Test that X-Request-Id is properly propagated to downstream services.
