@@ -816,3 +816,269 @@ class TestFetchSingleMessage:
         )
 
         assert result is None
+
+
+class TestEmailFoldersEndpoint:
+    """Tests for the GET /email/folders endpoint."""
+
+    @pytest.fixture
+    def mock_email_folder(self):
+        """Create a mock EmailFolder for testing."""
+        from services.office.schemas import EmailFolder, Provider
+        
+        return EmailFolder(
+            label="inbox",
+            name="Inbox",
+            provider=Provider.GOOGLE,
+            provider_folder_id="INBOX",
+            account_email="test@example.com",
+            account_name="Test Account",
+            is_system=True,
+            message_count=42
+        )
+
+    @patch("services.office.api.email.fetch_provider_folders")
+    @pytest.mark.asyncio
+    async def test_get_email_folders_success(
+        self,
+        mock_fetch_provider_folders,
+        mock_cache_manager,
+        mock_api_client_factory,
+        mock_email_folder,
+        client,
+        auth_headers,
+    ):
+        """Test successful email folders fetching."""
+        # Mock the fetch_provider_folders function
+        mock_fetch_provider_folders.return_value = ([mock_email_folder], "google")
+
+        # Mock cache miss
+        mock_cache_manager.get_from_cache.return_value = None
+
+        response = client.get("/v1/email/folders", headers=auth_headers)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["cache_hit"] is False
+        assert "request_id" in data
+        assert "data" in data
+        
+        # Verify the response structure
+        response_data = data["data"]
+        assert "folders" in response_data
+        assert "providers_used" in response_data
+        assert "provider_errors" in response_data
+        
+        # Verify folders data
+        folders = response_data["folders"]
+        assert len(folders) == 1
+        assert folders[0]["label"] == "inbox"
+        assert folders[0]["name"] == "Inbox"
+        assert folders[0]["provider"] == "google"
+
+        # Verify cache was called
+        mock_cache_manager.set_to_cache.assert_called_once()
+        
+        # Verify the cached data is serializable (this would catch the original bug)
+        cache_call_args = mock_cache_manager.set_to_cache.call_args
+        cached_data = cache_call_args[0][1]  # Second argument is the data
+        
+        # This test would have caught the serialization error
+        import json
+        try:
+            json.dumps(cached_data)
+        except TypeError as e:
+            pytest.fail(f"Cache data is not JSON serializable: {e}")
+
+    @pytest.mark.asyncio
+    async def test_get_email_folders_with_cache_hit(
+        self,
+        mock_cache_manager,
+        mock_email_folder,
+        client,
+        auth_headers,
+    ):
+        """Test email folders with cache hit."""
+        # Mock cache hit with serialized data
+        cached_data = {
+            "folders": [mock_email_folder.model_dump()],
+            "providers_used": ["google"],
+            "provider_errors": {},
+        }
+        mock_cache_manager.get_from_cache.return_value = cached_data
+
+        response = client.get("/v1/email/folders", headers=auth_headers)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["cache_hit"] is True
+        assert "request_id" in data
+        
+        # Verify the response structure
+        response_data = data["data"]
+        assert "folders" in response_data
+        assert len(response_data["folders"]) == 1
+        
+        # Verify the folder was properly reconstructed from cache
+        folder = response_data["folders"][0]
+        assert folder["label"] == "inbox"
+        assert folder["name"] == "Inbox"
+        assert folder["provider"] == "google"
+
+    @patch("services.office.api.email.fetch_provider_folders")
+    @pytest.mark.asyncio
+    async def test_get_email_folders_with_provider_errors(
+        self,
+        mock_fetch_provider_folders,
+        mock_cache_manager,
+        mock_api_client_factory,
+        mock_email_folder,
+        client,
+        auth_headers,
+    ):
+        """Test email folders with provider errors."""
+        # Mock one provider success, one failure
+        mock_fetch_provider_folders.side_effect = [
+            ([mock_email_folder], "google"),  # Google succeeds
+            Exception("Microsoft API error"),  # Microsoft fails
+        ]
+
+        # Mock cache miss
+        mock_cache_manager.get_from_cache.return_value = None
+
+        response = client.get("/v1/email/folders?providers=google&providers=microsoft", headers=auth_headers)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["cache_hit"] is False
+        
+        response_data = data["data"]
+        assert "provider_errors" in response_data
+        assert "microsoft" in response_data["provider_errors"]
+        assert "Microsoft API error" in response_data["provider_errors"]["microsoft"]
+
+    @pytest.mark.asyncio
+    async def test_get_email_folders_invalid_providers(self, client, auth_headers):
+        """Test email folders with invalid providers."""
+        response = client.get("/v1/email/folders?providers=invalid", headers=auth_headers)
+
+        # The endpoint returns 502 when no valid providers are specified
+        assert response.status_code == 502
+
+    @pytest.mark.asyncio
+    async def test_get_email_folders_missing_user_id(self, client):
+        """Test email folders without user ID."""
+        response = client.get("/v1/email/folders")
+
+        assert response.status_code == 401  # Unauthorized
+
+    @patch("services.office.api.email.fetch_provider_folders")
+    @pytest.mark.asyncio
+    async def test_get_email_folders_no_cache_bypass(
+        self,
+        mock_fetch_provider_folders,
+        mock_cache_manager,
+        mock_api_client_factory,
+        mock_email_folder,
+        client,
+        auth_headers,
+    ):
+        """Test email folders with no_cache bypass."""
+        # Mock the fetch_provider_folders function
+        mock_fetch_provider_folders.return_value = ([mock_email_folder], "google")
+
+        # Mock cache hit (should be ignored due to no_cache=True)
+        cached_data = {"folders": [], "providers_used": [], "provider_errors": {}}
+        mock_cache_manager.get_from_cache.return_value = cached_data
+
+        response = client.get("/v1/email/folders?no_cache=true", headers=auth_headers)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["cache_hit"] is False  # Should be False due to no_cache bypass
+
+        # Verify fresh data was fetched
+        mock_fetch_provider_folders.assert_called()
+
+    @patch("services.office.api.email.fetch_provider_folders")
+    @pytest.mark.asyncio
+    async def test_get_email_folders_serialization_error_caught(
+        self,
+        mock_fetch_provider_folders,
+        mock_cache_manager,
+        mock_api_client_factory,
+        mock_email_folder,
+        client,
+        auth_headers,
+    ):
+        """Test that would have caught the original serialization error."""
+        # Mock the fetch_provider_folders function
+        mock_fetch_provider_folders.return_value = ([mock_email_folder], "google")
+
+        # Mock cache miss
+        mock_cache_manager.get_from_cache.return_value = None
+
+        # This test specifically verifies that the cache data is serializable
+        # The original bug would have caused this test to fail
+        response = client.get("/v1/email/folders", headers=auth_headers)
+
+        assert response.status_code == 200
+        
+        # Verify cache was called and the data is serializable
+        mock_cache_manager.set_to_cache.assert_called_once()
+        cache_call_args = mock_cache_manager.set_to_cache.call_args
+        cached_data = cache_call_args[0][1]  # Second argument is the data
+        
+        # This assertion would have failed with the original bug
+        import json
+        try:
+            serialized = json.dumps(cached_data)
+            # Additional verification that the serialized data can be deserialized
+            deserialized = json.loads(serialized)
+            assert "folders" in deserialized
+            assert len(deserialized["folders"]) == 1
+            assert deserialized["folders"][0]["label"] == "inbox"
+        except TypeError as e:
+            pytest.fail(f"Cache data is not JSON serializable: {e}")
+        except json.JSONDecodeError as e:
+            pytest.fail(f"Serialized cache data is not valid JSON: {e}")
+
+    @patch("services.office.api.email.fetch_provider_folders")
+    @pytest.mark.asyncio
+    async def test_get_email_folders_duplicate_removal(
+        self,
+        mock_fetch_provider_folders,
+        mock_cache_manager,
+        mock_api_client_factory,
+        mock_email_folder,
+        client,
+        auth_headers,
+    ):
+        """Test that duplicate folders are removed based on label."""
+        # Create a duplicate folder with same label but different name
+        duplicate_folder = mock_email_folder.model_copy(update={"name": "Inbox (Duplicate)"})
+        
+        # Mock both providers returning the same folder
+        mock_fetch_provider_folders.side_effect = [
+            ([mock_email_folder], "google"),
+            ([duplicate_folder], "microsoft"),
+        ]
+
+        # Mock cache miss
+        mock_cache_manager.get_from_cache.return_value = None
+
+        response = client.get("/v1/email/folders?providers=google&providers=microsoft", headers=auth_headers)
+
+        assert response.status_code == 200
+        data = response.json()
+        response_data = data["data"]
+        
+        # Should only have one folder (duplicates removed)
+        assert len(response_data["folders"]) == 1
+        assert response_data["folders"][0]["label"] == "inbox"
+        # Should keep the first occurrence (Google's version)
+        assert response_data["folders"][0]["name"] == "Inbox"

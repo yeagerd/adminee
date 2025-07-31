@@ -326,8 +326,15 @@ async def get_email_folders(
         cached_result = await cache_manager.get_from_cache(cache_key)
         if cached_result and not no_cache:
             logger.info("Cache hit for email folders")
+            # Convert cached dictionary data back to proper format for response
+            # The cached data contains folder dictionaries, but we need to return the original format
+            response_data = {
+                "folders": [EmailFolder(**folder_data) for folder_data in cached_result.get("folders", [])],
+                "providers_used": cached_result.get("providers_used", []),
+                "provider_errors": cached_result.get("provider_errors", {}),
+            }
             return EmailFolderList(
-                success=True, data=cached_result, cache_hit=True, request_id=request_id
+                success=True, data=response_data, cache_hit=True, request_id=request_id
             )
 
         # Fetch from providers in parallel
@@ -385,9 +392,16 @@ async def get_email_folders(
             "provider_errors": provider_errors,
         }
 
+        # Convert Pydantic models to dictionaries for caching
+        cache_data = {
+            "folders": [folder.model_dump() for folder in unique_folders],
+            "providers_used": providers_used,
+            "provider_errors": provider_errors,
+        }
+
         # Cache the result
         await cache_manager.set_to_cache(
-            cache_key, response_data, ttl_seconds=3600
+            cache_key, cache_data, ttl_seconds=3600
         )  # 1 hour
 
         end_time = datetime.now(timezone.utc)
