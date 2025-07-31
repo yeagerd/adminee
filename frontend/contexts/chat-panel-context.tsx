@@ -10,6 +10,7 @@ interface ChatPanelState {
 interface ChatPanelContextType {
     isOpen: boolean;
     width: number;
+    effectiveWidth: number; // Returns width if open, 0 if closed
     setIsOpen: (isOpen: boolean) => void;
     setWidth: (width: number) => void;
     toggle: () => void;
@@ -74,6 +75,7 @@ export function ChatPanelProvider({ children }: { children: ReactNode }) {
     const value: ChatPanelContextType = {
         isOpen: state.isOpen,
         width: state.width,
+        effectiveWidth: state.isOpen ? state.width : 0,
         setIsOpen,
         setWidth,
         toggle,

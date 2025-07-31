@@ -15,9 +15,9 @@ interface AppLayoutProps {
 export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = false }: AppLayoutProps) {
     const chatPaneRef = useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>;
     const containerRef = useRef<HTMLDivElement>(null);
-    const panelGroupRef = useRef<any>(null);
-    const { isOpen, width, setWidth } = useChatPanelState();
+    const { isOpen, width, effectiveWidth, setWidth } = useChatPanelState();
     const [containerWidth, setContainerWidth] = useState<number>(0);
+    const [localChatWidth, setLocalChatWidth] = useState<number>(0);
 
     // Track container width for responsive sizing
     useEffect(() => {
@@ -37,7 +37,7 @@ export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = fa
         return () => resizeObserver.disconnect();
     }, []);
 
-    // Calculate panel sizes based on chat state
+    // Calculate panel sizes based on local state
     const getPanelSizes = () => {
         if (!isOpen) {
             return { mainSize: 100, chatSize: 0 };
@@ -49,42 +49,35 @@ export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = fa
             return { mainSize: 70, chatSize: 30 };
         }
 
-        // Use actual container width for accurate percentage calculations
+        // Use local chat width for sizing
         const totalWidth = containerWidth;
-
-        // Ensure width doesn't exceed container width
-        const clampedWidth = Math.min(width, totalWidth);
+        const clampedWidth = Math.min(localChatWidth, totalWidth);
         const chatSizePercent = Math.max(0, Math.min(100, Math.round((clampedWidth / totalWidth) * 100)));
         const mainSizePercent = Math.max(0, 100 - chatSizePercent);
-
-
 
         return { mainSize: mainSizePercent, chatSize: chatSizePercent };
     };
 
     const { mainSize, chatSize } = getPanelSizes();
 
-    // Force panel size update when chat panel opens
+    // Sync local width with provider width when there's a mismatch
     useEffect(() => {
-        if (isOpen && containerWidth && panelGroupRef.current) {
-            // Programmatically set panel sizes when chat panel opens
-            const totalWidth = containerWidth;
-            const chatSizePercent = Math.round((width / totalWidth) * 100);
-            const mainSizePercent = 100 - chatSizePercent;
-
-            // Use the panel group's API to set sizes
-            if (panelGroupRef.current.setLayout) {
-                panelGroupRef.current.setLayout([mainSizePercent, chatSizePercent]);
-            }
+        if (isOpen && effectiveWidth > 0 && localChatWidth !== effectiveWidth) {
+            // Provider has a different width than local, sync it
+            setLocalChatWidth(effectiveWidth);
+        } else if (!isOpen && localChatWidth > 0) {
+            // Chat panel closed, reset local width
+            setLocalChatWidth(0);
         }
-    }, [isOpen, containerWidth, width]);
+    }, [isOpen, effectiveWidth, localChatWidth]);
 
     const handlePanelResize = (sizes: number[]) => {
         if (sizes.length >= 2 && containerWidth) {
             // Calculate actual width from percentage using real container width
             const totalWidth = containerWidth;
             const newChatWidth = Math.max(0, Math.round((sizes[1] / 100) * totalWidth));
-            setWidth(newChatWidth);
+            setLocalChatWidth(newChatWidth);
+            setWidth(newChatWidth); // Also update the provider
         }
     };
 
@@ -100,12 +93,11 @@ export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = fa
                 <div ref={containerRef} className="flex-1 min-w-0 h-full flex flex-col">
                     {draft ? (
                         <ResizablePanelGroup
-                            ref={panelGroupRef}
                             className="flex-1 flex min-w-0"
                             direction="horizontal"
                             onLayout={handlePanelResize}
                         >
-                            <ResizablePanel id="main-panel" order={1} minSize={30} size={mainSize} className="h-full">
+                            <ResizablePanel id="main-panel" order={1} minSize={30} defaultSize={mainSize} className="h-full">
                                 {draftPane && hasActiveDraft ? (
                                     <ResizablePanelGroup direction="vertical" className="h-full">
                                         <ResizablePanel minSize={10} size={50} className="h-full">
@@ -140,7 +132,7 @@ export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = fa
                                         id="chat-panel"
                                         order={2}
                                         minSize={20}
-                                        size={chatSize}
+                                        defaultSize={chatSize}
                                         collapsible
                                         className="h-full border-l bg-card"
                                     >
