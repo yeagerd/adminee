@@ -672,3 +672,105 @@ class TestRefreshDeduplication:
                             # Verify that the refresh key was properly cleaned up
                             # The _ongoing_refreshes should be empty after the operation
                             assert len(integration_service._ongoing_refreshes) == 0
+
+    @pytest.mark.asyncio
+    async def test_refresh_cleanup_thread_safety(self, integration_service):
+        """Test that the finally block cleanup is thread-safe and doesn't cause race conditions."""
+        user_id = "test_user"
+        provider = IntegrationProvider.GOOGLE
+
+        # Create a mock integration
+        integration = Mock()
+        integration.id = 1
+        integration.status = IntegrationStatus.ACTIVE
+
+        # Mock the database session and queries
+        mock_session_instance = AsyncMock()
+        mock_session = AsyncMock()
+        mock_session.__aenter__.return_value = mock_session_instance
+        mock_session.__aexit__.return_value = None
+
+        # Mock the OAuth refresh to return tokens
+        with patch.object(
+            integration_service.oauth_config, "refresh_access_token"
+        ) as mock_refresh:
+            mock_refresh.return_value = {
+                "access_token": "new_access_token",
+                "refresh_token": "new_refresh_token",
+                "expires_in": 3600,
+            }
+
+            # Mock audit logging to prevent database errors
+            with patch(
+                "services.user.services.integration_service.audit_logger.log_user_action"
+            ) as mock_audit:
+                mock_audit.return_value = None
+
+                # Mock the database session factory
+                with patch(
+                    "services.user.services.integration_service.get_async_session"
+                ) as mock_session_factory:
+                    mock_session_factory.return_value = lambda: mock_session
+
+                    # Mock the integration retrieval
+                    with patch.object(
+                        integration_service, "_get_user_integration_in_session"
+                    ) as mock_get_integration:
+                        mock_get_integration.return_value = integration
+
+                        # Mock the token queries
+                        mock_access_token = Mock()
+                        mock_access_token.encrypted_value = "encrypted_access_token"
+                        mock_access_token.expires_at = None
+
+                        mock_refresh_token = Mock()
+                        mock_refresh_token.encrypted_value = "encrypted_refresh_token"
+
+                        mock_result = Mock()
+                        call_count = 0
+
+                        def scalar_one_or_none():
+                            nonlocal call_count
+                            call_count += 1
+                            return (
+                                mock_access_token
+                                if call_count % 2 == 1
+                                else mock_refresh_token
+                            )
+
+                        mock_result.scalar_one_or_none.side_effect = scalar_one_or_none
+                        mock_session_instance.execute.return_value = mock_result
+
+                        # Mock token decryption
+                        integration_service.token_encryption.decrypt_token = (
+                            lambda encrypted_token, user_id: "decrypted_token_value"
+                        )
+
+                        # Mock the token storage to avoid encryption issues
+                        with patch.object(
+                            integration_service, "_store_encrypted_tokens"
+                        ) as mock_store:
+                            mock_store.return_value = None
+
+                            # Mock the integration update
+                            mock_session_instance.add = Mock()
+                            mock_session_instance.commit = AsyncMock()
+
+                            # Execute the refresh - this should not cause race conditions
+                            result = (
+                                await integration_service.refresh_integration_tokens(
+                                    user_id=user_id, provider=provider, force=True
+                                )
+                            )
+
+                            # Verify the result
+                            assert result.success is True
+                            assert result.integration_id == integration.id
+                            assert result.provider == provider
+
+                            # Verify that the refresh key was properly cleaned up
+                            # The _ongoing_refreshes should be empty after the operation
+                            assert len(integration_service._ongoing_refreshes) == 0
+
+                            # Verify that the lock is not held after the operation
+                            assert not integration_service._refresh_lock.locked()

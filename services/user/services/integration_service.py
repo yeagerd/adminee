@@ -566,7 +566,9 @@ class IntegrationService:
                                 # refresh_future is guaranteed to be non-None here because:
                                 # - If there was an existing future, we either returned early (success) or created a new one (timeout)
                                 # - If there was no existing future, we created refresh_future in the else block
-                                assert refresh_future is not None, "refresh_future should be assigned by this point"
+                                assert (
+                                    refresh_future is not None
+                                ), "refresh_future should be assigned by this point"
                                 refresh_future.set_result(result)
                                 return result
                     except (ValueError, TypeError) as e:
@@ -659,7 +661,9 @@ class IntegrationService:
             # refresh_future is guaranteed to be non-None here because:
             # - If there was an existing future, we either returned early (success) or created a new one (timeout)
             # - If there was no existing future, we created refresh_future in the else block
-            assert refresh_future is not None, "refresh_future should be assigned by this point"
+            assert (
+                refresh_future is not None
+            ), "refresh_future should be assigned by this point"
             refresh_future.set_result(result)
             return result
 
@@ -674,22 +678,25 @@ class IntegrationService:
             # refresh_future is guaranteed to be non-None here because:
             # - If there was an existing future, we either returned early (success) or created a new one (timeout)
             # - If there was no existing future, we created refresh_future in the else block
-            assert refresh_future is not None, "refresh_future should be assigned by this point"
+            assert (
+                refresh_future is not None
+            ), "refresh_future should be assigned by this point"
             refresh_future.set_exception(e)
             if isinstance(e, (NotFoundError, ServiceError)):
                 raise
             raise ServiceError(message=f"Token refresh failed: {str(e)}")
         finally:
             # Always remove the refresh key when done, but only if it's still our future
-            # Check if we're already holding the lock to avoid deadlock
-            if not self._refresh_lock.locked():
+            # Always acquire the lock for cleanup to ensure thread safety
+            try:
                 async with self._refresh_lock:
                     if refresh_key in self._ongoing_refreshes:
                         # Only remove if it's the same future we created
                         if self._ongoing_refreshes[refresh_key] is refresh_future:
                             del self._ongoing_refreshes[refresh_key]
-            else:
-                # Lock is already held, perform cleanup without acquiring it
+            except RuntimeError:
+                # If we're already holding the lock, asyncio.Lock will raise RuntimeError
+                # In this case, we can safely modify the dictionary since we already hold the lock
                 if refresh_key in self._ongoing_refreshes:
                     # Only remove if it's the same future we created
                     if self._ongoing_refreshes[refresh_key] is refresh_future:
