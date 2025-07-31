@@ -65,6 +65,7 @@ class DataCollectionResponse(BaseModel):
     message: str = Field(..., description="Response message")
 
 
+@router.get("", response_model=PackageListResponse)
 @router.get("/", response_model=PackageListResponse)
 async def list_packages(
     current_user: str = Depends(get_current_user),
@@ -110,6 +111,7 @@ async def list_packages(
     }
 
 
+@router.post("", response_model=PackageOut)
 @router.post("/", response_model=PackageOut)
 async def add_package(
     pkg: PackageCreate,

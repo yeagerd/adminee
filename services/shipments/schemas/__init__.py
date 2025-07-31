@@ -41,6 +41,7 @@ class PackageCreate(BaseModel):
     carrier: str
     status: Optional[PackageStatus] = PackageStatus.PENDING
     estimated_delivery: Optional[date] = None
+    actual_delivery: Optional[date] = None
     recipient_name: Optional[str] = None
     shipper_name: Optional[str] = None
     package_description: Optional[str] = None

@@ -60,22 +60,18 @@ export default function AddPackageModal({ onClose, onAdd }: { onClose: () => voi
         setLoading(true);
         setError(null);
         try {
-            await gatewayClient.request('/api/v1/shipments/packages', {
-                method: 'POST',
-                body: {
-                    tracking_number: form.tracking_number,
-                    carrier: form.carrier,
-                    status: form.status,
-                    estimated_delivery: form.estimated_delivery || null,
-                    actual_delivery: form.actual_delivery || null,
-                    recipient_name: form.recipient_name || null,
-                    recipient_address: form.recipient_address || null,
-                    shipper_name: form.shipper_name || null,
-                    package_description: form.package_description || null,
-                    order_number: form.order_number || null,
-                    tracking_link: form.tracking_link || null,
-                    email_message_id: form.email_message_id || null,
-                },
+            await gatewayClient.createPackage({
+                tracking_number: form.tracking_number,
+                carrier: form.carrier,
+                status: form.status,
+                estimated_delivery: form.estimated_delivery || undefined,
+                actual_delivery: form.actual_delivery || undefined,
+                recipient_name: form.recipient_name || undefined,
+                shipper_name: form.shipper_name || undefined,
+                package_description: form.package_description || undefined,
+                order_number: form.order_number || undefined,
+                tracking_link: form.tracking_link || undefined,
+                email_message_id: form.email_message_id || undefined,
             });
             onAdd();
         } catch (err: unknown) {
