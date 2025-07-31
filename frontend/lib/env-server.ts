@@ -7,9 +7,9 @@ export const serverEnv = {
     NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET!,
 
     // Service URLs (for server-side use)
-    CHAT_SERVICE_URL: process.env.CHAT_SERVICE_URL || 'http://localhost:8001',
-    USER_SERVICE_URL: process.env.USER_SERVICE_URL || 'http://localhost:8001',
-    OFFICE_SERVICE_URL: process.env.OFFICE_SERVICE_URL || 'http://localhost:8002',
+    CHAT_SERVICE_URL: process.env.CHAT_SERVICE_URL!,
+    USER_SERVICE_URL: process.env.USER_SERVICE_URL!,
+    OFFICE_SERVICE_URL: process.env.OFFICE_SERVICE_URL!,
 
     // API Keys for service-to-service communication (SERVER-SIDE ONLY)
     API_FRONTEND_CHAT_KEY: process.env.API_FRONTEND_CHAT_KEY!,
@@ -27,6 +27,9 @@ export function validateServerEnv() {
     const requiredEnvVars = [
         'NEXTAUTH_URL',
         'NEXTAUTH_SECRET',
+        'CHAT_SERVICE_URL',
+        'USER_SERVICE_URL',
+        'OFFICE_SERVICE_URL',
         'API_FRONTEND_CHAT_KEY',
         'API_FRONTEND_USER_KEY',
         'API_FRONTEND_OFFICE_KEY',
