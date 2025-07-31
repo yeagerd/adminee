@@ -1366,9 +1366,7 @@ async def fetch_provider_events(
         calendar_scopes = _get_calendar_scopes(provider)
         logger.debug(f"Creating {provider} client with scopes: {calendar_scopes}")
         factory = await get_api_client_factory()
-        client = await factory.create_client(
-            user_id, provider, calendar_scopes
-        )
+        client = await factory.create_client(user_id, provider, calendar_scopes)
         if client is None:
             logger.error(f"Failed to create API client for provider {provider}")
             raise ValueError(f"Failed to create API client for provider {provider}")
@@ -1508,9 +1506,7 @@ async def fetch_single_event(
         # Get API client for provider with calendar-specific scopes
         calendar_scopes = _get_calendar_scopes(provider)
         factory = await get_api_client_factory()
-        client = await factory.create_client(
-            user_id, provider, calendar_scopes
-        )
+        client = await factory.create_client(user_id, provider, calendar_scopes)
         if client is None:
             raise ValueError(f"Failed to create API client for provider {provider}")
 

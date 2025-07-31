@@ -86,8 +86,10 @@ def mock_api_client_factory():
         mock_factory = MagicMock()
         mock_factory.get_user_preferred_provider = AsyncMock(return_value=None)
         mock_factory.create_client = AsyncMock(return_value=None)
-        # Make the mock return the factory directly
+        # Make the mock return the factory directly when awaited
         mock.return_value = mock_factory
+        # Also make the mock itself awaitable
+        mock.__await__ = lambda: iter([mock_factory])
         yield mock
 
 
