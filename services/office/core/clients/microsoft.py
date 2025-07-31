@@ -475,46 +475,4 @@ class MicrosoftAPIClient(BaseAPIClient):
         # Get all messages in the conversation
         return await self.get_conversation_messages(conversation_id, include_body=include_body)
 
-    async def get_messages_with_conversation(
-        self,
-        top: int = 100,
-        skip: int = 0,
-        filter: Optional[str] = None,
-        search: Optional[str] = None,
-        order_by: Optional[str] = None,
-        include_body: bool = True,
-    ) -> Dict[str, Any]:
-        """
-        Get messages with conversation expansion.
 
-        Args:
-            top: Maximum number of messages to return
-            skip: Number of messages to skip (for pagination)
-            filter: OData filter expression
-            search: Search query
-            order_by: Order by expression
-            include_body: Whether to include message body content
-
-        Returns:
-            Dictionary containing messages list with conversation info and pagination info
-        """
-        params: Dict[str, Any] = {"$top": top, "$skip": skip}
-        if filter:
-            params["$filter"] = filter
-        if search:
-            params["$search"] = search
-        if order_by:
-            params["$orderby"] = order_by
-        else:
-            params["$orderby"] = "receivedDateTime desc"
-        
-        # Expand conversation to get thread information
-        params["$expand"] = "conversation"
-        
-        if include_body:
-            params["$select"] = "id,subject,body,bodyPreview,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,isRead,hasAttachments,conversationId,conversationIndex,parentFolderId,importance,flag,isDraft,webLink,uniqueBody,conversation"
-        else:
-            params["$select"] = "id,subject,bodyPreview,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,isRead,hasAttachments,conversationId,conversationIndex,parentFolderId,importance,flag,isDraft,webLink,conversation"
-
-        response = await self.get("/me/messages", params=params)
-        return response.json()

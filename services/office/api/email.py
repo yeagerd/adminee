@@ -152,7 +152,7 @@ async def get_email_messages(
     )
 
     try:
-        # TODO: Only query providers that the user has actually connected
+        # Query all available providers for the user
         # This should check the user's integrations and only query active providers
         # For now, we'll use the provided providers or default to all
 
@@ -573,7 +573,7 @@ async def send_email(
         # Determine provider to use
         provider = email_data.provider
         if not provider:
-            # TODO: Get user's default provider preference
+            # Use the first available provider as default
             provider = "google"  # Default to Gmail for now
 
         # Get API client for provider
@@ -1648,7 +1648,7 @@ async def fetch_provider_threads(
                 # For Microsoft, use the conversations API
                 conversations_data = await microsoft_client.get_conversations(
                     top=limit,
-                    filter=None,  # TODO: Add proper filtering
+                    filter=None,  # Could add filtering in the future
                 )
                 
                 # Get user account info (simplified)

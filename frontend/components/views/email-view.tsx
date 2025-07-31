@@ -140,7 +140,8 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
         }));
     }, [threads]);
 
-    const selectedThread = selectedThreadId ? groupedThreads.find(t => t.id === selectedThreadId) : null;
+    // selectedThread was used for fallback logic that has been removed
+    // Keeping this for potential future use or debugging
 
     // Function to fetch full thread when user clicks into it
     const fetchFullThread = useCallback(async (threadId: string) => {
@@ -342,7 +343,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                 {isInThreadView && readingPaneMode === 'none' ? (
                     // One-pane thread view - show EmailCard for full email content
                     <div className="flex-1 overflow-y-auto">
-                        {selectedThread && (
+                        {selectedThreadId && (
                             <div className="p-4">
                                 <div className="flex items-center gap-3 mb-4">
                                     <button
@@ -429,7 +430,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                 )}
 
                 {/* Reading pane */}
-                {readingPaneMode === 'right' && selectedThread && (
+                {readingPaneMode === 'right' && selectedThreadId && (
                     <div className="w-1/2 border-l bg-gray-50 overflow-y-auto">
                         <div className="p-4">
                             {loadingThread ? (
