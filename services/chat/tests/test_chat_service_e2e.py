@@ -201,21 +201,20 @@ class TestChatServiceE2E(BaseChatTest):
         user_id = "test-user-for-req-id"
 
         # Mock the downstream user service using unittest.mock
-        from unittest.mock import AsyncMock, patch
+        # Create a mock response
+        from unittest.mock import AsyncMock, MagicMock, patch
 
         import httpx
 
         from services.common.logging_config import request_id_var
 
-        # Create a mock response
-        mock_response = AsyncMock()
+        mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"timezone": "UTC"}
 
-        # Mock the httpx.AsyncClient.get method
-        with patch.object(
-            httpx.AsyncClient, "get", return_value=mock_response
-        ) as mock_get:
+        # Mock the httpx.AsyncClient.get method to return the mock response
+        with patch.object(httpx.AsyncClient, "get", new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = mock_response
             # Set the request ID in the context
             request_id_var.set(test_request_id)
 
