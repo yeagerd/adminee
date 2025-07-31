@@ -134,8 +134,51 @@ class ShipmentsClient {
     /**
      * Get all packages for the current user
      */
-    async getPackages(): Promise<{ data: PackageResponse[]; pagination: PaginationInfo }> {
-        return gatewayClient.getPackages();
+    async getPackages(params?: {
+        tracking_number?: string;
+        carrier?: string;
+    }): Promise<{ data: PackageResponse[]; pagination: PaginationInfo }> {
+        return gatewayClient.getPackages(params);
+    }
+
+    /**
+     * Check if a package exists with the given tracking number and carrier
+     */
+    async checkPackageExists(trackingNumber: string, carrier?: string): Promise<PackageResponse | null> {
+        const params: { tracking_number: string; carrier?: string } = {
+            tracking_number: trackingNumber
+        };
+
+        // Always include carrier in the request if it's provided, even if it's 'unknown'
+        if (carrier) {
+            params.carrier = carrier;
+        }
+
+        const response = await gatewayClient.getPackages(params);
+
+        // If no packages found, return null
+        if (response.data.length === 0) {
+            return null;
+        }
+
+        // If exactly one package found, return it
+        if (response.data.length === 1) {
+            return response.data[0];
+        }
+
+        // Multiple packages found - handle based on carrier specification
+        if (carrier) {
+            // If carrier was specified, try to find a package that matches the specified carrier
+            const matchingPackage = response.data.find(pkg => pkg.carrier === carrier);
+            if (matchingPackage) {
+                return matchingPackage;
+            }
+            // If no matching carrier found, throw a more specific error
+            throw new Error(`Multiple packages found with tracking number ${trackingNumber}, but none match the specified carrier '${carrier}'.`);
+        } else {
+            // No carrier specified - this indicates ambiguity
+            throw new Error(`Multiple packages found with tracking number ${trackingNumber}. Please specify the carrier.`);
+        }
     }
 
     /**

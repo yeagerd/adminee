@@ -96,12 +96,13 @@ def validate_tracking_number_format(
             )
 
         elif carrier_lower == "usps":
-            # USPS: 13, 15, 20, or 22 digits
+            # USPS: 13, 15, 20, 22, or 26 digits
             return bool(
                 re.match(r"^[0-9]{13}$", normalized)
                 or re.match(r"^[0-9]{15}$", normalized)
                 or re.match(r"^[0-9]{20}$", normalized)
                 or re.match(r"^[0-9]{22}$", normalized)
+                or re.match(r"^[0-9]{26}$", normalized)
             )
 
         elif carrier_lower == "dhl":
