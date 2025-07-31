@@ -121,6 +121,71 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
         setSelectedFolder(folder);
     }, []);
 
+    // Group emails by thread
+    const groupedThreads = React.useMemo(() => {
+        const threadMap = new Map<string, EmailMessage[]>();
+
+        threads.forEach(email => {
+            const threadId = email.thread_id || email.id;
+            if (!threadMap.has(threadId)) {
+                threadMap.set(threadId, []);
+            }
+            threadMap.get(threadId)!.push(email);
+        });
+
+        return Array.from(threadMap.entries()).map(([threadId, emails]) => ({
+            id: threadId,
+            emails
+        }));
+    }, [threads]);
+
+    const selectedThread = selectedThreadId ? groupedThreads.find(t => t.id === selectedThreadId) : null;
+
+    // Helper function to convert legacy thread structure to unified EmailThread structure
+    const convertToEmailThread = useCallback((legacyThread: { id: string; emails: EmailMessage[] }): EmailThreadType => {
+        const { id, emails } = legacyThread;
+        const sortedEmails = [...emails].sort((a, b) =>
+            new Date(a.date).getTime() - new Date(b.date).getTime()
+        );
+
+        // Get unique participants from all emails
+        const participants = new Set<string>();
+        emails.forEach(email => {
+            if (email.from_address?.email) participants.add(email.from_address.email);
+            email.to_addresses.forEach(addr => participants.add(addr.email));
+            email.cc_addresses.forEach(addr => participants.add(addr.email));
+            email.bcc_addresses.forEach(addr => participants.add(addr.email));
+        });
+
+        return {
+            id,
+            subject: sortedEmails[0]?.subject || 'No Subject',
+            messages: sortedEmails,
+            participant_count: participants.size,
+            last_message_date: sortedEmails[sortedEmails.length - 1]?.date || new Date().toISOString(),
+            is_read: sortedEmails.every(email => email.is_read),
+            providers: [...new Set(sortedEmails.map(email => email.provider))]
+        };
+    }, []);
+
+    // Function to fetch full thread when user clicks into it
+    const fetchFullThread = useCallback(async (threadId: string) => {
+        setLoadingThread(true);
+        try {
+            const response = await gatewayClient.getThread(threadId, true); // include body
+            if (response.data?.thread) {
+                setFullThread(response.data.thread);
+            }
+        } catch (error) {
+            console.error('Error fetching full thread:', error);
+            // Fallback to legacy structure if API fails
+            const fallbackThread = selectedThread ? convertToEmailThread(selectedThread) : null;
+            setFullThread(fallbackThread);
+        } finally {
+            setLoadingThread(false);
+        }
+    }, [selectedThread, convertToEmailThread]);
+
     const handleThreadSelect = useCallback((threadId: string) => {
         setSelectedThreadId(threadId);
 
@@ -198,70 +263,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
         return () => { isMounted = false; };
     }, [filters, activeProviders, integrationsLoading, toolDataLoading, activeTool, hasExpiredButRefreshableTokens, fetchEmails, selectedFolder.label]);
 
-    // Group emails by thread
-    const groupedThreads = React.useMemo(() => {
-        const threadMap = new Map<string, EmailMessage[]>();
 
-        threads.forEach(email => {
-            const threadId = email.thread_id || email.id;
-            if (!threadMap.has(threadId)) {
-                threadMap.set(threadId, []);
-            }
-            threadMap.get(threadId)!.push(email);
-        });
-
-        return Array.from(threadMap.entries()).map(([threadId, emails]) => ({
-            id: threadId,
-            emails
-        }));
-    }, [threads]);
-
-    const selectedThread = selectedThreadId ? groupedThreads.find(t => t.id === selectedThreadId) : null;
-
-    // Function to fetch full thread when user clicks into it
-    const fetchFullThread = useCallback(async (threadId: string) => {
-        setLoadingThread(true);
-        try {
-            const response = await gatewayClient.getThread(threadId, true); // include body
-            if (response.data?.thread) {
-                setFullThread(response.data.thread);
-            }
-        } catch (error) {
-            console.error('Error fetching full thread:', error);
-            // Fallback to legacy structure if API fails
-            const fallbackThread = selectedThread ? convertToEmailThread(selectedThread) : null;
-            setFullThread(fallbackThread);
-        } finally {
-            setLoadingThread(false);
-        }
-    }, [selectedThread]);
-
-    // Helper function to convert legacy thread structure to unified EmailThread structure
-    const convertToEmailThread = (legacyThread: { id: string; emails: EmailMessage[] }): EmailThreadType => {
-        const { id, emails } = legacyThread;
-        const sortedEmails = [...emails].sort((a, b) =>
-            new Date(a.date).getTime() - new Date(b.date).getTime()
-        );
-
-        // Get unique participants from all emails
-        const participants = new Set<string>();
-        emails.forEach(email => {
-            if (email.from_address?.email) participants.add(email.from_address.email);
-            email.to_addresses.forEach(addr => participants.add(addr.email));
-            email.cc_addresses.forEach(addr => participants.add(addr.email));
-            email.bcc_addresses.forEach(addr => participants.add(addr.email));
-        });
-
-        return {
-            id,
-            subject: sortedEmails[0]?.subject || 'No Subject',
-            messages: sortedEmails,
-            participant_count: participants.size,
-            last_message_date: sortedEmails[sortedEmails.length - 1]?.date || new Date().toISOString(),
-            is_read: sortedEmails.every(email => email.is_read),
-            providers: [...new Set(sortedEmails.map(email => email.provider))]
-        };
-    };
 
     return (
         <div className="flex flex-col h-full">
