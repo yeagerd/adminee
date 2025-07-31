@@ -678,7 +678,7 @@ async def get_email_threads(
         )
 
         if not no_cache:
-            cached_result = await cache_manager.get(cache_key)
+            cached_result = await cache_manager.get_from_cache(cache_key)
             if cached_result:
                 logger.info(f"Cache hit for email threads request {request_id}")
                 return EmailThreadList(
@@ -727,7 +727,7 @@ async def get_email_threads(
 
         # Cache the result
         if not no_cache:
-            await cache_manager.set(cache_key, response_data, ttl=300)  # 5 minutes
+            await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=300)  # 5 minutes
 
         return EmailThreadList(
             success=True,
@@ -779,7 +779,7 @@ async def get_email_thread(
         )
 
         if not no_cache:
-            cached_result = await cache_manager.get(cache_key)
+            cached_result = await cache_manager.get_from_cache(cache_key)
             if cached_result:
                 logger.info(f"Cache hit for email thread request {request_id}")
                 return EmailThreadList(
@@ -809,7 +809,7 @@ async def get_email_thread(
 
         # Cache the result
         if not no_cache:
-            await cache_manager.set(cache_key, response_data, ttl=600)  # 10 minutes
+            await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=600)  # 10 minutes
 
         return EmailThreadList(
             success=True,
@@ -861,7 +861,7 @@ async def get_message_thread(
         )
 
         if not no_cache:
-            cached_result = await cache_manager.get(cache_key)
+            cached_result = await cache_manager.get_from_cache(cache_key)
             if cached_result:
                 logger.info(f"Cache hit for message thread request {request_id}")
                 return EmailThreadList(
@@ -891,7 +891,7 @@ async def get_message_thread(
 
         # Cache the result
         if not no_cache:
-            await cache_manager.set(cache_key, response_data, ttl=600)  # 10 minutes
+            await cache_manager.set_to_cache(cache_key, response_data, ttl_seconds=600)  # 10 minutes
 
         return EmailThreadList(
             success=True,
@@ -1747,10 +1747,16 @@ async def fetch_single_thread(
             elif provider == "microsoft":
                 microsoft_client = cast(MicrosoftAPIClient, client)
                 # Get conversation from Microsoft
-                conv_messages = await microsoft_client.get_conversation_messages(
-                    original_thread_id,
-                    include_body=include_body,
-                )
+                logger.info(f"Fetching Microsoft conversation {original_thread_id} for user {user_id}")
+                try:
+                    conv_messages = await microsoft_client.get_conversation_messages(
+                        original_thread_id,
+                        include_body=include_body,
+                    )
+                    logger.info(f"Successfully fetched conversation {original_thread_id}, got {len(conv_messages.get('value', []))} messages")
+                except Exception as e:
+                    logger.error(f"Failed to fetch Microsoft conversation {original_thread_id}: {e}")
+                    return None
                 
                 # Get user account info (simplified)
                 if "@" in user_id:
