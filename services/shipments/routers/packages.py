@@ -78,8 +78,14 @@ async def list_packages(
     query = select(Package).where(Package.user_id == current_user)  # type: ignore
 
     if tracking_number:
-        normalized_tracking = normalize_tracking_number(tracking_number, carrier)
-        query = query.where(Package.tracking_number == normalized_tracking)
+        if carrier:
+            # If carrier is provided, normalize the tracking number with carrier-specific rules
+            normalized_tracking = normalize_tracking_number(tracking_number, carrier)
+            query = query.where(Package.tracking_number == normalized_tracking)
+        else:
+            # If no carrier is provided, search for the tracking number without normalization
+            # This allows users to search across all carriers without knowing the exact carrier
+            query = query.where(Package.tracking_number == tracking_number)
 
     if carrier:
         query = query.where(Package.carrier == carrier)

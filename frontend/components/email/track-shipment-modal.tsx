@@ -88,12 +88,15 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
     // Check if a package already exists with the given tracking number and carrier
     const checkExistingPackage = async (trackingNumber: string, carrier: string) => {
         if (!trackingNumber || !carrier || carrier === 'unknown') {
+            console.log('Skipping package check - invalid tracking number or carrier:', { trackingNumber, carrier });
             return;
         }
 
+        console.log('Checking for existing package:', { trackingNumber, carrier });
         setIsCheckingPackage(true);
         try {
             const existingPkg = await shipmentsClient.checkPackageExists(trackingNumber, carrier);
+            console.log('Package check result:', existingPkg ? 'Found existing package' : 'No existing package found');
             setExistingPackage(existingPkg);
         } catch (error) {
             console.error('Failed to check for existing package:', error);
@@ -114,6 +117,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                 const parseResponse = await shipmentsClient.parseEmail(email);
 
                 if (parseResponse.is_shipment_email && parseResponse.suggested_package_data) {
+                    console.log('Backend detected shipment email with suggested data');
                     const suggestedData = parseResponse.suggested_package_data;
                     const detectedData: PackageFormData = {
                         tracking_number: suggestedData.tracking_number || parseResponse.tracking_numbers[0]?.tracking_number || '',
@@ -134,6 +138,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                         await checkExistingPackage(detectedData.tracking_number, detectedData.carrier);
                     }
                 } else if (shipmentDetection.isShipmentEmail) {
+                    console.log('Backend did not detect shipment, using frontend detection');
                     // Fallback to frontend detection if backend doesn't detect it
                     const detectedData: PackageFormData = {
                         tracking_number: shipmentDetection.trackingNumbers[0] || '',
@@ -148,6 +153,11 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                     };
                     setFormData(detectedData);
                     setInitialFormData(detectedData);
+
+                    // Check if package already exists
+                    if (detectedData.tracking_number && detectedData.carrier !== 'unknown') {
+                        await checkExistingPackage(detectedData.tracking_number, detectedData.carrier);
+                    }
                 }
             } catch (error) {
                 console.error('Failed to parse email with backend:', error);
