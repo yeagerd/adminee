@@ -8,7 +8,7 @@ export const serverEnv = {
 
     // Service URLs (for server-side use)
     CHAT_SERVICE_URL: process.env.CHAT_SERVICE_URL || 'http://localhost:8001',
-    USER_SERVICE_URL: process.env.USER_SERVICE_URL || 'http://localhost:8000',
+    USER_SERVICE_URL: process.env.USER_SERVICE_URL || 'http://localhost:8001',
     OFFICE_SERVICE_URL: process.env.OFFICE_SERVICE_URL || 'http://localhost:8002',
 
     // API Keys for service-to-service communication (SERVER-SIDE ONLY)
