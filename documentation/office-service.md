@@ -443,7 +443,7 @@ class PaginatedResponse(BaseModel):
 def generate_cache_key(user_id: str, provider: str, endpoint: str, params: Dict) -> str:
     """Generate consistent cache keys"""
     param_hash = hashlib.md5(json.dumps(params, sort_keys=True).encode()).hexdigest()
-    return f"office_service:{user_id}:{provider}:{endpoint}:{param_hash}"
+    return f"office:{user_id}:{provider}:{endpoint}:{param_hash}"
 ```
 
 ### 6.3. Cache Invalidation
