@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useShipmentDetection } from '@/hooks/use-shipment-detection';
 import { shipmentsClient } from '@/lib/shipments-client';
+import { safeFormatEmailDate } from '@/lib/utils';
 import { EmailMessage } from '@/types/office-service';
 import DOMPurify from 'dompurify';
 import { Archive, Clock, Download, MoreHorizontal, Reply, Star, Trash2, Wand2 } from 'lucide-react';
@@ -79,27 +80,9 @@ interface EmailThreadCardProps {
     inlineAvatar?: boolean;
 }
 
-// Utility function to format email date
+// Use the safe email date formatting function
 const formatEmailDate = (dateString: string): string => {
-    const emailDate = new Date(dateString);
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const emailDay = new Date(emailDate.getFullYear(), emailDate.getMonth(), emailDate.getDate());
-
-    // If email was sent today, show time
-    if (emailDay.getTime() === today.getTime()) {
-        return emailDate.toLocaleTimeString([], {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
-        });
-    }
-
-    // Otherwise show month and day
-    return emailDate.toLocaleDateString([], {
-        month: 'short',
-        day: 'numeric'
-    });
+    return safeFormatEmailDate(dateString);
 };
 
 // Utility function to get sender initials

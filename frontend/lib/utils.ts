@@ -108,3 +108,40 @@ export function safeParseDateToLocaleString(
     const date = safeParseDate(dateString);
     return date ? date.toLocaleDateString([], options) : '';
 }
+
+/**
+ * Safely format an email date string for display
+ * Shows time if email was sent today, otherwise shows month and day
+ * @param dateString - The email date string to format
+ * @returns Formatted date string or fallback text if invalid
+ */
+export function safeFormatEmailDate(dateString: string | null | undefined): string {
+    const emailDate = safeParseDate(dateString);
+    if (!emailDate) {
+        return 'Invalid date';
+    }
+
+    try {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const emailDay = new Date(emailDate.getFullYear(), emailDate.getMonth(), emailDate.getDate());
+
+        // If email was sent today, show time
+        if (emailDay.getTime() === today.getTime()) {
+            return emailDate.toLocaleTimeString([], {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
+
+        // Otherwise show month and day
+        return emailDate.toLocaleDateString([], {
+            month: 'short',
+            day: 'numeric'
+        });
+    } catch (error) {
+        console.warn('Failed to format email date:', dateString, error);
+        return 'Invalid date';
+    }
+}

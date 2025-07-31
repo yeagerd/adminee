@@ -162,7 +162,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                         package_description: email.subject || '',
                         order_number: suggestedData.order_number || '',
                         tracking_link: suggestedData.tracking_link || '',
-                        expected_delivery: suggestedData.estimated_delivery || '',
+                        expected_delivery: safeParseDateToISOString(suggestedData.estimated_delivery),
                     };
                     setFormData(detectedData);
                     setInitialFormData(detectedData);
