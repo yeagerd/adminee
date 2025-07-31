@@ -61,7 +61,7 @@ async def update_label(
     label: LabelUpdate,
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
-    service_name: str = Depends(service_permission_required(["write_shipments"])),
+    service_name: str = Depends(service_permission_required(["write_labels"])),
 ) -> LabelOut:
     # Query label and validate user ownership
     query = select(Label).where(Label.id == id, Label.user_id == current_user)  # type: ignore
@@ -93,7 +93,7 @@ async def delete_label(
     id: UUID,  # Changed from int to UUID
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
-    service_name: str = Depends(service_permission_required(["write_shipments"])),
+    service_name: str = Depends(service_permission_required(["write_labels"])),
 ) -> dict:
     # Query label and validate user ownership
     query = select(Label).where(Label.id == id, Label.user_id == current_user)  # type: ignore
