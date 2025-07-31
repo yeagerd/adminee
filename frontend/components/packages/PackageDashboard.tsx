@@ -93,8 +93,8 @@ export default function PackageDashboard() {
             return matchesSearch && matchesStatus && matchesCarrier && matchesDate;
         });
         filtered.sort((a, b) => {
-            const aValue = a[sortField] as string | number | undefined;
-            const bValue = b[sortField] as string | number | undefined;
+            const aValue = a[sortField as keyof Package] as string | number | undefined;
+            const bValue = b[sortField as keyof Package] as string | number | undefined;
             if (typeof aValue === 'string' && typeof bValue === 'string') {
                 return sortDirection === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
             }

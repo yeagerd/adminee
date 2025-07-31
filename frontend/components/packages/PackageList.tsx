@@ -102,52 +102,52 @@ export default function PackageList({
                         </TableRow>
                     ) : (
                         packages.map(pkg => (
-                            <TableRow key={pkg.id ?? 0} className="hover:bg-blue-50 cursor-pointer" onClick={() => onRowClick(pkg)}>
+                            <TableRow key={pkg.id} className="hover:bg-blue-50 cursor-pointer" onClick={() => onRowClick(pkg)}>
                                 <TableCell onClick={e => e.stopPropagation()}>
-                                    {editingCell?.id === (pkg.id ?? 0) && editingCell?.field === 'tracking_number' ? (
+                                    {editingCell?.id === pkg.id && editingCell?.field === 'tracking_number' ? (
                                         <Input
                                             defaultValue={pkg.tracking_number}
-                                            onBlur={e => onCellEdit(pkg.id ?? 0, 'tracking_number', e.target.value)}
+                                            onBlur={e => onCellEdit(pkg.id!, 'tracking_number', e.target.value)}
                                             onKeyDown={e => {
-                                                if (e.key === 'Enter') onCellEdit(pkg.id ?? 0, 'tracking_number', e.currentTarget.value);
+                                                if (e.key === 'Enter') onCellEdit(pkg.id!, 'tracking_number', e.currentTarget.value);
                                                 if (e.key === 'Escape') setEditingCell(null);
                                             }}
                                             autoFocus
                                         />
                                     ) : (
-                                        <span className="cursor-pointer" onClick={() => setEditingCell({ id: pkg.id ?? 0, field: 'tracking_number' })}>{pkg.tracking_number}</span>
+                                        <span className="cursor-pointer" onClick={() => setEditingCell({ id: pkg.id!, field: 'tracking_number' })}>{pkg.tracking_number}</span>
                                     )}
                                 </TableCell>
                                 <TableCell><Badge>{pkg.status}</Badge></TableCell>
                                 <TableCell onClick={e => e.stopPropagation()}>
-                                    {editingCell?.id === (pkg.id ?? 0) && editingCell?.field === 'estimated_delivery' ? (
+                                    {editingCell?.id === pkg.id && editingCell?.field === 'estimated_delivery' ? (
                                         <Input
                                             type="date"
                                             defaultValue={pkg.estimated_delivery}
-                                            onBlur={e => onCellEdit(pkg.id ?? 0, 'estimated_delivery', e.target.value)}
+                                            onBlur={e => onCellEdit(pkg.id!, 'estimated_delivery', e.target.value)}
                                             onKeyDown={e => {
-                                                if (e.key === 'Enter') onCellEdit(pkg.id ?? 0, 'estimated_delivery', e.currentTarget.value);
+                                                if (e.key === 'Enter') onCellEdit(pkg.id!, 'estimated_delivery', e.currentTarget.value);
                                                 if (e.key === 'Escape') setEditingCell(null);
                                             }}
                                             autoFocus
                                         />
                                     ) : (
-                                        <span className="cursor-pointer" onClick={() => setEditingCell({ id: pkg.id ?? 0, field: 'estimated_delivery' })}>{pkg.estimated_delivery}</span>
+                                        <span className="cursor-pointer" onClick={() => setEditingCell({ id: pkg.id!, field: 'estimated_delivery' })}>{pkg.estimated_delivery}</span>
                                     )}
                                 </TableCell>
                                 <TableCell onClick={e => e.stopPropagation()}>
-                                    {editingCell?.id === (pkg.id ?? 0) && editingCell?.field === 'package_description' ? (
+                                    {editingCell?.id === pkg.id && editingCell?.field === 'package_description' ? (
                                         <Input
                                             defaultValue={pkg.package_description}
-                                            onBlur={e => onCellEdit(pkg.id ?? 0, 'package_description', e.target.value)}
+                                            onBlur={e => onCellEdit(pkg.id!, 'package_description', e.target.value)}
                                             onKeyDown={e => {
-                                                if (e.key === 'Enter') onCellEdit(pkg.id ?? 0, 'package_description', e.currentTarget.value);
+                                                if (e.key === 'Enter') onCellEdit(pkg.id!, 'package_description', e.currentTarget.value);
                                                 if (e.key === 'Escape') setEditingCell(null);
                                             }}
                                             autoFocus
                                         />
                                     ) : (
-                                        <span className="cursor-pointer" onClick={() => setEditingCell({ id: pkg.id ?? 0, field: 'package_description' })}>{pkg.package_description}</span>
+                                        <span className="cursor-pointer" onClick={() => setEditingCell({ id: pkg.id!, field: 'package_description' })}>{pkg.package_description}</span>
                                     )}
                                 </TableCell>
                                 <TableCell>
