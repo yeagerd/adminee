@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useIntegrations } from '@/contexts/integrations-context';
 import { gatewayClient } from '@/lib/gateway-client';
-import { EmailFolder, EmailMessage } from '@/types/office-service';
+import { EmailFolder, EmailMessage, EmailThread as EmailThreadType } from '@/types/office-service';
 import { ChevronLeft, List, ListTodo, PanelLeft, RefreshCw, Settings, Square } from 'lucide-react';
 import { getSession } from 'next-auth/react';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -26,6 +26,8 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
     const [error, setError] = useState<string | null>(null);
     const [filters, setFilters] = useState<Record<string, unknown>>({});
     const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+    const [fullThread, setFullThread] = useState<EmailThreadType | null>(null);
+    const [loadingThread, setLoadingThread] = useState(false);
     const [viewMode, setViewMode] = useState<ViewMode>('tight');
     const [readingPaneMode, setReadingPaneMode] = useState<ReadingPaneMode>('right');
     const [settingsOpen, setSettingsOpen] = useState(false);
@@ -122,17 +124,21 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
     const handleThreadSelect = useCallback((threadId: string) => {
         setSelectedThreadId(threadId);
 
+        // Fetch full thread when user clicks into it
+        fetchFullThread(threadId);
+
         // Handle click behavior based on pane mode
         if (readingPaneMode === 'none') {
             // One-pane mode: navigate to thread view
             setIsInThreadView(true);
         }
         // Two-pane mode: thread will be shown in right pane automatically
-    }, [readingPaneMode]);
+    }, [readingPaneMode, fetchFullThread]);
 
     const handleBackToList = useCallback(() => {
         setIsInThreadView(false);
         setSelectedThreadId(null);
+        setFullThread(null);
     }, []);
 
     // Update selectedFolder provider when activeProviders change
@@ -155,6 +161,11 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
             setIsInThreadView(false);
         }
     }, [readingPaneMode]);
+
+    // Clear full thread when selected thread changes
+    useEffect(() => {
+        setFullThread(null);
+    }, [selectedThreadId]);
 
     useEffect(() => {
         // Only fetch when the tab is actually activated
@@ -206,6 +217,51 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
     }, [threads]);
 
     const selectedThread = selectedThreadId ? groupedThreads.find(t => t.id === selectedThreadId) : null;
+
+    // Function to fetch full thread when user clicks into it
+    const fetchFullThread = useCallback(async (threadId: string) => {
+        setLoadingThread(true);
+        try {
+            const response = await gatewayClient.getThread(threadId, true); // include body
+            if (response.data?.thread) {
+                setFullThread(response.data.thread);
+            }
+        } catch (error) {
+            console.error('Error fetching full thread:', error);
+            // Fallback to legacy structure if API fails
+            const fallbackThread = selectedThread ? convertToEmailThread(selectedThread) : null;
+            setFullThread(fallbackThread);
+        } finally {
+            setLoadingThread(false);
+        }
+    }, [selectedThread]);
+
+    // Helper function to convert legacy thread structure to unified EmailThread structure
+    const convertToEmailThread = (legacyThread: { id: string; emails: EmailMessage[] }): EmailThreadType => {
+        const { id, emails } = legacyThread;
+        const sortedEmails = [...emails].sort((a, b) =>
+            new Date(a.date).getTime() - new Date(b.date).getTime()
+        );
+
+        // Get unique participants from all emails
+        const participants = new Set<string>();
+        emails.forEach(email => {
+            if (email.from_address?.email) participants.add(email.from_address.email);
+            email.to_addresses.forEach(addr => participants.add(addr.email));
+            email.cc_addresses.forEach(addr => participants.add(addr.email));
+            email.bcc_addresses.forEach(addr => participants.add(addr.email));
+        });
+
+        return {
+            id,
+            subject: sortedEmails[0]?.subject || 'No Subject',
+            messages: sortedEmails,
+            participant_count: participants.size,
+            last_message_date: sortedEmails[sortedEmails.length - 1]?.date || new Date().toISOString(),
+            is_read: sortedEmails.every(email => email.is_read),
+            providers: [...new Set(sortedEmails.map(email => email.provider))]
+        };
+    };
 
     return (
         <div className="flex flex-col h-full">
@@ -319,10 +375,17 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                                     </button>
                                     <h2 className="text-lg font-semibold">Thread</h2>
                                 </div>
-                                <EmailThread
-                                    emails={selectedThread.emails}
-                                    threadId={selectedThread.id}
-                                />
+                                {loadingThread ? (
+                                    <div className="p-8 text-center text-muted-foreground">Loading thread...</div>
+                                ) : fullThread ? (
+                                    <EmailThread
+                                        thread={fullThread}
+                                    />
+                                ) : (
+                                    <EmailThread
+                                        thread={convertToEmailThread(selectedThread)}
+                                    />
+                                )}
                             </div>
                         )}
                     </div>
@@ -386,10 +449,17 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                 {readingPaneMode === 'right' && selectedThread && (
                     <div className="w-1/2 border-l bg-gray-50 overflow-y-auto">
                         <div className="p-4">
-                            <EmailThread
-                                emails={selectedThread.emails}
-                                threadId={selectedThread.id}
-                            />
+                            {loadingThread ? (
+                                <div className="p-8 text-center text-muted-foreground">Loading thread...</div>
+                            ) : fullThread ? (
+                                <EmailThread
+                                    thread={fullThread}
+                                />
+                            ) : (
+                                <EmailThread
+                                    thread={convertToEmailThread(selectedThread)}
+                                />
+                            )}
                         </div>
                     </div>
                 )}
