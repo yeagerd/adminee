@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from services.common.api_key_auth import get_current_user, service_permission_required
+from services.shipments.auth import get_current_user
 from services.shipments.database import get_async_session_dep
 from services.shipments.email_parser import EmailParser
 from services.shipments.models import Package, TrackingEvent
@@ -19,6 +19,7 @@ from services.shipments.schemas.email_parser import (
     EmailParseResponse,
     ParsedTrackingInfo,
 )
+from services.shipments.service_auth import service_permission_required
 
 router = APIRouter()
 
@@ -44,14 +45,14 @@ async def get_tracking_events(
     events_query = (
         select(TrackingEvent)
         .where(TrackingEvent.package_id == id)
-        .order_by(TrackingEvent.event_date.desc())
+        .order_by(TrackingEvent.event_date.desc())  # type: ignore
     )
     events_result = await session.execute(events_query)
     events = events_result.scalars().all()
 
     return [
         TrackingEventOut(
-            id=event.id,
+            id=event.id,  # type: ignore
             event_date=event.event_date,
             status=event.status,
             location=event.location,
@@ -90,7 +91,7 @@ async def create_tracking_event(
     await session.refresh(db_event)
 
     return TrackingEventOut(
-        id=db_event.id,
+        id=db_event.id,  # type: ignore
         event_date=db_event.event_date,
         status=db_event.status,
         location=db_event.location,

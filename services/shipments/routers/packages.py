@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from services.common.logging_config import get_logger
-from services.common.api_key_auth import get_current_user, service_permission_required
+from services.shipments.auth import get_current_user
 from services.shipments.database import get_async_session_dep
 from services.shipments.models import Package, TrackingEvent
 from services.shipments.schemas import (
@@ -23,7 +23,8 @@ from services.shipments.schemas import (
     TrackingEventCreate,
     TrackingEventOut,
 )
-from services.shipments.utils.tracking_validation import (
+from services.shipments.service_auth import service_permission_required
+from services.shipments.utils import (
     normalize_tracking_number,
     validate_tracking_number_format,
 )
