@@ -25,9 +25,10 @@ const FALLBACK_FOLDERS: EmailFolder[] = [
 
 interface EmailFolderSelectorProps {
     onFolderSelect: (folder: EmailFolder) => void;
+    selectedFolder?: EmailFolder;
 }
 
-export function EmailFolderSelector({ onFolderSelect }: EmailFolderSelectorProps) {
+export function EmailFolderSelector({ onFolderSelect, selectedFolder }: EmailFolderSelectorProps) {
     const { activeProviders } = useIntegrations();
     const [folders, setFolders] = useState<EmailFolder[]>(FALLBACK_FOLDERS);
     const [error, setError] = useState<string | null>(null);
@@ -136,7 +137,9 @@ export function EmailFolderSelector({ onFolderSelect }: EmailFolderSelectorProps
                             className="flex items-center gap-2 cursor-pointer"
                         >
                             {getFolderIcon(folder.label)}
-                            <span className="flex-1">{folder.name}</span>
+                            <span className={`flex-1 ${selectedFolder?.label === folder.label ? 'font-bold' : ''}`}>
+                                {folder.name}
+                            </span>
                             {folder.message_count !== undefined && (
                                 <span className="text-xs text-muted-foreground">
                                     {folder.message_count}
