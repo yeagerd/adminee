@@ -356,19 +356,21 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                     {/* Body */}
                                     <div className="flex-1 flex flex-col min-h-0">
                                         <div className="text-xs font-medium text-gray-500 mb-1">Body:</div>
-                                        <div className="text-sm text-gray-900 border rounded p-3 bg-white">
+                                        <div className="text-sm text-gray-900 border rounded p-3 bg-white overflow-x-auto">
                                             {email.body_text ? (
-                                                <div className="whitespace-pre-wrap">
+                                                <div className="whitespace-pre-wrap min-w-0">
                                                     {email.body_text}
                                                 </div>
                                             ) : email.body_html ? (
                                                 <div
-                                                    className="prose prose-sm max-w-none"
+                                                    className="prose prose-sm max-w-none min-w-0"
                                                     style={{
                                                         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
                                                         fontSize: '14px',
                                                         lineHeight: '1.5',
-                                                        color: '#333'
+                                                        color: '#333',
+                                                        overflowWrap: 'break-word',
+                                                        wordWrap: 'break-word'
                                                     }}
                                                     dangerouslySetInnerHTML={{ __html: sanitizeEmailHtml(email.body_html) }}
                                                 />
