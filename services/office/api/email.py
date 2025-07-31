@@ -799,7 +799,7 @@ async def get_email_thread(
         )
 
         if not thread:
-            raise NotFoundError(message=f"Thread {thread_id} not found")
+            raise NotFoundError("Thread", thread_id)
 
         # Prepare response data
         response_data = {
@@ -881,7 +881,7 @@ async def get_message_thread(
         )
 
         if not thread:
-            raise NotFoundError(message=f"Thread for message {message_id} not found")
+            raise NotFoundError("Thread", f"for message {message_id}")
 
         # Prepare response data
         response_data = {
@@ -1756,7 +1756,44 @@ async def fetch_single_thread(
                     logger.info(f"Successfully fetched conversation {original_thread_id}, got {len(conv_messages.get('value', []))} messages")
                 except Exception as e:
                     logger.error(f"Failed to fetch Microsoft conversation {original_thread_id}: {e}")
-                    return None
+                    # Try alternative approach: get messages without complex filtering
+                    try:
+                        logger.info(f"Trying alternative approach for conversation {original_thread_id}")
+                        # Get recent messages and filter client-side
+                        messages_response = await microsoft_client.get_messages(
+                            top=200,  # Get more messages to increase chances of finding the conversation
+                        )
+                        messages = messages_response.get("value", [])
+                        
+                        # Filter messages that belong to this conversation
+                        conversation_messages = [
+                            msg for msg in messages 
+                            if msg.get("conversationId") == original_thread_id
+                        ]
+                        
+                        if conversation_messages:
+                            logger.info(f"Found {len(conversation_messages)} messages for conversation {original_thread_id}")
+                            
+                            # Get user account info
+                            if "@" in user_id:
+                                account_email = user_id
+                                account_name = f"Outlook Account ({user_id.split('@')[0]})"
+                            else:
+                                account_email = f"{user_id}@outlook.com"
+                                account_name = f"Outlook Account ({user_id})"
+
+                            return normalize_microsoft_conversation(
+                                {"id": original_thread_id},
+                                conversation_messages,
+                                account_email,
+                                account_name
+                            )
+                        else:
+                            logger.warning(f"No messages found for conversation {original_thread_id}")
+                            return None
+                    except Exception as fallback_error:
+                        logger.error(f"Fallback approach also failed for conversation {original_thread_id}: {fallback_error}")
+                        return None
                 
                 # Get user account info (simplified)
                 if "@" in user_id:
