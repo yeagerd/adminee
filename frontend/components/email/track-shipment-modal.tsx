@@ -215,6 +215,26 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
             ...prev,
             [field]: value
         }));
+
+        // If tracking number changed, check for existing package
+        if (field === 'tracking_number' && value.trim()) {
+            // Clear existing package when tracking number changes
+            setExistingPackage(null);
+            setIsCheckingPackage(true);
+
+            // Debounce the lookup to avoid too many API calls
+            setTimeout(async () => {
+                try {
+                    const packageData = await checkExistingPackage(value.trim(), formData.carrier);
+                    setExistingPackage(packageData);
+                } catch (error) {
+                    console.error('Error checking existing package:', error);
+                    setExistingPackage(null);
+                } finally {
+                    setIsCheckingPackage(false);
+                }
+            }, 500);
+        }
     };
 
     const submitDataCollection = async (packageData: PackageFormData) => {
@@ -429,22 +449,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                             {/* Form - Right Side */}
                             <div className="space-y-4">
                                 <form onSubmit={handleSubmit} className="space-y-4">
-                                    {/* Detection Status */}
-                                    {shipmentDetection.isShipmentEmail && (
-                                        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                                            <div className="flex items-center gap-2 text-green-700">
-                                                <CheckCircle className="h-4 w-4" />
-                                                <span className="text-sm font-medium">
-                                                    Shipment detected with {Math.round(shipmentDetection.confidence * 100)}% confidence
-                                                </span>
-                                            </div>
-                                            {shipmentDetection.detectedCarrier && (
-                                                <p className="text-sm text-green-600 mt-1">
-                                                    Detected carrier: {shipmentDetection.detectedCarrier.toUpperCase()}
-                                                </p>
-                                            )}
-                                        </div>
-                                    )}
+
 
                                     {/* Package Check Status */}
                                     {isCheckingPackage && (
@@ -458,167 +463,11 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                         </div>
                                     )}
 
-                                    {/* Existing Package Header */}
-                                    {existingPackage && !isCheckingPackage && (
-                                        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                                            <div className="flex items-center gap-3 mb-3">
-                                                <CheckCircle className="h-5 w-5 text-green-600" />
-                                                <div>
-                                                    <h3 className="font-semibold text-green-800">Known Package</h3>
-                                                    <p className="text-sm text-green-700">We'll add a new tracking event</p>
-                                                </div>
-                                            </div>
 
-                                            {/* Tracking Number and Carrier */}
-                                            <div className="grid grid-cols-2 gap-4 mb-4">
-                                                <div>
-                                                    <div className="text-xs font-medium text-green-700 mb-1">Tracking Number</div>
-                                                    <div className="text-sm font-mono text-green-800 bg-green-100 px-2 py-1 rounded">
-                                                        {existingPackage.tracking_number}
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <div className="text-xs font-medium text-green-700 mb-1">Carrier</div>
-                                                    <div className="text-sm font-medium text-green-800">
-                                                        {existingPackage.carrier.toUpperCase()}
-                                                    </div>
-                                                </div>
-                                            </div>
 
-                                            {/* Status and Expected Delivery */}
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <div className="text-xs font-medium text-green-700 mb-1">Current Status</div>
-                                                    <div className="text-sm font-medium text-green-800">
-                                                        {existingPackage.status}
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <div className="text-xs font-medium text-green-700 mb-1">Expected Delivery</div>
-                                                    <div className="text-sm text-green-800">
-                                                        {existingPackage.estimated_delivery ?
-                                                            new Date(existingPackage.estimated_delivery).toLocaleDateString() :
-                                                            'Not specified'
-                                                        }
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
 
-                                    {/* Existing Package Information */}
-                                    {existingPackage && !isCheckingPackage && (
-                                        <>
-                                            {/* Divider */}
-                                            <div className="border-t border-gray-200 my-6">
-                                                <div className="bg-white px-3 -mt-3">
-                                                    <span className="text-xs font-medium text-gray-500 bg-white px-2">Existing Package Information</span>
-                                                </div>
-                                            </div>
 
-                                            {/* Existing Package Details */}
-                                            <div className="space-y-4 bg-gray-50 rounded-lg p-4">
-                                                <div className="grid grid-cols-1 gap-4">
-                                                    {existingPackage.recipient_name && (
-                                                        <div>
-                                                            <div className="text-xs font-medium text-gray-600 mb-1">Recipient</div>
-                                                            <div className="text-sm text-gray-900">{existingPackage.recipient_name}</div>
-                                                        </div>
-                                                    )}
 
-                                                    {existingPackage.shipper_name && (
-                                                        <div>
-                                                            <div className="text-xs font-medium text-gray-600 mb-1">Shipper</div>
-                                                            <div className="text-sm text-gray-900">{existingPackage.shipper_name}</div>
-                                                        </div>
-                                                    )}
-
-                                                    {existingPackage.package_description && (
-                                                        <div>
-                                                            <div className="text-xs font-medium text-gray-600 mb-1">Description</div>
-                                                            <div className="text-sm text-gray-900">{existingPackage.package_description}</div>
-                                                        </div>
-                                                    )}
-
-                                                    {existingPackage.order_number && (
-                                                        <div>
-                                                            <div className="text-xs font-medium text-gray-600 mb-1">Order Number</div>
-                                                            <div className="text-sm text-gray-900 font-mono">{existingPackage.order_number}</div>
-                                                        </div>
-                                                    )}
-
-                                                    {existingPackage.tracking_link && (
-                                                        <div>
-                                                            <div className="text-xs font-medium text-gray-600 mb-1">Tracking Link</div>
-                                                            <a
-                                                                href={existingPackage.tracking_link}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="text-sm text-blue-600 hover:text-blue-800 underline"
-                                                            >
-                                                                View tracking
-                                                            </a>
-                                                        </div>
-                                                    )}
-
-                                                    <div>
-                                                        <div className="text-xs font-medium text-gray-600 mb-1">Tracking Events</div>
-                                                        <div className="text-sm text-gray-900">
-                                                            {existingPackage.events_count} event{existingPackage.events_count !== 1 ? 's' : ''} recorded
-                                                        </div>
-                                                    </div>
-
-                                                    <div>
-                                                        <div className="text-xs font-medium text-gray-600 mb-1">Last Updated</div>
-                                                        <div className="text-sm text-gray-900">
-                                                            {new Date(existingPackage.updated_at).toLocaleString()}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </>
-                                    )}
-
-                                    {/* New Tracking Event Information */}
-                                    {existingPackage && !isCheckingPackage && (
-                                        <>
-                                            {/* Divider */}
-                                            <div className="border-t border-gray-200 my-6">
-                                                <div className="bg-white px-3 -mt-3">
-                                                    <span className="text-xs font-medium text-gray-500 bg-white px-2">New Tracking Event</span>
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-4">
-                                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                                    <div className="flex items-center gap-2 mb-3">
-                                                        <Info className="h-4 w-4 text-blue-600" />
-                                                        <span className="text-sm font-medium text-blue-800">Add a new tracking event</span>
-                                                    </div>
-                                                    <p className="text-sm text-blue-700">
-                                                        You can add additional information about this tracking event, such as order number,
-                                                        package description, or expected delivery date.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </>
-                                    )}
-
-                                    {/* Data Collection Notice */}
-                                    {hasDataCollectionConsent && (
-                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                            <div className="flex items-start gap-2 text-blue-700">
-                                                <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                                                <div className="text-sm">
-                                                    <p className="font-medium">Help Improve Detection</p>
-                                                    <p className="text-blue-600 mt-1">
-                                                        Your corrections help us improve our shipment detection accuracy.
-                                                        Data is collected anonymously and securely.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
 
                                     {/* Tracking Number */}
                                     <div className="space-y-2">
@@ -629,10 +478,27 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                             onChange={(e) => handleInputChange('tracking_number', e.target.value)}
                                             placeholder="Enter tracking number"
                                             required
-                                            disabled={!!existingPackage}
-                                            className={existingPackage ? "bg-gray-100" : ""}
                                         />
                                     </div>
+
+                                    {/* Package Info Bubble */}
+                                    {existingPackage && !isCheckingPackage && (
+                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                            <div className="flex items-start gap-2 text-blue-700">
+                                                <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                                <div className="text-sm">
+                                                    <p className="font-medium">Known Package Found</p>
+                                                    <p className="text-blue-600 mt-1">
+                                                        This tracking number matches an existing package.
+                                                        {existingPackage.events_count > 0
+                                                            ? ` We'll add a new tracking event (${existingPackage.events_count} event${existingPackage.events_count !== 1 ? 's' : ''} already recorded).`
+                                                            : " We'll add the first tracking event."
+                                                        }
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* Carrier */}
                                     <div className="space-y-2">
@@ -640,9 +506,8 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                         <Select
                                             value={formData.carrier}
                                             onValueChange={(value) => handleInputChange('carrier', value)}
-                                            disabled={!!existingPackage}
                                         >
-                                            <SelectTrigger className={existingPackage ? "bg-gray-100" : ""}>
+                                            <SelectTrigger>
                                                 <SelectValue placeholder="Select carrier" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -661,9 +526,8 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                         <Select
                                             value={formData.status}
                                             onValueChange={(value) => handleInputChange('status', value)}
-                                            disabled={!!existingPackage}
                                         >
-                                            <SelectTrigger className={existingPackage ? "bg-gray-100" : ""}>
+                                            <SelectTrigger>
                                                 <SelectValue placeholder="Select status" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -674,6 +538,18 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                                 ))}
                                             </SelectContent>
                                         </Select>
+                                    </div>
+
+                                    {/* Expected Delivery */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="expected_delivery">Expected Delivery Date</Label>
+                                        <Input
+                                            id="expected_delivery"
+                                            value={formData.expected_delivery}
+                                            onChange={(e) => handleInputChange('expected_delivery', e.target.value)}
+                                            placeholder="YYYY-MM-DD (optional)"
+                                            type="date"
+                                        />
                                     </div>
 
                                     {/* Order Number */}
@@ -721,18 +597,6 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                         />
                                     </div>
 
-                                    {/* Expected Delivery */}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="expected_delivery">Expected Delivery Date</Label>
-                                        <Input
-                                            id="expected_delivery"
-                                            value={formData.expected_delivery}
-                                            onChange={(e) => handleInputChange('expected_delivery', e.target.value)}
-                                            placeholder="YYYY-MM-DD (optional)"
-                                            type="date"
-                                        />
-                                    </div>
-
                                     {/* Tracking Link */}
                                     <div className="space-y-2">
                                         <Label htmlFor="tracking_link">Tracking Link</Label>
@@ -744,6 +608,22 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                             type="url"
                                         />
                                     </div>
+
+                                    {/* Data Collection Notice */}
+                                    {hasDataCollectionConsent && (
+                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                            <div className="flex items-start gap-2 text-blue-700">
+                                                <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                                <div className="text-sm">
+                                                    <p className="font-medium">Help Improve Detection</p>
+                                                    <p className="text-blue-600 mt-1">
+                                                        Your corrections help us improve our shipment detection accuracy.
+                                                        Data is collected anonymously and securely.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </form>
                             </div>
                         </div>
