@@ -1,3 +1,4 @@
+import FieldUpdateMessage from '@/components/general/field-update-message';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -71,6 +72,8 @@ const getUpdateMessage = (fieldName: keyof PackageFormData, currentValue: string
     }
     return `Will be updated from: ${originalValue}`;
 };
+
+
 
 const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
     isOpen,
@@ -597,15 +600,11 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                         />
                                     </div>
                                     {existingPackage && formData.order_number && (
-                                        <div className="text-xs text-blue-600 ml-28">
-                                            {originalPackageData?.order_number ?
-                                                (formData.order_number !== originalPackageData.order_number ?
-                                                    `Will be updated from: ${originalPackageData.order_number}` :
-                                                    null
-                                                ) :
-                                                `Adding value: ${formData.order_number}`
-                                            }
-                                        </div>
+                                        <FieldUpdateMessage
+                                            existingPackage={existingPackage}
+                                            currentValue={formData.order_number}
+                                            originalValue={originalPackageData?.order_number}
+                                        />
                                     )}
 
                                     {/* Package Description */}
@@ -621,15 +620,11 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                         />
                                     </div>
                                     {existingPackage && formData.package_description && (
-                                        <div className="text-xs text-blue-600 ml-28">
-                                            {originalPackageData?.package_description ?
-                                                (formData.package_description !== originalPackageData.package_description ?
-                                                    `Will be updated from: ${originalPackageData.package_description}` :
-                                                    null
-                                                ) :
-                                                `Adding value: ${formData.package_description}`
-                                            }
-                                        </div>
+                                        <FieldUpdateMessage
+                                            existingPackage={existingPackage}
+                                            currentValue={formData.package_description}
+                                            originalValue={originalPackageData?.package_description}
+                                        />
                                     )}
 
                                     {/* Recipient Name */}
@@ -644,15 +639,11 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                         />
                                     </div>
                                     {existingPackage && formData.recipient_name && (
-                                        <div className="text-xs text-blue-600 ml-28">
-                                            {originalPackageData?.recipient_name ?
-                                                (formData.recipient_name !== originalPackageData.recipient_name ?
-                                                    `Will be updated from: ${originalPackageData.recipient_name}` :
-                                                    null
-                                                ) :
-                                                `Adding value: ${formData.recipient_name}`
-                                            }
-                                        </div>
+                                        <FieldUpdateMessage
+                                            existingPackage={existingPackage}
+                                            currentValue={formData.recipient_name}
+                                            originalValue={originalPackageData?.recipient_name}
+                                        />
                                     )}
 
                                     {/* Shipper Name */}
@@ -667,15 +658,11 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                         />
                                     </div>
                                     {existingPackage && formData.shipper_name && (
-                                        <div className="text-xs text-blue-600 ml-28">
-                                            {originalPackageData?.shipper_name ?
-                                                (formData.shipper_name !== originalPackageData.shipper_name ?
-                                                    `Will be updated from: ${originalPackageData.shipper_name}` :
-                                                    null
-                                                ) :
-                                                `Adding value: ${formData.shipper_name}`
-                                            }
-                                        </div>
+                                        <FieldUpdateMessage
+                                            existingPackage={existingPackage}
+                                            currentValue={formData.shipper_name}
+                                            originalValue={originalPackageData?.shipper_name}
+                                        />
                                     )}
 
                                     {/* Tracking Link */}
@@ -691,15 +678,11 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                         />
                                     </div>
                                     {existingPackage && formData.tracking_link && (
-                                        <div className="text-xs text-blue-600 ml-28">
-                                            {originalPackageData?.tracking_link ?
-                                                (formData.tracking_link !== originalPackageData.tracking_link ?
-                                                    `Will be updated from: ${originalPackageData.tracking_link}` :
-                                                    null
-                                                ) :
-                                                `Adding value: ${formData.tracking_link}`
-                                            }
-                                        </div>
+                                        <FieldUpdateMessage
+                                            existingPackage={existingPackage}
+                                            currentValue={formData.tracking_link}
+                                            originalValue={originalPackageData?.tracking_link}
+                                        />
                                     )}
 
                                     {/* Data Collection Notice */}
