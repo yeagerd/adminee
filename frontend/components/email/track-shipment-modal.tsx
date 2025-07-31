@@ -11,9 +11,88 @@ import { PACKAGE_STATUS, PACKAGE_STATUS_OPTIONS, PackageStatus } from '@/lib/pac
 import { DataCollectionRequest, PackageCreateRequest, PackageResponse, shipmentsClient } from '@/lib/shipments-client';
 import { safeParseDateToISOString, safeParseDateToLocaleString } from '@/lib/utils';
 import { EmailMessage } from '@/types/office-service';
+import DOMPurify from 'dompurify';
 import { CheckCircle, Info, Loader2, Package, Truck } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import React, { useEffect, useRef, useState } from 'react';
+
+// Configure DOMPurify for email content
+const emailSanitizeConfig = {
+    ALLOWED_TAGS: [
+        // Basic text formatting
+        'p', 'br', 'div', 'span', 'strong', 'b', 'em', 'i', 'u', 'strike', 's',
+        // Headers
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        // Lists
+        'ul', 'ol', 'li',
+        // Links
+        'a',
+        // Tables
+        'table', 'thead', 'tbody', 'tr', 'td', 'th',
+        // Images
+        'img',
+        // Code
+        'code', 'pre',
+        // Blockquotes
+        'blockquote',
+        // Horizontal rule
+        'hr'
+    ],
+    ALLOWED_ATTR: [
+        // Link attributes
+        'href', 'target', 'rel',
+        // Image attributes
+        'src', 'alt', 'width', 'height', 'style',
+        // Table attributes
+        'colspan', 'rowspan', 'align', 'valign',
+        // Style attributes (for email formatting)
+        'style', 'class', 'id',
+        // Common email attributes
+        'bgcolor', 'color', 'face', 'size'
+    ],
+    ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|cid|xmpp):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+    KEEP_CONTENT: true,
+    RETURN_DOM: false,
+    RETURN_DOM_FRAGMENT: false,
+    RETURN_TRUSTED_TYPE: false
+};
+
+// Safe sanitization function with fallback
+const sanitizeEmailHtml = (html: string): string => {
+    if (!html) return '';
+
+    try {
+        // Use DOMPurify for sanitization (ES6 import guarantees it's available)
+        return DOMPurify.sanitize(html, emailSanitizeConfig);
+    } catch (error) {
+        console.error('Error sanitizing HTML with DOMPurify, using fallback:', error);
+
+        // Fallback: comprehensive sanitization when DOMPurify fails
+        return html
+            // Remove script tags and their content
+            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+            // Remove event handler attributes
+            .replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '')
+            // Remove javascript: protocol
+            .replace(/javascript:/gi, '')
+            // Remove all data URLs except legitimate image data URLs
+            .replace(/data:(?!image\/)[^;]*;[^"'\s]*/gi, '')
+            // Remove vbscript: protocol
+            .replace(/vbscript:/gi, '')
+            // Remove expression() CSS function (IE-specific XSS vector)
+            .replace(/expression\s*\(/gi, '')
+            // Remove eval() function calls
+            .replace(/eval\s*\(/gi, '')
+            // Remove iframe tags
+            .replace(/<iframe[^>]*>[\s\S]*?<\/iframe>/gi, '')
+            // Remove object tags
+            .replace(/<object[^>]*>[\s\S]*?<\/object>/gi, '')
+            // Remove embed tags
+            .replace(/<embed[^>]*>/gi, '')
+            // Remove applet tags
+            .replace(/<applet[^>]*>[\s\S]*?<\/applet>/gi, '');
+    }
+};
 
 interface TrackShipmentModalProps {
     isOpen: boolean;
@@ -461,41 +540,23 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                     {/* Body */}
                                     <div className="flex-1 flex flex-col min-h-0">
                                         <div className="text-xs font-medium text-gray-500 mb-1">Body:</div>
-                                        <div className="text-sm text-gray-900 flex-1 overflow-y-auto border rounded p-3 bg-white min-h-0">
+                                        <div className="text-sm text-gray-900 border rounded p-3 bg-white overflow-x-auto">
                                             {email.body_text ? (
-                                                <div className="whitespace-pre-wrap">
+                                                <div className="whitespace-pre-wrap min-w-0">
                                                     {email.body_text}
                                                 </div>
                                             ) : email.body_html ? (
-                                                <iframe
-                                                    srcDoc={`
-                                                        <!DOCTYPE html>
-                                                        <html>
-                                                        <head>
-                                                            <meta charset="utf-8">
-                                                            <style>
-                                                                body {
-                                                                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                                                                    font-size: 14px;
-                                                                    line-height: 1.5;
-                                                                    color: #333;
-                                                                    margin: 0;
-                                                                    padding: 0;
-                                                                    background: white;
-                                                                }
-                                                                * {
-                                                                    box-sizing: border-box;
-                                                                }
-                                                            </style>
-                                                        </head>
-                                                        <body>
-                                                            ${email.body_html}
-                                                        </body>
-                                                        </html>
-                                                    `}
-                                                    className="w-full h-full border-0"
-                                                    style={{ minHeight: '200px' }}
-                                                    sandbox="allow-same-origin"
+                                                <div
+                                                    className="prose prose-sm max-w-none min-w-0"
+                                                    style={{
+                                                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                                                        fontSize: '14px',
+                                                        lineHeight: '1.5',
+                                                        color: '#333',
+                                                        overflowWrap: 'break-word',
+                                                        wordWrap: 'break-word'
+                                                    }}
+                                                    dangerouslySetInnerHTML={{ __html: sanitizeEmailHtml(email.body_html) }}
                                                 />
                                             ) : (
                                                 <span className="text-gray-500 italic">No content</span>
