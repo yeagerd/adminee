@@ -28,7 +28,7 @@ async def clear_demo_user_cache() -> None:
         print("✅ Connected to Redis successfully")
         
         # Find all cache keys for demo_user
-        pattern = "office_service:demo_user:*"
+        pattern = "office:demo_user:*"
         keys = await redis_client.keys(pattern)
         
         print(f"Found {len(keys)} cache keys for demo_user:")
@@ -45,7 +45,7 @@ async def clear_demo_user_cache() -> None:
             print("No cache keys found to delete")
             
         # Show unified events cache pattern specifically
-        unified_pattern = "office_service:demo_user:unified:events:*"
+        unified_pattern = "office:demo_user:unified:events:*"
         unified_keys = await redis_client.keys(unified_pattern)
         print(f"\nSpecifically for unified calendar events: {len(unified_keys)} keys")
         
@@ -71,7 +71,7 @@ async def inspect_cache_contents() -> None:
         print("🔍 Inspecting cache contents for demo_user...")
         
         # Look at calendar event cache keys
-        pattern = "office_service:demo_user:unified:events:*"
+        pattern = "office:demo_user:unified:events:*"
         keys = await redis_client.keys(pattern)
         
         for key in keys:

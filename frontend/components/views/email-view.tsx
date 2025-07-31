@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useIntegrations } from '@/contexts/integrations-context';
 import { gatewayClient } from '@/lib/gateway-client';
-import { EmailFolder, EmailMessage } from '@/types/office-service';
+import { EmailFolder, EmailMessage, EmailThread as EmailThreadType } from '@/types/office-service';
 import { ChevronLeft, List, ListTodo, PanelLeft, RefreshCw, Settings, Square } from 'lucide-react';
 import { getSession } from 'next-auth/react';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -26,6 +26,9 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
     const [error, setError] = useState<string | null>(null);
     const [filters, setFilters] = useState<Record<string, unknown>>({});
     const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+    const [fullThread, setFullThread] = useState<EmailThreadType | null>(null);
+    const [loadingThread, setLoadingThread] = useState(false);
+    const [threadError, setThreadError] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<ViewMode>('tight');
     const [readingPaneMode, setReadingPaneMode] = useState<ReadingPaneMode>('right');
     const [settingsOpen, setSettingsOpen] = useState(false);
@@ -119,8 +122,53 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
         setSelectedFolder(folder);
     }, []);
 
+    // Group emails by thread
+    const groupedThreads = React.useMemo(() => {
+        const threadMap = new Map<string, EmailMessage[]>();
+
+        threads.forEach(email => {
+            const threadId = email.thread_id || email.id;
+            if (!threadMap.has(threadId)) {
+                threadMap.set(threadId, []);
+            }
+            threadMap.get(threadId)!.push(email);
+        });
+
+        return Array.from(threadMap.entries()).map(([threadId, emails]) => ({
+            id: threadId,
+            emails
+        }));
+    }, [threads]);
+
+    // selectedThread was used for fallback logic that has been removed
+    // Keeping this for potential future use or debugging
+
+    // Function to fetch full thread when user clicks into it
+    const fetchFullThread = useCallback(async (threadId: string) => {
+        setLoadingThread(true);
+        setThreadError(null);
+
+        try {
+            const response = await gatewayClient.getThread(threadId, true); // include body
+            if (response.data?.thread) {
+                setFullThread(response.data.thread);
+            } else {
+                throw new Error('No thread data received from API');
+            }
+        } catch (error) {
+            console.error('Error fetching full thread:', error);
+            setThreadError('Failed to load thread data. Please try refreshing.');
+            setFullThread(null);
+        } finally {
+            setLoadingThread(false);
+        }
+    }, []);
+
     const handleThreadSelect = useCallback((threadId: string) => {
         setSelectedThreadId(threadId);
+
+        // Fetch full thread when user clicks into it
+        fetchFullThread(threadId);
 
         // Handle click behavior based on pane mode
         if (readingPaneMode === 'none') {
@@ -128,11 +176,12 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
             setIsInThreadView(true);
         }
         // Two-pane mode: thread will be shown in right pane automatically
-    }, [readingPaneMode]);
+    }, [readingPaneMode, fetchFullThread]);
 
     const handleBackToList = useCallback(() => {
         setIsInThreadView(false);
         setSelectedThreadId(null);
+        setFullThread(null);
     }, []);
 
     // Update selectedFolder provider when activeProviders change
@@ -155,6 +204,11 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
             setIsInThreadView(false);
         }
     }, [readingPaneMode]);
+
+    // Clear full thread when selected thread changes
+    useEffect(() => {
+        setFullThread(null);
+    }, [selectedThreadId]);
 
     useEffect(() => {
         // Only fetch when the tab is actually activated
@@ -187,25 +241,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
         return () => { isMounted = false; };
     }, [filters, activeProviders, integrationsLoading, toolDataLoading, activeTool, hasExpiredButRefreshableTokens, fetchEmails, selectedFolder.label]);
 
-    // Group emails by thread
-    const groupedThreads = React.useMemo(() => {
-        const threadMap = new Map<string, EmailMessage[]>();
 
-        threads.forEach(email => {
-            const threadId = email.thread_id || email.id;
-            if (!threadMap.has(threadId)) {
-                threadMap.set(threadId, []);
-            }
-            threadMap.get(threadId)!.push(email);
-        });
-
-        return Array.from(threadMap.entries()).map(([threadId, emails]) => ({
-            id: threadId,
-            emails
-        }));
-    }, [threads]);
-
-    const selectedThread = selectedThreadId ? groupedThreads.find(t => t.id === selectedThreadId) : null;
 
     return (
         <div className="flex flex-col h-full">
@@ -307,7 +343,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                 {isInThreadView && readingPaneMode === 'none' ? (
                     // One-pane thread view - show EmailCard for full email content
                     <div className="flex-1 overflow-y-auto">
-                        {selectedThread && (
+                        {selectedThreadId && (
                             <div className="p-4">
                                 <div className="flex items-center gap-3 mb-4">
                                     <button
@@ -319,10 +355,21 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                                     </button>
                                     <h2 className="text-lg font-semibold">Thread</h2>
                                 </div>
-                                <EmailThread
-                                    emails={selectedThread.emails}
-                                    threadId={selectedThread.id}
-                                />
+                                {loadingThread ? (
+                                    <div className="p-8 text-center text-muted-foreground">Loading thread...</div>
+                                ) : threadError ? (
+                                    <div className="p-8 text-center text-red-500">
+                                        {threadError}
+                                    </div>
+                                ) : fullThread ? (
+                                    <EmailThread
+                                        thread={fullThread}
+                                    />
+                                ) : (
+                                    <div className="p-8 text-center text-muted-foreground">
+                                        No thread data available
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -383,13 +430,24 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                 )}
 
                 {/* Reading pane */}
-                {readingPaneMode === 'right' && selectedThread && (
+                {readingPaneMode === 'right' && selectedThreadId && (
                     <div className="w-1/2 border-l bg-gray-50 overflow-y-auto">
                         <div className="p-4">
-                            <EmailThread
-                                emails={selectedThread.emails}
-                                threadId={selectedThread.id}
-                            />
+                            {loadingThread ? (
+                                <div className="p-8 text-center text-muted-foreground">Loading thread...</div>
+                            ) : threadError ? (
+                                <div className="p-8 text-center text-red-500">
+                                    {threadError}
+                                </div>
+                            ) : fullThread ? (
+                                <EmailThread
+                                    thread={fullThread}
+                                />
+                            ) : (
+                                <div className="p-8 text-center text-muted-foreground">
+                                    No thread data available
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}

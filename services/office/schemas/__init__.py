@@ -61,6 +61,34 @@ class EmailThread(BaseModel):
     providers: List[Provider]
 
 
+class Conversation(BaseModel):
+    """Microsoft Graph conversation/thread model."""
+
+    id: str = Field(..., description="Microsoft Graph conversation ID")
+    topic: Optional[str] = Field(None, description="Conversation topic/subject")
+    has_attachments: bool = Field(
+        False, description="Whether conversation has attachments"
+    )
+    last_delivered_date_time: Optional[datetime] = Field(
+        None, description="Last delivered message time"
+    )
+    unique_senders: List[str] = Field(
+        default_factory=list, description="Unique sender email addresses"
+    )
+    preview: Optional[str] = Field(None, description="Preview of the conversation")
+
+
+class EmailThreadList(BaseModel):
+    """Response model for email thread lists."""
+
+    success: bool
+    data: Optional[Dict[str, Any]] = None  # Contains threads, metadata, etc.
+    error: Optional[Dict[str, Any]] = None
+    cache_hit: bool = False
+    provider_used: Optional[Provider] = None
+    request_id: str
+
+
 class SendEmailRequest(BaseModel):
     """Request model for sending emails."""
 

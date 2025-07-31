@@ -77,8 +77,6 @@ interface EmailThreadCardProps {
     onSelect?: (emailId: string) => void;
     showReadingPane?: boolean;
     inlineAvatar?: boolean;
-    isFirstInThread?: boolean;
-    threadId?: string;
 }
 
 // Utility function to format email date
