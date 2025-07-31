@@ -666,7 +666,15 @@ class IntegrationService:
             raise ServiceError(message=f"Token refresh failed: {str(e)}")
         finally:
             # Always remove the refresh key when done, but only if it's still our future
-            async with self._refresh_lock:
+            # Check if we're already holding the lock to avoid deadlock
+            if not self._refresh_lock.locked():
+                async with self._refresh_lock:
+                    if refresh_key in self._ongoing_refreshes:
+                        # Only remove if it's the same future we created
+                        if self._ongoing_refreshes[refresh_key] is refresh_future:
+                            del self._ongoing_refreshes[refresh_key]
+            else:
+                # Lock is already held, perform cleanup without acquiring it
                 if refresh_key in self._ongoing_refreshes:
                     # Only remove if it's the same future we created
                     if self._ongoing_refreshes[refresh_key] is refresh_future:
