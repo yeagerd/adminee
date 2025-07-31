@@ -144,10 +144,18 @@ class TestRefreshDeduplication:
                 mock_refresh_token.encrypted_value = "encrypted_refresh_token"
 
                 mock_result = Mock()
-                mock_result.scalar_one_or_none.side_effect = [
-                    mock_access_token,
-                    mock_refresh_token,
-                ]
+
+                def scalar_one_or_none_side_effect():
+                    yield mock_access_token
+                    yield mock_refresh_token
+                    while True:
+                        yield mock_refresh_token
+
+                effect_generator = scalar_one_or_none_side_effect()
+                mock_result.scalar_one_or_none.side_effect = lambda: next(
+                    effect_generator
+                )
+
                 mock_session_instance.execute.return_value = mock_result
 
                 # Mock token decryption by directly patching the instance method
