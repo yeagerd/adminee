@@ -773,6 +773,7 @@ async def get_email_threads(
         # Fetch threads from each provider
         all_threads = []
         provider_errors = {}
+        providers_used = []
         primary_provider = None
 
         for provider in providers:
@@ -789,6 +790,7 @@ async def get_email_threads(
                     page_token,
                 )
                 all_threads.extend(threads)
+                providers_used.append(provider_used)
                 if not primary_provider:
                     primary_provider = provider_used
 
@@ -803,8 +805,9 @@ async def get_email_threads(
         response_data = {
             "threads": all_threads,
             "total_count": len(all_threads),
-            "providers_used": providers,
+            "providers_used": providers_used,
             "provider_errors": provider_errors if provider_errors else None,
+            "has_more": len(all_threads) >= limit,  # Simple heuristic for pagination
         }
 
         # Cache the result
