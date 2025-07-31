@@ -596,9 +596,15 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                             className="flex-1"
                                         />
                                     </div>
-                                    {existingPackage && originalPackageData?.order_number && formData.order_number !== originalPackageData.order_number && (
+                                    {existingPackage && formData.order_number && (
                                         <div className="text-xs text-blue-600 ml-28">
-                                            Will be updated from: {originalPackageData.order_number}
+                                            {originalPackageData?.order_number ?
+                                                (formData.order_number !== originalPackageData.order_number ?
+                                                    `Will be updated from: ${originalPackageData.order_number}` :
+                                                    null
+                                                ) :
+                                                `Adding value: ${formData.order_number}`
+                                            }
                                         </div>
                                     )}
 
@@ -614,9 +620,15 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                             className="flex-1"
                                         />
                                     </div>
-                                    {existingPackage && originalPackageData?.package_description && formData.package_description !== originalPackageData.package_description && (
+                                    {existingPackage && formData.package_description && (
                                         <div className="text-xs text-blue-600 ml-28">
-                                            Will be updated from: {originalPackageData.package_description}
+                                            {originalPackageData?.package_description ?
+                                                (formData.package_description !== originalPackageData.package_description ?
+                                                    `Will be updated from: ${originalPackageData.package_description}` :
+                                                    null
+                                                ) :
+                                                `Adding value: ${formData.package_description}`
+                                            }
                                         </div>
                                     )}
 
@@ -631,9 +643,15 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                             className="flex-1"
                                         />
                                     </div>
-                                    {existingPackage && originalPackageData?.recipient_name && formData.recipient_name !== originalPackageData.recipient_name && (
+                                    {existingPackage && formData.recipient_name && (
                                         <div className="text-xs text-blue-600 ml-28">
-                                            Will be updated from: {originalPackageData.recipient_name}
+                                            {originalPackageData?.recipient_name ?
+                                                (formData.recipient_name !== originalPackageData.recipient_name ?
+                                                    `Will be updated from: ${originalPackageData.recipient_name}` :
+                                                    null
+                                                ) :
+                                                `Adding value: ${formData.recipient_name}`
+                                            }
                                         </div>
                                     )}
 
@@ -648,9 +666,15 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                             className="flex-1"
                                         />
                                     </div>
-                                    {existingPackage && originalPackageData?.shipper_name && formData.shipper_name !== originalPackageData.shipper_name && (
+                                    {existingPackage && formData.shipper_name && (
                                         <div className="text-xs text-blue-600 ml-28">
-                                            Will be updated from: {originalPackageData.shipper_name}
+                                            {originalPackageData?.shipper_name ?
+                                                (formData.shipper_name !== originalPackageData.shipper_name ?
+                                                    `Will be updated from: ${originalPackageData.shipper_name}` :
+                                                    null
+                                                ) :
+                                                `Adding value: ${formData.shipper_name}`
+                                            }
                                         </div>
                                     )}
 
@@ -666,9 +690,15 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                             className="flex-1"
                                         />
                                     </div>
-                                    {existingPackage && originalPackageData?.tracking_link && formData.tracking_link !== originalPackageData.tracking_link && (
+                                    {existingPackage && formData.tracking_link && (
                                         <div className="text-xs text-blue-600 ml-28">
-                                            Will be updated from: {originalPackageData.tracking_link}
+                                            {originalPackageData?.tracking_link ?
+                                                (formData.tracking_link !== originalPackageData.tracking_link ?
+                                                    `Will be updated from: ${originalPackageData.tracking_link}` :
+                                                    null
+                                                ) :
+                                                `Adding value: ${formData.tracking_link}`
+                                            }
                                         </div>
                                     )}
 
