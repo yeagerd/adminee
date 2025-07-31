@@ -51,8 +51,6 @@ const EmailThread: React.FC<EmailThreadProps> = ({
                 <EmailThreadCard
                     key={message.id}
                     email={message}
-                    isFirstInThread={index === 0}
-                    threadId={thread.id}
                     isSelected={selectedMessageId === message.id}
                     onSelect={onSelectMessage}
                 />
