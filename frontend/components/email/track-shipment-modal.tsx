@@ -130,12 +130,20 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                         tracking_link: suggestedData.tracking_link || '',
                         expected_delivery: suggestedData.estimated_delivery || '',
                     };
+                    console.log('Detected package data:', detectedData);
                     setFormData(detectedData);
                     setInitialFormData(detectedData);
 
                     // Check if package already exists
                     if (detectedData.tracking_number && detectedData.carrier !== 'unknown') {
+                        console.log('Will check for existing package with:', { trackingNumber: detectedData.tracking_number, carrier: detectedData.carrier });
                         await checkExistingPackage(detectedData.tracking_number, detectedData.carrier);
+                    } else {
+                        console.log('Skipping package check - conditions not met:', {
+                            hasTrackingNumber: !!detectedData.tracking_number,
+                            carrier: detectedData.carrier,
+                            trackingNumber: detectedData.tracking_number
+                        });
                     }
                 } else if (shipmentDetection.isShipmentEmail) {
                     console.log('Backend did not detect shipment, using frontend detection');
