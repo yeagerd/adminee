@@ -1,4 +1,4 @@
-import { GatewayClient } from '@/lib/gateway-client';
+import { gatewayClient } from '@/lib/gateway-client';
 import { EmailThread } from '@/types/office-service';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -44,8 +44,6 @@ export const useThreads = (initialOptions: UseThreadsOptions = {}): UseThreadsRe
         ...initialOptions,
     });
 
-    const gatewayClient = new GatewayClient();
-
     const fetchThreads = useCallback(async (fetchOptions?: Partial<UseThreadsOptions>) => {
         const mergedOptions = { ...options, ...fetchOptions };
         setLoading(true);
@@ -74,7 +72,7 @@ export const useThreads = (initialOptions: UseThreadsOptions = {}): UseThreadsRe
         } finally {
             setLoading(false);
         }
-    }, [options, gatewayClient]);
+    }, [options]);
 
     const fetchThread = useCallback(async (threadId: string) => {
         setLoading(true);
@@ -95,7 +93,7 @@ export const useThreads = (initialOptions: UseThreadsOptions = {}): UseThreadsRe
         } finally {
             setLoading(false);
         }
-    }, [gatewayClient]);
+    }, []);
 
     const fetchMessageThread = useCallback(async (messageId: string) => {
         setLoading(true);
@@ -116,7 +114,7 @@ export const useThreads = (initialOptions: UseThreadsOptions = {}): UseThreadsRe
         } finally {
             setLoading(false);
         }
-    }, [gatewayClient]);
+    }, []);
 
     const selectThread = useCallback((threadId: string) => {
         const thread = threads.find(t => t.id === threadId);

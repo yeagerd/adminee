@@ -256,7 +256,7 @@ def generate_cache_key(
 
     Examples:
         >>> generate_cache_key("user123", "google", "messages", {"limit": 10})
-        'office_service:user123:google:messages:5d41402abc4b2a76b9719d911017c592'
+        'office:user123:google:messages:5d41402abc4b2a76b9719d911017c592'
     """
     # Sort parameters to ensure consistent ordering
     sorted_params = dict(sorted(params.items()))
@@ -266,7 +266,7 @@ def generate_cache_key(
     param_hash = hashlib.md5(param_string.encode()).hexdigest()
 
     # Generate cache key
-    cache_key = f"office_service:{user_id}:{provider}:{endpoint}:{param_hash}"
+    cache_key = f"office:{user_id}:{provider}:{endpoint}:{param_hash}"
 
     return cache_key
 

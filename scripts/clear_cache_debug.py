@@ -28,7 +28,7 @@ async def clear_demo_user_cache() -> None:
         print("✅ Connected to Redis successfully")
         
         # Find all cache keys for demo_user
-        pattern = "office_service:demo_user:*"
+        pattern = "office:demo_user:*"
         keys = await redis_client.keys(pattern)
         
         print(f"Found {len(keys)} cache keys for demo_user:")

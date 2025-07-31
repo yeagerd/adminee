@@ -47,7 +47,7 @@ const EmailThread: React.FC<EmailThreadProps> = ({
                 </div>
             </div>
 
-            {sortedMessages.map((message, index) => (
+            {sortedMessages.map((message) => (
                 <EmailThreadCard
                     key={message.id}
                     email={message}
