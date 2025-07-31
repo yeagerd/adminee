@@ -441,44 +441,50 @@ class IntegrationService:
         # Create a unique key for this refresh operation
         refresh_key = f"{user_id}:{provider.value}"
 
+        # Check if a refresh is already in progress
         async with self._refresh_lock:
-            # Check if a refresh is already in progress for this user/provider
             if refresh_key in self._ongoing_refreshes:
                 self.logger.info(
                     f"Refresh already in progress for user {user_id}, provider {provider.value}. "
                     "Waiting for it to complete."
                 )
-                # Wait for the ongoing refresh to complete
-                refresh_future = self._ongoing_refreshes[refresh_key]
-                try:
-                    await asyncio.wait_for(
-                        refresh_future, timeout=get_settings().refresh_timeout_seconds
-                    )
-                except asyncio.TimeoutError:
-                    # If the refresh times out, remove it from tracking and proceed with a new refresh
-                    self.logger.warning(
-                        f"Refresh operation timed out for user {user_id}, provider {provider.value}. "
-                        "Removing from tracking and proceeding with new refresh."
-                    )
-                    async with self._refresh_lock:
-                        if refresh_key in self._ongoing_refreshes:
+                # Get the existing future before releasing the lock
+                existing_future = self._ongoing_refreshes[refresh_key]
+            else:
+                # No existing refresh, create a new one
+                existing_future = None
+                refresh_future = asyncio.Future()
+                self._ongoing_refreshes[refresh_key] = refresh_future
+
+        # If there was an existing refresh, wait for it
+        if existing_future is not None:
+            try:
+                result = await asyncio.wait_for(
+                    existing_future, timeout=get_settings().refresh_timeout_seconds
+                )
+                # If we get here, the future completed successfully
+                return result
+            except asyncio.TimeoutError:
+                # If the refresh times out, we need to clean up and start a new one
+                self.logger.warning(
+                    f"Refresh operation timed out for user {user_id}, provider {provider.value}. "
+                    "Removing from tracking and proceeding with new refresh."
+                )
+                # Re-acquire lock to clean up the timed-out future
+                async with self._refresh_lock:
+                    if refresh_key in self._ongoing_refreshes:
+                        # Only remove if it's the same future we were waiting for
+                        if self._ongoing_refreshes[refresh_key] is existing_future:
                             del self._ongoing_refreshes[refresh_key]
-                    # Continue with the refresh logic below
-                else:
-                    # After waiting, the refresh_key will be removed from _ongoing_refreshes
-                    # by the finally block, so we can proceed with a new lock.
-                    # However, if the refresh failed, we might need to re-raise the exception.
-                    # The refresh_future.exception() will give us the exception if it failed.
-                    exception = refresh_future.exception()
-                    if exception is not None:
-                        raise exception
-                    # If it completed successfully, return the result
-                    return refresh_future.result()
+                # Create a new refresh operation
+                async with self._refresh_lock:
+                    refresh_future = asyncio.Future()
+                    self._ongoing_refreshes[refresh_key] = refresh_future
+            except Exception as e:
+                # If the future completed with an exception, re-raise it
+                raise e
 
-            # Mark this refresh as in progress
-            refresh_future = asyncio.Future()
-            self._ongoing_refreshes[refresh_key] = refresh_future
-
+        # At this point, we have a refresh_future that we created and need to execute
         try:
             # Use a single session for the entire operation
             async_session = get_async_session()
@@ -651,10 +657,12 @@ class IntegrationService:
                 raise
             raise ServiceError(message=f"Token refresh failed: {str(e)}")
         finally:
-            # Always remove the refresh key when done
+            # Always remove the refresh key when done, but only if it's still our future
             async with self._refresh_lock:
                 if refresh_key in self._ongoing_refreshes:
-                    del self._ongoing_refreshes[refresh_key]
+                    # Only remove if it's the same future we created
+                    if self._ongoing_refreshes[refresh_key] is refresh_future:
+                        del self._ongoing_refreshes[refresh_key]
 
     async def disconnect_integration(
         self,

@@ -150,24 +150,30 @@ class TestTokenOptimization:
                                 "expires_in": 3600,
                             }
 
-                            # Start two concurrent refresh operations
-                            async def refresh_operation():
-                                return await integration_service.refresh_integration_tokens(
-                                    user_id=user_id, provider=provider, force=True
+                            # Mock audit logging to prevent database errors
+                            with patch(
+                                "services.user.services.integration_service.audit_logger.log_user_action"
+                            ) as mock_audit:
+                                mock_audit.return_value = None
+
+                                # Start two concurrent refresh operations
+                                async def refresh_operation():
+                                    return await integration_service.refresh_integration_tokens(
+                                        user_id=user_id, provider=provider, force=True
+                                    )
+
+                                # Run both operations concurrently
+                                results = await asyncio.gather(
+                                    refresh_operation(),
+                                    refresh_operation(),
+                                    return_exceptions=True,
                                 )
 
-                            # Run both operations concurrently
-                            results = await asyncio.gather(
-                                refresh_operation(),
-                                refresh_operation(),
-                                return_exceptions=True,
-                            )
-
-                            # One should succeed, one should be deduplicated
-                            success_count = sum(
-                                1 for r in results if not isinstance(r, Exception)
-                            )
-                            assert success_count >= 1
+                                # One should succeed, one should be deduplicated
+                                success_count = sum(
+                                    1 for r in results if not isinstance(r, Exception)
+                                )
+                                assert success_count >= 1
 
     @pytest.mark.asyncio
     async def test_database_query_reduction(self, token_service):
