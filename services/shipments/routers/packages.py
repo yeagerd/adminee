@@ -4,7 +4,6 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import or_
 from sqlmodel import select
 
 from services.common.logging_config import get_logger
@@ -82,19 +81,18 @@ async def list_packages(
         # Always search by tracking number first, regardless of carrier
         # This handles cases where the package was created with 'unknown' carrier
         # but is now being searched with a detected carrier
-        normalized_tracking = normalize_tracking_number(tracking_number, carrier) if carrier else tracking_number
-        logger.info(f"Searching with tracking: {normalized_tracking}")
+        normalized_tracking = (
+            normalize_tracking_number(tracking_number, carrier)
+            if carrier
+            else tracking_number
+        )
         query = query.where(Package.tracking_number == normalized_tracking)
-        
+
         # If carrier is provided and not 'unknown', also filter by carrier
         # But allow 'unknown' carrier in database to match any detected carrier
-        if carrier and carrier != 'unknown':
-            logger.info(f"Also filtering by carrier: {carrier}")
+        if carrier and carrier != "unknown":
             query = query.where(
-                or_(
-                    Package.carrier == carrier,
-                    Package.carrier == 'unknown'
-                )
+                (Package.carrier == carrier) | (Package.carrier == "unknown")  # type: ignore
             )
 
     # Note: Carrier filtering is now handled above in the tracking number search logic
@@ -102,14 +100,6 @@ async def list_packages(
     result = await session.execute(query)
     packages = result.scalars().all()
     logger.info("Found packages for user", user_id=current_user, count=len(packages))
-    
-    # Debug: Log all packages for this user to see what's in the database
-    if tracking_number:
-        all_packages_query = select(Package).where(Package.user_id == current_user)
-        all_result = await session.execute(all_packages_query)
-        all_packages = all_result.scalars().all()
-        logger.info(f"All packages for user {current_user}:", 
-                   packages=[{"tracking": p.tracking_number, "carrier": p.carrier} for p in all_packages])
     # Convert to PackageOut with actual events count
     package_out = []
     for pkg in packages:
