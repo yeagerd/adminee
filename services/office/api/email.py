@@ -10,6 +10,7 @@ import asyncio
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, cast
 
+import httpx
 from fastapi import APIRouter, Depends, Path, Query, Request
 
 from services.common.http_errors import NotFoundError, ServiceError, ValidationError
@@ -31,6 +32,7 @@ from services.office.core.normalizer import (
     normalize_microsoft_conversation,
     normalize_microsoft_email,
 )
+from services.office.core.settings import get_settings
 from services.office.models import Provider
 from services.office.schemas import (
     EmailFolder,
@@ -66,6 +68,48 @@ async def get_api_client_factory() -> APIClientFactory:
                 )
 
     return _api_client_factory
+
+
+async def get_user_email_providers(user_id: str) -> List[str]:
+    """
+    Get list of available email providers for a user.
+
+    Args:
+        user_id: User identifier
+
+    Returns:
+        List of available provider names (e.g., ['google', 'microsoft'])
+    """
+    settings = get_settings()
+    url = f"{settings.USER_SERVICE_URL}/v1/internal/users/{user_id}/integrations"
+    headers = {"X-API-Key": settings.api_office_user_key}
+
+    # Propagate request ID for distributed tracing
+    request_id = request_id_var.get()
+    if request_id and request_id != "uninitialized":
+        headers["X-Request-Id"] = request_id
+
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url, headers=headers)
+            resp.raise_for_status()
+            data = resp.json()
+
+            # Extract active email providers
+            available_providers = []
+            for integration in data.get("integrations", []):
+                provider = integration.get("provider", "").lower()
+                status = integration.get("status", "").lower()
+
+                # Only include active integrations for email providers
+                if status == "active" and provider in ["google", "microsoft"]:
+                    available_providers.append(provider)
+
+            return available_providers
+    except Exception as e:
+        logger.warning(f"Could not fetch user integrations for user {user_id}: {e}")
+        # If we can't fetch providers, return empty list
+        return []
 
 
 async def get_user_id_from_gateway(request: Request) -> str:
@@ -569,18 +613,46 @@ async def send_email(
     logger.info(f"Send email request {request_id} for user {user_id}")
 
     try:
-        # Determine provider to use
+        # Determine provider to use with case-insensitive handling
         provider = email_data.provider
+        if provider:
+            provider = provider.lower()
+
         if not provider:
+            # Dynamically determine the user's available providers
+            available_providers = await get_user_email_providers(user_id)
+            if not available_providers:
+                return SendEmailResponse(
+                    success=False,
+                    error={
+                        "message": "No email providers available. Please connect an email account first."
+                    },
+                    request_id=request_id,
+                )
             # Use the first available provider as default
-            provider = "google"  # Default to Gmail for now
+            provider = available_providers[0]
+            logger.info(f"Using default provider {provider} for user {user_id}")
+
+        # Validate provider is supported
+        if provider not in ["google", "microsoft"]:
+            return SendEmailResponse(
+                success=False,
+                error={
+                    "message": f"Unsupported provider: {provider}. Supported providers: google, microsoft"
+                },
+                request_id=request_id,
+            )
 
         # Get API client for provider
         factory = await get_api_client_factory()
         client = await factory.create_client(user_id, provider)
         if client is None:
-            raise ValidationError(
-                message=f"Failed to create API client for provider {provider}"
+            return SendEmailResponse(
+                success=False,
+                error={
+                    "message": f"Failed to create API client for provider {provider}. Please check your account connection."
+                },
+                request_id=request_id,
             )
 
         # Use client as async context manager
@@ -594,7 +666,12 @@ async def send_email(
                     request_id, microsoft_client, email_data
                 )
             else:
-                raise ValidationError(message=f"Unsupported provider: {provider}")
+                # This should never happen due to validation above, but just in case
+                return SendEmailResponse(
+                    success=False,
+                    error={"message": f"Unsupported provider: {provider}"},
+                    request_id=request_id,
+                )
 
         return SendEmailResponse(
             success=True,

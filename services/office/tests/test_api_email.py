@@ -436,21 +436,26 @@ class TestSendEmailEndpoint:
         mock_create_client.assert_called_once()
         mock_factory.create_client.assert_called_once_with("test_user", "microsoft")
 
+    @patch("services.office.api.email.get_user_email_providers")
     @patch("services.office.api.email.get_api_client_factory")
     @pytest.mark.asyncio
     async def test_send_email_default_provider(
         self,
         mock_create_client,
+        mock_get_user_providers,
         client,
         auth_headers,
     ):
-        """Test that default provider is Google when not specified."""
+        """Test that default provider is dynamically selected when not specified."""
         # Create request without provider
         request_data = {
             "to": [{"email": "recipient@example.com", "name": "Test Recipient"}],
             "subject": "Test Email",
             "body": "Test body",
         }
+
+        # Mock user providers to return Google as first available
+        mock_get_user_providers.return_value = ["google", "microsoft"]
 
         # Mock API client factory to return None (no client available)
         mock_factory = AsyncMock()
@@ -463,13 +468,46 @@ class TestSendEmailEndpoint:
             headers=auth_headers,
         )
 
-        # Should fail because no client available, but verify it tried Google
+        # Should fail because no client available, but verify it tried the first available provider
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is False
         assert "Failed to create API client" in data["error"]["message"]
+        mock_get_user_providers.assert_called_once_with("test_user")
         mock_create_client.assert_called_once()
         mock_factory.create_client.assert_called_once_with("test_user", "google")
+
+    @patch("services.office.api.email.get_user_email_providers")
+    @pytest.mark.asyncio
+    async def test_send_email_no_providers_available(
+        self,
+        mock_get_user_providers,
+        client,
+        auth_headers,
+    ):
+        """Test sending email when no email providers are available."""
+        # Create request without provider
+        request_data = {
+            "to": [{"email": "recipient@example.com", "name": "Test Recipient"}],
+            "subject": "Test Email",
+            "body": "Test body",
+        }
+
+        # Mock user providers to return empty list
+        mock_get_user_providers.return_value = []
+
+        response = client.post(
+            "/v1/email/send",
+            json=request_data,
+            headers=auth_headers,
+        )
+
+        # Should fail because no providers available
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is False
+        assert "No email providers available" in data["error"]["message"]
+        mock_get_user_providers.assert_called_once_with("test_user")
 
     @pytest.mark.asyncio
     async def test_send_email_invalid_provider(self, client, auth_headers):
@@ -490,7 +528,45 @@ class TestSendEmailEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is False
-        assert "Invalid provider" in data["error"]["message"]
+        assert "Unsupported provider" in data["error"]["message"]
+
+    @patch("services.office.api.email.get_api_client_factory")
+    @pytest.mark.asyncio
+    async def test_send_email_case_insensitive_provider(
+        self,
+        mock_create_client,
+        client,
+        auth_headers,
+    ):
+        """Test that provider names are handled case-insensitively."""
+        # Create request with capitalized provider
+        request_data = {
+            "to": [{"email": "recipient@example.com", "name": "Test Recipient"}],
+            "subject": "Test Email",
+            "body": "Test body",
+            "provider": "Google",  # Capitalized
+        }
+
+        # Mock API client factory to return None (no client available)
+        mock_factory = AsyncMock()
+        mock_factory.create_client = AsyncMock(return_value=None)
+        mock_create_client.return_value = mock_factory
+
+        response = client.post(
+            "/v1/email/send",
+            json=request_data,
+            headers=auth_headers,
+        )
+
+        # Should fail because no client available, but verify it tried the normalized provider
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is False
+        assert "Failed to create API client" in data["error"]["message"]
+        mock_create_client.assert_called_once()
+        mock_factory.create_client.assert_called_once_with(
+            "test_user", "google"
+        )  # Lowercase
 
     @patch("services.office.api.email.get_api_client_factory")
     @pytest.mark.asyncio
