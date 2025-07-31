@@ -1,9 +1,12 @@
 import UserMenu from "@/components/auth/user-menu";
 import { Button } from "@/components/ui/button";
-import { Sailboat, Settings } from "lucide-react";
+import { useChatPanelState } from "@/contexts/chat-panel-context";
+import { MessageSquare, MessageSquareOff, Sailboat, Settings } from "lucide-react";
 import Link from "next/link";
 
 export default function Navbar() {
+    const { isOpen, toggle } = useChatPanelState();
+
     return (
         <header className="bg-white border-b w-full">
             <div className="flex flex-row items-center justify-between w-full px-4 py-3">
@@ -14,6 +17,19 @@ export default function Navbar() {
                     </Link>
                 </div>
                 <div className="flex items-center gap-4 min-w-0">
+                    <Button
+                        variant={isOpen ? "default" : "outline"}
+                        size="sm"
+                        onClick={toggle}
+                        className={isOpen ? "bg-teal-600 hover:bg-teal-700" : ""}
+                        title={isOpen ? "Close chat" : "Open chat"}
+                    >
+                        {isOpen ? (
+                            <MessageSquare className="h-4 w-4" />
+                        ) : (
+                            <MessageSquareOff className="h-4 w-4" />
+                        )}
+                    </Button>
                     <Button variant="outline" size="sm" asChild>
                         <Link href="/settings">
                             <Settings className="h-4 w-4" />
