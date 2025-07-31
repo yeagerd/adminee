@@ -86,6 +86,26 @@ async def get_user_token(
         )
         return result
 
+    except NotFoundError:
+        logger.error(
+            f"[{request_id}] Token request failed: user_id={request.user_id}, provider={request.provider}, error=User not found"
+        )
+        raise NotFoundError("User", request.user_id)
+    except ServiceError as e:
+        logger.error(
+            f"[{request_id}] Token request failed: user_id={request.user_id}, provider={request.provider}, error={str(e)}"
+        )
+        # Return error in response rather than raising HTTP exception
+        return InternalTokenResponse(
+            success=False,
+            access_token=None,
+            refresh_token=None,
+            expires_at=None,
+            provider=request.provider,
+            user_id=request.user_id,
+            integration_id=None,
+            error=str(e),
+        )
     except Exception as e:
         logger.error(
             f"[{request_id}] Token request failed: user_id={request.user_id}, provider={request.provider}, error={str(e)}"
