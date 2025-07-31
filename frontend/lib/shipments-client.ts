@@ -62,7 +62,7 @@ export interface PackageCreateRequest {
 }
 
 export interface PackageResponse {
-    id: number;
+    id: string; // Changed from number to string (UUID)
     tracking_number: string;
     carrier: string;
     status: PackageStatus;
@@ -184,36 +184,36 @@ class ShipmentsClient {
     /**
      * Get a specific package by ID
      */
-    async getPackage(id: number): Promise<PackageResponse> {
+    async getPackage(id: string): Promise<PackageResponse> { // Changed from number to string (UUID)
         return gatewayClient.getPackage(id);
     }
 
     /**
      * Update a package
      */
-    async updatePackage(id: number, packageData: Partial<PackageCreateRequest>): Promise<PackageResponse> {
+    async updatePackage(id: string, packageData: Partial<PackageCreateRequest>): Promise<PackageResponse> { // Changed from number to string (UUID)
         return gatewayClient.updatePackage(id, packageData);
     }
 
     /**
      * Delete a package
      */
-    async deletePackage(id: number): Promise<void> {
+    async deletePackage(id: string): Promise<void> { // Changed from number to string (UUID)
         return gatewayClient.deletePackage(id);
     }
 
     /**
      * Refresh tracking information for a package
      */
-    async refreshPackage(id: number): Promise<PackageRefreshResponse> {
+    async refreshPackage(id: string): Promise<PackageRefreshResponse> { // Changed from number to string (UUID)
         return gatewayClient.refreshPackage(id);
     }
 
     /**
      * Get tracking events for a package
      */
-    async getTrackingEvents(packageId: number): Promise<Array<{
-        id: number;
+    async getTrackingEvents(packageId: string): Promise<Array<{ // Changed from number to string (UUID)
+        id: string; // Changed from number to string (UUID)
         event_date: string;
         status: PackageStatus;
         location?: string;
@@ -226,13 +226,13 @@ class ShipmentsClient {
     /**
      * Create a new tracking event for a package
      */
-    async createTrackingEvent(packageId: number, eventData: {
+    async createTrackingEvent(packageId: string, eventData: { // Changed from number to string (UUID)
         event_date: string;
         status: PackageStatus;
         location?: string;
         description?: string;
     }): Promise<{
-        id: number;
+        id: string; // Changed from number to string (UUID)
         event_date: string;
         status: PackageStatus;
         location?: string;

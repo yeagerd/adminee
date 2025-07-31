@@ -479,7 +479,7 @@ export class GatewayClient {
         tracking_link?: string;
         email_message_id?: string;
     }): Promise<{
-        id: number;
+        id: string;
         tracking_number: string;
         carrier: string;
         status: PackageStatus;
@@ -505,7 +505,7 @@ export class GatewayClient {
         carrier?: string;
     }): Promise<{
         data: Array<{
-            id: number;
+            id: string;
             tracking_number: string;
             carrier: string;
             status: PackageStatus;
@@ -541,8 +541,8 @@ export class GatewayClient {
         return this.request(url);
     }
 
-    async getPackage(id: number): Promise<{
-        id: number;
+    async getPackage(id: string): Promise<{
+        id: string;
         tracking_number: string;
         carrier: string;
         status: PackageStatus;
@@ -560,8 +560,8 @@ export class GatewayClient {
         return this.request(`/api/v1/shipments/packages/${id}`);
     }
 
-    async updatePackage(id: number, packageData: Record<string, unknown>): Promise<{
-        id: number;
+    async updatePackage(id: string, packageData: Record<string, unknown>): Promise<{
+        id: string;
         tracking_number: string;
         carrier: string;
         status: PackageStatus;
@@ -582,17 +582,17 @@ export class GatewayClient {
         });
     }
 
-    async deletePackage(id: number): Promise<void> {
+    async deletePackage(id: string): Promise<void> {
         return this.request(`/api/v1/shipments/packages/${id}`, {
             method: 'DELETE',
         });
     }
 
-    async refreshPackage(id: number): Promise<{
+    async refreshPackage(id: string): Promise<{
         success: boolean;
         message: string;
         updated_data?: Partial<{
-            id: number;
+            id: string;
             tracking_number: string;
             carrier: string;
             status: PackageStatus;
@@ -613,8 +613,8 @@ export class GatewayClient {
         });
     }
 
-    async getTrackingEvents(packageId: number): Promise<Array<{
-        id: number;
+    async getTrackingEvents(packageId: string): Promise<Array<{
+        id: string;
         event_date: string;
         status: PackageStatus;
         location?: string;
@@ -624,13 +624,13 @@ export class GatewayClient {
         return this.request(`/api/v1/shipments/packages/${packageId}/events`);
     }
 
-    async createTrackingEvent(packageId: number, eventData: {
+    async createTrackingEvent(packageId: string, eventData: {
         event_date: string;
         status: PackageStatus;
         location?: string;
         description?: string;
     }): Promise<{
-        id: number;
+        id: string;
         event_date: string;
         status: PackageStatus;
         location?: string;
