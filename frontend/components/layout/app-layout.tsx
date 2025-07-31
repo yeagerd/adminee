@@ -76,21 +76,20 @@ export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = fa
                 <div ref={containerRef} className="flex-1 min-w-0 h-full flex flex-col">
                     {draft ? (
                         <ResizablePanelGroup
-                            key={`chat-${isOpen ? 'open' : 'closed'}-${chatSize}`}
                             className="flex-1 flex min-w-0"
                             direction="horizontal"
                             onLayout={handlePanelResize}
                         >
-                            <ResizablePanel minSize={30} defaultSize={mainSize} className="h-full">
+                            <ResizablePanel minSize={30} size={mainSize} className="h-full">
                                 {draftPane && hasActiveDraft ? (
                                     <ResizablePanelGroup direction="vertical" className="h-full">
-                                        <ResizablePanel minSize={10} defaultSize={50} className="h-full">
+                                        <ResizablePanel minSize={10} size={50} className="h-full">
                                             <div className="h-full overflow-auto">
                                                 {main || <div className="flex-1 flex items-center justify-center text-muted-foreground">Main Pane</div>}
                                             </div>
                                         </ResizablePanel>
                                         <ResizableHandle withHandle />
-                                        <ResizablePanel minSize={10} defaultSize={50} className="h-full min-h-0 border-t bg-card">
+                                        <ResizablePanel minSize={10} size={50} className="h-full min-h-0 border-t bg-card">
                                             <div className="h-full overflow-auto">
                                                 {draftPane}
                                             </div>
@@ -114,7 +113,7 @@ export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = fa
                                     <ResizableHandle withHandle />
                                     <ResizablePanel
                                         minSize={20}
-                                        defaultSize={chatSize}
+                                        size={chatSize}
                                         collapsible
                                         className="h-full border-l bg-card"
                                     >
@@ -131,13 +130,13 @@ export function AppLayout({ sidebar, main, draft, draftPane, hasActiveDraft = fa
                         <div ref={containerRef} className="flex-1 min-w-0 h-full flex flex-col">
                             {draftPane && hasActiveDraft ? (
                                 <ResizablePanelGroup direction="vertical" className="h-full">
-                                    <ResizablePanel minSize={10} defaultSize={50} className="h-full">
+                                    <ResizablePanel minSize={10} size={50} className="h-full">
                                         <div className="h-full overflow-auto">
                                             {main || <div className="flex-1 flex items-center justify-center text-muted-foreground">Main Pane</div>}
                                         </div>
                                     </ResizablePanel>
                                     <ResizableHandle withHandle />
-                                    <ResizablePanel minSize={10} defaultSize={50} className="h-full min-h-0 border-t bg-card">
+                                    <ResizablePanel minSize={10} size={50} className="h-full min-h-0 border-t bg-card">
                                         <div className="h-full overflow-auto">
                                             {draftPane}
                                         </div>
