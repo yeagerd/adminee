@@ -1,3 +1,4 @@
+import { safeFormatEmailDate, safeParseDate } from '@/lib/utils';
 import { EmailMessage } from '@/types/office-service';
 import DOMPurify from 'dompurify';
 import { Star } from 'lucide-react';
@@ -75,27 +76,9 @@ interface EmailListCardProps {
     showReadingPane?: boolean;
 }
 
-// Utility function to format email date
+// Use the safe email date formatting function
 const formatEmailDate = (dateString: string): string => {
-    const emailDate = new Date(dateString);
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const emailDay = new Date(emailDate.getFullYear(), emailDate.getMonth(), emailDate.getDate());
-
-    // If email was sent today, show time
-    if (emailDay.getTime() === today.getTime()) {
-        return emailDate.toLocaleTimeString([], {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
-        });
-    }
-
-    // Otherwise show month and day
-    return emailDate.toLocaleDateString([], {
-        month: 'short',
-        day: 'numeric'
-    });
+    return safeFormatEmailDate(dateString);
 };
 
 const getSenderInitials = (name?: string, email?: string): string => {
@@ -138,9 +121,17 @@ const EmailListCard: React.FC<EmailListCardProps> = ({
     showReadingPane = false
 }) => {
     // Sort emails by date (newest first)
-    const sortedEmails = [...thread.emails].sort((a, b) =>
-        new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
+    const sortedEmails = [...thread.emails].sort((a, b) => {
+        const dateA = safeParseDate(a.date);
+        const dateB = safeParseDate(b.date);
+
+        // If either date is invalid, put it at the end
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+
+        return dateB.getTime() - dateA.getTime(); // newest first
+    });
 
     const latestEmail = sortedEmails[0];
     const hasMultipleEmails = sortedEmails.length > 1;

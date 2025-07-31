@@ -15,6 +15,7 @@ import { useUserPreferences } from '@/contexts/settings-context'
 import { useToolState } from '@/contexts/tool-context'
 import { useStreamingSetting } from "@/hooks/use-streaming-setting"
 import gatewayClient from "@/lib/gateway-client"
+import { safeParseDateToLocaleString } from '@/lib/utils'
 import { History, Loader2, Plus, Send } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -233,7 +234,7 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
                 id: msg.message_id,
                 content: msg.content,
                 sender: msg.llm_generated ? "ai" : "user",
-                timestamp: new Date(msg.created_at),
+                timestamp: safeParseDate(msg.created_at) || new Date(),
             }))
             setMessages(loadedMessages)
             setCurrentThreadId(threadId)
@@ -450,7 +451,13 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
                                 {chatHistory.map((chat) => (
                                     <DropdownMenuItem key={chat.thread_id} onClick={() => handleLoadChat(chat.thread_id)}>
                                         {/* Fallback for missing title */}
-                                        {chat.title && chat.title.trim() !== '' ? chat.title : `Chat from ${new Date(chat.created_at).toLocaleString()}`}
+                                        {chat.title && chat.title.trim() !== '' ? chat.title : `Chat from ${safeParseDateToLocaleString(chat.created_at, {
+                                            year: 'numeric',
+                                            month: 'short',
+                                            day: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        })}`}
                                     </DropdownMenuItem>
                                 ))}
                                 {historyLoading && (

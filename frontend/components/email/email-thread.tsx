@@ -1,3 +1,4 @@
+import { safeParseDate } from '@/lib/utils';
 import { EmailThread as EmailThreadType } from '@/types/office-service';
 import React from 'react';
 import EmailThreadCard from './email-thread-card';
@@ -22,10 +23,18 @@ const EmailThread: React.FC<EmailThreadProps> = ({
         );
     }
 
-    // Sort messages by date (oldest first for threading)
-    const sortedMessages = [...thread.messages].sort((a, b) =>
-        new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
+    // Sort messages by date (oldest first for threading) with defensive date parsing
+    const sortedMessages = [...thread.messages].sort((a, b) => {
+        const dateA = safeParseDate(a.date);
+        const dateB = safeParseDate(b.date);
+
+        // If either date is invalid, put it at the end
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+
+        return dateA.getTime() - dateB.getTime();
+    });
 
     return (
         <div className="space-y-4">
