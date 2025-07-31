@@ -12,7 +12,7 @@ import { DataCollectionRequest, PackageCreateRequest, PackageResponse, shipments
 import { EmailMessage } from '@/types/office-service';
 import { CheckCircle, Info, Loader2, Package, Truck } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface TrackShipmentModalProps {
     isOpen: boolean;
@@ -96,6 +96,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
         expected_delivery: '',
     });
     const [initialFormData, setInitialFormData] = useState<PackageFormData | null>(null);
+    const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Check if a package already exists with the given tracking number and carrier
     const checkExistingPackage = async (trackingNumber: string, carrier?: string) => {
@@ -225,6 +226,15 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
         parseEmailWithBackend();
     }, [isOpen, email, shipmentDetection]);
 
+    // Cleanup timeout on unmount or modal close
+    useEffect(() => {
+        return () => {
+            if (debounceTimeoutRef.current) {
+                clearTimeout(debounceTimeoutRef.current);
+            }
+        };
+    }, []);
+
     const handleInputChange = (field: keyof PackageFormData, value: string) => {
         setFormData(prev => ({
             ...prev,
@@ -238,8 +248,13 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
             setOriginalPackageData(null);
             setIsCheckingPackage(true);
 
+            // Clear any existing timeout to prevent race conditions
+            if (debounceTimeoutRef.current) {
+                clearTimeout(debounceTimeoutRef.current);
+            }
+
             // Debounce the lookup to avoid too many API calls
-            setTimeout(async () => {
+            debounceTimeoutRef.current = setTimeout(async () => {
                 try {
                     await checkExistingPackage(value.trim(), formData.carrier);
                 } catch (error) {
@@ -376,6 +391,12 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
     };
 
     const handleClose = () => {
+        // Clear any pending debounced operations
+        if (debounceTimeoutRef.current) {
+            clearTimeout(debounceTimeoutRef.current);
+            debounceTimeoutRef.current = null;
+        }
+
         if (!isLoading) {
             onClose();
             setIsSuccess(false);
