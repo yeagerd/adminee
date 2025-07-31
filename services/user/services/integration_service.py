@@ -440,6 +440,7 @@ class IntegrationService:
         """
         # Create a unique key for this refresh operation
         refresh_key = f"{user_id}:{provider.value}"
+        refresh_future: asyncio.Future | None = None
 
         # Check if a refresh is already in progress
         async with self._refresh_lock:
@@ -562,6 +563,10 @@ class IntegrationService:
                                 )
 
                                 # Set the future result so waiting callers get the response
+                                # refresh_future is guaranteed to be non-None here because:
+                                # - If there was an existing future, we either returned early (success) or created a new one (timeout)
+                                # - If there was no existing future, we created refresh_future in the else block
+                                assert refresh_future is not None, "refresh_future should be assigned by this point"
                                 refresh_future.set_result(result)
                                 return result
                     except (ValueError, TypeError) as e:
@@ -651,6 +656,10 @@ class IntegrationService:
             )
 
             # Set the future result so waiting callers get the response
+            # refresh_future is guaranteed to be non-None here because:
+            # - If there was an existing future, we either returned early (success) or created a new one (timeout)
+            # - If there was no existing future, we created refresh_future in the else block
+            assert refresh_future is not None, "refresh_future should be assigned by this point"
             refresh_future.set_result(result)
             return result
 
@@ -662,6 +671,10 @@ class IntegrationService:
                 error=str(e),
             )
             # Set the future exception so waiting callers get the error
+            # refresh_future is guaranteed to be non-None here because:
+            # - If there was an existing future, we either returned early (success) or created a new one (timeout)
+            # - If there was no existing future, we created refresh_future in the else block
+            assert refresh_future is not None, "refresh_future should be assigned by this point"
             refresh_future.set_exception(e)
             if isinstance(e, (NotFoundError, ServiceError)):
                 raise
