@@ -883,7 +883,7 @@ class IntegrationService:
                     )
 
                     # Clear all calendar cache keys for this user
-                    pattern = f"office_service:{user_id}:*"
+                    pattern = f"office:{user_id}:*"
                     keys = await redis_client.keys(pattern)
                     if keys:
                         deleted_count = await redis_client.delete(*keys)

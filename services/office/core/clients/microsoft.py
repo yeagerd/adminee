@@ -383,3 +383,74 @@ class MicrosoftAPIClient(BaseAPIClient):
         """
         response = await self.get("/me")
         return response.json()
+
+    # Microsoft Graph Email Conversation API methods
+    async def get_conversations(
+        self,
+        top: int = 100,
+        skip: int = 0,
+        filter: Optional[str] = None,
+        order_by: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Get list of email conversations/threads using Microsoft Graph API.
+
+        This method uses the /me/conversations endpoint to retrieve email conversations.
+        Each conversation represents an email thread with related messages.
+
+        Args:
+            top: Maximum number of conversations to return
+            skip: Number of conversations to skip (for pagination)
+            filter: OData filter expression
+            order_by: Order by expression
+
+        Returns:
+            Dictionary containing email conversations list and pagination info
+        """
+        params: Dict[str, Any] = {"$top": top, "$skip": skip}
+        if filter:
+            params["$filter"] = filter
+        if order_by:
+            params["$orderby"] = order_by
+        else:
+            params["$orderby"] = "lastDeliveredDateTime desc"
+
+        response = await self.get("/me/conversations", params=params)
+        return response.json()
+
+    async def get_conversation_messages(
+        self,
+        conversation_id: str,
+        top: int = 100,
+        skip: int = 0,
+        include_body: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Get messages in a specific email conversation/thread using Microsoft Graph API.
+
+        This method uses the /me/conversations/{conversation_id}/messages endpoint to retrieve
+        all messages within a specific email conversation/thread.
+
+        Args:
+            conversation_id: Microsoft Graph email conversation ID
+            top: Maximum number of messages to return
+            skip: Number of messages to skip (for pagination)
+            include_body: Whether to include message body content
+
+        Returns:
+            Dictionary containing email conversation messages list and pagination info
+        """
+        params: Dict[str, Any] = {"$top": top, "$skip": skip}
+        if include_body:
+            params["$select"] = (
+                "id,subject,body,bodyPreview,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,isRead,hasAttachments,conversationId,conversationIndex,parentFolderId,importance,flag,isDraft,webLink,uniqueBody"
+            )
+        else:
+            params["$select"] = (
+                "id,subject,bodyPreview,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,isRead,hasAttachments,conversationId,conversationIndex,parentFolderId,importance,flag,isDraft,webLink"
+            )
+
+        response = await self.get(
+            f"/me/conversations/{conversation_id}/messages", params=params
+        )
+        return response.json()

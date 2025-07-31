@@ -10,25 +10,37 @@ import asyncio
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, cast
 
+import httpx
 from fastapi import APIRouter, Depends, Path, Query, Request
 
 from services.common.http_errors import NotFoundError, ServiceError, ValidationError
 from services.common.logging_config import get_logger, request_id_var
 from services.office.core.api_client_factory import APIClientFactory
 from services.office.core.auth import service_permission_required
-from services.office.core.cache_manager import cache_manager, generate_cache_key
+from services.office.core.cache_manager import (
+    cache_manager,
+    generate_cache_key,
+    generate_message_thread_cache_key,
+    generate_thread_cache_key,
+    generate_threads_list_cache_key,
+)
 from services.office.core.clients.google import GoogleAPIClient
 from services.office.core.clients.microsoft import MicrosoftAPIClient
 from services.office.core.normalizer import (
     normalize_google_email,
+    normalize_google_thread,
+    normalize_microsoft_conversation,
     normalize_microsoft_email,
 )
+from services.office.core.settings import get_settings
 from services.office.models import Provider
 from services.office.schemas import (
     EmailFolder,
     EmailFolderList,
     EmailMessage,
     EmailMessageList,
+    EmailThread,
+    EmailThreadList,
     SendEmailRequest,
     SendEmailResponse,
 )
@@ -56,6 +68,52 @@ async def get_api_client_factory() -> APIClientFactory:
                 )
 
     return _api_client_factory
+
+
+async def get_user_email_providers(user_id: str) -> List[str]:
+    """
+    Get list of available email providers for a user.
+
+    Args:
+        user_id: User identifier
+
+    Returns:
+        List of available provider names (e.g., ['google', 'microsoft'])
+    """
+    settings = get_settings()
+    url = f"{settings.USER_SERVICE_URL}/v1/internal/users/{user_id}/integrations"
+    headers: Dict[str, str] = {}
+
+    # Add API key if available
+    if settings.api_office_user_key:
+        headers["X-API-Key"] = settings.api_office_user_key
+
+    # Propagate request ID for distributed tracing
+    request_id = request_id_var.get()
+    if request_id and request_id != "uninitialized":
+        headers["X-Request-Id"] = request_id
+
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url, headers=headers)
+            resp.raise_for_status()
+            data = resp.json()
+
+            # Extract active email providers
+            available_providers = []
+            for integration in data.get("integrations", []):
+                provider = integration.get("provider", "").lower()
+                status = integration.get("status", "").lower()
+
+                # Only include active integrations for email providers
+                if status == "active" and provider in ["google", "microsoft"]:
+                    available_providers.append(provider)
+
+            return available_providers
+    except Exception as e:
+        logger.warning(f"Could not fetch user integrations for user {user_id}: {e}")
+        # If we can't fetch providers, return empty list
+        return []
 
 
 async def get_user_id_from_gateway(request: Request) -> str:
@@ -141,7 +199,7 @@ async def get_email_messages(
     )
 
     try:
-        # TODO: Only query providers that the user has actually connected
+        # Query all available providers for the user
         # This should check the user's integrations and only query active providers
         # For now, we'll use the provided providers or default to all
 
@@ -548,94 +606,406 @@ async def send_email(
     service_name: str = Depends(service_permission_required(["send_emails"])),
 ) -> SendEmailResponse:
     """
-    Send an email through a specific provider.
+    Send an email message.
 
-    For the MVP, this is a simple pass-through that determines the provider
-    and makes the API call. In a production system, this would typically
-    queue the email for asynchronous processing.
-
-    Args:
-        email_data: Email content and configuration
-
-    Returns:
-        SendEmailResponse with sent message details
+    This endpoint supports sending emails through Gmail and Outlook.
+    The provider can be specified in the request, otherwise it uses the user's default preference.
     """
-    user_id = await get_user_id_from_gateway(request)
     request_id = get_request_id()
-    start_time = datetime.now(timezone.utc)
+    user_id = await get_user_id_from_gateway(request)
 
-    logger.info(
-        f"Send email request: user_id={user_id}, "
-        f"to={[addr.email for addr in email_data.to]}, subject='{email_data.subject}'"
-    )
+    logger.info(f"Send email request {request_id} for user {user_id}")
 
     try:
-        # Determine provider (default to google if not specified)
-        provider = email_data.provider or "google"
+        # Determine provider to use with case-insensitive handling
+        provider = email_data.provider
+        if provider:
+            provider = provider.lower()
 
-        # Validate provider
-        if provider.lower() not in ["google", "microsoft"]:
-            raise ValidationError(
-                message=f"Invalid provider: {provider}. Must be 'google' or 'microsoft'"
+        if not provider:
+            # Dynamically determine the user's available providers
+            available_providers = await get_user_email_providers(user_id)
+            if not available_providers:
+                return SendEmailResponse(
+                    success=False,
+                    error={
+                        "message": "No email providers available. Please connect an email account first."
+                    },
+                    request_id=request_id,
+                )
+            # Use the first available provider as default
+            provider = available_providers[0]
+            logger.info(f"Using default provider {provider} for user {user_id}")
+
+        # Validate provider is supported
+        if provider not in ["google", "microsoft"]:
+            return SendEmailResponse(
+                success=False,
+                error={
+                    "message": f"Unsupported provider: {provider}. Supported providers: google, microsoft"
+                },
+                request_id=request_id,
             )
-
-        provider = provider.lower()
 
         # Get API client for provider
         factory = await get_api_client_factory()
         client = await factory.create_client(user_id, provider)
         if client is None:
-            raise ServiceError(
-                message=f"Failed to create API client for provider {provider}. "
-                "User may not have connected this provider.",
+            return SendEmailResponse(
+                success=False,
+                error={
+                    "message": f"Failed to create API client for provider {provider}. Please check your account connection."
+                },
+                request_id=request_id,
             )
 
-        # Send email based on provider
-        sent_message_data = None
-
+        # Use client as async context manager
         async with client:
             if provider == "google":
                 google_client = cast(GoogleAPIClient, client)
-                sent_message_data = await send_gmail_message(
-                    request_id, google_client, email_data
-                )
+                result = await send_gmail_message(request_id, google_client, email_data)
             elif provider == "microsoft":
                 microsoft_client = cast(MicrosoftAPIClient, client)
-                sent_message_data = await send_outlook_message(
+                result = await send_outlook_message(
                     request_id, microsoft_client, email_data
                 )
-
-        # Build response
-        response_data = {
-            "message_id": sent_message_data.get("id") if sent_message_data else None,
-            "provider": provider,
-            "status": "sent",
-            "sent_at": datetime.now(timezone.utc).isoformat(),
-            "request_metadata": {
-                "user_id": user_id,
-                "to": [addr.email for addr in email_data.to],
-                "subject": email_data.subject,
-                "provider": provider,
-            },
-        }
-
-        # Calculate response time
-        end_time = datetime.now(timezone.utc)
-        response_time_ms = int((end_time - start_time).total_seconds() * 1000)
-
-        logger.info(f"Email sent successfully in {response_time_ms}ms via {provider}")
+            else:
+                # This should never happen due to validation above, but just in case
+                return SendEmailResponse(
+                    success=False,
+                    error={"message": f"Unsupported provider: {provider}"},
+                    request_id=request_id,
+                )
 
         return SendEmailResponse(
             success=True,
-            data=response_data,
+            data=result,
             request_id=request_id,
         )
 
-    except ValidationError:
-        raise
     except Exception as e:
-        logger.error(f"Send email request failed: {e}")
-        raise ServiceError(message=f"Failed to send email: {str(e)}")
+        logger.error(f"Failed to send email for user {user_id}: {e}")
+        return SendEmailResponse(
+            success=False,
+            error={"message": str(e)},
+            request_id=request_id,
+        )
+
+
+@router.get("/threads", response_model=EmailThreadList)
+async def get_email_threads(
+    request: Request,
+    service_name: str = Depends(service_permission_required(["read_emails"])),
+    providers: Optional[List[str]] = Query(
+        None,
+        description="Providers to fetch from (google, microsoft). If not specified, fetches from all available providers",
+    ),
+    limit: int = Query(
+        50,
+        ge=1,
+        le=200,
+        description="Maximum number of threads to return per provider",
+    ),
+    include_body: bool = Query(
+        False, description="Whether to include message body content"
+    ),
+    labels: Optional[List[str]] = Query(
+        None, description="Filter by labels (inbox, sent, etc.)"
+    ),
+    folder_id: Optional[str] = Query(
+        None, description="Folder ID to fetch threads from (provider-specific)"
+    ),
+    q: Optional[str] = Query(None, description="Search query to filter threads"),
+    page_token: Optional[str] = Query(
+        None, description="Pagination token for next page"
+    ),
+    no_cache: bool = Query(
+        False, description="Bypass cache and fetch fresh data from providers"
+    ),
+) -> EmailThreadList:
+    """
+    Get email threads from multiple providers.
+
+    This endpoint fetches email threads from Gmail and/or Outlook,
+    normalizes them to a unified format, and returns them grouped by thread.
+    """
+    request_id = get_request_id()
+    user_id = await get_user_id_from_gateway(request)
+
+    logger.info(f"Get email threads request {request_id} for user {user_id}")
+
+    try:
+        # Determine providers to fetch from
+        if not providers:
+            providers = ["google", "microsoft"]  # Default to all providers
+
+        # Validate providers
+        valid_providers = {"google", "microsoft"}
+        invalid_providers = set(providers) - valid_providers
+        if invalid_providers:
+            raise ValidationError(
+                message=f"Invalid providers: {invalid_providers}. Valid providers: {valid_providers}"
+            )
+
+        # Check cache first
+        cache_key = generate_threads_list_cache_key(
+            user_id=user_id,
+            providers=providers,
+            limit=limit,
+            include_body=include_body,
+            labels=labels,
+            folder_id=folder_id,
+            q=q,
+            page_token=page_token,
+        )
+
+        if not no_cache:
+            cached_result = await cache_manager.get_from_cache(cache_key)
+            if cached_result:
+                logger.info(f"Cache hit for email threads request {request_id}")
+                return EmailThreadList(
+                    success=True,
+                    data=cached_result,
+                    cache_hit=True,
+                    request_id=request_id,
+                )
+
+        # Fetch threads from each provider
+        all_threads = []
+        provider_errors = {}
+        providers_used = []
+        primary_provider = None
+
+        for provider in providers:
+            try:
+                threads, provider_used = await fetch_provider_threads(
+                    request_id,
+                    user_id,
+                    provider,
+                    limit,
+                    include_body,
+                    labels,
+                    folder_id,
+                    q,
+                    page_token,
+                )
+                all_threads.extend(threads)
+                providers_used.append(provider_used)
+                if not primary_provider:
+                    primary_provider = provider_used
+
+            except Exception as e:
+                logger.error(f"Failed to fetch threads from {provider}: {e}")
+                provider_errors[provider] = str(e)
+
+        # Sort threads by last message date
+        all_threads.sort(key=lambda t: t.last_message_date, reverse=True)
+
+        # Prepare response data
+        response_data = {
+            "threads": all_threads,
+            "total_count": len(all_threads),
+            "providers_used": providers_used,
+            "provider_errors": provider_errors if provider_errors else None,
+            "has_more": len(all_threads) >= limit,  # Simple heuristic for pagination
+        }
+
+        # Cache the result
+        if not no_cache:
+            await cache_manager.set_to_cache(
+                cache_key, response_data, ttl_seconds=300
+            )  # 5 minutes
+
+        return EmailThreadList(
+            success=True,
+            data=response_data,
+            provider_used=(
+                get_provider_enum(primary_provider) if primary_provider else None
+            ),
+            request_id=request_id,
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to get email threads for user {user_id}: {e}")
+        return EmailThreadList(
+            success=False,
+            error={"message": str(e)},
+            request_id=request_id,
+        )
+
+
+@router.get("/threads/{thread_id}", response_model=EmailThreadList)
+async def get_email_thread(
+    request: Request,
+    thread_id: str = Path(..., description="Thread ID (format: provider_originalId)"),
+    include_body: bool = Query(
+        True, description="Whether to include message body content"
+    ),
+    no_cache: bool = Query(
+        False, description="Bypass cache and fetch fresh data from providers"
+    ),
+    service_name: str = Depends(service_permission_required(["read_emails"])),
+) -> EmailThreadList:
+    """
+    Get a specific email thread with all its messages.
+
+    This endpoint fetches a specific thread and all its messages from the provider.
+    """
+    request_id = get_request_id()
+    user_id = await get_user_id_from_gateway(request)
+
+    logger.info(
+        f"Get email thread request {request_id} for user {user_id}, thread {thread_id}"
+    )
+
+    try:
+        # Parse thread ID to get provider and original ID
+        provider, original_thread_id = parse_thread_id(thread_id)
+
+        # Check cache first
+        cache_key = generate_thread_cache_key(
+            user_id=user_id,
+            thread_id=thread_id,
+            include_body=include_body,
+        )
+
+        if not no_cache:
+            cached_result = await cache_manager.get_from_cache(cache_key)
+            if cached_result:
+                logger.info(f"Cache hit for email thread request {request_id}")
+                return EmailThreadList(
+                    success=True,
+                    data=cached_result,
+                    cache_hit=True,
+                    request_id=request_id,
+                )
+
+        # Fetch thread from provider
+        thread = await fetch_single_thread(
+            request_id,
+            user_id,
+            provider,
+            original_thread_id,
+            include_body,
+        )
+
+        if not thread:
+            raise NotFoundError("Thread", thread_id)
+
+        # Prepare response data
+        response_data = {
+            "thread": thread,
+            "provider_used": provider,
+        }
+
+        # Cache the result
+        if not no_cache:
+            await cache_manager.set_to_cache(
+                cache_key, response_data, ttl_seconds=600
+            )  # 10 minutes
+
+        return EmailThreadList(
+            success=True,
+            data=response_data,
+            provider_used=get_provider_enum(provider),
+            request_id=request_id,
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to get email thread {thread_id} for user {user_id}: {e}")
+        return EmailThreadList(
+            success=False,
+            error={"message": str(e)},
+            request_id=request_id,
+        )
+
+
+@router.get("/messages/{message_id}/thread", response_model=EmailThreadList)
+async def get_message_thread(
+    request: Request,
+    message_id: str = Path(..., description="Message ID (format: provider_originalId)"),
+    include_body: bool = Query(
+        True, description="Whether to include message body content"
+    ),
+    no_cache: bool = Query(
+        False, description="Bypass cache and fetch fresh data from providers"
+    ),
+    service_name: str = Depends(service_permission_required(["read_emails"])),
+) -> EmailThreadList:
+    """
+    Get the thread containing a specific message.
+
+    This endpoint finds the thread that contains the specified message and returns all messages in that thread.
+    """
+    request_id = get_request_id()
+    user_id = await get_user_id_from_gateway(request)
+
+    logger.info(
+        f"Get message thread request {request_id} for user {user_id}, message {message_id}"
+    )
+
+    try:
+        # Parse message ID to get provider and original ID
+        provider, original_message_id = parse_message_id(message_id)
+
+        # Check cache first
+        cache_key = generate_message_thread_cache_key(
+            user_id=user_id,
+            message_id=message_id,
+            include_body=include_body,
+        )
+
+        if not no_cache:
+            cached_result = await cache_manager.get_from_cache(cache_key)
+            if cached_result:
+                logger.info(f"Cache hit for message thread request {request_id}")
+                return EmailThreadList(
+                    success=True,
+                    data=cached_result,
+                    cache_hit=True,
+                    request_id=request_id,
+                )
+
+        # Fetch thread for the message
+        thread = await fetch_message_thread(
+            request_id,
+            user_id,
+            provider,
+            original_message_id,
+            include_body,
+        )
+
+        if not thread:
+            raise NotFoundError("Thread", f"for message {message_id}")
+
+        # Prepare response data
+        response_data = {
+            "thread": thread,
+            "provider_used": provider,
+        }
+
+        # Cache the result
+        if not no_cache:
+            await cache_manager.set_to_cache(
+                cache_key, response_data, ttl_seconds=600
+            )  # 10 minutes
+
+        return EmailThreadList(
+            success=True,
+            data=response_data,
+            provider_used=get_provider_enum(provider),
+            request_id=request_id,
+        )
+
+    except Exception as e:
+        logger.error(
+            f"Failed to get message thread for {message_id} and user {user_id}: {e}"
+        )
+        return EmailThreadList(
+            success=False,
+            error={"message": str(e)},
+            request_id=request_id,
+        )
 
 
 async def send_gmail_message(
@@ -1255,3 +1625,387 @@ def parse_message_id(message_id: str) -> tuple[str, str]:
         raise ValidationError(
             message=f"Invalid message ID format: {message_id}. Expected format: 'provider_originalId'"
         )
+
+
+def get_user_account_info(user_id: str, provider: str) -> tuple[str, str]:
+    """
+    Get standardized user account info for a provider.
+
+    Args:
+        user_id: User ID
+        provider: Provider name (google, microsoft)
+
+    Returns:
+        Tuple of (account_email, account_name)
+    """
+    if "@" in user_id:
+        account_email = user_id
+        account_name = f"{provider.title()} Account ({user_id.split('@')[0]})"
+    else:
+        if provider == "google":
+            account_email = f"{user_id}@gmail.com"
+        else:  # microsoft
+            account_email = f"{user_id}@outlook.com"
+        account_name = f"{provider.title()} Account ({user_id})"
+
+    return account_email, account_name
+
+
+def get_provider_enum(provider: str) -> Optional[Provider]:
+    """
+    Convert string provider to Provider enum.
+
+    Args:
+        provider: Provider string (google, microsoft)
+
+    Returns:
+        Provider enum value or None if invalid
+    """
+    try:
+        return Provider(provider.lower())
+    except ValueError:
+        return None
+
+
+def parse_thread_id(thread_id: str) -> tuple[str, str]:
+    """
+    Parse a unified thread ID to extract provider and original ID.
+
+    Args:
+        thread_id: Unified thread ID (format: "provider_originalId")
+
+    Returns:
+        Tuple of (provider, original_thread_id)
+
+    Raises:
+        HTTPException: If thread ID format is invalid
+    """
+    try:
+        if "_" not in thread_id:
+            raise ValidationError(message="Invalid thread ID format")
+
+        parts = thread_id.split("_", 1)
+        provider_prefix = parts[0].lower()
+        original_id = parts[1]
+
+        # Map provider prefixes to standard names
+        provider_map = {
+            "gmail": "google",
+            "google": "google",
+            "outlook": "microsoft",
+            "microsoft": "microsoft",
+        }
+
+        provider = provider_map.get(provider_prefix)
+        if not provider:
+            raise ValidationError(message=f"Unknown provider prefix: {provider_prefix}")
+
+        return provider, original_id
+
+    except ValidationError:
+        # Re-raise ValidationError as-is
+        raise
+    except Exception:
+        raise ValidationError(
+            message=f"Invalid thread ID format: {thread_id}. Expected format: 'provider_originalId'"
+        )
+
+
+async def fetch_provider_threads(
+    request_id: str,
+    user_id: str,
+    provider: str,
+    limit: int,
+    include_body: bool,
+    labels: Optional[List[str]],
+    folder_id: Optional[str],
+    q: Optional[str],
+    page_token: Optional[str],
+) -> tuple[List[EmailThread], str]:
+    """
+    Fetch email threads from a specific provider.
+
+    Args:
+        request_id: Request ID for logging
+        user_id: User ID
+        provider: Provider name (google, microsoft)
+        limit: Maximum number of threads to return
+        include_body: Whether to include message body content
+        labels: Filter by labels
+        folder_id: Folder ID to fetch from
+        q: Search query
+        page_token: Pagination token
+
+    Returns:
+        Tuple of (list of EmailThread objects, provider used)
+    """
+    try:
+        # Get API client for provider
+        factory = await get_api_client_factory()
+        client = await factory.create_client(user_id, provider)
+        if client is None:
+            raise ValidationError(
+                message=f"Failed to create API client for provider {provider}"
+            )
+
+        # Use client as async context manager
+        async with client:
+            if provider == "google":
+                google_client = cast(GoogleAPIClient, client)
+                # For Gmail, we need to fetch threads and then get messages for each thread
+                threads_data = await google_client.get_threads(
+                    max_results=limit,
+                    q=q,
+                    label_ids=labels,
+                )
+
+                # Get user account info
+                account_email, account_name = get_user_account_info(user_id, provider)
+
+                # Convert Gmail threads to unified format
+                threads = []
+                for thread_data in threads_data.get("threads", []):
+                    thread_id = thread_data.get("id")
+                    if thread_id:
+                        # Get messages for this thread
+                        thread_messages = await google_client.get_thread(thread_id)
+
+                        # Use the normalization function
+                        try:
+                            normalized_thread = normalize_google_thread(
+                                thread_messages, account_email, account_name
+                            )
+                            threads.append(normalized_thread)
+                        except Exception as e:
+                            logger.warning(
+                                f"Failed to normalize Gmail thread {thread_id}: {e}"
+                            )
+                            continue
+
+                return threads, provider
+
+            elif provider == "microsoft":
+                microsoft_client = cast(MicrosoftAPIClient, client)
+                # For Microsoft, get messages and group by conversationId to create threads
+                messages_response = await microsoft_client.get_messages(
+                    top=limit
+                    * 10,  # Get more messages to ensure we have enough threads
+                )
+                messages = messages_response.get("value", [])
+
+                # Get user account info
+                account_email, account_name = get_user_account_info(user_id, provider)
+
+                # Group messages by conversationId to create threads
+                conversation_groups: Dict[str, List[Dict[str, Any]]] = {}
+                for message in messages:
+                    conv_id = message.get("conversationId")
+                    if conv_id:
+                        if conv_id not in conversation_groups:
+                            conversation_groups[conv_id] = []
+                        conversation_groups[conv_id].append(message)
+
+                # Convert grouped messages to unified thread format
+                threads = []
+                for conv_id, conv_messages in list(conversation_groups.items())[:limit]:
+                    try:
+                        # Create minimal conversation data
+                        conv_data = {"id": conv_id}
+
+                        normalized_thread = normalize_microsoft_conversation(
+                            conv_data, conv_messages, account_email, account_name
+                        )
+                        threads.append(normalized_thread)
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to normalize Microsoft thread {conv_id}: {e}"
+                        )
+                        continue
+
+                return threads, provider
+
+            else:
+                raise ValidationError(message=f"Unsupported provider: {provider}")
+
+    except Exception as e:
+        logger.error(f"Failed to fetch threads from {provider}: {e}")
+        raise
+
+
+async def fetch_single_thread(
+    request_id: str,
+    user_id: str,
+    provider: str,
+    original_thread_id: str,
+    include_body: bool,
+) -> Optional[EmailThread]:
+    """
+    Fetch a single thread from a specific provider.
+
+    Args:
+        request_id: Request ID for logging
+        user_id: User ID
+        provider: Provider name (google, microsoft)
+        original_thread_id: Original thread ID from the provider
+        include_body: Whether to include message body content
+
+    Returns:
+        EmailThread or None if not found
+    """
+    try:
+        # Get API client for provider
+        factory = await get_api_client_factory()
+        client = await factory.create_client(user_id, provider)
+        if client is None:
+            raise ValidationError(
+                message=f"Failed to create API client for provider {provider}"
+            )
+
+        # Use client as async context manager
+        async with client:
+            if provider == "google":
+                google_client = cast(GoogleAPIClient, client)
+                # Get thread from Gmail
+                thread_data = await google_client.get_thread(original_thread_id)
+
+                # Get user account info
+                account_email, account_name = get_user_account_info(user_id, provider)
+
+                # Use the normalization function
+                try:
+                    return normalize_google_thread(
+                        thread_data, account_email, account_name
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to normalize Gmail thread {original_thread_id}: {e}"
+                    )
+                    return None
+
+            elif provider == "microsoft":
+                microsoft_client = cast(MicrosoftAPIClient, client)
+                # Get messages and filter by conversation ID for Microsoft
+                logger.info(
+                    f"Fetching Microsoft thread {original_thread_id} for user {user_id}"
+                )
+                try:
+                    # Get recent messages and filter client-side by conversationId
+                    messages_response = await microsoft_client.get_messages(
+                        top=200,  # Get more messages to increase chances of finding the thread
+                    )
+                    messages = messages_response.get("value", [])
+
+                    # Filter messages that belong to this thread
+                    thread_messages = [
+                        msg
+                        for msg in messages
+                        if msg.get("conversationId") == original_thread_id
+                    ]
+
+                    if thread_messages:
+                        logger.info(
+                            f"Found {len(thread_messages)} messages for thread {original_thread_id}"
+                        )
+
+                        # Get user account info
+                        account_email, account_name = get_user_account_info(
+                            user_id, provider
+                        )
+
+                        return normalize_microsoft_conversation(
+                            {"id": original_thread_id},
+                            thread_messages,
+                            account_email,
+                            account_name,
+                        )
+                    else:
+                        logger.warning(
+                            f"No messages found for thread {original_thread_id}"
+                        )
+                        return None
+                except Exception as e:
+                    logger.error(
+                        f"Failed to fetch Microsoft thread {original_thread_id}: {e}"
+                    )
+                    return None
+
+            else:
+                raise ValidationError(message=f"Unsupported provider: {provider}")
+
+        return None
+
+    except Exception as e:
+        logger.error(
+            f"Failed to fetch thread {original_thread_id} from {provider}: {e}"
+        )
+        return None
+
+
+async def fetch_message_thread(
+    request_id: str,
+    user_id: str,
+    provider: str,
+    original_message_id: str,
+    include_body: bool,
+) -> Optional[EmailThread]:
+    """
+    Fetch the thread containing a specific message.
+
+    Args:
+        request_id: Request ID for logging
+        user_id: User ID
+        provider: Provider name (google, microsoft)
+        original_message_id: Original message ID from the provider
+        include_body: Whether to include message body content
+
+    Returns:
+        EmailThread or None if not found
+    """
+    try:
+        # Get API client for provider
+        factory = await get_api_client_factory()
+        client = await factory.create_client(user_id, provider)
+        if client is None:
+            raise ValidationError(
+                message=f"Failed to create API client for provider {provider}"
+            )
+
+        # Use client as async context manager
+        async with client:
+            if provider == "google":
+                google_client = cast(GoogleAPIClient, client)
+                # Get message to find its thread ID
+                message_data = await google_client.get_message(original_message_id)
+                thread_id = message_data.get("threadId")
+
+                if thread_id:
+                    return await fetch_single_thread(
+                        request_id, user_id, provider, thread_id, include_body
+                    )
+
+            elif provider == "microsoft":
+                microsoft_client = cast(MicrosoftAPIClient, client)
+                # Get the message to find its conversation ID
+                message_data = await microsoft_client.get_message(original_message_id)
+                conversation_id = message_data.get("conversationId")
+
+                if conversation_id:
+                    return await fetch_single_thread(
+                        request_id, user_id, provider, conversation_id, include_body
+                    )
+                else:
+                    logger.warning(
+                        f"Message {original_message_id} does not have a conversation ID"
+                    )
+                    return None
+
+            else:
+                raise ValidationError(message=f"Unsupported provider: {provider}")
+
+        return None
+
+    except Exception as e:
+        logger.error(
+            f"Failed to fetch message thread for {original_message_id} from {provider}: {e}"
+        )
+        return None
