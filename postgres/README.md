@@ -210,7 +210,9 @@ Comprehensive database status checker that:
 
 **Exit codes:**
 - `0`: All checks passed
-- `1`: PostgreSQL not running or migrations needed
+- `1`: PostgreSQL not running
+- `2`: Database connection errors
+- `3`: Migrations needed
 
 ### `run-migrations.sh`
 Runs or checks Alembic migrations for all services.
@@ -269,36 +271,7 @@ python3 scripts/postgres-test-connection.py
 - `.env.postgres.staging` - Staging environment passwords
 - `.env.postgres.production` - Production environment password template
 
-## Migration from Hardcoded Passwords
-
-If you were previously using the hardcoded passwords, you can:
-
-1. Create environment files with the same values as the old hardcoded passwords
-2. Or generate new secure passwords and update your application configurations accordingly
-
-The local development passwords in `.env.postgres.local` match the old hardcoded values, so existing setups will continue to work without changes.
-
-## Connection Strings
-
-### For Application Use (Service-specific users)
-```bash
-export DB_URL_USER=postgresql://briefly_user_service:briefly_user_pass@localhost:5432/briefly_user
-export DB_URL_MEETINGS=postgresql://briefly_meetings_service:briefly_meetings_pass@localhost:5432/briefly_meetings
-export DB_URL_SHIPMENTS=postgresql://briefly_shipments_service:briefly_shipments_pass@localhost:5432/briefly_shipments
-export DB_URL_OFFICE=postgresql://briefly_office_service:briefly_office_pass@localhost:5432/briefly_office
-export DB_URL_CHAT=postgresql://briefly_chat_service:briefly_chat_pass@localhost:5432/briefly_chat
-export DB_URL_VECTOR=postgresql://briefly_vector_service:briefly_vector_pass@localhost:5432/briefly_vector
-```
-
-### For Migrations (Admin user)
-```bash
-export DB_URL_USER_MIGRATIONS=postgresql://postgres:postgres@localhost:5432/briefly_user
-export DB_URL_MEETINGS_MIGRATIONS=postgresql://postgres:postgres@localhost:5432/briefly_meetings
-export DB_URL_SHIPMENTS_MIGRATIONS=postgresql://postgres:postgres@localhost:5432/briefly_shipments
-export DB_URL_OFFICE_MIGRATIONS=postgresql://postgres:postgres@localhost:5432/briefly_office
-export DB_URL_CHAT_MIGRATIONS=postgresql://postgres:postgres@localhost:5432/briefly_chat
-export DB_URL_VECTOR_MIGRATIONS=postgresql://postgres:postgres@localhost:5432/briefly_vector
-```
+See env.postgres.example for an example.
 
 ## Service Configuration
 
@@ -310,7 +283,7 @@ Update your service settings to use the PostgreSQL URLs:
 db_url_user = os.getenv("DB_URL_USER", "postgresql://briefly_user_service:briefly_user_pass@localhost:5432/briefly_user")
 
 # Use admin user for migrations
-db_url_user_migrations = os.getenv("DB_URL_USER_MIGRATIONS", "postgresql://postgres:postgres@localhost:5432/briefly_user")
+db_url_user_migrations = os.getenv("DB_URL_USER_MIGRATIONS", "postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@localhost:5432/briefly_user")
 ```
 
 ## Database Management
@@ -318,10 +291,10 @@ db_url_user_migrations = os.getenv("DB_URL_USER_MIGRATIONS", "postgresql://postg
 ### Connect to database
 ```bash
 # Connect to specific database
-psql -h localhost -p 5432 -U postgres -d briefly_user
+psql -h localhost -p 5432 -U postgres -d $database
 
 # Connect as service user
-psql -h localhost -p 5432 -U briefly_user_service -d briefly_user
+psql -h localhost -p 5432 -U briefly_user_service -d $database
 ```
 
 ### List databases

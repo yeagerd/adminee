@@ -33,14 +33,34 @@ echo "📥 Installing all workspace and development dependencies..."
 uv sync --all-packages --all-extras --active
 uv pip install -e services/meetings
 
-# Check database status and run migrations if needed
+# Check database status and handle different scenarios
 echo "🗄️ Checking database status..."
-if ./scripts/check-db-status.sh; then
-    echo "✅ Database is ready!"
-else
-    echo "📦 Database needs setup. Running migrations..."
-    ./scripts/run-migrations.sh
-fi
+./scripts/check-db-status.sh
+db_status=$?
+
+case $db_status in
+    0)
+        echo "✅ Database is ready!"
+        ;;
+    1)
+        echo "🚨 PostgreSQL is not running. Please start it first:"
+        echo "   ./scripts/postgres-start.sh"
+        exit 1
+        ;;
+    2)
+        echo "🚨 Database connection errors detected. Check PostgreSQL logs:"
+        echo "   docker logs briefly-postgres"
+        exit 1
+        ;;
+    3)
+        echo "📦 Database needs migrations. Running migrations..."
+        ./scripts/run-migrations.sh
+        ;;
+    *)
+        echo "❌ Unknown database status error (exit code: $db_status)"
+        exit 1
+        ;;
+esac
 
 echo "✅ Development environment setup complete!"
 echo ""

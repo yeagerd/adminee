@@ -248,7 +248,7 @@ start_python_service "meetings-service" "services.meetings.main:app" 8005
 
 # Start Gateway
 echo -e "${BLUE}🚀 Starting Express Gateway...${NC}"
-./scripts/start-gateway.sh &
+./scripts/gateway-start.sh &
 GATEWAY_PID=$!
 echo $GATEWAY_PID > /tmp/briefly-gateway.pid
 

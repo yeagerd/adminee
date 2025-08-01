@@ -1,6 +1,16 @@
 #!/bin/bash
 set -e
 
+# Database Status Checker
+# 
+# This script checks PostgreSQL status and migration state for all services.
+# 
+# Exit codes:
+#   0 - All checks passed (PostgreSQL running, connections working, migrations up to date)
+#   1 - PostgreSQL not running
+#   2 - Database connection errors
+#   3 - Migrations needed
+#
 # Source PostgreSQL environment variables
 source scripts/postgres-env.sh
 
@@ -98,16 +108,22 @@ echo "  PostgreSQL Running: $([ "$postgres_ok" = true ] && echo "✅" || echo "�
 echo "  Connections Working: $([ "$connections_ok" = true ] && echo "✅" || echo "❌")"
 echo "  Migrations Up to Date: $([ "$migrations_ok" = true ] && echo "✅" || echo "❌")"
 
+# Return different exit codes based on the issue
 if [ "$postgres_ok" = false ]; then
     echo ""
     echo "🚨 PostgreSQL is not running. Please start it first:"
     echo "   ./scripts/postgres-start.sh"
     exit 1
+elif [ "$connections_ok" = false ]; then
+    echo ""
+    echo "🚨 Database connection errors detected. Check PostgreSQL logs:"
+    echo "   docker logs briefly-postgres"
+    exit 2
 elif [ "$migrations_ok" = false ]; then
     echo ""
     echo "⚠️  Some databases need migrations. Run:"
     echo "   ./scripts/run-migrations.sh"
-    exit 1
+    exit 3
 else
     echo ""
     echo "🎉 All database checks passed!"
