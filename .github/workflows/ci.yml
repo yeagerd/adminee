@@ -241,5 +241,5 @@ jobs:
     - name: Test Docker Compose build
       env:
           # Only set essential variables needed for build validation
-          ENVIRONMENT: test
+          ENVIRONMENT: ci
       run: docker compose build
