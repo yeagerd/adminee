@@ -58,7 +58,6 @@ run_service_migrations "meetings" "$DB_URL_MEETINGS_MIGRATIONS"
 run_service_migrations "shipments" "$DB_URL_SHIPMENTS_MIGRATIONS"
 run_service_migrations "office" "$DB_URL_OFFICE_MIGRATIONS"
 run_service_migrations "chat" "$DB_URL_CHAT_MIGRATIONS"
-run_service_migrations "vector_db" "$DB_URL_VECTOR_MIGRATIONS"
 
 if [ "$CHECK_ONLY" = true ]; then
     echo ""
@@ -74,5 +73,4 @@ else
     echo "  - briefly_shipments: Ready"
     echo "  - briefly_office: Ready"
     echo "  - briefly_chat: Ready"
-    echo "  - briefly_vector: Ready"
 fi
