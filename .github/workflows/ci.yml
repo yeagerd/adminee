@@ -236,8 +236,6 @@ jobs:
 
     - name: Set NEXTAUTH_SECRET for Docker build
       run: |
-        echo "NEXTAUTH_SECRET=dummy-secret-for-ci-build-$(date +%s)" >> .env
-        echo "NEXTAUTH_SECRET=dummy-secret-for-ci-build-$(date +%s)" >> gateway/.env
         echo "NEXTAUTH_SECRET=dummy-secret-for-ci-build-$(date +%s)" >> frontend/.env
 
     - name: Test Docker Compose build
