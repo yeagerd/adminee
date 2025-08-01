@@ -1,6 +1,11 @@
 #!/bin/bash
 set -e
 
+# Set working directory to the project root (one level up from scripts/)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+cd "$PROJECT_ROOT"
+
 # Parse command line arguments
 FRESH_INSTALL=false
 RESTART=false

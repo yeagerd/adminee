@@ -17,6 +17,11 @@ set -e
 # If --env-file is provided, the script will use those credentials.
 # Otherwise, it will use default hardcoded credentials for local development.
 
+# Set working directory to the project root (one level up from scripts/)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+cd "$PROJECT_ROOT"
+
 # Parse command line arguments
 ENV_FILE=""
 while [[ $# -gt 0 ]]; do
