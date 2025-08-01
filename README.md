@@ -82,7 +82,7 @@ uv run python -m uvicorn services.user.main:app --port 8000 --reload
 uv run python -m uvicorn services.office.app.main:app --port 8002 --reload
 
 # Start gateway separately
-./scripts/start-gateway.sh
+./scripts/gateway-start.sh
 ```
 
 **Run tests:**
