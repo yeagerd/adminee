@@ -217,7 +217,8 @@ if check_postgres_running; then
 fi
 
 echo ""
-echo "=" * 50
+printf "%.0s=" {1..50}
+echo ""
 echo "📊 Database Status Summary:"
 echo "  PostgreSQL Running: $([ "$postgres_ok" = true ] && echo "✅" || echo "❌")"
 echo "  Connections Working: $([ "$connections_ok" = true ] && echo "✅" || echo "❌")"
