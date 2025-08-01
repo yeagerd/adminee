@@ -3,6 +3,7 @@
 
 import psycopg2
 import sys
+import os
 from urllib.parse import urlparse
 
 def test_connection(service_name, connection_string):
@@ -43,14 +44,20 @@ def main():
     """Test connections for all services."""
     print("🔍 Testing PostgreSQL connections for all services...\n")
 
+    # Get admin credentials from environment variables
+    postgres_user = os.getenv('POSTGRES_USER', 'postgres')
+    postgres_password = os.getenv('POSTGRES_PASSWORD', 'postgres')
+    postgres_host = os.getenv('POSTGRES_HOST', 'localhost')
+    postgres_port = os.getenv('POSTGRES_PORT', '5432')
+
     # Test connections using admin user (for migrations)
     connections = [
-        ("User Service", "postgresql://postgres:postgres@localhost:5432/briefly_user"),
-        ("Meetings Service", "postgresql://postgres:postgres@localhost:5432/briefly_meetings"),
-        ("Shipments Service", "postgresql://postgres:postgres@localhost:5432/briefly_shipments"),
-        ("Office Service", "postgresql://postgres:postgres@localhost:5432/briefly_office"),
-        ("Chat Service", "postgresql://postgres:postgres@localhost:5432/briefly_chat"),
-        ("Vector Service", "postgresql://postgres:postgres@localhost:5432/briefly_vector"),
+        ("User Service", f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/briefly_user"),
+        ("Meetings Service", f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/briefly_meetings"),
+        ("Shipments Service", f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/briefly_shipments"),
+        ("Office Service", f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/briefly_office"),
+        ("Chat Service", f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/briefly_chat"),
+        ("Vector Service", f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/briefly_vector"),
     ]
 
     success_count = 0

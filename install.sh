@@ -35,7 +35,25 @@ uv pip install -e services/meetings
 
 # Check database status and handle different scenarios
 echo "🗄️ Checking database status..."
-./scripts/check-db-status.sh
+
+# Try to find an environment file to use
+ENV_FILE=""
+if [ -f ".env.postgres.local" ]; then
+    ENV_FILE=".env.postgres.local"
+elif [ -f ".env.postgres.staging" ]; then
+    ENV_FILE=".env.postgres.staging"
+elif [ -f ".env.postgres.production" ]; then
+    ENV_FILE=".env.postgres.production"
+fi
+
+if [ -n "$ENV_FILE" ]; then
+    echo "📄 Using environment file: $ENV_FILE"
+    ./scripts/check-db-status.sh --env-file "$ENV_FILE"
+else
+    echo "📄 Using default credentials"
+    ./scripts/check-db-status.sh
+fi
+
 db_status=$?
 
 case $db_status in

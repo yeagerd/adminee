@@ -205,7 +205,14 @@ Comprehensive database status checker that:
 
 **Usage:**
 ```bash
+# Use default credentials for local development
 ./scripts/check-db-status.sh
+
+# Use specific environment file
+./scripts/check-db-status.sh --env-file .env.postgres.local
+
+# Use staging environment
+./scripts/check-db-status.sh --env-file .env.postgres.staging
 ```
 
 **Exit codes:**
@@ -213,6 +220,11 @@ Comprehensive database status checker that:
 - `1`: PostgreSQL not running
 - `2`: Database connection errors
 - `3`: Migrations needed
+
+**Environment Files:**
+The script can optionally use an environment file to get database credentials:
+- Without `--env-file`: Uses default hardcoded credentials for local development
+- With `--env-file`: Uses the specified environment file for secure credential management
 
 ### `run-migrations.sh`
 Runs or checks Alembic migrations for all services.
