@@ -23,7 +23,7 @@ def column_exists(table_name: str, column_name: str) -> bool:
     """Check if a column exists in a table."""
     connection = op.get_bind()
     inspector = sa.inspect(connection)
-    columns = [col['name'] for col in inspector.get_columns(table_name)]
+    columns = [col["name"] for col in inspector.get_columns(table_name)]
     return column_name in columns
 
 
@@ -38,13 +38,9 @@ def upgrade() -> None:
     """Upgrade schema."""
     # Add UUID columns to all tables (using String for SQLite compatibility)
     if not column_exists("package", "uuid_id"):
-        op.add_column(
-            "package", sa.Column("uuid_id", sa.String(36), nullable=True)
-        )
+        op.add_column("package", sa.Column("uuid_id", sa.String(36), nullable=True))
     if not column_exists("label", "uuid_id"):
-        op.add_column(
-            "label", sa.Column("uuid_id", sa.String(36), nullable=True)
-        )
+        op.add_column("label", sa.Column("uuid_id", sa.String(36), nullable=True))
     if not column_exists("trackingevent", "uuid_id"):
         op.add_column(
             "trackingevent",
@@ -92,8 +88,10 @@ def upgrade() -> None:
     connection = op.get_bind()
 
     # Check if we already have UUIDs populated
-    existing_uuids = connection.execute(sa.text("SELECT COUNT(*) FROM package WHERE uuid_id IS NOT NULL")).scalar()
-    
+    existing_uuids = connection.execute(
+        sa.text("SELECT COUNT(*) FROM package WHERE uuid_id IS NOT NULL")
+    ).scalar()
+
     if existing_uuids == 0:
         # Generate UUIDs for packages
         packages = connection.execute(sa.text("SELECT id FROM package")).fetchall()
@@ -154,7 +152,11 @@ def upgrade() -> None:
                 sa.text(
                     "INSERT INTO id_mapping (table_name, old_id, new_uuid) VALUES (:table, :old_id, :new_uuid)"
                 ),
-                {"table": "packagelabel", "old_id": package_label[0], "new_uuid": new_uuid},
+                {
+                    "table": "packagelabel",
+                    "old_id": package_label[0],
+                    "new_uuid": new_uuid,
+                },
             )
 
         # Generate UUIDs for carrier configs
@@ -233,37 +235,39 @@ def upgrade() -> None:
         op.drop_constraint(
             "trackingevent_package_id_fkey", "trackingevent", type_="foreignkey"
         )
-    except:
+    except Exception:
         pass  # Constraint might not exist
-    
+
     try:
         op.drop_constraint(
             "packagelabel_package_id_fkey", "packagelabel", type_="foreignkey"
         )
-    except:
+    except Exception:
         pass  # Constraint might not exist
-    
+
     try:
-        op.drop_constraint("packagelabel_label_id_fkey", "packagelabel", type_="foreignkey")
-    except:
+        op.drop_constraint(
+            "packagelabel_label_id_fkey", "packagelabel", type_="foreignkey"
+        )
+    except Exception:
         pass  # Constraint might not exist
 
     # Drop old integer columns if they exist - but only after foreign key constraints are dropped
     # Note: SQLite doesn't support DROP COLUMN with foreign key references
     # We'll need to recreate the tables without these columns
     connection = op.get_bind()
-    
+
     # Check if the old columns still exist and need to be handled
     if column_exists("trackingevent", "package_id"):
         # For SQLite, we need to recreate the table without the column
         # This is a complex operation, so we'll skip it for now and let the migration continue
         # The old column will remain but won't be used
         pass
-    
+
     if column_exists("packagelabel", "package_id"):
         # Same as above
         pass
-        
+
     if column_exists("packagelabel", "label_id"):
         # Same as above
         pass
@@ -275,27 +279,37 @@ def upgrade() -> None:
         # For SQLite, this requires recreating the table, which is complex
         # Instead, we'll use a different approach: rename the old id column temporarily
         op.alter_column("package", "id", new_column_name="old_id")
-    
+
     if column_exists("label", "id") and column_exists("label", "uuid_id"):
         op.alter_column("label", "id", new_column_name="old_id")
-    
-    if column_exists("trackingevent", "id") and column_exists("trackingevent", "uuid_id"):
+
+    if column_exists("trackingevent", "id") and column_exists(
+        "trackingevent", "uuid_id"
+    ):
         op.alter_column("trackingevent", "id", new_column_name="old_id")
-    
+
     if column_exists("packagelabel", "id") and column_exists("packagelabel", "uuid_id"):
         op.alter_column("packagelabel", "id", new_column_name="old_id")
-    
-    if column_exists("carrierconfig", "id") and column_exists("carrierconfig", "uuid_id"):
+
+    if column_exists("carrierconfig", "id") and column_exists(
+        "carrierconfig", "uuid_id"
+    ):
         op.alter_column("carrierconfig", "id", new_column_name="old_id")
 
     # Handle foreign key column duplicates
-    if column_exists("trackingevent", "package_id") and column_exists("trackingevent", "package_uuid_id"):
+    if column_exists("trackingevent", "package_id") and column_exists(
+        "trackingevent", "package_uuid_id"
+    ):
         op.alter_column("trackingevent", "package_id", new_column_name="old_package_id")
-    
-    if column_exists("packagelabel", "package_id") and column_exists("packagelabel", "package_uuid_id"):
+
+    if column_exists("packagelabel", "package_id") and column_exists(
+        "packagelabel", "package_uuid_id"
+    ):
         op.alter_column("packagelabel", "package_id", new_column_name="old_package_id")
-    
-    if column_exists("packagelabel", "label_id") and column_exists("packagelabel", "label_uuid_id"):
+
+    if column_exists("packagelabel", "label_id") and column_exists(
+        "packagelabel", "label_uuid_id"
+    ):
         op.alter_column("packagelabel", "label_id", new_column_name="old_label_id")
 
     # Rename UUID columns to be the primary columns
