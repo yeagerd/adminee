@@ -104,12 +104,14 @@ services:
     image: postgres:15-alpine
     volumes:
       - postgres_data:/var/lib/postgresql/data/
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-briefly}
+      POSTGRES_DB: ${POSTGRES_DB:-briefly_user}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_MULTIPLE_DATABASES: "briefly_user,briefly_meetings,briefly_shipments,briefly_office,briefly_chat,briefly_vector"
     restart: unless-stopped
 
 volumes:

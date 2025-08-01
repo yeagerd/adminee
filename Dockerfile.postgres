@@ -1,0 +1,23 @@
+FROM postgres:15-alpine
+
+# Install additional tools for database management
+RUN apk add --no-cache bash
+
+# Copy initialization scripts
+COPY postgres/init-db.sh /docker-entrypoint-initdb.d/01-init-db.sh
+COPY postgres/create-databases.sh /docker-entrypoint-initdb.d/02-create-databases.sh
+COPY postgres/create-users.sh /docker-entrypoint-initdb.d/03-create-users.sh
+
+# Make scripts executable
+RUN chmod +x /docker-entrypoint-initdb.d/*.sh
+
+# Set environment variables
+# REQUIRED: POSTGRES_USER and POSTGRES_PASSWORD must be set via environment file
+# or docker run -e flags. No defaults provided for security.
+
+# Expose PostgreSQL port
+EXPOSE 5432
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD pg_isready -U postgres
