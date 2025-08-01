@@ -5,7 +5,7 @@ RUN apk add --no-cache bash
 
 # Copy initialization scripts
 COPY postgres/init-db.sh /docker-entrypoint-initdb.d/01-init-db.sh
-COPY postgres/create-database.sql /docker-entrypoint-initdb.d/02-create-databases.sql
+COPY postgres/create-databases.sh /docker-entrypoint-initdb.d/02-create-databases.sh
 COPY postgres/create-users.sh /docker-entrypoint-initdb.d/03-create-users.sh
 
 # Make scripts executable

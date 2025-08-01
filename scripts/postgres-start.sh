@@ -127,7 +127,7 @@ fi
 echo "🔄 Starting PostgreSQL container..."
 
 # Build docker run command
-DOCKER_RUN_CMD="docker run -d --name briefly-postgres --network host -e POSTGRES_DB=briefly_user -v briefly_postgres_data:/var/lib/postgresql/data"
+DOCKER_RUN_CMD="docker run -d --name briefly-postgres --network host -v briefly_postgres_data:/var/lib/postgresql/data"
 
 # Add environment file if provided
 if [ -n "$ENV_FILE" ]; then
@@ -144,16 +144,69 @@ fi
 
 # Add image name and execute
 DOCKER_RUN_CMD="$DOCKER_RUN_CMD briefly-postgres"
-eval $DOCKER_RUN_CMD
+echo "🚀 Executing: $DOCKER_RUN_CMD"
+CONTAINER_ID=$(eval $DOCKER_RUN_CMD)
 
-# Wait for PostgreSQL to be ready
+# Check if container started successfully
+if [ $? -ne 0 ]; then
+    echo "❌ Failed to start PostgreSQL container"
+    echo "📋 Container logs:"
+    docker logs briefly-postgres 2>/dev/null || echo "   No logs available"
+    exit 1
+fi
+
+echo "📦 Container started with ID: $CONTAINER_ID"
+
+# Wait for PostgreSQL to be ready with better error handling
 echo "⏳ Waiting for PostgreSQL to be ready..."
-until docker exec briefly-postgres pg_isready -U postgres; do
-  echo "PostgreSQL is not ready yet. Waiting..."
-  sleep 2
+MAX_ATTEMPTS=30
+ATTEMPT=0
+
+while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+    # Check if container is still running
+    if ! docker ps | grep -q briefly-postgres; then
+        echo "❌ PostgreSQL container stopped unexpectedly"
+        echo "📋 Container logs:"
+        docker logs briefly-postgres
+        echo ""
+        echo "🔍 Container status:"
+        docker ps -a | grep briefly-postgres
+        exit 1
+    fi
+    
+    # Check if PostgreSQL is ready
+    if docker exec briefly-postgres pg_isready -U postgres >/dev/null 2>&1; then
+        echo "✅ PostgreSQL is ready!"
+        break
+    fi
+    
+    ATTEMPT=$((ATTEMPT + 1))
+    echo "⏳ PostgreSQL is not ready yet. Waiting... (attempt $ATTEMPT/$MAX_ATTEMPTS)"
+    sleep 2
 done
 
-echo "✅ PostgreSQL is ready!"
+if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+    echo "❌ PostgreSQL failed to start within $((MAX_ATTEMPTS * 2)) seconds"
+    echo "📋 Container logs:"
+    docker logs briefly-postgres
+    echo ""
+    echo "🔍 Container status:"
+    docker ps -a | grep briefly-postgres
+    exit 1
+fi
+
+# Verify that initialization scripts ran successfully
+echo "🔍 Verifying database initialization..."
+sleep 3  # Give a moment for any final initialization
+
+# Check if service users were created
+if ! docker exec briefly-postgres psql -U postgres -d briefly_user -c "SELECT 1 FROM pg_roles WHERE rolname='briefly_user_service';" | grep -q "1 row"; then
+    echo "⚠️  Warning: Service users may not have been created properly"
+    echo "📋 Recent container logs:"
+    docker logs briefly-postgres | tail -20
+    echo ""
+    echo "💡 This might be normal if the database was already initialized"
+fi
 
 # Display connection information
 echo ""

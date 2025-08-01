@@ -21,37 +21,97 @@ READONLY_PASSWORD=${BRIEFLY_READONLY_PASSWORD:-briefly_readonly_pass}
 
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
     -- User service user
-    CREATE USER briefly_user_service WITH PASSWORD '$USER_SERVICE_PASSWORD';
+    DO \$\$
+    BEGIN
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'briefly_user_service') THEN
+            CREATE USER briefly_user_service WITH PASSWORD '$USER_SERVICE_PASSWORD';
+        END IF;
+    END
+    \$\$;
     GRANT CONNECT ON DATABASE briefly_user TO briefly_user_service;
     GRANT ALL PRIVILEGES ON DATABASE briefly_user TO briefly_user_service;
+    GRANT ALL ON SCHEMA public TO briefly_user_service;
+    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO briefly_user_service;
+    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO briefly_user_service;
 
     -- Meetings service user
-    CREATE USER briefly_meetings_service WITH PASSWORD '$MEETINGS_SERVICE_PASSWORD';
+    DO \$\$
+    BEGIN
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'briefly_meetings_service') THEN
+            CREATE USER briefly_meetings_service WITH PASSWORD '$MEETINGS_SERVICE_PASSWORD';
+        END IF;
+    END
+    \$\$;
     GRANT CONNECT ON DATABASE briefly_meetings TO briefly_meetings_service;
     GRANT ALL PRIVILEGES ON DATABASE briefly_meetings TO briefly_meetings_service;
+    GRANT ALL ON SCHEMA public TO briefly_meetings_service;
+    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO briefly_meetings_service;
+    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO briefly_meetings_service;
 
     -- Shipments service user
-    CREATE USER briefly_shipments_service WITH PASSWORD '$SHIPMENTS_SERVICE_PASSWORD';
+    DO \$\$
+    BEGIN
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'briefly_shipments_service') THEN
+            CREATE USER briefly_shipments_service WITH PASSWORD '$SHIPMENTS_SERVICE_PASSWORD';
+        END IF;
+    END
+    \$\$;
     GRANT CONNECT ON DATABASE briefly_shipments TO briefly_shipments_service;
     GRANT ALL PRIVILEGES ON DATABASE briefly_shipments TO briefly_shipments_service;
+    GRANT ALL ON SCHEMA public TO briefly_shipments_service;
+    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO briefly_shipments_service;
+    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO briefly_shipments_service;
 
     -- Office service user
-    CREATE USER briefly_office_service WITH PASSWORD '$OFFICE_SERVICE_PASSWORD';
+    DO \$\$
+    BEGIN
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'briefly_office_service') THEN
+            CREATE USER briefly_office_service WITH PASSWORD '$OFFICE_SERVICE_PASSWORD';
+        END IF;
+    END
+    \$\$;
     GRANT CONNECT ON DATABASE briefly_office TO briefly_office_service;
     GRANT ALL PRIVILEGES ON DATABASE briefly_office TO briefly_office_service;
+    GRANT ALL ON SCHEMA public TO briefly_office_service;
+    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO briefly_office_service;
+    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO briefly_office_service;
 
     -- Chat service user
-    CREATE USER briefly_chat_service WITH PASSWORD '$CHAT_SERVICE_PASSWORD';
+    DO \$\$
+    BEGIN
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'briefly_chat_service') THEN
+            CREATE USER briefly_chat_service WITH PASSWORD '$CHAT_SERVICE_PASSWORD';
+        END IF;
+    END
+    \$\$;
     GRANT CONNECT ON DATABASE briefly_chat TO briefly_chat_service;
     GRANT ALL PRIVILEGES ON DATABASE briefly_chat TO briefly_chat_service;
+    GRANT ALL ON SCHEMA public TO briefly_chat_service;
+    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO briefly_chat_service;
+    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO briefly_chat_service;
 
     -- Vector service user
-    CREATE USER briefly_vector_service WITH PASSWORD '$VECTOR_SERVICE_PASSWORD';
+    DO \$\$
+    BEGIN
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'briefly_vector_service') THEN
+            CREATE USER briefly_vector_service WITH PASSWORD '$VECTOR_SERVICE_PASSWORD';
+        END IF;
+    END
+    \$\$;
     GRANT CONNECT ON DATABASE briefly_vector TO briefly_vector_service;
     GRANT ALL PRIVILEGES ON DATABASE briefly_vector TO briefly_vector_service;
+    GRANT ALL ON SCHEMA public TO briefly_vector_service;
+    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO briefly_vector_service;
+    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO briefly_vector_service;
 
     -- Create a readonly user for cross-service queries (if needed)
-    CREATE USER briefly_readonly WITH PASSWORD '$READONLY_PASSWORD';
+    DO \$\$
+    BEGIN
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'briefly_readonly') THEN
+            CREATE USER briefly_readonly WITH PASSWORD '$READONLY_PASSWORD';
+        END IF;
+    END
+    \$\$;
     GRANT CONNECT ON DATABASE briefly_user TO briefly_readonly;
     GRANT CONNECT ON DATABASE briefly_meetings TO briefly_readonly;
     GRANT CONNECT ON DATABASE briefly_shipments TO briefly_readonly;
