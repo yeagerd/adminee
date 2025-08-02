@@ -45,11 +45,13 @@ class TestTokenManager:
     @pytest.fixture
     def mock_token_data_dict(self):
         """Mock TokenData response from User Management Service."""
+        # Use a future expiration date to ensure tokens are not immediately expired
+        future_expiry = datetime.now(timezone.utc) + timedelta(hours=1)
         return {
             "success": True,
             "access_token": "test_access_token_123",
             "refresh_token": "test_refresh_token",
-            "expires_at": "2023-12-31T23:59:59+00:00",
+            "expires_at": future_expiry.isoformat(),
             "scopes": ["read", "write"],
             "provider": "google",
             "user_id": "test_user",
