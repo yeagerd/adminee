@@ -44,7 +44,7 @@ except ImportError:
 
 # Import database setup for local testing
 try:
-
+    from services.user.database import create_all_tables_for_testing
     DATABASE_SETUP_AVAILABLE = True
 except ImportError:
     DATABASE_SETUP_AVAILABLE = False
@@ -146,8 +146,7 @@ class UserManagementDemo:
 
         try:
             print("🔧 Initializing database tables...")
-            # Database should be initialized via Alembic migrations before running tests
-            # Run: alembic upgrade head
+            await create_all_tables_for_testing()
             print("✅ Database tables initialized successfully")
             return True
         except Exception as e:
