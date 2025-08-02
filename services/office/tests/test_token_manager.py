@@ -11,7 +11,7 @@ import os
 os.environ.setdefault("DB_URL_OFFICE", "sqlite:///test.db")
 os.environ.setdefault("API_OFFICE_USER_KEY", "test-api-key")
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -45,11 +45,13 @@ class TestTokenManager:
     @pytest.fixture
     def mock_token_data_dict(self):
         """Mock TokenData response from User Management Service."""
+        # Use a future expiration date to ensure tokens are not immediately expired
+        future_expiry = datetime.now(timezone.utc) + timedelta(hours=1)
         return {
             "success": True,
             "access_token": "test_access_token_123",
             "refresh_token": "test_refresh_token",
-            "expires_at": "2023-12-31T23:59:59+00:00",
+            "expires_at": future_expiry.isoformat(),
             "scopes": ["read", "write"],
             "provider": "google",
             "user_id": "test_user",
@@ -295,7 +297,7 @@ class TestTokenManager:
 
                 # Manually expire the token
                 cache_key = list(token_manager._token_cache.keys())[0]
-                token_manager._token_cache[cache_key].expires_at = datetime.now(
+                token_manager._token_cache[cache_key].cache_expires_at = datetime.now(
                     timezone.utc
                 )
 
@@ -354,6 +356,49 @@ class TestTokenManager:
 
                 # Should have no tokens left
                 assert len(token_manager._token_cache) == 0
+
+    @pytest.mark.asyncio
+    async def test_token_expiration_with_actual_token_expiry(
+        self, mock_token_data_dict
+    ):
+        """Test that tokens are considered expired when the actual token expires."""
+        async with TokenManager() as token_manager:
+            with patch.object(
+                token_manager.http_client, "post", new_callable=AsyncMock
+            ) as mock_post:
+                mock_response = MagicMock()
+                mock_response.status_code = 200
+                mock_response.json.return_value = mock_token_data_dict
+                mock_post.return_value = mock_response
+
+                # Get a token (adds to cache)
+                result1 = await token_manager.get_user_token(
+                    "test_user", "google", ["read"]
+                )
+                assert result1 is not None
+                assert mock_post.call_count == 1
+
+                # Verify cache hit on second request
+                result2 = await token_manager.get_user_token(
+                    "test_user", "google", ["read"]
+                )
+                assert result2 is not None
+                assert mock_post.call_count == 1  # Should still be 1 due to cache hit
+
+                # Manually set the token to expire in the past (but keep cache TTL valid)
+                cache_key = list(token_manager._token_cache.keys())[0]
+                cached_token = token_manager._token_cache[cache_key]
+                # Set token to expire 10 minutes ago
+                cached_token.token_data.expires_at = datetime.now(
+                    timezone.utc
+                ) - timedelta(minutes=10)
+
+                # Request the same token again - should be a cache miss due to token expiration
+                result3 = await token_manager.get_user_token(
+                    "test_user", "google", ["read"]
+                )
+                assert result3 is not None
+                assert mock_post.call_count == 2  # Should be 2 now due to cache miss
 
     @pytest.mark.asyncio
     async def test_get_cache_stats(self, mock_token_data_dict):
