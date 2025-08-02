@@ -15,13 +15,13 @@ create_database_if_not_exists() {
     echo "Creating database: $db_name"
     
     psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
-        SELECT 'CREATE DATABASE $db_name'
+        SELECT 'CREATE DATABASE "$db_name"'
         WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '$db_name')\gexec
 EOSQL
     
     # Grant privileges to postgres user
     psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
-        GRANT ALL PRIVILEGES ON DATABASE $db_name TO postgres;
+        GRANT ALL PRIVILEGES ON DATABASE "$db_name" TO postgres;
 EOSQL
     
     echo "Database $db_name created/verified successfully"
