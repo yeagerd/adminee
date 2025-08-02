@@ -182,6 +182,27 @@ class ShipmentsClient {
     }
 
     /**
+     * Get package by email message ID
+     */
+    async getPackageByEmail(emailMessageId: string): Promise<PackageResponse | null> {
+        try {
+            const response = await gatewayClient.request<{ data: PackageResponse[] }>(`/api/v1/shipments/packages?email_message_id=${emailMessageId}`);
+
+            if (response && response.data && response.data.length > 0) {
+                return response.data[0];
+            }
+
+            return null;
+        } catch (error: unknown) {
+            if (error instanceof Error && 'response' in error && (error as { response?: { status?: number } }).response?.status === 404) {
+                return null;
+            }
+            console.error('Error getting package by email:', error);
+            return null;
+        }
+    }
+
+    /**
      * Get a specific package by ID
      */
     async getPackage(id: string): Promise<PackageResponse> { // Changed from number to string (UUID)
@@ -221,6 +242,27 @@ class ShipmentsClient {
         created_at: string;
     }>> {
         return gatewayClient.getTrackingEvents(packageId);
+    }
+
+    /**
+     * Get tracking events by email message ID
+     */
+    async getEventsByEmail(emailMessageId: string): Promise<Array<{
+        id: string;
+        event_date: string;
+        status: PackageStatus;
+        location?: string;
+        description?: string;
+        created_at: string;
+    }>> {
+        return gatewayClient.request<Array<{
+            id: string;
+            event_date: string;
+            status: PackageStatus;
+            location?: string;
+            description?: string;
+            created_at: string;
+        }>>(`/api/v1/shipments/events?email_message_id=${encodeURIComponent(emailMessageId)}`);
     }
 
     /**

@@ -14,7 +14,7 @@ from sqlmodel import select
 from services.common.logging_config import get_logger
 from services.shipments.auth import get_current_user
 from services.shipments.database import get_async_session_dep
-from services.shipments.models import Package, TrackingEvent
+from services.shipments.models import Package, TrackingEvent, utc_now
 from services.shipments.schemas import (
     PackageCreate,
     PackageListResponse,
@@ -78,9 +78,10 @@ async def list_packages(
     service_name: str = Depends(service_permission_required(["read_shipments"])),
     tracking_number: Optional[str] = None,
     carrier: Optional[str] = None,
+    email_message_id: Optional[str] = None,
 ) -> dict:
     logger.info("Fetching packages for user", user_id=current_user)
-    query = select(Package).where(Package.user_id == current_user)  # type: ignore
+    query = select(Package).where(Package.user_id == current_user)
 
     if tracking_number:
         # Always search by tracking number first, regardless of carrier
@@ -97,8 +98,32 @@ async def list_packages(
         # But allow 'unknown' carrier in database to match any detected carrier
         if carrier and carrier != "unknown":
             query = query.where(
-                (Package.carrier == carrier) | (Package.carrier == "unknown")  # type: ignore
+                (Package.carrier == carrier) | (Package.carrier == "unknown")
             )
+    elif email_message_id:
+        # Search by email message ID through events table
+        logger.info(
+            "Filtering packages by email message ID",
+            user_id=current_user,
+            email_message_id=email_message_id,
+        )
+
+        # Query events table to find event with this email_message_id
+        event_query = select(TrackingEvent).where(
+            TrackingEvent.email_message_id == email_message_id
+        )
+        event_result = await session.execute(event_query)
+        event = event_result.scalar_one_or_none()
+
+        if event:
+            # Query package using the event's package_id
+            query = query.where(Package.id == event.package_id)
+        else:
+            # No event found, return empty result
+            return {
+                "data": [],
+                "pagination": {"page": 1, "per_page": 100, "total": 0},
+            }
 
     # Note: Carrier filtering is now handled above in the tracking number search logic
 
@@ -109,13 +134,13 @@ async def list_packages(
     package_out = []
     for pkg in packages:
         # Count tracking events for this package
-        events_query = select(TrackingEvent).where(TrackingEvent.package_id == pkg.id)  # type: ignore
+        events_query = select(TrackingEvent).where(TrackingEvent.package_id == pkg.id)
         events_result = await session.execute(events_query)
         events_count = len(events_result.scalars().all())
 
         package_out.append(
             PackageOut(
-                id=pkg.id,  # type: ignore
+                id=pkg.id,  # type: ignore[arg-type]
                 user_id=pkg.user_id,
                 tracking_number=pkg.tracking_number,
                 carrier=pkg.carrier,
@@ -199,7 +224,7 @@ async def add_package(
     # Create initial tracking event
     initial_event = TrackingEvent(
         package_id=package_id,
-        event_date=datetime.now(timezone.utc),
+        event_date=utc_now(),
         status=package_status,
         location=None,
         description=f"Package tracking initiated - Status: {package_status.value}",
@@ -322,7 +347,7 @@ async def update_package(
     for field, value in update_data.items():
         setattr(package, field, value)  # type: ignore
 
-    package.updated_at = datetime.now(timezone.utc)
+    package.updated_at = utc_now()
     await session.commit()
     await session.refresh(package)
 
@@ -393,7 +418,7 @@ async def refresh_package(
 
     # TODO: Implement actual tracking refresh logic
     # For now, just update the timestamp
-    package.updated_at = datetime.now(timezone.utc)
+    package.updated_at = utc_now()
     await session.commit()
 
     return {"message": "Package refresh initiated successfully"}
@@ -627,6 +652,14 @@ async def create_tracking_event(
     # Create tracking event
     event_data = event.model_dump()
     event_data["package_id"] = id
+
+    # Ensure event_date is timezone-naive for database compatibility
+    if (
+        event_data["event_date"]
+        and hasattr(event_data["event_date"], "tzinfo")
+        and event_data["event_date"].tzinfo is not None
+    ):
+        event_data["event_date"] = event_data["event_date"].replace(tzinfo=None)
 
     db_event = TrackingEvent(**event_data)  # type: ignore
     session.add(db_event)
