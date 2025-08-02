@@ -100,17 +100,16 @@ run_service_migrations() {
     local migration_url=$2
 
     echo "📦 Checking migrations for $service_name..."
-    cd services/$service_name
 
     # Set the database URL for this service
     export DB_URL=$migration_url
 
     if [ "$CHECK_ONLY" = true ]; then
         # Check current migration revision
-        current_rev=$(alembic current 2>/dev/null | head -n1 | awk '{print $1}' || echo "none")
+        current_rev=$(alembic -c services/$service_name/alembic.ini current 2>/dev/null | head -n1 | awk '{print $1}' || echo "none")
 
         # Check head migration revision
-        head_rev=$(alembic heads 2>/dev/null | head -n1 | awk '{print $1}' || echo "none")
+        head_rev=$(alembic -c services/$service_name/alembic.ini heads 2>/dev/null | head -n1 | awk '{print $1}' || echo "none")
 
         if [ "$current_rev" = "$head_rev" ] && [ "$current_rev" != "none" ]; then
             echo "✅ $service_name: Up to date (revision: $current_rev)"
