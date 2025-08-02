@@ -84,7 +84,7 @@ class APIClientFactory:
         Create a provider-specific API client for a user.
 
         Args:
-            user_id: User ID to create client for
+            user_id: External auth ID to create client for
             provider: Provider name ('google', 'microsoft') or Provider enum
             scopes: Optional list of OAuth scopes. If None, uses default scopes.
 
@@ -181,7 +181,7 @@ class APIClientFactory:
         Convenience method to create a Google API client.
 
         Args:
-            user_id: User ID to create client for
+            user_id: External auth ID to create client for
             scopes: Optional list of OAuth scopes
 
         Returns:
@@ -197,7 +197,7 @@ class APIClientFactory:
         Convenience method to create a Microsoft API client.
 
         Args:
-            user_id: User ID to create client for
+            user_id: External auth ID to create client for
             scopes: Optional list of OAuth scopes
 
         Returns:
@@ -213,7 +213,7 @@ class APIClientFactory:
         Create API clients for multiple providers.
 
         Args:
-            user_id: User ID to create clients for
+            user_id: External auth ID to create clients for
             providers: List of providers. If None, creates clients for all providers.
 
         Returns:
@@ -261,7 +261,7 @@ class APIClientFactory:
         Get the user's preferred provider from the user service.
 
         Args:
-            user_id: User ID to get preferred provider for (external_auth_id or internal ID)
+            user_id: External auth ID to get preferred provider for
 
         Returns:
             Preferred provider or None if not set
@@ -291,23 +291,11 @@ class APIClientFactory:
             if request_id and request_id != "uninitialized":
                 headers["X-Request-Id"] = request_id
 
-            # If user_id is not an integer, resolve to internal ID
-            resolved_user_id = user_id
-            try:
-                int(user_id)
-            except ValueError:
-                # Not an integer, assume it's an external_auth_id and use it directly
-                # The user service internal endpoints work with external_auth_id
-                resolved_user_id = user_id
-                logger.info(
-                    f"Using external_auth_id {user_id} directly (no resolution needed)"
-                )
-
             # Get user profile from user service using internal endpoint
             async with httpx.AsyncClient(timeout=10.0) as client:
-                # Use the new internal endpoint to get user by external_auth_id
+                # Use the internal endpoint to get user by external_auth_id
                 response = await client.get(
-                    f"{settings.USER_SERVICE_URL}/v1/internal/users/by-external-id/{resolved_user_id}",
+                    f"{settings.USER_SERVICE_URL}/v1/internal/users/by-external-id/{user_id}",
                     headers=headers,
                 )
 
@@ -325,14 +313,10 @@ class APIClientFactory:
                                 )
                                 return None
                         else:
-                            logger.info(
-                                f"No preferred provider set for user {resolved_user_id}"
-                            )
+                            logger.info(f"No preferred provider set for user {user_id}")
                             return None
                     else:
-                        logger.warning(
-                            f"User not found for external_auth_id {resolved_user_id}"
-                        )
+                        logger.warning(f"User not found for external_auth_id {user_id}")
                         return None
                 else:
                     logger.warning(
@@ -353,7 +337,7 @@ class APIClientFactory:
         Create a client for a user using their preferred provider.
 
         Args:
-            user_id: User ID to create client for
+            user_id: External auth ID to create client for
             scopes: Optional list of OAuth scopes
 
         Returns:
