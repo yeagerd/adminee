@@ -48,7 +48,33 @@ class TestRequestIDCorrelation:
 
         # Test exception_to_response
         response = exception_to_response(http_exc)
-        assert response.request_id == "uninitialized"
+        # Should generate a new UUID instead of "uninitialized"
+        assert response.request_id != "uninitialized"
+        assert len(response.request_id) > 0
+
+    def test_request_id_generation_outside_context(self):
+        """Test that exception_to_response generates proper request IDs outside request context."""
+        # Ensure context is uninitialized
+        request_id_var.set("uninitialized")
+
+        # Test with different exception types
+        test_cases = [
+            HTTPException(status_code=422, detail="Validation failed"),
+            ValueError("Something went wrong"),
+            RuntimeError("Database connection failed"),
+        ]
+
+        for exc in test_cases:
+            response = exception_to_response(exc)
+            
+            # Should generate a new UUID instead of "uninitialized"
+            assert response.request_id != "uninitialized"
+            assert len(response.request_id) > 0
+            
+            # Should be a valid UUID format
+            import re
+            uuid_pattern = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
+            assert uuid_pattern.match(response.request_id), f"Invalid UUID format: {response.request_id}"
 
 
 class TestHTTPExceptionDetailHandling:

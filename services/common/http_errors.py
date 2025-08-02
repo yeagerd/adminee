@@ -788,6 +788,12 @@ def exception_to_response(exc: Exception) -> ErrorResponse:
         responses that don't expose potentially sensitive error details to end users.
         The original exception type is preserved in the details for debugging.
     """
+    # Get request ID from context or generate fallback
+    request_id = request_id_var.get()
+    if not request_id or request_id == "uninitialized":
+        # Generate a new UUID when no request context is available
+        request_id = str(uuid.uuid4())
+
     if isinstance(exc, BrieflyAPIException):
         return exc.to_error_response()
     elif isinstance(exc, HTTPException):
@@ -819,7 +825,7 @@ def exception_to_response(exc: Exception) -> ErrorResponse:
             message=message,
             details=details,
             timestamp=datetime.now(timezone.utc).isoformat(),
-            request_id=request_id_var.get(),
+            request_id=request_id,
         )
     else:
         return ErrorResponse(
@@ -827,7 +833,7 @@ def exception_to_response(exc: Exception) -> ErrorResponse:
             message=str(exc),
             details={"error_type": type(exc).__name__},
             timestamp=datetime.now(timezone.utc).isoformat(),
-            request_id=request_id_var.get(),
+            request_id=request_id,
         )
 
 
