@@ -133,9 +133,12 @@ async def list_packages(
 
     # Execute the final query
     if tracking_number:
-        # We already executed the query above for tracking number search
-        # packages variable already contains the results
-        pass
+        # For tracking number searches, we may need to re-execute if carrier filtering was applied
+        if len(packages) > 1 and carrier and carrier != "unknown":
+            # Re-execute the rebuilt query with carrier filtering
+            result = await session.execute(query)
+            packages = result.scalars().all()
+        # Otherwise, packages variable already contains the results from the initial query
     else:
         # For non-tracking number searches, execute the query now
         result = await session.execute(query)
