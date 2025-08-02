@@ -11,8 +11,6 @@ and cleanup operations.
 
 import pytest
 import pytest_asyncio  # Import pytest_asyncio
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
 
 import services.chat.history_manager as hm
 
@@ -147,14 +145,6 @@ async def test_create_update_delete_draft():
 
 @pytest.mark.asyncio
 async def test_draft_unique_constraint():
-    # Clean up user_drafts table before running the test
-    from services.chat.settings import get_settings
-
-    settings = get_settings()
-    engine = create_async_engine(settings.db_url_chat)
-    async with engine.begin() as conn:
-        await conn.execute(text("DELETE FROM user_drafts"))
-        await conn.commit()
     t = await hm.create_thread("user4", "Unique Draft Thread")
     assert t.id is not None
     # Clean up any existing drafts for this user/thread/type
