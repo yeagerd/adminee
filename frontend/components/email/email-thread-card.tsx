@@ -1,9 +1,14 @@
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useShipmentDetection } from '@/hooks/use-shipment-detection';
+import { shipmentsClient } from '@/lib/shipments-client';
 import { EmailMessage } from '@/types/office-service';
 import DOMPurify from 'dompurify';
-import { Forward, Reply, ReplyAll } from 'lucide-react';
-import React from 'react';
+import { Forward, MoreHorizontal, Reply, ReplyAll, Truck, Wand2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { toast } from 'sonner';
 import AISummary from './ai-summary';
+import TrackShipmentModal, { PackageFormData } from './track-shipment-modal';
 
 // Configure DOMPurify for email content
 const emailSanitizeConfig = {
@@ -140,6 +145,9 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
     onSelect,
     inlineAvatar = false
 }) => {
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const shipmentDetection = useShipmentDetection(email);
+
     const handleReply = () => {
         // TODO: Implement reply functionality
         console.log('Reply to email:', email.id);
@@ -153,6 +161,33 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
     const handleForward = () => {
         // TODO: Implement forward functionality
         console.log('Forward email:', email.id);
+    };
+
+    const handleTrackShipment = () => {
+        setIsModalOpen(true);
+    };
+
+    const handleModalClose = () => {
+        setIsModalOpen(false);
+    };
+
+    const handleTrackShipmentSubmit = async (packageData: PackageFormData) => {
+        try {
+            const packageDataWithEmail = {
+                ...packageData,
+                email_message_id: email.id,
+            };
+
+            const createdPackage = await shipmentsClient.createPackage(packageDataWithEmail);
+
+            console.log('Package created successfully:', createdPackage);
+
+            toast.success(`Successfully started tracking package ${packageData.tracking_number}`);
+
+        } catch (error) {
+            console.error('Failed to create package:', error);
+            throw error;
+        }
     };
 
     const senderName = email.from_address?.name || email.from_address?.email || 'Unknown';
@@ -205,9 +240,66 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
                                 </div>
                             </div>
 
-                            {/* Date */}
-                            <div className="flex-shrink-0">
+                            {/* Date, Shipment Icon, and Actions */}
+                            <div className="flex items-center gap-2 flex-shrink-0">
                                 <span className="text-sm text-gray-500">{formattedDate}</span>
+
+                                {/* Shipment truck icon */}
+                                {shipmentDetection.isShipmentEmail && (
+                                    <div className="relative group">
+                                        <Truck className="h-4 w-4 text-blue-500" />
+                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                                            Shipment detected
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* 3-dot menu */}
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            onClick={(e) => e.stopPropagation()}
+                                            title="More actions"
+                                        >
+                                            <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleReply();
+                                        }}>
+                                            <Reply className="h-4 w-4 mr-2" />
+                                            Reply
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleReplyAll();
+                                        }}>
+                                            <ReplyAll className="h-4 w-4 mr-2" />
+                                            Reply All
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleForward();
+                                        }}>
+                                            <Forward className="h-4 w-4 mr-2" />
+                                            Forward
+                                        </DropdownMenuItem>
+                                        {shipmentDetection.isShipmentEmail && (
+                                            <DropdownMenuItem onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleTrackShipment();
+                                            }}>
+                                                <Wand2 className="h-4 w-4 mr-2" />
+                                                Track Shipment
+                                            </DropdownMenuItem>
+                                        )}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
                         </div>
                     </div>
@@ -275,6 +367,14 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
                     </Button>
                 </div>
             </div>
+
+            {/* Track Shipment Modal */}
+            <TrackShipmentModal
+                isOpen={isModalOpen}
+                onClose={handleModalClose}
+                email={email}
+                onTrackShipment={handleTrackShipmentSubmit}
+            />
         </>
     );
 };

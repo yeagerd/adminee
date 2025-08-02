@@ -1,13 +1,9 @@
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { useShipmentDetection } from '@/hooks/use-shipment-detection';
-import { shipmentsClient } from '@/lib/shipments-client';
 import { EmailThread as EmailThreadType } from '@/types/office-service';
-import { Archive, Clock, Download, MoreHorizontal, Reply, Star, Trash2, Wand2 } from 'lucide-react';
+import { Archive, Clock, Download, MoreHorizontal, Reply, Star, Trash2 } from 'lucide-react';
 import React, { useState } from 'react';
-import { toast } from 'sonner';
 import EmailThreadCard from './email-thread-card';
-import TrackShipmentModal, { PackageFormData } from './track-shipment-modal';
 
 interface EmailThreadProps {
     thread: EmailThreadType;
@@ -20,14 +16,26 @@ const EmailThread: React.FC<EmailThreadProps> = ({
     onSelectMessage,
     selectedMessageId
 }) => {
-    const [isModalOpen, setIsModalOpen] = useState(false);
     const [isStarred, setIsStarred] = useState(false);
 
-    // Use the first message for shipment detection (assuming all messages in thread have same characteristics)
+    // Handle null/undefined thread or messages
+    if (!thread || !thread.messages || thread.messages.length === 0) {
+        return (
+            <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                No thread data available
+            </div>
+        );
+    }
+
+    // Use the first message for reference
     const firstMessage = thread.messages[0];
-    const shipmentDetection = useShipmentDetection(firstMessage);
 
     const handleDownload = async () => {
+        if (!firstMessage) {
+            console.error('No message available for download');
+            return;
+        }
+
         try {
             const testData = {
                 provider: firstMessage.provider,
@@ -58,32 +66,7 @@ const EmailThread: React.FC<EmailThreadProps> = ({
         }
     };
 
-    const handleTrackShipment = () => {
-        setIsModalOpen(true);
-    };
 
-    const handleModalClose = () => {
-        setIsModalOpen(false);
-    };
-
-    const handleTrackShipmentSubmit = async (packageData: PackageFormData) => {
-        try {
-            const packageDataWithEmail = {
-                ...packageData,
-                email_message_id: firstMessage.id,
-            };
-
-            const createdPackage = await shipmentsClient.createPackage(packageDataWithEmail);
-
-            console.log('Package created successfully:', createdPackage);
-
-            toast.success(`Successfully started tracking package ${packageData.tracking_number}`);
-
-        } catch (error) {
-            console.error('Failed to create package:', error);
-            throw error;
-        }
-    };
 
     const handleStarToggle = () => {
         setIsStarred(!isStarred);
@@ -109,15 +92,6 @@ const EmailThread: React.FC<EmailThreadProps> = ({
         // TODO: Implement delete functionality
         console.log('Delete thread:', thread.id);
     };
-
-    // Handle null/undefined thread or messages
-    if (!thread || !thread.messages || thread.messages.length === 0) {
-        return (
-            <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-                No thread data available
-            </div>
-        );
-    }
 
     // Sort messages by date (oldest first for threading)
     const sortedMessages = [...thread.messages].sort((a, b) =>
@@ -188,12 +162,7 @@ const EmailThread: React.FC<EmailThreadProps> = ({
                                         <Download className="h-4 w-4 mr-2" />
                                         Download
                                     </DropdownMenuItem>
-                                    {shipmentDetection.isShipmentEmail && (
-                                        <DropdownMenuItem onClick={handleTrackShipment}>
-                                            <Wand2 className="h-4 w-4 mr-2" />
-                                            Track Shipment
-                                        </DropdownMenuItem>
-                                    )}
+
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </div>
@@ -209,12 +178,7 @@ const EmailThread: React.FC<EmailThreadProps> = ({
                     />
                 ))}
             </div>
-            <TrackShipmentModal
-                isOpen={isModalOpen}
-                onClose={handleModalClose}
-                email={firstMessage}
-                onTrackShipment={handleTrackShipmentSubmit}
-            />
+
         </>
     );
 };
