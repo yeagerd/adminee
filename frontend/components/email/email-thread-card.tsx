@@ -4,7 +4,7 @@ import { useShipmentDetection } from '@/hooks/use-shipment-detection';
 import { shipmentsClient } from '@/lib/shipments-client';
 import { EmailMessage } from '@/types/office-service';
 import DOMPurify from 'dompurify';
-import { Archive, Clock, Download, MoreHorizontal, Reply, Star, Trash2, Wand2 } from 'lucide-react';
+import { Forward, MoreHorizontal, Reply, ReplyAll, Truck, Wand2 } from 'lucide-react';
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import AISummary from './ai-summary';
@@ -86,7 +86,7 @@ const formatEmailDate = (dateString: string): string => {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const emailDay = new Date(emailDate.getFullYear(), emailDate.getMonth(), emailDate.getDate());
 
-    // If email was sent today, show time
+    // If email was sent today, show time only
     if (emailDay.getTime() === today.getTime()) {
         return emailDate.toLocaleTimeString([], {
             hour: 'numeric',
@@ -95,10 +95,14 @@ const formatEmailDate = (dateString: string): string => {
         });
     }
 
-    // Otherwise show month and day
+    // Otherwise show date and time
     return emailDate.toLocaleDateString([], {
         month: 'short',
         day: 'numeric'
+    }) + ' ' + emailDate.toLocaleTimeString([], {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
     });
 };
 
@@ -142,38 +146,21 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
     inlineAvatar = false
 }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isStarred, setIsStarred] = useState(false);
     const shipmentDetection = useShipmentDetection(email);
 
-    const handleDownload = async () => {
-        try {
-            const testData = {
-                provider: email.provider,
-                date: email.date,
-                subject: email.subject,
-                sender: email.from_address?.email || '',
-                body_data: {
-                    contentType: email.body_html ? "HTML" : "Text",
-                    content: email.body_html || email.body_text || ""
-                }
-            };
+    const handleReply = () => {
+        // TODO: Implement reply functionality
+        console.log('Reply to email:', email.id);
+    };
 
-            const blob = new Blob([JSON.stringify(testData, null, 2)], {
-                type: 'application/json'
-            });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `email_test_${email.id}_${Date.now()}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+    const handleReplyAll = () => {
+        // TODO: Implement reply all functionality
+        console.log('Reply all to email:', email.id);
+    };
 
-        } catch (error) {
-            console.error('Failed to download email:', error);
-            alert('Failed to download email. Please try again.');
-        }
+    const handleForward = () => {
+        // TODO: Implement forward functionality
+        console.log('Forward email:', email.id);
     };
 
     const handleTrackShipment = () => {
@@ -201,31 +188,6 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
             console.error('Failed to create package:', error);
             throw error;
         }
-    };
-
-    const handleStarToggle = () => {
-        setIsStarred(!isStarred);
-        // TODO: Implement actual star functionality
-    };
-
-    const handleReply = () => {
-        // TODO: Implement reply functionality
-        console.log('Reply to email:', email.id);
-    };
-
-    const handleArchive = () => {
-        // TODO: Implement archive functionality
-        console.log('Archive email:', email.id);
-    };
-
-    const handleSnooze = () => {
-        // TODO: Implement snooze functionality
-        console.log('Snooze email:', email.id);
-    };
-
-    const handleDelete = () => {
-        // TODO: Implement delete functionality
-        console.log('Delete email:', email.id);
     };
 
     const senderName = email.from_address?.name || email.from_address?.email || 'Unknown';
@@ -272,108 +234,72 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
                                     {email.has_attachments && (
                                         <span className="text-gray-400">📎</span>
                                     )}
-                                    {shipmentDetection.isShipmentEmail && (
-                                        <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
-                                            📦 Shipment
-                                        </span>
-                                    )}
-                                </div>
-                                <div className={`text-lg mb-2 ${isUnread ? 'font-semibold' : ''}`}>
-                                    {email.subject || '(No subject)'}
                                 </div>
                                 <div className="text-sm text-gray-600">
                                     To: {email.to_addresses.map(addr => addr.name || addr.email).join(', ')}
                                 </div>
                             </div>
 
-                            {/* Date and actions */}
-                            <div className="flex-shrink-0 flex flex-col items-end gap-2">
+                            {/* Date, Shipment Icon, and Actions */}
+                            <div className="flex items-center gap-2 flex-shrink-0">
                                 <span className="text-sm text-gray-500">{formattedDate}</span>
 
-                                {/* Action buttons - always visible */}
-                                <div className="flex items-center gap-1">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8 p-0"
-                                        onClick={(e) => {
+                                {/* Shipment truck icon */}
+                                {shipmentDetection.isShipmentEmail && (
+                                    <div className="relative group">
+                                        <Truck className="h-4 w-4 text-blue-500" />
+                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                                            Shipment detected
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* 3-dot menu */}
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 w-6 p-0"
+                                            onClick={(e) => e.stopPropagation()}
+                                            title="More actions"
+                                        >
+                                            <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={(e) => {
                                             e.stopPropagation();
-                                            handleStarToggle();
-                                        }}
-                                        title="Star"
-                                    >
-                                        <Star className={`h-4 w-4 ${isStarred ? 'fill-current text-yellow-500' : ''}`} />
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8 p-0"
-                                        onClick={(e) => {
+                                            handleReply();
+                                        }}>
+                                            <Reply className="h-4 w-4 mr-2" />
+                                            Reply
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={(e) => {
                                             e.stopPropagation();
-                                            handleSnooze();
-                                        }}
-                                        title="Snooze"
-                                    >
-                                        <Clock className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8 p-0"
-                                        onClick={(e) => {
+                                            handleReplyAll();
+                                        }}>
+                                            <ReplyAll className="h-4 w-4 mr-2" />
+                                            Reply All
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={(e) => {
                                             e.stopPropagation();
-                                            handleDelete();
-                                        }}
-                                        title="Delete"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-8 w-8 p-0"
-                                                onClick={(e) => e.stopPropagation()}
-                                                title="More actions"
-                                            >
-                                                <MoreHorizontal className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
+                                            handleForward();
+                                        }}>
+                                            <Forward className="h-4 w-4 mr-2" />
+                                            Forward
+                                        </DropdownMenuItem>
+                                        {shipmentDetection.isShipmentEmail && (
                                             <DropdownMenuItem onClick={(e) => {
                                                 e.stopPropagation();
-                                                handleReply();
+                                                handleTrackShipment();
                                             }}>
-                                                <Reply className="h-4 w-4 mr-2" />
-                                                Reply
+                                                <Wand2 className="h-4 w-4 mr-2" />
+                                                Track Shipment
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleArchive();
-                                            }}>
-                                                <Archive className="h-4 w-4 mr-2" />
-                                                Archive
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDownload();
-                                            }}>
-                                                <Download className="h-4 w-4 mr-2" />
-                                                Download
-                                            </DropdownMenuItem>
-                                            {shipmentDetection.isShipmentEmail && (
-                                                <DropdownMenuItem onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleTrackShipment();
-                                                }}>
-                                                    <Wand2 className="h-4 w-4 mr-2" />
-                                                    Track Shipment
-                                                </DropdownMenuItem>
-                                            )}
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </div>
+                                        )}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
                         </div>
                     </div>
@@ -422,14 +348,27 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
                         size="sm"
                         onClick={(e) => {
                             e.stopPropagation();
-                            handleArchive();
+                            handleReplyAll();
                         }}
                     >
-                        <Archive className="h-4 w-4 mr-1" />
-                        Archive
+                        <ReplyAll className="h-4 w-4 mr-1" />
+                        Reply All
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleForward();
+                        }}
+                    >
+                        <Forward className="h-4 w-4 mr-1" />
+                        Forward
                     </Button>
                 </div>
             </div>
+
+            {/* Track Shipment Modal */}
             <TrackShipmentModal
                 isOpen={isModalOpen}
                 onClose={handleModalClose}
