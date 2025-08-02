@@ -208,6 +208,58 @@ async def get_user_status(
         raise ServiceError(message=str(e))
 
 
+@router.get("/users/exists")
+async def check_user_exists(
+    email: str = Query(..., description="Email address to check"),
+    provider: Optional[str] = Query(
+        None, description="OAuth provider (google, microsoft, etc.)"
+    ),
+    service_name: str = Depends(service_permission_required(["read_users"])),
+) -> Dict[str, Any]:
+    """
+    Check if a user exists by email (primary endpoint for user existence checks).
+
+    This endpoint always returns 200 with a detailed response,
+    avoiding 404 logs for missing users. Use this instead of GET /users/id
+    when you only need to check existence.
+
+    Returns:
+        {"exists": true/false, "user_id": "id_if_exists", "provider": "provider_if_exists"}
+    """
+    try:
+        email_request = EmailResolutionRequest(email=email, provider=provider)
+        resolution_result = await get_user_service().resolve_email_to_user_id(
+            email_request
+        )
+
+        # Get full user data to return additional info
+        user = await get_user_service().get_user_by_external_auth_id_auto_detect(
+            resolution_result.external_auth_id
+        )
+
+        return {
+            "exists": True,
+            "user_id": user.external_auth_id,
+            "provider": user.auth_provider,
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+        }
+    except NotFoundError:
+        return {
+            "exists": False,
+            "user_id": None,
+            "provider": provider,
+            "email": email,
+        }
+    except ValidationError as e:
+        logger.warning(f"User existence check failed - validation error: {e.message}")
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error during user existence check: {e}")
+        raise ServiceError(message="Failed to check user existence")
+
+
 @router.get("/users/id", response_model=UserResponse)
 async def get_user_by_email_internal(
     email: str = Query(..., description="Email address to lookup"),
@@ -218,6 +270,9 @@ async def get_user_by_email_internal(
 ) -> UserResponse:
     """
     Get user by exact email lookup (internal service endpoint).
+
+    ⚠️  DEPRECATED: Use GET /v1/internal/users/exists instead to avoid 404 error logs.
+    This endpoint will be removed in a future version.
 
     This endpoint provides a clean RESTful way to find users by email address
     without exposing internal email normalization implementation details.
