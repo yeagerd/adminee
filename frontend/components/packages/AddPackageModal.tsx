@@ -3,10 +3,12 @@ import { PACKAGE_STATUS, PACKAGE_STATUS_OPTIONS, PackageStatus } from '@/lib/pac
 import { useState } from 'react';
 
 export interface TrackingEvent {
+    id?: string;
     event_date: string;
     status: PackageStatus;
     location?: string;
     description?: string;
+    created_at?: string;
 }
 
 export interface Package {

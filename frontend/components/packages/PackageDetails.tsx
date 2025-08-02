@@ -1,9 +1,14 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { gatewayClient } from '../../lib/gateway-client';
 import type { Package, TrackingEvent } from './AddPackageModal';
 import LabelChip from './LabelChip';
 import TrackingTimeline from './TrackingTimeline';
 
 export default function PackageDetails({ pkg, onClose }: { pkg: Package & { labels?: (string | { name: string })[], events?: TrackingEvent[] }, onClose: () => void }) {
+    const [events, setEvents] = useState<TrackingEvent[]>([]);
+    const [loadingEvents, setLoadingEvents] = useState(false);
+    const [eventsError, setEventsError] = useState<string | null>(null);
+
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
@@ -13,6 +18,28 @@ export default function PackageDetails({ pkg, onClose }: { pkg: Package & { labe
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [onClose]);
+
+    // Fetch events when modal opens
+    useEffect(() => {
+        const fetchEvents = async () => {
+            if (!pkg.id) return;
+
+            setLoadingEvents(true);
+            setEventsError(null);
+            try {
+                const fetchedEvents = await gatewayClient.getTrackingEvents(pkg.id);
+                setEvents(fetchedEvents);
+            } catch (error) {
+                console.error('Failed to fetch tracking events:', error);
+                setEventsError('Failed to load tracking events');
+            } finally {
+                setLoadingEvents(false);
+            }
+        };
+
+        fetchEvents();
+    }, [pkg.id]);
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg shadow-lg max-w-lg w-full max-h-[90vh] flex flex-col">
@@ -38,7 +65,15 @@ export default function PackageDetails({ pkg, onClose }: { pkg: Package & { labe
                         <div><b>Order Number:</b> {pkg.order_number}</div>
                         <div><b>Tracking Link:</b> <a href={pkg.tracking_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">View</a></div>
                         <div><b>Events:</b></div>
-                        <TrackingTimeline events={pkg.events || []} />
+                        {loadingEvents ? (
+                            <div className="text-sm text-gray-500">Loading events...</div>
+                        ) : eventsError ? (
+                            <div className="text-sm text-red-500">{eventsError}</div>
+                        ) : events.length === 0 ? (
+                            <div className="text-sm text-gray-500">No tracking events found.</div>
+                        ) : (
+                            <TrackingTimeline events={events} />
+                        )}
                     </div>
                 </div>
             </div>
