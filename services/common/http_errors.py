@@ -994,7 +994,7 @@ def register_briefly_exception_handlers(app: FastAPI) -> None:
 
         # Use exception_to_response for consistency
         error_response = exception_to_response(exc)
-        
+
         # Override request_id if needed (exception_to_response uses context)
         if request_id != "uninitialized":
             error_response.request_id = request_id

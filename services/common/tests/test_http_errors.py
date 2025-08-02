@@ -66,15 +66,21 @@ class TestRequestIDCorrelation:
 
         for exc in test_cases:
             response = exception_to_response(exc)
-            
+
             # Should generate a new UUID instead of "uninitialized"
             assert response.request_id != "uninitialized"
             assert len(response.request_id) > 0
-            
+
             # Should be a valid UUID format
             import re
-            uuid_pattern = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
-            assert uuid_pattern.match(response.request_id), f"Invalid UUID format: {response.request_id}"
+
+            uuid_pattern = re.compile(
+                r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+                re.IGNORECASE,
+            )
+            assert uuid_pattern.match(
+                response.request_id
+            ), f"Invalid UUID format: {response.request_id}"
 
 
 class TestHTTPExceptionDetailHandling:
@@ -189,28 +195,28 @@ class TestExceptionToResponse:
     def test_generic_exception(self):
         """Test generic exception handling."""
         print("Testing generic exception handling...")
-        
+
         generic_exc = ValueError("Something went wrong")
-        
+
         response = exception_to_response(generic_exc)
-        
+
         assert response.type == "internal_error"
         assert response.message == "Something went wrong"
         assert response.details["error_type"] == "ValueError"
-        
+
         print("✅ Generic exception test passed")
 
     def test_generic_exception_consistency(self):
         """Test that generic exceptions produce consistent results."""
         exc = RuntimeError("Database connection failed")
-        
+
         # Test exception_to_response
         response = exception_to_response(exc)
-        
+
         assert response.type == "internal_error"
         assert response.message == "Database connection failed"
         assert response.details["error_type"] == "RuntimeError"
-        
+
         # Verify the response structure matches what the handler should produce
         assert hasattr(response, "type")
         assert hasattr(response, "message")
