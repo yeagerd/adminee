@@ -228,6 +228,7 @@ async def add_package(
         status=package_status,
         location=None,
         description=f"Package tracking initiated - Status: {package_status.value}",
+        email_message_id=pkg.email_message_id,
     )  # type: ignore
     session.add(initial_event)
     await session.commit()
