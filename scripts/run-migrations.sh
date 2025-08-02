@@ -124,7 +124,17 @@ run_service_migrations() {
         echo "✅ $service_name migrations completed"
     fi
 
-    cd ../..
+    
+    # Grant permissions on existing tables after migrations
+    echo "🔐 Granting permissions on migrated tables..."
+    if [ -f "postgres/grant-permissions.sh" ]; then
+        ./postgres/grant-permissions.sh
+        echo "✅ Permissions granted successfully"
+    else
+        echo "❌ Error: postgres/grant-permissions.sh not found"
+        echo "   This script is required for proper database setup"
+        exit 1
+    fi
 }
 
 # Run migrations for each service
