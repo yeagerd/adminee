@@ -120,7 +120,7 @@ run_service_migrations() {
         fi
     else
         # Run migrations
-        alembic upgrade head
+        alembic -c services/$service_name/alembic.ini upgrade head
         echo "✅ $service_name migrations completed"
     fi
 
