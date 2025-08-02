@@ -127,7 +127,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from services.common.logging_config import log_http_error
+from services.common.logging_config import log_http_error, request_id_var
 
 
 class ErrorCode(str, Enum):
@@ -791,16 +791,35 @@ def exception_to_response(exc: Exception) -> ErrorResponse:
     if isinstance(exc, BrieflyAPIException):
         return exc.to_error_response()
     elif isinstance(exc, HTTPException):
-        # Try to extract detail
-        detail = (
-            exc.detail if isinstance(exc.detail, dict) else {"message": str(exc.detail)}
-        )
+        # Handle detail field properly - extract message from dict if needed
+        if isinstance(exc.detail, dict):
+            # Extract message from dictionary detail, with fallbacks
+            detail_dict = exc.detail
+            message = (
+                detail_dict.get("message")
+                or detail_dict.get("detail")
+                or detail_dict.get("error")
+                or str(detail_dict)
+            )
+            # Preserve the original detail structure for backward compatibility
+            details = {
+                "detail": detail_dict,
+                "status_code": exc.status_code,
+            }
+        else:
+            # Handle string or other types
+            message = str(exc.detail)
+            details = {
+                "detail": exc.detail,
+                "status_code": exc.status_code,
+            }
+
         return ErrorResponse(
             type="http_error",
-            message=detail.get("message", "HTTP error"),
-            details=detail,
+            message=message,
+            details=details,
             timestamp=datetime.now(timezone.utc).isoformat(),
-            request_id=str(uuid.uuid4()),
+            request_id=request_id_var.get(),
         )
     else:
         return ErrorResponse(
@@ -808,7 +827,7 @@ def exception_to_response(exc: Exception) -> ErrorResponse:
             message=str(exc),
             details={"error_type": type(exc).__name__},
             timestamp=datetime.now(timezone.utc).isoformat(),
-            request_id=str(uuid.uuid4()),
+            request_id=request_id_var.get(),
         )
 
 
@@ -902,19 +921,42 @@ def register_briefly_exception_handlers(app: FastAPI) -> None:
         request: Request, exc: HTTPException
     ) -> JSONResponse:
         """Handle FastAPI HTTPException and convert to standardized error response."""
-        # Generate a request ID for tracing
-        request_id = str(uuid.uuid4())
+        # Get request ID from context or generate fallback
+        request_id = request_id_var.get()
+        if not request_id or request_id == "uninitialized":
+            # Fallback: try to get from headers or generate new one
+            request_id = request.headers.get("X-Request-Id", str(uuid.uuid4()))
+
+        # Handle detail field properly - extract message from dict if needed
+        if isinstance(exc.detail, dict):
+            # Extract message from dictionary detail, with fallbacks
+            detail_dict = exc.detail
+            message = (
+                detail_dict.get("message")
+                or detail_dict.get("detail")
+                or detail_dict.get("error")
+                or str(detail_dict)
+            )
+            # Preserve the original detail structure for backward compatibility
+            details = {
+                "detail": detail_dict,
+                "status_code": exc.status_code,
+            }
+        else:
+            # Handle string or other types
+            message = str(exc.detail)
+            details = {
+                "detail": exc.detail,
+                "status_code": exc.status_code,
+            }
 
         # Log the error with proper formatting
         log_http_error(
             error_type="http_error",
-            message=str(exc.detail),
+            message=message,
             status_code=exc.status_code,
             request_id=request_id,
-            details={
-                "detail": exc.detail,
-                "headers": dict(exc.headers) if exc.headers else None,
-            },
+            details=details,
             path=request.url.path,
             method=request.method,
         )
@@ -922,11 +964,8 @@ def register_briefly_exception_handlers(app: FastAPI) -> None:
         # Convert to standardized error response
         error_response = ErrorResponse(
             type="http_error",
-            message=str(exc.detail),
-            details={
-                "detail": exc.detail,
-                "status_code": exc.status_code,
-            },
+            message=message,
+            details=details,
             timestamp=datetime.now(timezone.utc).isoformat(),
             request_id=request_id,
         )
@@ -941,8 +980,11 @@ def register_briefly_exception_handlers(app: FastAPI) -> None:
         request: Request, exc: Exception
     ) -> JSONResponse:
         """Handle any unhandled exceptions and convert to standardized error response."""
-        # Generate a request ID for tracing
-        request_id = str(uuid.uuid4())
+        # Get request ID from context or generate fallback
+        request_id = request_id_var.get()
+        if not request_id or request_id == "uninitialized":
+            # Fallback: try to get from headers or generate new one
+            request_id = request.headers.get("X-Request-Id", str(uuid.uuid4()))
 
         # Log the error with proper formatting
         log_http_error(
