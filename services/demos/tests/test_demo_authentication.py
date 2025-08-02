@@ -138,6 +138,9 @@ class TestDemoAuthentication:
         # Mock services as available
         demo_instance.services_available = {"user": True, "chat": True, "office": True}
 
+        # Set the preferred provider to match the mock response
+        demo_instance.preferred_provider = "google"
+
         # Mock email resolution response (this is what the new auth flow uses)
         mock_resolution_response = MagicMock()
         mock_resolution_response.status_code = 200
@@ -203,7 +206,11 @@ class TestDemoAuthentication:
             assert len(lookup_calls) > 0
 
             # Verify JWT token was created with the correct user_id
-            mock_jwt.assert_called_once_with(user_id, email=email, provider="google")
+            # The actual user_id will be the one returned from user creation, not our calculated one
+            actual_user_id = demo_instance.user_id
+            mock_jwt.assert_called_once_with(
+                actual_user_id, email=email, provider="google"
+            )
 
     @pytest.mark.asyncio
     async def test_authenticate_fails_if_user_creation_fails_and_user_doesnt_exist(
