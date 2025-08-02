@@ -124,7 +124,7 @@ def upgrade() -> None:
         "meeting_polls",
         "time_slots",
         ["scheduled_slot_id"],
-        ["id"]
+        ["id"],
     )
     # ### end Alembic commands ###
 

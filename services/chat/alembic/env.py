@@ -23,7 +23,6 @@ config = context.config
 
 # Set the database URL from our settings
 # For migrations, use the admin user URL if available, otherwise fall back to service user URL
-import os
 migration_url = os.getenv("DB_URL_CHAT_MIGRATIONS")
 if migration_url:
     config.set_main_option("sqlalchemy.url", migration_url)
