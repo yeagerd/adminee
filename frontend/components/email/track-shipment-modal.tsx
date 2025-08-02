@@ -124,22 +124,7 @@ const CARRIERS = [
     { value: 'unknown', label: 'Unknown' },
 ];
 
-// Helper function to validate and safely convert status string to PackageStatus
-const validatePackageStatus = (statusString: string): PackageStatus => {
-    const validStatuses = PACKAGE_STATUS_OPTIONS.map(option => option.value);
-    const upperCaseStatus = statusString.toUpperCase();
 
-    // Check if the status is valid
-    if (validStatuses.includes(upperCaseStatus as PackageStatus)) {
-        return upperCaseStatus as PackageStatus;
-    }
-
-    // Log warning for invalid status
-    console.warn(`Invalid package status received from backend: "${statusString}". Falling back to PENDING.`);
-
-    // Return default status
-    return PACKAGE_STATUS.PENDING;
-};
 
 // Helper function to get readable status label
 const getReadableStatus = (status: PackageStatus): string => {
@@ -190,6 +175,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
         setIsCheckingPackage(true);
         try {
             const existingPkg = await shipmentsClient.checkPackageExists(trackingNumber, carrier);
+
             setExistingPackage(existingPkg);
 
             // If existing package found, update form data with existing package info
@@ -223,62 +209,13 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
         }
     };
 
-    // Parse email with backend when modal opens
+    // Use frontend detection when modal opens
     useEffect(() => {
-        const parseEmailWithBackend = async () => {
+        const populateFromFrontendDetection = async () => {
             if (!isOpen) return;
 
             setIsParsing(true);
             try {
-                // Call backend email parser
-                const parseResponse = await shipmentsClient.parseEmail(email);
-
-                if (parseResponse.is_shipment_email && parseResponse.suggested_package_data) {
-                    const suggestedData = parseResponse.suggested_package_data;
-                    const detectedData: PackageFormData = {
-                        tracking_number: suggestedData.tracking_number || parseResponse.tracking_numbers[0]?.tracking_number || '',
-                        carrier: suggestedData.carrier || parseResponse.detected_carrier || 'unknown',
-                        status: suggestedData.status ? validatePackageStatus(suggestedData.status.toUpperCase()) : PACKAGE_STATUS.PENDING,
-                        recipient_name: suggestedData.recipient_name || '',
-                        shipper_name: suggestedData.shipper_name || '',
-                        package_description: email.subject || '',
-                        order_number: suggestedData.order_number || '',
-                        tracking_link: suggestedData.tracking_link || '',
-                        expected_delivery: suggestedData.estimated_delivery || '',
-                    };
-                    setFormData(detectedData);
-                    setInitialFormData(detectedData);
-
-                    // Check if package already exists
-                    if (detectedData.tracking_number) {
-                        const carrierToUse = detectedData.carrier !== 'unknown' ? detectedData.carrier : undefined;
-                        await checkExistingPackage(detectedData.tracking_number, carrierToUse);
-                    }
-                } else if (shipmentDetection.isShipmentEmail) {
-                    // Fallback to frontend detection if backend doesn't detect it
-                    const detectedData: PackageFormData = {
-                        tracking_number: shipmentDetection.trackingNumbers[0] || '',
-                        carrier: shipmentDetection.detectedCarrier || 'unknown',
-                        status: PACKAGE_STATUS.PENDING,
-                        recipient_name: '',
-                        shipper_name: '',
-                        package_description: email.subject || '',
-                        order_number: '',
-                        tracking_link: '',
-                        expected_delivery: '',
-                    };
-                    setFormData(detectedData);
-                    setInitialFormData(detectedData);
-
-                    // Check if package already exists
-                    if (detectedData.tracking_number) {
-                        const carrierToUse = detectedData.carrier !== 'unknown' ? detectedData.carrier : undefined;
-                        await checkExistingPackage(detectedData.tracking_number, carrierToUse);
-                    }
-                }
-            } catch (error) {
-                console.error('Failed to parse email with backend:', error);
-                // Fallback to frontend detection on error
                 if (shipmentDetection.isShipmentEmail) {
                     const detectedData: PackageFormData = {
                         tracking_number: shipmentDetection.trackingNumbers[0] || '',
@@ -300,12 +237,14 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                         await checkExistingPackage(detectedData.tracking_number, carrierToUse);
                     }
                 }
+            } catch (error) {
+                console.error('Failed to populate from frontend detection:', error);
             } finally {
                 setIsParsing(false);
             }
         };
 
-        parseEmailWithBackend();
+        populateFromFrontendDetection();
     }, [isOpen, email, shipmentDetection]);
 
     // Cleanup timeout on unmount or modal close
