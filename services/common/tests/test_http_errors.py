@@ -6,7 +6,6 @@ Tests the fixes for:
 2. HTTPException detail handling - proper handling of dictionary details
 """
 
-
 import pytest
 from fastapi import HTTPException
 
