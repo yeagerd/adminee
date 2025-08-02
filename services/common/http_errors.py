@@ -986,30 +986,22 @@ def register_briefly_exception_handlers(app: FastAPI) -> None:
             # Fallback: try to get from headers or generate new one
             request_id = request.headers.get("X-Request-Id", str(uuid.uuid4()))
 
-        # Log the error with proper formatting
+        # Use exception_to_response for consistency
+        error_response = exception_to_response(exc)
+        
+        # Override request_id if needed (exception_to_response uses context)
+        if request_id != "uninitialized":
+            error_response.request_id = request_id
+
+        # Log the error with proper formatting - use the same message and type as the response
         log_http_error(
-            error_type="unexpected_error",
-            message=str(exc),
+            error_type=error_response.type,
+            message=error_response.message,
             status_code=500,
-            request_id=request_id,
-            details={
-                "exception_type": type(exc).__name__,
-                "exception_args": exc.args,
-            },
+            request_id=error_response.request_id,
+            details=error_response.details,
             path=request.url.path,
             method=request.method,
-        )
-
-        # Convert to standardized error response
-        error_response = ErrorResponse(
-            type="unexpected_error",
-            message="An unexpected error occurred",
-            details={
-                "exception_type": type(exc).__name__,
-                "status_code": 500,
-            },
-            timestamp=datetime.now(timezone.utc).isoformat(),
-            request_id=request_id,
         )
 
         return JSONResponse(
