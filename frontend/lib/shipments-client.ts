@@ -255,14 +255,7 @@ class ShipmentsClient {
         description?: string;
         created_at: string;
     }>> {
-        return gatewayClient.request<Array<{
-            id: string;
-            event_date: string;
-            status: PackageStatus;
-            location?: string;
-            description?: string;
-            created_at: string;
-        }>>(`/api/v1/shipments/events?email_message_id=${encodeURIComponent(emailMessageId)}`);
+        return gatewayClient.getEventsByEmail(emailMessageId);
     }
 
     /**
