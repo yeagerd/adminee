@@ -146,16 +146,17 @@ async def get_tracking_events(
     ]
 
 
-@router.post("/{id}/events", response_model=TrackingEventOut)
+@router.post("/events", response_model=TrackingEventOut)
 async def create_tracking_event(
-    id: UUID,  # Changed from int to UUID
     event: TrackingEventCreate,
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["write_shipments"])),
 ) -> TrackingEventOut:
     # Query package and validate user ownership
-    query = select(Package).where(Package.id == id, Package.user_id == current_user)
+    query = select(Package).where(
+        Package.id == event.package_id, Package.user_id == current_user
+    )
     result = await session.execute(query)
     package = result.scalar_one_or_none()
 
@@ -164,9 +165,35 @@ async def create_tracking_event(
             status_code=404, detail="Package not found or access denied"
         )
 
-    # Create tracking event
+    # Check if an event with the same email_message_id already exists
+    if event.email_message_id:
+        existing_event_query = select(TrackingEvent).where(
+            TrackingEvent.email_message_id == event.email_message_id
+        )
+        existing_event_result = await session.execute(existing_event_query)
+        existing_event = existing_event_result.scalar_one_or_none()
+
+        if existing_event:
+            # Update the existing event instead of creating a new one
+            existing_event.event_date = event.event_date
+            existing_event.status = event.status
+            existing_event.location = event.location
+            existing_event.description = event.description
+
+            await session.commit()
+            await session.refresh(existing_event)
+
+            return TrackingEventOut(
+                id=existing_event.id,  # type: ignore
+                event_date=existing_event.event_date,
+                status=existing_event.status,
+                location=existing_event.location,
+                description=existing_event.description,
+                created_at=existing_event.created_at,
+            )
+
+    # Create new tracking event
     event_data = event.model_dump()
-    event_data["package_id"] = id
 
     db_event = TrackingEvent(**event_data)
     session.add(db_event)

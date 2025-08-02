@@ -268,11 +268,13 @@ class ShipmentsClient {
     /**
      * Create a new tracking event for a package
      */
-    async createTrackingEvent(packageId: string, eventData: { // Changed from number to string (UUID)
+    async createTrackingEvent(eventData: { // Changed from number to string (UUID)
+        package_id: string;
         event_date: string;
         status: PackageStatus;
         location?: string;
         description?: string;
+        email_message_id?: string;
     }): Promise<{
         id: string; // Changed from number to string (UUID)
         event_date: string;
@@ -281,7 +283,7 @@ class ShipmentsClient {
         description?: string;
         created_at: string;
     }> {
-        return gatewayClient.createTrackingEvent(packageId, eventData);
+        return gatewayClient.createTrackingEvent(eventData);
     }
 }
 

@@ -73,10 +73,12 @@ class TrackingEventOut(BaseModel):
 
 
 class TrackingEventCreate(BaseModel):
+    package_id: UUID
     event_date: datetime
     status: PackageStatus
     location: Optional[str] = None
     description: Optional[str] = None
+    email_message_id: Optional[str] = None
 
 
 class LabelCreate(BaseModel):
