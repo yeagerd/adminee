@@ -120,39 +120,15 @@ run_service_migrations() {
         fi
     else
         # Run migrations
-        alembic upgrade head
+        alembic -c services/$service_name/alembic.ini upgrade head
         echo "✅ $service_name migrations completed"
     fi
-
     
     # Grant permissions on existing tables after migrations
     echo "🔐 Granting permissions on migrated tables..."
     if [ -f "postgres/grant-permissions.sh" ]; then
         # Map service names to database names and service users
-        case $service_name in
-            "user")
-                ./postgres/grant-permissions.sh --env-file "$ENV_FILE" --db-name "briefly_user" --service-user "briefly_user_service"
-                ;;
-            "meetings")
-                ./postgres/grant-permissions.sh --env-file "$ENV_FILE" --db-name "briefly_meetings" --service-user "briefly_meetings_service"
-                ;;
-            "shipments")
-                ./postgres/grant-permissions.sh --env-file "$ENV_FILE" --db-name "briefly_shipments" --service-user "briefly_shipments_service"
-                ;;
-            "office")
-                ./postgres/grant-permissions.sh --env-file "$ENV_FILE" --db-name "briefly_office" --service-user "briefly_office_service"
-                ;;
-            "chat")
-                ./postgres/grant-permissions.sh --env-file "$ENV_FILE" --db-name "briefly_chat" --service-user "briefly_chat_service"
-                ;;
-            "vector")
-                ./postgres/grant-permissions.sh --env-file "$ENV_FILE" --db-name "briefly_vector" --service-user "briefly_vector_service"
-                ;;
-            *)
-                echo "❌ Error: Unknown service name: $service_name"
-                exit 1
-                ;;
-        esac
+        ./postgres/grant-permissions.sh --env-file "$ENV_FILE" --db-name "briefly_$service_name" --service-user "briefly_${service_name}_service"
         echo "✅ Permissions granted successfully for $service_name"
     else
         echo "❌ Error: postgres/grant-permissions.sh not found"
