@@ -739,6 +739,7 @@ class RateLimitError(BrieflyAPIException):
             error_code=code,
             status_code=status_code,
         )
+        self.retry_after = retry_after
 
 
 # Utility to convert exceptions to error responses
