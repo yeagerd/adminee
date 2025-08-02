@@ -24,8 +24,8 @@ from services.common.logging_config import (
 )
 from services.user.database import (
     close_db,
-    create_all_tables,
     get_async_session,
+    get_engine,
 )
 from services.user.integrations.oauth_config import get_oauth_config
 from services.user.middleware.sanitization import (
@@ -121,7 +121,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         app.redoc_url = None
 
     try:
-        await create_all_tables()
+        # Test database connection - tables should already exist from migrations
+        engine = get_engine()
+        async with engine.begin() as conn:
+            await conn.execute(text("SELECT 1"))
         logger.info("Database connected successfully")
     except Exception as e:
         logger.error(f"Failed to connect to database: {e}")
@@ -572,15 +575,9 @@ async def readiness_check() -> Any:
                     os.environ.get("PYTEST_CURRENT_TEST") is not None
                     or "pytest" in str(table_error).lower()
                 ):
-                    try:
-                        await create_all_tables()
-                        await session.execute(
-                            text("SELECT COUNT(*) FROM users LIMIT 1")
-                        )
-                    except Exception:
-                        raise Exception(
-                            "Database tables not initialized (run alembic upgrade head)"
-                        )
+                    raise Exception(
+                        "Database tables not initialized (run alembic upgrade head)"
+                    )
                 else:
                     raise Exception(
                         "Database tables not initialized (run alembic upgrade head)"
