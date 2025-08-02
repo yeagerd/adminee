@@ -312,6 +312,33 @@ def upgrade() -> None:
     ):
         op.alter_column("packagelabel", "label_id", new_column_name="old_label_id")
 
+    # Drop existing primary key constraints BEFORE renaming columns
+    # This prevents issues with constraint references after column renames
+    try:
+        op.drop_constraint("package_pkey", "package", type_="primary")
+    except Exception:
+        pass  # Constraint might not exist or have different name
+
+    try:
+        op.drop_constraint("label_pkey", "label", type_="primary")
+    except Exception:
+        pass  # Constraint might not exist or have different name
+
+    try:
+        op.drop_constraint("trackingevent_pkey", "trackingevent", type_="primary")
+    except Exception:
+        pass  # Constraint might not exist or have different name
+
+    try:
+        op.drop_constraint("packagelabel_pkey", "packagelabel", type_="primary")
+    except Exception:
+        pass  # Constraint might not exist or have different name
+
+    try:
+        op.drop_constraint("carrierconfig_pkey", "carrierconfig", type_="primary")
+    except Exception:
+        pass  # Constraint might not exist or have different name
+
     # Rename UUID columns to be the primary columns
     op.alter_column("package", "uuid_id", new_column_name="id")
     op.alter_column("label", "uuid_id", new_column_name="id")
@@ -333,6 +360,13 @@ def upgrade() -> None:
     op.alter_column("trackingevent", "package_id", nullable=False)
     op.alter_column("packagelabel", "package_id", nullable=False)
     op.alter_column("packagelabel", "label_id", nullable=False)
+
+    # Recreate primary key constraints on the renamed UUID columns
+    op.create_primary_key("package_pkey", "package", ["id"])
+    op.create_primary_key("label_pkey", "label", ["id"])
+    op.create_primary_key("trackingevent_pkey", "trackingevent", ["id"])
+    op.create_primary_key("packagelabel_pkey", "packagelabel", ["id"])
+    op.create_primary_key("carrierconfig_pkey", "carrierconfig", ["id"])
 
     # Add new foreign key constraints
     op.create_foreign_key(
