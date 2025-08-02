@@ -84,9 +84,7 @@ async def list_packages(
     query = select(Package).where(Package.user_id == current_user)
 
     if tracking_number:
-        # Always search by tracking number first, regardless of carrier
-        # This handles cases where the package was created with 'unknown' carrier
-        # but is now being searched with a detected carrier
+        # Normalize tracking number if carrier is provided
         normalized_tracking = (
             normalize_tracking_number(tracking_number, carrier)
             if carrier
@@ -94,12 +92,20 @@ async def list_packages(
         )
         query = query.where(Package.tracking_number == normalized_tracking)
 
-        # If carrier is provided and not 'unknown', also filter by carrier
-        # But allow 'unknown' carrier in database to match any detected carrier
-        if carrier and carrier != "unknown":
+        # Execute the query to see how many packages we found
+        result = await session.execute(query)
+        packages = result.scalars().all()
+
+        # If multiple packages found and carrier is provided, filter by carrier
+        if len(packages) > 1 and carrier and carrier != "unknown":
+            # Rebuild query with carrier filtering
+            query = select(Package).where(Package.user_id == current_user)
+            query = query.where(Package.tracking_number == normalized_tracking)
             query = query.where(
                 (Package.carrier == carrier) | (Package.carrier == "unknown")
             )
+        # If only one package found or no carrier specified, use the original query
+        # (no additional filtering needed)
     elif email_message_id:
         # Search by email message ID through events table
         logger.info(
@@ -125,10 +131,16 @@ async def list_packages(
                 "pagination": {"page": 1, "per_page": 100, "total": 0},
             }
 
-    # Note: Carrier filtering is now handled above in the tracking number search logic
+    # Execute the final query
+    if tracking_number:
+        # We already executed the query above for tracking number search
+        # packages variable already contains the results
+        pass
+    else:
+        # For non-tracking number searches, execute the query now
+        result = await session.execute(query)
+        packages = result.scalars().all()
 
-    result = await session.execute(query)
-    packages = result.scalars().all()
     logger.info("Found packages for user", user_id=current_user, count=len(packages))
     # Convert to PackageOut with actual events count
     package_out = []

@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useShipmentDetection } from '@/hooks/use-shipment-detection';
+import { useShipmentEvents } from '@/hooks/use-shipment-events';
 import { shipmentsClient } from '@/lib/shipments-client';
 import { EmailMessage } from '@/types/office-service';
 import DOMPurify from 'dompurify';
@@ -147,6 +148,7 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
 }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const shipmentDetection = useShipmentDetection(email);
+    const { data: shipmentEvents, hasEvents } = useShipmentEvents(email.id);
 
     const handleReply = () => {
         // TODO: Implement reply functionality
@@ -247,9 +249,17 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
                                 {/* Shipment truck icon */}
                                 {shipmentDetection.isShipmentEmail && (
                                     <div className="relative group">
-                                        <Truck className="h-4 w-4 text-blue-500" />
+                                        <Truck
+                                            className={`h-4 w-4 ${hasEvents
+                                                ? 'text-green-600 fill-green-600'
+                                                : 'text-gray-400'
+                                                }`}
+                                        />
                                         <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                                            Shipment detected
+                                            {hasEvents
+                                                ? `${shipmentEvents.length} tracking event${shipmentEvents.length > 1 ? 's' : ''}`
+                                                : 'Shipment detected'
+                                            }
                                         </div>
                                     </div>
                                 )}
