@@ -4,13 +4,11 @@ Unit tests for Internal API Endpoints.
 Basic tests for internal service-to-service API endpoints.
 """
 
-import asyncio
 from unittest.mock import patch
 
 from fastapi import status
 from fastapi.testclient import TestClient
 
-from services.user.database import create_all_tables
 from services.user.tests.test_base import BaseUserManagementTest
 
 
@@ -19,7 +17,8 @@ class TestInternalAPI(BaseUserManagementTest):
 
     def setup_method(self):
         super().setup_method()
-        asyncio.run(create_all_tables())
+        # Database should be initialized via Alembic migrations before running tests
+        # Run: alembic upgrade head
         self.client = TestClient(self.app)
         self.auth_headers = self._get_auth_headers()
 

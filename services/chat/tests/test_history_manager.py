@@ -39,8 +39,10 @@ async def setup_test_database():
     chat_settings._settings = test_settings
 
     try:
-        # Initialize database tables
-        await hm.init_db()
+        # Initialize database tables for testing
+        from services.chat.history_manager import create_all_tables_for_testing
+
+        await create_all_tables_for_testing()
         yield
     finally:
         # Restore original singleton

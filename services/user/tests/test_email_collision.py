@@ -14,7 +14,7 @@ from unittest.mock import patch
 import pytest
 import pytest_asyncio
 
-from services.user.database import create_all_tables, get_async_session
+from services.user.database import get_async_session
 from services.user.models.user import User
 from services.user.utils.email_collision import (
     EmailCollisionDetector,
@@ -188,7 +188,10 @@ async def db_setup(monkeypatch):
     )
     monkeypatch.setattr("services.user.settings._settings", test_settings)
 
-    await create_all_tables()
+    # Initialize database schema for testing
+    from services.user.database import create_all_tables_for_testing
+
+    await create_all_tables_for_testing()
     yield
     os.close(db_fd)
     os.unlink(db_path)

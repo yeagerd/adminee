@@ -24,7 +24,6 @@ from services.common.logging_config import (
 )
 from services.user.database import (
     close_db,
-    create_all_tables,
     get_async_session,
     get_engine,
 )
@@ -576,15 +575,9 @@ async def readiness_check() -> Any:
                     os.environ.get("PYTEST_CURRENT_TEST") is not None
                     or "pytest" in str(table_error).lower()
                 ):
-                    try:
-                        await create_all_tables()
-                        await session.execute(
-                            text("SELECT COUNT(*) FROM users LIMIT 1")
-                        )
-                    except Exception:
-                        raise Exception(
-                            "Database tables not initialized (run alembic upgrade head)"
-                        )
+                    raise Exception(
+                        "Database tables not initialized (run alembic upgrade head)"
+                    )
                 else:
                     raise Exception(
                         "Database tables not initialized (run alembic upgrade head)"

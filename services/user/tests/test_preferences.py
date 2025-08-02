@@ -4,7 +4,6 @@ Unit tests for user preferences functionality.
 Tests preferences schemas, service layer, and API endpoints.
 """
 
-import asyncio
 from datetime import datetime, timezone
 from unittest.mock import Mock, patch
 
@@ -14,7 +13,6 @@ from pydantic import ValidationError
 
 from services.common.http_errors import NotFoundError
 from services.user.auth.nextauth import get_current_user
-from services.user.database import create_all_tables
 from services.user.schemas.preferences import (
     AIPreferencesSchema,
     IntegrationPreferencesSchema,
@@ -168,7 +166,8 @@ class TestPreferencesService(BaseUserManagementTest):
 
     def setup_method(self):
         super().setup_method()
-        asyncio.run(create_all_tables())
+        # Database should be initialized via Alembic migrations before running tests
+        # Run: alembic upgrade head
         self.preferences_service = PreferencesService()
         self.mock_user = self._create_mock_user()
         self.mock_preferences = self._create_mock_preferences()
@@ -360,7 +359,8 @@ class TestPreferencesEndpoints(BaseUserManagementTest):
 
     def setup_method(self):
         super().setup_method()
-        asyncio.run(create_all_tables())
+        # Database should be initialized via Alembic migrations before running tests
+        # Run: alembic upgrade head
         self.client = TestClient(self.app)
         self.mock_preferences = self._create_mock_preferences()
         self._setup_auth_mock()
