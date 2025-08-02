@@ -125,16 +125,7 @@ run_service_migrations() {
     fi
 
     
-    # Grant permissions on existing tables after migrations
-    echo "🔐 Granting permissions on migrated tables..."
-    if [ -f "postgres/grant-permissions.sh" ]; then
-        ./postgres/grant-permissions.sh
-        echo "✅ Permissions granted successfully"
-    else
-        echo "❌ Error: postgres/grant-permissions.sh not found"
-        echo "   This script is required for proper database setup"
-        exit 1
-    fi
+
 }
 
 # Run migrations for each service
@@ -143,6 +134,19 @@ run_service_migrations "meetings" "$DB_URL_MEETINGS_MIGRATIONS"
 run_service_migrations "shipments" "$DB_URL_SHIPMENTS_MIGRATIONS"
 run_service_migrations "office" "$DB_URL_OFFICE_MIGRATIONS"
 run_service_migrations "chat" "$DB_URL_CHAT_MIGRATIONS"
+
+# Grant permissions on all tables after all migrations are complete
+if [ "$CHECK_ONLY" != true ]; then
+    echo "🔐 Granting permissions on all migrated tables..."
+    if [ -f "postgres/grant-permissions.sh" ]; then
+        ./postgres/grant-permissions.sh
+        echo "✅ Permissions granted successfully"
+    else
+        echo "❌ Error: postgres/grant-permissions.sh not found"
+        echo "   This script is required for proper database setup"
+        exit 1
+    fi
+fi
 
 if [ "$CHECK_ONLY" = true ]; then
     echo ""
