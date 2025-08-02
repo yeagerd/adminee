@@ -41,10 +41,31 @@ class CachedToken:
         self, token_data: TokenData, ttl_seconds: int = 900
     ):  # 15 minutes default
         self.token_data = token_data
-        self.expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
+        self.cache_expires_at = datetime.now(timezone.utc) + timedelta(
+            seconds=ttl_seconds
+        )
 
     def is_expired(self) -> bool:
-        return datetime.now(timezone.utc) > self.expires_at
+        """Check if either the cache TTL or the actual token has expired"""
+        now = datetime.now(timezone.utc)
+
+        # Check cache TTL expiration
+        if now > self.cache_expires_at:
+            return True
+
+        # Check actual token expiration if available
+        if self.token_data.expires_at:
+            # Ensure expires_at is timezone-aware for comparison
+            token_expires_at = self.token_data.expires_at
+            if token_expires_at.tzinfo is None:
+                token_expires_at = token_expires_at.replace(tzinfo=timezone.utc)
+
+            # Add a small buffer (5 minutes) to refresh tokens before they actually expire
+            buffer_time = timedelta(minutes=5)
+            if now + buffer_time >= token_expires_at:
+                return True
+
+        return False
 
 
 class TokenManager:
@@ -139,13 +160,31 @@ class TokenManager:
         """Retrieve token from cache if not expired"""
         async with self._cache_lock:
             cached_token = self._token_cache.get(cache_key)
-            if cached_token and not cached_token.is_expired():
-                logger.debug(f"Cache hit for token: {cache_key}")
-                return cached_token.token_data
-            elif cached_token:
-                # Remove expired token
-                del self._token_cache[cache_key]
-                logger.debug(f"Removed expired token from cache: {cache_key}")
+            if cached_token:
+                if not cached_token.is_expired():
+                    logger.debug(f"Cache hit for token: {cache_key}")
+                    return cached_token.token_data
+                else:
+                    # Log why the token was considered expired
+                    now = datetime.now(timezone.utc)
+                    if now > cached_token.cache_expires_at:
+                        logger.debug(
+                            f"Removed token from cache due to TTL expiration: {cache_key}"
+                        )
+                    elif cached_token.token_data.expires_at:
+                        token_expires_at = cached_token.token_data.expires_at
+                        if token_expires_at.tzinfo is None:
+                            token_expires_at = token_expires_at.replace(
+                                tzinfo=timezone.utc
+                            )
+                        buffer_time = timedelta(minutes=5)
+                        if now + buffer_time >= token_expires_at:
+                            logger.debug(
+                                f"Removed token from cache due to token expiration (with buffer): {cache_key}"
+                            )
+
+                    # Remove expired token
+                    del self._token_cache[cache_key]
             return None
 
     async def _set_cache(
