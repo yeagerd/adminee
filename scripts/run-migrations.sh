@@ -119,18 +119,20 @@ run_service_migrations() {
             echo "   Head: $head_rev"
         fi
     else
-        # Check if this is a fresh database (no migration history)
-        current_rev=$(alembic -c services/$service_name/alembic.ini current 2>/dev/null | head -n1 | awk '{print $1}' || echo "none")
+        # Run migrations
+        alembic -c services/$service_name/alembic.ini upgrade head
+        echo "✅ $service_name migrations completed"
         
-        # Handle case where alembic command fails (fresh database)
-        if [[ "$current_rev" == *"FAILED:"* ]] || [ "$current_rev" = "none" ] || [ -z "$current_rev" ]; then
-            echo "🆕 Fresh database detected - running migrations..."
-            alembic -c services/$service_name/alembic.ini upgrade head
-            echo "✅ $service_name migrations completed"
+        # Grant permissions on existing tables after migrations
+        echo "🔐 Granting permissions on migrated tables..."
+        if [ -f "postgres/grant-permissions.sh" ]; then
+            # Map service names to database names and service users
+            ./postgres/grant-permissions.sh --env-file "$ENV_FILE" --db-name "briefly_$service_name" --service-user "briefly_${service_name}_service"
+            echo "✅ Permissions granted successfully for $service_name"
         else
-            # Run migrations
-            alembic -c services/$service_name/alembic.ini upgrade head
-            echo "✅ $service_name migrations completed"
+            echo "❌ Error: postgres/grant-permissions.sh not found"
+            echo "   This script is required for proper database setup"
+            exit 1
         fi
     fi
 }
@@ -141,6 +143,7 @@ run_service_migrations "meetings" "$DB_URL_MEETINGS_MIGRATIONS"
 run_service_migrations "shipments" "$DB_URL_SHIPMENTS_MIGRATIONS"
 run_service_migrations "office" "$DB_URL_OFFICE_MIGRATIONS"
 run_service_migrations "chat" "$DB_URL_CHAT_MIGRATIONS"
+run_service_migrations "vector" "$DB_URL_VECTOR_MIGRATIONS"
 
 if [ "$CHECK_ONLY" = true ]; then
     echo ""
@@ -149,7 +152,6 @@ if [ "$CHECK_ONLY" = true ]; then
     echo "💡 To run migrations, use: ./scripts/run-migrations.sh"
 else
     echo "🎉 All migrations completed successfully!"
-    
     echo ""
     echo "📋 Database Status:"
     echo "  - briefly_user: Ready"
@@ -157,4 +159,5 @@ else
     echo "  - briefly_shipments: Ready"
     echo "  - briefly_office: Ready"
     echo "  - briefly_chat: Ready"
+    echo "  - briefly_vector: Ready"
 fi

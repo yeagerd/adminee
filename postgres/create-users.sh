@@ -31,8 +31,11 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     GRANT CONNECT ON DATABASE briefly_user TO briefly_user_service;
     GRANT ALL PRIVILEGES ON DATABASE briefly_user TO briefly_user_service;
     GRANT ALL ON SCHEMA public TO briefly_user_service;
-    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO briefly_user_service;
-    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO briefly_user_service;
+    GRANT CREATE ON SCHEMA public TO briefly_user_service;
+    -- Note: Tables and sequences will be created by migrations
+    -- Default privileges will apply to future objects
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO briefly_user_service;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO briefly_user_service;
 
     -- Meetings service user
     DO \$\$
@@ -45,8 +48,11 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     GRANT CONNECT ON DATABASE briefly_meetings TO briefly_meetings_service;
     GRANT ALL PRIVILEGES ON DATABASE briefly_meetings TO briefly_meetings_service;
     GRANT ALL ON SCHEMA public TO briefly_meetings_service;
-    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO briefly_meetings_service;
-    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO briefly_meetings_service;
+    GRANT CREATE ON SCHEMA public TO briefly_meetings_service;
+    -- Note: Tables and sequences will be created by migrations
+    -- Default privileges will apply to future objects
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO briefly_meetings_service;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO briefly_meetings_service;
 
     -- Shipments service user
     DO \$\$
@@ -59,8 +65,11 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     GRANT CONNECT ON DATABASE briefly_shipments TO briefly_shipments_service;
     GRANT ALL PRIVILEGES ON DATABASE briefly_shipments TO briefly_shipments_service;
     GRANT ALL ON SCHEMA public TO briefly_shipments_service;
-    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO briefly_shipments_service;
-    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO briefly_shipments_service;
+    GRANT CREATE ON SCHEMA public TO briefly_shipments_service;
+    -- Note: Tables and sequences will be created by migrations
+    -- Default privileges will apply to future objects
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO briefly_shipments_service;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO briefly_shipments_service;
 
     -- Office service user
     DO \$\$
@@ -73,8 +82,11 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     GRANT CONNECT ON DATABASE briefly_office TO briefly_office_service;
     GRANT ALL PRIVILEGES ON DATABASE briefly_office TO briefly_office_service;
     GRANT ALL ON SCHEMA public TO briefly_office_service;
-    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO briefly_office_service;
-    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO briefly_office_service;
+    GRANT CREATE ON SCHEMA public TO briefly_office_service;
+    -- Note: Tables and sequences will be created by migrations
+    -- Default privileges will apply to future objects
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO briefly_office_service;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO briefly_office_service;
 
     -- Chat service user
     DO \$\$
@@ -87,8 +99,11 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     GRANT CONNECT ON DATABASE briefly_chat TO briefly_chat_service;
     GRANT ALL PRIVILEGES ON DATABASE briefly_chat TO briefly_chat_service;
     GRANT ALL ON SCHEMA public TO briefly_chat_service;
-    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO briefly_chat_service;
-    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO briefly_chat_service;
+    GRANT CREATE ON SCHEMA public TO briefly_chat_service;
+    -- Note: Tables and sequences will be created by migrations
+    -- Default privileges will apply to future objects
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO briefly_chat_service;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO briefly_chat_service;
 
     -- Vector service user
     DO \$\$
@@ -101,8 +116,11 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     GRANT CONNECT ON DATABASE briefly_vector TO briefly_vector_service;
     GRANT ALL PRIVILEGES ON DATABASE briefly_vector TO briefly_vector_service;
     GRANT ALL ON SCHEMA public TO briefly_vector_service;
-    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO briefly_vector_service;
-    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO briefly_vector_service;
+    GRANT CREATE ON SCHEMA public TO briefly_vector_service;
+    -- Note: Tables and sequences will be created by migrations
+    -- Default privileges will apply to future objects
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO briefly_vector_service;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO briefly_vector_service;
 
     -- Create a readonly user for cross-service queries (if needed)
     DO \$\$
