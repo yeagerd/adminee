@@ -80,19 +80,17 @@ grant_permissions_on_database() {
 
     echo "🔐 Granting permissions on $db_name to $service_user..."
 
-    # Use direct PostgreSQL connection (consistent with run-migrations.sh)
-    # Use PGPASSWORD environment variable for secure password passing
-    # Properly quote all variables to prevent SQL injection
-    PGPASSWORD="${POSTGRES_PASSWORD:-postgres}" psql \
-        -h "$POSTGRES_HOST" \
-        -p "$POSTGRES_PORT" \
-        -U "${POSTGRES_USER:-postgres}" \
-        -d "$db_name" \
-        -v ON_ERROR_STOP=1 \
-        -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO \"$service_user\";" \
-        -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO \"$service_user\";" \
-        -c "GRANT ALL PRIVILEGES ON TABLE alembic_version TO \"$service_user\";" \
-        -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO \"$service_user\";"
+    # Use Docker container to run psql commands
+    # Load environment variables into the container
+    docker exec -i briefly-postgres bash -c "
+        export PGPASSWORD=\"${POSTGRES_PASSWORD:-postgres}\"
+        psql -h localhost -p 5432 -U \"${POSTGRES_USER:-postgres}\" -d \"$db_name\" -v ON_ERROR_STOP=1 << 'EOF'
+        GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO \"$service_user\";
+        GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO \"$service_user\";
+        GRANT ALL PRIVILEGES ON TABLE alembic_version TO \"$service_user\";
+        GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO \"$service_user\";
+EOF
+    "
 
     echo "✅ Permissions granted on $db_name for $service_user"
 }
