@@ -260,7 +260,7 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            className="h-6 w-6 p-0"
                                             onClick={(e) => e.stopPropagation()}
                                             title="More actions"
                                         >
