@@ -168,6 +168,17 @@ class EnhancedTextRenderer:
         if user_id and user_id != "anonymous":
             user_info = f" | User: {user_id}"
 
+        # Add colored emojis for different log levels
+        level_emoji = ""
+        if level == "WARNING":
+            level_emoji = "⚠️ "  # Yellow warning emoji
+        elif level == "ERROR":
+            level_emoji = "❌ "  # Red X emoji
+        elif level == "INFO":
+            level_emoji = "ℹ️ "  # Blue info emoji
+        elif level == "DEBUG":
+            level_emoji = "🔍 "  # Magnifying glass emoji
+
         # Build the enhanced log line
         parts = [
             timestamp,
@@ -175,7 +186,7 @@ class EnhancedTextRenderer:
             f"[{level}]",
             request_id_suffix,
             f"{logger_name}",
-            f"- {message}{user_info}",
+            f"- {level_emoji}{message}{user_info}",
         ]
 
         # Add extra context as key=value pairs
