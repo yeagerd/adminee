@@ -12,8 +12,8 @@ from sqlmodel import Field, Relationship, SQLModel
 
 
 def utc_now() -> datetime:
-    """Return current UTC datetime with timezone info."""
-    return datetime.now(timezone.utc)
+    """Return current UTC datetime without timezone info (for database compatibility)."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class PackageStatus(str, Enum):
@@ -51,7 +51,6 @@ class Package(SQLModel, table=True):
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
     archived_at: Optional[datetime] = None
-    email_message_id: Optional[str] = Field(default=None, max_length=255)
 
     if TYPE_CHECKING:
         from services.shipments.models import Label, Package, TrackingEvent
@@ -95,9 +94,15 @@ class TrackingEvent(SQLModel, table=True):
     status: PackageStatus = Field(max_length=100)
     location: Optional[str] = Field(default=None, max_length=255)
     description: Optional[str] = None
+    email_message_id: Optional[str] = Field(default=None, max_length=255, index=True)
     created_at: datetime = Field(default_factory=utc_now)
 
     package: Optional["Package"] = Relationship(back_populates="tracking_events")
+
+    __table_args__ = (
+        # Unique constraint: one event per email
+        sa.UniqueConstraint("email_message_id", name="uq_tracking_event_email"),
+    )
 
 
 class CarrierConfig(SQLModel, table=True):
