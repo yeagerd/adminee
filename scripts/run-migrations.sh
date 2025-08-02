@@ -119,12 +119,20 @@ run_service_migrations() {
             echo "   Head: $head_rev"
         fi
     else
-        # Run migrations
-        alembic -c services/$service_name/alembic.ini upgrade head
-        echo "✅ $service_name migrations completed"
+        # Check if this is a fresh database (no migration history)
+        current_rev=$(alembic -c services/$service_name/alembic.ini current 2>/dev/null | head -n1 | awk '{print $1}' || echo "none")
+        
+        # Handle case where alembic command fails (fresh database)
+        if [[ "$current_rev" == *"FAILED:"* ]] || [ "$current_rev" = "none" ] || [ -z "$current_rev" ]; then
+            echo "🆕 Fresh database detected - running migrations..."
+            alembic -c services/$service_name/alembic.ini upgrade head
+            echo "✅ $service_name migrations completed"
+        else
+            # Run migrations
+            alembic -c services/$service_name/alembic.ini upgrade head
+            echo "✅ $service_name migrations completed"
+        fi
     fi
-
-    cd ../..
 }
 
 # Run migrations for each service
@@ -141,6 +149,7 @@ if [ "$CHECK_ONLY" = true ]; then
     echo "💡 To run migrations, use: ./scripts/run-migrations.sh"
 else
     echo "🎉 All migrations completed successfully!"
+    
     echo ""
     echo "📋 Database Status:"
     echo "  - briefly_user: Ready"

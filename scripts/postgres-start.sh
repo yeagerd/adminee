@@ -213,6 +213,50 @@ if ! docker exec briefly-postgres psql -U postgres -d briefly_user -c "SELECT 1 
     echo "💡 This might be normal if the database was already initialized"
 fi
 
+# Check if database needs migration initialization
+echo "🗄️ Checking if database needs migration initialization..."
+NEEDS_INIT=false
+
+# Check if this is a fresh install or if no tables exist
+if [ "$FRESH_INSTALL" = true ]; then
+    echo "🆕 Fresh install detected - will initialize database tables"
+    NEEDS_INIT=true
+else
+    # Check if any tables exist in the user database (as a proxy for all databases)
+    if ! docker exec briefly-postgres psql -U postgres -d briefly_user -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" | grep -q "[1-9]"; then
+        echo "🆕 Empty database detected - will initialize database tables"
+        NEEDS_INIT=true
+    else
+        echo "✅ Database appears to have existing tables"
+    fi
+fi
+
+# Initialize database tables if needed
+if [ "$NEEDS_INIT" = true ]; then
+    echo "🚀 Initializing database tables with migrations..."
+    
+    # Check if virtual environment is available
+    if [ -f ".venv/bin/activate" ]; then
+        echo "📦 Using virtual environment for migrations..."
+        source .venv/bin/activate
+    else
+        echo "⚠️  No virtual environment found. Make sure alembic is available."
+    fi
+    
+    # Run migrations
+    if ./scripts/run-migrations.sh --env-file "$ENV_FILE"; then
+        echo "✅ Database tables initialized successfully"
+    else
+        echo "❌ Failed to initialize database tables"
+        echo "💡 You can try running migrations manually:"
+        echo "   ./scripts/run-migrations.sh --env-file $ENV_FILE"
+        exit 1
+    fi
+else
+    echo "💡 Database appears to be ready. Run migrations manually if needed:"
+    echo "   ./scripts/run-migrations.sh --env-file $ENV_FILE"
+fi
+
 # Display connection information
 echo ""
 echo "📋 Connection Information:"
