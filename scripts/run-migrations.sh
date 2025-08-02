@@ -119,19 +119,42 @@ run_service_migrations() {
             echo "   Head: $head_rev"
         fi
     else
-        # Check if this is a fresh database (no migration history)
-        current_rev=$(alembic -c services/$service_name/alembic.ini current 2>/dev/null | head -n1 | awk '{print $1}' || echo "none")
-        
-        # Handle case where alembic command fails (fresh database)
-        if [[ "$current_rev" == *"FAILED:"* ]] || [ "$current_rev" = "none" ] || [ -z "$current_rev" ]; then
-            echo "🆕 Fresh database detected - running migrations..."
-            alembic -c services/$service_name/alembic.ini upgrade head
-            echo "✅ $service_name migrations completed"
-        else
-            # Run migrations
-            alembic -c services/$service_name/alembic.ini upgrade head
-            echo "✅ $service_name migrations completed"
-        fi
+        # Run migrations
+        alembic upgrade head
+        echo "✅ $service_name migrations completed"
+    fi
+
+    
+    # Grant permissions on existing tables after migrations
+    echo "🔐 Granting permissions on migrated tables..."
+    if [ -f "postgres/grant-permissions.sh" ]; then
+        # Map service names to database names and service users
+        case $service_name in
+            "user")
+                ./postgres/grant-permissions.sh --env-file "$ENV_FILE" --db-name "briefly_user" --service-user "briefly_user_service"
+                ;;
+            "meetings")
+                ./postgres/grant-permissions.sh --env-file "$ENV_FILE" --db-name "briefly_meetings" --service-user "briefly_meetings_service"
+                ;;
+            "shipments")
+                ./postgres/grant-permissions.sh --env-file "$ENV_FILE" --db-name "briefly_shipments" --service-user "briefly_shipments_service"
+                ;;
+            "office")
+                ./postgres/grant-permissions.sh --env-file "$ENV_FILE" --db-name "briefly_office" --service-user "briefly_office_service"
+                ;;
+            "chat")
+                ./postgres/grant-permissions.sh --env-file "$ENV_FILE" --db-name "briefly_chat" --service-user "briefly_chat_service"
+                ;;
+            *)
+                echo "❌ Error: Unknown service name: $service_name"
+                exit 1
+                ;;
+        esac
+        echo "✅ Permissions granted successfully for $service_name"
+    else
+        echo "❌ Error: postgres/grant-permissions.sh not found"
+        echo "   This script is required for proper database setup"
+        exit 1
     fi
 }
 
@@ -142,19 +165,6 @@ run_service_migrations "shipments" "$DB_URL_SHIPMENTS_MIGRATIONS"
 run_service_migrations "office" "$DB_URL_OFFICE_MIGRATIONS"
 run_service_migrations "chat" "$DB_URL_CHAT_MIGRATIONS"
 
-# Grant permissions on all tables after all migrations are complete
-if [ "$CHECK_ONLY" != true ]; then
-    echo "🔐 Granting permissions on all migrated tables..."
-    if [ -f "postgres/grant-permissions.sh" ]; then
-        ./postgres/grant-permissions.sh
-        echo "✅ Permissions granted successfully"
-    else
-        echo "❌ Error: postgres/grant-permissions.sh not found"
-        echo "   This script is required for proper database setup"
-        exit 1
-    fi
-fi
-
 if [ "$CHECK_ONLY" = true ]; then
     echo ""
     echo "🔍 Migration check completed!"
@@ -162,7 +172,6 @@ if [ "$CHECK_ONLY" = true ]; then
     echo "💡 To run migrations, use: ./scripts/run-migrations.sh"
 else
     echo "🎉 All migrations completed successfully!"
-    
     echo ""
     echo "📋 Database Status:"
     echo "  - briefly_user: Ready"
