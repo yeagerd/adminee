@@ -65,8 +65,19 @@ class TestAuditLogger(BaseUserManagementTest):
 
     def setup_method(self):
         super().setup_method()
-        # Database should be initialized via Alembic migrations before running tests
-        # Run: alembic upgrade head
+        # Initialize database tables for testing
+        import asyncio
+        from services.user.database import create_all_tables_for_testing
+        
+        try:
+            asyncio.run(create_all_tables_for_testing())
+        except RuntimeError:
+            # If we're already in an event loop, create a task
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, create_all_tables_for_testing())
+                future.result()
+        
         self.audit_service = AuditLogger()
         self.mock_user = self._create_mock_user()
         self.mock_audit_log = self._create_mock_audit_log()
