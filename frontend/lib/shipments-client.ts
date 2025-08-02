@@ -186,7 +186,7 @@ class ShipmentsClient {
      */
     async getPackageByEmail(emailMessageId: string): Promise<PackageResponse | null> {
         try {
-            const response = await gatewayClient.request<{ data: PackageResponse[] }>(`/api/v1/shipments/packages?email_message_id=${emailMessageId}`);
+            const response = await gatewayClient.request<{ data: PackageResponse[] }>(`/api/v1/shipments/packages?email_message_id=${encodeURIComponent(emailMessageId)}`);
 
             if (response && response.data && response.data.length > 0) {
                 return response.data[0];
