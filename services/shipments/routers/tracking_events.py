@@ -6,7 +6,7 @@ from typing import List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.exc import SQLAlchemyError, OperationalError, ProgrammingError
+from sqlalchemy.exc import OperationalError, ProgrammingError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
@@ -75,31 +75,35 @@ async def get_events_by_email(
         # Database schema/connection issues - these are expected in test environments
         # where tables might not exist or database might not be fully set up
         logger.warning(f"Database error querying events by email: {str(e)}")
-        
+
         if is_test_environment:
             # In test environments, return empty list for expected database issues
-            logger.info("Suppressing database error in test environment, returning empty list")
+            logger.info(
+                "Suppressing database error in test environment, returning empty list"
+            )
             return []
         else:
             # In production, these are critical errors that should be exposed
             logger.error(f"Critical database error in production: {str(e)}")
             raise HTTPException(
                 status_code=500,
-                detail="Database error occurred while querying tracking events"
+                detail="Database error occurred while querying tracking events",
             )
     except SQLAlchemyError as e:
         # Other SQLAlchemy errors (constraint violations, etc.)
         logger.error(f"SQLAlchemy error querying events by email: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail="Database error occurred while querying tracking events"
+            detail="Database error occurred while querying tracking events",
         )
     except Exception as e:
         # Unexpected errors - these should always be exposed
-        logger.error(f"Unexpected error querying events by email: {str(e)}", exc_info=True)
+        logger.error(
+            f"Unexpected error querying events by email: {str(e)}", exc_info=True
+        )
         raise HTTPException(
             status_code=500,
-            detail="An unexpected error occurred while querying tracking events"
+            detail="An unexpected error occurred while querying tracking events",
         )
 
 

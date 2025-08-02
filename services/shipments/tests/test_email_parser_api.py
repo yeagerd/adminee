@@ -1,4 +1,4 @@
-services/shipments/tests/test_email_parser_api.py"""
+"""
 Backend API tests for email parser and data collection endpoints.
 
 Tests the email parser API with various email formats, error handling,
