@@ -182,11 +182,12 @@ class EnhancedTextRenderer:
         # Build the enhanced log line
         parts = [
             timestamp,
+            level_emoji,
             f"[{service}]",
             f"[{level}]",
             request_id_suffix,
             f"{logger_name}",
-            f"- {level_emoji}{message}{user_info}",
+            f"- {message}{user_info}",
         ]
 
         # Add extra context as key=value pairs
