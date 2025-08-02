@@ -101,18 +101,34 @@ services:
     restart: unless-stopped
 
   db:
-    image: postgres:15-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data/
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-briefly_user}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_MULTIPLE_DATABASES: "briefly_user,briefly_meetings,briefly_shipments,briefly_office,briefly_chat,briefly_vector"
+      # Admin user credentials
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      
+      # Service-specific database passwords
+      BRIEFLY_USER_SERVICE_PASSWORD: ${BRIEFLY_USER_SERVICE_PASSWORD}
+      BRIEFLY_MEETINGS_SERVICE_PASSWORD: ${BRIEFLY_MEETINGS_SERVICE_PASSWORD}
+      BRIEFLY_SHIPMENTS_SERVICE_PASSWORD: ${BRIEFLY_SHIPMENTS_SERVICE_PASSWORD}
+      BRIEFLY_OFFICE_SERVICE_PASSWORD: ${BRIEFLY_OFFICE_SERVICE_PASSWORD}
+      BRIEFLY_CHAT_SERVICE_PASSWORD: ${BRIEFLY_CHAT_SERVICE_PASSWORD}
+      BRIEFLY_VECTOR_SERVICE_PASSWORD: ${BRIEFLY_VECTOR_SERVICE_PASSWORD}
+      BRIEFLY_READONLY_PASSWORD: ${BRIEFLY_READONLY_PASSWORD}
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
 
 volumes:
   postgres_data:
