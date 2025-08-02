@@ -84,7 +84,7 @@ grant_permissions_on_database() {
     # Load environment variables into the container
     docker exec -i briefly-postgres bash -c "
         export PGPASSWORD=\"${POSTGRES_PASSWORD:-postgres}\"
-        psql -h localhost -p 5432 -U \"${POSTGRES_USER:-postgres}\" -d \"$db_name\" -v ON_ERROR_STOP=1 << 'EOF'
+        psql -h \"${POSTGRES_HOST:-localhost}\" -p \"${POSTGRES_PORT:-5432}\" -U \"${POSTGRES_USER:-postgres}\" -d \"$db_name\" -v ON_ERROR_STOP=1 << EOF
         GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO \"$service_user\";
         GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO \"$service_user\";
         GRANT ALL PRIVILEGES ON TABLE alembic_version TO \"$service_user\";
