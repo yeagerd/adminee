@@ -707,49 +707,73 @@ class FullDemo:
                 params["provider"] = self.preferred_provider
 
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(
-                    f"{self.user_client.base_url}/users/id",
+                # First check if user exists using the new endpoint (no 404 errors)
+                exists_response = await client.get(
+                    f"{self.user_client.base_url}/v1/internal/users/exists",
                     params=params,
                 )
 
-                if response.status_code == 200:
-                    # User found - extract external_auth_id from full user response
-                    data = response.json()
-                    external_auth_id = data.get("external_auth_id")
-                    auth_provider = data.get("auth_provider")
+                if exists_response.status_code == 200:
+                    exists_data = exists_response.json()
 
-                    # Automatically set the provider based on what's stored for this user
-                    if auth_provider and auth_provider in ["google", "microsoft"]:
-                        self.preferred_provider = auth_provider
-                        logger.info(f"Auto-detected OAuth provider: {auth_provider}")
-                        print(
-                            f"🔍 Detected previous {auth_provider.title()} authentication for this email"
+                    if exists_data.get("exists"):
+                        # User exists, get full user data using the original endpoint
+                        response = await client.get(
+                            f"{self.user_client.base_url}/v1/internal/users/id",
+                            params=params,
                         )
 
-                    logger.info(
-                        f"Successfully resolved email {email} to external_auth_id {external_auth_id}"
-                    )
-                    return external_auth_id
-                elif response.status_code == 404:
-                    logger.info(
-                        f"No user found for email {email}, will try to create one"
-                    )
-                    # Try to create the user if they don't exist
-                    return await self._create_user_for_email(email)
-                elif response.status_code == 422:
+                        if response.status_code == 200:
+                            # User found - extract external_auth_id from full user response
+                            data = response.json()
+                            external_auth_id = data.get("external_auth_id")
+                            auth_provider = data.get("auth_provider")
+
+                            # Automatically set the provider based on what's stored for this user
+                            if auth_provider and auth_provider in [
+                                "google",
+                                "microsoft",
+                            ]:
+                                self.preferred_provider = auth_provider
+                                logger.info(
+                                    f"Auto-detected OAuth provider: {auth_provider}"
+                                )
+                                print(
+                                    f"🔍 Detected previous {auth_provider.title()} authentication for this email"
+                                )
+
+                            logger.info(
+                                f"Successfully resolved email {email} to external_auth_id {external_auth_id}"
+                            )
+                            return external_auth_id
+                        else:
+                            logger.error(
+                                f"Failed to get full user data: {response.status_code} {response.text}"
+                            )
+                            print(
+                                f"❌ Failed to get user data with status {response.status_code}"
+                            )
+                            return None
+                    else:
+                        logger.info(
+                            f"No user found for email {email}, will try to create one"
+                        )
+                        # Try to create the user if they don't exist
+                        return await self._create_user_for_email(email)
+                elif exists_response.status_code == 422:
                     logger.error(f"Invalid email format for {email}")
                     print(f"❌ Invalid email format: {email}")
                     return None
-                elif response.status_code == 500:
+                elif exists_response.status_code == 500:
                     logger.error("User service internal error during email resolution")
                     print("❌ User service temporarily unavailable")
                     return None
                 else:
                     logger.error(
-                        f"Email resolution failed: {response.status_code} {response.text}"
+                        f"Email existence check failed: {exists_response.status_code} {exists_response.text}"
                     )
                     print(
-                        f"❌ Email resolution failed with status {response.status_code}"
+                        f"❌ Email existence check failed with status {exists_response.status_code}"
                     )
                     return None
 

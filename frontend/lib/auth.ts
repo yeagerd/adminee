@@ -76,12 +76,12 @@ export const authOptions: NextAuthOptions = {
             });
 
             try {
-                // 1. Try to GET user by email and provider
+                // 1. Check if user exists using the new endpoint (no 404 errors)
                 let backendUser = null;
-                const getUrl = `${userServiceBase}/v1/internal/users/id?email=${encodeURIComponent(email)}&provider=${encodeURIComponent(provider)}`;
-                console.log('BFF Debug - GET URL:', getUrl);
+                const existsUrl = `${userServiceBase}/v1/internal/users/exists?email=${encodeURIComponent(email)}&provider=${encodeURIComponent(provider)}`;
+                console.log('BFF Debug - EXISTS URL:', existsUrl);
 
-                const getRes = await fetch(getUrl, {
+                const existsRes = await fetch(existsUrl, {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
@@ -89,47 +89,67 @@ export const authOptions: NextAuthOptions = {
                     },
                 });
 
-                console.log('BFF Debug - GET response:', getRes.status);
+                console.log('BFF Debug - EXISTS response:', existsRes.status);
 
-                if (getRes.ok) {
-                    backendUser = await getRes.json();
-                    console.log('BFF Debug - Found user:', { id: backendUser.id, email: backendUser.email });
-                } else if (getRes.status === 404) {
-                    // 2. If not found, POST to create user
-                    const postUrl = `${userServiceBase}/v1/internal/users/`;
-                    const userData = {
-                        external_auth_id,
-                        auth_provider: provider,
-                        preferred_provider: provider === 'azure-ad' ? 'microsoft' : provider,
-                        email,
-                        first_name: user.name?.split(' ')[0] || '',
-                        last_name: user.name?.split(' ').slice(1).join(' ') || '',
-                        profile_image_url: user.image || null,
-                    };
-                    console.log('BFF Debug - Creating user:', userData);
+                if (existsRes.ok) {
+                    const existsData = await existsRes.json();
+                    console.log('BFF Debug - User exists check:', existsData);
 
-                    const postRes = await fetch(postUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-API-Key': apiKey,
-                        },
-                        body: JSON.stringify(userData),
-                    });
+                    if (existsData.exists) {
+                        // User exists, get full user data using the original endpoint
+                        const getUrl = `${userServiceBase}/v1/internal/users/id?email=${encodeURIComponent(email)}&provider=${encodeURIComponent(provider)}`;
+                        const getRes = await fetch(getUrl, {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-API-Key': apiKey,
+                            },
+                        });
 
-                    console.log('BFF Debug - POST response:', postRes.status);
-
-                    if (postRes.ok) {
-                        const response = await postRes.json();
-                        backendUser = response.user; // Extract user from the new response format
-                        console.log('BFF Debug - Created user:', { id: backendUser.id, email: backendUser.email });
+                        if (getRes.ok) {
+                            backendUser = await getRes.json();
+                            console.log('BFF Debug - Found user:', { id: backendUser.id, email: backendUser.email });
+                        } else {
+                            const errorText = await getRes.text();
+                            throw new Error(`Failed to fetch user from user service: ${getRes.status} ${errorText}`);
+                        }
                     } else {
-                        const errorText = await postRes.text();
-                        throw new Error(`Failed to create user in user service: ${postRes.status} ${errorText}`);
+                        // 2. User doesn't exist, POST to create user
+                        const postUrl = `${userServiceBase}/v1/internal/users/`;
+                        const userData = {
+                            external_auth_id,
+                            auth_provider: provider,
+                            preferred_provider: provider === 'azure-ad' ? 'microsoft' : provider,
+                            email,
+                            first_name: user.name?.split(' ')[0] || '',
+                            last_name: user.name?.split(' ').slice(1).join(' ') || '',
+                            profile_image_url: user.image || null,
+                        };
+                        console.log('BFF Debug - Creating user:', userData);
+
+                        const postRes = await fetch(postUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-API-Key': apiKey,
+                            },
+                            body: JSON.stringify(userData),
+                        });
+
+                        console.log('BFF Debug - POST response:', postRes.status);
+
+                        if (postRes.ok) {
+                            const response = await postRes.json();
+                            backendUser = response.user; // Extract user from the new response format
+                            console.log('BFF Debug - Created user:', { id: backendUser.id, email: backendUser.email });
+                        } else {
+                            const errorText = await postRes.text();
+                            throw new Error(`Failed to create user in user service: ${postRes.status} ${errorText}`);
+                        }
                     }
                 } else {
-                    const errorText = await getRes.text();
-                    throw new Error(`Failed to fetch user from user service: ${getRes.status} ${errorText}`);
+                    const errorText = await existsRes.text();
+                    throw new Error(`Failed to check user existence: ${existsRes.status} ${errorText}`);
                 }
 
                 // 3. Attach external auth ID to user object for session/jwt
