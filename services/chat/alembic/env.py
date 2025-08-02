@@ -13,6 +13,7 @@ from services.chat.history_manager import (  # noqa: F401
     Draft,
     Message,
     Thread,
+    UserDraft,
     chat_registry,
 )
 from services.chat.settings import get_settings

@@ -215,14 +215,20 @@ class TestTokenOptimization:
                 ) as mock_decrypt:
                     mock_decrypt.return_value = "decrypted_token"
 
-                    # Call the method
-                    result = await token_service.get_valid_token(
-                        user_id=user_id, provider=provider
-                    )
+                    # Mock audit logging to prevent database errors
+                    with patch(
+                        "services.user.services.token_service.audit_logger.log_user_action"
+                    ) as mock_audit:
+                        mock_audit.return_value = None
 
-                    # Verify only one database query was made (the optimized one)
-                    mock_get_tokens.assert_called_once()
+                        # Call the method
+                        result = await token_service.get_valid_token(
+                            user_id=user_id, provider=provider
+                        )
 
-                    # Verify the result is correct
-                    assert result.success is True
-                    assert result.access_token == "decrypted_token"
+                        # Verify only one database query was made (the optimized one)
+                        mock_get_tokens.assert_called_once()
+
+                        # Verify the result is correct
+                        assert result.success is True
+                        assert result.access_token == "decrypted_token"

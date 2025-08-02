@@ -35,15 +35,15 @@ async def get_async_session_dep() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
-def create_all_tables() -> None:  # type: ignore[no-untyped-def]
-    import asyncio
+# Database initialization is now handled by Alembic migrations
+# Use 'alembic upgrade head' to initialize or update the database schema
 
-    async def _create():
-        engine = get_engine()
-        async with engine.begin() as conn:
-            await conn.run_sync(SQLModel.metadata.create_all)
 
-    asyncio.run(_create())
+async def create_all_tables_for_testing() -> None:
+    """Create all database tables for testing only. Use Alembic migrations in production."""
+    engine = get_engine()
+    async with engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.create_all)
 
 
 def close_db() -> None:

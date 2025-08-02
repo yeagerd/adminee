@@ -5,14 +5,12 @@ Tests encryption/decryption, key derivation, user isolation,
 and security features of the TokenEncryption service.
 """
 
-import asyncio
 import base64
 import os
 from unittest.mock import patch
 
 import pytest
 
-from services.user.database import create_all_tables
 from services.user.security.encryption import TokenEncryption
 from services.user.tests.test_base import BaseUserManagementTest
 
@@ -22,7 +20,8 @@ class TestTokenEncryption(BaseUserManagementTest):
 
     def setup_method(self):
         super().setup_method()
-        asyncio.run(create_all_tables())
+        # Database should be initialized via Alembic migrations before running tests
+        # Run: alembic upgrade head
 
         # Mock the salt function and create encryption service
         self.mock_get_token_encryption_salt_patcher = patch(

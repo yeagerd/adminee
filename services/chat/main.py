@@ -3,6 +3,7 @@ from typing import AsyncIterator
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 from sqlmodel import select
 
 from services.chat import history_manager
@@ -59,7 +60,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             "API_CHAT_OFFICE_KEY not configured - office service calls will fail"
         )
 
-    await history_manager.init_db()
+    # Test database connection - tables should already exist from migrations
+    engine = history_manager.get_engine()
+    async with engine.begin() as conn:
+        await conn.execute(text("SELECT 1"))
 
     yield  # The application runs here
 
