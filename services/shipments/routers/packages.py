@@ -656,7 +656,7 @@ async def create_tracking_event(
     # Ensure event_date is timezone-naive for database compatibility
     if (
         event_data["event_date"]
-        and hasattr(event_data["event_date"], "tzinfo")
+        and isinstance(event_data["event_date"], datetime)
         and event_data["event_date"].tzinfo is not None
     ):
         event_data["event_date"] = event_data["event_date"].replace(tzinfo=None)
