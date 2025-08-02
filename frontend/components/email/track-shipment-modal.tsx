@@ -1,4 +1,5 @@
 import FieldUpdateMessage from '@/components/general/field-update-message';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -160,6 +161,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
     const shipmentDetection = useShipmentDetection(email);
     const [isLoading, setIsLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [isParsing, setIsParsing] = useState(false);
     const [isCheckingPackage, setIsCheckingPackage] = useState(false);
     const [existingPackage, setExistingPackage] = useState<PackageResponse | null>(null);
@@ -321,6 +323,11 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
             [field]: value
         }));
 
+        // Clear error message when user starts typing
+        if (errorMessage) {
+            setErrorMessage(null);
+        }
+
         // If tracking number changed, check for existing package
         if (field === 'tracking_number' && value.trim()) {
             // Clear existing package when tracking number changes
@@ -405,11 +412,12 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
         e.preventDefault();
 
         if (!formData.tracking_number.trim()) {
-            alert('Tracking number is required');
+            setErrorMessage('Tracking number is required');
             return;
         }
 
         setIsLoading(true);
+        setErrorMessage(null); // Clear any previous error messages
         try {
             if (existingPackage) {
                 // If package exists, create a tracking event instead of new package
@@ -470,7 +478,16 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
             }, 2000);
         } catch (error) {
             console.error('Failed to track shipment:', error);
-            alert('Failed to track shipment. Please try again.');
+            // Extract error message from the error object
+            let errorMsg = 'Failed to track shipment. Please try again.';
+            if (error instanceof Error) {
+                errorMsg = error.message;
+            } else if (typeof error === 'string') {
+                errorMsg = error;
+            } else if (error && typeof error === 'object' && 'message' in error) {
+                errorMsg = String(error.message);
+            }
+            setErrorMessage(errorMsg);
         } finally {
             setIsLoading(false);
         }
@@ -486,6 +503,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
         if (!isLoading) {
             onClose();
             setIsSuccess(false);
+            setErrorMessage(null); // Clear error message when closing
         }
     };
 
@@ -796,28 +814,40 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
 
                 <DialogFooter>
                     {!isSuccess && (
-                        <>
-                            <Button variant="outline" onClick={handleClose} disabled={isLoading}>
-                                Cancel
-                            </Button>
-                            <Button
-                                onClick={handleSubmit}
-                                disabled={isLoading || !formData.tracking_number.trim()}
-                                className="flex items-center gap-2"
-                            >
-                                {isLoading ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                        {existingPackage ? 'Adding Event...' : 'Tracking...'}
-                                    </>
-                                ) : (
-                                    <>
-                                        <Truck className="h-4 w-4" />
-                                        {existingPackage ? 'Add Tracking Event' : 'Track Shipment'}
-                                    </>
-                                )}
-                            </Button>
-                        </>
+                        <div className="flex items-center gap-4 w-full">
+                            {errorMessage && (
+                                <Alert className="bg-red-50 border-red-200 text-red-800 flex-1 flex items-center">
+                                    <AlertDescription className="text-sm">
+                                        {errorMessage.length > 100
+                                            ? `${errorMessage.substring(0, 100)}...`
+                                            : errorMessage
+                                        }
+                                    </AlertDescription>
+                                </Alert>
+                            )}
+                            <div className="flex gap-2">
+                                <Button variant="outline" onClick={handleClose} disabled={isLoading}>
+                                    Cancel
+                                </Button>
+                                <Button
+                                    onClick={handleSubmit}
+                                    disabled={isLoading || !formData.tracking_number.trim()}
+                                    className="flex items-center gap-2"
+                                >
+                                    {isLoading ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            {existingPackage ? 'Adding Event...' : 'Tracking...'}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Truck className="h-4 w-4" />
+                                            {existingPackage ? 'Add Tracking Event' : 'Track Shipment'}
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
+                        </div>
                     )}
                 </DialogFooter>
             </DialogContent >
