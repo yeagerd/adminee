@@ -25,7 +25,7 @@ import sys
 import time
 import uuid
 from contextvars import ContextVar
-from typing import Any, Callable
+from typing import Any, Callable, Dict, Optional
 
 import structlog
 from fastapi import Request, Response
@@ -404,6 +404,132 @@ def log_service_startup(service_name: str, **kwargs: Any) -> None:
 
 
 def log_service_shutdown(service_name: str) -> None:
-    """Log service shutdown."""
-    logger = get_logger("shutdown")
-    logger.info(f"Shutting down {service_name}", service=service_name)
+    """Log service shutdown event."""
+    logger = get_logger(__name__)
+    logger.info(f"Service {service_name} shutting down")
+
+
+def log_http_error(
+    error_type: str,
+    message: str,
+    status_code: int,
+    request_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+    details: Optional[Dict[str, Any]] = None,
+    **kwargs: Any,
+) -> None:
+    """
+    Log HTTP errors with proper formatting for both text and JSON modes.
+
+    This function ensures that HTTP error messages are properly logged
+    and visible in both text and JSON logging modes.
+
+    Args:
+        error_type: Type of error (e.g., "validation_error", "tracking_number_error")
+        message: Human-readable error message
+        status_code: HTTP status code
+        request_id: Optional request ID for tracing
+        user_id: Optional user ID for context
+        details: Optional additional error details
+        **kwargs: Additional context to include in the log
+    """
+    logger = get_logger(__name__)
+
+    # Determine log level based on status code
+    if status_code >= 500:
+        log_level = "error"
+    elif status_code >= 400:
+        log_level = "warning"
+    else:
+        log_level = "info"
+
+    # Prepare log context
+    log_context = {
+        "error_type": error_type,
+        "status_code": status_code,
+        "message": message,
+        **kwargs,
+    }
+
+    if request_id:
+        log_context["request_id"] = request_id
+    if user_id:
+        log_context["user_id"] = user_id
+    if details:
+        log_context["details"] = details
+
+    # Log with appropriate level
+    if log_level == "error":
+        logger.error(f"HTTP {status_code} {error_type}: {message}", **log_context)
+    elif log_level == "warning":
+        logger.warning(f"HTTP {status_code} {error_type}: {message}", **log_context)
+    else:
+        logger.info(f"HTTP {status_code} {error_type}: {message}", **log_context)
+
+
+def log_unknown_error_response(
+    response_body: Any,
+    status_code: int,
+    request_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+    path: Optional[str] = None,
+    method: Optional[str] = None,
+    **kwargs: Any,
+) -> None:
+    """
+    Log unknown error responses with full response contents for debugging.
+
+    This function is a fallback for when we don't know the specific error type
+    but want to capture the full response contents for debugging purposes.
+
+    Args:
+        response_body: The full response body (could be dict, string, or any type)
+        status_code: HTTP status code
+        request_id: Optional request ID for tracing
+        user_id: Optional user ID for context
+        path: Optional request path
+        method: Optional HTTP method
+        **kwargs: Additional context to include in the log
+    """
+    logger = get_logger(__name__)
+
+    # Determine log level based on status code
+    if status_code >= 500:
+        log_level = "error"
+    elif status_code >= 400:
+        log_level = "warning"
+    else:
+        log_level = "info"
+
+    # Prepare log context
+    log_context = {
+        "error_type": "unknown_error_response",
+        "status_code": status_code,
+        "response_body": response_body,
+        **kwargs,
+    }
+
+    if request_id:
+        log_context["request_id"] = request_id
+    if user_id:
+        log_context["user_id"] = user_id
+    if path:
+        log_context["path"] = path
+    if method:
+        log_context["method"] = method
+
+    # Create a readable message
+    if isinstance(response_body, dict):
+        message = response_body.get("message", str(response_body))
+    elif isinstance(response_body, str):
+        message = response_body
+    else:
+        message = str(response_body)
+
+    # Log with appropriate level
+    if log_level == "error":
+        logger.error(f"HTTP {status_code} unknown error: {message}", **log_context)
+    elif log_level == "warning":
+        logger.warning(f"HTTP {status_code} unknown error: {message}", **log_context)
+    else:
+        logger.info(f"HTTP {status_code} unknown error: {message}", **log_context)
