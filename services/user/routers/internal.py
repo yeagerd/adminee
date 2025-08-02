@@ -208,6 +208,47 @@ async def get_user_status(
         raise ServiceError(message=str(e))
 
 
+@router.get("/users/by-external-id/{external_auth_id}")
+async def get_user_by_external_auth_id(
+    external_auth_id: str,
+    service_name: str = Depends(service_permission_required(["read_users"])),
+) -> Dict[str, Any]:
+    """
+    Get user information by external_auth_id (internal service endpoint).
+
+    This endpoint always returns 200 with user information or null,
+    avoiding 404 logs for missing users.
+
+    Returns:
+        User data if found, or {"exists": false} if not found
+    """
+    try:
+        user = await get_user_service().get_user_by_external_auth_id_auto_detect(
+            external_auth_id
+        )
+
+        return {
+            "exists": True,
+            "user_id": user.external_auth_id,
+            "internal_id": user.id,
+            "provider": user.auth_provider,
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "preferred_provider": user.preferred_provider,
+            "onboarding_completed": user.onboarding_completed,
+            "onboarding_step": user.onboarding_step,
+        }
+    except NotFoundError:
+        return {
+            "exists": False,
+            "user_id": external_auth_id,
+        }
+    except Exception as e:
+        logger.error(f"Unexpected error during user lookup by external_auth_id: {e}")
+        raise ServiceError(message="Failed to lookup user by external_auth_id")
+
+
 @router.get("/users/exists")
 async def check_user_exists(
     email: str = Query(..., description="Email address to check"),

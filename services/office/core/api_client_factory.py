@@ -296,45 +296,42 @@ class APIClientFactory:
             try:
                 int(user_id)
             except ValueError:
-                # Not an integer, resolve
-                async with httpx.AsyncClient(timeout=10.0) as client:
-                    resp = await client.get(
-                        f"{settings.USER_SERVICE_URL}/users/id?external_auth_id={user_id}",
-                        headers=headers,
-                    )
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        resolved_user_id = str(data.get("id"))
-                        logger.info(
-                            f"Resolved external_auth_id {user_id} to internal user ID {resolved_user_id}"
-                        )
-                    else:
-                        logger.warning(
-                            f"Failed to resolve internal user ID for external_auth_id {user_id}: {resp.status_code}"
-                        )
-                        return None
+                # Not an integer, assume it's an external_auth_id and use it directly
+                # The user service internal endpoints work with external_auth_id
+                resolved_user_id = user_id
+                logger.info(
+                    f"Using external_auth_id {user_id} directly (no resolution needed)"
+                )
 
-            # Get user profile from user service using internal ID
+            # Get user profile from user service using internal endpoint
             async with httpx.AsyncClient(timeout=10.0) as client:
+                # Use the new internal endpoint to get user by external_auth_id
                 response = await client.get(
-                    f"{settings.USER_SERVICE_URL}/users/{resolved_user_id}",
+                    f"{settings.USER_SERVICE_URL}/v1/internal/users/by-external-id/{resolved_user_id}",
                     headers=headers,
                 )
 
                 if response.status_code == 200:
                     user_data = response.json()
-                    preferred_provider = user_data.get("preferred_provider")
-                    if preferred_provider:
-                        try:
-                            return Provider(preferred_provider.lower())
-                        except ValueError:
-                            logger.warning(
-                                f"Invalid preferred provider: {preferred_provider}"
+
+                    if user_data.get("exists"):
+                        preferred_provider = user_data.get("preferred_provider")
+                        if preferred_provider:
+                            try:
+                                return Provider(preferred_provider.lower())
+                            except ValueError:
+                                logger.warning(
+                                    f"Invalid preferred provider: {preferred_provider}"
+                                )
+                                return None
+                        else:
+                            logger.info(
+                                f"No preferred provider set for user {resolved_user_id}"
                             )
                             return None
                     else:
-                        logger.info(
-                            f"No preferred provider set for user {resolved_user_id}"
+                        logger.warning(
+                            f"User not found for external_auth_id {resolved_user_id}"
                         )
                         return None
                 else:
