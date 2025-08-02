@@ -312,19 +312,39 @@ def upgrade() -> None:
     ):
         op.alter_column("packagelabel", "label_id", new_column_name="old_label_id")
 
+    # Drop existing primary key constraints BEFORE renaming columns
+    # This prevents issues with constraint references after column renames
+    try:
+        op.drop_constraint("package_pkey", "package", type_="primary")
+    except Exception:
+        pass  # Constraint might not exist or have different name
+
+    try:
+        op.drop_constraint("label_pkey", "label", type_="primary")
+    except Exception:
+        pass  # Constraint might not exist or have different name
+
+    try:
+        op.drop_constraint("trackingevent_pkey", "trackingevent", type_="primary")
+    except Exception:
+        pass  # Constraint might not exist or have different name
+
+    try:
+        op.drop_constraint("packagelabel_pkey", "packagelabel", type_="primary")
+    except Exception:
+        pass  # Constraint might not exist or have different name
+
+    try:
+        op.drop_constraint("carrierconfig_pkey", "carrierconfig", type_="primary")
+    except Exception:
+        pass  # Constraint might not exist or have different name
+
     # Rename UUID columns to be the primary columns
     op.alter_column("package", "uuid_id", new_column_name="id")
     op.alter_column("label", "uuid_id", new_column_name="id")
     op.alter_column("trackingevent", "uuid_id", new_column_name="id")
     op.alter_column("packagelabel", "uuid_id", new_column_name="id")
     op.alter_column("carrierconfig", "uuid_id", new_column_name="id")
-
-    # Drop existing primary key constraints before renaming
-    op.drop_constraint("package_pkey", "package", type_="primary")
-    op.drop_constraint("label_pkey", "label", type_="primary")
-    op.drop_constraint("trackingevent_pkey", "trackingevent", type_="primary")
-    op.drop_constraint("packagelabel_pkey", "packagelabel", type_="primary")
-    op.drop_constraint("carrierconfig_pkey", "carrierconfig", type_="primary")
 
     # Rename foreign key columns
     op.alter_column("trackingevent", "package_uuid_id", new_column_name="package_id")
