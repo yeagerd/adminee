@@ -45,6 +45,7 @@ except ImportError:
 # Import database setup for local testing
 try:
     from services.user.database import create_all_tables_for_testing
+
     DATABASE_SETUP_AVAILABLE = True
 except ImportError:
     DATABASE_SETUP_AVAILABLE = False

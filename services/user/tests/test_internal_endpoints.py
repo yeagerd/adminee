@@ -19,17 +19,19 @@ class TestInternalAPI(BaseUserManagementTest):
         super().setup_method()
         # Initialize database tables for testing
         import asyncio
+
         from services.user.database import create_all_tables_for_testing
-        
+
         try:
             asyncio.run(create_all_tables_for_testing())
         except RuntimeError:
             # If we're already in an event loop, create a task
             import concurrent.futures
+
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(asyncio.run, create_all_tables_for_testing())
                 future.result()
-        
+
         self.client = TestClient(self.app)
         self.auth_headers = self._get_auth_headers()
 
