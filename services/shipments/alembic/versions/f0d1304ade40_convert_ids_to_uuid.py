@@ -319,6 +319,13 @@ def upgrade() -> None:
     op.alter_column("packagelabel", "uuid_id", new_column_name="id")
     op.alter_column("carrierconfig", "uuid_id", new_column_name="id")
 
+    # Drop existing primary key constraints before renaming
+    op.drop_constraint("package_pkey", "package", type_="primary")
+    op.drop_constraint("label_pkey", "label", type_="primary")
+    op.drop_constraint("trackingevent_pkey", "trackingevent", type_="primary")
+    op.drop_constraint("packagelabel_pkey", "packagelabel", type_="primary")
+    op.drop_constraint("carrierconfig_pkey", "carrierconfig", type_="primary")
+
     # Rename foreign key columns
     op.alter_column("trackingevent", "package_uuid_id", new_column_name="package_id")
     op.alter_column("packagelabel", "package_uuid_id", new_column_name="package_id")
@@ -333,6 +340,13 @@ def upgrade() -> None:
     op.alter_column("trackingevent", "package_id", nullable=False)
     op.alter_column("packagelabel", "package_id", nullable=False)
     op.alter_column("packagelabel", "label_id", nullable=False)
+
+    # Recreate primary key constraints on the renamed UUID columns
+    op.create_primary_key("package_pkey", "package", ["id"])
+    op.create_primary_key("label_pkey", "label", ["id"])
+    op.create_primary_key("trackingevent_pkey", "trackingevent", ["id"])
+    op.create_primary_key("packagelabel_pkey", "packagelabel", ["id"])
+    op.create_primary_key("carrierconfig_pkey", "carrierconfig", ["id"])
 
     # Add new foreign key constraints
     op.create_foreign_key(

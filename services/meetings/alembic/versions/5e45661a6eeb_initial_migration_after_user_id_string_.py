@@ -43,10 +43,6 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("scheduled_slot_id", sa.UUID(), nullable=True),
         sa.Column("poll_token", sa.String(length=64), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["scheduled_slot_id"],
-            ["time_slots.id"],
-        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("poll_token"),
     )
@@ -121,6 +117,14 @@ def upgrade() -> None:
         sa.UniqueConstraint(
             "participant_id", "time_slot_id", name="_participant_slot_uc"
         ),
+    )
+    # Add foreign key constraint after all tables are created
+    op.create_foreign_key(
+        "fk_meeting_polls_scheduled_slot_id",
+        "meeting_polls",
+        "time_slots",
+        ["scheduled_slot_id"],
+        ["id"]
     )
     # ### end Alembic commands ###
 
