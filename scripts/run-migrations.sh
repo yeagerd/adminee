@@ -143,7 +143,7 @@ run_service_migrations "meetings" "$DB_URL_MEETINGS_MIGRATIONS"
 run_service_migrations "shipments" "$DB_URL_SHIPMENTS_MIGRATIONS"
 run_service_migrations "office" "$DB_URL_OFFICE_MIGRATIONS"
 run_service_migrations "chat" "$DB_URL_CHAT_MIGRATIONS"
-run_service_migrations "vector" "$DB_URL_VECTOR_MIGRATIONS"
+# Note: vector service uses Pinecone (cloud vector DB) and doesn't need local migrations
 
 if [ "$CHECK_ONLY" = true ]; then
     echo ""
@@ -159,5 +159,5 @@ else
     echo "  - briefly_shipments: Ready"
     echo "  - briefly_office: Ready"
     echo "  - briefly_chat: Ready"
-    echo "  - briefly_vector: Ready"
+    echo "  - vector_db: Uses Pinecone (cloud vector DB)"
 fi
