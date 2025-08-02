@@ -26,6 +26,7 @@ from services.user.database import (
     close_db,
     create_all_tables,
     get_async_session,
+    get_engine,
 )
 from services.user.integrations.oauth_config import get_oauth_config
 from services.user.middleware.sanitization import (
@@ -121,7 +122,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         app.redoc_url = None
 
     try:
-        await create_all_tables()
+        # Test database connection - tables should already exist from migrations
+        engine = get_engine()
+        async with engine.begin() as conn:
+            await conn.execute(text("SELECT 1"))
         logger.info("Database connected successfully")
     except Exception as e:
         logger.error(f"Failed to connect to database: {e}")
