@@ -6,6 +6,7 @@ strict timezone handling across all services.
 """
 
 from services.common.database_config import (
+    configure_session_pragmas,
     get_database_timezone_config,
     get_database_type,
     get_sqlite_connect_args,
@@ -23,16 +24,14 @@ class TestDatabaseConfiguration:
         # Verify required settings are present
         assert "check_same_thread" in connect_args
         assert "timeout" in connect_args
-        assert "pragmas" in connect_args
 
-        # Verify pragma settings
-        pragmas = connect_args["pragmas"]
-        assert pragmas["foreign_keys"] == "ON"
-        assert pragmas["journal_mode"] == "WAL"
-        assert pragmas["timezone"] == "UTC"
-        assert pragmas["strict"] == "ON"
-        assert pragmas["synchronous"] == "NORMAL"
-        assert pragmas["temp_store"] == "MEMORY"
+        # Verify that pragmas are NOT included in connect_args
+        # (aiosqlite doesn't support pragmas parameter directly)
+        assert "pragmas" not in connect_args
+
+        # Verify the actual values
+        assert connect_args["check_same_thread"] is False
+        assert connect_args["timeout"] == 30
 
     def test_is_sqlite_database(self):
         """Test SQLite database detection."""
@@ -61,6 +60,50 @@ class TestDatabaseConfiguration:
         assert config["timezone"] == "UTC"
         assert config["strict"] == "ON"
         assert config["foreign_keys"] == "ON"
+
+    async def test_configure_session_pragmas(self):
+        """Test that session pragmas are configured correctly."""
+
+        # Create a mock session for testing
+        class MockSession:
+            def __init__(self, is_sqlite=True):
+                self.bind = MockBind(is_sqlite)
+                self.executed_commands = []
+
+            async def execute(self, command):
+                self.executed_commands.append(str(command))
+
+        class MockBind:
+            def __init__(self, is_sqlite=True):
+                self.url = MockURL(is_sqlite)
+
+        class MockURL:
+            def __init__(self, is_sqlite=True):
+                self.is_sqlite = is_sqlite
+
+            def __str__(self):
+                return "sqlite:///test.db" if self.is_sqlite else "postgresql://test"
+
+        # Test SQLite session
+        sqlite_session = MockSession(is_sqlite=True)
+        await configure_session_pragmas(sqlite_session)
+
+        # Verify that the correct PRAGMA commands were executed
+        expected_commands = [
+            "PRAGMA timezone = 'UTC'",
+            "PRAGMA strict = ON",
+            "PRAGMA foreign_keys = ON",
+        ]
+
+        for command in expected_commands:
+            assert any(
+                command in cmd for cmd in sqlite_session.executed_commands
+            ), f"Expected command '{command}' not found in executed commands"
+
+        # Test non-SQLite session (should not execute any PRAGMA commands)
+        postgres_session = MockSession(is_sqlite=False)
+        await configure_session_pragmas(postgres_session)
+        assert len(postgres_session.executed_commands) == 0
 
     def test_create_strict_async_engine_url_conversion(self):
         """Test that SQLite URLs are properly converted to async URLs."""
