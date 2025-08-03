@@ -80,7 +80,7 @@ def mock_cache_manager():
 @pytest.fixture
 def mock_api_client_factory():
     """Mock the API client factory."""
-    with patch("services.office.api.email.api_client_factory") as mock:
+    with patch("services.office.api.email.get_api_client_factory") as mock:
         yield mock
 
 
@@ -236,6 +236,43 @@ class TestEmailMessagesEndpoint:
         mock_cache_manager.get_from_cache.assert_called_once()
         assert mock_cache_manager.set_to_cache.call_count == 0
 
+    @patch("services.office.api.email.fetch_provider_emails")
+    @pytest.mark.asyncio
+    async def test_get_email_messages_no_cache_bypass(
+        self,
+        mock_fetch_provider_emails,
+        mock_cache_manager,
+        mock_api_client_factory,
+        mock_email_message,
+        client,
+        auth_headers,
+    ):
+        """Test that no_cache parameter bypasses cache."""
+        # Mock fetch_provider_emails to return test data for both providers
+        mock_fetch_provider_emails.side_effect = [
+            ([mock_email_message], "google"),
+            ([mock_email_message], "microsoft"),
+        ]
+
+        # Mock cache to return None (cache miss)
+        mock_cache_manager.get_from_cache.return_value = None
+
+        response = client.get(
+            "/v1/email/messages?limit=10&no_cache=true", headers=auth_headers
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["success"] is True
+        assert data["cache_hit"] is False
+        assert len(data["data"]["messages"]) == 2  # One from each provider
+        assert data["data"]["providers_used"] == ["google", "microsoft"]
+        assert data["data"]["total_count"] == 2
+
+        # Verify that fetch_provider_emails was called twice (once for each provider)
+        assert mock_fetch_provider_emails.call_count == 2
+
 
 class TestEmailMessageDetailEndpoint:
     """Tests for the GET /email/messages/{message_id} endpoint."""
@@ -299,7 +336,7 @@ class TestSendEmailEndpoint:
             provider="google",
         )
 
-    @patch("services.office.api.email.api_client_factory.create_client")
+    @patch("services.office.api.email.get_api_client_factory")
     @pytest.mark.asyncio
     async def test_send_email_google_success(
         self,
@@ -328,7 +365,9 @@ class TestSendEmailEndpoint:
         )
 
         # Configure the factory to return our mock client
-        mock_create_client.return_value = mock_google_client
+        mock_factory = AsyncMock()
+        mock_factory.create_client = AsyncMock(return_value=mock_google_client)
+        mock_create_client.return_value = mock_factory
 
         response = client.post(
             "/v1/email/send",
@@ -340,14 +379,13 @@ class TestSendEmailEndpoint:
         data = response.json()
 
         assert data["success"] is True
-        assert data["data"]["message_id"] == "gmail_sent_123"
-        assert data["data"]["provider"] == "google"
-        assert data["data"]["status"] == "sent"
+        assert data["data"]["id"] == "gmail_sent_123"
 
         # Verify API client was created
-        mock_create_client.assert_called_once_with("test_user", "google")
+        mock_create_client.assert_called_once()
+        mock_factory.create_client.assert_called_once_with("test_user", "google")
 
-    @patch("services.office.api.email.api_client_factory.create_client")
+    @patch("services.office.api.email.get_api_client_factory")
     @pytest.mark.asyncio
     async def test_send_email_microsoft_success(
         self,
@@ -377,7 +415,9 @@ class TestSendEmailEndpoint:
         mock_microsoft_client.send_message = AsyncMock(return_value=None)
 
         # Configure the factory to return our mock client
-        mock_create_client.return_value = mock_microsoft_client
+        mock_factory = AsyncMock()
+        mock_factory.create_client = AsyncMock(return_value=mock_microsoft_client)
+        mock_create_client.return_value = mock_factory
 
         response = client.post(
             "/v1/email/send",
@@ -390,22 +430,23 @@ class TestSendEmailEndpoint:
 
         assert data["success"] is True
         # Microsoft generates a custom ID since the API doesn't return one
-        assert data["data"]["message_id"].startswith("outlook_sent_")
-        assert data["data"]["provider"] == "microsoft"
-        assert data["data"]["status"] == "sent"
+        assert data["data"]["id"].startswith("outlook_sent_")
 
         # Verify API client was created
-        mock_create_client.assert_called_once_with("test_user", "microsoft")
+        mock_create_client.assert_called_once()
+        mock_factory.create_client.assert_called_once_with("test_user", "microsoft")
 
-    @patch("services.office.api.email.api_client_factory.create_client")
+    @patch("services.office.api.email.get_user_email_providers")
+    @patch("services.office.api.email.get_api_client_factory")
     @pytest.mark.asyncio
     async def test_send_email_default_provider(
         self,
         mock_create_client,
+        mock_get_user_providers,
         client,
         auth_headers,
     ):
-        """Test that default provider is Google when not specified."""
+        """Test that default provider is dynamically selected when not specified."""
         # Create request without provider
         request_data = {
             "to": [{"email": "recipient@example.com", "name": "Test Recipient"}],
@@ -413,8 +454,13 @@ class TestSendEmailEndpoint:
             "body": "Test body",
         }
 
+        # Mock user providers to return Google as first available
+        mock_get_user_providers.return_value = ["google", "microsoft"]
+
         # Mock API client factory to return None (no client available)
-        mock_create_client.return_value = None
+        mock_factory = AsyncMock()
+        mock_factory.create_client = AsyncMock(return_value=None)
+        mock_create_client.return_value = mock_factory
 
         response = client.post(
             "/v1/email/send",
@@ -422,9 +468,46 @@ class TestSendEmailEndpoint:
             headers=auth_headers,
         )
 
-        # Should fail because no client available, but verify it tried Google
-        assert response.status_code == 502  # ServiceError now returns 502
-        mock_create_client.assert_called_once_with("test_user", "google")
+        # Should fail because no client available, but verify it tried the first available provider
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is False
+        assert "Failed to create API client" in data["error"]["message"]
+        mock_get_user_providers.assert_called_once_with("test_user")
+        mock_create_client.assert_called_once()
+        mock_factory.create_client.assert_called_once_with("test_user", "google")
+
+    @patch("services.office.api.email.get_user_email_providers")
+    @pytest.mark.asyncio
+    async def test_send_email_no_providers_available(
+        self,
+        mock_get_user_providers,
+        client,
+        auth_headers,
+    ):
+        """Test sending email when no email providers are available."""
+        # Create request without provider
+        request_data = {
+            "to": [{"email": "recipient@example.com", "name": "Test Recipient"}],
+            "subject": "Test Email",
+            "body": "Test body",
+        }
+
+        # Mock user providers to return empty list
+        mock_get_user_providers.return_value = []
+
+        response = client.post(
+            "/v1/email/send",
+            json=request_data,
+            headers=auth_headers,
+        )
+
+        # Should fail because no providers available
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is False
+        assert "No email providers available" in data["error"]["message"]
+        mock_get_user_providers.assert_called_once_with("test_user")
 
     @pytest.mark.asyncio
     async def test_send_email_invalid_provider(self, client, auth_headers):
@@ -442,10 +525,50 @@ class TestSendEmailEndpoint:
             headers=auth_headers,
         )
 
-        assert response.status_code == 422  # ValidationError now returns 422
-        assert "Invalid provider" in response.json()["message"]
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is False
+        assert "Unsupported provider" in data["error"]["message"]
 
-    @patch("services.office.api.email.api_client_factory.create_client")
+    @patch("services.office.api.email.get_api_client_factory")
+    @pytest.mark.asyncio
+    async def test_send_email_case_insensitive_provider(
+        self,
+        mock_create_client,
+        client,
+        auth_headers,
+    ):
+        """Test that provider names are handled case-insensitively."""
+        # Create request with capitalized provider
+        request_data = {
+            "to": [{"email": "recipient@example.com", "name": "Test Recipient"}],
+            "subject": "Test Email",
+            "body": "Test body",
+            "provider": "Google",  # Capitalized
+        }
+
+        # Mock API client factory to return None (no client available)
+        mock_factory = AsyncMock()
+        mock_factory.create_client = AsyncMock(return_value=None)
+        mock_create_client.return_value = mock_factory
+
+        response = client.post(
+            "/v1/email/send",
+            json=request_data,
+            headers=auth_headers,
+        )
+
+        # Should fail because no client available, but verify it tried the normalized provider
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is False
+        assert "Failed to create API client" in data["error"]["message"]
+        mock_create_client.assert_called_once()
+        mock_factory.create_client.assert_called_once_with(
+            "test_user", "google"
+        )  # Lowercase
+
+    @patch("services.office.api.email.get_api_client_factory")
     @pytest.mark.asyncio
     async def test_send_email_no_client_available(
         self,
@@ -456,7 +579,9 @@ class TestSendEmailEndpoint:
     ):
         """Test sending email when no API client is available."""
         # Mock API client factory to return None
-        mock_create_client.return_value = None
+        mock_factory = AsyncMock()
+        mock_factory.create_client = AsyncMock(return_value=None)
+        mock_create_client.return_value = mock_factory
 
         response = client.post(
             "/v1/email/send",
@@ -464,8 +589,10 @@ class TestSendEmailEndpoint:
             headers=auth_headers,
         )
 
-        assert response.status_code == 502  # ServiceError now returns 502
-        assert "Failed to create API client" in response.json()["message"]
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is False
+        assert "Failed to create API client" in data["error"]["message"]
 
     @pytest.mark.asyncio
     async def test_send_email_missing_user_id(self, send_email_request, client):
@@ -497,7 +624,7 @@ class TestSendEmailEndpoint:
 
         assert response.status_code == 422  # Validation error
 
-    @patch("services.office.api.email.api_client_factory.create_client")
+    @patch("services.office.api.email.get_api_client_factory")
     @pytest.mark.asyncio
     async def test_send_email_with_all_fields(
         self,
@@ -525,7 +652,9 @@ class TestSendEmailEndpoint:
         )
 
         # Configure the factory to return our mock client
-        mock_create_client.return_value = mock_google_client
+        mock_factory = AsyncMock()
+        mock_factory.create_client = AsyncMock(return_value=mock_google_client)
+        mock_create_client.return_value = mock_factory
 
         request_data = {
             "to": [{"email": "to@example.com", "name": "To Recipient"}],
@@ -548,14 +677,14 @@ class TestSendEmailEndpoint:
         data = response.json()
 
         assert data["success"] is True
-        assert data["data"]["message_id"] == "gmail_sent_789"
-        assert data["data"]["provider"] == "google"
+        assert data["data"]["id"] == "gmail_sent_789"
 
         # Verify the client send_message was called
         mock_google_client.send_message.assert_called_once()
 
         # Verify API client was created
-        mock_create_client.assert_called_once_with("test_user", "google")
+        mock_create_client.assert_called_once()
+        mock_factory.create_client.assert_called_once_with("test_user", "google")
 
     @pytest.mark.asyncio
     async def test_get_email_message_invalid_id_format(self, client, auth_headers):
@@ -632,7 +761,7 @@ class TestEmailHelperFunctions:
 class TestFetchProviderEmails:
     """Tests for the fetch_provider_emails function."""
 
-    @patch("services.office.api.email.api_client_factory")
+    @patch("services.office.api.email.get_api_client_factory")
     @patch("services.office.api.email.normalize_google_email")
     @pytest.mark.asyncio
     async def test_fetch_google_emails_success(
@@ -645,13 +774,15 @@ class TestFetchProviderEmails:
         mock_client = AsyncMock()
         mock_client.get_messages.return_value = {"messages": [{"id": "test123"}]}
         mock_client.get_message.return_value = {"id": "test123", "payload": {}}
-        mock_api_client_factory.create_client = AsyncMock(return_value=mock_client)
+        mock_factory = AsyncMock()
+        mock_factory.create_client = AsyncMock(return_value=mock_client)
+        mock_api_client_factory.return_value = mock_factory
 
         # Mock normalizer
         mock_normalize_google_email.return_value = mock_email_message
 
         result = await fetch_provider_emails(
-            "req_123", "test_user", "google", 10, False, None, None, None
+            "req_123", "test_user", "google", 10, False, None, None, None, None
         )
 
         messages, provider = result
@@ -659,7 +790,7 @@ class TestFetchProviderEmails:
         assert provider == "google"
         assert messages[0] == mock_email_message
 
-    @patch("services.office.api.email.api_client_factory")
+    @patch("services.office.api.email.get_api_client_factory")
     @patch("services.office.api.email.normalize_microsoft_email")
     @pytest.mark.asyncio
     async def test_fetch_microsoft_emails_success(
@@ -674,13 +805,15 @@ class TestFetchProviderEmails:
         # Mock API client
         mock_client = AsyncMock()
         mock_client.get_messages.return_value = {"value": [{"id": "test123"}]}
-        mock_api_client_factory.create_client = AsyncMock(return_value=mock_client)
+        mock_factory = AsyncMock()
+        mock_factory.create_client = AsyncMock(return_value=mock_client)
+        mock_api_client_factory.return_value = mock_factory
 
         # Mock normalizer
         mock_normalize_microsoft_email.return_value = mock_email_message
 
         result = await fetch_provider_emails(
-            "req_123", "test_user", "microsoft", 10, False, None, None, None
+            "req_123", "test_user", "microsoft", 10, False, None, None, None, None
         )
 
         messages, provider = result
@@ -688,7 +821,7 @@ class TestFetchProviderEmails:
         assert provider == "microsoft"
         assert messages[0] == mock_email_message
 
-    @patch("services.office.api.email.api_client_factory")
+    @patch("services.office.api.email.get_api_client_factory")
     @pytest.mark.asyncio
     async def test_fetch_provider_emails_api_client_failure(
         self, mock_api_client_factory
@@ -697,13 +830,15 @@ class TestFetchProviderEmails:
         from services.office.api.email import fetch_provider_emails
 
         # Mock API client factory to raise exception
-        mock_api_client_factory.create_client = AsyncMock(
+        mock_factory = AsyncMock()
+        mock_factory.create_client = AsyncMock(
             side_effect=Exception("Token retrieval failed")
         )
+        mock_api_client_factory.return_value = mock_factory
 
         with pytest.raises(Exception) as exc_info:
             await fetch_provider_emails(
-                "req_123", "test_user", "google", 10, False, None, None, None
+                "req_123", "test_user", "google", 10, False, None, None, None, None
             )
 
         assert "Token retrieval failed" in str(exc_info.value)
@@ -712,7 +847,7 @@ class TestFetchProviderEmails:
 class TestFetchSingleMessage:
     """Tests for the fetch_single_message function."""
 
-    @patch("services.office.api.email.api_client_factory")
+    @patch("services.office.api.email.get_api_client_factory")
     @patch("services.office.api.email.normalize_google_email")
     @pytest.mark.asyncio
     async def test_fetch_single_google_message_success(
@@ -724,7 +859,9 @@ class TestFetchSingleMessage:
         # Mock API client
         mock_client = AsyncMock()
         mock_client.get_message.return_value = {"id": "test123", "payload": {}}
-        mock_api_client_factory.create_client = AsyncMock(return_value=mock_client)
+        mock_factory = AsyncMock()
+        mock_factory.create_client = AsyncMock(return_value=mock_client)
+        mock_api_client_factory.return_value = mock_factory
 
         # Mock normalizer
         mock_normalize_google_email.return_value = mock_email_message
@@ -736,7 +873,7 @@ class TestFetchSingleMessage:
         assert result == mock_email_message
         mock_client.get_message.assert_called_once_with("test123", format="full")
 
-    @patch("services.office.api.email.api_client_factory")
+    @patch("services.office.api.email.get_api_client_factory")
     @patch("services.office.api.email.normalize_microsoft_email")
     @pytest.mark.asyncio
     async def test_fetch_single_microsoft_message_success(
@@ -751,7 +888,9 @@ class TestFetchSingleMessage:
         # Mock API client
         mock_client = AsyncMock()
         mock_client.get_message.return_value = {"id": "test123"}
-        mock_api_client_factory.create_client = AsyncMock(return_value=mock_client)
+        mock_factory = AsyncMock()
+        mock_factory.create_client = AsyncMock(return_value=mock_client)
+        mock_api_client_factory.return_value = mock_factory
 
         # Mock normalizer
         mock_normalize_microsoft_email.return_value = mock_email_message
@@ -763,7 +902,7 @@ class TestFetchSingleMessage:
         assert result == mock_email_message
         mock_client.get_message.assert_called_once_with("test123")
 
-    @patch("services.office.api.email.api_client_factory")
+    @patch("services.office.api.email.get_api_client_factory")
     @pytest.mark.asyncio
     async def test_fetch_single_message_not_found(self, mock_api_client_factory):
         """Test handling of message not found."""
@@ -772,10 +911,290 @@ class TestFetchSingleMessage:
         # Mock API client to raise exception
         mock_client = AsyncMock()
         mock_client.get_message.side_effect = Exception("Message not found")
-        mock_api_client_factory.create_client = AsyncMock(return_value=mock_client)
+        mock_factory = AsyncMock()
+        mock_factory.create_client = AsyncMock(return_value=mock_client)
+        mock_api_client_factory.return_value = mock_factory
 
         result = await fetch_single_message(
             "req_123", "test_user", "google", "nonexistent", True
         )
 
         assert result is None
+
+
+class TestEmailFoldersEndpoint:
+    """Tests for the GET /email/folders endpoint."""
+
+    @pytest.fixture
+    def mock_email_folder(self):
+        """Create a mock EmailFolder for testing."""
+        from services.office.schemas import EmailFolder, Provider
+
+        return EmailFolder(
+            label="inbox",
+            name="Inbox",
+            provider=Provider.GOOGLE,
+            provider_folder_id="INBOX",
+            account_email="test@example.com",
+            account_name="Test Account",
+            is_system=True,
+            message_count=42,
+        )
+
+    @patch("services.office.api.email.fetch_provider_folders")
+    @pytest.mark.asyncio
+    async def test_get_email_folders_success(
+        self,
+        mock_fetch_provider_folders,
+        mock_cache_manager,
+        mock_api_client_factory,
+        mock_email_folder,
+        client,
+        auth_headers,
+    ):
+        """Test successful email folders fetching."""
+        # Mock the fetch_provider_folders function
+        mock_fetch_provider_folders.return_value = ([mock_email_folder], "google")
+
+        # Mock cache miss
+        mock_cache_manager.get_from_cache.return_value = None
+
+        response = client.get("/v1/email/folders", headers=auth_headers)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["cache_hit"] is False
+        assert "request_id" in data
+        assert "data" in data
+
+        # Verify the response structure
+        response_data = data["data"]
+        assert "folders" in response_data
+        assert "providers_used" in response_data
+        assert "provider_errors" in response_data
+
+        # Verify folders data
+        folders = response_data["folders"]
+        assert len(folders) == 1
+        assert folders[0]["label"] == "inbox"
+        assert folders[0]["name"] == "Inbox"
+        assert folders[0]["provider"] == "google"
+
+        # Verify cache was called
+        mock_cache_manager.set_to_cache.assert_called_once()
+
+        # Verify the cached data is serializable (this would catch the original bug)
+        cache_call_args = mock_cache_manager.set_to_cache.call_args
+        cached_data = cache_call_args[0][1]  # Second argument is the data
+
+        # This test would have caught the serialization error
+        import json
+
+        try:
+            json.dumps(cached_data)
+        except TypeError as e:
+            pytest.fail(f"Cache data is not JSON serializable: {e}")
+
+    @pytest.mark.asyncio
+    async def test_get_email_folders_with_cache_hit(
+        self,
+        mock_cache_manager,
+        mock_email_folder,
+        client,
+        auth_headers,
+    ):
+        """Test email folders with cache hit."""
+        # Mock cache hit with serialized data
+        cached_data = {
+            "folders": [mock_email_folder.model_dump()],
+            "providers_used": ["google"],
+            "provider_errors": {},
+        }
+        mock_cache_manager.get_from_cache.return_value = cached_data
+
+        response = client.get("/v1/email/folders", headers=auth_headers)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["cache_hit"] is True
+        assert "request_id" in data
+
+        # Verify the response structure
+        response_data = data["data"]
+        assert "folders" in response_data
+        assert len(response_data["folders"]) == 1
+
+        # Verify the folder was properly reconstructed from cache
+        folder = response_data["folders"][0]
+        assert folder["label"] == "inbox"
+        assert folder["name"] == "Inbox"
+        assert folder["provider"] == "google"
+
+    @patch("services.office.api.email.fetch_provider_folders")
+    @pytest.mark.asyncio
+    async def test_get_email_folders_with_provider_errors(
+        self,
+        mock_fetch_provider_folders,
+        mock_cache_manager,
+        mock_api_client_factory,
+        mock_email_folder,
+        client,
+        auth_headers,
+    ):
+        """Test email folders with provider errors."""
+        # Mock one provider success, one failure
+        mock_fetch_provider_folders.side_effect = [
+            ([mock_email_folder], "google"),  # Google succeeds
+            Exception("Microsoft API error"),  # Microsoft fails
+        ]
+
+        # Mock cache miss
+        mock_cache_manager.get_from_cache.return_value = None
+
+        response = client.get(
+            "/v1/email/folders?providers=google&providers=microsoft",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["cache_hit"] is False
+
+        response_data = data["data"]
+        assert "provider_errors" in response_data
+        assert "microsoft" in response_data["provider_errors"]
+        assert "Microsoft API error" in response_data["provider_errors"]["microsoft"]
+
+    @pytest.mark.asyncio
+    async def test_get_email_folders_invalid_providers(self, client, auth_headers):
+        """Test email folders with invalid providers."""
+        response = client.get(
+            "/v1/email/folders?providers=invalid", headers=auth_headers
+        )
+
+        # The endpoint returns 502 when no valid providers are specified
+        assert response.status_code == 502
+
+    @pytest.mark.asyncio
+    async def test_get_email_folders_missing_user_id(self, client):
+        """Test email folders without user ID."""
+        response = client.get("/v1/email/folders")
+
+        assert response.status_code == 401  # Unauthorized
+
+    @patch("services.office.api.email.fetch_provider_folders")
+    @pytest.mark.asyncio
+    async def test_get_email_folders_no_cache_bypass(
+        self,
+        mock_fetch_provider_folders,
+        mock_cache_manager,
+        mock_api_client_factory,
+        mock_email_folder,
+        client,
+        auth_headers,
+    ):
+        """Test email folders with no_cache bypass."""
+        # Mock the fetch_provider_folders function
+        mock_fetch_provider_folders.return_value = ([mock_email_folder], "google")
+
+        # Mock cache hit (should be ignored due to no_cache=True)
+        cached_data = {"folders": [], "providers_used": [], "provider_errors": {}}
+        mock_cache_manager.get_from_cache.return_value = cached_data
+
+        response = client.get("/v1/email/folders?no_cache=true", headers=auth_headers)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["cache_hit"] is False  # Should be False due to no_cache bypass
+
+        # Verify fresh data was fetched
+        mock_fetch_provider_folders.assert_called()
+
+    @patch("services.office.api.email.fetch_provider_folders")
+    @pytest.mark.asyncio
+    async def test_get_email_folders_serialization_error_caught(
+        self,
+        mock_fetch_provider_folders,
+        mock_cache_manager,
+        mock_api_client_factory,
+        mock_email_folder,
+        client,
+        auth_headers,
+    ):
+        """Test that would have caught the original serialization error."""
+        # Mock the fetch_provider_folders function
+        mock_fetch_provider_folders.return_value = ([mock_email_folder], "google")
+
+        # Mock cache miss
+        mock_cache_manager.get_from_cache.return_value = None
+
+        # This test specifically verifies that the cache data is serializable
+        # The original bug would have caused this test to fail
+        response = client.get("/v1/email/folders", headers=auth_headers)
+
+        assert response.status_code == 200
+
+        # Verify cache was called and the data is serializable
+        mock_cache_manager.set_to_cache.assert_called_once()
+        cache_call_args = mock_cache_manager.set_to_cache.call_args
+        cached_data = cache_call_args[0][1]  # Second argument is the data
+
+        # This assertion would have failed with the original bug
+        import json
+
+        try:
+            serialized = json.dumps(cached_data)
+            # Additional verification that the serialized data can be deserialized
+            deserialized = json.loads(serialized)
+            assert "folders" in deserialized
+            assert len(deserialized["folders"]) == 1
+            assert deserialized["folders"][0]["label"] == "inbox"
+        except TypeError as e:
+            pytest.fail(f"Cache data is not JSON serializable: {e}")
+        except json.JSONDecodeError as e:
+            pytest.fail(f"Serialized cache data is not valid JSON: {e}")
+
+    @patch("services.office.api.email.fetch_provider_folders")
+    @pytest.mark.asyncio
+    async def test_get_email_folders_duplicate_removal(
+        self,
+        mock_fetch_provider_folders,
+        mock_cache_manager,
+        mock_api_client_factory,
+        mock_email_folder,
+        client,
+        auth_headers,
+    ):
+        """Test that duplicate folders are removed based on label."""
+        # Create a duplicate folder with same label but different name
+        duplicate_folder = mock_email_folder.model_copy(
+            update={"name": "Inbox (Duplicate)"}
+        )
+
+        # Mock both providers returning the same folder
+        mock_fetch_provider_folders.side_effect = [
+            ([mock_email_folder], "google"),
+            ([duplicate_folder], "microsoft"),
+        ]
+
+        # Mock cache miss
+        mock_cache_manager.get_from_cache.return_value = None
+
+        response = client.get(
+            "/v1/email/folders?providers=google&providers=microsoft",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        response_data = data["data"]
+
+        # Should only have one folder (duplicates removed)
+        assert len(response_data["folders"]) == 1
+        assert response_data["folders"][0]["label"] == "inbox"
+        # Should keep the first occurrence (Google's version)
+        assert response_data["folders"][0]["name"] == "Inbox"

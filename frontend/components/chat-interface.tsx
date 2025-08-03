@@ -18,7 +18,7 @@ import gatewayClient from "@/lib/gateway-client"
 import { History, Loader2, Plus, Send } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useCallback, useEffect, useRef, useState } from "react"
-import LoadingBubble from './ui/loading-bubble';
+import LoadingBubble from './ui/loading-bubble'
 
 
 type Message = {
@@ -109,7 +109,6 @@ function ChatBubble({ content, sender, windowWidth }: { content: React.ReactNode
     if (words.some(word => isUnbreakableString(word, threshold))) {
         breakClass = "break-all";
     }
-    console.log('Chat bubble word break threshold:', threshold, 'breakClass:', breakClass);
     return (
         <div
             className={`max-w-[95%] min-w-0 rounded-lg p-2 text-sm overflow-anywhere ${breakClass} ${sender === "user" ? "bg-teal-600 text-white ml-2" : "bg-gray-100 text-gray-800 mr-2"}`}
@@ -306,6 +305,8 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
                             let eventName: string | null = null
                             let serverMessageId: string | null = null
                             let streamedDraft: DraftData | null = null;
+                            const processedEventIds = new Set<string>(); // Track processed SSE event IDs
+                            let eventId: string | null = null; // Track current SSE event ID
                             while (true) {
                                 const { done, value } = await reader.read()
                                 if (done) break
@@ -315,7 +316,9 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
                                 buffer = lines.pop() ?? ""
 
                                 for (const line of lines) {
-                                    if (line.startsWith("event:")) {
+                                    if (line.startsWith("id:")) {
+                                        eventId = line.substring(3).trim();
+                                    } else if (line.startsWith("event:")) {
                                         eventName = line.substring(6).trim()
                                     } else if (line.startsWith("data:")) {
                                         const dataStr = line.substring(5).trim()
@@ -334,12 +337,22 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
                                             try {
                                                 const data = JSON.parse(dataStr)
                                                 if (data.delta) {
+                                                    // Check if we've already processed this event ID
+                                                    if (eventId && processedEventIds.has(eventId)) {
+                                                        continue; // Use continue instead of return
+                                                    }
+                                                    if (eventId) {
+                                                        processedEventIds.add(eventId);
+                                                    }
                                                     setMessages((prev) => {
-                                                        const newMessages = [...prev]
-                                                        const lastMessage = newMessages[newMessages.length - 1]
-                                                        if (lastMessage.sender === "ai") {
-                                                            lastMessage.content += data.delta
-                                                        }
+                                                        const newMessages = prev.map((msg, index) => {
+                                                            if (index === prev.length - 1 && msg.sender === "ai") {
+                                                                const oldContent = msg.content
+                                                                const newContent = oldContent + data.delta
+                                                                return { ...msg, content: newContent }
+                                                            }
+                                                            return msg
+                                                        })
                                                         return newMessages
                                                     })
                                                 }
@@ -349,6 +362,7 @@ export default function ChatInterface({ containerRef, onDraftReceived }: ChatInt
                                         }
                                     } else if (line.trim() === "") {
                                         eventName = null // Reset on blank line
+                                        // Don't reset eventId here - keep it for the next event
                                     }
                                 }
                             }

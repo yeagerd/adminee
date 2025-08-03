@@ -1,4 +1,5 @@
 import AuthSessionProvider from '@/components/auth/session-provider';
+import { ChatPanelProvider } from '@/contexts/chat-panel-context';
 import { IntegrationsProvider } from '@/contexts/integrations-context';
 import { UserPreferencesProvider } from '@/contexts/settings-context';
 import type { Metadata } from 'next';
@@ -20,7 +21,9 @@ export default function RootLayout({
                 <AuthSessionProvider>
                     <IntegrationsProvider>
                         <UserPreferencesProvider>
-                            {children}
+                            <ChatPanelProvider>
+                                {children}
+                            </ChatPanelProvider>
                         </UserPreferencesProvider>
                     </IntegrationsProvider>
                 </AuthSessionProvider>

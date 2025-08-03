@@ -1,18 +1,21 @@
 import { gatewayClient } from '@/lib/gateway-client';
+import { PACKAGE_STATUS, PACKAGE_STATUS_OPTIONS, PackageStatus } from '@/lib/package-status';
 import { useState } from 'react';
 
 export interface TrackingEvent {
+    id?: string;
     event_date: string;
-    status: string;
+    status: PackageStatus;
     location?: string;
     description?: string;
+    created_at?: string;
 }
 
 export interface Package {
-    id?: number;
+    id?: string; // Changed from number to string (UUID)
     tracking_number: string;
     carrier: string;
-    status: string;
+    status: PackageStatus;
     estimated_delivery?: string;
     actual_delivery?: string;
     recipient_name?: string;
@@ -24,13 +27,12 @@ export interface Package {
     email_message_id?: string;
     labels?: (string | { name: string })[];
     events?: TrackingEvent[];
-    [key: string]: unknown;
 }
 
 const initialState: Package = {
     tracking_number: '',
     carrier: '',
-    status: 'pending',
+    status: PACKAGE_STATUS.PENDING,
     estimated_delivery: '',
     actual_delivery: '',
     recipient_name: '',
@@ -42,15 +44,7 @@ const initialState: Package = {
     email_message_id: '',
 };
 
-const STATUS_OPTIONS = [
-    { value: 'pending', label: 'Pending' },
-    { value: 'in_transit', label: 'In Transit' },
-    { value: 'out_for_delivery', label: 'Out for Delivery' },
-    { value: 'delivered', label: 'Delivered' },
-    { value: 'delayed', label: 'Delayed' },
-    { value: 'exception', label: 'Exception' },
-    { value: 'cancelled', label: 'Cancelled' },
-];
+
 
 export default function AddPackageModal({ onClose, onAdd }: { onClose: () => void, onAdd: () => void }) {
     const [form, setForm] = useState(initialState);
@@ -67,22 +61,18 @@ export default function AddPackageModal({ onClose, onAdd }: { onClose: () => voi
         setLoading(true);
         setError(null);
         try {
-            await gatewayClient.request('/api/v1/packages', {
-                method: 'POST',
-                body: {
-                    tracking_number: form.tracking_number,
-                    carrier: form.carrier,
-                    status: form.status,
-                    estimated_delivery: form.estimated_delivery || null,
-                    actual_delivery: form.actual_delivery || null,
-                    recipient_name: form.recipient_name || null,
-                    recipient_address: form.recipient_address || null,
-                    shipper_name: form.shipper_name || null,
-                    package_description: form.package_description || null,
-                    order_number: form.order_number || null,
-                    tracking_link: form.tracking_link || null,
-                    email_message_id: form.email_message_id || null,
-                },
+            await gatewayClient.createPackage({
+                tracking_number: form.tracking_number,
+                carrier: form.carrier,
+                status: form.status,
+                estimated_delivery: form.estimated_delivery || undefined,
+                actual_delivery: form.actual_delivery || undefined,
+                recipient_name: form.recipient_name || undefined,
+                shipper_name: form.shipper_name || undefined,
+                package_description: form.package_description || undefined,
+                order_number: form.order_number || undefined,
+                tracking_link: form.tracking_link || undefined,
+                email_message_id: form.email_message_id || undefined,
             });
             onAdd();
         } catch (err: unknown) {
@@ -106,7 +96,7 @@ export default function AddPackageModal({ onClose, onAdd }: { onClose: () => voi
                     <input name="tracking_number" value={form.tracking_number} onChange={handleChange} placeholder="Tracking Number" className="w-full border rounded px-2 py-1" required />
                     <input name="carrier" value={form.carrier} onChange={handleChange} placeholder="Carrier" className="w-full border rounded px-2 py-1" required />
                     <select name="status" value={form.status} onChange={handleChange} className="w-full border rounded px-2 py-1">
-                        {STATUS_OPTIONS.map(opt => (
+                        {PACKAGE_STATUS_OPTIONS.map(opt => (
                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
                     </select>

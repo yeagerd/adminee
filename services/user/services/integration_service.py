@@ -5,6 +5,7 @@ Provides comprehensive OAuth integration management including provider configura
 token handling, lifecycle management, and health monitoring.
 """
 
+import asyncio
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
@@ -33,6 +34,7 @@ from services.user.schemas.integration import (
 )
 from services.user.security.encryption import TokenEncryption
 from services.user.services.audit_service import audit_logger
+from services.user.settings import get_settings
 
 # Set up logging
 logger = get_logger(__name__)
@@ -51,6 +53,9 @@ class IntegrationService:
         self.oauth_config = get_oauth_config()
         self.token_encryption = TokenEncryption()
         self.logger = logger
+        # Track ongoing refresh operations to prevent duplicates
+        self._ongoing_refreshes: Dict[str, asyncio.Future] = {}
+        self._refresh_lock = asyncio.Lock()
 
     async def get_user_integrations(
         self,
@@ -433,6 +438,56 @@ class IntegrationService:
             NotFoundError: If user or integration not found
             ServiceError: If refresh fails
         """
+        # Create a unique key for this refresh operation
+        refresh_key = f"{user_id}:{provider.value}"
+        refresh_future: asyncio.Future | None = None
+
+        # Check if a refresh is already in progress
+        async with self._refresh_lock:
+            if refresh_key in self._ongoing_refreshes:
+                self.logger.info(
+                    f"Refresh already in progress for user {user_id}, provider {provider.value}. "
+                    "Waiting for it to complete."
+                )
+                # Get the existing future before releasing the lock
+                existing_future = self._ongoing_refreshes[refresh_key]
+            else:
+                # No existing refresh, create a new one
+                existing_future = None
+                refresh_future = asyncio.Future()
+                self._ongoing_refreshes[refresh_key] = refresh_future
+
+        # If there was an existing refresh, wait for it
+        if existing_future is not None:
+            try:
+                # Wait for the existing future to complete
+                await asyncio.wait_for(
+                    existing_future, timeout=get_settings().refresh_timeout_seconds
+                )
+                # If the future completed, get its result. If an exception was stored,
+                # this will raise it, propagating the error to the caller.
+                return existing_future.result()
+            except asyncio.TimeoutError:
+                # If the refresh times out, we need to clean up and start a new one
+                self.logger.warning(
+                    f"Refresh operation timed out for user {user_id}, provider {provider.value}. "
+                    "Removing from tracking and proceeding with new refresh."
+                )
+                # Re-acquire lock to clean up the timed-out future
+                async with self._refresh_lock:
+                    if refresh_key in self._ongoing_refreshes:
+                        # Only remove if it's the same future we were waiting for
+                        if self._ongoing_refreshes[refresh_key] is existing_future:
+                            del self._ongoing_refreshes[refresh_key]
+                # Create a new refresh operation
+                async with self._refresh_lock:
+                    refresh_future = asyncio.Future()
+                    self._ongoing_refreshes[refresh_key] = refresh_future
+            except Exception as e:
+                # If the future completed with an exception, re-raise it
+                raise e
+
+        # At this point, we have a refresh_future that we created and need to execute
         try:
             # Use a single session for the entire operation
             async_session = get_async_session()
@@ -496,11 +551,11 @@ class IntegrationService:
                             # Ensure expires_at is timezone-aware
                             if expires_at.tzinfo is None:
                                 expires_at = expires_at.replace(tzinfo=timezone.utc)
-                            # Refresh if expires within 5 minutes
+                            # Return existing token if it expires in more than 5 minutes
                             if expires_at > datetime.now(timezone.utc) + timedelta(
                                 minutes=5
                             ):
-                                return TokenRefreshResponse(
+                                result = TokenRefreshResponse(
                                     success=True,
                                     integration_id=integration.id,
                                     provider=provider,
@@ -508,6 +563,16 @@ class IntegrationService:
                                     refreshed_at=datetime.now(timezone.utc),
                                     error=None,
                                 )
+
+                                # Set the future result so waiting callers get the response
+                                # refresh_future is guaranteed to be non-None here because:
+                                # - If there was an existing future, we either returned early (success) or created a new one (timeout)
+                                # - If there was no existing future, we created refresh_future in the else block
+                                assert (
+                                    refresh_future is not None
+                                ), "refresh_future should be assigned by this point"
+                                refresh_future.set_result(result)
+                                return result
                     except (ValueError, TypeError) as e:
                         self.logger.warning(
                             f"Invalid expires_at format for user {user_id}, provider {provider.value}: {tokens['expires_at']}",
@@ -566,32 +631,26 @@ class IntegrationService:
 
             new_expires_at: Optional[datetime] = None
             if new_tokens.get("expires_in"):
-                # Google-style: expires_in is seconds from now
                 new_expires_at = datetime.now(timezone.utc) + timedelta(
-                    seconds=new_tokens["expires_in"]
+                    seconds=int(new_tokens["expires_in"])
                 )
             elif new_tokens.get("expires_at"):
-                # Microsoft-style: expires_at is absolute timestamp
-                try:
-                    new_expires_at = datetime.fromisoformat(new_tokens["expires_at"])
-                    # Ensure expires_at is timezone-aware
-                    if new_expires_at.tzinfo is None:
-                        new_expires_at = new_expires_at.replace(tzinfo=timezone.utc)
-                except (ValueError, TypeError) as e:
-                    self.logger.warning(
-                        f"Invalid expires_at format in refresh response: {new_tokens.get('expires_at')}",
-                        error=str(e),
-                    )
-                    # Fall back to current time + 1 hour as default
-                    new_expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
-            else:
-                # No expiration info provided, use default
-                self.logger.warning(
-                    f"No expiration information in refresh response for {provider.value}"
-                )
-                new_expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+                if isinstance(new_tokens["expires_at"], str):
+                    try:
+                        new_expires_at = datetime.fromisoformat(
+                            new_tokens["expires_at"]
+                        )
+                        if new_expires_at.tzinfo is None:
+                            new_expires_at = new_expires_at.replace(tzinfo=timezone.utc)
+                    except (ValueError, TypeError) as e:
+                        self.logger.warning(
+                            f"Failed to parse expires_at '{new_tokens['expires_at']}' for user {user_id}, "
+                            f"provider {provider.value}: {e}. Using fallback expiration."
+                        )
+                        # Use a fallback expiration time (1 hour from now)
+                        new_expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
 
-            return TokenRefreshResponse(
+            result = TokenRefreshResponse(
                 success=True,
                 integration_id=integration.id,
                 provider=provider,
@@ -600,29 +659,50 @@ class IntegrationService:
                 error=None,
             )
 
+            # Set the future result so waiting callers get the response
+            # refresh_future is guaranteed to be non-None here because:
+            # - If there was an existing future, we either returned early (success) or created a new one (timeout)
+            # - If there was no existing future, we created refresh_future in the else block
+            assert (
+                refresh_future is not None
+            ), "refresh_future should be assigned by this point"
+            refresh_future.set_result(result)
+            return result
+
         except Exception as e:
-            if isinstance(e, NotFoundError):
-                raise
-
-            # Update the integration's error message to reflect the current failure
-            try:
-                async_session = get_async_session()
-                async with async_session() as session:
-                    integration = await self._get_user_integration_in_session(
-                        user_id, provider, session
-                    )
-                    integration.error_message = str(e)
-                    integration.updated_at = datetime.now(timezone.utc)
-                    session.add(integration)
-                    await session.commit()
-            except Exception as update_error:
-                self.logger.warning(
-                    f"Failed to update integration error message: {update_error}"
-                )
-
-            raise ServiceError(
-                message=f"Failed to refresh integration tokens: {str(e)}"
+            self.logger.error(
+                "Failed to refresh tokens",
+                user_id=user_id,
+                provider=provider.value,
+                error=str(e),
             )
+            # Set the future exception so waiting callers get the error
+            # refresh_future is guaranteed to be non-None here because:
+            # - If there was an existing future, we either returned early (success) or created a new one (timeout)
+            # - If there was no existing future, we created refresh_future in the else block
+            assert (
+                refresh_future is not None
+            ), "refresh_future should be assigned by this point"
+            refresh_future.set_exception(e)
+            if isinstance(e, (NotFoundError, ServiceError)):
+                raise
+            raise ServiceError(message=f"Token refresh failed: {str(e)}")
+        finally:
+            # Always remove the refresh key when done, but only if it's still our future
+            # Always acquire the lock for cleanup to ensure thread safety
+            try:
+                async with self._refresh_lock:
+                    if refresh_key in self._ongoing_refreshes:
+                        # Only remove if it's the same future we created
+                        if self._ongoing_refreshes[refresh_key] is refresh_future:
+                            del self._ongoing_refreshes[refresh_key]
+            except RuntimeError:
+                # If we're already holding the lock, asyncio.Lock will raise RuntimeError
+                # In this case, we can safely modify the dictionary since we already hold the lock
+                if refresh_key in self._ongoing_refreshes:
+                    # Only remove if it's the same future we created
+                    if self._ongoing_refreshes[refresh_key] is refresh_future:
+                        del self._ongoing_refreshes[refresh_key]
 
     async def disconnect_integration(
         self,
@@ -805,7 +885,7 @@ class IntegrationService:
                     )
 
                     # Clear all calendar cache keys for this user
-                    pattern = f"office_service:{user_id}:*"
+                    pattern = f"office:{user_id}:*"
                     keys = await redis_client.keys(pattern)
                     if keys:
                         deleted_count = await redis_client.delete(*keys)

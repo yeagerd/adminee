@@ -6,6 +6,7 @@ with automatic token management and initialization. It abstracts the complexity
 of token retrieval and client instantiation across multiple OAuth providers.
 """
 
+import asyncio
 from typing import Dict, List, Optional, Union
 
 from services.common.logging_config import get_logger
@@ -22,13 +23,9 @@ logger = get_logger(__name__)
 
 class APIClientFactory:
     """
-    Factory class for creating provider-specific API clients.
+    Factory for creating provider-specific API clients.
 
-    This factory handles:
-    - Token retrieval from User Management Service via TokenManager
-    - Provider-specific client instantiation
-    - Error handling for token and client creation failures
-    - Demo mode support using environment variables instead of user service
+    Handles token management, client creation, and provider-specific configuration.
     """
 
     def __init__(self, token_manager: Optional[TokenManager] = None):
@@ -36,10 +33,46 @@ class APIClientFactory:
         Initialize the API client factory.
 
         Args:
-            token_manager: Optional TokenManager instance. If None, will create one
-                          based on DEMO_MODE setting.
+            token_manager: Optional TokenManager instance. If None, creates a shared instance.
         """
-        self.token_manager = token_manager
+        self._shared_token_manager = token_manager
+        self._token_manager_lock = asyncio.Lock()
+
+    async def _get_or_create_token_manager(self) -> TokenManager:
+        """
+        Get or create a shared TokenManager instance.
+
+        This ensures we reuse the same TokenManager instance across multiple
+        create_client() calls, preventing duplicate token requests.
+        """
+        if self._shared_token_manager is None:
+            async with self._token_manager_lock:
+                # Double-check pattern to ensure thread safety
+                if self._shared_token_manager is None:
+                    if get_settings().DEMO_MODE:
+                        logger.info("Demo mode enabled - using DemoTokenManager")
+                        self._shared_token_manager = DemoTokenManager()
+                    else:
+                        logger.info(
+                            "Creating shared TokenManager instance for APIClientFactory"
+                        )
+                        self._shared_token_manager = TokenManager()
+
+        return self._shared_token_manager
+
+    def set_shared_token_manager(self, token_manager: TokenManager) -> None:
+        """
+        Set a shared TokenManager instance for dependency injection.
+
+        This allows external code to provide a TokenManager instance,
+        useful for testing or when you want to share a TokenManager
+        across multiple APIClientFactory instances.
+
+        Args:
+            token_manager: TokenManager instance to use
+        """
+        self._shared_token_manager = token_manager
+        logger.info("Shared TokenManager instance set via dependency injection")
 
     async def create_client(
         self,
@@ -51,16 +84,12 @@ class APIClientFactory:
         Create a provider-specific API client for a user.
 
         Args:
-            user_id: User ID to create client for
+            user_id: External auth ID to create client for
             provider: Provider name ('google', 'microsoft') or Provider enum
             scopes: Optional list of OAuth scopes. If None, uses default scopes.
 
         Returns:
-            Initialized API client or None if creation failed
-
-        Raises:
-            ValueError: For invalid provider
-            Exception: For other creation failures
+            Provider-specific API client instance or None if creation failed
         """
         # Normalize provider to enum
         if isinstance(provider, str):
@@ -71,7 +100,7 @@ class APIClientFactory:
                     f"Invalid provider: {provider}. Must be 'google' or 'microsoft'"
                 )
 
-        # Set default scopes based on provider
+        # Get default scopes if not provided
         if scopes is None:
             scopes = self._get_default_scopes(provider)
 
@@ -79,14 +108,11 @@ class APIClientFactory:
             f"Creating {provider} API client for user {user_id} with scopes: {scopes}"
         )
 
-        # Use provided token manager or create a new one
-        token_manager = self.token_manager
-        if token_manager is None:
-            if get_settings().DEMO_MODE:
-                logger.info("Demo mode enabled - using DemoTokenManager")
-                token_manager = DemoTokenManager()
-            else:
-                token_manager = TokenManager()
+        # Use shared token manager
+        token_manager = await self._get_or_create_token_manager()
+        logger.info(
+            f"Using shared TokenManager instance for {provider} client (user {user_id})"
+        )
 
         try:
             # Get token from User Management Service
@@ -155,7 +181,7 @@ class APIClientFactory:
         Convenience method to create a Google API client.
 
         Args:
-            user_id: User ID to create client for
+            user_id: External auth ID to create client for
             scopes: Optional list of OAuth scopes
 
         Returns:
@@ -171,7 +197,7 @@ class APIClientFactory:
         Convenience method to create a Microsoft API client.
 
         Args:
-            user_id: User ID to create client for
+            user_id: External auth ID to create client for
             scopes: Optional list of OAuth scopes
 
         Returns:
@@ -187,7 +213,7 @@ class APIClientFactory:
         Create API clients for multiple providers.
 
         Args:
-            user_id: User ID to create clients for
+            user_id: External auth ID to create clients for
             providers: List of providers. If None, creates clients for all providers.
 
         Returns:
@@ -235,7 +261,7 @@ class APIClientFactory:
         Get the user's preferred provider from the user service.
 
         Args:
-            user_id: User ID to get preferred provider for (external_auth_id or internal ID)
+            user_id: External auth ID to get preferred provider for
 
         Returns:
             Preferred provider or None if not set
@@ -265,51 +291,32 @@ class APIClientFactory:
             if request_id and request_id != "uninitialized":
                 headers["X-Request-Id"] = request_id
 
-            # If user_id is not an integer, resolve to internal ID
-            resolved_user_id = user_id
-            try:
-                int(user_id)
-            except ValueError:
-                # Not an integer, resolve
-                async with httpx.AsyncClient(timeout=10.0) as client:
-                    resp = await client.get(
-                        f"{settings.USER_SERVICE_URL}/users/id?external_auth_id={user_id}",
-                        headers=headers,
-                    )
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        resolved_user_id = str(data.get("id"))
-                        logger.info(
-                            f"Resolved external_auth_id {user_id} to internal user ID {resolved_user_id}"
-                        )
-                    else:
-                        logger.warning(
-                            f"Failed to resolve internal user ID for external_auth_id {user_id}: {resp.status_code}"
-                        )
-                        return None
-
-            # Get user profile from user service using internal ID
+            # Get user profile from user service using internal endpoint
             async with httpx.AsyncClient(timeout=10.0) as client:
+                # Use the internal endpoint to get user by external_auth_id
                 response = await client.get(
-                    f"{settings.USER_SERVICE_URL}/users/{resolved_user_id}",
+                    f"{settings.USER_SERVICE_URL}/v1/internal/users/by-external-id/{user_id}",
                     headers=headers,
                 )
 
                 if response.status_code == 200:
                     user_data = response.json()
-                    preferred_provider = user_data.get("preferred_provider")
-                    if preferred_provider:
-                        try:
-                            return Provider(preferred_provider.lower())
-                        except ValueError:
-                            logger.warning(
-                                f"Invalid preferred provider: {preferred_provider}"
-                            )
+
+                    if user_data.get("exists"):
+                        preferred_provider = user_data.get("preferred_provider")
+                        if preferred_provider:
+                            try:
+                                return Provider(preferred_provider.lower())
+                            except ValueError:
+                                logger.warning(
+                                    f"Invalid preferred provider: {preferred_provider}"
+                                )
+                                return None
+                        else:
+                            logger.info(f"No preferred provider set for user {user_id}")
                             return None
                     else:
-                        logger.info(
-                            f"No preferred provider set for user {resolved_user_id}"
-                        )
+                        logger.warning(f"User not found for external_auth_id {user_id}")
                         return None
                 else:
                     logger.warning(
@@ -330,7 +337,7 @@ class APIClientFactory:
         Create a client for a user using their preferred provider.
 
         Args:
-            user_id: User ID to create client for
+            user_id: External auth ID to create client for
             scopes: Optional list of OAuth scopes
 
         Returns:

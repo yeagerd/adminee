@@ -92,11 +92,20 @@ class BaseUserManagementIntegrationTest(BaseUserManagementTest):
         importlib.reload(services.user.database)
 
         # Actually create the database tables
+        # Initialize database schema for testing
         import asyncio
 
-        from services.user.database import create_all_tables
+        from services.user.database import create_all_tables_for_testing
 
-        asyncio.run(create_all_tables())
+        try:
+            asyncio.run(create_all_tables_for_testing())
+        except RuntimeError:
+            # If we're already in an event loop, create a task
+            import concurrent.futures
+
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, create_all_tables_for_testing())
+                future.result()
 
         # Create test client using app from base class
         self.client = TestClient(self.app)

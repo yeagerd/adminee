@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from services.office.core.clients.base import BaseAPIClient
 from services.office.models import Provider
@@ -94,6 +94,43 @@ class GoogleAPIClient(BaseAPIClient):
         response = await self.post(
             "/gmail/v1/users/me/messages/send", json_data=message_data
         )
+        return response.json()
+
+    async def get_labels(self) -> Dict[str, Any]:
+        """
+        Get list of Gmail labels.
+
+        Returns:
+            Dictionary containing labels list
+        """
+        response = await self.get("/gmail/v1/users/me/labels")
+        return response.json()
+
+    async def get_messages_from_label(
+        self,
+        label_id: str,
+        max_results: int = 100,
+        page_token: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Get list of Gmail messages from a specific label.
+
+        Args:
+            label_id: Gmail label ID
+            max_results: Maximum number of messages to return
+            page_token: Token for pagination
+
+        Returns:
+            Dictionary containing messages list and pagination info
+        """
+        params: Dict[str, Any] = {"maxResults": max_results}
+        if page_token:
+            params["pageToken"] = page_token
+
+        # Use the label query parameter to filter messages by label
+        params["q"] = f"label:{label_id}"
+
+        response = await self.get("/gmail/v1/users/me/messages", params=params)
         return response.json()
 
     # Google Calendar API methods
@@ -268,3 +305,86 @@ class GoogleAPIClient(BaseAPIClient):
             query=query,
             fields="files(id,name,mimeType,size,createdTime,modifiedTime,webViewLink,thumbnailLink,parents)",
         )
+
+    # Gmail Threading API methods
+    async def get_threads(
+        self,
+        max_results: int = 100,
+        page_token: Optional[str] = None,
+        q: Optional[str] = None,
+        label_ids: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Get list of Gmail threads.
+
+        Args:
+            max_results: Maximum number of threads to return
+            page_token: Token for pagination
+            q: Gmail search query
+            label_ids: List of label IDs to filter by
+
+        Returns:
+            Dictionary containing threads list and pagination info
+        """
+        params: Dict[str, Any] = {"maxResults": max_results}
+        if page_token:
+            params["pageToken"] = page_token
+        if q:
+            params["q"] = q
+        if label_ids:
+            params["labelIds"] = label_ids
+
+        response = await self.get("/gmail/v1/users/me/threads", params=params)
+        return response.json()
+
+    async def get_thread(self, thread_id: str, format: str = "full") -> Dict[str, Any]:
+        """
+        Get a specific Gmail thread with all its messages.
+
+        Args:
+            thread_id: Gmail thread ID
+            format: Message format (minimal, full, raw, metadata)
+
+        Returns:
+            Dictionary containing thread details with all messages
+        """
+        params = {"format": format}
+        response = await self.get(
+            f"/gmail/v1/users/me/threads/{thread_id}", params=params
+        )
+        return response.json()
+
+    async def get_messages_with_threads(
+        self,
+        max_results: int = 100,
+        page_token: Optional[str] = None,
+        query: Optional[str] = None,
+        label_ids: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Get messages with thread information.
+
+        Args:
+            max_results: Maximum number of messages to return
+            page_token: Token for pagination
+            query: Gmail search query
+            label_ids: List of label IDs to filter by
+
+        Returns:
+            Dictionary containing messages list with thread info and pagination info
+        """
+        params: Dict[str, Any] = {"maxResults": max_results}
+        if page_token:
+            params["pageToken"] = page_token
+        if query:
+            params["q"] = query
+        if label_ids:
+            params["labelIds"] = label_ids
+
+        # Include thread information in the response
+        params["fields"] = (
+            "nextPageToken,messages(id,threadId,labelIds,internalDate,snippet,payload,sizeEstimate)"
+        )
+
+        response = await self.get("/gmail/v1/users/me/messages", params=params)
+        return response.json()

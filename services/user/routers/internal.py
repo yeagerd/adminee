@@ -17,7 +17,7 @@ from services.common.http_errors import (
     ServiceError,
     ValidationError,
 )
-from services.common.logging_config import get_logger
+from services.common.logging_config import get_logger, request_id_var
 from services.user.auth.service_auth import service_permission_required
 from services.user.schemas.integration import (
     InternalTokenRefreshRequest,
@@ -57,50 +57,44 @@ router = APIRouter(
 
 
 @router.post("/tokens/get", response_model=InternalTokenResponse)
-async def get_user_tokens(
+async def get_user_token(
     request: InternalTokenRequest,
     service_name: str = Depends(service_permission_required(["read_tokens"])),
 ) -> InternalTokenResponse:
     """
-    Get user tokens for other services.
+    Get a valid access token for a user and provider.
 
-    Retrieves valid OAuth tokens for a user and provider with automatic
-    refresh, scope validation, and comprehensive error handling.
-
-    **Authentication:**
-    - Requires service-to-service API key authentication
-    - Only authorized services can retrieve user tokens
-
-    **Request Body:**
-    - `user_id`: User identifier
-    - `provider`: OAuth provider (google, microsoft, etc.)
-    - `required_scopes`: Required OAuth scopes (optional)
-    - `refresh_if_needed`: Auto-refresh if token near expiration (default: true)
-
-    **Response:**
-    - `success`: Whether token retrieval succeeded
-    - `access_token`: OAuth access token (if successful)
-    - `refresh_token`: OAuth refresh token (if available)
-    - `expires_at`: Token expiration time
-    - `scopes`: Granted OAuth scopes
-    - `error`: Error message (if failed)
-
-    **Security Features:**
-    - Encrypted token storage with user-specific keys
-    - Automatic token refresh with 5-minute buffer
-    - Scope validation and error reporting
-    - Comprehensive audit logging
+    This endpoint is used by other services to retrieve tokens for API operations.
     """
+
+    request_id = request_id_var.get()
+    logger.info(
+        f"[{request_id}] Token request received: user_id={request.user_id}, provider={request.provider}, scopes={request.required_scopes}"
+    )
+
     try:
-        return await get_token_service().get_valid_token(
+        token_service = get_token_service()
+        result = await token_service.get_valid_token(
             user_id=request.user_id,
             provider=request.provider,
             required_scopes=request.required_scopes,
             refresh_if_needed=request.refresh_if_needed,
         )
+
+        logger.info(
+            f"[{request_id}] Token request completed: success={result.success}, provider={request.provider}"
+        )
+        return result
+
     except NotFoundError:
+        logger.error(
+            f"[{request_id}] Token request failed: user_id={request.user_id}, provider={request.provider}, error=User not found"
+        )
         raise NotFoundError("User", request.user_id)
     except ServiceError as e:
+        logger.error(
+            f"[{request_id}] Token request failed: user_id={request.user_id}, provider={request.provider}, error={str(e)}"
+        )
         # Return error in response rather than raising HTTP exception
         return InternalTokenResponse(
             success=False,
@@ -112,6 +106,11 @@ async def get_user_tokens(
             integration_id=None,
             error=str(e),
         )
+    except Exception as e:
+        logger.error(
+            f"[{request_id}] Token request failed: user_id={request.user_id}, provider={request.provider}, error={str(e)}"
+        )
+        raise
 
 
 @router.post("/tokens/refresh", response_model=InternalTokenResponse)
@@ -209,6 +208,99 @@ async def get_user_status(
         raise ServiceError(message=str(e))
 
 
+@router.get("/users/by-external-id/{external_auth_id}")
+async def get_user_by_external_auth_id(
+    external_auth_id: str,
+    service_name: str = Depends(service_permission_required(["read_users"])),
+) -> Dict[str, Any]:
+    """
+    Get user information by external_auth_id (internal service endpoint).
+
+    This endpoint always returns 200 with user information or null,
+    avoiding 404 logs for missing users.
+
+    Returns:
+        User data if found, or {"exists": false} if not found
+    """
+    try:
+        user = await get_user_service().get_user_by_external_auth_id_auto_detect(
+            external_auth_id
+        )
+
+        return {
+            "exists": True,
+            "user_id": user.external_auth_id,
+            "internal_id": user.id,
+            "provider": user.auth_provider,
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "preferred_provider": user.preferred_provider,
+            "onboarding_completed": user.onboarding_completed,
+            "onboarding_step": user.onboarding_step,
+        }
+    except NotFoundError:
+        return {
+            "exists": False,
+            "user_id": external_auth_id,
+        }
+    except Exception as e:
+        logger.error(f"Unexpected error during user lookup by external_auth_id: {e}")
+        raise ServiceError(message="Failed to lookup user by external_auth_id")
+
+
+@router.get("/users/exists")
+async def check_user_exists(
+    email: str = Query(..., description="Email address to check"),
+    provider: Optional[str] = Query(
+        None, description="OAuth provider (google, microsoft, etc.)"
+    ),
+    service_name: str = Depends(service_permission_required(["read_users"])),
+) -> Dict[str, Any]:
+    """
+    Check if a user exists by email (primary endpoint for user existence checks).
+
+    This endpoint always returns 200 with a detailed response,
+    avoiding 404 logs for missing users. Use this instead of GET /users/id
+    when you only need to check existence.
+
+    Returns:
+        {"exists": true/false, "user_id": "id_if_exists", "provider": "provider_if_exists"}
+    """
+    try:
+        email_request = EmailResolutionRequest(email=email, provider=provider)
+        resolution_result = await get_user_service().resolve_email_to_user_id(
+            email_request
+        )
+
+        # Get full user data to return additional info
+        user = await get_user_service().get_user_by_external_auth_id_auto_detect(
+            resolution_result.external_auth_id
+        )
+
+        return {
+            "exists": True,
+            "user_id": user.external_auth_id,
+            "provider": user.auth_provider,
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+        }
+    except NotFoundError:
+        return {
+            "exists": False,
+            "user_id": None,
+            "provider": provider,
+            "email": email,
+        }
+    except ValidationError as e:
+        logger.warning(f"User existence check failed - validation error: {e.message}")
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error during user existence check: {e}")
+        raise ServiceError(message="Failed to check user existence")
+
+
 @router.get("/users/id", response_model=UserResponse)
 async def get_user_by_email_internal(
     email: str = Query(..., description="Email address to lookup"),
@@ -219,6 +311,9 @@ async def get_user_by_email_internal(
 ) -> UserResponse:
     """
     Get user by exact email lookup (internal service endpoint).
+
+    ⚠️  DEPRECATED: Use GET /v1/internal/users/exists instead to avoid 404 error logs.
+    This endpoint will be removed in a future version.
 
     This endpoint provides a clean RESTful way to find users by email address
     without exposing internal email normalization implementation details.

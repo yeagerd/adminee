@@ -1,7 +1,7 @@
 """
 add_timezone_mode_and_manual_timezone_to_user_preferences
 
-Revision ID: auto_add_timezone_mode_manual_timezone
+Revision ID: add_timezone_mode_manual
 Revises: 096445339c9a
 Create Date: 2024-07-10 12:00:00.000000
 
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "auto_add_timezone_mode_manual_timezone"
+revision = "add_timezone_mode_manual"
 down_revision = "096445339c9a"
 branch_labels = None
 depends_on = None

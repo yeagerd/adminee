@@ -235,7 +235,10 @@ class TestTimezoneIntegration:
     @patch("services.chat.agents.llm_tools.requests.get")
     def test_calendar_events_get_display_time_field(self, mock_requests_get):
         """Test that calendar events get a display_time field with proper timezone formatting."""
+        from datetime import datetime, timezone
+
         from services.chat.agents.llm_tools import get_calendar_events
+        from services.office.schemas import CalendarEvent, Provider
 
         def mock_get(*args, **kwargs):
             url = args[0]
@@ -256,27 +259,33 @@ class TestTimezoneIntegration:
                         }
                     ],
                     "total": 1,
-                    "active_count": 1,
-                    "error_count": 0,
                 }
             elif "calendar/events" in url:
+                # Create proper CalendarEvent object
+                event = CalendarEvent(
+                    id="google_event_1",
+                    calendar_id="google_primary",
+                    title="Daily Standup",
+                    description=None,
+                    start_time=datetime(2025, 6, 20, 17, 0, 0, tzinfo=timezone.utc),
+                    end_time=datetime(2025, 6, 20, 18, 0, 0, tzinfo=timezone.utc),
+                    all_day=False,
+                    location=None,
+                    attendees=[],
+                    provider=Provider.GOOGLE,
+                    provider_event_id="google_event_1",
+                    account_email="test@example.com",
+                    calendar_name="Primary Calendar",
+                    created_at=datetime(2025, 6, 20, 16, 0, 0, tzinfo=timezone.utc),
+                    updated_at=datetime(2025, 6, 20, 16, 0, 0, tzinfo=timezone.utc),
+                )
+
                 # Mock office service response
                 mock_response.status_code = 200
                 mock_response.json.return_value = {
                     "success": True,
-                    "data": {
-                        "events": [
-                            {
-                                "id": "event_1",
-                                "title": "Daily Standup",
-                                "start_time": "2025-06-20T17:00:00Z",
-                                "end_time": "2025-06-20T17:30:00Z",
-                                "location": "SF Office",
-                            }
-                        ],
-                        "provider_errors": {},
-                        "providers_used": ["google"],
-                    },
+                    "request_id": "test-request-id",
+                    "data": {"events": [event]},
                 }
             else:
                 # Default: return empty integrations
@@ -284,8 +293,6 @@ class TestTimezoneIntegration:
                 mock_response.json.return_value = {
                     "integrations": [],
                     "total": 0,
-                    "active_count": 0,
-                    "error_count": 0,
                 }
 
             return mock_response

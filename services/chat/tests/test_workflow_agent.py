@@ -207,8 +207,8 @@ async def test_load_conversation_history(workflow_agent, mock_history_manager):
     # 4. Assertions
     workflow_agent._load_chat_history_from_db.assert_called_once()
 
-    # Assert context.get was called to fetch the current state
-    mock_context.get.assert_called_once_with("state", {})
+    # Assert context.store.get was called to fetch the current state
+    mock_context.store.get.assert_called_once_with("state", {})
 
     # Assert context.store.set was called with the correctly formatted history
     expected_formatted_history = [

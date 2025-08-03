@@ -4,6 +4,7 @@ import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import { AlertTriangle, Calendar, CheckCircle, Clock, Plus, Truck } from 'lucide-react';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import gatewayClient from '../../lib/gateway-client';
+import { DASHBOARD_STATUS_MAPPING, PACKAGE_STATUS } from '../../lib/package-status';
 import '../../styles/summary-grid.css';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
@@ -48,7 +49,7 @@ export default function PackageDashboard() {
     const [searchTerm, setSearchTerm] = useState('');
     const [sortField, setSortField] = useState('estimated_delivery');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-    const [editingCell, setEditingCell] = useState<{ id: number; field: string } | null>(null);
+    const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null); // Changed from number to string (UUID)
     const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
     const [selectedStatusFilters, setSelectedStatusFilters] = useState<string[]>([]);
     const [selectedCarrierFilters] = useState<string[]>([]);
@@ -57,10 +58,9 @@ export default function PackageDashboard() {
     useEffect(() => {
         setLoading(true);
         setError(null);
-        gatewayClient.request('/api/v1/packages')
+        gatewayClient.getPackages()
             .then((res) => {
-                const typedRes = res as { data: Package[] };
-                setPackages(typedRes.data || []);
+                setPackages(res.data || []);
             })
             .catch((err) => {
                 setError(err.message || 'Failed to fetch packages');
@@ -77,7 +77,7 @@ export default function PackageDashboard() {
                 pkg.recipient_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 pkg.package_description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 pkg.order_number?.toLowerCase().includes(searchTerm.toLowerCase());
-            const status = pkg.status || 'pending';
+            const status = pkg.status || PACKAGE_STATUS.PENDING;
             const matchesStatus = selectedStatusFilters.length === 0 || selectedStatusFilters.includes(status);
             const matchesCarrier = selectedCarrierFilters.length === 0 || selectedCarrierFilters.includes(pkg.carrier);
             // Date range filter
@@ -93,8 +93,8 @@ export default function PackageDashboard() {
             return matchesSearch && matchesStatus && matchesCarrier && matchesDate;
         });
         filtered.sort((a, b) => {
-            const aValue = a[sortField] as string | number | undefined;
-            const bValue = b[sortField] as string | number | undefined;
+            const aValue = a[sortField as keyof Package] as string | number | undefined;
+            const bValue = b[sortField as keyof Package] as string | number | undefined;
             if (typeof aValue === 'string' && typeof bValue === 'string') {
                 return sortDirection === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
             }
@@ -117,7 +117,7 @@ export default function PackageDashboard() {
         }
     };
 
-    const handleCellEdit = (id: number, field: string, value: string) => {
+    const handleCellEdit = (id: string, field: string, value: string) => { // Changed from number to string (UUID)
         setPackages(packages.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
         setEditingCell(null);
     };
@@ -127,7 +127,7 @@ export default function PackageDashboard() {
         setLoading(true);
         setError(null);
         try {
-            const res = await gatewayClient.request('/api/v1/packages') as { data: Package[] };
+            const res = await gatewayClient.getPackages();
             setPackages(res.data || []);
         } catch (err) {
             if (err instanceof Error) {
@@ -144,8 +144,9 @@ export default function PackageDashboard() {
     const statusCounts = useMemo(() => {
         const counts = { pending: 0, shipped: 0, late: 0, delivered: 0 };
         for (const p of packages) {
-            const status = (p.status || 'pending') as keyof typeof counts;
-            if (counts[status] !== undefined) counts[status]++;
+            const status = (p.status || PACKAGE_STATUS.PENDING) as keyof typeof DASHBOARD_STATUS_MAPPING;
+            const dashboardStatus = DASHBOARD_STATUS_MAPPING[status] || 'late';
+            counts[dashboardStatus as keyof typeof counts]++;
         }
         return counts;
     }, [packages]);

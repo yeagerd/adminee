@@ -284,31 +284,14 @@ class UserDraft(ChatSQLModel, table=True):
     thread: Optional[Thread] = Relationship(back_populates="user_drafts")
 
 
-# Ensure tables are created on import
-async def init_db() -> None:
+# Database initialization is now handled by Alembic migrations
+# Use 'alembic upgrade head' to initialize or update the database schema
+
+
+async def create_all_tables_for_testing() -> None:
+    """Create all database tables for testing only. Use Alembic migrations in production."""
     async with get_engine().begin() as conn:
         await conn.run_sync(chat_registry.metadata.create_all)
-
-
-# Initialize database synchronously for backward compatibility
-def init_db_sync() -> None:
-    import asyncio
-
-    try:
-        asyncio.get_running_loop()
-        # If we're in an async context, schedule the coroutine
-        import concurrent.futures
-
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            future = executor.submit(asyncio.run, init_db())
-            future.result()
-    except RuntimeError:
-        # No running loop, we can run directly
-        asyncio.run(init_db())
-
-
-# Don't automatically initialize on import - let the application control this
-# init_db_sync()
 
 
 # Utility functions for thread, message, and draft management

@@ -7,7 +7,6 @@ Internal/service endpoints, if any, should be under /internal and require API ke
 """
 
 import asyncio
-import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, cast
 
@@ -19,7 +18,7 @@ from services.common.http_errors import (
     ServiceError,
     ValidationError,
 )
-from services.common.logging_config import get_logger
+from services.common.logging_config import get_logger, request_id_var
 from services.office.core.api_client_factory import APIClientFactory
 from services.office.core.auth import service_permission_required
 from services.office.core.cache_manager import cache_manager, generate_cache_key
@@ -44,8 +43,24 @@ logger = get_logger(__name__)
 # Create router
 router = APIRouter(prefix="/calendar", tags=["calendar"])
 
-# Initialize dependencies
-api_client_factory = APIClientFactory()
+# Lazy-initialized API client factory instance
+_api_client_factory = None
+_api_client_factory_lock = asyncio.Lock()
+
+
+async def get_api_client_factory() -> APIClientFactory:
+    """Get or create the shared API client factory instance."""
+    global _api_client_factory
+
+    if _api_client_factory is None:
+        async with _api_client_factory_lock:
+            if _api_client_factory is None:
+                _api_client_factory = APIClientFactory()
+                logger.info(
+                    "Created lazy-initialized APIClientFactory instance with shared TokenManager"
+                )
+
+    return _api_client_factory
 
 
 async def get_user_id_from_gateway(request: Request) -> str:
@@ -59,6 +74,17 @@ async def get_user_id_from_gateway(request: Request) -> str:
     if not user_id:
         raise ValidationError(message="X-User-Id header is required", field="X-User-Id")
     return user_id
+
+
+def get_request_id() -> str:
+    """
+    Get the current request ID from context or generate a fallback.
+    """
+    request_id = request_id_var.get()
+    if not request_id or request_id == "uninitialized":
+        # Fallback for cases where middleware hasn't set the context
+        return "no-request-id"
+    return request_id
 
 
 def _get_calendar_scopes(provider: str) -> List[str]:
@@ -101,11 +127,11 @@ async def get_user_availability(
         ApiResponse with available time slots
     """
     user_id = await get_user_id_from_gateway(request)
-    request_id = str(uuid.uuid4())
+    request_id = get_request_id()
     start_time = datetime.now(timezone.utc)
 
     logger.info(
-        f"[{request_id}] Availability request: user_id={user_id}, start={start}, end={end}, duration={duration}"
+        f"Availability request: user_id={user_id}, start={start}, end={end}, duration={duration}"
     )
 
     try:
@@ -121,9 +147,8 @@ async def get_user_availability(
 
         # If no providers specified, get user's preferred provider
         if not providers:
-            preferred_provider = await api_client_factory.get_user_preferred_provider(
-                user_id
-            )
+            factory = await get_api_client_factory()
+            preferred_provider = await factory.get_user_preferred_provider(user_id)
             if preferred_provider:
                 providers = [preferred_provider.value]
             else:
@@ -205,13 +230,9 @@ async def get_user_availability(
                     events, provider_name = result
                     all_events.extend(events)
                     providers_used.append(provider_name)
-                    logger.info(
-                        f"[{request_id}] Provider {provider} returned {len(events)} events"
-                    )
+                    logger.info(f"Provider {provider} returned {len(events)} events")
                 except (TypeError, ValueError) as e:
-                    logger.error(
-                        f"[{request_id}] Invalid result format from {provider}: {e}"
-                    )
+                    logger.error(f"Invalid result format from {provider}: {e}")
                     provider_errors[provider] = f"Invalid result format: {e}"
 
         # Find available time slots
@@ -303,6 +324,9 @@ async def get_calendar_events(
     ),
     q: Optional[str] = Query(None, description="Search query to filter events"),
     time_zone: Optional[str] = Query("UTC", description="Time zone for date filtering"),
+    no_cache: bool = Query(
+        False, description="Bypass cache and fetch fresh data from providers"
+    ),
     service_name: str = Depends(service_permission_required(["read_calendar"])),
 ) -> CalendarEventListApiResponse:
     """
@@ -326,19 +350,18 @@ async def get_calendar_events(
         ApiResponse with aggregated calendar events
     """
     user_id = await get_user_id_from_gateway(request)
-    request_id = str(uuid.uuid4())
+    request_id = get_request_id()
     start_time = datetime.now(timezone.utc)
 
     logger.info(
-        f"[{request_id}] Calendar events request: user_id={user_id}, providers={providers}, limit={limit}"
+        f"Calendar events request: user_id={user_id}, providers={providers}, limit={limit}"
     )
 
     try:
         # If no providers specified, get user's preferred provider
         if not providers:
-            preferred_provider = await api_client_factory.get_user_preferred_provider(
-                user_id
-            )
+            factory = await get_api_client_factory()
+            preferred_provider = await factory.get_user_preferred_provider(user_id)
             if preferred_provider:
                 providers = [preferred_provider.value]
             else:
@@ -399,13 +422,14 @@ async def get_calendar_events(
             "calendar_ids": calendar_ids or [],
             "q": q or "",
             "time_zone": time_zone,
+            "no_cache": no_cache,
         }
         cache_key = generate_cache_key(user_id, "unified", "events", cache_params)
-        logger.debug(f"[{request_id}] Generated cache key: {cache_key}")
+        logger.debug(f"Generated cache key: {cache_key}")
 
         # Check cache first
         cached_result = await cache_manager.get_from_cache(cache_key)
-        if cached_result:
+        if cached_result and not no_cache:
             logger.info("Cache hit for calendar events", request_id=request_id)
             # Extract events from cached result
             if isinstance(cached_result, dict) and "events" in cached_result:
@@ -475,13 +499,9 @@ async def get_calendar_events(
                     events, provider_name = result
                     aggregated_events.extend(events)
                     providers_used.append(provider_name)
-                    logger.info(
-                        f"[{request_id}] Provider {provider} returned {len(events)} events"
-                    )
+                    logger.info(f"Provider {provider} returned {len(events)} events")
                 except (TypeError, ValueError) as e:
-                    logger.error(
-                        f"[{request_id}] Invalid result format from {provider}: {e}"
-                    )
+                    logger.error(f"Invalid result format from {provider}: {e}")
                     provider_errors[provider] = f"Invalid result format: {e}"
 
         # Sort events by start time
@@ -579,7 +599,7 @@ async def get_calendar_event(
         ApiResponse with the specific calendar event
     """
     user_id = await get_user_id_from_gateway(request)
-    request_id = str(uuid.uuid4())
+    request_id = get_request_id()
     start_time = datetime.now(timezone.utc)
 
     logger.info(
@@ -627,9 +647,7 @@ async def get_calendar_event(
         end_time = datetime.now(timezone.utc)
         response_time_ms = int((end_time - start_time).total_seconds() * 1000)
 
-        logger.info(
-            f"[{request_id}] Event detail request completed in {response_time_ms}ms"
-        )
+        logger.info(f"Event detail request completed in {response_time_ms}ms")
 
         return ApiResponse(
             success=True,
@@ -665,11 +683,11 @@ async def create_calendar_event(
         ApiResponse with created event details
     """
     user_id = await get_user_id_from_gateway(request)
-    request_id = str(uuid.uuid4())
+    request_id = get_request_id()
     start_time = datetime.now(timezone.utc)
 
     logger.info(
-        f"[{request_id}] Create calendar event request: user_id={user_id}, "
+        f"Create calendar event request: user_id={user_id}, "
         f"title='{event_data.title}', provider={event_data.provider}"
     )
 
@@ -687,7 +705,8 @@ async def create_calendar_event(
         provider = provider.lower()
 
         # Get API client for provider
-        client = await api_client_factory.create_client(user_id, provider)
+        factory = await get_api_client_factory()
+        client = await factory.create_client(user_id, provider)
         if client is None:
             raise AuthError(
                 message=f"Failed to create API client for provider {provider}. User may not have connected this provider."
@@ -728,7 +747,7 @@ async def create_calendar_event(
         response_time_ms = int((end_time - start_time).total_seconds() * 1000)
 
         logger.info(
-            f"[{request_id}] Calendar event created successfully in {response_time_ms}ms via {provider}"
+            f"Calendar event created successfully in {response_time_ms}ms via {provider}"
         )
 
         return CalendarEventApiResponse(
@@ -744,7 +763,7 @@ async def create_calendar_event(
     except ValidationError:
         raise
     except Exception as e:
-        logger.error(f"[{request_id}] Create calendar event request failed: {e}")
+        logger.error(f"Create calendar event request failed: {e}")
         raise ServiceError(message=f"Failed to create calendar event: {str(e)}")
 
 
@@ -769,11 +788,11 @@ async def update_calendar_event(
     Returns:
         ApiResponse with updated event details
     """
-    request_id = str(uuid.uuid4())
+    request_id = get_request_id()
     start_time = datetime.now(timezone.utc)
 
     logger.info(
-        f"[{request_id}] Update calendar event request: event_id={event_id}, user_id={user_id}, "
+        f"Update calendar event request: event_id={event_id}, user_id={user_id}, "
         f"title='{event_data.title}'"
     )
 
@@ -782,7 +801,8 @@ async def update_calendar_event(
         provider, original_event_id = parse_event_id(event_id)
 
         # Get API client for provider
-        client = await api_client_factory.create_client(user_id, provider)
+        factory = await get_api_client_factory()
+        client = await factory.create_client(user_id, provider)
         if client is None:
             raise AuthError(
                 message=f"Failed to create API client for provider {provider}. User may not have connected this provider."
@@ -865,7 +885,7 @@ async def update_calendar_event(
         response_time_ms = int((end_time - start_time).total_seconds() * 1000)
 
         logger.info(
-            f"[{request_id}] Calendar event updated successfully in {response_time_ms}ms via {provider}"
+            f"Calendar event updated successfully in {response_time_ms}ms via {provider}"
         )
 
         return ApiResponse(
@@ -881,7 +901,7 @@ async def update_calendar_event(
     except ValidationError:
         raise
     except Exception as e:
-        logger.error(f"[{request_id}] Update calendar event request failed: {e}")
+        logger.error(f"Update calendar event request failed: {e}")
         raise ServiceError(message=f"Failed to update calendar event: {str(e)}")
 
 
@@ -942,13 +962,11 @@ async def create_google_event(
         # Create the event
         result = await client.create_event(calendar_id, google_event_data)
 
-        logger.info(
-            f"[{request_id}] Google Calendar event created successfully: {result.get('id')}"
-        )
+        logger.info(f"Google Calendar event created successfully: {result.get('id')}")
         return result
 
     except Exception as e:
-        logger.error(f"[{request_id}] Failed to create Google Calendar event: {e}")
+        logger.error(f"Failed to create Google Calendar event: {e}")
         raise
 
 
@@ -1018,12 +1036,12 @@ async def create_microsoft_event(
         result = await client.create_event(microsoft_event_data, event_data.calendar_id)
 
         logger.info(
-            f"[{request_id}] Microsoft Calendar event created successfully: {result.get('id')}"
+            f"Microsoft Calendar event created successfully: {result.get('id')}"
         )
         return result
 
     except Exception as e:
-        logger.error(f"[{request_id}] Failed to create Microsoft Calendar event: {e}")
+        logger.error(f"Failed to create Microsoft Calendar event: {e}")
         raise
 
 
@@ -1087,13 +1105,11 @@ async def update_google_event(
         # Update the event
         result = await client.update_event(calendar_id, event_id, google_event_data)
 
-        logger.info(
-            f"[{request_id}] Google Calendar event updated successfully: {event_id}"
-        )
+        logger.info(f"Google Calendar event updated successfully: {event_id}")
         return result
 
     except Exception as e:
-        logger.error(f"[{request_id}] Failed to update Google Calendar event: {e}")
+        logger.error(f"Failed to update Google Calendar event: {e}")
         raise
 
 
@@ -1168,13 +1184,11 @@ async def update_microsoft_event(
         # Update the event
         result = await client.update_event(event_id, microsoft_event_data, calendar_id)
 
-        logger.info(
-            f"[{request_id}] Microsoft Calendar event updated successfully: {event_id}"
-        )
+        logger.info(f"Microsoft Calendar event updated successfully: {event_id}")
         return result
 
     except Exception as e:
-        logger.error(f"[{request_id}] Failed to update Microsoft Calendar event: {e}")
+        logger.error(f"Failed to update Microsoft Calendar event: {e}")
         raise
 
 
@@ -1197,11 +1211,11 @@ async def delete_calendar_event(
         ApiResponse confirming deletion
     """
     user_id = await get_user_id_from_gateway(request)
-    request_id = str(uuid.uuid4())
+    request_id = get_request_id()
     start_time = datetime.now(timezone.utc)
 
     logger.info(
-        f"[{request_id}] Delete calendar event request: event_id={event_id}, user_id={user_id}"
+        f"Delete calendar event request: event_id={event_id}, user_id={user_id}"
     )
 
     try:
@@ -1209,7 +1223,8 @@ async def delete_calendar_event(
         provider, original_event_id = parse_event_id(event_id)
 
         # Get API client for provider
-        client = await api_client_factory.create_client(user_id, provider)
+        factory = await get_api_client_factory()
+        client = await factory.create_client(user_id, provider)
         if client is None:
             raise AuthError(
                 message=f"Failed to create API client for provider {provider}. User may not have connected this provider."
@@ -1244,7 +1259,7 @@ async def delete_calendar_event(
         response_time_ms = int((end_time - start_time).total_seconds() * 1000)
 
         logger.info(
-            f"[{request_id}] Calendar event deleted successfully in {response_time_ms}ms via {provider}"
+            f"Calendar event deleted successfully in {response_time_ms}ms via {provider}"
         )
 
         return ApiResponse(
@@ -1260,7 +1275,7 @@ async def delete_calendar_event(
     except AuthError:
         raise
     except Exception as e:
-        logger.error(f"[{request_id}] Delete calendar event request failed: {e}")
+        logger.error(f"Delete calendar event request failed: {e}")
         raise ServiceError(message=f"Failed to delete calendar event: {str(e)}")
 
 
@@ -1283,12 +1298,10 @@ async def delete_google_event(
         # Delete the event
         await client.delete_event(calendar_id, event_id)
 
-        logger.info(
-            f"[{request_id}] Google Calendar event deleted successfully: {event_id}"
-        )
+        logger.info(f"Google Calendar event deleted successfully: {event_id}")
 
     except Exception as e:
-        logger.error(f"[{request_id}] Failed to delete Google Calendar event: {e}")
+        logger.error(f"Failed to delete Google Calendar event: {e}")
         raise
 
 
@@ -1311,12 +1324,10 @@ async def delete_microsoft_event(
         # Delete the event
         await client.delete_event(event_id, calendar_id)
 
-        logger.info(
-            f"[{request_id}] Microsoft Calendar event deleted successfully: {event_id}"
-        )
+        logger.info(f"Microsoft Calendar event deleted successfully: {event_id}")
 
     except Exception as e:
-        logger.error(f"[{request_id}] Failed to delete Microsoft Calendar event: {e}")
+        logger.error(f"Failed to delete Microsoft Calendar event: {e}")
         raise
 
 
@@ -1351,18 +1362,13 @@ async def fetch_provider_events(
     try:
         # Get API client for provider with calendar-specific scopes
         calendar_scopes = _get_calendar_scopes(provider)
-        logger.debug(
-            f"[{request_id}] Creating {provider} client with scopes: {calendar_scopes}"
-        )
-        client = await api_client_factory.create_client(
-            user_id, provider, calendar_scopes
-        )
+        logger.debug(f"Creating {provider} client with scopes: {calendar_scopes}")
+        factory = await get_api_client_factory()
+        client = await factory.create_client(user_id, provider, calendar_scopes)
         if client is None:
-            logger.error(
-                f"[{request_id}] Failed to create API client for provider {provider}"
-            )
+            logger.error(f"Failed to create API client for provider {provider}")
             raise ValueError(f"Failed to create API client for provider {provider}")
-        logger.debug(f"[{request_id}] Successfully created {provider} client")
+        logger.debug(f"Successfully created {provider} client")
 
         # Use client as async context manager
         async with client:
@@ -1409,7 +1415,7 @@ async def fetch_provider_events(
 
                     except Exception as calendar_error:
                         logger.warning(
-                            f"[{request_id}] Failed to fetch from Google calendar {calendar_id}: {calendar_error}"
+                            f"Failed to fetch from Google calendar {calendar_id}: {calendar_error}"
                         )
                         continue
 
@@ -1420,7 +1426,7 @@ async def fetch_provider_events(
 
                 # Fetch events from Outlook
                 logger.debug(
-                    f"[{request_id}] Fetching Microsoft events with start_time={start_dt.isoformat()}, end_time={end_dt.isoformat()}"
+                    f"Fetching Microsoft events with start_time={start_dt.isoformat()}, end_time={end_dt.isoformat()}"
                 )
                 events_response = await microsoft_client.get_events(
                     calendar_id=None,  # Use primary calendar
@@ -1431,9 +1437,7 @@ async def fetch_provider_events(
                     order_by="start/dateTime asc",
                 )
                 events = events_response.get("value", [])
-                logger.debug(
-                    f"[{request_id}] Microsoft API returned {len(events)} events"
-                )
+                logger.debug(f"Microsoft API returned {len(events)} events")
 
                 # Normalize events
                 normalized_events = []
@@ -1467,7 +1471,7 @@ async def fetch_provider_events(
                 raise ValueError(f"Unsupported provider: {provider}")
 
             logger.info(
-                f"[{request_id}] Successfully fetched {len(normalized_events)} events from {provider}"
+                f"Successfully fetched {len(normalized_events)} events from {provider}"
             )
             return normalized_events, provider
 
@@ -1499,9 +1503,8 @@ async def fetch_single_event(
     try:
         # Get API client for provider with calendar-specific scopes
         calendar_scopes = _get_calendar_scopes(provider)
-        client = await api_client_factory.create_client(
-            user_id, provider, calendar_scopes
-        )
+        factory = await get_api_client_factory()
+        client = await factory.create_client(user_id, provider, calendar_scopes)
         if client is None:
             raise ValueError(f"Failed to create API client for provider {provider}")
 
@@ -1563,9 +1566,7 @@ async def fetch_single_event(
                 raise ValueError(f"Unsupported provider: {provider}")
 
     except Exception as e:
-        logger.error(
-            f"[{request_id}] Failed to fetch event {original_event_id} from {provider}: {e}"
-        )
+        logger.error(f"Failed to fetch event {original_event_id} from {provider}: {e}")
         return None
 
 

@@ -39,6 +39,21 @@ class BaseChatTest(BaseSelectiveHTTPIntegrationTest):
         # Set the test settings as the singleton
         chat_settings._settings = test_settings
 
+        # Initialize database schema for testing
+        import asyncio
+
+        from services.chat.history_manager import create_all_tables_for_testing
+
+        try:
+            asyncio.run(create_all_tables_for_testing())
+        except RuntimeError:
+            # If we're already in an event loop, create a task
+            import concurrent.futures
+
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, create_all_tables_for_testing())
+                future.result()
+
     def teardown_method(self, method: object) -> None:
         """Clean up Chat Service test environment."""
         # Call parent teardown to clean up HTTP patches

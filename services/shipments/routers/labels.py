@@ -1,7 +1,17 @@
+"""
+Label management endpoints for the shipments service
+"""
+
 from typing import List
+from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from services.shipments.auth import get_current_user
+from services.shipments.database import get_async_session_dep
+from services.shipments.models import Label
 from services.shipments.schemas import LabelCreate, LabelOut, LabelUpdate
 from services.shipments.service_auth import service_permission_required
 
@@ -10,34 +20,90 @@ router = APIRouter()
 
 @router.get("/", response_model=List[LabelOut])
 def list_labels(
+    current_user: str = Depends(get_current_user),
     service_name: str = Depends(service_permission_required(["read_labels"])),
 ) -> list[LabelOut]:
-    # TODO: Implement label listing
+    """
+    List all labels for the authenticated user.
+
+    **Authentication:**
+    - Requires user authentication (JWT token or gateway headers)
+    - Returns only labels owned by the authenticated user
+    - Requires service API key for service-to-service calls
+    """
+    # TODO: Implement label listing with user filtering
+    # This should filter labels by current_user
     return []
 
 
 @router.post("/", response_model=LabelOut)
 def create_label(
     label: LabelCreate,
+    current_user: str = Depends(get_current_user),
     service_name: str = Depends(service_permission_required(["write_labels"])),
 ) -> LabelOut:
-    # TODO: Implement label creation
+    """
+    Create a new label for the authenticated user.
+
+    **Authentication:**
+    - Requires user authentication (JWT token or gateway headers)
+    - User ownership is automatically derived from authenticated user context
+    - Requires service API key for service-to-service calls
+    """
+    # TODO: Implement label creation with user ownership
+    # The user_id should be derived from current_user, not from client input
     raise NotImplementedError
 
 
 @router.put("/{id}", response_model=LabelOut)
-def update_label(
-    id: int,
+async def update_label(
+    id: UUID,  # Changed from int to UUID
     label: LabelUpdate,
+    current_user: str = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["write_labels"])),
 ) -> LabelOut:
-    # TODO: Implement label update
-    raise NotImplementedError
+    # Query label and validate user ownership
+    query = select(Label).where(Label.id == id, Label.user_id == current_user)  # type: ignore
+    result = await session.execute(query)
+    db_label = result.scalar_one_or_none()
+
+    if not db_label:
+        raise HTTPException(status_code=404, detail="Label not found or access denied")
+
+    # Update label fields
+    update_data = label.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(db_label, field, value)
+
+    await session.commit()
+    await session.refresh(db_label)
+
+    return LabelOut(
+        id=db_label.id,  # type: ignore
+        user_id=db_label.user_id,
+        name=db_label.name,
+        color=db_label.color,
+        created_at=db_label.created_at,
+    )
 
 
 @router.delete("/{id}")
-def delete_label(
-    id: int, service_name: str = Depends(service_permission_required(["write_labels"]))
-) -> None:
-    # TODO: Implement label deletion
-    raise NotImplementedError
+async def delete_label(
+    id: UUID,  # Changed from int to UUID
+    current_user: str = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session_dep),
+    service_name: str = Depends(service_permission_required(["write_labels"])),
+) -> dict:
+    # Query label and validate user ownership
+    query = select(Label).where(Label.id == id, Label.user_id == current_user)  # type: ignore
+    result = await session.execute(query)
+    label = result.scalar_one_or_none()
+
+    if not label:
+        raise HTTPException(status_code=404, detail="Label not found or access denied")
+
+    await session.delete(label)
+    await session.commit()
+
+    return {"message": "Label deleted successfully"}

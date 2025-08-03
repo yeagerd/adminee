@@ -42,7 +42,7 @@ export default function DemosPage() {
         timeZoneName: "short",
     });
 
-    const activeIntegrations = demoIntegrations.filter((i: DemoIntegration) => i.status === 'active');
+    const activeIntegrations = demoIntegrations.filter((i: DemoIntegration) => i.status === 'ACTIVE');
     const hasGoogleIntegration = activeIntegrations.some((i: DemoIntegration) => i.provider === 'google');
     const hasMicrosoftIntegration = activeIntegrations.some((i: DemoIntegration) => i.provider === 'microsoft');
 

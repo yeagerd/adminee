@@ -1,7 +1,15 @@
-import { ApiResponse, CalendarEventsResponse, GetEmailsResponse } from '@/types/office-service';
+import {
+    ApiResponse,
+    CalendarEventsResponse,
+    EmailFolder,
+    GetEmailsResponse,
+    GetThreadResponse,
+    GetThreadsResponse,
+} from '@/types/office-service';
 import { getSession } from 'next-auth/react';
 import { IntegrationStatus } from './constants';
 import { env, validateClientEnv } from './env';
+import { PackageStatus } from './package-status';
 
 interface GatewayClientOptions {
     method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -211,7 +219,8 @@ export class GatewayClient {
         end_date?: string,
         calendar_ids?: string[],
         q?: string,
-        time_zone: string = 'UTC'
+        time_zone: string = 'UTC',
+        noCache?: boolean
     ) {
         const params = new URLSearchParams();
         if (providers && providers.length > 0) {
@@ -225,6 +234,7 @@ export class GatewayClient {
         }
         if (q) params.append('q', q);
         params.append('time_zone', time_zone);
+        if (noCache) params.append('no_cache', 'true');
 
         return this.request<ApiResponse<CalendarEventsResponse>>(`/api/v1/calendar/events?${params.toString()}`);
     }
@@ -232,18 +242,89 @@ export class GatewayClient {
     async getEmails(
         providers: string[],
         limit?: number,
-        offset?: number
+        offset?: number,
+        noCache?: boolean,
+        labels?: string[],
+        folderId?: string
     ): Promise<ApiResponse<GetEmailsResponse>> {
         const params = new URLSearchParams();
+
+        providers.forEach(provider => params.append('providers', provider));
+
         if (limit) params.append('limit', limit.toString());
         if (offset) params.append('offset', offset.toString());
-
-        // Add providers as a list
-        providers.forEach(provider => {
-            params.append('providers', provider);
-        });
+        if (noCache) params.append('no_cache', 'true');
+        if (labels) labels.forEach(label => params.append('labels', label));
+        if (folderId) params.append('folder_id', folderId);
 
         return this.request<ApiResponse<GetEmailsResponse>>(`/api/v1/email/messages?${params.toString()}`);
+    }
+
+    async getThreads(
+        providers?: string[],
+        limit?: number,
+        includeBody?: boolean,
+        labels?: string[],
+        folderId?: string,
+        q?: string,
+        pageToken?: string,
+        noCache?: boolean
+    ): Promise<ApiResponse<GetThreadsResponse>> {
+        const params = new URLSearchParams();
+
+        if (providers) providers.forEach(provider => params.append('providers', provider));
+        if (limit) params.append('limit', limit.toString());
+        if (includeBody) params.append('include_body', 'true');
+        if (labels) labels.forEach(label => params.append('labels', label));
+        if (folderId) params.append('folder_id', folderId);
+        if (q) params.append('q', q);
+        if (pageToken) params.append('page_token', pageToken);
+        if (noCache) params.append('no_cache', 'true');
+
+        return this.request<ApiResponse<GetThreadsResponse>>(`/api/v1/email/threads?${params.toString()}`);
+    }
+
+    async getThread(
+        threadId: string,
+        includeBody?: boolean,
+        noCache?: boolean
+    ): Promise<ApiResponse<GetThreadResponse>> {
+        const params = new URLSearchParams();
+
+        if (includeBody) params.append('include_body', 'true');
+        if (noCache) params.append('no_cache', 'true');
+
+        return this.request<ApiResponse<GetThreadResponse>>(`/api/v1/email/threads/${threadId}?${params.toString()}`);
+    }
+
+    async getMessageThread(
+        messageId: string,
+        includeBody?: boolean,
+        noCache?: boolean
+    ): Promise<ApiResponse<GetThreadResponse>> {
+        const params = new URLSearchParams();
+
+        if (includeBody) params.append('include_body', 'true');
+        if (noCache) params.append('no_cache', 'true');
+
+        return this.request<ApiResponse<GetThreadResponse>>(`/api/v1/email/messages/${messageId}/thread?${params.toString()}`);
+    }
+
+    async getEmailFolders(
+        providers?: string[],
+        noCache?: boolean
+    ): Promise<ApiResponse<{ folders: EmailFolder[] }>> {
+        const params = new URLSearchParams();
+        if (noCache) params.append('no_cache', 'true');
+
+        // Add providers as a list
+        if (providers && providers.length > 0) {
+            providers.forEach(provider => {
+                params.append('providers', provider);
+            });
+        }
+
+        return this.request<ApiResponse<{ folders: EmailFolder[] }>>(`/api/v1/email/folders?${params.toString()}`);
     }
 
     async getFiles(provider: string, path?: string) {
@@ -354,6 +435,239 @@ export class GatewayClient {
         return this.request<PollParticipant>(`/api/v1/meetings/polls/${pollId}/participants`, {
             method: 'POST',
             body: { email, name },
+        });
+    }
+
+    // Shipments Service
+    async parseEmail(emailData: { subject: string; sender: string; body: string; content_type: string }): Promise<{
+        is_shipment_email: boolean;
+        detected_carrier?: string;
+        tracking_numbers: Array<{
+            tracking_number: string;
+            carrier?: string;
+            confidence: number;
+            source: string;
+        }>;
+        confidence: number;
+        detected_from: string;
+        suggested_package_data?: {
+            tracking_number?: string;
+            carrier?: string;
+            recipient_name?: string;
+            shipper_name?: string;
+            package_description?: string;
+            order_number?: string;
+            estimated_delivery?: string;
+        };
+    }> {
+        return this.request('/api/v1/shipments/events/from-email', {
+            method: 'POST',
+            body: emailData,
+        });
+    }
+
+    async createPackage(packageData: {
+        tracking_number: string;
+        carrier: string;
+        status: PackageStatus;
+        estimated_delivery?: string;
+        actual_delivery?: string;
+        recipient_name?: string;
+        shipper_name?: string;
+        package_description?: string;
+        order_number?: string;
+        tracking_link?: string;
+        email_message_id?: string;
+    }): Promise<{
+        id: string;
+        tracking_number: string;
+        carrier: string;
+        status: PackageStatus;
+        estimated_delivery?: string;
+        actual_delivery?: string;
+        recipient_name?: string;
+        shipper_name?: string;
+        package_description?: string;
+        order_number?: string;
+        tracking_link?: string;
+        updated_at: string;
+        events_count: number;
+        labels: string[];
+    }> {
+        return this.request('/api/v1/shipments/packages', {
+            method: 'POST',
+            body: packageData,
+        });
+    }
+
+    async getPackages(params?: {
+        tracking_number?: string;
+        carrier?: string;
+    }): Promise<{
+        data: Array<{
+            id: string;
+            tracking_number: string;
+            carrier: string;
+            status: PackageStatus;
+            estimated_delivery?: string;
+            actual_delivery?: string;
+            recipient_name?: string;
+            shipper_name?: string;
+            package_description?: string;
+            order_number?: string;
+            tracking_link?: string;
+            updated_at: string;
+            events_count: number;
+            labels: string[];
+        }>;
+        pagination: {
+            page: number;
+            per_page: number;
+            total: number;
+            total_pages: number;
+            has_next: boolean;
+            has_prev: boolean;
+        };
+    }> {
+        const queryParams = new URLSearchParams();
+        if (params?.tracking_number) {
+            queryParams.append('tracking_number', params.tracking_number);
+        }
+        if (params?.carrier) {
+            queryParams.append('carrier', params.carrier);
+        }
+
+        const url = queryParams.toString() ? `/api/v1/shipments/packages?${queryParams.toString()}` : '/api/v1/shipments/packages';
+        return this.request(url);
+    }
+
+    async getPackage(id: string): Promise<{
+        id: string;
+        tracking_number: string;
+        carrier: string;
+        status: PackageStatus;
+        estimated_delivery?: string;
+        actual_delivery?: string;
+        recipient_name?: string;
+        shipper_name?: string;
+        package_description?: string;
+        order_number?: string;
+        tracking_link?: string;
+        updated_at: string;
+        events_count: number;
+        labels: string[];
+    }> {
+        return this.request(`/api/v1/shipments/packages/${id}`);
+    }
+
+    async updatePackage(id: string, packageData: Record<string, unknown>): Promise<{
+        id: string;
+        tracking_number: string;
+        carrier: string;
+        status: PackageStatus;
+        estimated_delivery?: string;
+        actual_delivery?: string;
+        recipient_name?: string;
+        shipper_name?: string;
+        package_description?: string;
+        order_number?: string;
+        tracking_link?: string;
+        updated_at: string;
+        events_count: number;
+        labels: string[];
+    }> {
+        return this.request(`/api/v1/shipments/packages/${id}`, {
+            method: 'PUT',
+            body: packageData,
+        });
+    }
+
+    async deletePackage(id: string): Promise<void> {
+        return this.request(`/api/v1/shipments/packages/${id}`, {
+            method: 'DELETE',
+        });
+    }
+
+    async refreshPackage(id: string): Promise<{
+        success: boolean;
+        message: string;
+        updated_data?: Partial<{
+            id: string;
+            tracking_number: string;
+            carrier: string;
+            status: PackageStatus;
+            estimated_delivery?: string;
+            actual_delivery?: string;
+            recipient_name?: string;
+            shipper_name?: string;
+            package_description?: string;
+            order_number?: string;
+            tracking_link?: string;
+            updated_at: string;
+            events_count: number;
+            labels: string[];
+        }>;
+    }> {
+        return this.request(`/api/v1/shipments/packages/${id}/refresh`, {
+            method: 'POST',
+        });
+    }
+
+    async getTrackingEvents(packageId: string): Promise<Array<{
+        id: string;
+        event_date: string;
+        status: PackageStatus;
+        location?: string;
+        description?: string;
+        created_at: string;
+    }>> {
+        return this.request(`/api/v1/shipments/packages/${packageId}/events`);
+    }
+
+    async createTrackingEvent(packageId: string, eventData: {
+        event_date: string;
+        status: PackageStatus;
+        location?: string;
+        description?: string;
+        email_message_id?: string;
+    }): Promise<{
+        id: string;
+        event_date: string;
+        status: PackageStatus;
+        location?: string;
+        description?: string;
+        created_at: string;
+    }> {
+        return this.request(`/api/v1/shipments/packages/${packageId}/events`, {
+            method: 'POST',
+            body: eventData,
+        });
+    }
+
+    async deleteTrackingEvent(packageId: string, eventId: string): Promise<void> {
+        return this.request(`/api/v1/shipments/packages/${packageId}/events/${eventId}`, {
+            method: 'DELETE',
+        });
+    }
+
+    async collectShipmentData(data: {
+        user_id: string;
+        email_message_id: string;
+        original_email_data: Record<string, unknown>;
+        auto_detected_data: Record<string, unknown>;
+        user_corrected_data: Record<string, unknown>;
+        detection_confidence: number;
+        correction_reason?: string;
+        consent_given: boolean;
+    }): Promise<{
+        success: boolean;
+        collection_id: string;
+        timestamp: string;
+        message: string;
+    }> {
+        return this.request('/api/v1/shipments/packages/collect-data', {
+            method: 'POST',
+            body: data,
         });
     }
 }

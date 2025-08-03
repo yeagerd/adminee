@@ -61,6 +61,34 @@ class EmailThread(BaseModel):
     providers: List[Provider]
 
 
+class Conversation(BaseModel):
+    """Microsoft Graph conversation/thread model."""
+
+    id: str = Field(..., description="Microsoft Graph conversation ID")
+    topic: Optional[str] = Field(None, description="Conversation topic/subject")
+    has_attachments: bool = Field(
+        False, description="Whether conversation has attachments"
+    )
+    last_delivered_date_time: Optional[datetime] = Field(
+        None, description="Last delivered message time"
+    )
+    unique_senders: List[str] = Field(
+        default_factory=list, description="Unique sender email addresses"
+    )
+    preview: Optional[str] = Field(None, description="Preview of the conversation")
+
+
+class EmailThreadList(BaseModel):
+    """Response model for email thread lists."""
+
+    success: bool
+    data: Optional[Dict[str, Any]] = None  # Contains threads, metadata, etc.
+    error: Optional[Dict[str, Any]] = None
+    cache_hit: bool = False
+    provider_used: Optional[Provider] = None
+    request_id: str
+
+
 class SendEmailRequest(BaseModel):
     """Request model for sending emails."""
 
@@ -88,6 +116,40 @@ class EmailMessageList(BaseModel):
 
     success: bool
     data: Optional[Dict[str, Any]] = None  # Contains messages, metadata, etc.
+    error: Optional[Dict[str, Any]] = None
+    cache_hit: bool = False
+    provider_used: Optional[Provider] = None
+    request_id: str
+
+
+class EmailFolder(BaseModel):
+    """Model for email folders/labels."""
+
+    label: str = Field(..., description="Unique identifier for the folder/label")
+    name: str = Field(..., description="Display name for the folder/label")
+    provider: Provider = Field(..., description="Provider this folder belongs to")
+    provider_folder_id: Optional[str] = Field(
+        None, description="Provider-specific folder ID"
+    )
+    account_email: EmailStr = Field(
+        ..., description="Which account this folder belongs to"
+    )
+    account_name: Optional[str] = Field(
+        None, description="Display name for the account"
+    )
+    is_system: bool = Field(
+        False, description="Whether this is a system folder (inbox, sent, etc.)"
+    )
+    message_count: Optional[int] = Field(
+        None, description="Number of messages in this folder"
+    )
+
+
+class EmailFolderList(BaseModel):
+    """Response model for email folder lists."""
+
+    success: bool
+    data: Optional[Dict[str, Any]] = None  # Contains folders, metadata, etc.
     error: Optional[Dict[str, Any]] = None
     cache_hit: bool = False
     provider_used: Optional[Provider] = None

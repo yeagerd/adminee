@@ -36,20 +36,13 @@ NEXTAUTH_SECRET=your-nextauth-secret-here
 NEXT_PUBLIC_GATEWAY_URL=http://localhost:3001
 ```
 
-### Service URLs (for server-side use)
+### User Service (for login flow only)
 ```bash
-CHAT_SERVICE_URL=http://localhost:8001
-USER_SERVICE_URL=http://localhost:8000
-OFFICE_SERVICE_URL=http://localhost:8002
+USER_SERVICE_URL=http://localhost:8001
+API_FRONTEND_USER_KEY=test-FRONTEND_USER_KEY
 ```
 
-### API Keys for Service-to-Service Communication
-```bash
-API_FRONTEND_CHAT_KEY=test-FRONTEND_CHAT_KEY
-API_FRONTEND_USER_KEY=test-FRONTEND_USER_KEY
-API_FRONTEND_OFFICE_KEY=test-FRONTEND_OFFICE_KEY
-API_FRONTEND_CHAT_KEY=test-FRONTEND_CHAT_KEY
-```
+> **Note:** The frontend only communicates directly with the User Service during login. All other API calls (chat, office integrations, etc.) go through the Gateway.
 
 ### OAuth Configuration (Microsoft Entra ID / Azure AD)
 ```bash
@@ -65,12 +58,11 @@ BFF_WEBHOOK_SECRET=your-webhook-secret-here
 
 ## Environment Validation
 
-The frontend uses granular environment validation:
+The frontend validates required environment variables at startup:
 
-- **Chat API Route**: Validates `API_CHAT_USER_KEY`
-- **User API Route**: Validates `API_FRONTEND_USER_KEY`
-- **Webhook Route**: Validates `API_FRONTEND_USER_KEY`
-- **Integrations Route**: No validation needed (uses NextAuth tokens)
+- **NextAuth**: Validates OAuth configuration and secrets
+- **User Service**: Validates `USER_SERVICE_URL` and `API_FRONTEND_USER_KEY` for login flow
+- **Gateway**: Client-side calls use `NEXT_PUBLIC_GATEWAY_URL` (optional with defaults)
 
 ## Development Setup
 

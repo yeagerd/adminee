@@ -2,6 +2,9 @@
 
 AI-powered calendar and task management platform with intelligent scheduling, document management, and seamless office integration.
 
+<img width="715" height="537" alt="Screenshot 2025-07-29 at 7 45 52 AM" src="https://github.com/user-attachments/assets/6e53d632-9e31-49f4-8d0f-578ac3c67230" />
+
+
 ## Architecture
 
 - **Frontend:** Next.js 14 with TypeScript, Tailwind CSS, and shadcn/ui components
@@ -79,7 +82,7 @@ uv run python -m uvicorn services.user.main:app --port 8000 --reload
 uv run python -m uvicorn services.office.app.main:app --port 8002 --reload
 
 # Start gateway separately
-./scripts/start-gateway.sh
+./scripts/gateway-start.sh
 ```
 
 **Run tests:**
@@ -174,7 +177,7 @@ uv run python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 **API Endpoints:**
 - **Health:** `GET /health` - Service health check
-- **Email:** 
+- **Email:**
   - `GET /email/messages` - Get unified email messages
   - `GET /email/messages/{id}` - Get specific email message
   - `POST /email/send` - Send email
@@ -227,6 +230,19 @@ nox -s lint
 ```
 
 ### Database Management
+
+**PostgreSQL Setup and Management:**
+
+For detailed PostgreSQL setup, environment configuration, and database management instructions, see [postgres/README.md](postgres/README.md).
+
+**Quick Start:**
+```bash
+# Start PostgreSQL with local environment
+./scripts/postgres-start.sh --env-file .env.postgres.local
+
+# Stop PostgreSQL
+./scripts/postgres-stop.sh
+```
 
 **Run migrations:**
 ```bash
@@ -325,15 +341,25 @@ docker run -p 8001:8000 briefly-chat
    docker compose down
    ```
 
-4. **Set up Database Migrations:**
+4. **Set up Database:**
 
+   **PostgreSQL Setup:**
+   For detailed PostgreSQL setup and environment configuration, see [postgres/README.md](postgres/README.md).
+
+   **Quick Start:**
+   ```bash
+   # Start PostgreSQL with local environment
+   ./scripts/postgres-start.sh --env-file .env.postgres.local
+   ```
+
+   **Database Migrations:**
    All services use Alembic for database schema management. Run migrations from the repository root:
 
    ```bash
    # Office Service (port 8002)
    alembic -c services/office/alembic.ini upgrade head
 
-   # User Management Service (port 8000) 
+   # User Management Service (port 8000)
    alembic -c services/user/alembic.ini upgrade head
 
    # Chat Service (port 8001)
@@ -345,11 +371,13 @@ docker run -p 8001:8000 briefly-chat
    **For Development (Fresh Start):**
    If you need to reset a service's database:
    ```bash
-   # Remove the database file (e.g., for user service)
-   rm services/user/user_service.db
-   
+   # Start fresh PostgreSQL (WILL DELETE DATA)
+   ./scripts/postgres-start.sh --fresh-install --env-file .env.postgres.local
+
    # Re-run the migration to create fresh tables
+   alembic -c services/office/alembic.ini upgrade head
    alembic -c services/user/alembic.ini upgrade head
+   alembic -c services/chat/alembic.ini upgrade head
    ```
 
    **For Production:**
@@ -380,7 +408,7 @@ docker run -p 8001:8000 briefly-chat
 
 - Once the dev container or Docker Compose setup is running:
   - The **Next.js frontend** should be accessible at `http://localhost:3000`.
-  - The **PostgreSQL database** will be running on port `5432` (accessible as `db:5432` from other services within the Docker network, or `localhost:5432` from the host).
+  - The **PostgreSQL database** will be running on port `5432` (accessible as `db:5432` from other services within the Docker network, or `localhost:5432` from the host). For PostgreSQL setup and management, see [postgres/README.md](postgres/README.md).
   - Backend services will be running on their respective ports and are typically accessed via the Next.js proxy at `localhost:3000/api/proxy/...`.
 
 #### Local Testing
@@ -400,7 +428,7 @@ docker run -p 8001:8000 briefly-chat
     # Virtual environment is already activated by install.sh
     pytest                    # Run all tests
     pytest tests/test_integration.py  # Run integration tests only
-    
+
     # Run type checking and linting
     mypy services/
     ./fix                     # Auto-fix lint issues
@@ -483,7 +511,7 @@ export LOG_LEVEL=INFO
 ```json
 {
   "timestamp": "2025-06-20T06:58:14.258Z",
-  "level": "INFO", 
+  "level": "INFO",
   "logger": "services.user.security.encryption",
   "message": "Token decrypted successfully",
   "service": "user-service",
@@ -516,8 +544,8 @@ export LOG_LEVEL=INFO
   1. **Build Docker Images:** Use the service-specific Dockerfiles to build images for `office-service`, `chat-service`, and `user-service`.
   2. **Push Images to Registry:** Push the built images to a container registry.
   3. **Configure Environment Variables:** Set up environment variables (from `.env` content) in the deployment environment for each service (e.g., database connection strings, API keys).
-  4. **Deploy Database:** Provision a managed PostgreSQL instance (e.g., AWS RDS, Google Cloud SQL) or deploy PostgreSQL as a container (with persistent storage).
-  5. **Deploy Vector Database:** Ensure your Pinecone index is set up and accessible.
+  4. **Deploy Database:** Provision a managed PostgreSQL instance (e.g., AWS RDS, Google Cloud SQL) or deploy PostgreSQL as a container (with persistent storage). See [postgres/README.md](postgres/README.md) for detailed setup instructions.
+5. **Deploy Vector Database:** Ensure your Pinecone index is set up and accessible.
   6. **Deploy Backend Services:** Deploy the containerized backend services, configuring them to connect to the database, Pinecone, and each other.
   7. **Build and Deploy Frontend:** Build the Next.js application and deploy it. Configure it to point to the deployed API gateway/proxy endpoint.
   8. **Set up Authentication:** Ensure Microsoft OAuth is configured with the correct redirect URIs and credentials for the deployed environment.
@@ -585,7 +613,7 @@ ENVIRONMENT=development
 - **Running Node.js Unit Tests (e.g., for `email-service` with Jest/Mocha):**
   ```bash
   # cd services/email-service/
-  # yarn test 
+  # yarn test
   ```
   Or via Docker Compose:
   ```bash

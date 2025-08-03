@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 
 from services.meetings.models.meeting import ParticipantStatus, ResponseType
@@ -15,7 +15,7 @@ class TestEmailResponse(BaseMeetingsTest):
         from services.meetings.models import MeetingPoll, PollParticipant, get_session
         from services.meetings.models.meeting import TimeSlot
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         poll_id = uuid4()
         slot_id = uuid4()
         participant_id = uuid4()
@@ -161,8 +161,8 @@ class TestEmailResponse(BaseMeetingsTest):
             slot2 = TimeSlot(
                 id=uuid4(),
                 poll_id=UUID(poll_id),  # Convert string back to UUID
-                start_time=datetime.utcnow() + timedelta(days=4),
-                end_time=datetime.utcnow() + timedelta(days=4, minutes=30),
+                start_time=datetime.now(timezone.utc) + timedelta(days=4),
+                end_time=datetime.now(timezone.utc) + timedelta(days=4, minutes=30),
                 timezone="UTC",
             )
             session.add(slot2)

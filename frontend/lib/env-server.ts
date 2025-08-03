@@ -6,15 +6,9 @@ export const serverEnv = {
     NEXTAUTH_URL: process.env.NEXTAUTH_URL!,
     NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET!,
 
-    // Service URLs (for server-side use)
-    CHAT_SERVICE_URL: process.env.CHAT_SERVICE_URL || 'http://localhost:8001',
-    USER_SERVICE_URL: process.env.USER_SERVICE_URL || 'http://localhost:8000',
-    OFFICE_SERVICE_URL: process.env.OFFICE_SERVICE_URL || 'http://localhost:8002',
-
-    // API Keys for service-to-service communication (SERVER-SIDE ONLY)
-    API_FRONTEND_CHAT_KEY: process.env.API_FRONTEND_CHAT_KEY!,
+    // User Service (only for login flow)
+    USER_SERVICE_URL: process.env.USER_SERVICE_URL!,
     API_FRONTEND_USER_KEY: process.env.API_FRONTEND_USER_KEY!,
-    API_FRONTEND_OFFICE_KEY: process.env.API_FRONTEND_OFFICE_KEY!,
 
     // OAuth configuration
     AZURE_AD_CLIENT_ID: process.env.AZURE_AD_CLIENT_ID!,
@@ -27,9 +21,8 @@ export function validateServerEnv() {
     const requiredEnvVars = [
         'NEXTAUTH_URL',
         'NEXTAUTH_SECRET',
-        'API_FRONTEND_CHAT_KEY',
+        'USER_SERVICE_URL',
         'API_FRONTEND_USER_KEY',
-        'API_FRONTEND_OFFICE_KEY',
         'AZURE_AD_CLIENT_ID',
         'AZURE_AD_CLIENT_SECRET',
         'AZURE_AD_TENANT_ID',
@@ -60,29 +53,3 @@ export function validateOAuthEnv() {
     }
 }
 
-export function validateChatServiceEnv() {
-    const required = ['API_FRONTEND_CHAT_KEY'];
-    for (const envVar of required) {
-        if (!process.env[envVar]) {
-            throw new Error(`Missing required environment variable: ${envVar}`);
-        }
-    }
-}
-
-export function validateUserServiceEnv() {
-    const required = ['API_FRONTEND_USER_KEY'];
-    for (const envVar of required) {
-        if (!process.env[envVar]) {
-            throw new Error(`Missing required environment variable: ${envVar}`);
-        }
-    }
-}
-
-export function validateOfficeServiceEnv() {
-    const required = ['API_FRONTEND_OFFICE_KEY'];
-    for (const envVar of required) {
-        if (!process.env[envVar]) {
-            throw new Error(`Missing required environment variable: ${envVar}`);
-        }
-    }
-} 

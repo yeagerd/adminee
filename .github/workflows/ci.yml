@@ -179,7 +179,6 @@ jobs:
   frontend-quality:
     name: Frontend Code Quality
     runs-on: ubuntu-latest
-    environment: ci
 
     steps:
     - uses: actions/checkout@v4
@@ -210,6 +209,10 @@ jobs:
     - name: Copy .example.env to frontend/.env
       run: cp .example.env frontend/.env
 
+    - name: Set NEXTAUTH_SECRET for CI build
+      working-directory: ./frontend
+      run: echo "NEXTAUTH_SECRET=dummy-secret-for-ci-build-$(date +%s)" >> .env
+
     - name: Build application
       working-directory: ./frontend
       run: npm run build
@@ -217,7 +220,6 @@ jobs:
   docker-build:
     name: Docker Build Test
     runs-on: ubuntu-latest
-    environment: ci
     needs: [lint, typecheck, test, coverage, frontend-quality]
 
     steps:
@@ -226,14 +228,19 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: Copy .example.env to .env
+    - name: Copy environment files for CI
       run: |
+        # Copy main environment file
         cp .example.env .env
         cp .example.env gateway/.env
         cp .example.env frontend/.env
+        
+    - name: Set NEXTAUTH_SECRET for Docker build
+      run: |
+        echo "NEXTAUTH_SECRET=dummy-secret-for-ci-build-$(date +%s)" >> frontend/.env
 
     - name: Test Docker Compose build
       env:
-          # Only set essential variables needed for build validation
+          # Set essential variables needed for build validation
           ENVIRONMENT: ci
-      run: docker compose build
+      run: docker compose --env-file env.postgres.example build

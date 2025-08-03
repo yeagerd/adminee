@@ -90,14 +90,39 @@ export interface EmailMessage {
     account_name?: string;
 }
 
+export interface EmailFolder {
+    label: string;
+    name: string;
+    provider: 'google' | 'microsoft';
+    provider_folder_id?: string;
+    account_email: string;
+    account_name?: string;
+    is_system: boolean;
+    message_count?: number;
+}
+
 export interface EmailThread {
     id: string;
     subject?: string;
-    emails: EmailMessage[];
+    messages: EmailMessage[];
     participant_count: number;
     last_message_date: string; // ISO datetime string
     is_read: boolean;
     providers: ('google' | 'microsoft')[];
+}
+
+export interface GetThreadsResponse {
+    threads: EmailThread[];
+    total_count: number;
+    providers_used: string[];
+    provider_errors?: Record<string, string>;
+    has_more: boolean;
+    request_metadata?: Record<string, unknown>;
+}
+
+export interface GetThreadResponse {
+    thread: EmailThread;
+    provider_used: string;
 }
 
 export interface EmailFilters {

@@ -2,6 +2,7 @@
 
 import { useSession } from 'next-auth/react';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { INTEGRATION_STATUS } from '../lib/constants';
 import gatewayClient, { Integration } from '../lib/gateway-client';
 
 interface IntegrationsContextType {
@@ -61,8 +62,8 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     // Helper to determine if an integration is expired but refreshable
     function isExpiredButRefreshableIntegration(i: Integration): boolean {
         return (
-            (i.status === 'expired' ||
-                (i.status === 'active' && isTokenExpired(i.token_expires_at))
+            (i.status === INTEGRATION_STATUS.EXPIRED ||
+                (i.status === INTEGRATION_STATUS.ACTIVE && isTokenExpired(i.token_expires_at))
             ) &&
             (i.provider === 'google' || i.provider === 'microsoft') &&
             i.has_refresh_token
@@ -73,7 +74,7 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const activeProviders = useMemo(() => {
         return integrations
             .filter(i =>
-                i.status === 'active' &&
+                i.status === INTEGRATION_STATUS.ACTIVE &&
                 (i.provider === 'google' || i.provider === 'microsoft') &&
                 !isTokenExpired(i.token_expires_at)
             )
@@ -88,8 +89,8 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const expiredIntegrations = integrations.filter(isExpiredButRefreshableIntegration);
         // For 'expired' status, only try once; for 'active', allow up to 3 attempts
         const shouldRetry = expiredIntegrations.some(i =>
-            (i.status === 'expired' && (refreshAttemptsRef.current[i.provider] || 0) < 1) ||
-            (i.status === 'active' && (refreshAttemptsRef.current[i.provider] || 0) < 3)
+            (i.status === INTEGRATION_STATUS.EXPIRED && (refreshAttemptsRef.current[i.provider] || 0) < 1) ||
+            (i.status === INTEGRATION_STATUS.ACTIVE && (refreshAttemptsRef.current[i.provider] || 0) < 3)
         );
         if (
             loading ||
@@ -106,7 +107,7 @@ export const IntegrationsProvider: React.FC<{ children: React.ReactNode }> = ({ 
             try {
                 for (const integration of expiredIntegrations) {
                     // For 'expired' status, only try once; for 'active', allow up to 3 attempts
-                    const maxAttempts = integration.status === 'expired' ? 1 : 3;
+                    const maxAttempts = integration.status === INTEGRATION_STATUS.EXPIRED ? 1 : 3;
                     if ((refreshAttemptsRef.current[integration.provider] || 0) >= maxAttempts) {
                         continue;
                     }
