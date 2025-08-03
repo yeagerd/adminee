@@ -41,13 +41,11 @@ class TestTrackingEventDuplicates:
     ):
         """Test that the API accepts email_message_id parameter in tracking event creation."""
         # Test that the API endpoint accepts email_message_id parameter
-        # First, we need to create a package to attach events to
-        # Since we can't easily set up the database in tests, we'll test the schema validation
+        # Since we moved package_id to the URL path, we test the schema validation without it
         from services.shipments.schemas import TrackingEventCreate
 
-        # Test that TrackingEventCreate now accepts package_id and email_message_id
+        # Test that TrackingEventCreate accepts email_message_id (package_id is now in URL path)
         event_data = {
-            "package_id": str(uuid4()),
             "event_date": datetime.now(timezone.utc).isoformat(),
             "status": "PENDING",
             "description": "Test event",
@@ -57,11 +55,9 @@ class TestTrackingEventDuplicates:
         # This should not raise a validation error
         event = TrackingEventCreate(**event_data)
         assert event.email_message_id == "test-email-123"
-        assert event.package_id is not None
 
         # Test that email_message_id is optional
         event_data_no_email = {
-            "package_id": str(uuid4()),
             "event_date": datetime.now(timezone.utc).isoformat(),
             "status": "PENDING",
             "description": "Test event",
@@ -78,11 +74,10 @@ class TestTrackingEventDuplicates:
         # The frontend should be able to pass email_message_id when creating tracking events
         # This is verified by our schema changes and API endpoint updates
 
-        # Test that the schema supports the new field
+        # Test that the schema supports the new field (package_id is now in URL path)
         from services.shipments.schemas import TrackingEventCreate
 
         event_data = {
-            "package_id": str(uuid4()),
             "event_date": datetime.now(timezone.utc).isoformat(),
             "status": "IN_TRANSIT",
             "description": "Updated event",
@@ -91,7 +86,6 @@ class TestTrackingEventDuplicates:
 
         event = TrackingEventCreate(**event_data)
         assert event.email_message_id == "test-email-456"
-        assert event.package_id is not None
         assert event.status.value == "IN_TRANSIT"
         assert event.description == "Updated event"
 
@@ -103,23 +97,20 @@ class TestTrackingEventDuplicates:
         # Test that the endpoint accepts the email_message_id parameter
         # The actual database operations are tested in the API integration tests
 
-        # Verify that our schema changes allow email_message_id
+        # Verify that our schema changes allow email_message_id (package_id is now in URL path)
         from services.shipments.schemas import TrackingEventCreate
 
         # Test with email_message_id
         event_with_email = TrackingEventCreate(
-            package_id=uuid4(),
             event_date=datetime.now(timezone.utc),
             status="PENDING",
             description="Test with email",
             email_message_id="test-email-789",
         )
         assert event_with_email.email_message_id == "test-email-789"
-        assert event_with_email.package_id is not None
 
         # Test without email_message_id (should still work)
         event_without_email = TrackingEventCreate(
-            package_id=uuid4(),
             event_date=datetime.now(timezone.utc),
             status="PENDING",
             description="Test without email",
@@ -173,7 +164,6 @@ class TestTrackingEventDuplicates:
         timezone_aware_iso = datetime.now(timezone.utc).isoformat()
 
         event_data = {
-            "package_id": str(uuid4()),
             "event_date": timezone_aware_iso,
             "status": "PENDING",
             "description": "Test with timezone-aware datetime",
@@ -210,7 +200,6 @@ class TestTrackingEventDuplicates:
         # Simulate what happens in our API when we receive this
         # The schema should accept it
         event_data = {
-            "package_id": str(uuid4()),
             "event_date": frontend_datetime.isoformat(),
             "status": "IN_TRANSIT",
             "description": "Updated event from frontend",
