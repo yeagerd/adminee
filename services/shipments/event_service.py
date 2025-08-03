@@ -37,7 +37,7 @@ class EventService:
         await session.refresh(initial_event)
 
         return TrackingEventOut(
-            id=initial_event.id,
+            id=initial_event.id,  # type: ignore[arg-type]
             event_date=initial_event.event_date,
             status=initial_event.status,
             location=initial_event.location,
@@ -105,7 +105,7 @@ class EventService:
         await session.refresh(new_event)
 
         return TrackingEventOut(
-            id=new_event.id,
+            id=new_event.id,  # type: ignore[arg-type]
             event_date=new_event.event_date,
             status=new_event.status,
             location=new_event.location,
@@ -120,19 +120,19 @@ class EventService:
         """Get tracking events by email message ID for a specific user"""
         events_query = (
             select(TrackingEvent)
-            .join(Package, TrackingEvent.package_id == Package.id)
+            .join(Package, TrackingEvent.package_id == Package.id)  # type: ignore[arg-type]
             .where(
                 TrackingEvent.email_message_id == email_message_id,
                 Package.user_id == user_id,
             )
-            .order_by(TrackingEvent.event_date.desc())
+            .order_by(TrackingEvent.event_date.desc())  # type: ignore[attr-defined]
         )
         events_result = await session.execute(events_query)
         events = events_result.scalars().all()
 
         return [
             TrackingEventOut(
-                id=event.id,
+                id=event.id,  # type: ignore[arg-type]
                 event_date=event.event_date,
                 status=event.status,
                 location=event.location,

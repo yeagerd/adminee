@@ -119,7 +119,10 @@ async def list_packages(
         )
 
         if package_ids:
-            query = query.where(Package.id.in_(package_ids))
+            # Filter out None values and ensure we have valid UUIDs
+            valid_package_ids = [pid for pid in package_ids if pid is not None]
+            if valid_package_ids:
+                query = query.where(Package.id.in_(valid_package_ids))  # type: ignore[union-attr]
         else:
             # No events found, return empty result
             return {
@@ -145,7 +148,10 @@ async def list_packages(
     package_out = []
     for pkg in packages:
         # Get events count for this package
-        events_count = await EventService.get_events_count(session, pkg.id)
+        if pkg.id is None:
+            events_count = 0
+        else:
+            events_count = await EventService.get_events_count(session, pkg.id)
 
         package_out.append(
             PackageOut(
@@ -231,15 +237,19 @@ async def add_package(
     updated_at = db_pkg.updated_at
 
     # Create initial tracking event
-    await EventService.create_initial_event(
-        session=session,
-        package_id=package_id,
-        status=package_status.value,
-        email_message_id=pkg.email_message_id,
-    )
+    if package_id is not None:
+        await EventService.create_initial_event(
+            session=session,
+            package_id=package_id,
+            status=package_status.value,
+            email_message_id=pkg.email_message_id,
+        )
 
     # Get events count
-    events_count = await EventService.get_events_count(session, package_id)
+    if package_id is not None:
+        events_count = await EventService.get_events_count(session, package_id)
+    else:
+        events_count = 0
 
     return PackageOut(
         id=package_id,  # type: ignore
@@ -278,7 +288,10 @@ async def get_package(
         )
 
     # Get events count
-    events_count = await EventService.get_events_count(session, package.id)
+    if package.id is not None:
+        events_count = await EventService.get_events_count(session, package.id)
+    else:
+        events_count = 0
 
     return PackageOut(
         id=package.id,  # type: ignore
@@ -359,7 +372,10 @@ async def update_package(
     await session.refresh(package)
 
     # Get events count
-    events_count = await EventService.get_events_count(session, package.id)
+    if package.id is not None:
+        events_count = await EventService.get_events_count(session, package.id)
+    else:
+        events_count = 0
 
     return PackageOut(
         id=package.id,  # type: ignore
@@ -398,7 +414,8 @@ async def delete_package(
         )
 
     # Delete all tracking events for this package first
-    await EventService.delete_package_events(session, package.id)
+    if package.id is not None:
+        await EventService.delete_package_events(session, package.id)
 
     # Delete the package
     await session.delete(package)
