@@ -53,7 +53,9 @@ async def create_all_tables_for_testing() -> None:
     async with engine.begin() as conn:
         # Configure connection with valid PRAGMA settings
         if "sqlite" in str(engine.url).lower():
-            await conn.execute("PRAGMA foreign_keys = ON")
+            from sqlalchemy import text
+
+            await conn.execute(text("PRAGMA foreign_keys = ON"))
         await conn.run_sync(SQLModel.metadata.create_all)
 
 
