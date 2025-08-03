@@ -110,7 +110,7 @@ async def get_events_by_email(
 
 @router.get("/{id}/events", response_model=List[TrackingEventOut])
 async def get_tracking_events(
-    id: UUID,  # Changed from int to UUID
+    id: UUID,
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["read_shipments"])),
@@ -147,8 +147,9 @@ async def get_tracking_events(
     ]
 
 
-@router.post("/events", response_model=TrackingEventOut)
+@router.post("/{id}/events", response_model=TrackingEventOut)
 async def create_tracking_event(
+    id: UUID,
     event: TrackingEventCreate,
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
@@ -156,7 +157,7 @@ async def create_tracking_event(
 ) -> TrackingEventOut:
     # Query package and validate user ownership
     query = select(Package).where(
-        Package.id == event.package_id, Package.user_id == current_user
+        Package.id == id, Package.user_id == current_user
     )
     result = await session.execute(query)
     package = result.scalar_one_or_none()
@@ -205,6 +206,7 @@ async def create_tracking_event(
 
     # Create new tracking event
     event_data = event.model_dump()
+    event_data["package_id"] = id
 
     # Ensure event_date is timezone-naive for database compatibility
     if (

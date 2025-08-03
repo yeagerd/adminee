@@ -73,7 +73,6 @@ class TrackingEventOut(BaseModel):
 
 
 class TrackingEventCreate(BaseModel):
-    package_id: UUID
     event_date: datetime
     status: PackageStatus
     location: Optional[str] = None

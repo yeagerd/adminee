@@ -422,21 +422,19 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
             if (existingPackage) {
                 // If package exists, create a tracking event instead of new package
                 const eventData: {
-                    package_id: string;
                     event_date: string;
                     status: PackageStatus;
                     location?: string;
                     description?: string;
                     email_message_id?: string;
                 } = {
-                    package_id: existingPackage.id,
                     event_date: new Date().toISOString(),
                     status: formData.status,
                     description: `New tracking event from email - Status: ${formData.status}`,
                     email_message_id: email.id, // Include the email message ID to prevent duplicates
                 };
 
-                await shipmentsClient.createTrackingEvent(eventData);
+                await shipmentsClient.createTrackingEvent(existingPackage.id, eventData);
 
                 // Check if any package fields need to be updated
                 const packageUpdates: Partial<PackageCreateRequest> = {};
