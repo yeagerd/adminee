@@ -21,14 +21,20 @@ shipments_router.include_router(
     carrier_configs.router, prefix="/carriers", tags=["Carriers"]
 )
 
+# Include package-specific tracking events router
+# This allows /api/v1/shipments/packages/{id}/events to work
+shipments_router.include_router(
+    tracking_events.package_events_router, prefix="/packages", tags=["Package Events"]
+)
+
+# Include general email parsing and event management router
+# This allows /api/v1/shipments/events/from-email to work
+shipments_router.include_router(
+    tracking_events.email_events_router, prefix="/events", tags=["Events"]
+)
+
 # Create the main API router
 api_router = APIRouter()
 
 # Include the shipments router under /shipments
 api_router.include_router(shipments_router, prefix="/shipments", tags=["Shipments"])
-
-# Include tracking events router under events to match expected URL pattern
-# This allows /api/v1/shipments/events/from-email to work
-api_router.include_router(
-    tracking_events.router, prefix="/shipments/events", tags=["Events"]
-)

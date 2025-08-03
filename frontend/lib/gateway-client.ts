@@ -629,6 +629,7 @@ export class GatewayClient {
         status: PackageStatus;
         location?: string;
         description?: string;
+        email_message_id?: string;
     }): Promise<{
         id: string;
         event_date: string;
