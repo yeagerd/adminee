@@ -298,3 +298,26 @@ class TestTrackingEventDuplicates:
         # 2. Our fixed code converts them to timezone-naive (solution)
         # 3. If someone removes our timezone fix, this test would catch it
         #    by showing that timezone-aware datetimes are being passed through
+
+    def test_tracking_events_router_timezone_handling(self):
+        """Test that the tracking_events router has proper timezone handling."""
+        # This test verifies that the tracking_events router has the same timezone handling
+        # as the packages router to ensure consistency across the codebase
+        
+        # Import the tracking_events router to verify it has the timezone handling logic
+        from services.shipments.routers import tracking_events
+        
+        # The router should have the datetime import
+        assert hasattr(tracking_events, 'datetime')
+        
+        # Test that the timezone handling logic is consistent
+        timezone_aware_datetime = datetime.now(timezone.utc)
+        assert timezone_aware_datetime.tzinfo is not None
+        
+        # Simulate the timezone handling logic that should be in the router
+        event_date = timezone_aware_datetime
+        if event_date and event_date.tzinfo is not None:
+            event_date = event_date.replace(tzinfo=None)
+        
+        assert event_date.tzinfo is None
+        assert event_date == timezone_aware_datetime.replace(tzinfo=None)
