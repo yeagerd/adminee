@@ -173,10 +173,11 @@ class TestIntegrationModel:
         assert IntegrationProvider.SLACK == "slack"
 
         # Test status enum
-        assert IntegrationStatus.ACTIVE == "active"
-        assert IntegrationStatus.INACTIVE == "inactive"
-        assert IntegrationStatus.ERROR == "error"
-        assert IntegrationStatus.PENDING == "pending"
+        assert IntegrationStatus.ACTIVE == "ACTIVE"
+        assert IntegrationStatus.INACTIVE == "INACTIVE"
+        assert IntegrationStatus.ERROR == "ERROR"
+        assert IntegrationStatus.PENDING == "PENDING"
+        assert IntegrationStatus.EXPIRED == "EXPIRED"
 
     def test_integration_defaults(self):
         """Test integration default values."""
