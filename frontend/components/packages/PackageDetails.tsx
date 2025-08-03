@@ -65,7 +65,7 @@ export default function PackageDetails({ pkg, onClose }: { pkg: Package & { labe
 
         setDeletingEventId(eventId);
         try {
-            await gatewayClient.deleteTrackingEvent(eventId);
+            await gatewayClient.deleteTrackingEvent(pkg.id!, eventId);
             // Remove the deleted event from the local state
             setEvents(prevEvents => prevEvents.filter(event => event.id !== eventId));
         } catch (error) {

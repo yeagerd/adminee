@@ -644,8 +644,8 @@ export class GatewayClient {
         });
     }
 
-    async deleteTrackingEvent(eventId: string): Promise<void> {
-        return this.request(`/api/v1/shipments/events/${eventId}`, {
+    async deleteTrackingEvent(packageId: string, eventId: string): Promise<void> {
+        return this.request(`/api/v1/shipments/packages/${packageId}/events/${eventId}`, {
             method: 'DELETE',
         });
     }
