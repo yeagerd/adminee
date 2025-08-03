@@ -10,11 +10,11 @@ from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
     async_sessionmaker,
-    create_async_engine,
 )
 from sqlmodel import SQLModel
 
 from services.common import get_async_database_url
+from services.common.database_config import create_strict_async_engine
 from services.user.models.audit import AuditLog  # noqa: F401
 from services.user.models.integration import Integration  # noqa: F401
 from services.user.models.preferences import UserPreferences  # noqa: F401
@@ -27,7 +27,7 @@ from services.user.settings import get_settings
 
 def get_engine() -> AsyncEngine:
     settings = get_settings()
-    return create_async_engine(
+    return create_strict_async_engine(
         get_async_database_url(settings.db_url_user),
         echo=settings.debug,
     )

@@ -5,10 +5,11 @@ from typing import Any, AsyncGenerator, Dict, Optional
 from sqlalchemy import JSON
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import Text, func
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlmodel import Column, DateTime, Field, SQLModel
 
 from services.common import get_async_database_url
+from services.common.database_config import create_strict_async_engine
 from services.office.core.settings import get_settings
 
 # Global variables for lazy initialization
@@ -22,7 +23,7 @@ def get_engine() -> Any:
     if _engine is None:
         settings = get_settings()
         database_url = get_async_database_url(settings.db_url_office)
-        _engine = create_async_engine(database_url, echo=False)
+        _engine = create_strict_async_engine(database_url, echo=False)
     return _engine
 
 

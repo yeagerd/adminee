@@ -21,12 +21,13 @@ import datetime
 from typing import Any, AsyncGenerator, List, Optional
 
 from sqlalchemy import Text, UniqueConstraint, desc, func
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import registry
 from sqlmodel import Column, DateTime, Field, Relationship, SQLModel, select
 
 from services.chat.settings import get_settings
 from services.common import get_async_database_url
+from services.common.database_config import create_strict_async_engine
 
 
 def get_database_url() -> str:
@@ -65,7 +66,7 @@ def get_engine() -> Any:
     if _engine is None:
         database_url = get_database_url()
         async_url = get_async_database_url(database_url)
-        _engine = create_async_engine(async_url, echo=False)
+        _engine = create_strict_async_engine(async_url, echo=False)
     return _engine
 
 

@@ -5,6 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from services.common.database_config import is_sqlite_database
 from services.meetings.models.base import Base as Base
 from services.meetings.models.meeting import MeetingPoll as MeetingPoll
 from services.meetings.models.meeting import PollParticipant as PollParticipant
@@ -15,7 +16,24 @@ from services.meetings.settings import get_settings
 
 def get_engine() -> "Engine":
     db_url = get_settings().db_url_meetings
-    return create_engine(db_url, echo=False, future=True)
+
+    # Apply strict SQLite configuration if using SQLite
+    connect_args = {}
+    if is_sqlite_database(db_url):
+        connect_args = {
+            "check_same_thread": False,
+            "timeout": 30,
+            "pragmas": {
+                "foreign_keys": "ON",
+                "journal_mode": "WAL",
+                "timezone": "UTC",
+                "strict": "ON",
+                "synchronous": "NORMAL",
+                "temp_store": "MEMORY",
+            },
+        }
+
+    return create_engine(db_url, echo=False, future=True, connect_args=connect_args)
 
 
 def get_sessionmaker() -> sessionmaker:
