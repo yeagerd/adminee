@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { gatewayClient } from '../../lib/gateway-client';
 import type { Package, TrackingEvent } from './AddPackageModal';
 import LabelChip from './LabelChip';
@@ -8,6 +8,7 @@ export default function PackageDetails({ pkg, onClose }: { pkg: Package & { labe
     const [events, setEvents] = useState<TrackingEvent[]>([]);
     const [loadingEvents, setLoadingEvents] = useState(false);
     const [eventsError, setEventsError] = useState<string | null>(null);
+    const modalRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -17,6 +18,22 @@ export default function PackageDetails({ pkg, onClose }: { pkg: Package & { labe
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
+
+    // Handle click outside to close
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+                // TODO: In the future, check for unsaved changes here before closing
+                // For now, close immediately
+                onClose();
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
     }, [onClose]);
 
     // Fetch events when modal opens
@@ -42,16 +59,16 @@ export default function PackageDetails({ pkg, onClose }: { pkg: Package & { labe
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-lg max-w-lg w-full max-h-[90vh] flex flex-col">
+            <div ref={modalRef} className="bg-white rounded-lg shadow-lg max-w-lg w-full max-h-[90vh] flex flex-col relative">
                 <div className="p-6 pb-4 border-b border-gray-200">
                     <button
-                        className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-3xl font-bold p-2 leading-none focus:outline-none"
+                        className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
                         onClick={onClose}
                         aria-label="Close"
                     >
                         &times;
                     </button>
-                    <h2 className="text-xl font-bold mb-2">Package Details</h2>
+                    <h2 className="text-xl font-bold mb-2 pr-8">Package Details</h2>
                 </div>
                 <div className="flex-1 overflow-y-auto p-6 pt-4">
                     <div className="space-y-3">
