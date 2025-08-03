@@ -165,10 +165,15 @@ async def create_tracking_event(
             status_code=404, detail="Package not found or access denied"
         )
 
-    # Check if an event with the same email_message_id already exists
+    # Check if an event with the same email_message_id already exists for this user
     if event.email_message_id:
-        existing_event_query = select(TrackingEvent).where(
-            TrackingEvent.email_message_id == event.email_message_id
+        existing_event_query = (
+            select(TrackingEvent)
+            .join(Package, TrackingEvent.package_id == Package.id)  # type: ignore
+            .where(
+                TrackingEvent.email_message_id == event.email_message_id,
+                Package.user_id == current_user,
+            )
         )
         existing_event_result = await session.execute(existing_event_query)
         existing_event = existing_event_result.scalar_one_or_none()
