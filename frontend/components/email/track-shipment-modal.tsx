@@ -14,7 +14,7 @@ import { DataCollectionRequest, PackageCreateRequest, PackageResponse, shipments
 import { safeParseDateToISOString, safeParseDateToLocaleString } from '@/lib/utils';
 import { EmailMessage } from '@/types/office-service';
 import DOMPurify from 'dompurify';
-import { CheckCircle, Info, Loader2, Package, Truck } from 'lucide-react';
+import { CheckCircle, Info, Loader2, Package, PackageCheck, Truck } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import React, { useEffect, useRef, useState } from 'react';
 
@@ -216,7 +216,30 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
 
             setIsParsing(true);
             try {
-                if (shipmentDetection.isShipmentEmail) {
+                // First, check if there's already a package associated with this email
+                const existingPackageByEmail = await shipmentsClient.getPackageByEmail(email.id);
+
+                if (existingPackageByEmail) {
+                    // If we have an existing package, populate form with its data
+                    setOriginalPackageData(existingPackageByEmail);
+                    setExistingPackage(existingPackageByEmail);
+
+                    const packageData: PackageFormData = {
+                        tracking_number: existingPackageByEmail.tracking_number,
+                        carrier: existingPackageByEmail.carrier,
+                        status: existingPackageByEmail.status,
+                        recipient_name: existingPackageByEmail.recipient_name || '',
+                        shipper_name: existingPackageByEmail.shipper_name || '',
+                        package_description: existingPackageByEmail.package_description || '',
+                        order_number: existingPackageByEmail.order_number || '',
+                        tracking_link: existingPackageByEmail.tracking_link || '',
+                        expected_delivery: safeParseDateToISOString(existingPackageByEmail.estimated_delivery)
+                    };
+
+                    setFormData(packageData);
+                    setInitialFormData(packageData);
+                } else if (shipmentDetection.isShipmentEmail) {
+                    // Fall back to frontend detection if no existing package
                     const detectedData: PackageFormData = {
                         tracking_number: shipmentDetection.trackingNumbers[0] || '',
                         carrier: shipmentDetection.detectedCarrier || 'unknown',
@@ -475,9 +498,14 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                     ) : isParsing ? (
                         <div className="flex flex-col items-center justify-center py-8 text-center">
                             <Loader2 className="h-12 w-12 text-blue-500 mb-4 animate-spin" />
-                            <h3 className="text-lg font-semibold mb-2">Analyzing Email...</h3>
+                            <h3 className="text-lg font-semibold mb-2">
+                                {existingPackage ? 'Loading Package Details...' : 'Analyzing Email...'}
+                            </h3>
                             <p className="text-muted-foreground">
-                                Extracting shipment information from your email.
+                                {existingPackage
+                                    ? 'Loading your existing package information.'
+                                    : 'Extracting shipment information from your email.'
+                                }
                             </p>
                         </div>
                     ) : (
@@ -534,6 +562,21 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
 
                             {/* Form - Right Side */}
                             <div className="space-y-4">
+                                {/* Form Header */}
+                                {existingPackage && (
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                        <div className="flex items-center gap-2">
+                                            <PackageCheck className="h-4 w-4 text-blue-600" />
+                                            <span className="text-sm font-medium text-blue-800">
+                                                Editing Existing Package
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-blue-600 mt-1">
+                                            This package is already being tracked. You can update its information or add new tracking events.
+                                        </p>
+                                    </div>
+                                )}
+
                                 <form onSubmit={handleSubmit} className="space-y-4">
 
 
@@ -778,11 +821,15 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                     {isLoading ? (
                                         <>
                                             <Loader2 className="h-4 w-4 animate-spin" />
-                                            {existingPackage ? 'Adding Event...' : 'Tracking...'}
+                                            {existingPackage ? 'Adding Event...' : 'Creating Package...'}
                                         </>
                                     ) : (
                                         <>
-                                            <Truck className="h-4 w-4" />
+                                            {existingPackage ? (
+                                                <PackageCheck className="h-4 w-4" />
+                                            ) : (
+                                                <Truck className="h-4 w-4" />
+                                            )}
                                             {existingPackage ? 'Add Tracking Event' : 'Track Shipment'}
                                         </>
                                     )}
