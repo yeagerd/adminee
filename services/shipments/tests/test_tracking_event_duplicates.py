@@ -303,21 +303,21 @@ class TestTrackingEventDuplicates:
         """Test that the tracking_events router has proper timezone handling."""
         # This test verifies that the tracking_events router has the same timezone handling
         # as the packages router to ensure consistency across the codebase
-        
+
         # Import the tracking_events router to verify it has the timezone handling logic
         from services.shipments.routers import tracking_events
-        
+
         # The router should have the datetime import
-        assert hasattr(tracking_events, 'datetime')
-        
+        assert hasattr(tracking_events, "datetime")
+
         # Test that the timezone handling logic is consistent
         timezone_aware_datetime = datetime.now(timezone.utc)
         assert timezone_aware_datetime.tzinfo is not None
-        
+
         # Simulate the timezone handling logic that should be in the router
         event_date = timezone_aware_datetime
         if event_date and event_date.tzinfo is not None:
             event_date = event_date.replace(tzinfo=None)
-        
+
         assert event_date.tzinfo is None
         assert event_date == timezone_aware_datetime.replace(tzinfo=None)

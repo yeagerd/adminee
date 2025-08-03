@@ -252,17 +252,17 @@ class TestCrossUserAccess:
         # This test verifies the security fix for the tracking event duplicate prevention logic
         # Users should not be able to update tracking events belonging to other users
         # even if they know the email_message_id
-        
+
         current_user = "user123"
         other_user = "user456"
         shared_email_message_id = "email123@example.com"
-        
+
         # In a real test, this would:
         # 1. Create a package and tracking event for other_user with email_message_id
         # 2. Try to create/update a tracking event for current_user with the same email_message_id
         # 3. Verify that the existing event is NOT updated (security fix prevents this)
         # 4. Verify that a new event is created instead
-        
+
         assert current_user != other_user
         assert shared_email_message_id is not None
         # Verify variables are used (to avoid unused variable warnings)
