@@ -249,21 +249,29 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
                                 {/* Shipment package icon */}
                                 {shipmentDetection.isShipmentEmail && (
                                     <div className="relative group">
-                                        {hasEvents ? (
-                                            <PackageCheck
-                                                className="h-4 w-4 text-green-600"
-                                            />
-                                        ) : (
-                                            <Package
-                                                className="h-4 w-4 text-gray-400"
-                                            />
-                                        )}
-                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                                            {hasEvents
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 w-6 p-0 hover:bg-gray-100"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleTrackShipment();
+                                            }}
+                                            title={hasEvents
                                                 ? `${shipmentEvents.length} tracking event${shipmentEvents.length > 1 ? 's' : ''}`
-                                                : 'Shipment detected'
+                                                : 'Track shipment'
                                             }
-                                        </div>
+                                        >
+                                            {hasEvents ? (
+                                                <PackageCheck
+                                                    className="h-4 w-4 text-green-600"
+                                                />
+                                            ) : (
+                                                <Package
+                                                    className="h-4 w-4 text-gray-400"
+                                                />
+                                            )}
+                                        </Button>
                                     </div>
                                 )}
 
