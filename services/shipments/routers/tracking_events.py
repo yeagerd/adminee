@@ -183,6 +183,43 @@ async def create_tracking_event(
     )
 
 
+@router.delete("/events/{event_id}")
+async def delete_tracking_event(
+    event_id: UUID,
+    current_user: str = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session_dep),
+    service_name: str = Depends(service_permission_required(["write_shipments"])),
+) -> dict:
+    """
+    Delete a tracking event by ID
+
+    Validates that the user owns the package associated with the tracking event
+    before allowing deletion.
+    """
+    # Query tracking event and validate user ownership through package
+    query = (
+        select(TrackingEvent)
+        .join(Package, TrackingEvent.package_id == Package.id)  # type: ignore[arg-type]
+        .where(
+            TrackingEvent.id == event_id,
+            Package.user_id == current_user,
+        )
+    )
+    result = await session.execute(query)
+    event = result.scalar_one_or_none()
+
+    if not event:
+        raise HTTPException(
+            status_code=404, detail="Tracking event not found or access denied"
+        )
+
+    # Delete the event
+    await session.delete(event)
+    await session.commit()
+
+    return {"message": "Tracking event deleted successfully"}
+
+
 # Email parsing endpoint
 email_parser = EmailParser()
 
