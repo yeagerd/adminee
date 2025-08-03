@@ -52,6 +52,9 @@ def upgrade() -> None:
         add_enum_value_if_not_exists("integrationstatus", "pending")
         add_enum_value_if_not_exists("integrationstatus", "expired")
 
+        # Commit the enum value additions to make them available for use
+        connection.commit()
+
         # Now update existing records to use lowercase values
         # Only update if the record has uppercase values (safe to re-run)
         connection.execute(
