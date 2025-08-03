@@ -5,8 +5,11 @@ This module tests the database configuration utilities that enforce
 strict timezone handling across all services.
 """
 
+import pytest
+
 from services.common.database_config import (
     configure_session_pragmas,
+    create_strict_async_engine,
     get_database_timezone_config,
     get_database_type,
     get_sqlite_connect_args,
@@ -117,3 +120,50 @@ class TestDatabaseConfiguration:
         ):
             converted_url = test_url.replace("sqlite://", "sqlite+aiosqlite://")
             assert converted_url == expected_async_url
+
+    def test_create_strict_async_engine_connect_args_handling(self):
+        """Test that connect_args are handled correctly without duplication."""
+        # Test that the function doesn't cause TypeError when connect_args is provided in kwargs
+
+        # This test verifies that our fix for the duplicate connect_args issue works
+        # by ensuring that the function can be called with connect_args in kwargs
+        # without raising a TypeError
+
+        # Test with SQLite URL and connect_args in kwargs
+        test_url = "sqlite:///:memory:"
+        custom_connect_args = {"custom_setting": "value"}
+
+        # This should not raise a TypeError
+        try:
+            engine = create_strict_async_engine(
+                test_url, echo=False, connect_args=custom_connect_args
+            )
+            # If we get here, no TypeError was raised
+            assert engine is not None
+        except TypeError as e:
+            if "connect_args" in str(e):
+                pytest.fail(
+                    "TypeError raised due to duplicate connect_args - this should be fixed"
+                )
+            else:
+                # Re-raise if it's a different TypeError
+                raise
+
+        # Test with non-SQLite URL and connect_args in kwargs
+        # Use a mock URL that won't actually try to connect
+        test_url = "postgresql+asyncpg://user:pass@localhost/db"
+
+        try:
+            engine = create_strict_async_engine(
+                test_url, echo=False, connect_args=custom_connect_args
+            )
+            # If we get here, no TypeError was raised
+            assert engine is not None
+        except TypeError as e:
+            if "connect_args" in str(e):
+                pytest.fail(
+                    "TypeError raised due to duplicate connect_args - this should be fixed"
+                )
+            else:
+                # Re-raise if it's a different TypeError
+                raise

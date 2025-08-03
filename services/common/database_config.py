@@ -43,14 +43,20 @@ def create_strict_async_engine(
     Returns:
         Configured AsyncEngine instance
     """
-    connect_args = {}
+    # Check if connect_args is already provided in kwargs
+    existing_connect_args = kwargs.pop("connect_args", {})
 
     # Apply strict SQLite configuration if using SQLite
-    if "sqlite" in database_url.lower():
+    if database_url.lower().startswith("sqlite://"):
         # Convert to async SQLite URL
         if not database_url.startswith("sqlite+aiosqlite://"):
             database_url = database_url.replace("sqlite://", "sqlite+aiosqlite://")
-        connect_args = get_sqlite_connect_args()
+        # Merge existing connect_args with SQLite-specific ones
+        sqlite_connect_args = get_sqlite_connect_args()
+        connect_args = {**existing_connect_args, **sqlite_connect_args}
+    else:
+        # Use existing connect_args if provided, otherwise empty dict
+        connect_args = existing_connect_args
 
     return create_async_engine(
         database_url, echo=echo, future=True, connect_args=connect_args, **kwargs
@@ -71,7 +77,7 @@ async def configure_session_pragmas(session: Any) -> None:
     if (
         hasattr(session, "bind")
         and session.bind
-        and "sqlite" in str(session.bind.url).lower()
+        and str(session.bind.url).lower().startswith("sqlite://")
     ):
         from sqlalchemy import text
 
@@ -100,7 +106,7 @@ def is_sqlite_database(database_url: str) -> bool:
     Returns:
         True if the URL is for SQLite, False otherwise
     """
-    return "sqlite" in database_url.lower()
+    return database_url.lower().startswith("sqlite://")
 
 
 def get_database_type(database_url: str) -> str:
@@ -113,11 +119,12 @@ def get_database_type(database_url: str) -> str:
     Returns:
         The database type (e.g., 'sqlite', 'postgresql', 'mysql')
     """
-    if "sqlite" in database_url.lower():
+    url_lower = database_url.lower()
+    if url_lower.startswith("sqlite://"):
         return "sqlite"
-    elif "postgresql" in database_url.lower() or "postgres" in database_url.lower():
+    elif url_lower.startswith("postgresql://") or url_lower.startswith("postgres://"):
         return "postgresql"
-    elif "mysql" in database_url.lower():
+    elif url_lower.startswith("mysql://"):
         return "mysql"
     else:
         return "unknown"
