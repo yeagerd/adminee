@@ -2,7 +2,6 @@
 Tracking events management endpoints for the shipments service
 """
 
-from datetime import datetime
 from typing import List
 from uuid import UUID
 
@@ -207,16 +206,12 @@ async def create_tracking_event(
             )
 
     # Create new tracking event
+    # Ensure event_date is timezone-naive for database compatibility before converting to dict
+    if event.event_date and event.event_date.tzinfo is not None:
+        event.event_date = event.event_date.replace(tzinfo=None)
+    
     event_data = event.model_dump()
     event_data["package_id"] = package_id
-
-    # Ensure event_date is timezone-naive for database compatibility
-    if (
-        event_data["event_date"]
-        and isinstance(event_data["event_date"], datetime)
-        and event_data["event_date"].tzinfo is not None
-    ):
-        event_data["event_date"] = event_data["event_date"].replace(tzinfo=None)
 
     db_event = TrackingEvent(**event_data)
     session.add(db_event)
