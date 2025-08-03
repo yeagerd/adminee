@@ -6,6 +6,7 @@ Create Date: 2025-08-02 20:50:48.490194
 
 """
 
+import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
@@ -22,17 +23,52 @@ def upgrade() -> None:
 
     if dialect == "postgresql":
         # PostgreSQL: Fix the enum values to match Python enum (lowercase)
-        # Add the missing 'expired' value (lowercase to match Python enum)
-        op.execute("ALTER TYPE integrationstatus ADD VALUE 'expired'")
 
-        # Update any existing records to use lowercase values to match Python enum
-        op.execute("UPDATE integrations SET status = 'active' WHERE status = 'ACTIVE'")
-        op.execute(
-            "UPDATE integrations SET status = 'inactive' WHERE status = 'INACTIVE'"
+        # First, add all lowercase enum values that might not exist
+        # Use a function to check if value exists before adding (idempotent)
+        def add_enum_value_if_not_exists(enum_name: str, value: str) -> None:
+            # Check if the value already exists in the enum
+            result = connection.execute(
+                sa.text(
+                    """
+                    SELECT 1 FROM pg_enum 
+                    WHERE enumtypid = (SELECT oid FROM pg_type WHERE typname = :enum_name)
+                    AND enumlabel = :value
+                    """
+                ),
+                {"enum_name": enum_name, "value": value},
+            ).fetchone()
+
+            if not result:
+                # Value doesn't exist, add it
+                connection.execute(
+                    sa.text(f"ALTER TYPE {enum_name} ADD VALUE '{value}'")
+                )
+
+        # Add all lowercase values that the Python code expects
+        add_enum_value_if_not_exists("integrationstatus", "active")
+        add_enum_value_if_not_exists("integrationstatus", "inactive")
+        add_enum_value_if_not_exists("integrationstatus", "error")
+        add_enum_value_if_not_exists("integrationstatus", "pending")
+        add_enum_value_if_not_exists("integrationstatus", "expired")
+
+        # Now update existing records to use lowercase values
+        # Only update if the record has uppercase values (safe to re-run)
+        connection.execute(
+            sa.text("UPDATE integrations SET status = 'active' WHERE status = 'ACTIVE'")
         )
-        op.execute("UPDATE integrations SET status = 'error' WHERE status = 'ERROR'")
-        op.execute(
-            "UPDATE integrations SET status = 'pending' WHERE status = 'PENDING'"
+        connection.execute(
+            sa.text(
+                "UPDATE integrations SET status = 'inactive' WHERE status = 'INACTIVE'"
+            )
+        )
+        connection.execute(
+            sa.text("UPDATE integrations SET status = 'error' WHERE status = 'ERROR'")
+        )
+        connection.execute(
+            sa.text(
+                "UPDATE integrations SET status = 'pending' WHERE status = 'PENDING'"
+            )
         )
 
         # Note: We can't easily remove the uppercase values from the enum in PostgreSQL
