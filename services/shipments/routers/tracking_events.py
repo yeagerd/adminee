@@ -132,8 +132,8 @@ async def get_tracking_events(
     events_query = (
         select(TrackingEvent)
         .where(TrackingEvent.package_id == package_id)
-        .order_by(TrackingEvent.event_date.desc())
-    )  # type: ignore[attr-defined]
+        .order_by(TrackingEvent.event_date.desc())  # type: ignore[attr-defined]
+    )
     events_result = await session.execute(events_query)
     events = events_result.scalars().all()
 
