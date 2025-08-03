@@ -109,7 +109,9 @@ async def get_events_by_email(
         )
 
 
-@package_events_router.get("/{package_id}/events", response_model=List[TrackingEventOut])
+@package_events_router.get(
+    "/{package_id}/events", response_model=List[TrackingEventOut]
+)
 async def get_tracking_events(
     package_id: UUID,
     current_user: str = Depends(get_current_user),
@@ -127,9 +129,11 @@ async def get_tracking_events(
         )
 
     # Query tracking events for the package
-    events_query = select(TrackingEvent).where(
-        TrackingEvent.package_id == package_id
-    ).order_by(TrackingEvent.event_date.desc())  # type: ignore[attr-defined]
+    events_query = (
+        select(TrackingEvent)
+        .where(TrackingEvent.package_id == package_id)
+        .order_by(TrackingEvent.event_date.desc())
+    )  # type: ignore[attr-defined]
     events_result = await session.execute(events_query)
     events = events_result.scalars().all()
 
@@ -201,7 +205,7 @@ async def create_tracking_event(
     # Ensure event_date is timezone-naive for database compatibility before converting to dict
     if event.event_date and event.event_date.tzinfo is not None:
         event.event_date = event.event_date.replace(tzinfo=None)
-    
+
     event_data = event.model_dump()
     event_data["package_id"] = package_id
 
@@ -300,17 +304,53 @@ def _detect_carrier_from_tracking_number(tracking_number: str) -> str:
         return "UPS"
 
     # FedEx tracking numbers are typically 12-15 characters and start with various prefixes
-    fedex_prefixes = ["7946", "7947", "7948", "7949", "7950", "7951", "7952", "7953", "7954", "7955"]
+    fedex_prefixes = [
+        "7946",
+        "7947",
+        "7948",
+        "7949",
+        "7950",
+        "7951",
+        "7952",
+        "7953",
+        "7954",
+        "7955",
+    ]
     if any(clean_number.startswith(prefix) for prefix in fedex_prefixes):
         return "FedEx"
 
     # USPS tracking numbers are typically 20-22 characters and start with 9400, 9205, 9303, etc.
-    usps_prefixes = ["9400", "9205", "9303", "9301", "9401", "9402", "9403", "9404", "9405", "9406", "9407", "9408", "9409"]
+    usps_prefixes = [
+        "9400",
+        "9205",
+        "9303",
+        "9301",
+        "9401",
+        "9402",
+        "9403",
+        "9404",
+        "9405",
+        "9406",
+        "9407",
+        "9408",
+        "9409",
+    ]
     if any(clean_number.startswith(prefix) for prefix in usps_prefixes):
         return "USPS"
 
     # DHL tracking numbers are typically 10-11 characters and start with various prefixes
-    dhl_prefixes = ["000", "111", "222", "333", "444", "555", "666", "777", "888", "999"]
+    dhl_prefixes = [
+        "000",
+        "111",
+        "222",
+        "333",
+        "444",
+        "555",
+        "666",
+        "777",
+        "888",
+        "999",
+    ]
     if any(clean_number.startswith(prefix) for prefix in dhl_prefixes):
         return "DHL"
 
