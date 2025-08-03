@@ -365,10 +365,12 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                     status: PackageStatus;
                     location?: string;
                     description?: string;
+                    email_message_id?: string;
                 } = {
                     event_date: new Date().toISOString(),
                     status: formData.status,
                     description: `New tracking event from email - Status: ${formData.status}`,
+                    email_message_id: email.id, // Include the email message ID to prevent duplicates
                 };
 
                 await shipmentsClient.createTrackingEvent(existingPackage.id, eventData);
