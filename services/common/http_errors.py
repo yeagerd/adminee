@@ -123,8 +123,11 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+
+from services.common.logging_config import log_http_error, request_id_var
 
 
 class ErrorCode(str, Enum):
@@ -689,41 +692,31 @@ class RateLimitError(BrieflyAPIException):
     """
     Exception for rate limiting errors (HTTP 429).
 
-    Used when request rate limits are exceeded, either from internal rate limiting
-    or when external providers return rate limit errors. Automatically categorizes
-    as "rate_limit_error" type and returns HTTP 429 status.
-
-    Attributes:
-        retry_after: Seconds to wait before retrying the request
+    Used when API rate limits are exceeded or usage quotas are reached.
+    Automatically categorizes as "rate_limit_error" type and returns HTTP 429 status.
 
     Args:
-        message: Description of the rate limiting
-        retry_after: Optional delay in seconds before retry
-        details: Optional additional rate limiting context
-        code: Specific error code (defaults to RATE_LIMITED)
-        status_code: HTTP status code (defaults to 429)
+        message: Human-readable description of the rate limit issue
+        retry_after: Optional seconds to wait before retrying
+        details: Optional additional rate limit context
 
     Examples:
-        >>> # Basic rate limiting
-        >>> error = RateLimitError("Rate limit exceeded")
+        >>> # Basic rate limit error
+        >>> error = RateLimitError("API rate limit exceeded", retry_after=3600)
+        >>> error.status_code
+        429
+        >>> error.error_type
+        'rate_limit_error'
 
-        >>> # With retry information
+        >>> # Rate limit with additional context
         >>> error = RateLimitError(
-        ...     "API rate limit exceeded",
-        ...     retry_after=3600,
+        ...     "Google API quota exceeded",
+        ...     retry_after=7200,
         ...     details={
         ...         "limit": 1000,
         ...         "remaining": 0,
-        ...         "reset_time": "2024-01-15T11:00:00Z"
+        ...         "reset_time": "2024-01-15T12:00:00Z"
         ...     }
-        ... )
-
-        >>> # Quota-based rate limiting
-        >>> error = RateLimitError(
-        ...     "Daily quota exceeded",
-        ...     code=ErrorCode.QUOTA_EXCEEDED,
-        ...     retry_after=86400,  # 24 hours
-        ...     details={"quota_type": "daily", "limit": 10000}
         ... )
     """
 
@@ -735,12 +728,13 @@ class RateLimitError(BrieflyAPIException):
         code: ErrorCode = ErrorCode.RATE_LIMITED,
         status_code: int = 429,
     ):
-        rate_details = details or {}
+        details = details or {}
         if retry_after is not None:
-            rate_details["retry_after"] = retry_after
+            details["retry_after"] = retry_after
+
         super().__init__(
             message=message,
-            details=rate_details,
+            details=details,
             error_type="rate_limit_error",
             error_code=code,
             status_code=status_code,
@@ -794,19 +788,44 @@ def exception_to_response(exc: Exception) -> ErrorResponse:
         responses that don't expose potentially sensitive error details to end users.
         The original exception type is preserved in the details for debugging.
     """
+    # Get request ID from context or generate fallback
+    request_id = request_id_var.get()
+    if not request_id or request_id == "uninitialized":
+        # Generate a new UUID when no request context is available
+        request_id = str(uuid.uuid4())
+
     if isinstance(exc, BrieflyAPIException):
         return exc.to_error_response()
     elif isinstance(exc, HTTPException):
-        # Try to extract detail
-        detail = (
-            exc.detail if isinstance(exc.detail, dict) else {"message": str(exc.detail)}
-        )
+        # Handle detail field properly - extract message from dict if needed
+        if isinstance(exc.detail, dict):
+            # Extract message from dictionary detail, with fallbacks
+            detail_dict = exc.detail
+            message = (
+                detail_dict.get("message")
+                or detail_dict.get("detail")
+                or detail_dict.get("error")
+                or str(detail_dict)
+            )
+            # Preserve the original detail structure for backward compatibility
+            details = {
+                "detail": detail_dict,
+                "status_code": exc.status_code,
+            }
+        else:
+            # Handle string or other types
+            message = str(exc.detail)
+            details = {
+                "detail": exc.detail,
+                "status_code": exc.status_code,
+            }
+
         return ErrorResponse(
             type="http_error",
-            message=detail.get("message", "HTTP error"),
-            details=detail,
+            message=message,
+            details=details,
             timestamp=datetime.now(timezone.utc).isoformat(),
-            request_id=str(uuid.uuid4()),
+            request_id=request_id,
         )
     else:
         return ErrorResponse(
@@ -814,7 +833,7 @@ def exception_to_response(exc: Exception) -> ErrorResponse:
             message=str(exc),
             details={"error_type": type(exc).__name__},
             timestamp=datetime.now(timezone.utc).isoformat(),
-            request_id=str(uuid.uuid4()),
+            request_id=request_id,
         )
 
 
@@ -879,48 +898,119 @@ def register_briefly_exception_handlers(app: FastAPI) -> None:
         typically right after creating the FastAPI app instance and before
         adding routes or starting the server.
     """
-    from fastapi import Request
-    from fastapi.responses import JSONResponse
 
     @app.exception_handler(BrieflyAPIException)
     async def briefly_api_exception_handler(
         request: Request, exc: BrieflyAPIException
     ) -> JSONResponse:
-        """
-        Handle BrieflyAPIException with validated ErrorResponse.
-
-        Converts Briefly custom exceptions to standardized JSON responses
-        using the exception's built-in status code and error details.
-        """
+        """Handle BrieflyAPIException and convert to standardized error response."""
         error_response = exc.to_error_response()
+
+        # Log the error with proper formatting
+        log_http_error(
+            error_type=exc.error_type,
+            message=exc.message,
+            status_code=exc.status_code,
+            request_id=exc.request_id,
+            details=exc.details,
+            path=request.url.path,
+            method=request.method,
+        )
+
         return JSONResponse(
-            status_code=exc.status_code, content=error_response.model_dump()
+            status_code=exc.status_code,
+            content=error_response.model_dump(),
         )
 
     @app.exception_handler(HTTPException)
     async def http_exception_handler(
         request: Request, exc: HTTPException
     ) -> JSONResponse:
-        """
-        Handle HTTPException with validated ErrorResponse.
+        """Handle FastAPI HTTPException and convert to standardized error response."""
+        # Get request ID from context or generate fallback
+        request_id = request_id_var.get()
+        if not request_id or request_id == "uninitialized":
+            # Fallback: try to get from headers or generate new one
+            request_id = request.headers.get("X-Request-Id", str(uuid.uuid4()))
 
-        Converts FastAPI HTTP exceptions to standardized format while
-        preserving the original status code and detail information.
-        """
-        error_response = exception_to_response(exc)
+        # Handle detail field properly - extract message from dict if needed
+        if isinstance(exc.detail, dict):
+            # Extract message from dictionary detail, with fallbacks
+            detail_dict = exc.detail
+            message = (
+                detail_dict.get("message")
+                or detail_dict.get("detail")
+                or detail_dict.get("error")
+                or str(detail_dict)
+            )
+            # Preserve the original detail structure for backward compatibility
+            details = {
+                "detail": detail_dict,
+                "status_code": exc.status_code,
+            }
+        else:
+            # Handle string or other types
+            message = str(exc.detail)
+            details = {
+                "detail": exc.detail,
+                "status_code": exc.status_code,
+            }
+
+        # Log the error with proper formatting
+        log_http_error(
+            error_type="http_error",
+            message=message,
+            status_code=exc.status_code,
+            request_id=request_id,
+            details=details,
+            path=request.url.path,
+            method=request.method,
+        )
+
+        # Convert to standardized error response
+        error_response = ErrorResponse(
+            type="http_error",
+            message=message,
+            details=details,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            request_id=request_id,
+        )
+
         return JSONResponse(
-            status_code=exc.status_code, content=error_response.model_dump()
+            status_code=exc.status_code,
+            content=error_response.model_dump(),
         )
 
     @app.exception_handler(Exception)
     async def generic_exception_handler(
         request: Request, exc: Exception
     ) -> JSONResponse:
-        """
-        Handle generic exceptions with validated ErrorResponse.
+        """Handle any unhandled exceptions and convert to standardized error response."""
+        # Get request ID from context or generate fallback
+        request_id = request_id_var.get()
+        if not request_id or request_id == "uninitialized":
+            # Fallback: try to get from headers or generate new one
+            request_id = request.headers.get("X-Request-Id", str(uuid.uuid4()))
 
-        Catches any unhandled exceptions and converts them to safe
-        internal error responses with 500 status code.
-        """
+        # Use exception_to_response for consistency
         error_response = exception_to_response(exc)
-        return JSONResponse(status_code=500, content=error_response.model_dump())
+
+        # Override request_id if needed (exception_to_response uses context)
+        if request_id != "uninitialized":
+            error_response.request_id = request_id
+
+        # Log the error with proper formatting - use the same message and type as the response
+        log_http_error(
+            error_type=error_response.type,
+            message=error_response.message,
+            status_code=500,
+            request_id=error_response.request_id,
+            details=error_response.details,
+            path=request.url.path,
+            method=request.method,
+        )
+
+        return JSONResponse(
+            status_code=500,
+            content=error_response.model_dump(),
+        )
