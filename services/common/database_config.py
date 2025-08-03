@@ -75,8 +75,6 @@ async def configure_session_pragmas(session: Any) -> None:
     ):
         from sqlalchemy import text
 
-        await session.execute(text("PRAGMA timezone = 'UTC'"))
-        await session.execute(text("PRAGMA strict = ON"))
         await session.execute(text("PRAGMA foreign_keys = ON"))
 
 
@@ -88,8 +86,6 @@ def get_database_timezone_config() -> Dict[str, str]:
         Dict of timezone-related configuration settings
     """
     return {
-        "timezone": "UTC",
-        "strict": "ON",
         "foreign_keys": "ON",
     }
 

@@ -51,10 +51,9 @@ async def create_all_tables_for_testing() -> None:
     """Create all database tables for testing only. Use Alembic migrations in production."""
     engine = get_engine()
     async with engine.begin() as conn:
-        # Configure connection with strict timezone handling
+        # Configure connection with valid PRAGMA settings
         if "sqlite" in str(engine.url).lower():
-            await conn.execute("PRAGMA timezone = 'UTC'")
-            await conn.execute("PRAGMA strict = ON")
+            await conn.execute("PRAGMA foreign_keys = ON")
         await conn.run_sync(SQLModel.metadata.create_all)
 
 

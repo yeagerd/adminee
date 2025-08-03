@@ -57,8 +57,6 @@ class TestDatabaseConfiguration:
         """Test timezone configuration settings."""
         config = get_database_timezone_config()
 
-        assert config["timezone"] == "UTC"
-        assert config["strict"] == "ON"
         assert config["foreign_keys"] == "ON"
 
     async def test_configure_session_pragmas(self):
@@ -90,8 +88,6 @@ class TestDatabaseConfiguration:
 
         # Verify that the correct PRAGMA commands were executed
         expected_commands = [
-            "PRAGMA timezone = 'UTC'",
-            "PRAGMA strict = ON",
             "PRAGMA foreign_keys = ON",
         ]
 

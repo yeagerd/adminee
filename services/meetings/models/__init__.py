@@ -26,8 +26,6 @@ def get_engine() -> "Engine":
             "pragmas": {
                 "foreign_keys": "ON",
                 "journal_mode": "WAL",
-                "timezone": "UTC",
-                "strict": "ON",
                 "synchronous": "NORMAL",
                 "temp_store": "MEMORY",
             },
