@@ -659,7 +659,12 @@ async def create_tracking_event(
 
         if existing_event:
             # Update the existing event instead of creating a new one
-            existing_event.event_date = event.event_date
+            # Ensure event_date is timezone-naive for database compatibility
+            event_date = event.event_date
+            if event_date and event_date.tzinfo is not None:
+                event_date = event_date.replace(tzinfo=None)
+
+            existing_event.event_date = event_date
             existing_event.status = event.status
             existing_event.location = event.location
             existing_event.description = event.description
