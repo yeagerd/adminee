@@ -108,15 +108,17 @@ async def get_events_by_email(
         )
 
 
-@router.get("/{id}/events", response_model=List[TrackingEventOut])
+@router.get("/{package_id}/events", response_model=List[TrackingEventOut])
 async def get_tracking_events(
-    id: UUID,
+    package_id: UUID,
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["read_shipments"])),
 ) -> list[TrackingEventOut]:
     # Query package and validate user ownership
-    query = select(Package).where(Package.id == id, Package.user_id == current_user)
+    query = select(Package).where(
+        Package.id == package_id, Package.user_id == current_user
+    )
     result = await session.execute(query)
     package = result.scalar_one_or_none()
 
@@ -128,7 +130,7 @@ async def get_tracking_events(
     # Query tracking events for this package
     events_query = (
         select(TrackingEvent)
-        .where(TrackingEvent.package_id == id)
+        .where(TrackingEvent.package_id == package_id)
         .order_by(TrackingEvent.event_date.desc())  # type: ignore[attr-defined]
     )
     events_result = await session.execute(events_query)
@@ -147,9 +149,9 @@ async def get_tracking_events(
     ]
 
 
-@router.post("/{id}/events", response_model=TrackingEventOut)
+@router.post("/{package_id}/events", response_model=TrackingEventOut)
 async def create_tracking_event(
-    id: UUID,
+    package_id: UUID,
     event: TrackingEventCreate,
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
@@ -157,7 +159,7 @@ async def create_tracking_event(
 ) -> TrackingEventOut:
     # Query package and validate user ownership
     query = select(Package).where(
-        Package.id == id, Package.user_id == current_user
+        Package.id == package_id, Package.user_id == current_user
     )
     result = await session.execute(query)
     package = result.scalar_one_or_none()
@@ -206,7 +208,7 @@ async def create_tracking_event(
 
     # Create new tracking event
     event_data = event.model_dump()
-    event_data["package_id"] = id
+    event_data["package_id"] = package_id
 
     # Ensure event_date is timezone-naive for database compatibility
     if (
