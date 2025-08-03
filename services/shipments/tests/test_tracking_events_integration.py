@@ -172,7 +172,7 @@ class TestDuplicateRouterInclusionBugPrevention:
 
         # Should only have package-specific routes
         assert "/{package_id}/events" in package_route_paths
-        assert len(package_routes) == 2  # GET and POST for package events
+        assert len(package_routes) == 3  # GET, POST, and DELETE for package events
 
         # Check email events router routes
         email_routes = list(tracking_events.email_events_router.routes)
@@ -365,7 +365,7 @@ class TestIntegrationBugPrevention:
         """
         # Verify package events router supports package-specific operations
         package_routes = list(tracking_events.package_events_router.routes)
-        assert len(package_routes) == 2  # GET and POST
+        assert len(package_routes) == 3  # GET, POST, and DELETE
 
         # Verify email events router supports email-specific operations
         email_routes = list(tracking_events.email_events_router.routes)
@@ -377,6 +377,7 @@ class TestIntegrationBugPrevention:
             package_methods.update(route.methods)
         assert "GET" in package_methods
         assert "POST" in package_methods
+        assert "DELETE" in package_methods
 
         email_methods = set()
         for route in email_routes:
