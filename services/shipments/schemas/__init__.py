@@ -77,6 +77,7 @@ class TrackingEventCreate(BaseModel):
     status: PackageStatus
     location: Optional[str] = None
     description: Optional[str] = None
+    email_message_id: Optional[str] = None
 
 
 class LabelCreate(BaseModel):
