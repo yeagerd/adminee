@@ -644,6 +644,12 @@ export class GatewayClient {
         });
     }
 
+    async deleteTrackingEvent(packageId: string, eventId: string): Promise<void> {
+        return this.request(`/api/v1/shipments/packages/${packageId}/events/${eventId}`, {
+            method: 'DELETE',
+        });
+    }
+
     async collectShipmentData(data: {
         user_id: string;
         email_message_id: string;

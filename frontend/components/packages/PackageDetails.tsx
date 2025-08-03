@@ -8,6 +8,7 @@ export default function PackageDetails({ pkg, onClose }: { pkg: Package & { labe
     const [events, setEvents] = useState<TrackingEvent[]>([]);
     const [loadingEvents, setLoadingEvents] = useState(false);
     const [eventsError, setEventsError] = useState<string | null>(null);
+    const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
     const modalRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -57,6 +58,24 @@ export default function PackageDetails({ pkg, onClose }: { pkg: Package & { labe
         fetchEvents();
     }, [pkg.id]);
 
+    const handleDeleteEvent = async (eventId: string) => {
+        if (!confirm('Are you sure you want to delete this tracking event? This action cannot be undone.')) {
+            return;
+        }
+
+        setDeletingEventId(eventId);
+        try {
+            await gatewayClient.deleteTrackingEvent(pkg.id!, eventId);
+            // Remove the deleted event from the local state
+            setEvents(prevEvents => prevEvents.filter(event => event.id !== eventId));
+        } catch (error) {
+            console.error('Failed to delete tracking event:', error);
+            alert('Failed to delete tracking event. Please try again.');
+        } finally {
+            setDeletingEventId(null);
+        }
+    };
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
             <div ref={modalRef} className="bg-white rounded-lg shadow-lg max-w-lg w-full max-h-[90vh] flex flex-col relative">
@@ -89,7 +108,11 @@ export default function PackageDetails({ pkg, onClose }: { pkg: Package & { labe
                         ) : events.length === 0 ? (
                             <div className="text-sm text-gray-500">No tracking events found.</div>
                         ) : (
-                            <TrackingTimeline events={events} />
+                            <TrackingTimeline
+                                events={events}
+                                onDeleteEvent={handleDeleteEvent}
+                                deletingEventId={deletingEventId}
+                            />
                         )}
                     </div>
                 </div>
