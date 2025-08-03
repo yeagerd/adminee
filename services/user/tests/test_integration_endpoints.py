@@ -68,7 +68,7 @@ class TestMeIntegrationEndpoints(BaseUserManagementIntegrationTest):
                 "/v1/users/me/integrations",
                 params={
                     "provider": "google",
-                    "status": "active",
+                    "status": "ACTIVE",
                     "include_token_info": "false",
                 },
                 headers={"Authorization": "Bearer valid-token"},
@@ -147,21 +147,21 @@ class TestMeIntegrationEndpoints(BaseUserManagementIntegrationTest):
         mock_response = {
             "id": 123,
             "user_id": "user_123",  # Updated to match actual user ID format
-            "provider": "google",
-            "status": "active",
+            "provider": IntegrationProvider.GOOGLE,
+            "status": IntegrationStatus.ACTIVE,
             "scopes": ["email", "profile"],
             "external_user_id": "google_user_123",
             "external_email": "user@example.com",
             "external_name": "Test User",
             "has_access_token": True,
             "has_refresh_token": True,
-            "token_expires_at": datetime.now(timezone.utc).isoformat(),
-            "token_created_at": datetime.now(timezone.utc).isoformat(),
-            "last_sync_at": datetime.now(timezone.utc).isoformat(),
+            "token_expires_at": datetime.now(timezone.utc),
+            "token_created_at": datetime.now(timezone.utc),
+            "last_sync_at": datetime.now(timezone.utc),
             "last_error": None,
             "error_count": 0,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
         }
 
         with patch(
@@ -184,7 +184,7 @@ class TestMeIntegrationEndpoints(BaseUserManagementIntegrationTest):
         data = response.json()
         assert data["id"] == 123
         assert data["provider"] == "google"
-        assert data["status"] == "active"
+        assert data["status"] == "ACTIVE"
 
     def test_check_current_user_integration_health_success(self):
         """Test successful health check for current user integration."""
@@ -317,7 +317,7 @@ class TestMeIntegrationEndpoints(BaseUserManagementIntegrationTest):
         assert data["success"] is True
         assert data["integration_id"] == 123
         assert data["provider"] == "google"
-        assert data["status"] == "active"
+        assert data["status"] == "ACTIVE"
 
 
 class TestMeIntegrationEndpointSecurity(BaseUserManagementIntegrationTest):

@@ -30,11 +30,11 @@ class IntegrationProvider(str, Enum):
 class IntegrationStatus(str, Enum):
     """Integration connection status."""
 
-    ACTIVE = "active"  # Connected and working
-    INACTIVE = "inactive"  # Disconnected by user
-    ERROR = "error"  # Connection error or expired tokens
-    PENDING = "pending"  # OAuth flow in progress
-    EXPIRED = "expired"  # Token was valid but is now expired
+    ACTIVE = "ACTIVE"  # Connected and working
+    INACTIVE = "INACTIVE"  # Disconnected by user
+    ERROR = "ERROR"  # Connection error or expired tokens
+    PENDING = "PENDING"  # OAuth flow in progress
+    EXPIRED = "EXPIRED"  # Token was valid but is now expired
 
 
 class Integration(SQLModel, table=True):
