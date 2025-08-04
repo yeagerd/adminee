@@ -104,13 +104,8 @@ export default function PackageDetails({
             alert('Failed to delete package. Please try again.');
         } finally {
             setIsDeleting(false);
-            setShowDeleteDialog(false);
+            setShowDeleteDialog(false); // Close the confirmation dialog
         }
-    };
-
-    const handleDeleteConfirm = () => {
-        console.log('handleDeleteConfirm called');
-        handleDeletePackage();
     };
 
     return (
@@ -193,7 +188,6 @@ export default function PackageDetails({
                                 <Button
                                     variant="destructive"
                                     onClick={() => {
-                                        setShowDeleteDialog(false);
                                         handleDeletePackage();
                                     }}
                                     disabled={isDeleting}
