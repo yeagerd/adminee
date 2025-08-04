@@ -7,6 +7,7 @@ from shipments.routers import package_events
 
 from services.shipments.routers import (
     carrier_configs,
+    events,
     labels,
     packages,
 )
@@ -29,9 +30,7 @@ shipments_router.include_router(
 
 # Include general email parsing and event management router
 # This allows /api/v1/shipments/events/from-email to work
-shipments_router.include_router(
-    package_events.email_events_router, prefix="/events", tags=["Events"]
-)
+shipments_router.include_router(events.events_router, prefix="/events", tags=["Events"])
 
 # Create the main API router
 api_router = APIRouter()
