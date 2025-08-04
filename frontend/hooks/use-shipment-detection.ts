@@ -60,42 +60,82 @@ const AMAZON_DOMAINS = [
  * Extracts tracking numbers from text, prioritizing carrier-specific patterns
  */
 function extractTrackingNumbers(text: string): Array<{ trackingNumber: string; carrier: string; confidence: number }> {
-    const matches: Array<{
+    const matches = new Map<string, {
         trackingNumber: string;
         carrier: string;
         confidence: number;
         start: number;
         end: number;
         priority: number
-    }> = [];
+    }>();
+
+    // Helper function to add match with deduplication and positional overlap handling
+    const addMatch = (trackingNumber: string, carrier: string, confidence: number, start: number, end: number, priority: number) => {
+        const existing = matches.get(trackingNumber);
+
+        // Check if this number overlaps with any existing number in position
+        const hasPositionalOverlap = Array.from(matches.values()).some(match =>
+            !(end <= match.start || start >= match.end)
+        );
+
+        // If there's positional overlap, prioritize longer matches
+        if (hasPositionalOverlap) {
+            const overlappingMatch = Array.from(matches.values()).find(match =>
+                !(end <= match.start || start >= match.end)
+            );
+
+            if (overlappingMatch) {
+                // If this match is longer than the overlapping match, remove the shorter one
+                if (trackingNumber.length > overlappingMatch.trackingNumber.length) {
+                    for (const [key, match] of matches.entries()) {
+                        if (!(end <= match.start || start >= match.end)) {
+                            matches.delete(key);
+                        }
+                    }
+                } else if (trackingNumber.length < overlappingMatch.trackingNumber.length) {
+                    // If this match is shorter, don't add it
+                    return;
+                } else {
+                    // Same length, use confidence as tiebreaker
+                    if (confidence <= overlappingMatch.confidence) {
+                        return;
+                    }
+                    // Remove the overlapping match with lower confidence
+                    for (const [key, match] of matches.entries()) {
+                        if (!(end <= match.start || start >= match.end) && confidence > match.confidence) {
+                            matches.delete(key);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Add the new match if it has higher confidence or doesn't exist
+        if (!existing || confidence > existing.confidence) {
+            matches.set(trackingNumber, {
+                trackingNumber,
+                carrier,
+                confidence,
+                start,
+                end,
+                priority
+            });
+        }
+    };
 
     // Collect all carrier-specific matches with priority
     for (const [carrier, patterns] of Object.entries(TRACKING_PATTERNS)) {
         // Primary patterns get highest confidence
         const primaryMatches = text.matchAll(patterns.primary);
         for (const match of primaryMatches) {
-            matches.push({
-                trackingNumber: match[0],
-                carrier,
-                confidence: 0.9, // High confidence for primary patterns
-                start: match.index!,
-                end: match.index! + match[0].length,
-                priority: 1
-            });
+            addMatch(match[0], carrier, 0.9, match.index!, match.index! + match[0].length, 1);
         }
 
         // Alternate patterns get medium confidence
         for (const pattern of patterns.alternate) {
             const alternateMatches = text.matchAll(pattern);
             for (const match of alternateMatches) {
-                matches.push({
-                    trackingNumber: match[0],
-                    carrier,
-                    confidence: 0.7, // Medium confidence for alternate patterns
-                    start: match.index!,
-                    end: match.index! + match[0].length,
-                    priority: 2
-                });
+                addMatch(match[0], carrier, 0.7, match.index!, match.index! + match[0].length, 2);
             }
         }
     }
@@ -104,48 +144,21 @@ function extractTrackingNumbers(text: string): Array<{ trackingNumber: string; c
     for (const pattern of GENERIC_TRACKING_PATTERNS) {
         const genericMatches = text.matchAll(pattern);
         for (const match of genericMatches) {
-            matches.push({
-                trackingNumber: match[0],
-                carrier: 'unknown',
-                confidence: 0.4, // Low confidence for generic patterns
-                start: match.index!,
-                end: match.index! + match[0].length,
-                priority: 3
-            });
-        }
-    }
-
-    // Sort by priority (lower number = higher priority), then by confidence, then by length
-    matches.sort((a, b) => {
-        if (a.priority !== b.priority) {
-            return a.priority - b.priority;
-        }
-        if (a.confidence !== b.confidence) {
-            return b.confidence - a.confidence; // Higher confidence first
-        }
-        return b.trackingNumber.length - a.trackingNumber.length;
-    });
-
-    // Deduplicate by tracking number, keeping highest confidence match
-    const trackingNumberMap = new Map<string, { trackingNumber: string; carrier: string; confidence: number; start: number; end: number }>();
-
-    for (const match of matches) {
-        const existing = trackingNumberMap.get(match.trackingNumber);
-        if (!existing || match.confidence > existing.confidence) {
-            trackingNumberMap.set(match.trackingNumber, match);
+            addMatch(match[0], 'unknown', 0.4, match.index!, match.index! + match[0].length, 3);
         }
     }
 
     // Select non-overlapping matches from deduplicated results
     const selected: Array<{ trackingNumber: string; carrier: string; confidence: number; start: number; end: number }> = [];
-    const deduplicatedMatches = Array.from(trackingNumberMap.values());
+    const deduplicatedMatches = Array.from(matches.values());
 
     for (const match of deduplicatedMatches) {
-        const overlaps = selected.some(selected =>
-            !(match.end <= selected.start || match.start >= selected.end)
+        // Check if this match overlaps with any already selected match
+        const hasPositionalOverlap = selected.some(selectedMatch =>
+            !(match.end <= selectedMatch.start || match.start >= selectedMatch.end)
         );
 
-        if (!overlaps) {
+        if (!hasPositionalOverlap) {
             selected.push({
                 trackingNumber: match.trackingNumber,
                 carrier: match.carrier,
