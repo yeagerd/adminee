@@ -69,7 +69,7 @@ function extractTrackingNumbers(text: string): Array<{ trackingNumber: string; c
         priority: number
     }>();
 
-    // Helper function to add match with deduplication and positional overlap handling
+    // Helper function to add match with deduplication
     const addMatch = (trackingNumber: string, carrier: string, confidence: number, start: number, end: number, priority: number) => {
         const existing = matches.get(trackingNumber);
 
@@ -148,7 +148,7 @@ function extractTrackingNumbers(text: string): Array<{ trackingNumber: string; c
         }
     }
 
-    // Select non-overlapping matches from deduplicated results
+    // Only deduplicate by tracking number value and confidence
     const selected: Array<{ trackingNumber: string; carrier: string; confidence: number; start: number; end: number }> = [];
     const deduplicatedMatches = Array.from(matches.values());
 
@@ -181,13 +181,22 @@ function extractTrackingNumbers(text: string): Array<{ trackingNumber: string; c
  * Checks if email is from Amazon domain and contains shipment keywords
  */
 function isAmazonShipment(senderEmail: string, subject: string, body: string): boolean {
-    const domain = senderEmail.split('@')[1]?.toLowerCase();
-    if (!domain || !AMAZON_DOMAINS.some(amazonDomain => domain.includes(amazonDomain))) {
-        return false;
+    // Check sender domain
+    const address = senderEmail.split('@')[0]?.toLowerCase();
+    const domainParts = senderEmail.split('@')[1]?.toLowerCase().split('.');
+    if (domainParts.includes('amazon')) {
+        // Check if shipping is in the address part
+        if (address?.includes('shipment')) {
+            return true;
+        }
+    }
+    // Check for Amazon sender addresses/domains in the body (for forwarded emails)
+    const amazonSenderRegex = /[\w.-]*shipment[\w.-]*@.*amazon\.[a-z.]+/gi;
+    if (amazonSenderRegex.test(body)) {
+        return true;
     }
 
-    const allText = `${subject} ${body}`.toLowerCase();
-    return SHIPMENT_KEYWORDS.some(keyword => allText.includes(keyword));
+    return false;
 }
 
 export const useShipmentDetection = (email: EmailMessage): ShipmentDetectionResult => {

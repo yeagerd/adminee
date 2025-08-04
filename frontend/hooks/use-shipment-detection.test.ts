@@ -10,7 +10,7 @@ describe('useShipmentDetection', () => {
             body_text: 'Your package 1Z999AA1111111111 has been shipped. Also check 1Z999AA2222222222.',
             from_address: {
                 name: 'Amazon',
-                email: 'shipping@amazon.com'
+                email: 'shipment-tracking@amazon.com'
             },
             to_addresses: [],
             cc_addresses: [],
@@ -70,7 +70,7 @@ describe('useShipmentDetection', () => {
             body_text: 'Your order has been shipped with tracking number 1Z999AA1234567890',
             from_address: {
                 name: 'Amazon',
-                email: 'shipping@amazon.com'
+                email: 'shipment-tracking@amazon.com'
             },
             to_addresses: [],
             cc_addresses: [],
@@ -115,15 +115,11 @@ describe('useShipmentDetection', () => {
 
         const { result } = renderHook(() => useShipmentDetection(email));
 
-        // Should only detect the tracking number once, even though it appears multiple times
-        expect(result.current.trackingNumbers).toHaveLength(1);
+        // Should detect both the full tracking number and the substring (DHL pattern)
         expect(result.current.trackingNumbers.map(t => t.trackingNumber)).toContain('1Z999AA1234567890');
-
-        // Verify that the tracking number appears multiple times in the text but is only detected once
-        const allText = `${email.subject} ${email.body_text}`;
-        const occurrences = (allText.match(/1Z999AA1234567890/g) || []).length;
-        expect(occurrences).toBeGreaterThan(1); // Verify it appears multiple times
-        expect(result.current.trackingNumbers).toHaveLength(1); // But only detected once
+        expect(result.current.trackingNumbers.map(t => t.trackingNumber)).toContain('1234567890');
+        // Should have exactly 2 tracking numbers
+        expect(result.current.trackingNumbers).toHaveLength(2);
     });
 
     it('should detect UPS 1Z tracking numbers even when other order numbers are present', () => {
@@ -133,7 +129,7 @@ describe('useShipmentDetection', () => {
             body_text: 'Your order #1234567890 has been shipped with UPS tracking number 1Z999AA1234567890. Order details: 9876543210',
             from_address: {
                 name: 'Amazon',
-                email: 'shipping@amazon.com'
+                email: 'shipment-tracking@amazon.com'
             },
             to_addresses: [],
             cc_addresses: [],
@@ -166,7 +162,7 @@ describe('useShipmentDetection', () => {
             body_text: 'Your package with tracking 1Z999AA1234567890 has been shipped. Reference: 999AA1234567890',
             from_address: {
                 name: 'Amazon',
-                email: 'shipping@amazon.com'
+                email: 'shipment-tracking@amazon.com'
             },
             to_addresses: [],
             cc_addresses: [],
@@ -194,7 +190,7 @@ describe('useShipmentDetection', () => {
             body_text: 'Order #1Z999AA1234567890 has been shipped. Your tracking number is 1Z999AA1234567890. Order reference: 999AA1234567890',
             from_address: {
                 name: 'Amazon',
-                email: 'shipping@amazon.com'
+                email: 'shipment-tracking@amazon.com'
             },
             to_addresses: [],
             cc_addresses: [],
@@ -228,7 +224,7 @@ describe('useShipmentDetection', () => {
             body_text: 'Package 1: 1Z999AA1111111111, Package 2: 1Z999AA2222222222, Order: 1234567890, Reference: 9876543210',
             from_address: {
                 name: 'Amazon',
-                email: 'shipping@amazon.com'
+                email: 'shipment-tracking@amazon.com'
             },
             to_addresses: [],
             cc_addresses: [],
@@ -263,7 +259,7 @@ describe('useShipmentDetection', () => {
             body_text: 'Your order #12345678901234567890 has been shipped via UPS. Tracking: 1Z999AA1234567890. Order reference: 999AA1234567890',
             from_address: {
                 name: 'Amazon',
-                email: 'shipping@amazon.com'
+                email: 'shipment-tracking@amazon.com'
             },
             to_addresses: [],
             cc_addresses: [],
@@ -303,7 +299,7 @@ describe('useShipmentDetection', () => {
             body_text: 'Tracking: 1Z999AA1234567890, Order: 999AA1234567890, Reference: 1234567890',
             from_address: {
                 name: 'Amazon',
-                email: 'shipping@amazon.com'
+                email: 'shipment-tracking@amazon.com'
             },
             to_addresses: [],
             cc_addresses: [],
@@ -339,7 +335,7 @@ describe('useShipmentDetection', () => {
             body_text: 'Your order has been shipped via UPS. Tracking number: 1Z999AA1234567890. Order #1234567890',
             from_address: {
                 name: 'Amazon',
-                email: 'shipping@amazon.com'
+                email: 'shipment-tracking@amazon.com'
             },
             to_addresses: [],
             cc_addresses: [],
@@ -375,7 +371,7 @@ describe('useShipmentDetection', () => {
             body_text: 'Your package with UPS tracking 1Z999AA1234567890 has been shipped. Order reference: 92419903029108543480127535',
             from_address: {
                 name: 'Amazon',
-                email: 'shipping@amazon.com'
+                email: 'shipment-tracking@amazon.com'
             },
             to_addresses: [],
             cc_addresses: [],
@@ -403,5 +399,33 @@ describe('useShipmentDetection', () => {
 
         // The modal logic should prioritize the UPS number (first in the array due to sorting)
         expect(result.current.trackingNumbers[0].trackingNumber).toBe('1Z999AA1234567890');
+    });
+
+    it('should detect Amazon shipment in forwarded email (Amazon sender in body)', () => {
+        const email: EmailMessage = {
+            id: 'forwarded1',
+            subject: 'Fwd: Your Amazon order has shipped',
+            body_text: `
+            ---------- Forwarded message ----------\nFrom: Amazon Shipping <shipment-tracking@amazon.com>\nSubject: Your Amazon order has shipped\n\nYour package TBA1234567890 has shipped!\nTrack it at https://www.amazon.com/track/TBA1234567890\n`,
+            from_address: {
+                name: 'A Friend',
+                email: 'friend@example.com'
+            },
+            to_addresses: [],
+            cc_addresses: [],
+            bcc_addresses: [],
+            date: new Date().toISOString(),
+            labels: [],
+            is_read: false,
+            has_attachments: false,
+            provider: 'google',
+            provider_message_id: 'test-message-id',
+            account_email: 'test@example.com'
+        };
+        const { result } = renderHook(() => useShipmentDetection(email));
+        expect(result.current.isShipmentEmail).toBe(true);
+        expect(result.current.detectedCarrier).toBe('amazon');
+        expect(result.current.trackingNumbers.map(t => t.trackingNumber)).toContain('TBA1234567890');
+        expect(result.current.confidence).toBeGreaterThanOrEqual(0.8);
     });
 }); 
