@@ -22,6 +22,13 @@ export default function PackageDetails({
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const modalRef = useRef<HTMLDivElement>(null);
+    const mountedRef = useRef(true);
+
+    useEffect(() => {
+        return () => {
+            mountedRef.current = false;
+        };
+    }, []);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -103,8 +110,11 @@ export default function PackageDetails({
             console.error('Failed to delete package:', error);
             alert('Failed to delete package. Please try again.');
         } finally {
-            setIsDeleting(false);
-            setShowDeleteDialog(false); // Close the confirmation dialog
+            // Only update state if component is still mounted
+            if (mountedRef.current) {
+                setIsDeleting(false);
+                setShowDeleteDialog(false); // Close the confirmation dialog
+            }
         }
     };
 
