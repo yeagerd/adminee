@@ -11,7 +11,6 @@ from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
-
 @pytest.fixture(autouse=True)
 def patch_settings():
     """Patch the _settings global variable to return test settings."""
@@ -68,16 +67,15 @@ async def db_session():
         await conn.run_sync(SQLModel.metadata.create_all)
 
     # Create a single session that will be shared
-
     session = AsyncSession(engine)
 
     yield session
 
-    # Clean up database after each test
-    await session.rollback()
-    # Delete all data from tables to ensure clean state
+    # Clean up database after each test using explicit DELETE statements
+    # This approach is more reliable than mixing rollback() with manual deletes
     import sqlalchemy as sa
 
+    # Delete all data from tables in reverse dependency order to avoid foreign key constraints
     await session.execute(sa.text("DELETE FROM trackingevent"))
     await session.execute(sa.text("DELETE FROM packagelabel"))
     await session.execute(sa.text("DELETE FROM package"))
