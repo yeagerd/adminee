@@ -14,7 +14,7 @@ import { DataCollectionRequest, PackageCreateRequest, PackageResponse, shipments
 import { safeParseDateToISOString, safeParseDateToLocaleString } from '@/lib/utils';
 import { EmailMessage } from '@/types/office-service';
 import DOMPurify from 'dompurify';
-import { CheckCircle, Info, Loader2, Package, Truck } from 'lucide-react';
+import { CheckCircle, Info, Loader2, Package, PackageCheck, Truck } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import React, { useEffect, useRef, useState } from 'react';
 
@@ -124,22 +124,7 @@ const CARRIERS = [
     { value: 'unknown', label: 'Unknown' },
 ];
 
-// Helper function to validate and safely convert status string to PackageStatus
-const validatePackageStatus = (statusString: string): PackageStatus => {
-    const validStatuses = PACKAGE_STATUS_OPTIONS.map(option => option.value);
-    const upperCaseStatus = statusString.toUpperCase();
 
-    // Check if the status is valid
-    if (validStatuses.includes(upperCaseStatus as PackageStatus)) {
-        return upperCaseStatus as PackageStatus;
-    }
-
-    // Log warning for invalid status
-    console.warn(`Invalid package status received from backend: "${statusString}". Falling back to PENDING.`);
-
-    // Return default status
-    return PACKAGE_STATUS.PENDING;
-};
 
 // Helper function to get readable status label
 const getReadableStatus = (status: PackageStatus): string => {
@@ -190,6 +175,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
         setIsCheckingPackage(true);
         try {
             const existingPkg = await shipmentsClient.checkPackageExists(trackingNumber, carrier);
+
             setExistingPackage(existingPkg);
 
             // If existing package found, update form data with existing package info
@@ -223,39 +209,37 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
         }
     };
 
-    // Parse email with backend when modal opens
+    // Use frontend detection when modal opens
     useEffect(() => {
-        const parseEmailWithBackend = async () => {
+        const populateFromFrontendDetection = async () => {
             if (!isOpen) return;
 
             setIsParsing(true);
             try {
-                // Call backend email parser
-                const parseResponse = await shipmentsClient.parseEmail(email);
+                // First, check if there's already a package associated with this email
+                const existingPackageByEmail = await shipmentsClient.getPackageByEmail(email.id);
 
-                if (parseResponse.is_shipment_email && parseResponse.suggested_package_data) {
-                    const suggestedData = parseResponse.suggested_package_data;
-                    const detectedData: PackageFormData = {
-                        tracking_number: suggestedData.tracking_number || parseResponse.tracking_numbers[0]?.tracking_number || '',
-                        carrier: suggestedData.carrier || parseResponse.detected_carrier || 'unknown',
-                        status: suggestedData.status ? validatePackageStatus(suggestedData.status.toUpperCase()) : PACKAGE_STATUS.PENDING,
-                        recipient_name: suggestedData.recipient_name || '',
-                        shipper_name: suggestedData.shipper_name || '',
-                        package_description: email.subject || '',
-                        order_number: suggestedData.order_number || '',
-                        tracking_link: suggestedData.tracking_link || '',
-                        expected_delivery: suggestedData.estimated_delivery || '',
+                if (existingPackageByEmail) {
+                    // If we have an existing package, populate form with its data
+                    setOriginalPackageData(existingPackageByEmail);
+                    setExistingPackage(existingPackageByEmail);
+
+                    const packageData: PackageFormData = {
+                        tracking_number: existingPackageByEmail.tracking_number,
+                        carrier: existingPackageByEmail.carrier,
+                        status: existingPackageByEmail.status,
+                        recipient_name: existingPackageByEmail.recipient_name || '',
+                        shipper_name: existingPackageByEmail.shipper_name || '',
+                        package_description: existingPackageByEmail.package_description || '',
+                        order_number: existingPackageByEmail.order_number || '',
+                        tracking_link: existingPackageByEmail.tracking_link || '',
+                        expected_delivery: safeParseDateToISOString(existingPackageByEmail.estimated_delivery)
                     };
-                    setFormData(detectedData);
-                    setInitialFormData(detectedData);
 
-                    // Check if package already exists
-                    if (detectedData.tracking_number) {
-                        const carrierToUse = detectedData.carrier !== 'unknown' ? detectedData.carrier : undefined;
-                        await checkExistingPackage(detectedData.tracking_number, carrierToUse);
-                    }
+                    setFormData(packageData);
+                    setInitialFormData(packageData);
                 } else if (shipmentDetection.isShipmentEmail) {
-                    // Fallback to frontend detection if backend doesn't detect it
+                    // Fall back to frontend detection if no existing package
                     const detectedData: PackageFormData = {
                         tracking_number: shipmentDetection.trackingNumbers[0] || '',
                         carrier: shipmentDetection.detectedCarrier || 'unknown',
@@ -277,35 +261,13 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                     }
                 }
             } catch (error) {
-                console.error('Failed to parse email with backend:', error);
-                // Fallback to frontend detection on error
-                if (shipmentDetection.isShipmentEmail) {
-                    const detectedData: PackageFormData = {
-                        tracking_number: shipmentDetection.trackingNumbers[0] || '',
-                        carrier: shipmentDetection.detectedCarrier || 'unknown',
-                        status: PACKAGE_STATUS.PENDING,
-                        recipient_name: '',
-                        shipper_name: '',
-                        package_description: email.subject || '',
-                        order_number: '',
-                        tracking_link: '',
-                        expected_delivery: '',
-                    };
-                    setFormData(detectedData);
-                    setInitialFormData(detectedData);
-
-                    // Check if package already exists
-                    if (detectedData.tracking_number) {
-                        const carrierToUse = detectedData.carrier !== 'unknown' ? detectedData.carrier : undefined;
-                        await checkExistingPackage(detectedData.tracking_number, carrierToUse);
-                    }
-                }
+                console.error('Failed to populate from frontend detection:', error);
             } finally {
                 setIsParsing(false);
             }
         };
 
-        parseEmailWithBackend();
+        populateFromFrontendDetection();
     }, [isOpen, email, shipmentDetection]);
 
     // Cleanup timeout on unmount or modal close
@@ -536,9 +498,14 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                     ) : isParsing ? (
                         <div className="flex flex-col items-center justify-center py-8 text-center">
                             <Loader2 className="h-12 w-12 text-blue-500 mb-4 animate-spin" />
-                            <h3 className="text-lg font-semibold mb-2">Analyzing Email...</h3>
+                            <h3 className="text-lg font-semibold mb-2">
+                                {existingPackage ? 'Loading Package Details...' : 'Analyzing Email...'}
+                            </h3>
                             <p className="text-muted-foreground">
-                                Extracting shipment information from your email.
+                                {existingPackage
+                                    ? 'Loading your existing package information.'
+                                    : 'Extracting shipment information from your email.'
+                                }
                             </p>
                         </div>
                     ) : (
@@ -595,6 +562,21 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
 
                             {/* Form - Right Side */}
                             <div className="space-y-4">
+                                {/* Form Header */}
+                                {existingPackage && (
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                        <div className="flex items-center gap-2">
+                                            <PackageCheck className="h-4 w-4 text-blue-600" />
+                                            <span className="text-sm font-medium text-blue-800">
+                                                Editing Existing Package
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-blue-600 mt-1">
+                                            This package is already being tracked. You can update its information or add new tracking events.
+                                        </p>
+                                    </div>
+                                )}
+
                                 <form onSubmit={handleSubmit} className="space-y-4">
 
 
@@ -839,11 +821,15 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                     {isLoading ? (
                                         <>
                                             <Loader2 className="h-4 w-4 animate-spin" />
-                                            {existingPackage ? 'Adding Event...' : 'Tracking...'}
+                                            {existingPackage ? 'Adding Event...' : 'Creating Package...'}
                                         </>
                                     ) : (
                                         <>
-                                            <Truck className="h-4 w-4" />
+                                            {existingPackage ? (
+                                                <PackageCheck className="h-4 w-4" />
+                                            ) : (
+                                                <Truck className="h-4 w-4" />
+                                            )}
                                             {existingPackage ? 'Add Tracking Event' : 'Track Shipment'}
                                         </>
                                     )}

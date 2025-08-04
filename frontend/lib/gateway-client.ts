@@ -644,6 +644,17 @@ export class GatewayClient {
         });
     }
 
+    async getEventsByEmail(emailMessageId: string): Promise<Array<{
+        id: string;
+        event_date: string;
+        status: PackageStatus;
+        location?: string;
+        description?: string;
+        created_at: string;
+    }>> {
+        return this.request(`/api/v1/shipments/events?email_message_id=${encodeURIComponent(emailMessageId)}`);
+    }
+
     async deleteTrackingEvent(packageId: string, eventId: string): Promise<void> {
         return this.request(`/api/v1/shipments/packages/${packageId}/events/${eventId}`, {
             method: 'DELETE',
