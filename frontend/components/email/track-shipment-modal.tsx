@@ -8,13 +8,14 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useShipmentDetection } from '@/hooks/use-shipment-detection';
 import { PACKAGE_STATUS, PACKAGE_STATUS_OPTIONS, PackageStatus } from '@/lib/package-status';
 import { DataCollectionRequest, PackageCreateRequest, PackageResponse, shipmentsClient } from '@/lib/shipments-client';
 import { safeParseDateToISOString, safeParseDateToLocaleString } from '@/lib/utils';
 import { EmailMessage } from '@/types/office-service';
 import DOMPurify from 'dompurify';
-import { CheckCircle, Info, Loader2, Package, PackageCheck, Truck } from 'lucide-react';
+import { CheckCircle, Info, Loader2, Package, PackageCheck, Search, Truck } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import React, { useEffect, useRef, useState } from 'react';
 
@@ -165,6 +166,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
     });
     const [initialFormData, setInitialFormData] = useState<PackageFormData | null>(null);
     const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const [showTrackingNumberDropdown, setShowTrackingNumberDropdown] = useState(false);
 
     // Check if a package already exists with the given tracking number and carrier
     const checkExistingPackage = async (trackingNumber: string, carrier?: string) => {
@@ -240,9 +242,38 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                     setInitialFormData(packageData);
                 } else if (shipmentDetection.isShipmentEmail) {
                     // Fall back to frontend detection if no existing package
+
+                    // Select the best tracking number to use
+                    let selectedTrackingNumber = '';
+                    let selectedCarrier = shipmentDetection.detectedCarrier || 'unknown';
+
+                    if (shipmentDetection.trackingNumbers.length > 0) {
+                        // Sort by confidence (highest first) and then by carrier specificity
+                        const sortedTrackingNumbers = [...shipmentDetection.trackingNumbers].sort((a, b) => {
+                            // First priority: confidence
+                            if (a.confidence !== b.confidence) {
+                                return b.confidence - a.confidence;
+                            }
+                            // Second priority: UPS 1Z patterns
+                            const aIsUPS = a.trackingNumber.startsWith('1Z');
+                            const bIsUPS = b.trackingNumber.startsWith('1Z');
+                            if (aIsUPS && !bIsUPS) return -1;
+                            if (!aIsUPS && bIsUPS) return 1;
+                            // Third priority: carrier-specific over generic
+                            if (a.carrier !== 'generic' && b.carrier === 'generic') return -1;
+                            if (a.carrier === 'generic' && b.carrier !== 'generic') return 1;
+                            return 0;
+                        });
+
+                        // Use the highest confidence tracking number
+                        const bestMatch = sortedTrackingNumbers[0];
+                        selectedTrackingNumber = bestMatch.trackingNumber;
+                        selectedCarrier = bestMatch.carrier !== 'unknown' ? bestMatch.carrier : selectedCarrier;
+                    }
+
                     const detectedData: PackageFormData = {
-                        tracking_number: shipmentDetection.trackingNumbers[0] || '',
-                        carrier: shipmentDetection.detectedCarrier || 'unknown',
+                        tracking_number: selectedTrackingNumber,
+                        carrier: selectedCarrier,
                         status: PACKAGE_STATUS.PENDING,
                         recipient_name: '',
                         shipper_name: '',
@@ -583,14 +614,61 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                     {/* Tracking Number */}
                                     <div className="flex items-center gap-3 p-1">
                                         <Label htmlFor="tracking_number" className="w-24 text-sm font-medium">Tracking Number</Label>
-                                        <Input
-                                            id="tracking_number"
-                                            value={formData.tracking_number}
-                                            onChange={(e) => handleInputChange('tracking_number', e.target.value)}
-                                            placeholder="Enter tracking number"
-                                            required
-                                            className="flex-1"
-                                        />
+                                        <div className="flex-1 relative">
+                                            <Input
+                                                id="tracking_number"
+                                                value={formData.tracking_number}
+                                                onChange={(e) => handleInputChange('tracking_number', e.target.value)}
+                                                placeholder="Enter tracking number"
+                                                required
+                                                className="flex-1"
+                                            />
+                                            {shipmentDetection.trackingNumbers.length > 1 && (
+                                                <DropdownMenu open={showTrackingNumberDropdown} onOpenChange={setShowTrackingNumberDropdown}>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-gray-100"
+                                                            onClick={() => setShowTrackingNumberDropdown(!showTrackingNumberDropdown)}
+                                                        >
+                                                            <Search className="h-3 w-3" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end" className="w-80">
+                                                        <div className="p-2">
+                                                            <div className="text-xs font-medium text-gray-500 mb-2">
+                                                                Detected Tracking Numbers ({shipmentDetection.trackingNumbers.length})
+                                                            </div>
+                                                            {shipmentDetection.trackingNumbers.map((trackingInfo, index) => (
+                                                                <DropdownMenuItem
+                                                                    key={index}
+                                                                    onClick={() => {
+                                                                        handleInputChange('tracking_number', trackingInfo.trackingNumber);
+                                                                        handleInputChange('carrier', trackingInfo.carrier !== 'unknown' ? trackingInfo.carrier : formData.carrier);
+                                                                        setShowTrackingNumberDropdown(false);
+                                                                    }}
+                                                                    className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-50"
+                                                                >
+                                                                    <div className="flex-1">
+                                                                        <div className="font-mono text-sm">{trackingInfo.trackingNumber}</div>
+                                                                        <div className="text-xs text-gray-500 capitalize">
+                                                                            {trackingInfo.carrier} • {Math.round(trackingInfo.confidence * 100)}% confidence
+                                                                        </div>
+                                                                    </div>
+                                                                    {index === 0 && (
+                                                                        <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                                                            Best Match
+                                                                        </div>
+                                                                    )}
+                                                                </DropdownMenuItem>
+                                                            ))}
+                                                        </div>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            )}
+                                        </div>
                                     </div>
 
                                     {/* Tracking Number Status */}
