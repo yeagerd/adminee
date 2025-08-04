@@ -58,14 +58,17 @@ class MicrosoftAPIClient(BaseAPIClient):
             Dictionary containing messages list and pagination info
         """
         params: Dict[str, Any] = {"$top": top, "$skip": skip}
-        if filter:
-            params["$filter"] = filter
+
         if search:
             params["$search"] = search
-        if order_by:
-            params["$orderby"] = order_by
-        else:
-            params["$orderby"] = "receivedDateTime desc"
+
+        if filter:
+            params["$filter"] = filter
+        else:  # MS does not support order_by with filter
+            if order_by:
+                params["$orderby"] = order_by
+            else:
+                params["$orderby"] = "receivedDateTime desc"
 
         response = await self.get("/me/messages", params=params)
         return response.json()

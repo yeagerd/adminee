@@ -1889,22 +1889,15 @@ async def fetch_single_thread(
                     f"Fetching Microsoft thread {original_thread_id} for user {user_id}"
                 )
                 try:
-                    # Get recent messages and filter client-side by conversationId
+                    filter_query = f"conversationId eq '{original_thread_id}'"
                     messages_response = await microsoft_client.get_messages(
-                        top=200,  # Get more messages to increase chances of finding the thread
+                        filter=filter_query,
                     )
                     messages = messages_response.get("value", [])
 
-                    # Filter messages that belong to this thread
-                    thread_messages = [
-                        msg
-                        for msg in messages
-                        if msg.get("conversationId") == original_thread_id
-                    ]
-
-                    if thread_messages:
+                    if messages:
                         logger.info(
-                            f"Found {len(thread_messages)} messages for thread {original_thread_id}"
+                            f"Found {len(messages)} messages for thread {original_thread_id}"
                         )
 
                         # Get user account info
@@ -1914,7 +1907,7 @@ async def fetch_single_thread(
 
                         return normalize_microsoft_conversation(
                             {"id": original_thread_id},
-                            thread_messages,
+                            messages,
                             account_email,
                             account_name,
                         )
