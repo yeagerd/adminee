@@ -525,7 +525,7 @@ export default function CalendarGridView({
                                                 const gridEndHour = 22;
                                                 if (currentHour >= gridStartHour && currentHour <= gridEndHour) {
                                                     const topPercent = ((currentHour - gridStartHour) / (gridEndHour - gridStartHour)) * 100;
-                                                    const totalHeight = (gridEndHour - gridStartHour) * 2 * 16; // 16px per 30-min slot
+                                                    const totalHeight = (gridEndHour - gridStartHour) * 2 * 32; // 32px per 30-min slot (h-8)
                                                     const topPixels = (topPercent / 100) * totalHeight;
 
                                                     return (
