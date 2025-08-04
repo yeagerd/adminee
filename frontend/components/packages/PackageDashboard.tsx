@@ -140,6 +140,23 @@ export default function PackageDashboard() {
         }
     };
 
+    const refreshPackages = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await gatewayClient.getPackages();
+            setPackages(res.data || []);
+        } catch (err) {
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError('Failed to refresh packages');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // Status counts for summary cards
     const statusCounts = useMemo(() => {
         const counts = { pending: 0, shipped: 0, late: 0, delivered: 0 };
@@ -243,7 +260,7 @@ export default function PackageDashboard() {
                 <AddPackageModal onClose={() => setShowAddModal(false)} onAdd={handleAddPackage} />
             )}
             {selectedPackage && (
-                <PackageDetails pkg={selectedPackage} onClose={() => setSelectedPackage(null)} />
+                <PackageDetails pkg={selectedPackage} onClose={() => setSelectedPackage(null)} onRefresh={refreshPackages} />
             )}
         </div>
     );
