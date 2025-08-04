@@ -3,7 +3,7 @@ API routers for the shipments service
 """
 
 from fastapi import APIRouter
-from shipments.routers import package_events
+from services.shipments.routers import package_events
 
 from services.shipments.routers import (
     carrier_configs,
