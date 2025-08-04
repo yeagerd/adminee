@@ -247,33 +247,35 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
                                 <span className="text-sm text-gray-500">{formattedDate}</span>
 
                                 {/* Shipment package icon */}
-                                {shipmentDetection.isShipmentEmail && (
-                                    <div className="relative group">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-6 w-6 p-0 hover:bg-gray-100"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleTrackShipment();
-                                            }}
-                                            title={hasEvents
-                                                ? `${shipmentEvents.length} tracking event${shipmentEvents.length > 1 ? 's' : ''}`
-                                                : 'Track shipment'
-                                            }
-                                        >
-                                            {hasEvents ? (
-                                                <PackageCheck
-                                                    className="h-4 w-4 text-green-600"
-                                                />
-                                            ) : (
-                                                <Package
-                                                    className="h-4 w-4 text-gray-400"
-                                                />
-                                            )}
-                                        </Button>
-                                    </div>
-                                )}
+                                {(hasEvents ||
+                                    shipmentDetection.trackingNumbers.length > 0 ||
+                                    email.from_address?.email === 'shipment-tracking@amazon.com') && (
+                                        <div className="relative group">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-6 w-6 p-0 hover:bg-gray-100"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleTrackShipment();
+                                                }}
+                                                title={hasEvents
+                                                    ? `${shipmentEvents.length} tracking event${shipmentEvents.length > 1 ? 's' : ''}`
+                                                    : 'Track shipment'
+                                                }
+                                            >
+                                                {hasEvents ? (
+                                                    <PackageCheck
+                                                        className="h-4 w-4 text-green-600"
+                                                    />
+                                                ) : (
+                                                    <Package
+                                                        className="h-4 w-4 text-gray-400"
+                                                    />
+                                                )}
+                                            </Button>
+                                        </div>
+                                    )}
 
                                 {/* 3-dot menu */}
                                 <DropdownMenu>
@@ -310,15 +312,13 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
                                             <Forward className="h-4 w-4 mr-2" />
                                             Forward
                                         </DropdownMenuItem>
-                                        {shipmentDetection.isShipmentEmail && (
-                                            <DropdownMenuItem onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleTrackShipment();
-                                            }}>
-                                                <Wand2 className="h-4 w-4 mr-2" />
-                                                Track Shipment
-                                            </DropdownMenuItem>
-                                        )}
+                                        <DropdownMenuItem onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleTrackShipment();
+                                        }}>
+                                            <Wand2 className="h-4 w-4 mr-2" />
+                                            Track Shipment
+                                        </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </div>
