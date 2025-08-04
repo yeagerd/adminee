@@ -106,7 +106,7 @@ function extractTrackingNumbers(text: string): Array<{ trackingNumber: string; c
         for (const match of genericMatches) {
             matches.push({
                 trackingNumber: match[0],
-                carrier: 'generic',
+                carrier: 'unknown',
                 confidence: 0.4, // Low confidence for generic patterns
                 start: match.index!,
                 end: match.index! + match[0].length,
@@ -162,8 +162,6 @@ function extractTrackingNumbers(text: string): Array<{ trackingNumber: string; c
         carrier,
         confidence
     }));
-
-    return selected;
 }
 
 /**

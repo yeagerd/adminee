@@ -259,9 +259,9 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                             const bIsUPS = b.trackingNumber.startsWith('1Z');
                             if (aIsUPS && !bIsUPS) return -1;
                             if (!aIsUPS && bIsUPS) return 1;
-                            // Third priority: carrier-specific over generic
-                            if (a.carrier !== 'generic' && b.carrier === 'generic') return -1;
-                            if (a.carrier === 'generic' && b.carrier !== 'generic') return 1;
+                            // Third priority: carrier-specific over unknown
+                            if (a.carrier !== 'unknown' && b.carrier === 'unknown') return -1;
+                            if (a.carrier === 'unknown' && b.carrier !== 'unknown') return 1;
                             return 0;
                         });
 
