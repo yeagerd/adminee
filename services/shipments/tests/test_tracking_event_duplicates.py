@@ -27,8 +27,8 @@ def patch_settings():
     shipments_settings._settings = None
 
 
-@pytest.fixture
-def client(db_session):
+@pytest_asyncio.fixture
+async def client(db_session):
     """Create a test client with patched settings."""
     from services.shipments.database import get_async_session_dep
     from services.shipments.main import app
@@ -37,13 +37,18 @@ def client(db_session):
     async def override_get_session():
         yield db_session
 
+    # Store the original dependency to restore it later
+    original_dependency = app.dependency_overrides.get(get_async_session_dep)
     app.dependency_overrides[get_async_session_dep] = override_get_session
 
     client = TestClient(app)
     yield client
 
-    # Clean up the override
-    app.dependency_overrides.clear()
+    # Clean up: restore the original dependency or remove our override
+    if original_dependency is not None:
+        app.dependency_overrides[get_async_session_dep] = original_dependency
+    else:
+        app.dependency_overrides.pop(get_async_session_dep, None)
 
 
 @pytest.fixture
@@ -316,9 +321,7 @@ class TestDeletePackage:
 class TestTrackingEventDuplicates:
     """Test that tracking events with the same email_message_id are handled correctly"""
 
-    def test_create_tracking_event_with_email_message_id_parameter(
-        self, client: TestClient
-    ):
+    def test_create_tracking_event_with_email_message_id_parameter(self):
         """Test that the API accepts email_message_id parameter in tracking event creation."""
         # Test that the API endpoint accepts email_message_id parameter
         # Since we moved package_id to the URL path, we test the schema validation without it
@@ -369,7 +372,7 @@ class TestTrackingEventDuplicates:
         assert event.status.value == "IN_TRANSIT"
         assert event.description == "Updated event"
 
-    def test_api_endpoint_handles_email_message_id(self, client: TestClient):
+    def test_api_endpoint_handles_email_message_id(self):
         """Test that the API endpoint properly handles email_message_id parameter."""
         # This test verifies that our API changes work correctly
         # Since we can't easily set up the database in tests, we'll test the endpoint structure
