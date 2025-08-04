@@ -15,7 +15,7 @@ from fastapi.testclient import TestClient
 from sqlmodel import select
 
 from services.shipments.models import TrackingEvent
-from services.shipments.routers import tracking_events
+from services.shipments.routers import events, package_events
 from services.shipments.schemas import TrackingEventCreate
 
 
@@ -157,17 +157,14 @@ class TestDuplicateRouterInclusionBugPrevention:
         with different prefixes, creating duplicate endpoints.
         """
         # Verify we have the expected separate routers
-        assert hasattr(tracking_events, "package_events_router")
-        assert hasattr(tracking_events, "email_events_router")
+        assert hasattr(package_events, "package_events_router")
+        assert hasattr(events, "events_router")
 
         # Verify they are different router instances
-        assert (
-            tracking_events.package_events_router
-            is not tracking_events.email_events_router
-        )
+        assert package_events.package_events_router is not events.events_router
 
         # Check package events router routes
-        package_routes = list(tracking_events.package_events_router.routes)
+        package_routes = list(package_events.package_events_router.routes)
         package_route_paths = [route.path for route in package_routes]
 
         # Should only have package-specific routes
@@ -175,7 +172,7 @@ class TestDuplicateRouterInclusionBugPrevention:
         assert len(package_routes) == 3  # GET, POST, and DELETE for package events
 
         # Check email events router routes
-        email_routes = list(tracking_events.email_events_router.routes)
+        email_routes = list(events.events_router.routes)
         email_route_paths = [route.path for route in email_routes]
 
         # Should only have email-specific routes
@@ -194,10 +191,10 @@ class TestDuplicateRouterInclusionBugPrevention:
 
         This test would have caught the routing conflicts.
         """
-        # Import the tracking_events module directly
+        # Import the package_events module directly
         # Get the main shipments router
         import services.shipments.routers as router_module
-        import services.shipments.routers.tracking_events as tracking_events
+        import services.shipments.routers.package_events as package_events
 
         shipments_router = router_module.shipments_router
 
@@ -205,14 +202,11 @@ class TestDuplicateRouterInclusionBugPrevention:
         # This test focuses on the key aspects that would catch the duplicate router inclusion bug
 
         # Check that we have separate routers for different concerns
-        assert hasattr(tracking_events, "package_events_router")
-        assert hasattr(tracking_events, "email_events_router")
+        assert hasattr(package_events, "package_events_router")
+        assert hasattr(events, "events_router")
 
         # Verify the routers are different instances
-        assert (
-            tracking_events.package_events_router
-            is not tracking_events.email_events_router
-        )
+        assert package_events.package_events_router is not events.events_router
 
         # Check that the main router includes both sub-routers
         router_routes = list(shipments_router.routes)
@@ -364,11 +358,11 @@ class TestIntegrationBugPrevention:
         This test would have caught routing issues that prevent proper functionality.
         """
         # Verify package events router supports package-specific operations
-        package_routes = list(tracking_events.package_events_router.routes)
+        package_routes = list(package_events.package_events_router.routes)
         assert len(package_routes) == 3  # GET, POST, and DELETE
 
         # Verify email events router supports email-specific operations
-        email_routes = list(tracking_events.email_events_router.routes)
+        email_routes = list(events.events_router.routes)
         assert len(email_routes) == 2  # GET and POST
 
         # Verify the routes have the expected methods
