@@ -51,21 +51,15 @@ async def db_session():
     yield session
 
     # Clean up database after each test
+    # Rollback any pending transactions first
     await session.rollback()
-    # Delete all data from tables to ensure clean state
-    import sqlalchemy as sa
 
-    await session.execute(sa.text("DELETE FROM trackingevent"))
-    await session.execute(sa.text("DELETE FROM packagelabel"))
-    await session.execute(sa.text("DELETE FROM package"))
-    await session.execute(sa.text("DELETE FROM label"))
-    await session.execute(sa.text("DELETE FROM carrierconfig"))
-    await session.commit()
+    # Close the session properly
     await session.close()
 
 
-@pytest.fixture
-def client(db_session):
+@pytest_asyncio.fixture
+async def client(db_session):
     """Create a test client with patched settings and database session."""
     from services.shipments.database import get_async_session_dep
 
@@ -195,7 +189,7 @@ class TestServiceAuthentication:
 class TestEndpointSecurity:
     """Test endpoint security and authentication."""
 
-    def test_email_parser_endpoint_requires_auth(self, client):
+    async def test_email_parser_endpoint_requires_auth(self, client):
         """Test that email parser endpoint requires authentication."""
         response = client.post(
             "/v1/shipments/events/from-email",
@@ -210,7 +204,7 @@ class TestEndpointSecurity:
         # Should return 401 or 403 due to missing authentication
         assert response.status_code in [401, 403]
 
-    def test_data_collection_endpoint_requires_auth(self, client):
+    async def test_data_collection_endpoint_requires_auth(self, client):
         """Test that data collection endpoint requires authentication."""
         response = client.post(
             "/v1/shipments/packages/collect-data",
@@ -227,25 +221,25 @@ class TestEndpointSecurity:
         # Should return 401 or 403 due to missing authentication
         assert response.status_code in [401, 403]
 
-    def test_labels_endpoint_requires_auth(self, client):
+    async def test_labels_endpoint_requires_auth(self, client):
         """Test that labels endpoint requires authentication."""
         response = client.get("/v1/shipments/labels/")
         # Should return 401 or 403 due to missing authentication
         assert response.status_code in [401, 403]
 
-    def test_carrier_configs_endpoint_requires_auth(self, client):
+    async def test_carrier_configs_endpoint_requires_auth(self, client):
         """Test that carrier configs endpoint requires authentication."""
         response = client.get("/v1/shipments/carriers/")
         # Should return 401 or 403 due to missing authentication
         assert response.status_code in [401, 403]
 
-    def test_packages_endpoint_requires_auth(self, client):
+    async def test_packages_endpoint_requires_auth(self, client):
         """Test that packages endpoint requires authentication."""
         response = client.get("/v1/shipments/packages/")
         # Should return 401 or 403 due to missing authentication
         assert response.status_code in [401, 403]
 
-    def test_email_parser_endpoint_with_auth_success(
+    async def test_email_parser_endpoint_with_auth_success(
         self, client, auth_headers, service_auth_headers
     ):
         """Test that email parser endpoint works with proper authentication."""
@@ -266,7 +260,7 @@ class TestEndpointSecurity:
         # Should not return 401/403 with proper auth, but might return other errors due to test setup
         assert response.status_code not in [401, 403]
 
-    def test_data_collection_endpoint_with_auth_success(
+    async def test_data_collection_endpoint_with_auth_success(
         self, client, auth_headers, service_auth_headers
     ):
         """Test that data collection endpoint works with proper authentication."""
@@ -293,7 +287,9 @@ class TestEndpointSecurity:
 class TestUserOwnershipValidation:
     """Test user ownership validation in endpoints."""
 
-    def test_email_parser_user_ownership_validation(self, client, service_auth_headers):
+    async def test_email_parser_user_ownership_validation(
+        self, client, service_auth_headers
+    ):
         """Test that email parser validates user ownership."""
         # Test with matching user IDs
         headers = {
@@ -315,7 +311,7 @@ class TestUserOwnershipValidation:
         # Should not return 403 for ownership violation
         assert response.status_code != 403
 
-    def test_email_parser_user_ownership_validation_failure(
+    async def test_email_parser_user_ownership_validation_failure(
         self, client, service_auth_headers
     ):
         """Test that email parser rejects wrong user ownership."""
@@ -340,7 +336,7 @@ class TestUserOwnershipValidation:
         # Should not return 403 because the endpoint uses the authenticated user's ID
         assert response.status_code != 403
 
-    def test_data_collection_user_ownership_validation(
+    async def test_data_collection_user_ownership_validation(
         self, client, service_auth_headers
     ):
         """Test that data collection validates user ownership."""
@@ -366,7 +362,7 @@ class TestUserOwnershipValidation:
         # Should not return 403 for ownership violation
         assert response.status_code != 403
 
-    def test_data_collection_user_ownership_validation_failure(
+    async def test_data_collection_user_ownership_validation_failure(
         self, client, service_auth_headers
     ):
         """Test that data collection rejects wrong user ownership."""
@@ -397,7 +393,9 @@ class TestUserOwnershipValidation:
 class TestCrossUserAccess:
     """Test cross-user access prevention."""
 
-    def test_user_cannot_access_other_user_data(self, client, service_auth_headers):
+    async def test_user_cannot_access_other_user_data(
+        self, client, service_auth_headers
+    ):
         """Test that users cannot access other users' data."""
         # Test accessing packages with different user ID
         headers = {
@@ -423,7 +421,9 @@ class TestCrossUserAccess:
         # So we should get an empty list since user123 has no packages
         assert len(response_data["data"]) == 0
 
-    def test_user_cannot_modify_other_user_data(self, client, service_auth_headers):
+    async def test_user_cannot_modify_other_user_data(
+        self, client, service_auth_headers
+    ):
         """Test that users cannot modify other users' data."""
         # Test modifying packages with different user ID
         headers = {
@@ -449,7 +449,7 @@ class TestCrossUserAccess:
             response.status_code == 200
         )  # Should succeed because it uses authenticated user
 
-    def test_user_cannot_update_other_user_tracking_events(
+    async def test_user_cannot_update_other_user_tracking_events(
         self, client, service_auth_headers
     ):
         """Test that users cannot update tracking events belonging to other users via email_message_id."""
@@ -535,20 +535,20 @@ class TestAPIKeyPermissions:
 class TestErrorHandling:
     """Test error handling for security scenarios."""
 
-    def test_unauthorized_access_error(self, client):
+    async def test_unauthorized_access_error(self, client):
         """Test proper error response for unauthorized access."""
         response = client.get("/v1/shipments/packages/")
         # Should return 401 for unauthorized access
         assert response.status_code == 401
 
-    def test_forbidden_access_error(self, client, auth_headers):
+    async def test_forbidden_access_error(self, client, auth_headers):
         """Test proper error response for forbidden access."""
         # Test with user auth but no service auth
         response = client.get("/v1/shipments/packages/", headers=auth_headers)
         # Should return 403 for forbidden access (missing service API key)
         assert response.status_code == 403
 
-    def test_user_ownership_error(self, client, service_auth_headers):
+    async def test_user_ownership_error(self, client, service_auth_headers):
         """Test proper error response for user ownership violation."""
         # Test with mismatched user IDs
         headers = {
@@ -568,7 +568,7 @@ class TestErrorHandling:
         # Should return 200 because the endpoint uses the authenticated user's ID
         assert response.status_code == 200
 
-    def test_invalid_api_key_error(self, client, auth_headers):
+    async def test_invalid_api_key_error(self, client, auth_headers):
         """Test proper error response for invalid API key."""
         headers = {
             **auth_headers,
@@ -579,7 +579,7 @@ class TestErrorHandling:
         # Should return 401 or 403 for invalid API key
         assert response.status_code in [401, 403]
 
-    def test_missing_user_id_error(self, client, service_auth_headers):
+    async def test_missing_user_id_error(self, client, service_auth_headers):
         """Test proper error response for missing user ID."""
         # Test without X-User-Id header
         headers = {
@@ -594,7 +594,7 @@ class TestErrorHandling:
 class TestAuthenticationIntegration:
     """Test integration of authentication mechanisms."""
 
-    def test_gateway_headers_override_jwt(self, client, service_auth_headers):
+    async def test_gateway_headers_override_jwt(self, client, service_auth_headers):
         """Test that gateway headers take precedence over JWT tokens."""
         headers = {
             **service_auth_headers,
@@ -606,7 +606,9 @@ class TestAuthenticationIntegration:
         # Should work with gateway headers even with invalid JWT
         assert response.status_code not in [401, 403]
 
-    def test_jwt_fallback_when_no_gateway_headers(self, client, service_auth_headers):
+    async def test_jwt_fallback_when_no_gateway_headers(
+        self, client, service_auth_headers
+    ):
         """Test JWT fallback when gateway headers are missing."""
         # This would require a valid JWT token in a real test
         # For now, we test the concept that JWT is used as fallback
