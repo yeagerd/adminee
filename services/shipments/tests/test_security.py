@@ -311,12 +311,12 @@ class TestUserOwnershipValidation:
         # Should not return 403 for ownership violation
         assert response.status_code != 403
 
-    async def test_email_parser_user_ownership_validation_failure(
+    async def test_email_parser_user_ownership_validation_success_with_mismatched_ids(
         self, client, service_auth_headers
     ):
-        """Test that email parser rejects wrong user ownership."""
-        # Test with mismatched user IDs - the endpoint should use the authenticated user's ID
-        # not the one in the request body, so this should still work
+        """Test that email parser succeeds when user_id in body differs from X-User-Id header."""
+        # Test with mismatched user IDs - the endpoint correctly uses the authenticated user's ID
+        # from the X-User-Id header, not the one in the request body
         headers = {
             **service_auth_headers,
             "X-User-Id": "user456",
@@ -333,7 +333,7 @@ class TestUserOwnershipValidation:
                 "content_type": "text",
             },
         )
-        # Should not return 403 because the endpoint uses the authenticated user's ID
+        # Should not return 403 because the endpoint correctly uses the authenticated user's ID
         assert response.status_code != 403
 
     async def test_data_collection_user_ownership_validation(
@@ -362,12 +362,12 @@ class TestUserOwnershipValidation:
         # Should not return 403 for ownership violation
         assert response.status_code != 403
 
-    async def test_data_collection_user_ownership_validation_failure(
+    async def test_data_collection_user_ownership_validation_success_with_mismatched_ids(
         self, client, service_auth_headers
     ):
-        """Test that data collection rejects wrong user ownership."""
-        # Test with mismatched user IDs - the endpoint should use the authenticated user's ID
-        # not the one in the request body, so this should still work
+        """Test that data collection succeeds when user_id in body differs from X-User-Id header."""
+        # Test with mismatched user IDs - the endpoint correctly uses the authenticated user's ID
+        # from the X-User-Id header, not the one in the request body
         headers = {
             **service_auth_headers,
             "X-User-Id": "user456",
@@ -386,7 +386,7 @@ class TestUserOwnershipValidation:
                 "consent_given": True,
             },
         )
-        # Should not return 403 because the endpoint uses the authenticated user's ID
+        # Should not return 403 because the endpoint correctly uses the authenticated user's ID
         assert response.status_code != 403
 
 
@@ -548,9 +548,12 @@ class TestErrorHandling:
         # Should return 403 for forbidden access (missing service API key)
         assert response.status_code == 403
 
-    async def test_user_ownership_error(self, client, service_auth_headers):
-        """Test proper error response for user ownership violation."""
-        # Test with mismatched user IDs
+    async def test_user_ownership_success_with_mismatched_ids(
+        self, client, service_auth_headers
+    ):
+        """Test that endpoints succeed when user_id in body differs from X-User-Id header."""
+        # Test with mismatched user IDs - the endpoint correctly uses the authenticated user's ID
+        # from the X-User-Id header, not the one in the request body
         headers = {
             **service_auth_headers,
             "X-User-Id": "user456",
@@ -560,12 +563,12 @@ class TestErrorHandling:
             "/v1/shipments/packages/",
             headers=headers,
             json={
-                "user_id": "user123",  # Different from X-User-Id
+                "user_id": "user123",  # Different from X-User-Id, but endpoint uses X-User-Id
                 "tracking_number": "123456789012345",  # Valid FedEx format
                 "carrier": "fedex",
             },
         )
-        # Should return 200 because the endpoint uses the authenticated user's ID
+        # Should return 200 because the endpoint correctly uses the authenticated user's ID
         assert response.status_code == 200
 
     async def test_invalid_api_key_error(self, client, auth_headers):
