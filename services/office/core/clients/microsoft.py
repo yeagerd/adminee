@@ -4,6 +4,26 @@ from services.office.core.clients.base import BaseAPIClient
 from services.office.models import Provider
 
 
+def escape_odata_string_literal(value: str) -> str:
+    """
+    Escape a string literal for use in OData filter expressions.
+
+    OData string literals need to be properly escaped to prevent injection attacks.
+    Single quotes must be escaped by doubling them.
+
+    Args:
+        value: The string value to escape
+
+    Returns:
+        The escaped string safe for use in OData filters
+    """
+    if not isinstance(value, str):
+        raise ValueError("Value must be a string")
+
+    # In OData, single quotes are escaped by doubling them
+    return value.replace("'", "''")
+
+
 class MicrosoftAPIClient(BaseAPIClient):
     """
     Microsoft Graph API client for accessing Outlook, Microsoft Calendar, and OneDrive APIs.
@@ -58,14 +78,17 @@ class MicrosoftAPIClient(BaseAPIClient):
             Dictionary containing messages list and pagination info
         """
         params: Dict[str, Any] = {"$top": top, "$skip": skip}
-        if filter:
-            params["$filter"] = filter
+
         if search:
             params["$search"] = search
-        if order_by:
-            params["$orderby"] = order_by
-        else:
-            params["$orderby"] = "receivedDateTime desc"
+
+        if filter:
+            params["$filter"] = filter
+        else:  # MS does not support order_by with filter
+            if order_by:
+                params["$orderby"] = order_by
+            else:
+                params["$orderby"] = "receivedDateTime desc"
 
         response = await self.get("/me/messages", params=params)
         return response.json()
@@ -217,9 +240,11 @@ class MicrosoftAPIClient(BaseAPIClient):
 
             # Add time range filter if only one date specified
             if start_time:
-                params["$filter"] = f"start/dateTime ge '{start_time}'"
+                escaped_start_time = escape_odata_string_literal(start_time)
+                params["$filter"] = f"start/dateTime ge '{escaped_start_time}'"
             elif end_time:
-                params["$filter"] = f"end/dateTime le '{end_time}'"
+                escaped_end_time = escape_odata_string_literal(end_time)
+                params["$filter"] = f"end/dateTime le '{escaped_end_time}'"
 
         response = await self.get(endpoint, params=params)
         return response.json()

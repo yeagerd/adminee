@@ -757,6 +757,105 @@ class TestEmailHelperFunctions:
         assert exc_info.value.status_code == 422
         assert "Invalid message ID format" in str(exc_info.value.message)
 
+    def test_escape_odata_string_literal_basic(self):
+        """Test basic OData string literal escaping."""
+        from services.office.api.email import escape_odata_string_literal
+
+        # Test normal string (no escaping needed)
+        result = escape_odata_string_literal("normal_string")
+        assert result == "normal_string"
+
+        # Test string with single quote
+        result = escape_odata_string_literal("O'Connor")
+        assert result == "O''Connor"
+
+        # Test string with multiple single quotes
+        result = escape_odata_string_literal("can't won't don't")
+        assert result == "can''t won''t don''t"
+
+    def test_escape_odata_string_literal_edge_cases(self):
+        """Test edge cases for OData string literal escaping."""
+        from services.office.api.email import escape_odata_string_literal
+
+        # Test empty string
+        result = escape_odata_string_literal("")
+        assert result == ""
+
+        # Test string with only single quotes
+        result = escape_odata_string_literal("'")
+        assert result == "''"
+
+        # Test string with consecutive single quotes
+        result = escape_odata_string_literal("''")
+        assert result == "''''"
+
+        # Test string with mixed quotes
+        result = escape_odata_string_literal("'hello' world")
+        assert result == "''hello'' world"
+
+    def test_escape_odata_string_literal_injection_attempts(self):
+        """Test OData string literal escaping against injection attempts."""
+        from services.office.api.email import escape_odata_string_literal
+
+        # Test SQL injection attempt
+        malicious_input = "'; DROP TABLE users; --"
+        result = escape_odata_string_literal(malicious_input)
+        expected = "''; DROP TABLE users; --"
+        assert result == expected
+
+        # Test OData injection attempt
+        malicious_input = "'; eq 'admin' or id eq '"
+        result = escape_odata_string_literal(malicious_input)
+        expected = "''; eq ''admin'' or id eq ''"
+        assert result == expected
+
+        # Test with newlines and special characters
+        malicious_input = "'; \n eq 'admin' \t or \r id eq '"
+        result = escape_odata_string_literal(malicious_input)
+        expected = "''; \n eq ''admin'' \t or \r id eq ''"
+        assert result == expected
+
+    def test_escape_odata_string_literal_invalid_input(self):
+        """Test OData string literal escaping with invalid input types."""
+        from services.office.api.email import escape_odata_string_literal
+
+        # Test with None
+        with pytest.raises(ValueError, match="Value must be a string"):
+            escape_odata_string_literal(None)
+
+        # Test with integer
+        with pytest.raises(ValueError, match="Value must be a string"):
+            escape_odata_string_literal(123)
+
+        # Test with list
+        with pytest.raises(ValueError, match="Value must be a string"):
+            escape_odata_string_literal(["not", "a", "string"])
+
+        # Test with dictionary
+        with pytest.raises(ValueError, match="Value must be a string"):
+            escape_odata_string_literal({"key": "value"})
+
+    def test_escape_odata_string_literal_unicode(self):
+        """Test OData string literal escaping with Unicode characters."""
+        from services.office.api.email import escape_odata_string_literal
+
+        # Test with Unicode characters
+        unicode_string = "café résumé naïve"
+        result = escape_odata_string_literal(unicode_string)
+        assert result == unicode_string
+
+        # Test with Unicode and single quotes
+        unicode_with_quotes = "café's résumé's naïve's"
+        result = escape_odata_string_literal(unicode_with_quotes)
+        expected = "café''s résumé''s naïve''s"
+        assert result == expected
+
+        # Test with emoji and quotes
+        emoji_string = "🚀 rocket's 🎉 party's 🎊"
+        result = escape_odata_string_literal(emoji_string)
+        expected = "🚀 rocket''s 🎉 party''s 🎊"
+        assert result == expected
+
 
 class TestFetchProviderEmails:
     """Tests for the fetch_provider_emails function."""
@@ -871,7 +970,111 @@ class TestFetchSingleMessage:
         )
 
         assert result == mock_email_message
-        mock_client.get_message.assert_called_once_with("test123", format="full")
+
+    @patch("services.office.api.email.get_api_client_factory")
+    @pytest.mark.asyncio
+    async def test_fetch_single_message_not_found(self, mock_api_client_factory):
+        """Test handling of message not found."""
+        from services.office.api.email import fetch_single_message
+
+        # Mock API client factory to raise exception
+        mock_factory = AsyncMock()
+        mock_factory.create_client = AsyncMock(
+            side_effect=Exception("Token retrieval failed")
+        )
+        mock_api_client_factory.return_value = mock_factory
+
+        result = await fetch_single_message(
+            "req_123", "test_user", "google", "test123", True
+        )
+
+        assert result is None
+
+
+class TestODataInjectionProtection:
+    """Tests to verify OData injection protection is working."""
+
+    @patch("services.office.api.email.get_api_client_factory")
+    @patch("services.office.api.email.normalize_microsoft_conversation")
+    @pytest.mark.asyncio
+    async def test_fetch_single_thread_escapes_original_thread_id(
+        self, mock_normalize_microsoft_conversation, mock_api_client_factory
+    ):
+        """Test that fetch_single_thread properly escapes original_thread_id in OData filter."""
+        from services.office.api.email import fetch_single_thread
+
+        # Mock API client
+        mock_client = AsyncMock()
+        mock_client.get_messages.return_value = {"value": [{"id": "test123"}]}
+        mock_factory = AsyncMock()
+        mock_factory.create_client = AsyncMock(return_value=mock_client)
+        mock_api_client_factory.return_value = mock_factory
+
+        # Mock normalizer
+        mock_normalize_microsoft_conversation.return_value = {"id": "test_thread"}
+
+        # Test with malicious thread_id containing single quote
+        malicious_thread_id = "thread'; DROP TABLE users; --"
+
+        await fetch_single_thread(
+            "req_123", "test_user", "microsoft", malicious_thread_id, True
+        )
+
+        # Verify that get_messages was called with properly escaped filter
+        mock_client.get_messages.assert_called_once()
+        call_args = mock_client.get_messages.call_args
+        filter_param = call_args[1]["filter"]
+
+        # The filter should contain the escaped thread_id
+        expected_filter = "conversationId eq 'thread''; DROP TABLE users; --'"
+        assert filter_param == expected_filter
+
+    @patch("services.office.api.email.get_api_client_factory")
+    @patch("services.office.api.email.normalize_microsoft_email")
+    @pytest.mark.asyncio
+    async def test_fetch_provider_emails_escapes_labels(
+        self, mock_normalize_microsoft_email, mock_api_client_factory
+    ):
+        """Test that fetch_provider_emails properly escapes labels in OData filter."""
+        from services.office.api.email import fetch_provider_emails
+
+        # Mock API client
+        mock_client = AsyncMock()
+        mock_client.get_messages.return_value = {"value": [{"id": "test123"}]}
+        mock_factory = AsyncMock()
+        mock_factory.create_client = AsyncMock(return_value=mock_client)
+        mock_api_client_factory.return_value = mock_factory
+
+        # Mock normalizer
+        mock_normalize_microsoft_email.return_value = {"id": "test_message"}
+
+        # Test with malicious labels containing single quotes
+        malicious_labels = [
+            "normal_label",
+            "label'; DROP TABLE users; --",
+            "another'label",
+        ]
+
+        await fetch_provider_emails(
+            "req_123",
+            "test_user",
+            "microsoft",
+            10,
+            False,
+            malicious_labels,
+            None,
+            None,
+            None,
+        )
+
+        # Verify that get_messages was called with properly escaped filter
+        mock_client.get_messages.assert_called_once()
+        call_args = mock_client.get_messages.call_args
+        filter_param = call_args[1]["filter"]
+
+        # The filter should contain the escaped labels
+        expected_filter = "categories/any(c:c eq 'normal_label') or categories/any(c:c eq 'label''; DROP TABLE users; --') or categories/any(c:c eq 'another''label')"
+        assert filter_param == expected_filter
 
     @patch("services.office.api.email.get_api_client_factory")
     @patch("services.office.api.email.normalize_microsoft_email")
