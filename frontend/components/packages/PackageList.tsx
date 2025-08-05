@@ -1,5 +1,5 @@
 import { ExternalLink, Filter } from 'lucide-react';
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -45,9 +45,11 @@ function MultiSelectFilter({ options, selected, onChange }: {
             </div>
         </div>
     );
-}
+});
 
-export default function PackageList({
+export default PackageList;
+
+const PackageList = memo(function PackageList({
     packages,
     onSort,
     editingCell,

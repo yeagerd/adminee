@@ -2,7 +2,7 @@ import dayjs from 'dayjs';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import { AlertTriangle, Calendar, CheckCircle, Clock, Plus, Truck } from 'lucide-react';
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import gatewayClient from '../../lib/gateway-client';
 import { DASHBOARD_STATUS_MAPPING, PACKAGE_STATUS } from '../../lib/package-status';
@@ -66,6 +66,10 @@ export default function PackageDashboard() {
     const [hasNext, setHasNext] = useState(false);
     const [hasPrev, setHasPrev] = useState(false);
     const [paginationLoading, setPaginationLoading] = useState(false);
+    
+    // Performance optimizations
+    const [cursorCache, setCursorCache] = useState<Map<string, any>>(new Map());
+    const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         loadFirstPage();
@@ -108,9 +112,52 @@ export default function PackageDashboard() {
         }
     }, [searchParams]);
 
-    // Reload data when filters change
+    // Cursor caching functions
+    const getCachedData = useCallback((cacheKey: string) => {
+        return cursorCache.get(cacheKey);
+    }, [cursorCache]);
+
+    const setCachedData = useCallback((cacheKey: string, data: any) => {
+        setCursorCache(prev => {
+            const newCache = new Map(prev);
+            newCache.set(cacheKey, data);
+            // Limit cache size to prevent memory leaks
+            if (newCache.size > 50) {
+                const firstKey = newCache.keys().next().value;
+                newCache.delete(firstKey);
+            }
+            return newCache;
+        });
+    }, []);
+
+    // Debounced search function
+    const debouncedSearch = useCallback((searchValue: string) => {
+        if (debounceTimer) {
+            clearTimeout(debounceTimer);
+        }
+        
+        const timer = setTimeout(() => {
+            loadFirstPage();
+        }, 300); // 300ms debounce
+        
+        setDebounceTimer(timer);
+    }, [debounceTimer]);
+
+    // Reload data when filters change (with debouncing for search)
     useEffect(() => {
-        loadFirstPage();
+        if (debounceTimer) {
+            clearTimeout(debounceTimer);
+        }
+        
+        const timer = setTimeout(() => {
+            loadFirstPage();
+        }, 300);
+        
+        setDebounceTimer(timer);
+        
+        return () => {
+            if (timer) clearTimeout(timer);
+        };
     }, [selectedStatusFilters, selectedCarrierFilters, searchTerm]);
 
     const loadFirstPage = async () => {
@@ -138,7 +185,25 @@ export default function PackageDashboard() {
                 filterParams.tracking_number = searchTerm.trim();
             }
             
+            // Check cache first
+            const cacheKey = JSON.stringify(filterParams);
+            const cachedData = getCachedData(cacheKey);
+            
+            if (cachedData) {
+                setPackages(cachedData.data || []);
+                setNextCursor(cachedData.pagination.next_cursor || null);
+                setPrevCursor(cachedData.pagination.prev_cursor || null);
+                setHasNext(cachedData.pagination.has_next);
+                setHasPrev(cachedData.pagination.has_prev);
+                setCurrentCursor(null);
+                return;
+            }
+            
             const res = await gatewayClient.getPackages(filterParams);
+            
+            // Cache the result
+            setCachedData(cacheKey, res);
+            
             setPackages(res.data || []);
             setNextCursor(res.pagination.next_cursor || null);
             setPrevCursor(res.pagination.prev_cursor || null);
