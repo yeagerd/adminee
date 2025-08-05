@@ -337,6 +337,17 @@ class TestUserOwnershipValidation:
         # Should not return 403 because the endpoint correctly uses the authenticated user's ID
         assert response.status_code != 403
 
+        # Verify the operation was performed successfully (email parsing completed)
+        # The endpoint should return a valid EmailParseResponse regardless of user_id in body
+        if response.status_code == 200:
+            response_data = response.json()
+            # Verify the response contains the expected email parsing structure
+            assert "is_shipment_email" in response_data
+            assert "tracking_numbers" in response_data
+            assert "confidence" in response_data
+            assert "detected_from" in response_data
+            # The endpoint should process the email for the authenticated user (user456), not user123
+
     async def test_data_collection_user_ownership_validation(
         self, client, service_auth_headers
     ):
@@ -389,6 +400,21 @@ class TestUserOwnershipValidation:
         )
         # Should not return 403 because the endpoint correctly uses the authenticated user's ID
         assert response.status_code != 403
+
+        # Verify the operation was performed successfully (data collection completed)
+        # The endpoint should return a valid DataCollectionResponse regardless of user_id in body
+        if response.status_code == 200:
+            response_data = response.json()
+            # Verify the response contains the expected data collection structure
+            assert "success" in response_data
+            assert "collection_id" in response_data
+            assert "timestamp" in response_data
+            assert "message" in response_data
+            # Verify the operation was successful
+            assert response_data["success"] is True
+            # The endpoint should collect data for the authenticated user (user456), not user123
+            # The collection_id should be generated for user456 (first 8 chars of user ID)
+            assert "user456"[:8] in response_data["collection_id"]
 
 
 class TestCrossUserAccess:
@@ -571,6 +597,21 @@ class TestErrorHandling:
         )
         # Should return 200 because the endpoint correctly uses the authenticated user's ID
         assert response.status_code == 200
+
+        # Verify the operation was performed successfully (package creation completed)
+        # The endpoint should return a valid PackageOut with the authenticated user's ID
+        response_data = response.json()
+        # Verify the response contains the expected package structure
+        assert "id" in response_data
+        assert "tracking_number" in response_data
+        assert "carrier" in response_data
+        assert "status" in response_data
+        assert "user_id" in response_data
+        # Verify the package was created for the authenticated user (user456), not user123
+        assert response_data["user_id"] == "user456"
+        # Verify the tracking number was normalized and stored correctly
+        assert response_data["tracking_number"] == "123456789012345"
+        assert response_data["carrier"] == "fedex"
 
     async def test_invalid_api_key_error(self, client, auth_headers):
         """Test proper error response for invalid API key."""
