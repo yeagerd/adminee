@@ -105,6 +105,8 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
 
             setThreads(messages);
             setError(null);
+            // Clear email selections when emails are fetched/updated
+            setSelectedEmails(new Set());
         } catch (e: unknown) {
             setError((e && typeof e === 'object' && 'message' in e) ? (e as { message?: string }).message || 'Failed to load emails' : 'Failed to load emails');
         }
@@ -114,6 +116,8 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
         setRefreshing(true);
         try {
             await fetchEmails(true); // Pass true to bypass cache
+            // Clear email selections after refresh
+            setSelectedEmails(new Set());
         } finally {
             setRefreshing(false);
         }
@@ -121,6 +125,8 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
 
     const handleFolderSelect = useCallback((folder: EmailFolder) => {
         setSelectedFolder(folder);
+        // Clear email selections when folder changes
+        setSelectedEmails(new Set());
     }, []);
 
     // Group emails by thread
