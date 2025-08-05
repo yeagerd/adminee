@@ -128,6 +128,28 @@ class Settings(BaseSettings):
     log_level: str = Field(default="INFO", description="Logging level")
     log_format: str = Field(default="json", description="Log format (json or text)")
 
+    # Pagination settings
+    pagination_secret_key: str = Field(
+        default="your-secret-key-change-in-production",
+        validation_alias="PAGINATION_SECRET_KEY",
+        description="Secret key for pagination token signing"
+    )
+    pagination_token_expiry: int = Field(
+        default=3600,
+        validation_alias="PAGINATION_TOKEN_EXPIRY",
+        description="Pagination token expiration time in seconds"
+    )
+    pagination_max_page_size: int = Field(
+        default=100,
+        validation_alias="PAGINATION_MAX_PAGE_SIZE",
+        description="Maximum allowed page size for pagination"
+    )
+    pagination_default_page_size: int = Field(
+        default=20,
+        validation_alias="PAGINATION_DEFAULT_PAGE_SIZE",
+        description="Default page size for pagination"
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

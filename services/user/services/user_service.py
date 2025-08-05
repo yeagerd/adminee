@@ -541,15 +541,45 @@ class UserService:
                 # Initialize pagination configuration
                 from common.pagination import PaginationConfig
                 from services.user.utils.pagination import UserCursorPagination
+                from services.user.settings import get_settings
                 
+                settings = get_settings()
                 pagination_config = PaginationConfig(
-                    secret_key="your-secret-key-change-in-production",  # TODO: Get from settings
-                    token_expiry=3600,
-                    max_page_size=100,
-                    default_page_size=20
+                    secret_key=settings.pagination_secret_key,
+                    token_expiry=settings.pagination_token_expiry,
+                    max_page_size=settings.pagination_max_page_size,
+                    default_page_size=settings.pagination_default_page_size
                 )
                 
                 pagination = UserCursorPagination(pagination_config)
+                
+                # Input validation and sanitization
+                if search_request.cursor and len(search_request.cursor) > 1000:  # Reasonable limit for cursor tokens
+                    raise ValidationError(
+                        message="Cursor token too long",
+                        field="cursor",
+                        value=search_request.cursor[:50] + "...",  # Truncate for security
+                    )
+                
+                if search_request.direction and search_request.direction not in ["next", "prev"]:
+                    raise ValidationError(
+                        message="Invalid pagination direction",
+                        field="direction",
+                        value=search_request.direction,
+                    )
+                
+                # Audit logging for pagination usage
+                logger.info(
+                    "User search pagination request",
+                    cursor_provided=bool(search_request.cursor),
+                    limit=search_request.limit,
+                    direction=search_request.direction,
+                    filters={
+                        "query": search_request.query,
+                        "email": search_request.email,
+                        "onboarding_completed": search_request.onboarding_completed
+                    }
+                )
                 
                 # Validate and sanitize limit
                 limit = pagination.sanitize_limit(search_request.limit)
