@@ -191,9 +191,11 @@ POST   /api/tracking/webhook            - Webhook for carrier updates
     }
   ],
   "pagination": {
-    "page": 1,
-    "per_page": 20,
-    "total": 45
+    "next_cursor": "eyJsYXN0X2lkIjoiMTIzNDU2Nzg5MC1hYmNkLWVmZ2gtaWprbC1tbm9wIiwibGFzdF91cGRhdGVkIjoiMjAyNC0wMy0xM1QxMDozMDowMFoiLCJmaWx0ZXJzIjp7fSwiZGlyZWN0aW9uIjoibmV4dCIsImxpbWl0IjoyMH0=",
+    "prev_cursor": null,
+    "has_next": true,
+    "has_prev": false,
+    "limit": 20
   }
 }
 ```
