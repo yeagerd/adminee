@@ -437,7 +437,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                     </div>
                 ) : (
                     // Email list (for both two-pane and one-pane modes)
-                    <div className={`flex-1 flex flex-col overflow-y-auto ${readingPaneMode === 'right' ? 'border-r' : ''}`} style={{ flexShrink: 0, minWidth: 0 }}>
+                    <div className={`flex-1 flex flex-col overflow-y-auto ${readingPaneMode === 'right' ? 'border-r' : ''}`} style={{ minWidth: 0 }}>
                         {/* Selection Header */}
                         {selectedEmails.size > 0 && (
                             <div className="bg-blue-50 border-b border-blue-200 px-4 py-3">
@@ -568,7 +568,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
 
                 {/* Reading pane */}
                 {readingPaneMode === 'right' && selectedThreadId && (
-                    <div className="w-1/2 border-l bg-gray-50 overflow-y-auto" style={{ flexShrink: 0 }}>
+                    <div className="flex-1 border-l bg-gray-50 overflow-y-auto" style={{ minWidth: 0 }}>
                         <div className="p-4">
                             {loadingThread ? (
                                 <div className="p-8 text-center text-muted-foreground">Loading thread...</div>
