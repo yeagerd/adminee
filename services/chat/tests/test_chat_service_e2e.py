@@ -79,9 +79,10 @@ class TestChatServiceE2E(BaseChatTest):
         cls._history_manager = history_manager
         cls.app = fresh_app
         # Initialize test database synchronously
-        import asyncio
 
-        asyncio.run(history_manager.init_db())
+        # Database should be initialized via Alembic migrations before running tests
+
+    # Run: alembic upgrade head
 
     @classmethod
     def teardown_class(cls):

@@ -50,6 +50,27 @@ logger = get_logger(__name__)
 # Create router
 router = APIRouter(prefix="/email", tags=["email"])
 
+
+def escape_odata_string_literal(value: str) -> str:
+    """
+    Escape a string literal for use in OData filter expressions.
+
+    OData string literals need to be properly escaped to prevent injection attacks.
+    Single quotes must be escaped by doubling them.
+
+    Args:
+        value: The string value to escape
+
+    Returns:
+        The escaped string safe for use in OData filters
+    """
+    if not isinstance(value, str):
+        raise ValueError("Value must be a string")
+
+    # In OData, single quotes are escaped by doubling them
+    return value.replace("'", "''")
+
+
 # Lazy-initialized API client factory instance
 _api_client_factory = None
 _api_client_factory_lock = asyncio.Lock()
@@ -1265,8 +1286,15 @@ async def fetch_provider_emails(
                 # Build filter for labels (categories in Microsoft)
                 filter_expr = None
                 if labels:
+                    # Properly escape each label to prevent OData injection
+                    escaped_labels = [
+                        escape_odata_string_literal(label) for label in labels
+                    ]
                     category_filter = " or ".join(
-                        [f"categories/any(c:c eq '{label}')" for label in labels]
+                        [
+                            f"categories/any(c:c eq '{escaped_label}')"
+                            for escaped_label in escaped_labels
+                        ]
                     )
                     filter_expr = category_filter
 
@@ -1889,22 +1917,17 @@ async def fetch_single_thread(
                     f"Fetching Microsoft thread {original_thread_id} for user {user_id}"
                 )
                 try:
-                    # Get recent messages and filter client-side by conversationId
+                    # Properly escape the original_thread_id to prevent OData injection
+                    escaped_thread_id = escape_odata_string_literal(original_thread_id)
+                    filter_query = f"conversationId eq '{escaped_thread_id}'"
                     messages_response = await microsoft_client.get_messages(
-                        top=200,  # Get more messages to increase chances of finding the thread
+                        filter=filter_query,
                     )
                     messages = messages_response.get("value", [])
 
-                    # Filter messages that belong to this thread
-                    thread_messages = [
-                        msg
-                        for msg in messages
-                        if msg.get("conversationId") == original_thread_id
-                    ]
-
-                    if thread_messages:
+                    if messages:
                         logger.info(
-                            f"Found {len(thread_messages)} messages for thread {original_thread_id}"
+                            f"Found {len(messages)} messages for thread {original_thread_id}"
                         )
 
                         # Get user account info
@@ -1914,7 +1937,7 @@ async def fetch_single_thread(
 
                         return normalize_microsoft_conversation(
                             {"id": original_thread_id},
-                            thread_messages,
+                            messages,
                             account_email,
                             account_name,
                         )

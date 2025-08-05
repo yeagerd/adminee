@@ -49,7 +49,7 @@ export default function PackageDashboard() {
     const [searchTerm, setSearchTerm] = useState('');
     const [sortField, setSortField] = useState('estimated_delivery');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-    const [editingCell, setEditingCell] = useState<{ id: number; field: string } | null>(null);
+    const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null); // Changed from number to string (UUID)
     const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
     const [selectedStatusFilters, setSelectedStatusFilters] = useState<string[]>([]);
     const [selectedCarrierFilters] = useState<string[]>([]);
@@ -93,8 +93,8 @@ export default function PackageDashboard() {
             return matchesSearch && matchesStatus && matchesCarrier && matchesDate;
         });
         filtered.sort((a, b) => {
-            const aValue = a[sortField] as string | number | undefined;
-            const bValue = b[sortField] as string | number | undefined;
+            const aValue = a[sortField as keyof Package] as string | number | undefined;
+            const bValue = b[sortField as keyof Package] as string | number | undefined;
             if (typeof aValue === 'string' && typeof bValue === 'string') {
                 return sortDirection === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
             }
@@ -117,13 +117,30 @@ export default function PackageDashboard() {
         }
     };
 
-    const handleCellEdit = (id: number, field: string, value: string) => {
+    const handleCellEdit = (id: string, field: string, value: string) => { // Changed from number to string (UUID)
         setPackages(packages.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
         setEditingCell(null);
     };
 
     const handleAddPackage = async () => {
         setShowAddModal(false);
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await gatewayClient.getPackages();
+            setPackages(res.data || []);
+        } catch (err) {
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError('Failed to refresh packages');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const refreshPackages = async () => {
         setLoading(true);
         setError(null);
         try {
@@ -243,7 +260,7 @@ export default function PackageDashboard() {
                 <AddPackageModal onClose={() => setShowAddModal(false)} onAdd={handleAddPackage} />
             )}
             {selectedPackage && (
-                <PackageDetails pkg={selectedPackage} onClose={() => setSelectedPackage(null)} />
+                <PackageDetails pkg={selectedPackage} onClose={() => setSelectedPackage(null)} onRefresh={refreshPackages} />
             )}
         </div>
     );

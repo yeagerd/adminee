@@ -62,7 +62,7 @@ export interface PackageCreateRequest {
 }
 
 export interface PackageResponse {
-    id: number;
+    id: string; // Changed from number to string (UUID)
     tracking_number: string;
     carrier: string;
     status: PackageStatus;
@@ -182,38 +182,59 @@ class ShipmentsClient {
     }
 
     /**
+     * Get package by email message ID
+     */
+    async getPackageByEmail(emailMessageId: string): Promise<PackageResponse | null> {
+        try {
+            const response = await gatewayClient.request<{ data: PackageResponse[] }>(`/api/v1/shipments/packages?email_message_id=${encodeURIComponent(emailMessageId)}`);
+
+            if (response && response.data && response.data.length > 0) {
+                return response.data[0];
+            }
+
+            return null;
+        } catch (error: unknown) {
+            if (error instanceof Error && 'response' in error && (error as { response?: { status?: number } }).response?.status === 404) {
+                return null;
+            }
+            console.error('Error getting package by email:', error);
+            return null;
+        }
+    }
+
+    /**
      * Get a specific package by ID
      */
-    async getPackage(id: number): Promise<PackageResponse> {
+    async getPackage(id: string): Promise<PackageResponse> { // Changed from number to string (UUID)
         return gatewayClient.getPackage(id);
     }
 
     /**
      * Update a package
      */
-    async updatePackage(id: number, packageData: Partial<PackageCreateRequest>): Promise<PackageResponse> {
+    async updatePackage(id: string, packageData: Partial<PackageCreateRequest>): Promise<PackageResponse> { // Changed from number to string (UUID)
         return gatewayClient.updatePackage(id, packageData);
     }
 
     /**
      * Delete a package
      */
-    async deletePackage(id: number): Promise<void> {
+    async deletePackage(id: string): Promise<void> { // Changed from number to string (UUID)
         return gatewayClient.deletePackage(id);
     }
 
     /**
      * Refresh tracking information for a package
      */
-    async refreshPackage(id: number): Promise<PackageRefreshResponse> {
+    async refreshPackage(id: string): Promise<PackageRefreshResponse> { // Changed from number to string (UUID)
         return gatewayClient.refreshPackage(id);
     }
 
     /**
      * Get tracking events for a package
      */
-    async getTrackingEvents(packageId: number): Promise<Array<{
-        id: number;
+    async getTrackingEvents(packageId: string): Promise<Array<{ // Changed from number to string (UUID)
+        id: string; // Changed from number to string (UUID)
         event_date: string;
         status: PackageStatus;
         location?: string;
@@ -224,15 +245,30 @@ class ShipmentsClient {
     }
 
     /**
-     * Create a new tracking event for a package
+     * Get tracking events by email message ID
      */
-    async createTrackingEvent(packageId: number, eventData: {
+    async getEventsByEmail(emailMessageId: string): Promise<Array<{
+        id: string;
         event_date: string;
         status: PackageStatus;
         location?: string;
         description?: string;
+        created_at: string;
+    }>> {
+        return gatewayClient.getEventsByEmail(emailMessageId);
+    }
+
+    /**
+     * Create a new tracking event for a package
+     */
+    async createTrackingEvent(packageId: string, eventData: {
+        event_date: string;
+        status: PackageStatus;
+        location?: string;
+        description?: string;
+        email_message_id?: string;
     }): Promise<{
-        id: number;
+        id: string; // Changed from number to string (UUID)
         event_date: string;
         status: PackageStatus;
         location?: string;

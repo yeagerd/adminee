@@ -5,14 +5,12 @@ Tests cover audit event logging, querying, analytics, security tracking,
 compliance reporting, and data retention policies.
 """
 
-import asyncio
 from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch
 
 import pytest
 
 from services.common.http_errors import ServiceError
-from services.user.database import create_all_tables
 from services.user.models.audit import AuditLog
 from services.user.models.user import User
 from services.user.services.audit_service import (
@@ -67,7 +65,21 @@ class TestAuditLogger(BaseUserManagementTest):
 
     def setup_method(self):
         super().setup_method()
-        asyncio.run(create_all_tables())
+        # Initialize database tables for testing
+        import asyncio
+
+        from services.user.database import create_all_tables_for_testing
+
+        try:
+            asyncio.run(create_all_tables_for_testing())
+        except RuntimeError:
+            # If we're already in an event loop, create a task
+            import concurrent.futures
+
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, create_all_tables_for_testing())
+                future.result()
+
         self.audit_service = AuditLogger()
         self.mock_user = self._create_mock_user()
         self.mock_audit_log = self._create_mock_audit_log()

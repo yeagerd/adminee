@@ -196,13 +196,7 @@ export default function CalendarGridView({
             const startUTC = DateTime.fromJSDate(dateRange.start).setZone(effectiveTimezone).startOf('day').toUTC();
             const endUTC = DateTime.fromJSDate(dateRange.end).setZone(effectiveTimezone).endOf('day').toUTC();
 
-            console.log('API call date range:', {
-                originalStart: dateRange.start.toISOString(),
-                originalEnd: dateRange.end.toISOString(),
-                startUTC: startUTC.toFormat('yyyy-MM-dd'),
-                endUTC: endUTC.toFormat('yyyy-MM-dd'),
-                userTimezone: effectiveTimezone
-            });
+
 
             const response = await gatewayClient.getCalendarEvents(
                 activeProviders,
@@ -217,11 +211,6 @@ export default function CalendarGridView({
 
             if (response.success && response.data) {
                 const events = Array.isArray(response.data) ? response.data : [];
-                console.log('API returned events:', events.map(e => ({
-                    title: e.title,
-                    start: e.start_time,
-                    end: e.end_time
-                })));
                 setEvents(events);
                 setError(null);
             } else {
@@ -536,7 +525,7 @@ export default function CalendarGridView({
                                                 const gridEndHour = 22;
                                                 if (currentHour >= gridStartHour && currentHour <= gridEndHour) {
                                                     const topPercent = ((currentHour - gridStartHour) / (gridEndHour - gridStartHour)) * 100;
-                                                    const totalHeight = (gridEndHour - gridStartHour) * 2 * 16; // 16px per 30-min slot
+                                                    const totalHeight = (gridEndHour - gridStartHour) * 2 * 32; // 32px per 30-min slot (h-8)
                                                     const topPixels = (topPercent / 100) * totalHeight;
 
                                                     return (

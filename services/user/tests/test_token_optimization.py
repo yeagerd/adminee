@@ -14,18 +14,85 @@ import pytest
 from services.user.models.integration import IntegrationProvider, IntegrationStatus
 from services.user.services.integration_service import IntegrationService
 from services.user.services.token_service import TokenService
+from services.user.tests.test_base import BaseUserManagementTest
 
 
-class TestTokenOptimization:
+@pytest.fixture(autouse=True)
+def patch_settings():
+    """Patch the _settings global variable to return test settings."""
+    import services.common.config_secrets as common_secrets
+    import services.user.settings as user_settings
+
+    test_settings = user_settings.Settings(
+        db_url_user="sqlite:///:memory:",
+        token_encryption_salt="dGVzdC1zYWx0LTE2Ynl0ZQ==",
+        api_frontend_user_key="test-frontend-key",
+        api_chat_user_key="test-chat-key",
+        api_office_user_key="test-office-key",
+        api_meetings_user_key="test-meetings-key",
+        redis_url="redis://localhost:6379/1",
+        environment="test",
+    )
+
+    # Directly set the singleton instead of using monkeypatch
+    user_settings._settings = test_settings
+
+    # Patch the Settings class constructor to return our test settings
+    original_init = user_settings.Settings.__init__
+
+    def mock_init(self, **kwargs):
+        # Copy all attributes from test_settings
+        for attr, value in test_settings.__dict__.items():
+            setattr(self, attr, value)
+
+    user_settings.Settings.__init__ = mock_init
+
+    # Patch the common config_secrets module
+    test_secrets_settings = common_secrets.SecretsSettings(environment="test")
+    common_secrets._secrets_settings = test_secrets_settings
+
+    # Patch the get_token_encryption_salt function to return our test salt
+    original_get_salt = common_secrets.get_token_encryption_salt
+
+    def mock_get_salt():
+        return "dGVzdC1zYWx0LTE2Ynl0ZQ=="
+
+    common_secrets.get_token_encryption_salt = mock_get_salt
+
+    # Also patch the get_secret function to return our test salt when called with TOKEN_ENCRYPTION_SALT
+    original_get_secret = common_secrets.get_secret
+
+    def mock_get_secret(secret_id: str, default: str = ""):
+        if secret_id == "TOKEN_ENCRYPTION_SALT":
+            return "dGVzdC1zYWx0LTE2Ynl0ZQ=="
+        return original_get_secret(secret_id, default)
+
+    common_secrets.get_secret = mock_get_secret
+
+    yield
+
+    # Restore original functions
+    user_settings.Settings.__init__ = original_init
+    user_settings._settings = None
+    common_secrets._secrets_settings = None
+    common_secrets.get_token_encryption_salt = original_get_salt
+    common_secrets.get_secret = original_get_secret
+
+
+class TestTokenOptimization(BaseUserManagementTest):
     """Test token optimization features."""
 
+    def setup_method(self):
+        """Set up test environment."""
+        super().setup_method()
+
     @pytest.fixture
-    def token_service(self):
+    def token_service(self, patch_settings):
         """Create a token service instance."""
         return TokenService()
 
     @pytest.fixture
-    def integration_service(self):
+    def integration_service(self, patch_settings):
         """Create an integration service instance."""
         return IntegrationService()
 
@@ -67,18 +134,24 @@ class TestTokenOptimization:
                     lambda *args, **kwargs: f"decrypted_{args[0] if args else kwargs.get('encrypted_token')}"
                 )
 
-                # Call the optimized method
-                result = await token_service.get_valid_token(
-                    user_id=user_id, provider=provider, required_scopes=["scope1"]
-                )
+                # Mock audit logging to avoid database issues
+                with patch(
+                    "services.user.services.token_service.audit_logger"
+                ) as mock_audit:
+                    mock_audit.log_user_action = AsyncMock()
 
-                # Verify the optimized query was called once
-                mock_get_tokens.assert_called_once_with(user_id, provider)
+                    # Call the optimized method
+                    result = await token_service.get_valid_token(
+                        user_id=user_id, provider=provider, required_scopes=["scope1"]
+                    )
 
-                # Verify the result is correct
-                assert result.success is True
-                assert result.access_token == "decrypted_encrypted_access"
-                assert result.refresh_token == "decrypted_encrypted_refresh"
+                    # Verify the optimized query was called once
+                    mock_get_tokens.assert_called_once_with(user_id, provider)
+
+                    # Verify the result is correct
+                    assert result.success is True
+                    assert result.access_token == "decrypted_encrypted_access"
+                    assert result.refresh_token == "decrypted_encrypted_refresh"
 
     @pytest.mark.asyncio
     async def test_refresh_deduplication(self, integration_service):
@@ -215,14 +288,20 @@ class TestTokenOptimization:
                 ) as mock_decrypt:
                     mock_decrypt.return_value = "decrypted_token"
 
-                    # Call the method
-                    result = await token_service.get_valid_token(
-                        user_id=user_id, provider=provider
-                    )
+                    # Mock audit logging to prevent database errors
+                    with patch(
+                        "services.user.services.token_service.audit_logger.log_user_action"
+                    ) as mock_audit:
+                        mock_audit.return_value = None
 
-                    # Verify only one database query was made (the optimized one)
-                    mock_get_tokens.assert_called_once()
+                        # Call the method
+                        result = await token_service.get_valid_token(
+                            user_id=user_id, provider=provider
+                        )
 
-                    # Verify the result is correct
-                    assert result.success is True
-                    assert result.access_token == "decrypted_token"
+                        # Verify only one database query was made (the optimized one)
+                        mock_get_tokens.assert_called_once()
+
+                        # Verify the result is correct
+                        assert result.success is True
+                        assert result.access_token == "decrypted_token"

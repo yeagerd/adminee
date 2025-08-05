@@ -3,14 +3,16 @@ import { PACKAGE_STATUS, PACKAGE_STATUS_OPTIONS, PackageStatus } from '@/lib/pac
 import { useState } from 'react';
 
 export interface TrackingEvent {
+    id?: string;
     event_date: string;
     status: PackageStatus;
     location?: string;
     description?: string;
+    created_at?: string;
 }
 
 export interface Package {
-    id?: number;
+    id?: string; // Changed from number to string (UUID)
     tracking_number: string;
     carrier: string;
     status: PackageStatus;
@@ -25,7 +27,6 @@ export interface Package {
     email_message_id?: string;
     labels?: (string | { name: string })[];
     events?: TrackingEvent[];
-    [key: string]: unknown;
 }
 
 const initialState: Package = {

@@ -4,13 +4,11 @@ Unit tests for Internal API Endpoints.
 Basic tests for internal service-to-service API endpoints.
 """
 
-import asyncio
 from unittest.mock import patch
 
 from fastapi import status
 from fastapi.testclient import TestClient
 
-from services.user.database import create_all_tables
 from services.user.tests.test_base import BaseUserManagementTest
 
 
@@ -19,7 +17,21 @@ class TestInternalAPI(BaseUserManagementTest):
 
     def setup_method(self):
         super().setup_method()
-        asyncio.run(create_all_tables())
+        # Initialize database tables for testing
+        import asyncio
+
+        from services.user.database import create_all_tables_for_testing
+
+        try:
+            asyncio.run(create_all_tables_for_testing())
+        except RuntimeError:
+            # If we're already in an event loop, create a task
+            import concurrent.futures
+
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, create_all_tables_for_testing())
+                future.result()
+
         self.client = TestClient(self.app)
         self.auth_headers = self._get_auth_headers()
 

@@ -477,6 +477,82 @@ class TestMicrosoftAPIClient:
                 assert params["$top"] == 10
                 assert params["$filter"] == "start/dateTime ge '2023-01-01T00:00:00Z'"
 
+    def test_escape_odata_string_literal_basic(self):
+        """Test basic OData string literal escaping in Microsoft client."""
+        from services.office.core.clients.microsoft import escape_odata_string_literal
+
+        # Test normal string (no escaping needed)
+        result = escape_odata_string_literal("normal_string")
+        assert result == "normal_string"
+
+        # Test string with single quote
+        result = escape_odata_string_literal("O'Connor")
+        assert result == "O''Connor"
+
+        # Test string with multiple single quotes
+        result = escape_odata_string_literal("can't won't don't")
+        assert result == "can''t won''t don''t"
+
+    def test_escape_odata_string_literal_injection_attempts(self):
+        """Test OData string literal escaping against injection attempts in Microsoft client."""
+        from services.office.core.clients.microsoft import escape_odata_string_literal
+
+        # Test SQL injection attempt
+        malicious_input = "'; DROP TABLE users; --"
+        result = escape_odata_string_literal(malicious_input)
+        expected = "''; DROP TABLE users; --"
+        assert result == expected
+
+        # Test OData injection attempt
+        malicious_input = "'; eq 'admin' or id eq '"
+        result = escape_odata_string_literal(malicious_input)
+        expected = "''; eq ''admin'' or id eq ''"
+        assert result == expected
+
+    def test_escape_odata_string_literal_invalid_input(self):
+        """Test OData string literal escaping with invalid input types in Microsoft client."""
+        from services.office.core.clients.microsoft import escape_odata_string_literal
+
+        # Test with None
+        with pytest.raises(ValueError, match="Value must be a string"):
+            escape_odata_string_literal(None)
+
+        # Test with integer
+        with pytest.raises(ValueError, match="Value must be a string"):
+            escape_odata_string_literal(123)
+
+    @pytest.mark.asyncio
+    async def test_get_events_with_escaped_time_parameters(self, microsoft_client):
+        """Test Microsoft Graph get events with properly escaped time parameters."""
+        mock_response_data = {
+            "value": [
+                {"id": "event1", "subject": "Meeting 1"},
+                {"id": "event2", "subject": "Meeting 2"},
+            ]
+        }
+
+        async with microsoft_client:
+            with patch.object(
+                microsoft_client.http_client, "request", new_callable=AsyncMock
+            ) as mock_request:
+                mock_response = MagicMock()
+                mock_response.status_code = 200
+                mock_response.json.return_value = mock_response_data
+                mock_response.raise_for_status.return_value = None
+                mock_request.return_value = mock_response
+
+                # Test with time parameter containing single quote
+                result = await microsoft_client.get_events(
+                    top=10, start_time="2023-01-01T00:00:00'Z"
+                )
+
+                assert result == mock_response_data
+
+                # Verify that the time parameter was properly escaped
+                call_args = mock_request.call_args
+                params = call_args[1]["params"]
+                assert params["$filter"] == "start/dateTime ge '2023-01-01T00:00:00''Z'"
+
 
 class TestAPIClientFactory:
     """Tests for APIClientFactory class."""

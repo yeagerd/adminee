@@ -5,13 +5,11 @@ Tests the TokenService class functionality including token retrieval,
 refresh operations, user status tracking, and error handling.
 """
 
-import asyncio
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from services.user.database import create_all_tables
 from services.user.models.integration import (
     Integration,
     IntegrationProvider,
@@ -27,7 +25,8 @@ class TestTokenService(BaseUserManagementTest):
 
     def setup_method(self):
         super().setup_method()
-        asyncio.run(create_all_tables())
+        # Database should be initialized via Alembic migrations before running tests
+        # Run: alembic upgrade head
         self.token_service = TokenService()
         self.mock_user = self._create_mock_user()
         self.mock_integration = self._create_mock_integration()

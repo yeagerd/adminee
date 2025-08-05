@@ -1,5 +1,10 @@
+"""
+Package management endpoints for the shipments service
+"""
+
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -9,14 +14,13 @@ from sqlmodel import select
 from services.common.logging_config import get_logger
 from services.shipments.auth import get_current_user
 from services.shipments.database import get_async_session_dep
-from services.shipments.models import Package, TrackingEvent
+from services.shipments.event_service import EventService
+from services.shipments.models import Package, utc_now
 from services.shipments.schemas import (
     PackageCreate,
     PackageListResponse,
     PackageOut,
     PackageUpdate,
-    TrackingEventCreate,
-    TrackingEventOut,
 )
 from services.shipments.service_auth import service_permission_required
 from services.shipments.utils import (
@@ -73,14 +77,13 @@ async def list_packages(
     service_name: str = Depends(service_permission_required(["read_shipments"])),
     tracking_number: Optional[str] = None,
     carrier: Optional[str] = None,
+    email_message_id: Optional[str] = None,
 ) -> dict:
     logger.info("Fetching packages for user", user_id=current_user)
-    query = select(Package).where(Package.user_id == current_user)  # type: ignore
+    query = select(Package).where(Package.user_id == current_user)
 
     if tracking_number:
-        # Always search by tracking number first, regardless of carrier
-        # This handles cases where the package was created with 'unknown' carrier
-        # but is now being searched with a detected carrier
+        # Normalize tracking number if carrier is provided
         normalized_tracking = (
             normalize_tracking_number(tracking_number, carrier)
             if carrier
@@ -88,29 +91,71 @@ async def list_packages(
         )
         query = query.where(Package.tracking_number == normalized_tracking)
 
-        # If carrier is provided and not 'unknown', also filter by carrier
-        # But allow 'unknown' carrier in database to match any detected carrier
-        if carrier and carrier != "unknown":
+        # Execute the query to see how many packages we found
+        result = await session.execute(query)
+        packages = result.scalars().all()
+
+        # If multiple packages found and carrier is provided, filter by carrier
+        if len(packages) > 1 and carrier and carrier != "unknown":
+            # Rebuild query with carrier filtering
+            query = select(Package).where(Package.user_id == current_user)
+            query = query.where(Package.tracking_number == normalized_tracking)
             query = query.where(
-                (Package.carrier == carrier) | (Package.carrier == "unknown")  # type: ignore
+                (Package.carrier == carrier) | (Package.carrier == "unknown")
             )
+        # If only one package found or no carrier specified, use the original query
+        # (no additional filtering needed)
+    elif email_message_id:
+        # Search by email message ID through events table
+        logger.info(
+            "Filtering packages by email message ID",
+            user_id=current_user,
+            email_message_id=email_message_id,
+        )
 
-    # Note: Carrier filtering is now handled above in the tracking number search logic
+        # Get package IDs by email message ID
+        package_ids = await EventService.get_package_ids_by_email_message_id(
+            session, email_message_id, current_user
+        )
 
-    result = await session.execute(query)
-    packages = result.scalars().all()
+        if package_ids:
+            # Filter out None values and ensure we have valid UUIDs
+            valid_package_ids = [pid for pid in package_ids if pid is not None]
+            if valid_package_ids:
+                query = query.where(Package.id.in_(valid_package_ids))  # type: ignore[union-attr]
+        else:
+            # No events found, return empty result
+            return {
+                "data": [],
+                "pagination": {"page": 1, "per_page": 100, "total": 0},
+            }
+
+    # Execute the final query
+    if tracking_number:
+        # For tracking number searches, we may need to re-execute if carrier filtering was applied
+        if len(packages) > 1 and carrier and carrier != "unknown":
+            # Re-execute the rebuilt query with carrier filtering
+            result = await session.execute(query)
+            packages = result.scalars().all()
+        # Otherwise, packages variable already contains the results from the initial query
+    else:
+        # For non-tracking number searches, execute the query now
+        result = await session.execute(query)
+        packages = result.scalars().all()
+
     logger.info("Found packages for user", user_id=current_user, count=len(packages))
-    # Convert to PackageOut with actual events count
+    # Convert to PackageOut with events count
     package_out = []
     for pkg in packages:
-        # Count tracking events for this package
-        events_query = select(TrackingEvent).where(TrackingEvent.package_id == pkg.id)  # type: ignore
-        events_result = await session.execute(events_query)
-        events_count = len(events_result.scalars().all())
+        # Get events count for this package
+        if pkg.id is None:
+            events_count = 0
+        else:
+            events_count = await EventService.get_events_count(session, pkg.id)
 
         package_out.append(
             PackageOut(
-                id=pkg.id,  # type: ignore
+                id=pkg.id,  # type: ignore[arg-type]
                 user_id=pkg.user_id,
                 tracking_number=pkg.tracking_number,
                 carrier=pkg.carrier,
@@ -192,15 +237,19 @@ async def add_package(
     updated_at = db_pkg.updated_at
 
     # Create initial tracking event
-    initial_event = TrackingEvent(
-        package_id=package_id,
-        event_date=datetime.now(timezone.utc),
-        status=package_status,
-        location=None,
-        description=f"Package tracking initiated - Status: {package_status.value}",
-    )  # type: ignore
-    session.add(initial_event)
-    await session.commit()
+    if package_id is not None:
+        await EventService.create_initial_event(
+            session=session,
+            package_id=package_id,
+            status=package_status.value,
+            email_message_id=pkg.email_message_id,
+        )
+
+    # Get events count
+    if package_id is not None:
+        events_count = await EventService.get_events_count(session, package_id)
+    else:
+        events_count = 0
 
     return PackageOut(
         id=package_id,  # type: ignore
@@ -216,14 +265,14 @@ async def add_package(
         order_number=order_number,
         tracking_link=tracking_link,
         updated_at=updated_at,
-        events_count=1,  # Now we have 1 event (the initial one)
+        events_count=events_count,
         labels=[],  # TODO: Query for real labels
     )
 
 
 @router.get("/{id}", response_model=PackageOut)
 async def get_package(
-    id: int,
+    id: UUID,  # Changed from int to UUID
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["read_shipments"])),
@@ -238,10 +287,11 @@ async def get_package(
             status_code=404, detail="Package not found or access denied"
         )
 
-    # Count tracking events for this package
-    events_query = select(TrackingEvent).where(TrackingEvent.package_id == package.id)  # type: ignore
-    events_result = await session.execute(events_query)
-    events_count = len(events_result.scalars().all())
+    # Get events count
+    if package.id is not None:
+        events_count = await EventService.get_events_count(session, package.id)
+    else:
+        events_count = 0
 
     return PackageOut(
         id=package.id,  # type: ignore
@@ -264,7 +314,7 @@ async def get_package(
 
 @router.put("/{id}", response_model=PackageOut)
 async def update_package(
-    id: int,
+    id: UUID,  # Changed from int to UUID
     pkg: PackageUpdate,
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
@@ -317,9 +367,15 @@ async def update_package(
     for field, value in update_data.items():
         setattr(package, field, value)  # type: ignore
 
-    package.updated_at = datetime.now(timezone.utc)
+    package.updated_at = utc_now()
     await session.commit()
     await session.refresh(package)
+
+    # Get events count
+    if package.id is not None:
+        events_count = await EventService.get_events_count(session, package.id)
+    else:
+        events_count = 0
 
     return PackageOut(
         id=package.id,  # type: ignore
@@ -335,14 +391,14 @@ async def update_package(
         order_number=package.order_number,
         tracking_link=package.tracking_link,
         updated_at=package.updated_at,
-        events_count=0,  # TODO: Query for real count
+        events_count=events_count,
         labels=[],  # TODO: Query for real labels
     )
 
 
 @router.delete("/{id}")
 async def delete_package(
-    id: int,
+    id: UUID,  # Changed from int to UUID
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["write_shipments"])),
@@ -357,6 +413,10 @@ async def delete_package(
             status_code=404, detail="Package not found or access denied"
         )
 
+    # Delete all tracking events for this package first
+    if package.id is not None:
+        await EventService.delete_package_events(session, package.id)
+
     # Delete the package
     await session.delete(package)
     await session.commit()
@@ -366,7 +426,7 @@ async def delete_package(
 
 @router.post("/{id}/refresh")
 async def refresh_package(
-    id: int,
+    id: UUID,  # Changed from int to UUID
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["write_shipments"])),
@@ -383,7 +443,7 @@ async def refresh_package(
 
     # TODO: Implement actual tracking refresh logic
     # For now, just update the timestamp
-    package.updated_at = datetime.now(timezone.utc)
+    package.updated_at = utc_now()
     await session.commit()
 
     return {"message": "Package refresh initiated successfully"}
@@ -391,7 +451,7 @@ async def refresh_package(
 
 @router.post("/{id}/labels")
 async def add_label_to_package(
-    id: int,
+    id: UUID,  # Changed from int to UUID
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["write_shipments"])),
@@ -407,14 +467,13 @@ async def add_label_to_package(
         )
 
     # TODO: Implement actual label addition logic
-    # For now, just return success
     return {"message": "Label added to package successfully"}
 
 
 @router.delete("/{id}/labels/{label_id}")
 async def remove_label_from_package(
-    id: int,
-    label_id: int,
+    id: UUID,  # Changed from int to UUID
+    label_id: UUID,  # Changed from int to UUID
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["write_shipments"])),
@@ -430,7 +489,6 @@ async def remove_label_from_package(
         )
 
     # TODO: Implement actual label removal logic
-    # For now, just return success
     return {"message": "Label removed from package successfully"}
 
 
@@ -558,78 +616,5 @@ async def get_collection_stats(
         )
 
 
-# Package-specific tracking events endpoints
-@router.get("/{id}/events", response_model=List[TrackingEventOut])
-async def get_tracking_events(
-    id: int,
-    current_user: str = Depends(get_current_user),
-    session: AsyncSession = Depends(get_async_session_dep),
-    service_name: str = Depends(service_permission_required(["read_shipments"])),
-) -> list[TrackingEventOut]:
-    # Query package and validate user ownership
-    query = select(Package).where(Package.id == id, Package.user_id == current_user)  # type: ignore
-    result = await session.execute(query)
-    package = result.scalar_one_or_none()
-
-    if not package:
-        raise HTTPException(
-            status_code=404, detail="Package not found or access denied"
-        )
-
-    # Query tracking events for this package
-    events_query = (
-        select(TrackingEvent)
-        .where(TrackingEvent.package_id == id)  # type: ignore
-        .order_by(TrackingEvent.event_date.desc())  # type: ignore
-    )
-    events_result = await session.execute(events_query)
-    events = events_result.scalars().all()
-
-    return [
-        TrackingEventOut(
-            id=event.id,  # type: ignore
-            event_date=event.event_date,
-            status=event.status,
-            location=event.location,
-            description=event.description,
-            created_at=event.created_at,
-        )
-        for event in events
-    ]
-
-
-@router.post("/{id}/events", response_model=TrackingEventOut)
-async def create_tracking_event(
-    id: int,
-    event: TrackingEventCreate,
-    current_user: str = Depends(get_current_user),
-    session: AsyncSession = Depends(get_async_session_dep),
-    service_name: str = Depends(service_permission_required(["write_shipments"])),
-) -> TrackingEventOut:
-    # Query package and validate user ownership
-    query = select(Package).where(Package.id == id, Package.user_id == current_user)  # type: ignore
-    result = await session.execute(query)
-    package = result.scalar_one_or_none()
-
-    if not package:
-        raise HTTPException(
-            status_code=404, detail="Package not found or access denied"
-        )
-
-    # Create tracking event
-    event_data = event.model_dump()
-    event_data["package_id"] = id
-
-    db_event = TrackingEvent(**event_data)  # type: ignore
-    session.add(db_event)
-    await session.commit()
-    await session.refresh(db_event)
-
-    return TrackingEventOut(
-        id=db_event.id,  # type: ignore
-        event_date=db_event.event_date,
-        status=db_event.status,
-        location=db_event.location,
-        description=db_event.description,
-        created_at=db_event.created_at,
-    )
+# Package-specific tracking events endpoints have been moved to tracking_events.py
+# and are now routed through the router configuration in __init__.py

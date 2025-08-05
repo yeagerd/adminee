@@ -4,6 +4,7 @@ Pydantic schemas for the shipments service
 
 from datetime import date, datetime
 from typing import List, Optional
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -11,7 +12,7 @@ from services.shipments.models import PackageStatus
 
 
 class LabelOut(BaseModel):
-    id: int
+    id: UUID
     user_id: str
     name: str
     color: str
@@ -19,7 +20,7 @@ class LabelOut(BaseModel):
 
 
 class PackageOut(BaseModel):
-    id: int
+    id: UUID
     user_id: str
     tracking_number: str
     carrier: str
@@ -63,7 +64,7 @@ class PackageUpdate(BaseModel):
 
 
 class TrackingEventOut(BaseModel):
-    id: int
+    id: UUID
     event_date: datetime
     status: PackageStatus
     location: Optional[str]
@@ -74,8 +75,9 @@ class TrackingEventOut(BaseModel):
 class TrackingEventCreate(BaseModel):
     event_date: datetime
     status: PackageStatus
-    location: Optional[str]
-    description: Optional[str]
+    location: Optional[str] = None
+    description: Optional[str] = None
+    email_message_id: Optional[str] = None
 
 
 class LabelCreate(BaseModel):
@@ -89,14 +91,14 @@ class LabelUpdate(BaseModel):
 
 
 class PackageLabelOut(BaseModel):
-    id: int
-    package_id: int
-    label_id: int
+    id: UUID
+    package_id: UUID
+    label_id: UUID
     created_at: datetime
 
 
 class CarrierConfigOut(BaseModel):
-    id: int
+    id: UUID
     carrier_name: str
     api_endpoint: Optional[str]
     rate_limit_per_hour: int

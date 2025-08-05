@@ -44,7 +44,7 @@ except ImportError:
 
 # Import database setup for local testing
 try:
-    from services.user.database import create_all_tables
+    from services.user.database import create_all_tables_for_testing
 
     DATABASE_SETUP_AVAILABLE = True
 except ImportError:
@@ -147,7 +147,7 @@ class UserManagementDemo:
 
         try:
             print("🔧 Initializing database tables...")
-            await create_all_tables()
+            await create_all_tables_for_testing()
             print("✅ Database tables initialized successfully")
             return True
         except Exception as e:
