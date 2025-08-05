@@ -15,13 +15,12 @@ export interface SuggestedPackageData {
     tracking_link?: string;
 }
 
-export interface PaginationInfo {
-    page: number;
-    per_page: number;
-    total: number;
-    total_pages: number;
+export interface CursorPaginationInfo {
+    next_cursor?: string;
+    prev_cursor?: string;
     has_next: boolean;
     has_prev: boolean;
+    limit: number;
 }
 
 export interface EmailParseRequest {
@@ -135,9 +134,14 @@ class ShipmentsClient {
      * Get all packages for the current user
      */
     async getPackages(params?: {
+        cursor?: string;
+        limit?: number;
+        direction?: 'next' | 'prev';
         tracking_number?: string;
         carrier?: string;
-    }): Promise<{ data: PackageResponse[]; pagination: PaginationInfo }> {
+        status?: string;
+        user_id?: string;
+    }): Promise<{ data: PackageResponse[]; pagination: CursorPaginationInfo }> {
         return gatewayClient.getPackages(params);
     }
 
