@@ -107,12 +107,14 @@ class CarrierConfigOut(BaseModel):
     created_at: datetime
 
 
-class Pagination(BaseModel):
-    page: int
-    per_page: int
-    total: int
-
-
-class PackageListResponse(BaseModel):
-    data: List[PackageOut]
-    pagination: Pagination
+# Import new pagination schemas
+from .pagination import (
+    PackageCursorPaginationRequest,
+    PackageCursorPaginationResponse,
+    PackageSearchRequest,
+    PackageListRequest,
+    PackageListResponse,
+    PackageSearchResponse,
+    CursorValidationError,
+    PaginationError,
+)
