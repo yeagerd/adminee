@@ -3,6 +3,7 @@ import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import { AlertTriangle, Calendar, CheckCircle, Clock, Plus, Truck } from 'lucide-react';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import gatewayClient from '../../lib/gateway-client';
 import { DASHBOARD_STATUS_MAPPING, PACKAGE_STATUS } from '../../lib/package-status';
 import '../../styles/summary-grid.css';
@@ -42,6 +43,9 @@ const DATE_RANGE_OPTIONS = [
 ];
 
 export default function PackageDashboard() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    
     const [showAddModal, setShowAddModal] = useState(false);
     const [packages, setPackages] = useState<Package[]>([]);
     const [loading, setLoading] = useState(false);
@@ -66,6 +70,43 @@ export default function PackageDashboard() {
     useEffect(() => {
         loadFirstPage();
     }, []);
+
+    // URL state management
+    const updateURL = (params: Record<string, string | null>) => {
+        const newSearchParams = new URLSearchParams(searchParams.toString());
+        
+        Object.entries(params).forEach(([key, value]) => {
+            if (value === null || value === '') {
+                newSearchParams.delete(key);
+            } else {
+                newSearchParams.set(key, value);
+            }
+        });
+        
+        const newURL = `${window.location.pathname}?${newSearchParams.toString()}`;
+        router.push(newURL, { scroll: false });
+    };
+
+    // Load state from URL on mount
+    useEffect(() => {
+        const cursor = searchParams.get('cursor');
+        const status = searchParams.get('status');
+        const carrier = searchParams.get('carrier');
+        const search = searchParams.get('search');
+        
+        if (cursor) {
+            setCurrentCursor(cursor);
+        }
+        if (status) {
+            setSelectedStatusFilters([status]);
+        }
+        if (carrier) {
+            setSelectedCarrierFilters([carrier]);
+        }
+        if (search) {
+            setSearchTerm(search);
+        }
+    }, [searchParams]);
 
     // Reload data when filters change
     useEffect(() => {
@@ -104,6 +145,14 @@ export default function PackageDashboard() {
             setHasNext(res.pagination.has_next);
             setHasPrev(res.pagination.has_prev);
             setCurrentCursor(null);
+            
+            // Update URL state
+            updateURL({
+                cursor: null,
+                status: selectedStatusFilters.length > 0 ? selectedStatusFilters[0] : null,
+                carrier: selectedCarrierFilters.length > 0 ? selectedCarrierFilters[0] : null,
+                search: searchTerm.trim() || null
+            });
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to fetch packages');
         } finally {
@@ -250,6 +299,14 @@ export default function PackageDashboard() {
             setHasNext(res.pagination.has_next);
             setHasPrev(res.pagination.has_prev);
             setCurrentCursor(nextCursor);
+            
+            // Update URL state
+            updateURL({
+                cursor: nextCursor,
+                status: selectedStatusFilters.length > 0 ? selectedStatusFilters[0] : null,
+                carrier: selectedCarrierFilters.length > 0 ? selectedCarrierFilters[0] : null,
+                search: searchTerm.trim() || null
+            });
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load next page');
         } finally {
@@ -274,6 +331,14 @@ export default function PackageDashboard() {
             setHasNext(res.pagination.has_next);
             setHasPrev(res.pagination.has_prev);
             setCurrentCursor(prevCursor);
+            
+            // Update URL state
+            updateURL({
+                cursor: prevCursor,
+                status: selectedStatusFilters.length > 0 ? selectedStatusFilters[0] : null,
+                carrier: selectedCarrierFilters.length > 0 ? selectedCarrierFilters[0] : null,
+                search: searchTerm.trim() || null
+            });
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load previous page');
         } finally {
