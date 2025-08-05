@@ -16,7 +16,7 @@ from services.shipments.service_auth import (
 )
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True, scope="session")
 def patch_settings():
     """Patch the _settings global variable to return test settings."""
     import services.shipments.settings as shipments_settings
@@ -32,7 +32,7 @@ def patch_settings():
     shipments_settings._settings = None
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(scope="session")
 async def db_session():
     """Create database session with tables for testing."""
     from services.shipments.database import get_engine
@@ -48,14 +48,23 @@ async def db_session():
 
     session = AsyncSession(engine)
 
-    yield session
+    try:
+        yield session
+    finally:
+        # Ensure cleanup happens even if test fails before yielding
+        try:
+            # Rollback any pending transactions first
+            await session.rollback()
+        except Exception:
+            # Ignore rollback errors during cleanup
+            pass
 
-    # Clean up database after each test
-    # Rollback any pending transactions first
-    await session.rollback()
-
-    # Close the session properly
-    await session.close()
+        try:
+            # Close the session properly
+            await session.close()
+        except Exception:
+            # Ignore close errors during cleanup
+            pass
 
 
 @pytest.fixture
