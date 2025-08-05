@@ -15,7 +15,7 @@ import { useUserPreferences } from '@/contexts/settings-context'
 import { useToolState } from '@/contexts/tool-context'
 import { useStreamingSetting } from "@/hooks/use-streaming-setting"
 import gatewayClient from "@/lib/gateway-client"
-import { safeParseDateToLocaleString } from '@/lib/utils'
+import { safeParseDate, safeParseDateToLocaleString } from '@/lib/utils'
 import { History, Loader2, Plus, Send } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useCallback, useEffect, useRef, useState } from "react"
