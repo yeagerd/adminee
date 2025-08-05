@@ -47,8 +47,6 @@ function MultiSelectFilter({ options, selected, onChange }: {
     );
 });
 
-export default PackageList;
-
 const PackageList = memo(function PackageList({
     packages,
     onSort,
@@ -224,4 +222,6 @@ const PackageList = memo(function PackageList({
             )}
         </div>
     );
-}
+});
+
+export default PackageList;
