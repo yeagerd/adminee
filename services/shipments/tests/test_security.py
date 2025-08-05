@@ -58,8 +58,8 @@ async def db_session():
     await session.close()
 
 
-@pytest_asyncio.fixture
-async def client(db_session):
+@pytest.fixture
+def client(db_session):
     """Create a test client with patched settings and database session."""
     from services.shipments.database import get_async_session_dep
 
@@ -68,7 +68,8 @@ async def client(db_session):
 
     app.dependency_overrides[get_async_session_dep] = override_get_session
     yield TestClient(app)
-    app.dependency_overrides.clear()
+    # Clean up only the specific dependency override to avoid affecting other tests
+    del app.dependency_overrides[get_async_session_dep]
 
 
 @pytest.fixture
