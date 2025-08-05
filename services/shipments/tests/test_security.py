@@ -16,7 +16,7 @@ from services.shipments.service_auth import (
 )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="function", autouse=True)
 def patch_settings():
     """Patch the _settings global variable to return test settings."""
     import services.shipments.settings as shipments_settings
