@@ -224,3 +224,33 @@ class AliasChoices:
 
     def __iter__(self) -> "AliasChoices":
         return self
+
+
+class PaginationSettings(BaseSettings):
+    """Settings for cursor-based pagination."""
+    
+    model_config = SettingsConfigDict(env_file=".env")
+    
+    # Secret key for token signing (required)
+    pagination_secret_key: str = Field(
+        default="your-secret-key-change-in-production",
+        description="Secret key for pagination token signing"
+    )
+    
+    # Token expiration time in seconds (default: 1 hour)
+    pagination_token_expiry: int = Field(
+        default=3600,
+        description="Pagination token expiration time in seconds"
+    )
+    
+    # Maximum page size limit (default: 100)
+    pagination_max_page_size: int = Field(
+        default=100,
+        description="Maximum allowed page size for pagination"
+    )
+    
+    # Default page size (default: 20)
+    pagination_default_page_size: int = Field(
+        default=20,
+        description="Default page size for pagination"
+    )
