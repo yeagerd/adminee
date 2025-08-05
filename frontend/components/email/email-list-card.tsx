@@ -74,6 +74,8 @@ interface EmailListCardProps {
     isSelected?: boolean;
     onSelect?: (threadId: string) => void;
     showReadingPane?: boolean;
+    selectedEmails?: Set<string>;
+    onEmailSelect?: (emailId: string, isSelected: boolean) => void;
 }
 
 // Use the safe email date formatting function
@@ -118,7 +120,9 @@ const EmailListCard: React.FC<EmailListCardProps> = ({
     mode = 'expanded',
     isSelected = false,
     onSelect,
-    showReadingPane = false
+    showReadingPane = false,
+    selectedEmails = new Set(),
+    onEmailSelect
 }) => {
     // Sort emails by date (newest first)
     const sortedEmails = [...thread.emails].sort((a, b) => {
@@ -152,8 +156,12 @@ const EmailListCard: React.FC<EmailListCardProps> = ({
                     <input
                         type="checkbox"
                         className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                        checked={isSelected}
-                        onChange={(e) => e.stopPropagation()}
+                        checked={selectedEmails.has(latestEmail.id)}
+                        onChange={(e) => {
+                            e.stopPropagation();
+                            onEmailSelect?.(latestEmail.id, e.target.checked);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
                     />
 
                     {/* Star */}
@@ -321,6 +329,17 @@ const EmailListCard: React.FC<EmailListCardProps> = ({
                             {/* Line 1: Sender and Date */}
                             <div className="flex items-center justify-between mb-1">
                                 <div className="flex items-center gap-2">
+                                    {/* Checkbox */}
+                                    <input
+                                        type="checkbox"
+                                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                        checked={selectedEmails.has(email.id)}
+                                        onChange={(e) => {
+                                            e.stopPropagation();
+                                            onEmailSelect?.(email.id, e.target.checked);
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
                                     <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
                                         <span className="text-blue-600 font-medium text-xs">{senderInitials}</span>
                                     </div>
