@@ -3,6 +3,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useShipmentDetection } from '@/hooks/use-shipment-detection';
 import { useShipmentEvents } from '@/hooks/use-shipment-events';
 import { shipmentsClient } from '@/lib/shipments-client';
+import { safeFormatDateAndTime } from '@/lib/utils';
 import { EmailMessage } from '@/types/office-service';
 import DOMPurify from 'dompurify';
 import { Forward, MoreHorizontal, Package, PackageCheck, Reply, ReplyAll, Wand2 } from 'lucide-react';
@@ -80,30 +81,15 @@ interface EmailThreadCardProps {
     inlineAvatar?: boolean;
 }
 
-// Utility function to format email date
+// Use the safe email date formatting function with detailed format
 const formatEmailDate = (dateString: string): string => {
-    const emailDate = new Date(dateString);
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const emailDay = new Date(emailDate.getFullYear(), emailDate.getMonth(), emailDate.getDate());
-
-    // If email was sent today, show time only
-    if (emailDay.getTime() === today.getTime()) {
-        return emailDate.toLocaleTimeString([], {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
-        });
-    }
-
-    // Otherwise show date and time
-    return emailDate.toLocaleDateString([], {
-        month: 'short',
-        day: 'numeric'
-    }) + ' ' + emailDate.toLocaleTimeString([], {
+    return safeFormatDateAndTime(dateString, {
         hour: 'numeric',
         minute: '2-digit',
         hour12: true
+    }, {
+        month: 'short',
+        day: 'numeric'
     });
 };
 

@@ -1,3 +1,4 @@
+import { safeParseDateToLocaleString } from '@/lib/utils';
 import { Loader2, Trash2 } from 'lucide-react';
 import { Button } from '../ui/button';
 
@@ -22,7 +23,13 @@ export default function TrackingTimeline({ events, onDeleteEvent, deletingEventI
                 <li key={idx} className="mb-4">
                     <div className="flex items-start justify-between">
                         <div className="flex-1">
-                            <div className="text-xs text-gray-400">{new Date(event.event_date).toLocaleString()}</div>
+                            <div className="text-xs text-gray-400">{safeParseDateToLocaleString(event.event_date, {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            })}</div>
                             <div className="font-semibold">{event.status}</div>
                             {event.location && <div className="text-sm text-gray-500">{event.location}</div>}
                             {event.description && <div className="text-xs text-gray-400">{event.description}</div>}
