@@ -166,7 +166,8 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
 
     const handleThreadSelect = useCallback((threadId: string) => {
         setSelectedThreadId(threadId);
-
+        // Clear the previous thread data immediately
+        setFullThread(null);
         // Fetch full thread when user clicks into it
         fetchFullThread(threadId);
 
@@ -205,10 +206,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
         }
     }, [readingPaneMode]);
 
-    // Clear full thread when selected thread changes
-    useEffect(() => {
-        setFullThread(null);
-    }, [selectedThreadId]);
+
 
     useEffect(() => {
         // Only fetch when the tab is actually activated
