@@ -437,7 +437,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                     </div>
                 ) : (
                     // Email list (for both two-pane and one-pane modes)
-                    <div className={`flex-1 flex flex-col ${readingPaneMode === 'right' ? 'border-r' : ''}`} style={{ flexShrink: 0, minWidth: 0 }}>
+                    <div className={`flex-1 flex flex-col overflow-y-auto ${readingPaneMode === 'right' ? 'border-r' : ''}`} style={{ flexShrink: 0, minWidth: 0 }}>
                         {/* Selection Header */}
                         {selectedEmails.size > 0 && (
                             <div className="bg-blue-50 border-b border-blue-200 px-4 py-3">
@@ -501,60 +501,68 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                         )}
 
                         {/* Email List Content */}
-                        <div className="flex-1 overflow-y-auto">
-                            {loading ? (
-                                <div className="p-8 text-center text-muted-foreground">Loading…</div>
-                            ) : error ? (
-                                <div className="p-8 text-center">
-                                    {error.includes('No active email integrations') ? (
-                                        <div className="text-amber-600">
-                                            <p className="mb-4">No active email integration found. Connect your Gmail or Microsoft Outlook to view your emails.</p>
-                                            <a
-                                                href="/settings?page=integrations"
-                                                className="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 font-medium"
-                                            >
-                                                <span>Go to Integrations</span>
-                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                                </svg>
-                                            </a>
-                                        </div>
-                                    ) : error.includes('expired and is being refreshed') ? (
-                                        <div className="text-amber-600">
-                                            <p className="mb-4">Your email integration token has expired and is being refreshed. Please wait or try reconnecting.</p>
-                                            <a
-                                                href="/settings?page=integrations"
-                                                className="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 font-medium"
-                                            >
-                                                <span>Go to Integrations</span>
-                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                                </svg>
-                                            </a>
-                                        </div>
-                                    ) : (
-                                        <div className="text-red-500">{error}</div>
-                                    )}
-                                </div>
-                            ) : groupedThreads.length === 0 ? (
-                                <div className="p-8 text-center text-muted-foreground">No emails found.</div>
-                            ) : (
-                                <div className={viewMode === 'tight' ? '' : 'p-4'}>
-                                    {groupedThreads.map((thread) => (
-                                        <EmailListCard
-                                            key={thread.id}
-                                            thread={thread}
-                                            mode={viewMode}
-                                            isSelected={selectedThreadId === thread.id}
-                                            onSelect={handleThreadSelect}
-                                            showReadingPane={false}
-                                            selectedEmails={selectedEmails}
-                                            onEmailSelect={handleEmailSelect}
-                                        />
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                        {loading ? (
+                            <div className="p-8 text-center text-muted-foreground">Loading…</div>
+                        ) : error ? (
+                            <div className="p-8 text-center">
+                                {error.includes('No active email integrations') ? (
+                                    <div className="text-amber-600">
+                                        <p className="mb-4">No active email integration found. Connect your Gmail or Microsoft Outlook to view your emails.</p>
+                                        <a
+                                            href="/settings?page=integrations"
+                                            className="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 font-medium"
+                                        >
+                                            <span>Go to Integrations</span>
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                            </svg>
+                                        </a>
+                                    </div>
+                                ) : error.includes('expired and is being refreshed') ? (
+                                    <div className="text-amber-600">
+                                        <p className="mb-4">Your email integration token has expired and is being refreshed. Please wait or try reconnecting.</p>
+                                        <a
+                                            href="/settings?page=integrations"
+                                            className="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 font-medium"
+                                        >
+                                            <span>Go to Integrations</span>
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                            </svg>
+                                        </a>
+                                    </div>
+                                ) : (
+                                    <div className="text-red-500">{error}</div>
+                                )}
+                            </div>
+                        ) : groupedThreads.length === 0 ? (
+                            <div className="p-8 text-center text-muted-foreground">No emails found.</div>
+                        ) : (
+                            <div className={viewMode === 'tight' ? '' : 'p-4'}>
+                                {groupedThreads.map((thread) => (
+                                    <EmailListCard
+                                        key={thread.id}
+                                        thread={thread}
+                                        mode={viewMode}
+                                        isSelected={selectedThreadId === thread.id}
+                                        onSelect={handleThreadSelect}
+                                        showReadingPane={false}
+                                        selectedEmails={selectedEmails}
+                                        onEmailSelect={(emailId: string, selected: boolean) => {
+                                            setSelectedEmails(prev => {
+                                                const newSet = new Set(prev);
+                                                if (selected) {
+                                                    newSet.add(emailId);
+                                                } else {
+                                                    newSet.delete(emailId);
+                                                }
+                                                return newSet;
+                                            });
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
 
