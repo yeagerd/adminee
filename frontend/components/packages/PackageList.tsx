@@ -56,6 +56,10 @@ export default function PackageList({
     onRowClick,
     selectedStatusFilters,
     onStatusFilterChange,
+    pagination,
+    onNextPage,
+    onPrevPage,
+    onFirstPage,
 }: {
     packages: Package[],
     onSort: (field: string) => void,
@@ -65,6 +69,16 @@ export default function PackageList({
     onRowClick: (pkg: Package) => void,
     selectedStatusFilters: string[],
     onStatusFilterChange: (values: string[]) => void,
+    pagination?: {
+        hasNext: boolean;
+        hasPrev: boolean;
+        nextCursor?: string;
+        prevCursor?: string;
+        loading: boolean;
+    };
+    onNextPage?: () => void;
+    onPrevPage?: () => void;
+    onFirstPage?: () => void;
 }) {
     const [showStatusFilter, setShowStatusFilter] = useState(false);
 
@@ -167,6 +181,45 @@ export default function PackageList({
                     )}
                 </TableBody>
             </Table>
+            
+            {/* Pagination Controls */}
+            {pagination && (
+                <div className="flex items-center justify-between mt-4 px-2">
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={onFirstPage}
+                            disabled={!pagination.hasPrev || pagination.loading}
+                        >
+                            First
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={onPrevPage}
+                            disabled={!pagination.hasPrev || pagination.loading}
+                        >
+                            Previous
+                        </Button>
+                    </div>
+                    
+                    <div className="text-sm text-gray-600">
+                        {pagination.loading ? 'Loading...' : `Showing ${packages.length} packages`}
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={onNextPage}
+                            disabled={!pagination.hasNext || pagination.loading}
+                        >
+                            Next
+                        </Button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
