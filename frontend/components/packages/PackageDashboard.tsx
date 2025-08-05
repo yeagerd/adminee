@@ -49,24 +49,44 @@ export default function PackageDashboard() {
     const [searchTerm, setSearchTerm] = useState('');
     const [sortField, setSortField] = useState('estimated_delivery');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-    const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null); // Changed from number to string (UUID)
+    const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
     const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
     const [selectedStatusFilters, setSelectedStatusFilters] = useState<string[]>([]);
     const [selectedCarrierFilters] = useState<string[]>([]);
     const [dateRange, setDateRange] = useState<'7' | '30' | '90' | 'all'>('7');
+    
+    // Cursor-based pagination state
+    const [currentCursor, setCurrentCursor] = useState<string | null>(null);
+    const [nextCursor, setNextCursor] = useState<string | null>(null);
+    const [prevCursor, setPrevCursor] = useState<string | null>(null);
+    const [hasNext, setHasNext] = useState(false);
+    const [hasPrev, setHasPrev] = useState(false);
+    const [paginationLoading, setPaginationLoading] = useState(false);
 
     useEffect(() => {
+        loadFirstPage();
+    }, []);
+
+    const loadFirstPage = async () => {
         setLoading(true);
         setError(null);
-        gatewayClient.getPackages()
-            .then((res) => {
-                setPackages(res.data || []);
-            })
-            .catch((err) => {
-                setError(err.message || 'Failed to fetch packages');
-            })
-            .finally(() => setLoading(false));
-    }, []);
+        try {
+            const res = await gatewayClient.getPackages({
+                limit: 20,
+                direction: 'next'
+            });
+            setPackages(res.data || []);
+            setNextCursor(res.pagination.next_cursor || null);
+            setPrevCursor(res.pagination.prev_cursor || null);
+            setHasNext(res.pagination.has_next);
+            setHasPrev(res.pagination.has_prev);
+            setCurrentCursor(null);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to fetch packages');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const filteredAndSortedPackages = useMemo(() => {
         const now = dayjs();
@@ -144,8 +164,16 @@ export default function PackageDashboard() {
         setLoading(true);
         setError(null);
         try {
-            const res = await gatewayClient.getPackages();
+            const res = await gatewayClient.getPackages({
+                limit: 20,
+                direction: 'next'
+            });
             setPackages(res.data || []);
+            setNextCursor(res.pagination.next_cursor || null);
+            setPrevCursor(res.pagination.prev_cursor || null);
+            setHasNext(res.pagination.has_next);
+            setHasPrev(res.pagination.has_prev);
+            setCurrentCursor(null);
         } catch (err) {
             if (err instanceof Error) {
                 setError(err.message);
@@ -167,6 +195,54 @@ export default function PackageDashboard() {
         }
         return counts;
     }, [packages]);
+
+    const loadNextPage = async () => {
+        if (!nextCursor || !hasNext) return;
+        
+        setPaginationLoading(true);
+        setError(null);
+        try {
+            const res = await gatewayClient.getPackages({
+                cursor: nextCursor,
+                limit: 20,
+                direction: 'next'
+            });
+            setPackages(res.data || []);
+            setNextCursor(res.pagination.next_cursor || null);
+            setPrevCursor(res.pagination.prev_cursor || null);
+            setHasNext(res.pagination.has_next);
+            setHasPrev(res.pagination.has_prev);
+            setCurrentCursor(nextCursor);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to load next page');
+        } finally {
+            setPaginationLoading(false);
+        }
+    };
+
+    const loadPrevPage = async () => {
+        if (!prevCursor || !hasPrev) return;
+        
+        setPaginationLoading(true);
+        setError(null);
+        try {
+            const res = await gatewayClient.getPackages({
+                cursor: prevCursor,
+                limit: 20,
+                direction: 'prev'
+            });
+            setPackages(res.data || []);
+            setNextCursor(res.pagination.next_cursor || null);
+            setPrevCursor(res.pagination.prev_cursor || null);
+            setHasNext(res.pagination.has_next);
+            setHasPrev(res.pagination.has_prev);
+            setCurrentCursor(prevCursor);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to load previous page');
+        } finally {
+            setPaginationLoading(false);
+        }
+    };
 
     // Handler for row click to show details
     const handleRowClick = (pkg: Package) => setSelectedPackage(pkg);
@@ -255,6 +331,16 @@ export default function PackageDashboard() {
                 selectedStatusFilters={selectedStatusFilters}
                 onStatusFilterChange={setSelectedStatusFilters}
                 onSort={handleSort}
+                pagination={{
+                    hasNext,
+                    hasPrev,
+                    nextCursor,
+                    prevCursor,
+                    loading: paginationLoading
+                }}
+                onNextPage={loadNextPage}
+                onPrevPage={loadPrevPage}
+                onFirstPage={loadFirstPage}
             />
             {showAddModal && (
                 <AddPackageModal onClose={() => setShowAddModal(false)} onAdd={handleAddPackage} />
