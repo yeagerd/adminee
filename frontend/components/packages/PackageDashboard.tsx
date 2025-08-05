@@ -67,14 +67,37 @@ export default function PackageDashboard() {
         loadFirstPage();
     }, []);
 
+    // Reload data when filters change
+    useEffect(() => {
+        loadFirstPage();
+    }, [selectedStatusFilters, selectedCarrierFilters, searchTerm]);
+
     const loadFirstPage = async () => {
         setLoading(true);
         setError(null);
         try {
-            const res = await gatewayClient.getPackages({
+            // Build filter parameters for server-side filtering
+            const filterParams: any = {
                 limit: 20,
                 direction: 'next'
-            });
+            };
+            
+            // Add status filters if selected
+            if (selectedStatusFilters.length > 0) {
+                filterParams.status = selectedStatusFilters[0]; // API supports single status for now
+            }
+            
+            // Add carrier filters if selected
+            if (selectedCarrierFilters.length > 0) {
+                filterParams.carrier = selectedCarrierFilters[0]; // API supports single carrier for now
+            }
+            
+            // Add search term if provided
+            if (searchTerm.trim()) {
+                filterParams.tracking_number = searchTerm.trim();
+            }
+            
+            const res = await gatewayClient.getPackages(filterParams);
             setPackages(res.data || []);
             setNextCursor(res.pagination.next_cursor || null);
             setPrevCursor(res.pagination.prev_cursor || null);
@@ -89,29 +112,24 @@ export default function PackageDashboard() {
     };
 
     const filteredAndSortedPackages = useMemo(() => {
+        // Server-side filtering is now handled by the API
+        // Only apply client-side date range filtering and sorting
         const now = dayjs();
         const startDate: dayjs.Dayjs | null = dateRange !== 'all' ? now.subtract(Number(dateRange) - 1, 'day').startOf('day') : null;
+        
         const filtered = packages.filter((pkg) => {
-            const matchesSearch =
-                pkg.tracking_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                pkg.recipient_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                pkg.package_description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                pkg.order_number?.toLowerCase().includes(searchTerm.toLowerCase());
-            const status = pkg.status || PACKAGE_STATUS.PENDING;
-            const matchesStatus = selectedStatusFilters.length === 0 || selectedStatusFilters.includes(status);
-            const matchesCarrier = selectedCarrierFilters.length === 0 || selectedCarrierFilters.includes(pkg.carrier);
-            // Date range filter
+            // Only apply date range filter client-side
             if (!pkg.estimated_delivery) {
-                // If no estimated_delivery, always include
-                return matchesSearch && matchesStatus && matchesCarrier;
+                return true;
             }
             const estimatedDate = dayjs(pkg.estimated_delivery);
-            let matchesDate = true;
             if (startDate && estimatedDate) {
-                matchesDate = estimatedDate.isSameOrAfter(startDate, 'day') && estimatedDate.isSameOrBefore(now, 'day');
+                return estimatedDate.isSameOrAfter(startDate, 'day') && estimatedDate.isSameOrBefore(now, 'day');
             }
-            return matchesSearch && matchesStatus && matchesCarrier && matchesDate;
+            return true;
         });
+        
+        // Apply client-side sorting
         filtered.sort((a, b) => {
             const aValue = a[sortField as keyof Package] as string | number | undefined;
             const bValue = b[sortField as keyof Package] as string | number | undefined;
@@ -125,8 +143,9 @@ export default function PackageDashboard() {
             }
             return 0;
         });
+        
         return filtered;
-    }, [packages, searchTerm, selectedStatusFilters, selectedCarrierFilters, sortField, sortDirection, dateRange]);
+    }, [packages, dateRange, sortField, sortDirection]);
 
     const handleSort = (field: string) => {
         if (sortField === field) {
@@ -164,10 +183,28 @@ export default function PackageDashboard() {
         setLoading(true);
         setError(null);
         try {
-            const res = await gatewayClient.getPackages({
+            // Build filter parameters for server-side filtering
+            const filterParams: any = {
                 limit: 20,
                 direction: 'next'
-            });
+            };
+            
+            // Add status filters if selected
+            if (selectedStatusFilters.length > 0) {
+                filterParams.status = selectedStatusFilters[0];
+            }
+            
+            // Add carrier filters if selected
+            if (selectedCarrierFilters.length > 0) {
+                filterParams.carrier = selectedCarrierFilters[0];
+            }
+            
+            // Add search term if provided
+            if (searchTerm.trim()) {
+                filterParams.tracking_number = searchTerm.trim();
+            }
+            
+            const res = await gatewayClient.getPackages(filterParams);
             setPackages(res.data || []);
             setNextCursor(res.pagination.next_cursor || null);
             setPrevCursor(res.pagination.prev_cursor || null);
