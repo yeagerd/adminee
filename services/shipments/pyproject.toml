@@ -34,6 +34,8 @@ dependencies = [
     "opentelemetry-exporter-gcp-trace",
     # GCP
     "google-cloud-secret-manager",
+    # Pagination
+    "itsdangerous>=2.1.0",
 ]
 
 [project.optional-dependencies]
