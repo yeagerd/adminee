@@ -154,7 +154,33 @@ export default function PackageDashboard() {
                 search: searchTerm.trim() || null
             });
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to fetch packages');
+            let errorMessage = 'Failed to fetch packages';
+            
+            if (err instanceof Error) {
+                // Handle specific cursor-related errors
+                if (err.message.includes('Invalid or expired cursor token')) {
+                    errorMessage = 'Pagination token expired. Loading first page...';
+                    // Fallback to first page
+                    setTimeout(() => {
+                        setCurrentCursor(null);
+                        setNextCursor(null);
+                        setPrevCursor(null);
+                        loadFirstPage();
+                    }, 1000);
+                } else if (err.message.includes('Cursor token too long')) {
+                    errorMessage = 'Invalid pagination token. Loading first page...';
+                    setTimeout(() => {
+                        setCurrentCursor(null);
+                        setNextCursor(null);
+                        setPrevCursor(null);
+                        loadFirstPage();
+                    }, 1000);
+                } else {
+                    errorMessage = err.message;
+                }
+            }
+            
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -308,7 +334,31 @@ export default function PackageDashboard() {
                 search: searchTerm.trim() || null
             });
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load next page');
+            let errorMessage = 'Failed to load next page';
+            
+            if (err instanceof Error) {
+                if (err.message.includes('Invalid or expired cursor token')) {
+                    errorMessage = 'Pagination token expired. Loading first page...';
+                    setTimeout(() => {
+                        setCurrentCursor(null);
+                        setNextCursor(null);
+                        setPrevCursor(null);
+                        loadFirstPage();
+                    }, 1000);
+                } else if (err.message.includes('Cursor token too long')) {
+                    errorMessage = 'Invalid pagination token. Loading first page...';
+                    setTimeout(() => {
+                        setCurrentCursor(null);
+                        setNextCursor(null);
+                        setPrevCursor(null);
+                        loadFirstPage();
+                    }, 1000);
+                } else {
+                    errorMessage = err.message;
+                }
+            }
+            
+            setError(errorMessage);
         } finally {
             setPaginationLoading(false);
         }
@@ -340,7 +390,31 @@ export default function PackageDashboard() {
                 search: searchTerm.trim() || null
             });
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load previous page');
+            let errorMessage = 'Failed to load previous page';
+            
+            if (err instanceof Error) {
+                if (err.message.includes('Invalid or expired cursor token')) {
+                    errorMessage = 'Pagination token expired. Loading first page...';
+                    setTimeout(() => {
+                        setCurrentCursor(null);
+                        setNextCursor(null);
+                        setPrevCursor(null);
+                        loadFirstPage();
+                    }, 1000);
+                } else if (err.message.includes('Cursor token too long')) {
+                    errorMessage = 'Invalid pagination token. Loading first page...';
+                    setTimeout(() => {
+                        setCurrentCursor(null);
+                        setNextCursor(null);
+                        setPrevCursor(null);
+                        loadFirstPage();
+                    }, 1000);
+                } else {
+                    errorMessage = err.message;
+                }
+            }
+            
+            setError(errorMessage);
         } finally {
             setPaginationLoading(false);
         }
@@ -352,7 +426,22 @@ export default function PackageDashboard() {
     return (
         <div className="max-w-6xl mx-auto py-4 space-y-3 px-4 m-1">
             {loading && <div className="text-center text-gray-500">Loading packages...</div>}
-            {error && <div className="text-center text-red-500">{error}</div>}
+            {error && (
+                <div className="text-center text-red-500 p-4 bg-red-50 rounded-lg border border-red-200">
+                    <div className="mb-2">{error}</div>
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => {
+                            setError(null);
+                            loadFirstPage();
+                        }}
+                        className="text-red-600 border-red-300 hover:bg-red-100"
+                    >
+                        Retry
+                    </Button>
+                </div>
+            )}
             {/* Status Overview Cards */}
             {/* Log container size */}
             {/* Add a wrapper div for the container query context */}
