@@ -167,3 +167,6 @@ dist/
 
 # Hacks
 bak/
+
+# LLM Cache
+llm_cache/
