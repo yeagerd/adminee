@@ -1,4 +1,4 @@
-import { safeFormatEmailDateOrTime, safeParseDate } from '@/lib/utils';
+import { safeFormatDateOrTime, safeParseDate } from '@/lib/utils';
 import { EmailMessage } from '@/types/office-service';
 import DOMPurify from 'dompurify';
 import { Star } from 'lucide-react';
@@ -78,7 +78,7 @@ interface EmailListCardProps {
 
 // Use the safe email date formatting function
 const formatEmailDate = (dateString: string): string => {
-    return safeFormatEmailDateOrTime(dateString);
+    return safeFormatDateOrTime(dateString);
 };
 
 const getSenderInitials = (name?: string, email?: string): string => {
