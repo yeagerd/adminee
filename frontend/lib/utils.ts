@@ -113,9 +113,22 @@ export function safeParseDateToLocaleString(
  * Safely format an email date string for display
  * Shows time if email was sent today, otherwise shows month and day
  * @param dateString - The email date string to format
+ * @param timeOptions - Options for time formatting (defaults to 12-hour format)
+ * @param dateOptions - Options for date formatting (defaults to short month + day)
  * @returns Formatted date string or fallback text if invalid
  */
-export function safeFormatEmailDate(dateString: string | null | undefined): string {
+export function safeFormatEmailDateOrTime(
+    dateString: string | null | undefined,
+    timeOptions: Intl.DateTimeFormatOptions = {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    },
+    dateOptions: Intl.DateTimeFormatOptions = {
+        month: 'short',
+        day: 'numeric'
+    }
+): string {
     const emailDate = safeParseDate(dateString);
     if (!emailDate) {
         return 'Invalid date';
@@ -127,19 +140,44 @@ export function safeFormatEmailDate(dateString: string | null | undefined): stri
         const emailDay = new Date(emailDate.getFullYear(), emailDate.getMonth(), emailDate.getDate());
 
         // If email was sent today, show time
-        if (emailDay.getTime() === today.getTime()) {
-            return emailDate.toLocaleTimeString([], {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true
-            });
+        if (emailDay.toDateString() === today.toDateString()) {
+            return emailDate.toLocaleTimeString([], timeOptions);
         }
 
-        // Otherwise show month and day
-        return emailDate.toLocaleDateString([], {
-            month: 'short',
-            day: 'numeric'
-        });
+        return emailDate.toLocaleDateString([], dateOptions);
+
+    } catch (error) {
+        console.warn('Failed to format email date:', dateString, error);
+        return 'Invalid date';
+    }
+}
+
+
+/**
+ * Safely format an email date and time string for display
+ * @param dateString - The email date and time string to format
+ * @param timeOptions - Options for time formatting (defaults to 12-hour format)
+ * @param dateOptions - Options for date formatting (defaults to short month + day)
+ * @returns Formatted date string or fallback text if invalid
+ */
+export function safeFormatEmailDateAndTime(
+    dateString: string | null | undefined,
+    timeOptions: Intl.DateTimeFormatOptions = {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    },
+    dateOptions: Intl.DateTimeFormatOptions = {
+        month: 'short',
+        day: 'numeric'
+    }
+): string {
+    const emailDate = safeParseDate(dateString);
+    if (!emailDate) {
+        return 'Invalid date';
+    }
+    try {
+        return emailDate.toLocaleDateString([], dateOptions) + ' ' + emailDate.toLocaleTimeString([], timeOptions);
     } catch (error) {
         console.warn('Failed to format email date:', dateString, error);
         return 'Invalid date';

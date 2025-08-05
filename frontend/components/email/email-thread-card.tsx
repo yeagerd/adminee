@@ -3,7 +3,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useShipmentDetection } from '@/hooks/use-shipment-detection';
 import { useShipmentEvents } from '@/hooks/use-shipment-events';
 import { shipmentsClient } from '@/lib/shipments-client';
-import { safeFormatEmailDate } from '@/lib/utils';
+import { safeFormatEmailDateAndTime } from '@/lib/utils';
 import { EmailMessage } from '@/types/office-service';
 import DOMPurify from 'dompurify';
 import { Forward, MoreHorizontal, Package, PackageCheck, Reply, ReplyAll, Wand2 } from 'lucide-react';
@@ -81,9 +81,16 @@ interface EmailThreadCardProps {
     inlineAvatar?: boolean;
 }
 
-// Use the safe email date formatting function
+// Use the safe email date formatting function with detailed format
 const formatEmailDate = (dateString: string): string => {
-    return safeFormatEmailDate(dateString);
+    return safeFormatEmailDateAndTime(dateString, {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    }, {
+        month: 'short',
+        day: 'numeric'
+    });
 };
 
 // Utility function to get sender initials
