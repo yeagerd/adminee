@@ -16,10 +16,13 @@ from services.shipments.service_auth import (
 )
 
 
-@pytest.fixture(autouse=True, scope="session")
+@pytest.fixture(scope="function")
 def patch_settings():
     """Patch the _settings global variable to return test settings."""
     import services.shipments.settings as shipments_settings
+
+    # Store original settings for cleanup
+    original_settings = shipments_settings._settings
 
     test_settings = shipments_settings.Settings(
         db_url_shipments="sqlite:///:memory:",
@@ -29,46 +32,34 @@ def patch_settings():
     # Directly set the singleton instead of using monkeypatch
     shipments_settings._settings = test_settings
     yield
-    shipments_settings._settings = None
+    # Restore original settings
+    shipments_settings._settings = original_settings
 
 
-@pytest_asyncio.fixture(scope="session")
-async def db_session():
+@pytest_asyncio.fixture(scope="function")
+async def db_session(patch_settings):
     """Create database session with tables for testing."""
     from services.shipments.database import get_engine
     from services.shipments.models import SQLModel
 
-    # Create tables (only once per test session)
+    # Create tables for this test
     engine = get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
 
-    # Create a single session that will be shared
+    # Create a new session for this test
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    session = AsyncSession(engine)
-
-    try:
-        yield session
-    finally:
-        # Ensure cleanup happens even if test fails before yielding
+    async with AsyncSession(engine) as session:
         try:
-            # Rollback any pending transactions first
+            yield session
+        finally:
+            # Rollback any pending transactions
             await session.rollback()
-        except Exception:
-            # Ignore rollback errors during cleanup
-            pass
-
-        try:
-            # Close the session properly
-            await session.close()
-        except Exception:
-            # Ignore close errors during cleanup
-            pass
 
 
-@pytest.fixture
-def client(db_session):
+@pytest_asyncio.fixture
+async def client(db_session):
     """Create a test client with patched settings and database session."""
     from services.shipments.database import get_async_session_dep
 
