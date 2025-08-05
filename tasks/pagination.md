@@ -437,16 +437,16 @@ The shipments service currently uses offset-based pagination with `page` and `pe
   - [ ] Test cursor pagination error scenarios
 
 ##### Performance Optimizations
-- [ ] Implement frontend performance improvements:
-  - [ ] Add cursor caching in localStorage/sessionStorage
-  - [ ] Implement virtual scrolling for large lists (if needed)
-  - [ ] Add request debouncing for rapid pagination clicks
-  - [ ] Optimize re-renders with React.memo and useMemo
-  - [ ] Add prefetching for next page data
-- [ ] **REMOVE** all legacy pagination performance optimizations:
-  - [ ] **REMOVE** any offset-based pagination caching
-  - [ ] **REMOVE** any legacy pagination state management
-  - [ ] **REMOVE** any legacy pagination performance monitoring
+- [x] Implement frontend performance improvements:
+  - [x] Add cursor caching in localStorage/sessionStorage
+  - [x] Implement virtual scrolling for large lists (if needed)
+  - [x] Add request debouncing for rapid pagination clicks
+  - [x] Optimize re-renders with React.memo and useMemo
+  - [x] Add prefetching for next page data
+- [x] **REMOVE** all legacy pagination performance optimizations:
+  - [x] **REMOVE** any offset-based pagination caching
+  - [x] **REMOVE** any legacy pagination state management
+  - [x] **REMOVE** any legacy pagination performance monitoring
 
 #### 13. Integration Testing
 - [x] End-to-end testing:
