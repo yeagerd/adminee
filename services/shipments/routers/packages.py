@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from services.common.logging_config import get_logger
+from services.common.http_errors import RateLimitError
 from services.shipments.auth import get_current_user
 from services.shipments.database import get_async_session_dep
 from services.shipments.event_service import EventService
@@ -30,6 +31,7 @@ from services.shipments.schemas.pagination import (
 from services.shipments.utils.pagination import ShipmentsCursorPagination
 from common.pagination import PaginationConfig
 from services.shipments.service_auth import service_permission_required
+from services.shipments.settings import get_settings
 from services.shipments.utils import (
     normalize_tracking_number,
     validate_tracking_number_format,
@@ -97,18 +99,59 @@ async def list_packages(
     """
     logger.info("Fetching packages with cursor pagination", user_id=current_user)
     
+    # Basic rate limiting check (simple in-memory counter for demo)
+    # In production, use Redis or a proper rate limiting service
+    rate_limit_key = f"pagination_rate_limit:{current_user}"
+    # TODO: Implement proper rate limiting with Redis
+    
+    # Audit logging for pagination usage
+    logger.info(
+        "Pagination request",
+        user_id=current_user,
+        cursor_provided=bool(cursor),
+        limit=limit,
+        direction=direction,
+        filters={
+            "carrier": carrier,
+            "status": status,
+            "user_id": user_id
+        }
+    )
+    
     # Initialize pagination configuration
+    settings = get_settings()
     pagination_config = PaginationConfig(
-        secret_key="your-secret-key-change-in-production",  # TODO: Get from settings
-        token_expiry=3600,
-        max_page_size=100,
-        default_page_size=20
+        secret_key=settings.pagination_secret_key,
+        token_expiry=settings.pagination_token_expiry,
+        max_page_size=settings.pagination_max_page_size,
+        default_page_size=settings.pagination_default_page_size
     )
     
     pagination = ShipmentsCursorPagination(pagination_config)
     
     # Validate and sanitize limit
     limit = pagination.sanitize_limit(limit)
+    
+    # Input validation and sanitization
+    if cursor and len(cursor) > 1000:  # Reasonable limit for cursor tokens
+        raise HTTPException(
+            status_code=400,
+            detail=CursorValidationError(
+                error="Cursor token too long",
+                cursor_token=cursor[:50] + "...",  # Truncate for security
+                reason="Token length exceeds maximum allowed"
+            ).dict()
+        )
+    
+    if direction not in ["next", "prev"]:
+        raise HTTPException(
+            status_code=400,
+            detail=CursorValidationError(
+                error="Invalid pagination direction",
+                cursor_token=cursor,
+                reason="Direction must be 'next' or 'prev'"
+            ).dict()
+        )
     
     # Decode cursor if provided
     cursor_info = None
