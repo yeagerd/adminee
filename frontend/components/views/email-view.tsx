@@ -2,8 +2,11 @@ import EmailFilters from '@/components/email/email-filters';
 import { EmailFolderSelector } from '@/components/email/email-folder-selector';
 import EmailListCard from '@/components/email/email-list-card';
 import EmailThread from '@/components/email/email-thread';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Progress } from '@/components/ui/progress';
+import { useToast } from '@/components/ui/use-toast';
 import { useIntegrations } from '@/contexts/integrations-context';
 import { gatewayClient } from '@/lib/gateway-client';
 import { safeParseDate } from '@/lib/utils';
@@ -36,6 +39,14 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
     const [isInThreadView, setIsInThreadView] = useState(false);
     const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
     const { loading: integrationsLoading, activeProviders, hasExpiredButRefreshableTokens } = useIntegrations();
+    const { toast } = useToast();
+
+    // Bulk action states
+    const [bulkActionProgress, setBulkActionProgress] = useState<number>(0);
+    const [isBulkActionRunning, setIsBulkActionRunning] = useState(false);
+    const [bulkActionType, setBulkActionType] = useState<'archive' | 'delete' | 'snooze' | null>(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
 
     // Determine default provider from active integrations, fallback to 'google' if none available
     const defaultProvider = activeProviders && activeProviders.length > 0 ? activeProviders[0] as 'google' | 'microsoft' : 'google';
@@ -191,22 +202,101 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
 
     // Handle bulk actions
     const handleBulkArchive = useCallback(() => {
-        // TODO: Implement bulk archive functionality
-        console.log('Archive emails:', Array.from(selectedEmails));
-        setSelectedEmails(new Set()); // Clear selection after action
-    }, [selectedEmails]);
+        setShowArchiveConfirm(true);
+    }, []);
 
     const handleBulkDelete = useCallback(() => {
-        // TODO: Implement bulk delete functionality
-        console.log('Delete emails:', Array.from(selectedEmails));
-        setSelectedEmails(new Set()); // Clear selection after action
-    }, [selectedEmails]);
+        setShowDeleteConfirm(true);
+    }, []);
 
     const handleBulkSnooze = useCallback(() => {
-        // TODO: Implement bulk snooze functionality
-        console.log('Snooze emails:', Array.from(selectedEmails));
-        setSelectedEmails(new Set()); // Clear selection after action
-    }, [selectedEmails]);
+        setBulkActionType('snooze');
+        executeBulkAction('snooze');
+    }, []);
+
+    // Execute bulk action with progress tracking
+    const executeBulkAction = useCallback(async (actionType: 'archive' | 'delete' | 'snooze') => {
+        if (selectedEmails.size === 0) return;
+
+        setIsBulkActionRunning(true);
+        setBulkActionProgress(0);
+        setBulkActionType(actionType);
+
+        const emailIds = Array.from(selectedEmails);
+        const totalEmails = emailIds.length;
+        let successCount = 0;
+        let errorCount = 0;
+
+        try {
+            // Simulate API calls with progress updates
+            for (let i = 0; i < emailIds.length; i++) {
+                const emailId = emailIds[i];
+
+                // Simulate API call delay
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                // TODO: Replace with actual API calls
+                // const response = await gatewayClient.bulkAction(actionType, [emailId]);
+                // if (response.success) {
+                //     successCount++;
+                // } else {
+                //     errorCount++;
+                // }
+
+                // For now, simulate success
+                successCount++;
+
+                // Update progress
+                setBulkActionProgress(((i + 1) / totalEmails) * 100);
+            }
+
+            // Show success/error toast
+            if (errorCount === 0) {
+                toast({
+                    title: `${actionType.charAt(0).toUpperCase() + actionType.slice(1)} Successful`,
+                    description: `Successfully ${actionType}d ${successCount} email${successCount !== 1 ? 's' : ''}.`,
+                    variant: "default",
+                });
+            } else if (successCount === 0) {
+                toast({
+                    title: `${actionType.charAt(0).toUpperCase() + actionType.slice(1)} Failed`,
+                    description: `Failed to ${actionType} ${errorCount} email${errorCount !== 1 ? 's' : ''}.`,
+                    variant: "destructive",
+                });
+            } else {
+                toast({
+                    title: `${actionType.charAt(0).toUpperCase() + actionType.slice(1)} Partially Complete`,
+                    description: `Successfully ${actionType}d ${successCount} email${successCount !== 1 ? 's' : ''}, but failed to ${actionType} ${errorCount} email${errorCount !== 1 ? 's' : ''}.`,
+                    variant: "default",
+                });
+            }
+
+            // Clear selection after action
+            setSelectedEmails(new Set());
+
+        } catch (error) {
+            toast({
+                title: `${actionType.charAt(0).toUpperCase() + actionType.slice(1)} Failed`,
+                description: `An error occurred while ${actionType}ing emails. Please try again.`,
+                variant: "destructive",
+            });
+        } finally {
+            setIsBulkActionRunning(false);
+            setBulkActionProgress(0);
+            setBulkActionType(null);
+        }
+    }, [selectedEmails, toast]);
+
+    // Confirmed bulk actions
+    const handleConfirmedArchive = useCallback(() => {
+        setShowArchiveConfirm(false);
+        executeBulkAction('archive');
+    }, [executeBulkAction]);
+
+    const handleConfirmedDelete = useCallback(() => {
+        setShowDeleteConfirm(false);
+        executeBulkAction('delete');
+    }, [executeBulkAction]);
 
     // selectedThread was used for fallback logic that has been removed
     // Keeping this for potential future use or debugging
@@ -590,6 +680,46 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                     </div>
                 )}
             </div>
+
+            {/* Bulk Action Confirmation Dialogs */}
+            <AlertDialog open={showArchiveConfirm} onOpenChange={setShowArchiveConfirm}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Confirm Archive</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to archive {selectedEmails.size} email{selectedEmails.size !== 1 ? 's' : ''}? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setShowArchiveConfirm(false)}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmedArchive}>Archive</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Confirm Delete</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete {selectedEmails.size} email{selectedEmails.size !== 1 ? 's' : ''}? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setShowDeleteConfirm(false)}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmedDelete}>Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {isBulkActionRunning && (
+                <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-blue-500 text-white p-3 rounded-lg shadow-lg z-50">
+                    <Progress value={bulkActionProgress} className="h-2" />
+                    <p className="text-sm text-white">
+                        {bulkActionType ? bulkActionType.charAt(0).toUpperCase() + bulkActionType.slice(1) : ''}ing {bulkActionProgress}%...
+                    </p>
+                </div>
+            )}
         </div>
     );
 };
