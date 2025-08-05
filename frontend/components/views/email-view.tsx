@@ -143,7 +143,8 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
 
         return Array.from(threadMap.entries()).map(([threadId, emails]) => ({
             id: threadId,
-            emails
+            // Sort emails by date (latest first) so that emails[0] is always the latest email
+            emails: emails.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         }));
     }, [threads]);
 
@@ -164,12 +165,22 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
     const handleSelectAll = useCallback(() => {
         const allEmailIds = new Set<string>();
         groupedThreads.forEach(thread => {
-            thread.emails.forEach(email => {
-                allEmailIds.add(email.id);
-            });
+            if (viewMode === 'tight') {
+                // In tight view mode, only select the latest email in each thread
+                // since that's the only one with a visible checkbox
+                const latestEmail = thread.emails[0]; // Assuming emails are sorted by date, latest first
+                if (latestEmail) {
+                    allEmailIds.add(latestEmail.id);
+                }
+            } else {
+                // In expanded view mode, select all emails in each thread
+                thread.emails.forEach(email => {
+                    allEmailIds.add(email.id);
+                });
+            }
         });
         setSelectedEmails(allEmailIds);
-    }, [groupedThreads]);
+    }, [groupedThreads, viewMode]);
 
     // Handle deselect all emails
     const handleSelectNone = useCallback(() => {
