@@ -10,7 +10,7 @@ from services.common.settings import (
     AliasChoices,
     BaseSettings,
     SettingsConfigDict,
-    field,
+    Field,
 )
 
 
@@ -18,133 +18,133 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # Database Configuration
-    db_url_user: str = field(
+    db_url_user: str = Field(
         default=...,
         description="PostgreSQL database connection string",
         validation_alias=AliasChoices("DB_URL_USER"),
     )
 
     # Service Configuration
-    service_name: str = field(default="user", description="Service name")
-    host: str = field(default="0.0.0.0", description="Host to bind to")
-    port: int = field(default=8001, description="Port to bind to")
-    debug: bool = field(default=False, description="Debug mode")
-    environment: str = field(
+    service_name: str = Field(default="user", description="Service name")
+    host: str = Field(default="0.0.0.0", description="Host to bind to")
+    port: int = Field(default=8001, description="Port to bind to")
+    debug: bool = Field(default=False, description="Debug mode")
+    environment: str = Field(
         default="development",
         description="Environment (development, staging, production)",
     )
 
     # CORS Configuration
-    cors_origins: List[str] = field(
+    cors_origins: List[str] = Field(
         default=["http://localhost:3000", "http://localhost:3001"],
         description="Allowed CORS origins",
     )
 
     # Security Configuration
-    api_frontend_user_key: str = field(
+    api_frontend_user_key: str = Field(
         ...,
         description="Frontend API key to access User Management service",
     )
-    api_chat_user_key: str = field(
+    api_chat_user_key: str = Field(
         ...,
         description="Chat service API key to access User Management service",
     )
-    api_office_user_key: str = field(
+    api_office_user_key: str = Field(
         ...,
         description="Office service API key to access User Management service",
     )
-    api_meetings_user_key: str = field(
+    api_meetings_user_key: str = Field(
         ...,
         description="Meetings service API key to access User Management service",
     )
-    token_encryption_salt: Optional[str] = field(
+    token_encryption_salt: Optional[str] = Field(
         default=None,
         description="Base64-encoded service salt for token encryption key derivation",
     )
-    jwt_verify_signature: bool = field(
+    jwt_verify_signature: bool = Field(
         default=True,
         description="Whether to verify JWT signatures (set to False for development)",
     )
 
     # Redis Configuration (for caching and background jobs)
-    redis_url: str = field(
+    redis_url: str = Field(
         default="redis://localhost:6379", description="Redis connection string"
     )
 
     # Celery Configuration
-    celery_broker_url: str = field(
+    celery_broker_url: str = Field(
         default="redis://localhost:6379/0", description="Celery broker URL"
     )
-    celery_result_backend: str = field(
+    celery_result_backend: str = Field(
         default="redis://localhost:6379/0", description="Celery result backend URL"
     )
 
     # OAuth Provider Configuration
-    google_client_id: Optional[str] = field(
+    google_client_id: Optional[str] = Field(
         default=None, description="Google OAuth client ID"
     )
-    google_client_secret: Optional[str] = field(
+    google_client_secret: Optional[str] = Field(
         default=None, description="Google OAuth client secret"
     )
-    azure_ad_client_id: Optional[str] = field(
+    azure_ad_client_id: Optional[str] = Field(
         default=None, description="Microsoft OAuth client ID"
     )
-    azure_ad_client_secret: Optional[str] = field(
+    azure_ad_client_secret: Optional[str] = Field(
         default=None, description="Microsoft OAuth client secret"
     )
-    azure_ad_tenant_id: Optional[str] = field(
+    azure_ad_tenant_id: Optional[str] = Field(
         default=None,
         description="Azure AD tenant ID for tenant-specific OAuth endpoints",
     )
 
     # OAuth Redirect Configuration
-    oauth_redirect_uri: str = field(
+    oauth_redirect_uri: str = Field(
         default="http://localhost:8001/oauth/callback",
         description="OAuth callback redirect URI for all providers",
     )
-    oauth_base_url: str = field(
+    oauth_base_url: str = Field(
         default="http://localhost:8001",
         description="Base URL for OAuth callbacks (used to construct redirect URI)",
     )
 
     # Token Management Configuration
-    refresh_timeout_seconds: float = field(
+    refresh_timeout_seconds: float = Field(
         default=30.0,
         description="Timeout for waiting on concurrent token refresh operations (seconds)",
     )
 
     # NextAuth Configuration
-    nextauth_jwt_key: Optional[str] = field(
+    nextauth_jwt_key: Optional[str] = Field(
         default=None, description="NextAuth JWT secret key for token verification"
     )
-    nextauth_issuer: Optional[str] = field(
+    nextauth_issuer: Optional[str] = Field(
         default="nextauth", description="NextAuth JWT issuer claim"
     )
-    nextauth_audience: Optional[str] = field(
+    nextauth_audience: Optional[str] = Field(
         default="briefly-backend", description="NextAuth JWT audience claim"
     )
 
     # Logging Configuration
-    log_level: str = field(default="INFO", description="Logging level")
-    log_format: str = field(default="json", description="Log format (json or text)")
+    log_level: str = Field(default="INFO", description="Logging level")
+    log_format: str = Field(default="json", description="Log format (json or text)")
 
     # Pagination settings
-    pagination_secret_key: str = field(
+    pagination_secret_key: str = Field(
         default="your-secret-key-change-in-production",
         validation_alias="PAGINATION_SECRET_KEY",
         description="Secret key for pagination token signing",
     )
-    pagination_token_expiry: int = field(
+    pagination_token_expiry: int = Field(
         default=3600,
         validation_alias="PAGINATION_TOKEN_EXPIRY",
         description="Pagination token expiration time in seconds",
     )
-    pagination_max_page_size: int = field(
+    pagination_max_page_size: int = Field(
         default=100,
         validation_alias="PAGINATION_MAX_PAGE_SIZE",
         description="Maximum allowed page size for pagination",
     )
-    pagination_default_page_size: int = field(
+    pagination_default_page_size: int = Field(
         default=20,
         validation_alias="PAGINATION_DEFAULT_PAGE_SIZE",
         description="Default page size for pagination",

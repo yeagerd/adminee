@@ -12,7 +12,7 @@ import logging
 import os
 from typing import Optional
 
-from .settings import BaseSettings, SettingsConfigDict, field
+from .settings import BaseSettings, SettingsConfigDict, Field
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ _secret_cache: dict[str, str] = {}
 class SecretsSettings(BaseSettings):
     """Settings for loading secrets from .env files."""
 
-    environment: str = field(..., description="Environment mode")
+    environment: str = Field(..., description="Environment mode")
 
     model_config = SettingsConfigDict(
         env_file=".env",
