@@ -32,7 +32,7 @@ class PackageOut(BaseModel):
     package_description: Optional[str]
     order_number: Optional[str]
     tracking_link: Optional[str]
-    last_updated: datetime = Field(..., alias="updated_at")
+    updated_at: datetime = Field(..., alias="last_updated")
     events_count: int
     labels: List[LabelOut]
 

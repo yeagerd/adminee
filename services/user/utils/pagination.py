@@ -8,7 +8,11 @@ extending the common pagination base classes.
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
-from services.common.pagination import BaseCursorPagination, CursorInfo, PaginationConfig
+from services.common.pagination import (
+    BaseCursorPagination,
+    CursorInfo,
+    PaginationConfig,
+)
 from services.common.pagination.query_builder import PostgreSQLCursorQueryBuilder
 
 

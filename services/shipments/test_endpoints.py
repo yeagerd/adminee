@@ -503,4 +503,6 @@ class TestPackageTrackingSearch:
         assert response.status_code == 200
         data = response.json()
         assert len(data["packages"]) == 0
-        assert data["pagination"]["total"] == 0
+        # New pagination format doesn't include total count
+        assert not data["has_next"]
+        assert not data["has_prev"]

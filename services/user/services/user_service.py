@@ -13,6 +13,10 @@ from sqlmodel import select
 from services.common.http_errors import NotFoundError, ValidationError
 from services.user.database import get_async_session
 from services.user.models.user import User
+from services.user.schemas.pagination import (
+    UserListResponse,
+    UserSearchRequest,
+)
 from services.user.schemas.user import (
     EmailResolutionRequest,
     EmailResolutionResponse,
@@ -21,10 +25,6 @@ from services.user.schemas.user import (
     UserOnboardingUpdate,
     UserResponse,
     UserUpdate,
-)
-from services.user.schemas.pagination import (
-    UserListResponse,
-    UserSearchRequest,
 )
 from services.user.services.audit_service import audit_logger
 from services.user.utils.email_collision import EmailCollisionDetector

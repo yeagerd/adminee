@@ -12,11 +12,11 @@ import pytest
 from fastapi import HTTPException, status
 
 from services.user.models.user import User
+from services.user.schemas.pagination import UserListResponse
 from services.user.schemas.user import (
     UserCreate,
     UserResponse,
 )
-from services.user.schemas.pagination import UserListResponse
 from services.user.services.user_service import get_user_service
 
 

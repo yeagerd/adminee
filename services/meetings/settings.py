@@ -5,8 +5,8 @@ Settings and configuration for Meetings Service.
 from services.common.settings import (
     AliasChoices,
     BaseSettings,
-    field,
     SettingsConfigDict,
+    field,
 )
 
 

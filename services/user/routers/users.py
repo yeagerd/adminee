@@ -39,13 +39,13 @@ from services.user.schemas.integration import (
     TokenRefreshRequest,
     TokenRefreshResponse,
 )
-from services.user.schemas.user import (
-    UserCreate,
-    UserResponse,
-)
 from services.user.schemas.pagination import (
     UserListResponse,
     UserSearchRequest,
+)
+from services.user.schemas.user import (
+    UserCreate,
+    UserResponse,
 )
 from services.user.services.audit_service import audit_logger
 from services.user.services.user_service import get_user_service

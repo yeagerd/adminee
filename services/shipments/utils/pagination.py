@@ -8,7 +8,11 @@ extending the common pagination base classes.
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
-from services.common.pagination import BaseCursorPagination, CursorInfo, PaginationConfig
+from services.common.pagination import (
+    BaseCursorPagination,
+    CursorInfo,
+    PaginationConfig,
+)
 from services.common.pagination.query_builder import PostgreSQLCursorQueryBuilder
 
 
@@ -84,7 +88,10 @@ class ShipmentsCursorPagination(BaseCursorPagination):
             filters["user_id"] = shipments_filters["user_id"]
 
         # Email message ID filter
-        if "email_message_id" in shipments_filters and shipments_filters["email_message_id"]:
+        if (
+            "email_message_id" in shipments_filters
+            and shipments_filters["email_message_id"]
+        ):
             filters["email_message_id"] = shipments_filters["email_message_id"]
 
         return filters
@@ -215,7 +222,17 @@ class ShipmentsCursorPagination(BaseCursorPagination):
         if "tracking_number" in filters and filters["tracking_number"]:
             tracking_number = str(filters["tracking_number"]).strip()
             if tracking_number:
-                validated_filters["tracking_number"] = tracking_number
+                # Normalize tracking number for consistent matching
+                from services.shipments.utils import normalize_tracking_number
+
+                # Get carrier for proper normalization
+                carrier_for_normalization: Optional[str] = None
+                carrier_raw = filters.get("carrier")
+                if carrier_raw is not None:
+                    carrier_for_normalization = str(carrier_raw)
+                validated_filters["tracking_number"] = normalize_tracking_number(
+                    tracking_number, carrier_for_normalization
+                )
 
         # Validate user ID filter
         if "user_id" in filters and filters["user_id"]:

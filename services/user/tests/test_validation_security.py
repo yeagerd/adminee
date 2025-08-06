@@ -16,6 +16,7 @@ from services.user.schemas.integration import (
     OAuthCallbackRequest,
     OAuthStartRequest,
 )
+from services.user.schemas.pagination import UserSearchRequest
 from services.user.schemas.preferences import (
     AIPreferencesSchema,
     NotificationPreferencesSchema,
@@ -25,7 +26,6 @@ from services.user.schemas.user import (
     UserCreate,
     UserUpdate,
 )
-from services.user.schemas.pagination import UserSearchRequest
 from services.user.utils.validation import ValidationError as CustomValidationError
 from services.user.utils.validation import (
     check_sql_injection_patterns,

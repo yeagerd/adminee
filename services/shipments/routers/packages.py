@@ -6,13 +6,13 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 from uuid import UUID
 
-from services.common.pagination import PaginationConfig
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from services.common.logging_config import get_logger
+from services.common.pagination import PaginationConfig
 from services.shipments.auth import get_current_user
 from services.shipments.database import get_async_session_dep
 from services.shipments.event_service import EventService
@@ -207,14 +207,25 @@ async def list_packages(
 
     # Add additional filters
     if validated_filters.get("carrier"):
-        query = query.where(Package.carrier == validated_filters["carrier"])
+        # If carrier is "unknown", don't filter by carrier (return all packages)
+        if validated_filters["carrier"] == "unknown":
+            pass  # No carrier filtering when carrier is "unknown"
+        else:
+            # Include both the specified carrier and "unknown" carrier packages
+            query = query.where(
+                (Package.carrier == validated_filters["carrier"])
+                | (Package.carrier == "unknown")
+            )
     if validated_filters.get("status"):
         query = query.where(Package.status == validated_filters["status"])
     if validated_filters.get("tracking_number"):
-        query = query.where(Package.tracking_number == validated_filters["tracking_number"])
+        query = query.where(
+            Package.tracking_number == validated_filters["tracking_number"]
+        )
     if validated_filters.get("email_message_id"):
         # Filter by email_message_id using a subquery
         from services.shipments.models import TrackingEvent
+
         subquery = select(TrackingEvent.package_id).where(
             TrackingEvent.email_message_id == validated_filters["email_message_id"]
         )
@@ -264,7 +275,7 @@ async def list_packages(
                 package_description=pkg.package_description,
                 order_number=pkg.order_number,
                 tracking_link=pkg.tracking_link,
-                updated_at=pkg.updated_at,
+                last_updated=pkg.updated_at,
                 events_count=events_count,
                 labels=[],
             )
@@ -390,7 +401,7 @@ async def add_package(
         package_description=package_description,
         order_number=order_number,
         tracking_link=tracking_link,
-        updated_at=updated_at,
+        last_updated=updated_at,
         events_count=events_count,
         labels=[],  # TODO: Query for real labels
     )
@@ -432,7 +443,7 @@ async def get_package(
         package_description=package.package_description,
         order_number=package.order_number,
         tracking_link=package.tracking_link,
-        updated_at=package.updated_at,
+        last_updated=package.updated_at,
         events_count=events_count,
         labels=[],  # TODO: Query for real labels
     )
@@ -516,7 +527,7 @@ async def update_package(
         package_description=package.package_description,
         order_number=package.order_number,
         tracking_link=package.tracking_link,
-        updated_at=package.updated_at,
+        last_updated=package.updated_at,
         events_count=events_count,
         labels=[],  # TODO: Query for real labels
     )

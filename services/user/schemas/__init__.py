@@ -31,6 +31,10 @@ from services.user.schemas.integration import (
     TokenRefreshRequest,
     TokenRefreshResponse,
 )
+from services.user.schemas.pagination import (
+    UserListResponse,
+    UserSearchRequest,
+)
 from services.user.schemas.user import (
     UserBase,
     UserCreate,
@@ -38,10 +42,6 @@ from services.user.schemas.user import (
     UserOnboardingUpdate,
     UserResponse,
     UserUpdate,
-)
-from services.user.schemas.pagination import (
-    UserListResponse,
-    UserSearchRequest,
 )
 
 __all__ = [

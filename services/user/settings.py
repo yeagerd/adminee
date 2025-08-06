@@ -9,8 +9,8 @@ from typing import List, Optional
 from services.common.settings import (
     AliasChoices,
     BaseSettings,
-    field,
     SettingsConfigDict,
+    field,
 )
 
 
