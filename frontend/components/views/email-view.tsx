@@ -229,7 +229,8 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
         const emailIds = Array.from(selectedEmails);
         const totalEmails = emailIds.length;
         let successCount = 0;
-        let errorCount = 0;
+        // eslint-disable-next-line prefer-const
+        let errorCount = 0; // Will be incremented when API calls are implemented
 
         try {
             // Simulate API calls with progress updates
