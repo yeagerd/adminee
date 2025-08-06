@@ -9,7 +9,7 @@ from typing import Optional
 from services.common.settings import (
     AliasChoices,
     BaseSettings,
-    Field,
+    field,
     SettingsConfigDict,
 )
 
@@ -18,63 +18,63 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # Database Configuration
-    db_url_chat: str = Field(
+    db_url_chat: str = field(
         ...,  # Required field - no default to prevent production mistakes
         description="Database connection string",
         validation_alias=AliasChoices("DB_URL_CHAT"),
     )
 
     # Service Configuration
-    service_name: str = Field(default="chat-service", description="Service name")
-    host: str = Field(default="0.0.0.0", description="Host to bind to")
-    port: int = Field(default=8002, description="Port to bind to")
-    debug: bool = Field(default=False, description="Debug mode")
-    environment: str = Field(
+    service_name: str = field(default="chat-service", description="Service name")
+    host: str = field(default="0.0.0.0", description="Host to bind to")
+    port: int = field(default=8002, description="Port to bind to")
+    debug: bool = field(default=False, description="Debug mode")
+    environment: str = field(
         default="development",
         description="Environment (development, staging, production)",
     )
 
     # API Keys for service communication
-    api_frontend_chat_key: Optional[str] = Field(
+    api_frontend_chat_key: Optional[str] = field(
         ...,
         description="Frontend API key to access this Chat service",
         validation_alias=AliasChoices("API_FRONTEND_CHAT_KEY"),
     )
-    api_chat_user_key: Optional[str] = Field(
+    api_chat_user_key: Optional[str] = field(
         ...,
         description="Chat service API key to call User Management service",
         validation_alias=AliasChoices("API_CHAT_USER_KEY"),
     )
-    api_chat_office_key: Optional[str] = Field(
+    api_chat_office_key: Optional[str] = field(
         ...,
         description="Chat service API key to call Office service",
         validation_alias=AliasChoices("API_CHAT_OFFICE_KEY"),
     )
 
     # Service URLs
-    user_service_url: str = Field(
+    user_service_url: str = field(
         ...,
         description="User management service URL",
         validation_alias=AliasChoices(
             "USER_SERVICE_URL", "USER_MANAGEMENT_SERVICE_URL"
         ),
     )
-    office_service_url: str = Field(
+    office_service_url: str = field(
         default=...,
         description="Office service URL",
     )
 
     # LLM Configuration
-    llm_provider: str = Field(default="openai", description="LLM provider")
-    llm_model: str = Field(default="gpt-4.1-nano", description="LLM model")
-    max_tokens: int = Field(
+    llm_provider: str = field(default="openai", description="LLM provider")
+    llm_model: str = field(default="gpt-4.1-nano", description="LLM model")
+    max_tokens: int = field(
         default=2000, description="Maximum tokens for LLM responses"
     )
-    openai_api_key: Optional[str] = Field(default=None, description="OpenAI API key")
+    openai_api_key: Optional[str] = field(default=None, description="OpenAI API key")
 
     # Logging Configuration
-    log_level: str = Field(default="INFO", description="Logging level")
-    log_format: str = Field(default="json", description="Log format (json or text)")
+    log_level: str = field(default="INFO", description="Logging level")
+    log_format: str = field(default="json", description="Log format (json or text)")
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 from uuid import UUID
 
-from common.pagination import PaginationConfig
+from services.common.pagination import PaginationConfig
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -183,19 +183,19 @@ async def list_packages(
         if cursor_info.direction == "next":
             # For next page: (updated_at > last_updated) OR (updated_at = last_updated AND id > last_id)
             query = query.where(
-                (Package.updated_at > cursor_info.last_timestamp)
+                (Package.updated_at > cursor_info.last_timestamp)  # type: ignore[operator]
                 | (
-                    (Package.updated_at == cursor_info.last_timestamp)
-                    & (Package.id > cursor_info.last_id)
+                    (Package.updated_at == cursor_info.last_timestamp)  # type: ignore[operator]
+                    & (Package.id > cursor_info.last_id)  # type: ignore[operator]
                 )
             )
         else:
             # For previous page: (updated_at < last_updated) OR (updated_at = last_updated AND id < last_id)
             query = query.where(
-                (Package.updated_at < cursor_info.last_timestamp)
+                (Package.updated_at < cursor_info.last_timestamp)  # type: ignore[operator]
                 | (
-                    (Package.updated_at == cursor_info.last_timestamp)
-                    & (Package.id < cursor_info.last_id)
+                    (Package.updated_at == cursor_info.last_timestamp)  # type: ignore[operator]
+                    & (Package.id < cursor_info.last_id)  # type: ignore[operator]
                 )
             )
 
@@ -207,9 +207,9 @@ async def list_packages(
 
     # Add ordering
     if direction == "next":
-        query = query.order_by(Package.updated_at.asc(), Package.id.asc())
+        query = query.order_by(Package.updated_at.asc(), Package.id.asc())  # type: ignore[attr-defined,union-attr]
     else:
-        query = query.order_by(Package.updated_at.desc(), Package.id.desc())
+        query = query.order_by(Package.updated_at.desc(), Package.id.desc())  # type: ignore[attr-defined,union-attr]
 
     # Add limit (fetch one extra to determine if there are more pages)
     query = query.limit(limit + 1)

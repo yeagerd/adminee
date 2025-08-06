@@ -41,8 +41,10 @@ from services.user.schemas.integration import (
 )
 from services.user.schemas.user import (
     UserCreate,
-    UserListResponse,
     UserResponse,
+)
+from services.user.schemas.pagination import (
+    UserListResponse,
     UserSearchRequest,
 )
 from services.user.services.audit_service import audit_logger

@@ -18,11 +18,13 @@ from services.user.schemas.user import (
     EmailResolutionResponse,
     UserCreate,
     UserDeleteResponse,
-    UserListResponse,
     UserOnboardingUpdate,
     UserResponse,
-    UserSearchRequest,
     UserUpdate,
+)
+from services.user.schemas.pagination import (
+    UserListResponse,
+    UserSearchRequest,
 )
 from services.user.services.audit_service import audit_logger
 from services.user.utils.email_collision import EmailCollisionDetector
@@ -609,9 +611,7 @@ class UserService:
                 if search_request.email:
                     filters["email"] = search_request.email
                 if search_request.onboarding_completed is not None:
-                    filters["onboarding_completed"] = (
-                        search_request.onboarding_completed
-                    )
+                    filters["onboarding_completed"] = search_request.onboarding_completed  # type: ignore[assignment]
 
                 # Validate filters
                 validated_filters = pagination.validate_user_filters(filters)
@@ -624,19 +624,19 @@ class UserService:
                     if cursor_info.direction == "next":
                         # For next page: (created_at > last_created_at) OR (created_at = last_created_at AND id > last_id)
                         query = query.where(
-                            (User.created_at > cursor_info.last_timestamp)
+                            (User.created_at > cursor_info.last_timestamp)  # type: ignore[operator]
                             | (
-                                (User.created_at == cursor_info.last_timestamp)
-                                & (User.id > cursor_info.last_id)
+                                (User.created_at == cursor_info.last_timestamp)  # type: ignore[operator]
+                                & (User.id > cursor_info.last_id)  # type: ignore[operator]
                             )
                         )
                     else:
                         # For previous page: (created_at < last_created_at) OR (created_at = last_created_at AND id < last_id)
                         query = query.where(
-                            (User.created_at < cursor_info.last_timestamp)
+                            (User.created_at < cursor_info.last_timestamp)  # type: ignore[operator]
                             | (
-                                (User.created_at == cursor_info.last_timestamp)
-                                & (User.id < cursor_info.last_id)
+                                (User.created_at == cursor_info.last_timestamp)  # type: ignore[operator]
+                                & (User.id < cursor_info.last_id)  # type: ignore[operator]
                             )
                         )
 
@@ -655,9 +655,9 @@ class UserService:
                 # Add ordering
                 direction = search_request.direction or "next"
                 if direction == "next":
-                    query = query.order_by(User.created_at.asc(), User.id.asc())
+                    query = query.order_by(User.created_at.asc(), User.id.asc())  # type: ignore[attr-defined,union-attr]
                 else:
-                    query = query.order_by(User.created_at.desc(), User.id.desc())
+                    query = query.order_by(User.created_at.desc(), User.id.desc())  # type: ignore[attr-defined,union-attr]
 
                 # Add limit (fetch one extra to determine if there are more pages)
                 query = query.limit(limit + 1)
@@ -681,7 +681,7 @@ class UserService:
                 if users:
                     last_user = users[-1]
                     current_cursor_info = pagination.create_user_cursor_info(
-                        last_id=last_user.id,
+                        last_id=last_user.id,  # type: ignore[arg-type]
                         last_created_at=last_user.created_at,
                         filters=validated_filters,
                         direction=direction,

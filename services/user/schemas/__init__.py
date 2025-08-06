@@ -35,11 +35,13 @@ from services.user.schemas.user import (
     UserBase,
     UserCreate,
     UserDeleteResponse,
-    UserListResponse,
     UserOnboardingUpdate,
     UserResponse,
-    UserSearchRequest,
     UserUpdate,
+)
+from services.user.schemas.pagination import (
+    UserListResponse,
+    UserSearchRequest,
 )
 
 __all__ = [

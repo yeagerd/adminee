@@ -204,10 +204,11 @@ class BaseSettings:
         # For Optional types, extract the inner type
         if hasattr(target_type, "__origin__") and target_type.__origin__ == Union:
             # Get the non-None type from Optional[Type]
-            args = target_type.__args__
-            non_none_types = [arg for arg in args if arg is not type(None)]
-            if non_none_types:
-                return self._convert_value(value, non_none_types[0])
+            if hasattr(target_type, "__args__"):
+                args = target_type.__args__
+                non_none_types = [arg for arg in args if arg is not type(None)]
+                if non_none_types:
+                    return self._convert_value(value, non_none_types[0])
 
         # Return as string for any other type
         return value

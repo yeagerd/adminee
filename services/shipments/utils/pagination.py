@@ -8,8 +8,8 @@ extending the common pagination base classes.
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
-from common.pagination import BaseCursorPagination, CursorInfo, PaginationConfig
-from common.pagination.query_builder import PostgreSQLCursorQueryBuilder
+from services.common.pagination import BaseCursorPagination, CursorInfo, PaginationConfig
+from services.common.pagination.query_builder import PostgreSQLCursorQueryBuilder
 
 
 class ShipmentsCursorPagination(BaseCursorPagination):
@@ -35,7 +35,7 @@ class ShipmentsCursorPagination(BaseCursorPagination):
         Returns:
             Dictionary of query filters
         """
-        filters = {}
+        filters: Dict[str, Any] = {}
 
         # Add cursor-based position filters
         if cursor_info.direction == "next":
