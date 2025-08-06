@@ -200,20 +200,6 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
         setSelectedEmails(new Set());
     }, []);
 
-    // Handle bulk actions
-    const handleBulkArchive = useCallback(() => {
-        setShowArchiveConfirm(true);
-    }, []);
-
-    const handleBulkDelete = useCallback(() => {
-        setShowDeleteConfirm(true);
-    }, []);
-
-    const handleBulkSnooze = useCallback(() => {
-        setBulkActionType('snooze');
-        executeBulkAction('snooze');
-    }, []);
-
     // Execute bulk action with progress tracking
     const executeBulkAction = useCallback(async (actionType: 'archive' | 'delete' | 'snooze') => {
         if (selectedEmails.size === 0) return;
@@ -225,12 +211,12 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
         const emailIds = Array.from(selectedEmails);
         const totalEmails = emailIds.length;
         let successCount = 0;
-        let errorCount = 0;
+        const errorCount = 0;
 
         try {
             // Simulate API calls with progress updates
             for (let i = 0; i < emailIds.length; i++) {
-                const emailId = emailIds[i];
+                // const emailId = emailIds[i]; // Will be used when implementing actual API calls
 
                 // Simulate API call delay
                 await new Promise(resolve => setTimeout(resolve, 100));
@@ -274,7 +260,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
             // Clear selection after action
             setSelectedEmails(new Set());
 
-        } catch (error) {
+        } catch {
             toast({
                 title: `${actionType.charAt(0).toUpperCase() + actionType.slice(1)} Failed`,
                 description: `An error occurred while ${actionType}ing emails. Please try again.`,
@@ -286,6 +272,20 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
             setBulkActionType(null);
         }
     }, [selectedEmails, toast]);
+
+    // Handle bulk actions
+    const handleBulkArchive = useCallback(() => {
+        setShowArchiveConfirm(true);
+    }, []);
+
+    const handleBulkDelete = useCallback(() => {
+        setShowDeleteConfirm(true);
+    }, []);
+
+    const handleBulkSnooze = useCallback(() => {
+        setBulkActionType('snooze');
+        executeBulkAction('snooze');
+    }, [executeBulkAction]);
 
     // Confirmed bulk actions
     const handleConfirmedArchive = useCallback(() => {
