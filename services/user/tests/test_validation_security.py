@@ -23,9 +23,9 @@ from services.user.schemas.preferences import (
 )
 from services.user.schemas.user import (
     UserCreate,
-    UserSearchRequest,
     UserUpdate,
 )
+from services.user.schemas.pagination import UserSearchRequest
 from services.user.utils.validation import ValidationError as CustomValidationError
 from services.user.utils.validation import (
     check_sql_injection_patterns,

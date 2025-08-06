@@ -83,6 +83,10 @@ class ShipmentsCursorPagination(BaseCursorPagination):
         if "user_id" in shipments_filters and shipments_filters["user_id"]:
             filters["user_id"] = shipments_filters["user_id"]
 
+        # Email message ID filter
+        if "email_message_id" in shipments_filters and shipments_filters["email_message_id"]:
+            filters["email_message_id"] = shipments_filters["email_message_id"]
+
         return filters
 
     def get_ordering_clause(self, direction: str = "next") -> str:
@@ -218,5 +222,11 @@ class ShipmentsCursorPagination(BaseCursorPagination):
             user_id = str(filters["user_id"]).strip()
             if user_id:
                 validated_filters["user_id"] = user_id
+
+        # Validate email message ID filter
+        if "email_message_id" in filters and filters["email_message_id"]:
+            email_message_id = str(filters["email_message_id"]).strip()
+            if email_message_id:
+                validated_filters["email_message_id"] = email_message_id
 
         return validated_filters

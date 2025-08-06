@@ -244,9 +244,9 @@ class TestPackageTrackingSearch:
 
         assert response.status_code == 200
         data = response.json()
-        assert len(data["data"]) == 1
-        assert data["data"][0]["tracking_number"] == "123456789012"
-        assert data["data"][0]["carrier"] == "fedex"
+        assert len(data["packages"]) == 1
+        assert data["packages"][0]["tracking_number"] == "123456789012"
+        assert data["packages"][0]["carrier"] == "fedex"
 
     async def test_tracking_search_multiple_packages_no_carrier(
         self, client, auth_headers, db_session
@@ -279,8 +279,8 @@ class TestPackageTrackingSearch:
 
         assert response.status_code == 200
         data = response.json()
-        assert len(data["data"]) == 2
-        carriers = [pkg["carrier"] for pkg in data["data"]]
+        assert len(data["packages"]) == 2
+        carriers = [pkg["carrier"] for pkg in data["packages"]]
         assert "fedex" in carriers
         assert "ups" in carriers
 
@@ -319,8 +319,8 @@ class TestPackageTrackingSearch:
         assert response.status_code == 200
         data = response.json()
         # Should only return packages with carrier "fedex" or "unknown"
-        assert len(data["data"]) == 2
-        carriers = [pkg["carrier"] for pkg in data["data"]]
+        assert len(data["packages"]) == 2
+        carriers = [pkg["carrier"] for pkg in data["packages"]]
         assert "fedex" in carriers
         assert "unknown" in carriers
         assert "ups" not in carriers
@@ -360,8 +360,8 @@ class TestPackageTrackingSearch:
         assert response.status_code == 200
         data = response.json()
         # Should only return packages with carrier "ups" or "unknown"
-        assert len(data["data"]) == 1
-        assert data["data"][0]["carrier"] == "ups"
+        assert len(data["packages"]) == 1
+        assert data["packages"][0]["carrier"] == "ups"
 
     async def test_tracking_search_carrier_unknown_handling(
         self, client, auth_headers, db_session
@@ -398,7 +398,7 @@ class TestPackageTrackingSearch:
         assert response.status_code == 200
         data = response.json()
         # Should return all packages (no additional filtering when carrier is "unknown")
-        assert len(data["data"]) == 2
+        assert len(data["packages"]) == 2
 
     async def test_tracking_search_different_users_isolation(
         self, client, auth_headers, db_session
@@ -435,9 +435,9 @@ class TestPackageTrackingSearch:
         assert response.status_code == 200
         data = response.json()
         # Should only return package for the authenticated user
-        assert len(data["data"]) == 1
-        assert data["data"][0]["user_id"] == "test-user-123"
-        assert data["data"][0]["carrier"] == "fedex"
+        assert len(data["packages"]) == 1
+        assert data["packages"][0]["user_id"] == "test-user-123"
+        assert data["packages"][0]["carrier"] == "fedex"
 
     async def test_tracking_search_with_email_message_id(
         self, client, auth_headers, db_session
@@ -463,12 +463,12 @@ class TestPackageTrackingSearch:
         assert get_response.status_code == 200
         from uuid import UUID
 
-        package_id = UUID(get_response.json()["data"][0]["id"])
+        package_id = UUID(get_response.json()["packages"][0]["id"])
         # Create a tracking event with email message ID
         from datetime import datetime
 
         event_date = datetime.fromisoformat(
-            get_response.json()["data"][0]["updated_at"]
+            get_response.json()["packages"][0]["updated_at"]
         )
         # Create a tracking event with email message ID
         event = TrackingEvent(
@@ -487,8 +487,8 @@ class TestPackageTrackingSearch:
 
         assert response.status_code == 200
         data = response.json()
-        assert len(data["data"]) == 1
-        assert data["data"][0]["tracking_number"] == tracking_number
+        assert len(data["packages"]) == 1
+        assert data["packages"][0]["tracking_number"] == tracking_number
 
     async def test_tracking_search_email_message_id_not_found(
         self, client, auth_headers, db_session
@@ -502,5 +502,5 @@ class TestPackageTrackingSearch:
 
         assert response.status_code == 200
         data = response.json()
-        assert len(data["data"]) == 0
+        assert len(data["packages"]) == 0
         assert data["pagination"]["total"] == 0

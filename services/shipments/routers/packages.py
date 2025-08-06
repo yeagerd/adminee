@@ -84,6 +84,8 @@ async def list_packages(
     carrier: Optional[str] = None,
     status: Optional[str] = None,
     user_id: Optional[str] = None,
+    tracking_number: Optional[str] = None,
+    email_message_id: Optional[str] = None,
     current_user: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session_dep),
     service_name: str = Depends(service_permission_required(["read_shipments"])),
@@ -168,6 +170,10 @@ async def list_packages(
         filters["status"] = status
     if user_id:
         filters["user_id"] = user_id
+    if tracking_number:
+        filters["tracking_number"] = tracking_number
+    if email_message_id:
+        filters["email_message_id"] = email_message_id
 
     # Always filter by current user for security
     filters["user_id"] = current_user
@@ -204,6 +210,15 @@ async def list_packages(
         query = query.where(Package.carrier == validated_filters["carrier"])
     if validated_filters.get("status"):
         query = query.where(Package.status == validated_filters["status"])
+    if validated_filters.get("tracking_number"):
+        query = query.where(Package.tracking_number == validated_filters["tracking_number"])
+    if validated_filters.get("email_message_id"):
+        # Filter by email_message_id using a subquery
+        from services.shipments.models import TrackingEvent
+        subquery = select(TrackingEvent.package_id).where(
+            TrackingEvent.email_message_id == validated_filters["email_message_id"]
+        )
+        query = query.where(Package.id.in_(subquery))
 
     # Add ordering
     if direction == "next":
@@ -249,7 +264,7 @@ async def list_packages(
                 package_description=pkg.package_description,
                 order_number=pkg.order_number,
                 tracking_link=pkg.tracking_link,
-                updated_at=pkg.updated_at,
+                last_updated=pkg.updated_at,
                 events_count=events_count,
                 labels=[],
             )
