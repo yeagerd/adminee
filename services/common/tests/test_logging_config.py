@@ -10,7 +10,6 @@ import uuid
 from unittest.mock import MagicMock
 
 import structlog
-
 from services.common.logging_config import (
     EnhancedTextRenderer,
     add_file_line_context,
@@ -95,7 +94,7 @@ class TestEnhancedLoggingConfiguration:
         # Should add file and line information
         assert "file" in result
         assert "line" in result
-        # The file name might vary depending on the call stack, so just check it's a string
+        # The file name might vary depending on the call stack; verify it's a string
         assert isinstance(result["file"], str)
         assert isinstance(result["line"], int)
 
@@ -161,7 +160,7 @@ class TestEnhancedLoggingConfiguration:
         assert "| User: demo@example.com" in result
 
     def test_enhanced_text_renderer_with_file_line(self):
-        """Test text rendering with file and line information (now shown as extra context)."""
+        """Test text rendering with file and line information (extra context)."""
         renderer = EnhancedTextRenderer("test-service")
 
         event_dict = {
@@ -235,7 +234,7 @@ class TestEnhancedLoggingConfiguration:
 
         # Should include the field name
         assert "long_field=" in result
-        # Should include the long value (the current implementation doesn't truncate strings)
+        # Should include the long value (we don't truncate strings)
         assert long_value in result
         # The result should be reasonably sized (allow for the long value)
         assert len(result) < 3000  # Allow for longer output with all the formatting

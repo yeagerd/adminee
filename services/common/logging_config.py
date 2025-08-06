@@ -361,7 +361,8 @@ def create_request_logging_middleware() -> Callable:
 
         logger.log(
             log_level,
-            f"{status_emoji} {request.method} {request.url.path} → {response.status_code} ({process_time:.3f}s)",
+            f"{status_emoji} {request.method} {request.url.path} → "
+            f"{response.status_code} ({process_time:.3f}s)",
             extra={
                 "status_code": response.status_code,
                 "process_time": process_time,
@@ -371,11 +372,12 @@ def create_request_logging_middleware() -> Callable:
 
         # Special logging for 404 errors to help with debugging
         if response.status_code == 404:
+            context = f"{request.method} {request.url.path}"
             logger.error(
-                f"🔍 404 DEBUG - Endpoint not found: {request.method} {request.url.path}",
+                f"🔍 404 DEBUG - Endpoint not found: {context}",
                 extra={
                     "requested_endpoint": f"{request.method} {request.url.path}",
-                    "suggestion": "Check if the endpoint path and HTTP method are correct",
+                    "suggestion": "Check the endpoint path and HTTP method",
                 },
             )
 

@@ -8,7 +8,6 @@ Tests the fixes for:
 
 import pytest
 from fastapi import HTTPException
-
 from services.common.http_errors import (
     NotFoundError,
     exception_to_response,
@@ -53,7 +52,7 @@ class TestRequestIDCorrelation:
         assert len(response.request_id) > 0
 
     def test_request_id_generation_outside_context(self):
-        """Test that exception_to_response generates proper request IDs outside request context."""
+        """Test exception_to_response request IDs outside request context."""
         # Ensure context is uninitialized
         request_id_var.set("uninitialized")
 
@@ -229,7 +228,7 @@ class TestBackwardCompatibility:
     """Test backward compatibility of error responses."""
 
     def test_http_exception_detail_structure_preserved(self):
-        """Test that HTTPException detail structure is preserved for backward compatibility."""
+        """Test that HTTPException detail structure is preserved for backward compat."""
         original_detail = {
             "message": "Custom error",
             "field": "email",
