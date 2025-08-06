@@ -31,7 +31,6 @@ source .venv/bin/activate
 # Install all workspace and dev dependencies
 echo "📥 Installing all workspace and development dependencies..."
 uv sync --all-packages --all-extras --active
-uv pip install -e services/meetings
 
 # Check database status and handle different scenarios
 echo "🗄️ Checking database status..."

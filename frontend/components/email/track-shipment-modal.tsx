@@ -8,13 +8,14 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useShipmentDetection } from '@/hooks/use-shipment-detection';
 import { PACKAGE_STATUS, PACKAGE_STATUS_OPTIONS, PackageStatus } from '@/lib/package-status';
 import { DataCollectionRequest, PackageCreateRequest, PackageResponse, shipmentsClient } from '@/lib/shipments-client';
 import { safeParseDateToISOString, safeParseDateToLocaleString } from '@/lib/utils';
 import { EmailMessage } from '@/types/office-service';
 import DOMPurify from 'dompurify';
-import { CheckCircle, Info, Loader2, Package, Truck } from 'lucide-react';
+import { CheckCircle, Info, Loader2, Package, PackageCheck, Search, Truck } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import React, { useEffect, useRef, useState } from 'react';
 
@@ -124,22 +125,7 @@ const CARRIERS = [
     { value: 'unknown', label: 'Unknown' },
 ];
 
-// Helper function to validate and safely convert status string to PackageStatus
-const validatePackageStatus = (statusString: string): PackageStatus => {
-    const validStatuses = PACKAGE_STATUS_OPTIONS.map(option => option.value);
-    const upperCaseStatus = statusString.toUpperCase();
 
-    // Check if the status is valid
-    if (validStatuses.includes(upperCaseStatus as PackageStatus)) {
-        return upperCaseStatus as PackageStatus;
-    }
-
-    // Log warning for invalid status
-    console.warn(`Invalid package status received from backend: "${statusString}". Falling back to PENDING.`);
-
-    // Return default status
-    return PACKAGE_STATUS.PENDING;
-};
 
 // Helper function to get readable status label
 const getReadableStatus = (status: PackageStatus): string => {
@@ -180,6 +166,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
     });
     const [initialFormData, setInitialFormData] = useState<PackageFormData | null>(null);
     const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const [showTrackingNumberDropdown, setShowTrackingNumberDropdown] = useState(false);
 
     // Check if a package already exists with the given tracking number and carrier
     const checkExistingPackage = async (trackingNumber: string, carrier?: string) => {
@@ -190,6 +177,7 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
         setIsCheckingPackage(true);
         try {
             const existingPkg = await shipmentsClient.checkPackageExists(trackingNumber, carrier);
+
             setExistingPackage(existingPkg);
 
             // If existing package found, update form data with existing package info
@@ -223,42 +211,69 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
         }
     };
 
-    // Parse email with backend when modal opens
+    // Use frontend detection when modal opens
     useEffect(() => {
-        const parseEmailWithBackend = async () => {
+        const populateFromFrontendDetection = async () => {
             if (!isOpen) return;
 
             setIsParsing(true);
             try {
-                // Call backend email parser
-                const parseResponse = await shipmentsClient.parseEmail(email);
+                // First, check if there's already a package associated with this email
+                const existingPackageByEmail = await shipmentsClient.getPackageByEmail(email.id);
 
-                if (parseResponse.is_shipment_email && parseResponse.suggested_package_data) {
-                    const suggestedData = parseResponse.suggested_package_data;
-                    const detectedData: PackageFormData = {
-                        tracking_number: suggestedData.tracking_number || parseResponse.tracking_numbers[0]?.tracking_number || '',
-                        carrier: suggestedData.carrier || parseResponse.detected_carrier || 'unknown',
-                        status: suggestedData.status ? validatePackageStatus(suggestedData.status.toUpperCase()) : PACKAGE_STATUS.PENDING,
-                        recipient_name: suggestedData.recipient_name || '',
-                        shipper_name: suggestedData.shipper_name || '',
-                        package_description: email.subject || '',
-                        order_number: suggestedData.order_number || '',
-                        tracking_link: suggestedData.tracking_link || '',
-                        expected_delivery: suggestedData.estimated_delivery || '',
+                if (existingPackageByEmail) {
+                    // If we have an existing package, populate form with its data
+                    setOriginalPackageData(existingPackageByEmail);
+                    setExistingPackage(existingPackageByEmail);
+
+                    const packageData: PackageFormData = {
+                        tracking_number: existingPackageByEmail.tracking_number,
+                        carrier: existingPackageByEmail.carrier,
+                        status: existingPackageByEmail.status,
+                        recipient_name: existingPackageByEmail.recipient_name || '',
+                        shipper_name: existingPackageByEmail.shipper_name || '',
+                        package_description: existingPackageByEmail.package_description || '',
+                        order_number: existingPackageByEmail.order_number || '',
+                        tracking_link: existingPackageByEmail.tracking_link || '',
+                        expected_delivery: safeParseDateToISOString(existingPackageByEmail.estimated_delivery)
                     };
-                    setFormData(detectedData);
-                    setInitialFormData(detectedData);
 
-                    // Check if package already exists
-                    if (detectedData.tracking_number) {
-                        const carrierToUse = detectedData.carrier !== 'unknown' ? detectedData.carrier : undefined;
-                        await checkExistingPackage(detectedData.tracking_number, carrierToUse);
-                    }
+                    setFormData(packageData);
+                    setInitialFormData(packageData);
                 } else if (shipmentDetection.isShipmentEmail) {
-                    // Fallback to frontend detection if backend doesn't detect it
+                    // Fall back to frontend detection if no existing package
+
+                    // Select the best tracking number to use
+                    let selectedTrackingNumber = '';
+                    let selectedCarrier = shipmentDetection.detectedCarrier || 'unknown';
+
+                    if (shipmentDetection.trackingNumbers.length > 0) {
+                        // Sort by confidence (highest first) and then by carrier specificity
+                        const sortedTrackingNumbers = [...shipmentDetection.trackingNumbers].sort((a, b) => {
+                            // First priority: confidence
+                            if (a.confidence !== b.confidence) {
+                                return b.confidence - a.confidence;
+                            }
+                            // Second priority: UPS 1Z patterns
+                            const aIsUPS = a.trackingNumber.startsWith('1Z');
+                            const bIsUPS = b.trackingNumber.startsWith('1Z');
+                            if (aIsUPS && !bIsUPS) return -1;
+                            if (!aIsUPS && bIsUPS) return 1;
+                            // Third priority: carrier-specific over unknown
+                            if (a.carrier !== 'unknown' && b.carrier === 'unknown') return -1;
+                            if (a.carrier === 'unknown' && b.carrier !== 'unknown') return 1;
+                            return 0;
+                        });
+
+                        // Use the highest confidence tracking number
+                        const bestMatch = sortedTrackingNumbers[0];
+                        selectedTrackingNumber = bestMatch.trackingNumber;
+                        selectedCarrier = bestMatch.carrier !== 'unknown' ? bestMatch.carrier : selectedCarrier;
+                    }
+
                     const detectedData: PackageFormData = {
-                        tracking_number: shipmentDetection.trackingNumbers[0] || '',
-                        carrier: shipmentDetection.detectedCarrier || 'unknown',
+                        tracking_number: selectedTrackingNumber,
+                        carrier: selectedCarrier,
                         status: PACKAGE_STATUS.PENDING,
                         recipient_name: '',
                         shipper_name: '',
@@ -277,35 +292,13 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                     }
                 }
             } catch (error) {
-                console.error('Failed to parse email with backend:', error);
-                // Fallback to frontend detection on error
-                if (shipmentDetection.isShipmentEmail) {
-                    const detectedData: PackageFormData = {
-                        tracking_number: shipmentDetection.trackingNumbers[0] || '',
-                        carrier: shipmentDetection.detectedCarrier || 'unknown',
-                        status: PACKAGE_STATUS.PENDING,
-                        recipient_name: '',
-                        shipper_name: '',
-                        package_description: email.subject || '',
-                        order_number: '',
-                        tracking_link: '',
-                        expected_delivery: '',
-                    };
-                    setFormData(detectedData);
-                    setInitialFormData(detectedData);
-
-                    // Check if package already exists
-                    if (detectedData.tracking_number) {
-                        const carrierToUse = detectedData.carrier !== 'unknown' ? detectedData.carrier : undefined;
-                        await checkExistingPackage(detectedData.tracking_number, carrierToUse);
-                    }
-                }
+                console.error('Failed to populate from frontend detection:', error);
             } finally {
                 setIsParsing(false);
             }
         };
 
-        parseEmailWithBackend();
+        populateFromFrontendDetection();
     }, [isOpen, email, shipmentDetection]);
 
     // Cleanup timeout on unmount or modal close
@@ -536,9 +529,14 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                     ) : isParsing ? (
                         <div className="flex flex-col items-center justify-center py-8 text-center">
                             <Loader2 className="h-12 w-12 text-blue-500 mb-4 animate-spin" />
-                            <h3 className="text-lg font-semibold mb-2">Analyzing Email...</h3>
+                            <h3 className="text-lg font-semibold mb-2">
+                                {existingPackage ? 'Loading Package Details...' : 'Analyzing Email...'}
+                            </h3>
                             <p className="text-muted-foreground">
-                                Extracting shipment information from your email.
+                                {existingPackage
+                                    ? 'Loading your existing package information.'
+                                    : 'Extracting shipment information from your email.'
+                                }
                             </p>
                         </div>
                     ) : (
@@ -595,20 +593,82 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
 
                             {/* Form - Right Side */}
                             <div className="space-y-4">
+                                {/* Form Header */}
+                                {existingPackage && (
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                        <div className="flex items-center gap-2">
+                                            <PackageCheck className="h-4 w-4 text-blue-600" />
+                                            <span className="text-sm font-medium text-blue-800">
+                                                Editing Existing Package
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-blue-600 mt-1">
+                                            This package is already being tracked. You can update its information or add new tracking events.
+                                        </p>
+                                    </div>
+                                )}
+
                                 <form onSubmit={handleSubmit} className="space-y-4">
 
 
                                     {/* Tracking Number */}
                                     <div className="flex items-center gap-3 p-1">
                                         <Label htmlFor="tracking_number" className="w-24 text-sm font-medium">Tracking Number</Label>
-                                        <Input
-                                            id="tracking_number"
-                                            value={formData.tracking_number}
-                                            onChange={(e) => handleInputChange('tracking_number', e.target.value)}
-                                            placeholder="Enter tracking number"
-                                            required
-                                            className="flex-1"
-                                        />
+                                        <div className="flex-1 relative">
+                                            <Input
+                                                id="tracking_number"
+                                                value={formData.tracking_number}
+                                                onChange={(e) => handleInputChange('tracking_number', e.target.value)}
+                                                placeholder="Enter tracking number"
+                                                required
+                                                className="flex-1"
+                                            />
+                                            {shipmentDetection.trackingNumbers.length > 1 && (
+                                                <DropdownMenu open={showTrackingNumberDropdown} onOpenChange={setShowTrackingNumberDropdown}>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-gray-100"
+                                                            onClick={() => setShowTrackingNumberDropdown(!showTrackingNumberDropdown)}
+                                                        >
+                                                            <Search className="h-3 w-3" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end" className="w-80">
+                                                        <div className="p-2">
+                                                            <div className="text-xs font-medium text-gray-500 mb-2">
+                                                                Detected Tracking Numbers ({shipmentDetection.trackingNumbers.length})
+                                                            </div>
+                                                            {shipmentDetection.trackingNumbers.map((trackingInfo, index) => (
+                                                                <DropdownMenuItem
+                                                                    key={index}
+                                                                    onClick={() => {
+                                                                        handleInputChange('tracking_number', trackingInfo.trackingNumber);
+                                                                        handleInputChange('carrier', trackingInfo.carrier !== 'unknown' ? trackingInfo.carrier : formData.carrier);
+                                                                        setShowTrackingNumberDropdown(false);
+                                                                    }}
+                                                                    className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-50"
+                                                                >
+                                                                    <div className="flex-1">
+                                                                        <div className="font-mono text-sm">{trackingInfo.trackingNumber}</div>
+                                                                        <div className="text-xs text-gray-500 capitalize">
+                                                                            {trackingInfo.carrier} • {Math.round(trackingInfo.confidence * 100)}% confidence
+                                                                        </div>
+                                                                    </div>
+                                                                    {index === 0 && (
+                                                                        <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                                                            Best Match
+                                                                        </div>
+                                                                    )}
+                                                                </DropdownMenuItem>
+                                                            ))}
+                                                        </div>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            )}
+                                        </div>
                                     </div>
 
                                     {/* Tracking Number Status */}
@@ -839,11 +899,15 @@ const TrackShipmentModal: React.FC<TrackShipmentModalProps> = ({
                                     {isLoading ? (
                                         <>
                                             <Loader2 className="h-4 w-4 animate-spin" />
-                                            {existingPackage ? 'Adding Event...' : 'Tracking...'}
+                                            {existingPackage ? 'Adding Event...' : 'Creating Package...'}
                                         </>
                                     ) : (
                                         <>
-                                            <Truck className="h-4 w-4" />
+                                            {existingPackage ? (
+                                                <PackageCheck className="h-4 w-4" />
+                                            ) : (
+                                                <Truck className="h-4 w-4" />
+                                            )}
                                             {existingPackage ? 'Add Tracking Event' : 'Track Shipment'}
                                         </>
                                     )}

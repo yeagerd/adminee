@@ -1,3 +1,4 @@
+import { safeFormatDateOrTime, safeParseDate } from '@/lib/utils';
 import { EmailMessage } from '@/types/office-service';
 import DOMPurify from 'dompurify';
 import { Star } from 'lucide-react';
@@ -73,29 +74,13 @@ interface EmailListCardProps {
     isSelected?: boolean;
     onSelect?: (threadId: string) => void;
     showReadingPane?: boolean;
+    selectedEmails?: Set<string>;
+    onEmailSelect?: (emailId: string, isSelected: boolean) => void;
 }
 
-// Utility function to format email date
+// Use the safe email date formatting function
 const formatEmailDate = (dateString: string): string => {
-    const emailDate = new Date(dateString);
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const emailDay = new Date(emailDate.getFullYear(), emailDate.getMonth(), emailDate.getDate());
-
-    // If email was sent today, show time
-    if (emailDay.getTime() === today.getTime()) {
-        return emailDate.toLocaleTimeString([], {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
-        });
-    }
-
-    // Otherwise show month and day
-    return emailDate.toLocaleDateString([], {
-        month: 'short',
-        day: 'numeric'
-    });
+    return safeFormatDateOrTime(dateString);
 };
 
 const getSenderInitials = (name?: string, email?: string): string => {
@@ -135,12 +120,22 @@ const EmailListCard: React.FC<EmailListCardProps> = ({
     mode = 'expanded',
     isSelected = false,
     onSelect,
-    showReadingPane = false
+    showReadingPane = false,
+    selectedEmails = new Set(),
+    onEmailSelect
 }) => {
     // Sort emails by date (newest first)
-    const sortedEmails = [...thread.emails].sort((a, b) =>
-        new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
+    const sortedEmails = [...thread.emails].sort((a, b) => {
+        const dateA = safeParseDate(a.date);
+        const dateB = safeParseDate(b.date);
+
+        // If either date is invalid, put it at the end
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+
+        return dateB.getTime() - dateA.getTime(); // newest first
+    });
 
     const latestEmail = sortedEmails[0];
     const hasMultipleEmails = sortedEmails.length > 1;
@@ -161,8 +156,12 @@ const EmailListCard: React.FC<EmailListCardProps> = ({
                     <input
                         type="checkbox"
                         className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                        checked={isSelected}
-                        onChange={(e) => e.stopPropagation()}
+                        checked={selectedEmails.has(latestEmail.id)}
+                        onChange={(e) => {
+                            e.stopPropagation();
+                            onEmailSelect?.(latestEmail.id, e.target.checked);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
                     />
 
                     {/* Star */}
@@ -330,6 +329,17 @@ const EmailListCard: React.FC<EmailListCardProps> = ({
                             {/* Line 1: Sender and Date */}
                             <div className="flex items-center justify-between mb-1">
                                 <div className="flex items-center gap-2">
+                                    {/* Checkbox */}
+                                    <input
+                                        type="checkbox"
+                                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                        checked={selectedEmails.has(email.id)}
+                                        onChange={(e) => {
+                                            e.stopPropagation();
+                                            onEmailSelect?.(email.id, e.target.checked);
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
                                     <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
                                         <span className="text-blue-600 font-medium text-xs">{senderInitials}</span>
                                     </div>

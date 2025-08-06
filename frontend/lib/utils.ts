@@ -108,3 +108,88 @@ export function safeParseDateToLocaleString(
     const date = safeParseDate(dateString);
     return date ? date.toLocaleDateString([], options) : '';
 }
+
+/**
+ * Safely format an datetime string for display
+ * Shows time if date is today, otherwise shows date.
+ * Defaults to month and day for date, and 12-hour format for time.
+ * @param dateString - The date string to format
+ * @param timeOptions - Options for time formatting (defaults to 12-hour format)
+ * @param dateOptions - Options for date formatting (defaults to short month + day)
+ * @returns Formatted date string or fallback text if invalid
+ */
+export function safeFormatDateOrTime(
+    dateString: string | null | undefined,
+    timeOptions: Intl.DateTimeFormatOptions = {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    },
+    dateOptions: Intl.DateTimeFormatOptions = {
+        month: 'short',
+        day: 'numeric'
+    }
+): string {
+    const emailDate = safeParseDate(dateString);
+    if (!emailDate) {
+        return 'Invalid date';
+    }
+
+    try {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const emailDay = new Date(emailDate.getFullYear(), emailDate.getMonth(), emailDate.getDate());
+
+        // If email was sent today, show time
+        if (emailDay.toDateString() === today.toDateString()) {
+            return emailDate.toLocaleTimeString([], timeOptions);
+        }
+
+        return emailDate.toLocaleDateString([], dateOptions);
+
+    } catch (error) {
+        console.warn('Failed to format email date:', dateString, error);
+        return 'Invalid date';
+    }
+}
+
+
+/**
+ * Safely format a date and time string for display
+ * @param dateString - The email date and time string to format
+ * @param timeOptions - Options for time formatting (defaults to 12-hour format)
+ * @param dateOptions - Options for date formatting (defaults to short month + day)
+ * @param showDateIfToday - Whether to show date if today, otherwise time only
+ * @returns Formatted date string or fallback text if invalid
+ */
+export function safeFormatDateAndTime(
+    dateString: string | null | undefined,
+    timeOptions: Intl.DateTimeFormatOptions = {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    },
+    dateOptions: Intl.DateTimeFormatOptions = {
+        month: 'short',
+        day: 'numeric'
+    },
+    showDateIfToday: boolean = false
+): string {
+    const emailDate = safeParseDate(dateString);
+    if (!emailDate) {
+        return 'Invalid date';
+    }
+    try {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        if (!showDateIfToday && emailDate.toDateString() === today.toDateString()) {
+            return emailDate.toLocaleTimeString([], timeOptions);
+        } else {
+            return emailDate.toLocaleDateString([], dateOptions) + ' ' + emailDate.toLocaleTimeString([], timeOptions);
+        }
+    } catch (error) {
+        console.warn('Failed to format email date:', dateString, error);
+        return 'Invalid date';
+    }
+}

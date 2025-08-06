@@ -1,15 +1,34 @@
+import { Button } from '@/components/ui/button';
+import { Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { gatewayClient } from '../../lib/gateway-client';
 import type { Package, TrackingEvent } from './AddPackageModal';
 import LabelChip from './LabelChip';
 import TrackingTimeline from './TrackingTimeline';
 
-export default function PackageDetails({ pkg, onClose }: { pkg: Package & { labels?: (string | { name: string })[], events?: TrackingEvent[] }, onClose: () => void }) {
+export default function PackageDetails({
+    pkg,
+    onClose,
+    onRefresh
+}: {
+    pkg: Package & { labels?: (string | { name: string })[], events?: TrackingEvent[] },
+    onClose: () => void,
+    onRefresh?: () => void
+}) {
     const [events, setEvents] = useState<TrackingEvent[]>([]);
     const [loadingEvents, setLoadingEvents] = useState(false);
     const [eventsError, setEventsError] = useState<string | null>(null);
     const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const modalRef = useRef<HTMLDivElement>(null);
+    const mountedRef = useRef(true);
+
+    useEffect(() => {
+        return () => {
+            mountedRef.current = false;
+        };
+    }, []);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -76,20 +95,48 @@ export default function PackageDetails({ pkg, onClose }: { pkg: Package & { labe
         }
     };
 
+    const handleDeletePackage = async () => {
+        if (!pkg.id) {
+            return;
+        }
+
+        setIsDeleting(true);
+        try {
+            await gatewayClient.deletePackage(pkg.id);
+            // Close the modal after successful deletion
+            onClose();
+            onRefresh?.(); // Call onRefresh if provided
+        } catch (error) {
+            console.error('Failed to delete package:', error);
+            alert('Failed to delete package. Please try again.');
+        } finally {
+            // Only update state if component is still mounted
+            if (mountedRef.current) {
+                setIsDeleting(false);
+                setShowDeleteDialog(false); // Close the confirmation dialog
+            }
+        }
+    };
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
             <div ref={modalRef} className="bg-white rounded-lg shadow-lg max-w-lg w-full max-h-[90vh] flex flex-col relative">
-                <div className="p-6 pb-4 border-b border-gray-200">
-                    <button
-                        className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
-                        onClick={onClose}
-                        aria-label="Close"
-                    >
-                        &times;
-                    </button>
-                    <h2 className="text-xl font-bold mb-2 pr-8">Package Details</h2>
+                {/* Header */}
+                <div className="p-6 pb-4 border-b border-gray-200 flex-shrink-0">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-xl font-bold">Package Details</h2>
+                        <button
+                            className="text-gray-400 hover:text-gray-600 text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
+                            onClick={onClose}
+                            aria-label="Close"
+                        >
+                            &times;
+                        </button>
+                    </div>
                 </div>
-                <div className="flex-1 overflow-y-auto p-6 pt-4">
+
+                {/* Scrollable Content */}
+                <div className="flex-1 overflow-y-auto p-6">
                     <div className="space-y-3">
                         <div><b>Tracking Number:</b> {pkg.tracking_number}</div>
                         <div><b>Carrier:</b> {pkg.carrier}</div>
@@ -116,6 +163,51 @@ export default function PackageDetails({ pkg, onClose }: { pkg: Package & { labe
                         )}
                     </div>
                 </div>
+
+                {/* Footer with Delete Button */}
+                <div className="p-6 pt-4 border-t border-gray-200 flex-shrink-0">
+                    <Button
+                        variant="destructive"
+                        className="w-full flex items-center justify-center gap-2"
+                        onClick={() => {
+                            setShowDeleteDialog(true);
+                        }}
+                    >
+                        <Trash2 className="h-4 w-4" />
+                        Delete Package
+                    </Button>
+                </div>
+
+                {/* Simple Confirmation Modal */}
+                {showDeleteDialog && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
+                        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                            <h3 className="text-lg font-semibold mb-2">Delete Package?</h3>
+                            <p className="text-sm text-gray-600 mb-6">
+                                This action cannot be undone. This will permanently delete the package and all its associated tracking events.
+                            </p>
+                            <div className="flex gap-3 justify-end">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        setShowDeleteDialog(false);
+                                    }}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    variant="destructive"
+                                    onClick={() => {
+                                        handleDeletePackage();
+                                    }}
+                                    disabled={isDeleting}
+                                >
+                                    {isDeleting ? 'Deleting...' : 'Delete Package'}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

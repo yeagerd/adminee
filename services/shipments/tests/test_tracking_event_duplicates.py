@@ -3,9 +3,12 @@ Tests for tracking event duplicate prevention
 """
 
 from datetime import datetime, timezone
+from uuid import uuid4
 
 import pytest
+import pytest_asyncio
 from fastapi.testclient import TestClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest.fixture(autouse=True)
@@ -24,20 +27,301 @@ def patch_settings():
     shipments_settings._settings = None
 
 
-@pytest.fixture
-def client():
+@pytest_asyncio.fixture
+async def client(db_session):
     """Create a test client with patched settings."""
+    from services.shipments.database import get_async_session_dep
     from services.shipments.main import app
 
-    return TestClient(app)
+    # Override the database dependency to use our test session
+    async def override_get_session():
+        yield db_session
+
+    # Store the original dependency to restore it later
+    original_dependency = app.dependency_overrides.get(get_async_session_dep)
+    app.dependency_overrides[get_async_session_dep] = override_get_session
+
+    client = TestClient(app)
+    yield client
+
+    # Clean up: restore the original dependency or remove our override
+    if original_dependency is not None:
+        app.dependency_overrides[get_async_session_dep] = original_dependency
+    else:
+        app.dependency_overrides.pop(get_async_session_dep, None)
+
+
+@pytest.fixture
+def auth_headers():
+    """Create authentication headers for testing."""
+    return {
+        "X-API-Key": "test-frontend-shipments-key",
+        "X-User-Id": "test-user-123",
+    }
+
+
+@pytest_asyncio.fixture
+async def db_session():
+    """Create a database session for testing."""
+    from services.shipments.database import get_engine
+    from services.shipments.models import SQLModel
+
+    # Create tables (only once per test session)
+    engine = get_engine()
+    async with engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.create_all)
+
+    # Create a single session that will be shared
+    session = AsyncSession(engine)
+
+    yield session
+
+    # Clean up database after each test using explicit DELETE statements
+    # This approach is more reliable than mixing rollback() with manual deletes
+    import sqlalchemy as sa
+
+    # Delete all data from tables in reverse dependency order to avoid foreign key constraints
+    await session.execute(sa.text("DELETE FROM trackingevent"))
+    await session.execute(sa.text("DELETE FROM packagelabel"))
+    await session.execute(sa.text("DELETE FROM package"))
+    await session.execute(sa.text("DELETE FROM label"))
+    await session.execute(sa.text("DELETE FROM carrierconfig"))
+    await session.commit()
+    await session.close()
+
+
+class TestDeletePackage:
+    """Test package deletion functionality including associated events."""
+
+    @pytest.mark.asyncio
+    async def test_delete_package_with_events(self, client, auth_headers, db_session):
+        """Test that deleting a package also deletes all its associated tracking events."""
+        # Create a test package
+        package_data = {
+            "tracking_number": "123456789012",
+            "carrier": "fedex",
+            "status": "IN_TRANSIT",
+        }
+
+        create_response = client.post(
+            "/v1/shipments/packages/", json=package_data, headers=auth_headers
+        )
+        assert create_response.status_code == 200
+        package_id = create_response.json()["id"]
+
+        # Create some tracking events for the package
+        event1_data = {
+            "event_date": datetime.now(timezone.utc).isoformat(),
+            "status": "PENDING",
+            "description": "Package created",
+        }
+
+        event2_data = {
+            "event_date": datetime.now(timezone.utc).isoformat(),
+            "status": "IN_TRANSIT",
+            "description": "Package in transit",
+        }
+
+        # Add events to the package
+        client.post(
+            f"/v1/shipments/packages/{package_id}/events",
+            json=event1_data,
+            headers=auth_headers,
+        )
+        client.post(
+            f"/v1/shipments/packages/{package_id}/events",
+            json=event2_data,
+            headers=auth_headers,
+        )
+
+        # Verify events exist
+        events_response = client.get(
+            f"/v1/shipments/packages/{package_id}/events", headers=auth_headers
+        )
+        assert events_response.status_code == 200
+        events = events_response.json()
+        assert len(events) >= 3  # Initial event + 2 created events
+
+        # Delete the package
+        delete_response = client.delete(
+            f"/v1/shipments/packages/{package_id}", headers=auth_headers
+        )
+        assert delete_response.status_code == 200
+        assert delete_response.json()["message"] == "Package deleted successfully"
+
+        # Verify package is deleted
+        get_response = client.get(
+            f"/v1/shipments/packages/{package_id}", headers=auth_headers
+        )
+        assert get_response.status_code == 404
+
+        # Verify all associated events are deleted
+        events_response = client.get(
+            f"/v1/shipments/packages/{package_id}/events", headers=auth_headers
+        )
+        assert events_response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_delete_package_not_found(self, client, auth_headers):
+        """Test that deleting a non-existent package returns 404."""
+        non_existent_id = str(uuid4())
+
+        delete_response = client.delete(
+            f"/v1/shipments/packages/{non_existent_id}", headers=auth_headers
+        )
+        assert delete_response.status_code == 404
+        assert "Package not found or access denied" in delete_response.json()["message"]
+
+    @pytest.mark.asyncio
+    async def test_delete_package_unauthorized(self, client, auth_headers, db_session):
+        """Test that users cannot delete packages they don't own."""
+        # Create a package for one user
+        package_data = {
+            "tracking_number": "123456789013",
+            "carrier": "ups",
+            "status": "DELIVERED",
+        }
+
+        create_response = client.post(
+            "/v1/shipments/packages/", json=package_data, headers=auth_headers
+        )
+        assert create_response.status_code == 200
+        package_id = create_response.json()["id"]
+
+        # Try to delete with different user
+        different_user_headers = {
+            "X-API-Key": "test-frontend-shipments-key",
+            "X-User-Id": "different-user-456",
+        }
+
+        delete_response = client.delete(
+            f"/v1/shipments/packages/{package_id}", headers=different_user_headers
+        )
+        assert delete_response.status_code == 404
+        assert "Package not found or access denied" in delete_response.json()["message"]
+
+    @pytest.mark.asyncio
+    async def test_delete_package_without_auth(self, client):
+        """Test that deleting a package without authentication returns 401."""
+        package_id = str(uuid4())
+
+        delete_response = client.delete(f"/v1/shipments/packages/{package_id}")
+        assert delete_response.status_code == 401
+        assert "Authentication required" in delete_response.json()["message"]
+
+    @pytest.mark.asyncio
+    async def test_delete_package_without_api_key(self, client):
+        """Test that deleting a package without API key returns 401."""
+        package_id = str(uuid4())
+
+        headers_without_api_key = {"X-User-Id": "test-user-123"}
+
+        delete_response = client.delete(
+            f"/v1/shipments/packages/{package_id}", headers=headers_without_api_key
+        )
+        assert delete_response.status_code == 401
+        assert "API key required" in delete_response.json()["message"]
+
+    @pytest.mark.asyncio
+    async def test_delete_package_cascades_to_events(
+        self, client, auth_headers, db_session
+    ):
+        """Test that deleting a package properly cascades to delete all tracking events."""
+        # Create a package
+        package_data = {
+            "tracking_number": "9400100000000000000000",
+            "carrier": "usps",
+            "status": "PENDING",
+        }
+
+        create_response = client.post(
+            "/v1/shipments/packages/", json=package_data, headers=auth_headers
+        )
+        assert create_response.status_code == 200
+        package_id = create_response.json()["id"]
+
+        # Verify the package exists and has an initial event
+        package_response = client.get(
+            f"/v1/shipments/packages/{package_id}", headers=auth_headers
+        )
+        assert package_response.status_code == 200
+        package = package_response.json()
+        assert package["events_count"] >= 1  # Should have initial event
+
+        # Delete the package
+        delete_response = client.delete(
+            f"/v1/shipments/packages/{package_id}", headers=auth_headers
+        )
+        assert delete_response.status_code == 200
+
+        # Verify package is completely removed from the system
+        # This includes all associated tracking events
+        get_response = client.get(
+            f"/v1/shipments/packages/{package_id}", headers=auth_headers
+        )
+        assert get_response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_delete_package_preserves_other_packages(
+        self, client, auth_headers, db_session
+    ):
+        """Test that deleting one package doesn't affect other packages."""
+        # Create two packages
+        package1_data = {
+            "tracking_number": "123456789013",
+            "carrier": "fedex",
+            "status": "IN_TRANSIT",
+        }
+
+        package2_data = {
+            "tracking_number": "1Z999AA12345678901",
+            "carrier": "ups",
+            "status": "DELIVERED",
+        }
+
+        create_response1 = client.post(
+            "/v1/shipments/packages/", json=package1_data, headers=auth_headers
+        )
+        assert create_response1.status_code == 200
+        package1_id = create_response1.json()["id"]
+
+        create_response2 = client.post(
+            "/v1/shipments/packages/", json=package2_data, headers=auth_headers
+        )
+        assert create_response2.status_code == 200
+        package2_id = create_response2.json()["id"]
+
+        # Verify both packages exist
+        list_response = client.get("/v1/shipments/packages/", headers=auth_headers)
+        assert list_response.status_code == 200
+        packages = list_response.json()["data"]
+        package_ids = [p["id"] for p in packages]
+        assert package1_id in package_ids
+        assert package2_id in package_ids
+
+        # Delete only package1
+        delete_response = client.delete(
+            f"/v1/shipments/packages/{package1_id}", headers=auth_headers
+        )
+        assert delete_response.status_code == 200
+
+        # Verify package1 is deleted but package2 still exists
+        get_response1 = client.get(
+            f"/v1/shipments/packages/{package1_id}", headers=auth_headers
+        )
+        assert get_response1.status_code == 404
+
+        get_response2 = client.get(
+            f"/v1/shipments/packages/{package2_id}", headers=auth_headers
+        )
+        assert get_response2.status_code == 200
+        assert get_response2.json()["id"] == package2_id
 
 
 class TestTrackingEventDuplicates:
     """Test that tracking events with the same email_message_id are handled correctly"""
 
-    def test_create_tracking_event_with_email_message_id_parameter(
-        self, client: TestClient
-    ):
+    def test_create_tracking_event_with_email_message_id_parameter(self):
         """Test that the API accepts email_message_id parameter in tracking event creation."""
         # Test that the API endpoint accepts email_message_id parameter
         # Since we moved package_id to the URL path, we test the schema validation without it
@@ -88,7 +372,7 @@ class TestTrackingEventDuplicates:
         assert event.status.value == "IN_TRANSIT"
         assert event.description == "Updated event"
 
-    def test_api_endpoint_handles_email_message_id(self, client: TestClient):
+    def test_api_endpoint_handles_email_message_id(self):
         """Test that the API endpoint properly handles email_message_id parameter."""
         # This test verifies that our API changes work correctly
         # Since we can't easily set up the database in tests, we'll test the endpoint structure

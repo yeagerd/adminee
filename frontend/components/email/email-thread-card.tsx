@@ -1,10 +1,12 @@
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useShipmentDetection } from '@/hooks/use-shipment-detection';
+import { useShipmentEvents } from '@/hooks/use-shipment-events';
 import { shipmentsClient } from '@/lib/shipments-client';
+import { safeFormatDateAndTime } from '@/lib/utils';
 import { EmailMessage } from '@/types/office-service';
 import DOMPurify from 'dompurify';
-import { Forward, MoreHorizontal, Reply, ReplyAll, Truck, Wand2 } from 'lucide-react';
+import { Forward, MoreHorizontal, Package, PackageCheck, Reply, ReplyAll, Wand2 } from 'lucide-react';
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import AISummary from './ai-summary';
@@ -79,30 +81,15 @@ interface EmailThreadCardProps {
     inlineAvatar?: boolean;
 }
 
-// Utility function to format email date
+// Use the safe email date formatting function with detailed format
 const formatEmailDate = (dateString: string): string => {
-    const emailDate = new Date(dateString);
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const emailDay = new Date(emailDate.getFullYear(), emailDate.getMonth(), emailDate.getDate());
-
-    // If email was sent today, show time only
-    if (emailDay.getTime() === today.getTime()) {
-        return emailDate.toLocaleTimeString([], {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
-        });
-    }
-
-    // Otherwise show date and time
-    return emailDate.toLocaleDateString([], {
-        month: 'short',
-        day: 'numeric'
-    }) + ' ' + emailDate.toLocaleTimeString([], {
+    return safeFormatDateAndTime(dateString, {
         hour: 'numeric',
         minute: '2-digit',
         hour12: true
+    }, {
+        month: 'short',
+        day: 'numeric'
     });
 };
 
@@ -147,6 +134,7 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
 }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const shipmentDetection = useShipmentDetection(email);
+    const { data: shipmentEvents, hasEvents } = useShipmentEvents(email.id);
 
     const handleReply = () => {
         // TODO: Implement reply functionality
@@ -244,15 +232,36 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
                             <div className="flex items-center gap-2 flex-shrink-0">
                                 <span className="text-sm text-gray-500">{formattedDate}</span>
 
-                                {/* Shipment truck icon */}
-                                {shipmentDetection.isShipmentEmail && (
-                                    <div className="relative group">
-                                        <Truck className="h-4 w-4 text-blue-500" />
-                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 px-2 py-1 text-xs text-white bg-gray-800 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                                            Shipment detected
+                                {/* Shipment package icon */}
+                                {(hasEvents ||
+                                    shipmentDetection.trackingNumbers.length > 0 ||
+                                    email.from_address?.email === 'shipment-tracking@amazon.com') && (
+                                        <div className="relative group">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-6 w-6 p-0 hover:bg-gray-100"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleTrackShipment();
+                                                }}
+                                                title={hasEvents
+                                                    ? `${shipmentEvents.length} tracking event${shipmentEvents.length > 1 ? 's' : ''}`
+                                                    : 'Track shipment'
+                                                }
+                                            >
+                                                {hasEvents ? (
+                                                    <PackageCheck
+                                                        className="h-4 w-4 text-green-600"
+                                                    />
+                                                ) : (
+                                                    <Package
+                                                        className="h-4 w-4 text-gray-400"
+                                                    />
+                                                )}
+                                            </Button>
                                         </div>
-                                    </div>
-                                )}
+                                    )}
 
                                 {/* 3-dot menu */}
                                 <DropdownMenu>
@@ -289,15 +298,13 @@ const EmailThreadCard: React.FC<EmailThreadCardProps> = ({
                                             <Forward className="h-4 w-4 mr-2" />
                                             Forward
                                         </DropdownMenuItem>
-                                        {shipmentDetection.isShipmentEmail && (
-                                            <DropdownMenuItem onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleTrackShipment();
-                                            }}>
-                                                <Wand2 className="h-4 w-4 mr-2" />
-                                                Track Shipment
-                                            </DropdownMenuItem>
-                                        )}
+                                        <DropdownMenuItem onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleTrackShipment();
+                                        }}>
+                                            <Wand2 className="h-4 w-4 mr-2" />
+                                            Track Shipment
+                                        </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </div>

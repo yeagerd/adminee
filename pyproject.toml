@@ -38,6 +38,7 @@ members = [
     "services/office",
     "services/email_sync",
     "services/meetings",
+    "services/shipments",
     # Add other services as needed
 ]
 
@@ -139,6 +140,7 @@ directory = "htmlcov"
 timeout = 5
 timeout_method = "thread"
 addopts = "--strict-markers"
+asyncio_mode = "auto"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",

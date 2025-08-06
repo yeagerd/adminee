@@ -11,6 +11,15 @@ import { IntegrationStatus } from './constants';
 import { env, validateClientEnv } from './env';
 import { PackageStatus } from './package-status';
 
+// Bulk action types enum
+export enum BulkActionType {
+    ARCHIVE = 'archive',
+    DELETE = 'delete',
+    SNOOZE = 'snooze',
+    MARK_READ = 'mark_read',
+    MARK_UNREAD = 'mark_unread'
+}
+
 interface GatewayClientOptions {
     method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
     body?: unknown;
@@ -308,6 +317,33 @@ export class GatewayClient {
         if (noCache) params.append('no_cache', 'true');
 
         return this.request<ApiResponse<GetThreadResponse>>(`/api/v1/email/messages/${messageId}/thread?${params.toString()}`);
+    }
+
+    // Bulk email operations
+    async bulkAction(
+        actionType: BulkActionType,
+        emailIds: string[],
+        providers?: string[]
+    ): Promise<{
+        success: boolean;
+        data?: {
+            success_count: number;
+            error_count: number;
+            errors?: Array<{
+                email_id: string;
+                error: string;
+            }>;
+        };
+        error?: string;
+    }> {
+        return this.request('/api/v1/email/bulk-action', {
+            method: 'POST',
+            body: {
+                action_type: actionType,
+                email_ids: emailIds,
+                providers: providers || ['google', 'microsoft']
+            },
+        });
     }
 
     async getEmailFolders(
@@ -642,6 +678,17 @@ export class GatewayClient {
             method: 'POST',
             body: eventData,
         });
+    }
+
+    async getEventsByEmail(emailMessageId: string): Promise<Array<{
+        id: string;
+        event_date: string;
+        status: PackageStatus;
+        location?: string;
+        description?: string;
+        created_at: string;
+    }>> {
+        return this.request(`/api/v1/shipments/events?email_message_id=${encodeURIComponent(emailMessageId)}`);
     }
 
     async deleteTrackingEvent(packageId: string, eventId: string): Promise<void> {
