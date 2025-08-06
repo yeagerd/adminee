@@ -438,69 +438,6 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                 ) : (
                     // Email list (for both two-pane and one-pane modes)
                     <div className={`flex-1 flex flex-col overflow-y-auto ${readingPaneMode === 'right' ? 'border-r' : ''}`} style={{ minWidth: 0 }}>
-                        {/* Selection Header */}
-                        {selectedEmails.size > 0 && (
-                            <div className="bg-blue-50 border-b border-blue-200 px-4 py-3">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <span className="text-sm font-medium text-blue-900">
-                                            {selectedEmails.size} email{selectedEmails.size !== 1 ? 's' : ''} selected
-                                        </span>
-                                        <div className="flex items-center gap-2">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={handleSelectNone}
-                                                className="text-blue-700 hover:text-blue-900 hover:bg-blue-100"
-                                            >
-                                                <X className="w-4 h-4 mr-1" />
-                                                None
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={handleSelectAll}
-                                                className="text-blue-700 hover:text-blue-900 hover:bg-blue-100"
-                                            >
-                                                <Check className="w-4 h-4 mr-1" />
-                                                All
-                                            </Button>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={handleBulkSnooze}
-                                            className="text-blue-700 hover:text-blue-900 hover:bg-blue-100"
-                                            title="Snooze"
-                                        >
-                                            <Clock className="w-4 h-4" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={handleBulkArchive}
-                                            className="text-blue-700 hover:text-blue-900 hover:bg-blue-100"
-                                            title="Archive"
-                                        >
-                                            <Archive className="w-4 h-4" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={handleBulkDelete}
-                                            className="text-red-700 hover:text-red-900 hover:bg-red-100"
-                                            title="Delete"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Email List Content */}
                         {loading ? (
                             <div className="p-8 text-center text-muted-foreground">Loading…</div>
                         ) : error ? (
