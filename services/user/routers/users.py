@@ -523,10 +523,10 @@ async def create_or_upsert_user(
             if "collision" in str(e.message).lower():
                 logger.warning(f"Email collision during user creation: {e.message}")
                 raise BrieflyAPIError(
+                    status_code=409,
+                    error_code=ErrorCode.ALREADY_EXISTS,
                     message="Email collision detected",
                     details=e.details,
-                    error_code=ErrorCode.ALREADY_EXISTS,
-                    status_code=409,
                 )
             else:
                 logger.warning(f"Validation error during user creation: {e.message}")
