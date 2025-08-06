@@ -49,7 +49,7 @@ export default function PackageDashboard() {
     const [showAddModal, setShowAddModal] = useState(false);
     const [packages, setPackages] = useState<Package[]>([]);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [sortField, setSortField] = useState('estimated_delivery');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -69,23 +69,6 @@ export default function PackageDashboard() {
 
     // Performance optimizations
     const [cursorCache, setCursorCache] = useState<Map<string, unknown>>(new Map());
-    const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
-
-    // URL state management
-    const updateURL = useCallback((params: Record<string, string | null>) => {
-        const newSearchParams = new URLSearchParams(searchParams.toString());
-
-        Object.entries(params).forEach(([key, value]) => {
-            if (value === null || value === '') {
-                newSearchParams.delete(key);
-            } else {
-                newSearchParams.set(key, value);
-            }
-        });
-
-        const newURL = `${window.location.pathname}?${newSearchParams.toString()}`;
-        router.push(newURL, { scroll: false });
-    }, [searchParams, router]);
 
     // Load state from URL on mount
     useEffect(() => {
@@ -128,27 +111,8 @@ export default function PackageDashboard() {
         });
     }, []);
 
-
-
-    // Reload data when filters change (with debouncing for search)
-    useEffect(() => {
-        if (debounceTimer) {
-            clearTimeout(debounceTimer);
-        }
-
-        const timer = setTimeout(() => {
-            loadFirstPage();
-        }, 300);
-
-        setDebounceTimer(timer);
-
-        return () => {
-            if (timer) clearTimeout(timer);
-        };
-    }, [selectedStatusFilters, selectedCarrierFilters, searchTerm, debounceTimer]);
-
-    // Define loadFirstPage before the useEffect that uses it
-    const loadFirstPage = useCallback(async () => {
+    // Main data loading function
+    const loadData = useCallback(async (cursor: string | null = null, direction: 'next' | 'prev' = 'next') => {
         setLoading(true);
         setError(null);
         try {
@@ -156,187 +120,18 @@ export default function PackageDashboard() {
             const filterParams: {
                 limit: number;
                 direction: 'next' | 'prev';
+                cursor?: string;
                 status?: string;
                 carrier?: string;
                 tracking_number?: string;
             } = {
                 limit: 20,
-                direction: 'next'
+                direction
             };
 
-            // Add status filters if selected
-            if (selectedStatusFilters.length > 0) {
-                filterParams.status = selectedStatusFilters[0]; // API supports single status for now
+            if (cursor) {
+                filterParams.cursor = cursor;
             }
-
-            // Add carrier filters if selected
-            if (selectedCarrierFilters.length > 0) {
-                filterParams.carrier = selectedCarrierFilters[0]; // API supports single carrier for now
-            }
-
-            // Add search term if provided
-            if (searchTerm.trim()) {
-                filterParams.tracking_number = searchTerm.trim();
-            }
-
-            // Check cache first
-            const cacheKey = JSON.stringify(filterParams);
-            const cachedData = getCachedData(cacheKey);
-
-            if (cachedData) {
-                setPackages(cachedData.data || []);
-                setNextCursor(cachedData.pagination.next_cursor || null);
-                setPrevCursor(cachedData.pagination.prev_cursor || null);
-                setHasNext(cachedData.pagination.has_next);
-                setHasPrev(cachedData.pagination.has_prev);
-                setCurrentCursor(null);
-                return;
-            }
-
-            const res = await gatewayClient.getPackages(filterParams);
-
-            // Cache the result
-            setCachedData(cacheKey, res);
-
-            setPackages(res.data || []);
-            setNextCursor(res.pagination.next_cursor || null);
-            setPrevCursor(res.pagination.prev_cursor || null);
-            setHasNext(res.pagination.has_next);
-            setHasPrev(res.pagination.has_prev);
-            setCurrentCursor(null);
-
-
-        } catch (err) {
-            let errorMessage = 'Failed to fetch packages';
-
-            if (err instanceof Error) {
-                // Handle specific cursor-related errors
-                if (err.message.includes('Invalid or expired cursor token')) {
-                    errorMessage = 'Pagination token expired. Loading first page...';
-                    // Fallback to first page
-                    setTimeout(() => {
-                        setCurrentCursor(null);
-                        setNextCursor(null);
-                        setPrevCursor(null);
-                        loadFirstPage();
-                    }, 1000);
-                } else if (err.message.includes('Cursor token too long')) {
-                    errorMessage = 'Invalid pagination token. Loading first page...';
-                    setTimeout(() => {
-                        setCurrentCursor(null);
-                        setNextCursor(null);
-                        setPrevCursor(null);
-                        loadFirstPage();
-                    }, 1000);
-                } else {
-                    errorMessage = err.message;
-                }
-            }
-
-            setError(errorMessage);
-        } finally {
-            setLoading(false);
-        }
-    }, [selectedStatusFilters, selectedCarrierFilters, searchTerm, getCachedData, setCachedData]);
-
-    // Call loadFirstPage on mount
-    useEffect(() => {
-        loadFirstPage();
-    }, [loadFirstPage]);
-
-    // Update URL when filters change
-    useEffect(() => {
-        updateURL({
-            cursor: null,
-            status: selectedStatusFilters.length > 0 ? selectedStatusFilters[0] : null,
-            carrier: selectedCarrierFilters.length > 0 ? selectedCarrierFilters[0] : null,
-            search: searchTerm.trim() || null
-        });
-    }, [selectedStatusFilters, selectedCarrierFilters, searchTerm, updateURL]);
-
-    const filteredAndSortedPackages = useMemo(() => {
-        // Server-side filtering is now handled by the API
-        // Only apply client-side date range filtering and sorting
-        const now = dayjs();
-        const startDate: dayjs.Dayjs | null = dateRange !== 'all' ? now.subtract(Number(dateRange) - 1, 'day').startOf('day') : null;
-
-        const filtered = packages.filter((pkg) => {
-            // Only apply date range filter client-side
-            if (!pkg.estimated_delivery) {
-                return true;
-            }
-            const estimatedDate = dayjs(pkg.estimated_delivery);
-            if (startDate && estimatedDate) {
-                return estimatedDate.isSameOrAfter(startDate, 'day') && estimatedDate.isSameOrBefore(now, 'day');
-            }
-            return true;
-        });
-
-        // Apply client-side sorting
-        filtered.sort((a, b) => {
-            const aValue = a[sortField as keyof Package] as string | number | undefined;
-            const bValue = b[sortField as keyof Package] as string | number | undefined;
-            if (typeof aValue === 'string' && typeof bValue === 'string') {
-                return sortDirection === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-            }
-            if (typeof aValue === 'number' && typeof bValue === 'number') {
-                if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-                if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
-                return 0;
-            }
-            return 0;
-        });
-
-        return filtered;
-    }, [packages, dateRange, sortField, sortDirection]);
-
-    const handleSort = (field: string) => {
-        if (sortField === field) {
-            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-        } else {
-            setSortField(field);
-            setSortDirection('asc');
-        }
-    };
-
-    const handleCellEdit = (id: string, field: string, value: string) => { // Changed from number to string (UUID)
-        setPackages(packages.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
-        setEditingCell(null);
-    };
-
-    const handleAddPackage = async () => {
-        setShowAddModal(false);
-        setLoading(true);
-        setError(null);
-        try {
-            const res = await gatewayClient.getPackages();
-            setPackages(res.data || []);
-        } catch (err) {
-            if (err instanceof Error) {
-                setError(err.message);
-            } else {
-                setError('Failed to refresh packages');
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const refreshPackages = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            // Build filter parameters for server-side filtering
-            const filterParams: {
-                limit: number;
-                direction: 'next' | 'prev';
-                status?: string;
-                carrier?: string;
-                tracking_number?: string;
-            } = {
-                limit: 20,
-                direction: 'next'
-            };
 
             // Add status filters if selected
             if (selectedStatusFilters.length > 0) {
@@ -353,249 +148,347 @@ export default function PackageDashboard() {
                 filterParams.tracking_number = searchTerm.trim();
             }
 
-            const res = await gatewayClient.getPackages(filterParams);
-            setPackages(res.data || []);
-            setNextCursor(res.pagination.next_cursor || null);
-            setPrevCursor(res.pagination.prev_cursor || null);
-            setHasNext(res.pagination.has_next);
-            setHasPrev(res.pagination.has_prev);
-            setCurrentCursor(null);
-        } catch (err) {
-            if (err instanceof Error) {
-                setError(err.message);
-            } else {
-                setError('Failed to refresh packages');
+            // Check cache first
+            const cacheKey = JSON.stringify(filterParams);
+            const cachedData = getCachedData(cacheKey);
+
+            if (cachedData && typeof cachedData === 'object' && 'data' in cachedData && 'pagination' in cachedData) {
+                const cached = cachedData as { data: Package[]; pagination: { next_cursor?: string; prev_cursor?: string; has_next: boolean; has_prev: boolean } };
+                setPackages(cached.data || []);
+                setNextCursor(cached.pagination.next_cursor || null);
+                setPrevCursor(cached.pagination.prev_cursor || null);
+                setHasNext(cached.pagination.has_next);
+                setHasPrev(cached.pagination.has_prev);
+                setCurrentCursor(cursor);
+                return;
             }
-        } finally {
-            setLoading(false);
-        }
-    };
 
-    // Status counts for summary cards
-    const statusCounts = useMemo(() => {
-        const counts = { pending: 0, shipped: 0, late: 0, delivered: 0 };
-        for (const p of packages) {
-            const status = (p.status || PACKAGE_STATUS.PENDING) as keyof typeof DASHBOARD_STATUS_MAPPING;
-            const dashboardStatus = DASHBOARD_STATUS_MAPPING[status] || 'late';
-            counts[dashboardStatus as keyof typeof counts]++;
-        }
-        return counts;
-    }, [packages]);
+            const res = await gatewayClient.getPackages(filterParams);
 
-    const loadNextPage = async () => {
-        if (!nextCursor || !hasNext) return;
+            // Cache the result
+            setCachedData(cacheKey, res);
 
-        setPaginationLoading(true);
-        setError(null);
-        try {
-            const res = await gatewayClient.getPackages({
-                cursor: nextCursor,
-                limit: 20,
-                direction: 'next'
-            });
             setPackages(res.data || []);
             setNextCursor(res.pagination.next_cursor || null);
             setPrevCursor(res.pagination.prev_cursor || null);
             setHasNext(res.pagination.has_next);
             setHasPrev(res.pagination.has_prev);
-            setCurrentCursor(nextCursor);
+            setCurrentCursor(cursor);
 
-            // Update URL state
-            updateURL({
-                cursor: nextCursor,
-                status: selectedStatusFilters.length > 0 ? selectedStatusFilters[0] : null,
-                carrier: selectedCarrierFilters.length > 0 ? selectedCarrierFilters[0] : null,
-                search: searchTerm.trim() || null
-            });
         } catch (err) {
-            let errorMessage = 'Failed to load next page';
+            let errorMessage = 'Failed to fetch packages';
 
             if (err instanceof Error) {
+                // Handle specific cursor-related errors
                 if (err.message.includes('Invalid or expired cursor token')) {
-                    errorMessage = 'Pagination token expired. Loading first page...';
-                    setTimeout(() => {
-                        setCurrentCursor(null);
-                        setNextCursor(null);
-                        setPrevCursor(null);
-                        loadFirstPage();
-                    }, 1000);
-                } else if (err.message.includes('Cursor token too long')) {
-                    errorMessage = 'Invalid pagination token. Loading first page...';
-                    setTimeout(() => {
-                        setCurrentCursor(null);
-                        setNextCursor(null);
-                        setPrevCursor(null);
-                        loadFirstPage();
-                    }, 1000);
+                    errorMessage = 'Invalid or expired cursor token';
+                    // Reset pagination state
+                    setNextCursor(null);
+                    setPrevCursor(null);
+                    setHasNext(false);
+                    setHasPrev(false);
+                    setCurrentCursor(null);
                 } else {
                     errorMessage = err.message;
                 }
             }
 
             setError(errorMessage);
+        } finally {
+            setLoading(false);
+        }
+    }, [selectedStatusFilters, selectedCarrierFilters, searchTerm, getCachedData, setCachedData]);
+
+    // Load first page on mount and when filters change
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            loadData();
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [selectedStatusFilters, selectedCarrierFilters, searchTerm, loadData]);
+
+    // Update URL when filters change
+    useEffect(() => {
+        const newSearchParams = new URLSearchParams(searchParams.toString());
+
+        // Update cursor
+        newSearchParams.delete('cursor');
+
+        // Update status filter
+        if (selectedStatusFilters.length > 0) {
+            newSearchParams.set('status', selectedStatusFilters[0]);
+        } else {
+            newSearchParams.delete('status');
+        }
+
+        // Update carrier filter
+        if (selectedCarrierFilters.length > 0) {
+            newSearchParams.set('carrier', selectedCarrierFilters[0]);
+        } else {
+            newSearchParams.delete('carrier');
+        }
+
+        // Update search term
+        if (searchTerm.trim()) {
+            newSearchParams.set('search', searchTerm.trim());
+        } else {
+            newSearchParams.delete('search');
+        }
+
+        const newURL = `${window.location.pathname}?${newSearchParams.toString()}`;
+        router.push(newURL, { scroll: false });
+    }, [selectedStatusFilters, selectedCarrierFilters, searchTerm, searchParams, router]);
+
+    const filteredAndSortedPackages = useMemo(() => {
+        let filtered = [...packages];
+
+        // Apply date range filter
+        if (dateRange !== 'all') {
+            const daysAgo = dayjs().subtract(parseInt(dateRange), 'day');
+            filtered = filtered.filter(pkg => {
+                const deliveryDate = dayjs(pkg.estimated_delivery);
+                return deliveryDate.isSameOrAfter(daysAgo);
+            });
+        }
+
+        // Apply sorting
+        filtered.sort((a, b) => {
+            let aValue: string | number | undefined = a[sortField as keyof Package] as string | number | undefined;
+            let bValue: string | number | undefined = b[sortField as keyof Package] as string | number | undefined;
+
+            // Handle date sorting
+            if (sortField === 'estimated_delivery' || sortField === 'created_at' || sortField === 'updated_at') {
+                aValue = dayjs(aValue as string).valueOf();
+                bValue = dayjs(bValue as string).valueOf();
+            }
+
+            // Handle string sorting
+            if (typeof aValue === 'string' && typeof bValue === 'string') {
+                aValue = aValue.toLowerCase();
+                bValue = bValue.toLowerCase();
+            }
+
+            if (sortDirection === 'asc') {
+                return (aValue ?? '') < (bValue ?? '') ? -1 : (aValue ?? '') > (bValue ?? '') ? 1 : 0;
+            } else {
+                return (aValue ?? '') > (bValue ?? '') ? -1 : (aValue ?? '') < (bValue ?? '') ? 1 : 0;
+            }
+        });
+
+        return filtered;
+    }, [packages, dateRange, sortField, sortDirection]);
+
+    const handleSort = (field: string) => {
+        if (sortField === field) {
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortField(field);
+            setSortDirection('asc');
+        }
+    };
+
+    const handleCellEdit = (id: string, field: string, value: string) => {
+        // Implementation for cell editing
+        console.log('Cell edit:', { id, field, value });
+    };
+
+    const handleAddPackage = async () => {
+        setShowAddModal(true);
+    };
+
+    const refreshPackages = async () => {
+        await loadData();
+    };
+
+    const loadNextPage = async () => {
+        if (!hasNext || !nextCursor || paginationLoading) return;
+
+        setPaginationLoading(true);
+        try {
+            await loadData(nextCursor, 'next');
         } finally {
             setPaginationLoading(false);
         }
     };
 
     const loadPrevPage = async () => {
-        if (!prevCursor || !hasPrev) return;
+        if (!hasPrev || !prevCursor || paginationLoading) return;
 
         setPaginationLoading(true);
-        setError(null);
         try {
-            const res = await gatewayClient.getPackages({
-                cursor: prevCursor,
-                limit: 20,
-                direction: 'prev'
-            });
-            setPackages(res.data || []);
-            setNextCursor(res.pagination.next_cursor || null);
-            setPrevCursor(res.pagination.prev_cursor || null);
-            setHasNext(res.pagination.has_next);
-            setHasPrev(res.pagination.has_prev);
-            setCurrentCursor(prevCursor);
-
-            // Update URL state
-            updateURL({
-                cursor: prevCursor,
-                status: selectedStatusFilters.length > 0 ? selectedStatusFilters[0] : null,
-                carrier: selectedCarrierFilters.length > 0 ? selectedCarrierFilters[0] : null,
-                search: searchTerm.trim() || null
-            });
-        } catch (err) {
-            let errorMessage = 'Failed to load previous page';
-
-            if (err instanceof Error) {
-                if (err.message.includes('Invalid or expired cursor token')) {
-                    errorMessage = 'Pagination token expired. Loading first page...';
-                    setTimeout(() => {
-                        setCurrentCursor(null);
-                        setNextCursor(null);
-                        setPrevCursor(null);
-                        loadFirstPage();
-                    }, 1000);
-                } else if (err.message.includes('Cursor token too long')) {
-                    errorMessage = 'Invalid pagination token. Loading first page...';
-                    setTimeout(() => {
-                        setCurrentCursor(null);
-                        setNextCursor(null);
-                        setPrevCursor(null);
-                        loadFirstPage();
-                    }, 1000);
-                } else {
-                    errorMessage = err.message;
-                }
-            }
-
-            setError(errorMessage);
+            await loadData(prevCursor, 'prev');
         } finally {
             setPaginationLoading(false);
         }
     };
 
-    // Handler for row click to show details
     const handleRowClick = (pkg: Package) => setSelectedPackage(pkg);
 
+    // Calculate summary statistics
+    const summaryStats = useMemo(() => {
+        const total = filteredAndSortedPackages.length;
+        const delivered = filteredAndSortedPackages.filter(pkg => pkg.status === PACKAGE_STATUS.DELIVERED).length;
+        const inTransit = filteredAndSortedPackages.filter(pkg => pkg.status === PACKAGE_STATUS.IN_TRANSIT).length;
+        const pending = filteredAndSortedPackages.filter(pkg => pkg.status === PACKAGE_STATUS.PENDING).length;
+        const delayed = filteredAndSortedPackages.filter(pkg => pkg.status === PACKAGE_STATUS.DELAYED).length;
+
+        return { total, delivered, inTransit, pending, delayed };
+    }, [filteredAndSortedPackages]);
+
+    // Get unique carriers and statuses for filters
+    const availableCarriers = useMemo(() => {
+        const carriers = new Set<string>();
+        packages.forEach(pkg => {
+            if (pkg.carrier) carriers.add(pkg.carrier);
+        });
+        return Array.from(carriers).sort();
+    }, [packages]);
+
+    const availableStatuses = useMemo(() => {
+        const statuses = new Set<string>();
+        packages.forEach(pkg => {
+            if (pkg.status) statuses.add(pkg.status);
+        });
+        return Array.from(statuses).sort();
+    }, [packages]);
+
     return (
-        <div className="max-w-6xl mx-auto py-4 space-y-3 px-4 m-1">
-            {loading && <div className="text-center text-gray-500">Loading packages...</div>}
-            {error && (
-                <div className="text-center text-red-500 p-4 bg-red-50 rounded-lg border border-red-200">
-                    <div className="mb-2">{error}</div>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                            setError(null);
-                            loadFirstPage();
-                        }}
-                        className="text-red-600 border-red-300 hover:bg-red-100"
-                    >
-                        Retry
-                    </Button>
-                </div>
-            )}
-            {/* Status Overview Cards */}
-            {/* Log container size */}
-            {/* Add a wrapper div for the container query context */}
-            <div className="summary-container">
-                <div className="summary-grid">
-                    <SummaryBox
-                        icon={<Clock className="h-4 w-4 flex-shrink-0" />}
-                        label="Pending"
-                        value={statusCounts.pending}
-                        iconClass="text-yellow-600"
-                    />
-                    <SummaryBox
-                        icon={<Truck className="h-4 w-4 flex-shrink-0" />}
-                        label="Shipped"
-                        value={statusCounts.shipped}
-                        iconClass="text-blue-600"
-                    />
-                    <SummaryBox
-                        icon={<AlertTriangle className="h-4 w-4 flex-shrink-0" />}
-                        label="Late"
-                        value={statusCounts.late}
-                        iconClass="text-red-600"
-                    />
-                    <SummaryBox
-                        icon={<CheckCircle className="h-4 w-4 flex-shrink-0" />}
-                        label="Delivered"
-                        value={statusCounts.delivered}
-                        iconClass="text-green-600"
-                    />
-                </div>
+        <div className="container mx-auto p-6 space-y-6">
+            {/* Header */}
+            <div className="flex justify-between items-center">
+                <h1 className="text-3xl font-bold">Package Dashboard</h1>
+                <Button onClick={handleAddPackage} className="flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add Package
+                </Button>
             </div>
-            {/* Filters and Search */}
-            <div className="flex items-center gap-2 mb-3">
-                <Input
-                    placeholder="Search packages..."
-                    className="flex-1 min-w-0 h-10"
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
+
+            {/* Summary Statistics */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <SummaryBox
+                    icon={<Truck className="h-6 w-6" />}
+                    label="Total Packages"
+                    value={summaryStats.total}
+                    iconClass="text-blue-500"
                 />
+                <SummaryBox
+                    icon={<CheckCircle className="h-6 w-6" />}
+                    label="Delivered"
+                    value={summaryStats.delivered}
+                    iconClass="text-green-500"
+                />
+                <SummaryBox
+                    icon={<Clock className="h-6 w-6" />}
+                    label="In Transit"
+                    value={summaryStats.inTransit}
+                    iconClass="text-yellow-500"
+                />
+                <SummaryBox
+                    icon={<Calendar className="h-6 w-6" />}
+                    label="Pending"
+                    value={summaryStats.pending}
+                    iconClass="text-gray-500"
+                />
+                <SummaryBox
+                    icon={<AlertTriangle className="h-6 w-6" />}
+                    label="Delayed"
+                    value={summaryStats.delayed}
+                    iconClass="text-red-500"
+                />
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-wrap gap-4 items-center">
+                {/* Search */}
+                <div className="flex-1 min-w-64">
+                    <Input
+                        placeholder="Search by tracking number..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full"
+                    />
+                </div>
+
+                {/* Status Filter */}
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="icon" className="h-10" aria-label="Filter by date range">
-                            <Calendar className="h-5 w-5" />
+                        <Button variant="outline">
+                            Status: {selectedStatusFilters.length > 0 ? selectedStatusFilters.join(', ') : 'All'}
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        {DATE_RANGE_OPTIONS.map(opt => (
+                    <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => setSelectedStatusFilters([])}>
+                            All Statuses
+                        </DropdownMenuItem>
+                        {availableStatuses.map(status => (
                             <DropdownMenuItem
-                                key={opt.value}
-                                onClick={() => setDateRange(opt.value as '7' | '30' | '90' | 'all')}
-                                className={dateRange === opt.value ? 'font-bold bg-accent text-accent-foreground' : ''}
+                                key={status}
+                                onClick={() => setSelectedStatusFilters([status])}
                             >
-                                {opt.label}
-                                {dateRange === opt.value && <CheckCircle className="ml-2 h-4 w-4 text-green-600" />}
+                                {DASHBOARD_STATUS_MAPPING[status as keyof typeof DASHBOARD_STATUS_MAPPING] || status}
                             </DropdownMenuItem>
                         ))}
                     </DropdownMenuContent>
                 </DropdownMenu>
-                <div className="shrink-0">
-                    <Button
-                        variant="default"
-                        size="icon"
-                        className="h-10"
-                        onClick={() => setShowAddModal(true)}
-                        aria-label="Add Package"
-                    >
-                        <Plus className="h-5 w-5" />
-                    </Button>
-                </div>
+
+                {/* Carrier Filter */}
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline">
+                            Carrier: {selectedCarrierFilters.length > 0 ? selectedCarrierFilters.join(', ') : 'All'}
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => setSelectedCarrierFilters([])}>
+                            All Carriers
+                        </DropdownMenuItem>
+                        {availableCarriers.map(carrier => (
+                            <DropdownMenuItem
+                                key={carrier}
+                                onClick={() => setSelectedCarrierFilters([carrier])}
+                            >
+                                {carrier}
+                            </DropdownMenuItem>
+                        ))}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Date Range Filter */}
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline">
+                            {DATE_RANGE_OPTIONS.find(opt => opt.value === dateRange)?.label || 'Date Range'}
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                        {DATE_RANGE_OPTIONS.map(option => (
+                            <DropdownMenuItem
+                                key={option.value}
+                                onClick={() => setDateRange(option.value as '7' | '30' | '90' | 'all')}
+                            >
+                                {option.label}
+                            </DropdownMenuItem>
+                        ))}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Refresh Button */}
+                <Button onClick={refreshPackages} disabled={loading}>
+                    Refresh
+                </Button>
             </div>
-            {/* Packages Table */}
+
+            {/* Package List */}
             <PackageList
                 packages={filteredAndSortedPackages}
-                editingCell={editingCell}
-                setEditingCell={setEditingCell}
+                onSort={handleSort}
                 onCellEdit={handleCellEdit}
                 onRowClick={handleRowClick}
+                editingCell={editingCell}
+                setEditingCell={setEditingCell}
                 selectedStatusFilters={selectedStatusFilters}
                 onStatusFilterChange={setSelectedStatusFilters}
-                onSort={handleSort}
                 pagination={{
                     hasNext,
                     hasPrev,
@@ -605,13 +498,23 @@ export default function PackageDashboard() {
                 }}
                 onNextPage={loadNextPage}
                 onPrevPage={loadPrevPage}
-                onFirstPage={loadFirstPage}
+                onFirstPage={() => loadData()}
             />
+
+            {/* Modals */}
             {showAddModal && (
-                <AddPackageModal onClose={() => setShowAddModal(false)} onAdd={handleAddPackage} />
+                <AddPackageModal
+                    onClose={() => setShowAddModal(false)}
+                    onAdd={refreshPackages}
+                />
             )}
+
             {selectedPackage && (
-                <PackageDetails pkg={selectedPackage} onClose={() => setSelectedPackage(null)} onRefresh={refreshPackages} />
+                <PackageDetails
+                    pkg={selectedPackage}
+                    onClose={() => setSelectedPackage(null)}
+                    onRefresh={refreshPackages}
+                />
             )}
         </div>
     );
