@@ -21,11 +21,10 @@ test = [
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools.packages]
-packages = ["common"]
-
-[tool.setuptools.package-dir]
-common = "."
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["*"]
+exclude = ["tests*"]
 
 [tool.ruff]
 # Same as Black.
