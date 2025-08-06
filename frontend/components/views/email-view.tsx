@@ -41,6 +41,54 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
         }
     };
 
+    // Helper function to get proper past tense form of action verbs
+    const getPastTense = (actionType: BulkActionType): string => {
+        switch (actionType) {
+            case BulkActionType.ARCHIVE:
+                return 'archived';
+            case BulkActionType.DELETE:
+                return 'deleted';
+            case BulkActionType.SNOOZE:
+                return 'snoozed';
+            case BulkActionType.MARK_READ:
+                return 'marked as read';
+            case BulkActionType.MARK_UNREAD:
+                return 'marked as unread';
+        }
+    };
+
+    // Helper function to get proper infinitive form of action verbs
+    const getInfinitive = (actionType: BulkActionType): string => {
+        switch (actionType) {
+            case BulkActionType.ARCHIVE:
+                return 'archive';
+            case BulkActionType.DELETE:
+                return 'delete';
+            case BulkActionType.SNOOZE:
+                return 'snooze';
+            case BulkActionType.MARK_READ:
+                return 'mark as read';
+            case BulkActionType.MARK_UNREAD:
+                return 'mark as unread';
+        }
+    };
+
+    // Helper function to get proper gerund form of action verbs (for "while X-ing")
+    const getGerund = (actionType: BulkActionType): string => {
+        switch (actionType) {
+            case BulkActionType.ARCHIVE:
+                return 'archiving';
+            case BulkActionType.DELETE:
+                return 'deleting';
+            case BulkActionType.SNOOZE:
+                return 'snoozing';
+            case BulkActionType.MARK_READ:
+                return 'marking as read';
+            case BulkActionType.MARK_UNREAD:
+                return 'marking as unread';
+        }
+    };
+
     const [threads, setThreads] = useState<EmailMessage[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -257,20 +305,20 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
             // Show success/error toast
             if (errorCount === 0) {
                 toast({
-                    title: `${actionType.charAt(0).toUpperCase() + actionType.slice(1)} Successful`,
-                    description: `Successfully ${actionType}d ${successCount} email${successCount !== 1 ? 's' : ''}.`,
+                    title: `${getPresentParticiple(actionType)} Successful`,
+                    description: `Successfully ${getPastTense(actionType)} ${successCount} email${successCount !== 1 ? 's' : ''}.`,
                     variant: "default",
                 });
             } else if (successCount === 0) {
                 toast({
-                    title: `${actionType.charAt(0).toUpperCase() + actionType.slice(1)} Failed`,
-                    description: `Failed to ${actionType} ${errorCount} email${errorCount !== 1 ? 's' : ''}.`,
+                    title: `${getPresentParticiple(actionType)} Failed`,
+                    description: `Failed to ${getInfinitive(actionType)} ${errorCount} email${errorCount !== 1 ? 's' : ''}.`,
                     variant: "destructive",
                 });
             } else {
                 toast({
-                    title: `${actionType.charAt(0).toUpperCase() + actionType.slice(1)} Partially Complete`,
-                    description: `Successfully ${actionType}d ${successCount} email${successCount !== 1 ? 's' : ''}, but failed to ${actionType} ${errorCount} email${errorCount !== 1 ? 's' : ''}.`,
+                    title: `${getPresentParticiple(actionType)} Partially Complete`,
+                    description: `Successfully ${getPastTense(actionType)} ${successCount} email${successCount !== 1 ? 's' : ''}, but failed to ${getInfinitive(actionType)} ${errorCount} email${errorCount !== 1 ? 's' : ''}.`,
                     variant: "default",
                 });
             }
@@ -280,8 +328,8 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
 
         } catch {
             toast({
-                title: `${actionType.charAt(0).toUpperCase() + actionType.slice(1)} Failed`,
-                description: `An error occurred while ${actionType}ing emails. Please try again.`,
+                title: `${getPresentParticiple(actionType)} Failed`,
+                description: `An error occurred while ${getGerund(actionType)} emails. Please try again.`,
                 variant: "destructive",
             });
         } finally {
