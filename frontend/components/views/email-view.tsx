@@ -234,11 +234,11 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
         try {
             // Execute bulk action via API
             const response = await gatewayClient.bulkAction(actionType, emailIds);
-            
+
             if (response.success && response.data) {
                 successCount = response.data.success_count;
                 errorCount = response.data.error_count;
-                
+
                 // Update progress to 100% since the API handles all emails at once
                 setBulkActionProgress(100);
             } else {
