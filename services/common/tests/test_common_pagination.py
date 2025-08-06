@@ -1,23 +1,24 @@
 """
-Tests for common pagination components.
+Tests for common pagination functionality.
 
-This module tests the base cursor pagination functionality, token manager,
-query builder, and schemas.
+This module tests the common pagination components used across all Briefly services.
 """
 
-from common.pagination import (
-    BaseCursorPagination,
+from datetime import datetime, timezone
+
+
+from services.common.pagination.base import BaseCursorPagination, CursorInfo
+from services.common.pagination.query_builder import (
+    PostgreSQLCursorQueryBuilder,
+    SQLAlchemyCursorQueryBuilder,
+)
+from services.common.pagination.schemas import (
     CursorData,
     CursorPaginationRequest,
     CursorPaginationResponse,
     PaginationConfig,
-    TokenManager,
 )
-from common.pagination.base import CursorInfo
-from common.pagination.query_builder import (
-    PostgreSQLCursorQueryBuilder,
-    SQLAlchemyCursorQueryBuilder,
-)
+from services.common.pagination.token_manager import TokenManager
 
 
 class TestPaginationConfig:
@@ -256,7 +257,11 @@ class TestSQLAlchemyCursorQueryBuilder:
 
         assert "updated_at > :last_timestamp" in filter_condition
         assert "updated_at = :last_timestamp AND id > :last_id" in filter_condition
-        assert params["last_timestamp"] == "2023-01-01T00:00:00Z"
+        # Now expecting a datetime object instead of a string
+        assert isinstance(params["last_timestamp"], datetime)
+        assert params["last_timestamp"] == datetime(
+            2023, 1, 1, 0, 0, tzinfo=timezone.utc
+        )
         assert params["last_id"] == "123"
 
     def test_build_cursor_filter_prev(self):
@@ -276,6 +281,11 @@ class TestSQLAlchemyCursorQueryBuilder:
 
         assert "updated_at < :last_timestamp" in filter_condition
         assert "updated_at = :last_timestamp AND id < :last_id" in filter_condition
+        # Now expecting a datetime object instead of a string
+        assert isinstance(params["last_timestamp"], datetime)
+        assert params["last_timestamp"] == datetime(
+            2023, 1, 1, 0, 0, tzinfo=timezone.utc
+        )
 
     def test_build_ordering_clause(self):
         """Test building ordering clause."""
@@ -332,7 +342,11 @@ class TestPostgreSQLCursorQueryBuilder:
 
         # Should use PostgreSQL row comparison syntax
         assert "(updated_at, id) > (:last_timestamp, :last_id)" in filter_condition
-        assert params["last_timestamp"] == "2023-01-01T00:00:00Z"
+        # Now expecting a datetime object instead of a string
+        assert isinstance(params["last_timestamp"], datetime)
+        assert params["last_timestamp"] == datetime(
+            2023, 1, 1, 0, 0, tzinfo=timezone.utc
+        )
         assert params["last_id"] == "123"
 
 

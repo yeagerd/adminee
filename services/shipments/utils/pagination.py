@@ -1,28 +1,43 @@
 """
-Shipments service cursor-based pagination implementation.
+Shipments-specific cursor pagination implementation.
 
-This module provides shipments-specific cursor-based pagination functionality
-extending the common pagination base classes.
+This module provides shipments-specific cursor pagination functionality
+extending the common base pagination.
 """
 
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
-from services.common.pagination import (
-    BaseCursorPagination,
-    CursorInfo,
-    PaginationConfig,
-)
+from services.common.pagination.base import BaseCursorPagination, CursorInfo
 from services.common.pagination.query_builder import PostgreSQLCursorQueryBuilder
+from services.common.pagination.schemas import PaginationConfig
+
+
+def _parse_iso_datetime(dt_str: str) -> datetime:
+    """
+    Parse ISO datetime string to datetime object.
+
+    Args:
+        dt_str: ISO datetime string
+
+    Returns:
+        datetime object with timezone info
+
+    Raises:
+        ValueError: If the string cannot be parsed
+    """
+    try:
+        # Try parsing with timezone info
+        dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+        return dt
+    except ValueError:
+        # Try parsing without timezone info (assume UTC)
+        dt = datetime.fromisoformat(dt_str)
+        return dt.replace(tzinfo=datetime.timezone.utc)
 
 
 class ShipmentsCursorPagination(BaseCursorPagination):
-    """
-    Shipments-specific cursor-based pagination implementation.
-
-    This class extends the base cursor pagination with shipments-specific
-    functionality for package tracking and management.
-    """
+    """Shipments-specific cursor pagination implementation."""
 
     def __init__(self, config: PaginationConfig):
         """Initialize shipments pagination with configuration."""
@@ -47,10 +62,10 @@ class ShipmentsCursorPagination(BaseCursorPagination):
             # (updated_at = last_updated AND id > last_id)
             filters["cursor_filter"] = (
                 "(updated_at > :last_updated) OR "
-                "(updated_at = :last_updated AND id > :last_id)"
+                "(updated_at = last_updated AND id > last_id)"
             )
             filters["cursor_params"] = {
-                "last_updated": cursor_info.last_timestamp,
+                "last_updated": _parse_iso_datetime(cursor_info.last_timestamp),
                 "last_id": cursor_info.last_id,
             }
         else:
@@ -58,10 +73,10 @@ class ShipmentsCursorPagination(BaseCursorPagination):
             # (updated_at = last_updated AND id < last_id)
             filters["cursor_filter"] = (
                 "(updated_at < :last_updated) OR "
-                "(updated_at = :last_updated AND id < :last_id)"
+                "(updated_at = last_updated AND id < last_id)"
             )
             filters["cursor_params"] = {
-                "last_updated": cursor_info.last_timestamp,
+                "last_updated": _parse_iso_datetime(cursor_info.last_timestamp),
                 "last_id": cursor_info.last_id,
             }
 

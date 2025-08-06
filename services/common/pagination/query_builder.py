@@ -6,9 +6,33 @@ cursor-based pagination.
 """
 
 from abc import ABC, abstractmethod
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 
 from .base import CursorInfo
+
+
+def _parse_iso_datetime(dt_str: str) -> datetime:
+    """
+    Parse ISO datetime string to datetime object.
+
+    Args:
+        dt_str: ISO datetime string
+
+    Returns:
+        datetime object with timezone info
+
+    Raises:
+        ValueError: If the string cannot be parsed
+    """
+    try:
+        # Try parsing with timezone info
+        dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+        return dt
+    except ValueError:
+        # Try parsing without timezone info (assume UTC)
+        dt = datetime.fromisoformat(dt_str)
+        return dt.replace(tzinfo=timezone.utc)
 
 
 class CursorQueryBuilder(ABC):
@@ -134,7 +158,7 @@ class CursorQueryBuilder(ABC):
         Build a count query for pagination metadata.
 
         Args:
-            table_name: Name of the table to count
+            table_name: Name of the table to query
             additional_filters: Additional filter conditions
 
         Returns:
@@ -169,6 +193,9 @@ class SQLAlchemyCursorQueryBuilder(CursorQueryBuilder):
         """
         Build cursor-based filter for SQLAlchemy queries.
         """
+        # Parse the ISO timestamp string to datetime object
+        last_timestamp = _parse_iso_datetime(cursor_info.last_timestamp)
+
         if cursor_info.direction == "next":
             # For next page: (timestamp > last_timestamp) OR
             # (timestamp = last_timestamp AND id > last_id)
@@ -185,7 +212,7 @@ class SQLAlchemyCursorQueryBuilder(CursorQueryBuilder):
             )
 
         parameters = {
-            "last_timestamp": cursor_info.last_timestamp,
+            "last_timestamp": last_timestamp,
             "last_id": cursor_info.last_id,
         }
 
@@ -220,6 +247,9 @@ class PostgreSQLCursorQueryBuilder(SQLAlchemyCursorQueryBuilder):
         """
         Build cursor-based filter optimized for PostgreSQL.
         """
+        # Parse the ISO timestamp string to datetime object
+        last_timestamp = _parse_iso_datetime(cursor_info.last_timestamp)
+
         # Use PostgreSQL's row comparison syntax for better performance
         if cursor_info.direction == "next":
             filter_condition = (
@@ -231,7 +261,7 @@ class PostgreSQLCursorQueryBuilder(SQLAlchemyCursorQueryBuilder):
             )
 
         parameters = {
-            "last_timestamp": cursor_info.last_timestamp,
+            "last_timestamp": last_timestamp,
             "last_id": cursor_info.last_id,
         }
 
