@@ -218,7 +218,7 @@ async def list_packages(
         subquery = select(TrackingEvent.package_id).where(
             TrackingEvent.email_message_id == validated_filters["email_message_id"]
         )
-        query = query.where(Package.id.in_(subquery))
+        query = query.where(Package.id.in_(subquery))  # type: ignore[union-attr]
 
     # Add ordering
     if direction == "next":
@@ -264,7 +264,7 @@ async def list_packages(
                 package_description=pkg.package_description,
                 order_number=pkg.order_number,
                 tracking_link=pkg.tracking_link,
-                last_updated=pkg.updated_at,
+                updated_at=pkg.updated_at,
                 events_count=events_count,
                 labels=[],
             )
