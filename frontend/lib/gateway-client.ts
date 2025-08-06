@@ -312,7 +312,7 @@ export class GatewayClient {
 
     // Bulk email operations
     async bulkAction(
-        actionType: 'archive' | 'delete' | 'snooze',
+        actionType: 'archive' | 'delete' | 'snooze' | 'mark_read' | 'mark_unread',
         emailIds: string[],
         providers?: string[]
     ): Promise<{

@@ -36,6 +36,10 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
                 return 'Deleting';
             case 'snooze':
                 return 'Snoozing';
+            case 'mark_read':
+                return 'Marking as Read';
+            case 'mark_unread':
+                return 'Marking as Unread';
             default:
                 // Fallback: add 'ing' to the end (works for most regular verbs)
                 return capitalizedAction + 'ing';
@@ -62,7 +66,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
     // Bulk action states
     const [bulkActionProgress, setBulkActionProgress] = useState<number>(0);
     const [isBulkActionRunning, setIsBulkActionRunning] = useState(false);
-    const [bulkActionType, setBulkActionType] = useState<'archive' | 'delete' | 'snooze' | null>(null);
+    const [bulkActionType, setBulkActionType] = useState<'archive' | 'delete' | 'snooze' | 'mark_read' | 'mark_unread' | null>(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
 
@@ -219,7 +223,7 @@ const EmailView: React.FC<EmailViewProps> = ({ toolDataLoading = false, activeTo
     }, []);
 
     // Execute bulk action with progress tracking
-    const executeBulkAction = useCallback(async (actionType: 'archive' | 'delete' | 'snooze') => {
+    const executeBulkAction = useCallback(async (actionType: 'archive' | 'delete' | 'snooze' | 'mark_read' | 'mark_unread') => {
         if (selectedEmails.size === 0) return;
 
         setIsBulkActionRunning(true);
