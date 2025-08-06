@@ -985,7 +985,7 @@ def register_briefly_exception_handlers(app: FastAPI) -> None:
     async def generic_exception_handler(
         request: Request, exc: Exception
     ) -> JSONResponse:
-        """Handle any unhandled exceptions and convert to standardized error response."""
+        """Handle any unhandled exceptions, convert to standardized error response."""
         # Get request ID from context or generate fallback
         request_id = request_id_var.get()
         if not request_id or request_id == "uninitialized":
@@ -999,7 +999,8 @@ def register_briefly_exception_handlers(app: FastAPI) -> None:
         if request_id != "uninitialized":
             error_response.request_id = request_id
 
-        # Log the error with proper formatting - use the same message and type as the response
+        # Log the error with proper formatting
+        # Use the same message and type as the response
         log_http_error(
             error_type=error_response.type,
             message=error_response.message,

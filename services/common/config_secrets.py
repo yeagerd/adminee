@@ -54,7 +54,8 @@ def get_secret(secret_id: str, default: str = "") -> str:
     Retrieve secret from GCP Secret Manager or environment variables.
 
     Args:
-        secret_id: The secret identifier (both env var name and Secret Manager secret name)
+        secret_id: The secret identifier (both env var name and Secret Manager secret
+        name)
         default: Default value if secret is not found
 
     Returns:

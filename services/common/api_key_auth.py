@@ -1,7 +1,8 @@
 """
 Shared API key authentication and authorization helpers for Briefly services.
 
-Each service should define its own API_KEY_CONFIGS and get_settings function, and pass them to these helpers.
+Each service should define its own API_KEY_CONFIGS and get_settings function, and
+pass them to these helpers.
 """
 
 from dataclasses import dataclass
@@ -42,7 +43,8 @@ def build_api_key_mapping(
 
 def get_api_key_from_request(request: Request) -> Optional[str]:
     """
-    Extract API key from request headers (supports X-API-Key, Authorization: Bearer, X-Service-Key).
+    Extract API key from request headers (supports X-API-Key, Authorization: Bearer,
+    X-Service-Key).
     """
     api_key = request.headers.get("X-API-Key")
     if api_key:
@@ -136,7 +138,8 @@ def make_verify_service_authentication(
     api_key_configs: Dict[str, APIKeyConfig], get_settings: Callable[[], Any]
 ) -> Callable[[Request], str]:
     def verify_service_authentication(request: Request) -> str:
-        """Synchronously verify the API key from the request and return the service name."""
+        """Synchronously verify the API key from the request and return the service
+        name."""
         api_key = get_api_key_from_request(request)
         api_key_mapping = build_api_key_mapping(api_key_configs, get_settings)
         if not api_key:
@@ -150,7 +153,8 @@ def make_verify_service_authentication(
         request.state.service_name = service_name
         request.state.client_name = get_client_from_api_key(api_key, api_key_mapping)
         logger.info(
-            f"Service authenticated: {service_name} (client: {request.state.client_name})"
+            f"Service authenticated: {service_name} "
+            f"(client: {request.state.client_name})"
         )
         return service_name
 
@@ -183,7 +187,8 @@ def make_service_permission_required(
         ):
             client_name = getattr(request.state, "client_name", "unknown")
             logger.warning(
-                f"Permission denied: {client_name} lacks permissions {required_permissions}",
+                f"Permission denied: {client_name} lacks permissions "
+                f"{required_permissions}",
                 extra={
                     "service": service_name,
                     "client": client_name,
