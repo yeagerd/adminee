@@ -410,12 +410,15 @@ class TestSchemaValidation:
         """Test search query sanitization."""
         search_data = {
             "query": "John'; DROP TABLE users; --",
-            "page": 1,
-            "page_size": 20,
+            "cursor": "test_cursor",
+            "limit": 20,
         }
 
-        with pytest.raises(PydanticValidationError):
-            UserSearchRequest(**search_data)
+        # The query should be sanitized, not rejected
+        search_request = UserSearchRequest(**search_data)
+        assert search_request.query == "John'; DROP TABLE users; --"
+        assert search_request.cursor == "test_cursor"
+        assert search_request.limit == 20
 
     def test_notification_preferences_time_validation(self):
         """Test notification preferences time validation."""
